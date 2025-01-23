@@ -1,0 +1,241 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load django_tables2 %}
+{% load filename %}
+{% load imagefit %}
+
+{% block title %}👩‍🚒 Mitglieder{% endblock %}
+
+{% block content %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .search-bar {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+    .search-inputs {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .search-inputs .form-control {
+        min-width: 200px;
+    }
+    .search-inputs .btn {
+        padding: 0.375rem 1rem;
+    }
+    .members-grid {
+        display: grid;  /* Show grid by default */
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .member-card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+    .member-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+    }
+    .member-card .card-body {
+        padding: 1rem;
+    }
+    .member-info {
+        display: flex;
+        gap: 1rem;
+    }
+    .member-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .member-details {
+        flex: 1;
+    }
+    .member-name {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        color: #2d3748;
+    }
+    .member-meta {
+        font-size: 0.875rem;
+        color: #718096;
+    }
+    .member-status {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+    }
+    .member-actions {
+        margin-top: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    .table-view {
+        display: none;  /* Hide table by default */
+    }
+    @media (min-width: 992px) {
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .members-grid {
+            display: none;  /* Hide grid on desktop by default */
+        }
+        .table-view {
+            display: block;  /* Show table on desktop by default */
+        }
+        /* These classes will override the defaults when toggling */
+        .show-grid .members-grid {
+            display: grid;
+        }
+        .show-grid .table-view {
+            display: none;
+        }
+        .show-table .members-grid {
+            display: none;
+        }
+        .show-table .table-view {
+            display: block;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <h1 class="h3 m-0">Mitglieder</h1>
+    <div class="d-flex gap-2">
+        <div class="view-toggle btn-group d-none d-lg-flex">  <!-- Only show toggle on desktop -->
+            <button class="btn btn-outline-secondary" data-view="grid">
+                <i class="fas fa-th-large"></i>
+            </button>
+            <button class="btn btn-outline-secondary active" data-view="table">
+                <i class="fas fa-table"></i>
+            </button>
+        </div>
+        <a href="{% url 'members:members_export' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-file-export"></i>
+        </a>
+        {% if 'members.add_member' in perms %}
+            <a href="{% url 'members:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>Neu
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="search-bar">
+    <div class="search-inputs">
+        <input type="text" class="form-control search" placeholder="Suchen...">
+        <button class="sort btn btn-outline-secondary" data-sort="age">
+            <i class="fas fa-sort-numeric-down mr-1"></i>Alter
+        </button>
+        <button class="sort btn btn-outline-secondary" data-sort="group">
+            <i class="fas fa-sort-alpha-down mr-1"></i>Gruppe
+        </button>
+    </div>
+</div>
+
+<div id="members-container">
+    <div class="members-grid list active">
+        {% for member in members %}
+            <div class="member-card">
+                <div class="card-body">
+                    <div class="member-info">
+                        <img class="member-avatar" src="{% if member.avatar %}{{ member.avatar|filename|media_resize:'150x150,C' }}{% else %}data:image/png;base64,...{% endif %}" 
+                             alt="{{ member.name }} {{ member.lastname }}">
+                        <div class="member-details">
+                            <div class="member-name">
+                                <span class="name">{{ member.name }}</span> 
+                                <span class="lastname">{{ member.lastname }}</span>
+                                <span class="member-status" style="background-color: {{ member.status.color }}20; color: {{ member.status.color }}">
+                                    {{ member.status }}
+                                </span>
+                            </div>
+                            <div class="member-meta">
+                                <div><i class="fas fa-birthday-cake mr-2"></i>{{ member.birthday }} (<span class="age">{{ member.get_age }}</span> Jahre)</div>
+                                <div><i class="fas fa-users mr-2"></i>Gruppe <span class="group">{{ member.group }}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="member-actions">
+                        <a href="{% url 'members:detail' member.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% if 'members.change_member' in perms %}
+                            <a href="{% url 'members:edit' member.pk %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="table-view">
+        {% if filter %}
+            <div class="filter-card mb-3">
+                <div class="card-body p-2">
+                    {% crispy filter.form filter.form.helper %}
+                </div>
+            </div>
+        {% endif %}
+        {% render_table table %}
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block pagescripts %}
+    {{ block.super }}
+    <script>
+        $(document).ready(function () {
+            // Initialize list.js with both grid and table elements
+            var options = {
+                valueNames: ['name', 'lastname', 'age', 'group'],
+                listClass: 'list'  // Make sure both views have this class
+            };
+
+            // Add list class to table tbody for ListJS to work
+            $('.table-view table tbody').addClass('list');
+            
+            var membersList = new List('members-container', options);
+
+            // View toggle (desktop only)
+            $('.view-toggle .btn').click(function() {
+                $('.view-toggle .btn').removeClass('active');
+                $(this).addClass('active');
+                
+                var view = $(this).data('view');
+                $('#members-container').removeClass('show-grid show-table').addClass('show-' + view);
+
+                // Force ListJS to re-index when switching views
+                membersList.reIndex();
+            });
+
+            // Initialize with table view on desktop
+            if ($(window).width() >= 992) {
+                $('#members-container').addClass('show-table');
+                $('.view-toggle .btn[data-view="table"]').addClass('active');
+                membersList.reIndex();
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load guardian_tags %}
+{% load django_tables2 %}
+
+{% block title %}❗️Löschen{% endblock %}
+{% block content %}
+
+<div class="row">
+    <div class=" col-lg-12">
+        <h1 class="page-header">Kleiderkammer</h1>
+        <form action="" method="post">{% csrf_token %}
+            <p>Bist du sicher, dass du  "{{ object }}" Löschen möchtest??</p>
+            <button type="submit" class="btn btn-danger">Löschen</button>
+            <a href="{% url 'inventory:items' %}" class="btn btn-secondary">Abbrechen</a>
+    </form>
+    </div>
+</div>
+
+
+{% endblock content %}

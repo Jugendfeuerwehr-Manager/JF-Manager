@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Login{% endblock %}
+
+{% block page %}
+<div class="container min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <h1 class="display-6">{{ global_preferences.general__title }}</h1>
+        </div>
+        <div class="card shadow-lg border-0 rounded-3">
+            <div class="card-header bg-white border-0 pt-4">
+                <h3 class="text-center fw-light">Anmelden</h3>
+            </div>
+            <div class="card-body px-4 py-4">
+                <form role="form" method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3 shadow-sm">
+                        Anmelden
+                    </button>
+                </form>
+                <hr class="my-4">
+                <div class="text-center">
+                    <a href="{% url 'password_reset' %}" class="text-decoration-none text-muted">
+                        <i class="fa fa-key fa-fw"></i> Passwort vergessen?
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: all 0.3s ease-in-out;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .btn-primary {
+        transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}

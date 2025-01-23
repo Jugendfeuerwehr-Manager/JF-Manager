@@ -1,0 +1,35 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load guardian_tags %}
+
+{% block title %}✏️ Bearbeiten:{% endblock %}
+
+
+
+{% block content %}
+
+    <div class="row">
+        <div class="col-lg-12">
+            <h1 class="page-header">Bearbeiten</h1>
+        </div>
+    </div>
+    <row>
+        {% crispy form %}
+    </row>
+
+
+{% endblock content %}
+
+
+{% block pagescripts %}
+    {{ block.super }}
+    <script>
+        $(document).ready(function () {
+            $('.selectmultiple').select2();
+            $('.selectmultiple').on("select2:select", function(e) {
+                $(this).find(':selected').prop('selected', true);
+            });
+
+        })
+    </script>
+{% endblock pagescripts %}

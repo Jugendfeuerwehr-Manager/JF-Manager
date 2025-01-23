@@ -1,0 +1,162 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load guardian_tags %}
+{% load static %}
+{% block title %}✏️ Bearbeiten:{% endblock %}
+
+
+
+{% block content %}
+
+    <div class="row">
+        <div class="col-lg-12">
+            <h1 class="page-header"> Ausleihen für {{ object.name }} {{ object.lastname }}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+
+            <div class="row">
+                        <div class="col-md-12">
+                            <div class="input-group mb-2">
+                                <div class="input-group-prepend">
+                                    <div class="input-group-text">🏷</div>
+                                </div>
+                                <input type="text" class="form-control search" id="js-inventory-id"
+                                       placeholder="Inventarnummer">
+                                <button id="js-inventory-submit" class="btn btn-success">Ausleihen</button>
+                            </div>
+                        </div>
+                    </div>
+
+            <div class="row">
+
+                <div class="img-responsive" id="scanner"></div>
+
+            </div>
+
+
+
+
+        </div>
+    </div>
+
+
+
+{% endblock content %}
+
+
+{% block pagescripts %}
+    {{ block.super }}
+    <script>
+
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie != '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = jQuery.trim(cookies[i]);
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#scanner'),    // Or '#yourElement' (optional)
+                area: { // defines rectangle of the detection/localization area
+                    top: "0%",    // top offset
+                    right: "0%",  // right offset
+                    left: "0%",   // left offset
+                    bottom: "0%"  // bottom offset
+                }
+            },
+            decoder: {
+                readers: ["code_128_reader"],
+                debug: {
+                    drawBoundingBox: false,
+                    showFrequency: false,
+                    drawScanline: false,
+                    showPattern: false
+                },
+                multiple: false
+            }
+        }, function (err) {
+            if (err) {
+                console.log(err);
+                return
+            }
+            console.log("Initialization finished. Ready to start");
+            Quagga.start();
+        });
+
+        var lastScanned = "";
+
+
+        function postInvetoryId(code) {
+            $.post(window.location.href,
+                {'barcode': code, 'csrfmiddlewaretoken': getCookie('csrftoken')},
+                function (data) {
+                    // Vibrate on Android.
+                    if (navigator && navigator.vibrate) {
+                        navigator.vibrate([500, 250, 500, 250]);
+                    }
+                    $.toast({
+                        heading: 'Erfolg!',
+                        icon: 'success',
+                        position: 'top-center',
+                        text: "Wurde erfolgreich ausgeliehen",
+                        hideAfter: 2000
+                    })
+                }).fail( function(xhr, textStatus, errorThrown) {
+                    $.toast({
+                        heading: 'Nicht gefunden!',
+                        icon: 'warning',
+                        position: 'top-center',
+                        text: "Nicht gefunden",
+                        hideAfter: 2000
+                    })
+                });
+        }
+
+        Quagga.onDetected(function (result) {
+            var code = result.codeResult.code;
+            console.log(code);
+
+            if (lastScanned !== code) {
+                var sound = new Audio('{% static "beep.wav" %}');
+                sound.play();
+                postInvetoryId(code);
+                lastScanned = code;
+            }
+        });
+
+        $(document).ready(function () {
+            $('#js-inventory-submit').click(function() {
+                var id = $('#js-inventory-id').val();
+                postInvetoryId(id);
+                id.val('');
+            });
+        });
+
+
+    </script>
+
+    <style>
+        video {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load guardian_tags %}
+
+{{ form.media }}
+
+{% block title %}✏️ Bearbeiten:{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4 rounded-3">
+                <div class="card-header bg-white py-3">
+                    <h4 class="card-title mb-0">Bearbeiten</h4>
+                </div>
+                <div class="card-body px-4">
+                    {% crispy form %}
+                </div>
+            </div>
+        </div>
+        {% if members %}
+        <div class="col-lg-4">
+            <div id="member-list" class="card shadow-sm rounded-3">
+                <div class="card-header bg-white py-3">
+                    <div class="input-group">
+                        <span class="input-group-text border-0 bg-light">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" class="form-control border-0 bg-light search" placeholder="Teilnehmer suchen...">
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list list-group-flush">
+                        {% for member in members %}
+                        <li class="list-group-item border-start-0 border-end-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="name fw-medium">{{ member.name }} {{ member.lastname }}</span>
+                                <div class="btn-group" role="group">
+                                    <button type="button" data-key="{{ member.pk }}" data-role="A" class="js-state-button btn btn-sm btn-outline-success rounded-start">
+                                        A
+                                    </button>
+                                    <button type="button" data-key="{{ member.pk }}" data-role="E" class="js-state-button btn btn-sm btn-outline-warning">
+                                        E
+                                    </button>
+                                    <button type="button" data-key="{{ member.pk }}" data-role="F" class="js-state-button btn btn-sm btn-outline-danger rounded-end">
+                                        F
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.js-state-button.active {
+    opacity: 1 !important;
+}
+.js-state-button:not(.active) {
+    opacity: 0.5;
+}
+.card {
+    border: 1px solid rgba(0,0,0,.08);
+}
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.list-group-item {
+    border-color: rgba(0,0,0,.08);
+}
+</style>
+{% endblock content %}
+
+{% block pagescripts %}
+    {{ block.super }}
+    <!-- ...existing JavaScript code... -->
+<script>
+
+function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie != '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+
+
+
+function updateState() {
+
+    $.get(window.location.href + 'attendance', function (data){
+        data.forEach(function(item){
+            setStateOnMember(item.fields.person, item.fields.state)
+        });
+    })
+
+}
+
+function setStateOnMember(member, state) {
+    $('*[data-key=' + member+']').each(function (index) {
+        if(this.dataset.role === state) {
+            $(this).addClass('active')
+        } else {
+            $(this).removeClass('active')
+        }
+    })
+}
+
+$(document).ready(function () {
+
+    updateState();
+
+    $('.js-state-button').click(function (event) {
+        const member_pk = this.dataset.key;
+        const state = this.dataset.role;
+        $.post(window.location.href + 'attendance',
+                    {'member': member_pk, 'state': state, 'csrfmiddlewaretoken': getCookie('csrftoken')},
+                    function( data ) {
+                    updateState();
+                });
+    });
+    
+});
+
+$(document).ready(function () {
+    $('.selectmultiple').select2();
+    $('.selectmultiple').on("select2:select", function(e) {
+        $(this).find(':selected').prop('selected', true);
+    });
+
+})
+
+$(document).ready(function () {
+    var options = {
+      valueNames: ['name']
+    };
+    var list = new List('member-list', options);
+});
+
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('set-time-btn').addEventListener('click', function() {
+            const now = new Date();
+            const startDate = `${now.getFullYear()}-${('0' + (now.getMonth() + 1)).slice(-2)}-${('0' + now.getDate()).slice(-2)} {{ global_preferences.service__service_start_time }}`;
+            const endDate = `${now.getFullYear()}-${('0' + (now.getMonth() + 1)).slice(-2)}-${('0' + now.getDate()).slice(-2)} {{ global_preferences.service__service_end_time }}`;
+    
+            document.getElementById('id_start').value = startDate;
+            document.getElementById('id_end').value = endDate;
+        });
+    });
+    </script>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load guardian_tags %}
+{% load static %}
+{% load imagefit %}
+{% load crispy_forms_tags %}
+{% load filename %}
+{% block title %}{{ object.name }} {{ object.lastname }}{% endblock %}
+
+
+
+{% block content %}
+     <h1>{{ object.name }} {{ object.lastname }}</h1>
+    <div class="row">
+        <div class="col-md-10">
+            <div class="btn-group" role="group" aria-label="Basic example">
+                <a class="btn btn-outline-info" href="{% url 'members:edit' object.pk %}">Bearbeiten</a>
+                <a class="btn btn-primary" role="button" href="{% url 'members:rent' object.pk %}">Ausleihen</a>
+                <a class="btn btn-danger" role="button" href="{% url 'members:delete' object.pk %}">Löschen</a>
+            </div>
+
+        </div>
+        <div class="col-md-2 center-block col-xs-12">
+            {% if object.avatar %}
+            <img title="Bild von {{ object.name }} {{ object.lastname }}" class="img-circle pull-right img-responsive" style="max-width: 250px;" src="{{ object.avatar|filename|media_resize:'640x480' }}">
+            {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-3">
+            <!--left col-->
+
+            <ul class="list-group" style="margin-bottom: 20px;">
+                <li class="list-group-item text-muted"><strong>Profile</strong></li>
+                <li class="list-group-item text-right"><span class="pull-left"><strong>Ausweis Nr.</strong></span> {{ object.identityCardNumber }}</li>
+                <li class="list-group-item text-right"><span class="pull-left"><strong>Aufgenommen</strong></span> {{ object.joined }}</li>
+                <li class="list-group-item text-right"><span class="pull-left"><strong>Geburtstag</strong></span> {{ object.birthday }}</li>
+                <li class="list-group-item "><span class="pull-left">{{ object.street }} <br> {{ object.zip_code }} {{ object.city }}</span></li>
+                {% for parent in parents %}
+                    <li class="list-group-item"><a class="dropdown-toggle" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      {{ parent.name }} {{ parent.lastname }}
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <a href="tel:{{ parent.mobile }}" class="dropdown-item">📱 Mobil anrufen</a>
+                        <a href="tel:{{ parent.phone }}" class="dropdown-item">☎️ Festnetz anrufen</a>
+                        <a href="mailto:{{ parent.email }}" class="dropdown-item">✉️ E-Mail Schreiben</a>
+                        <a href="https://wa.me/{{ parent.get_whatsapp_number }}" class="dropdown-item">💬 Whatsapp</a>
+                    </div></li>
+                {% endfor %}
+            </ul>
+
+
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Anwesend
+                <span class="badge badge-primary badge-pill">{{ n_attended_services }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Entschuldigt
+                <span class="badge badge-primary badge-pill">{{ n_excused_services }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Fehlend
+                <span class="badge badge-primary badge-pill">{{ n_missed_services }}</span>
+              </li>
+            </ul>
+
+        </div>
+        <!--/col-3-->
+        <div class="col-sm-9">
+
+            <ul class="nav nav-tabs" id="myTab">
+                <li class="nav-item"><a class="nav-link" href="#home" data-toggle="tab">Ausrüstung</a></li>
+                <li class="nav-item"><a class="nav-link" href="#services" data-toggle="tab">Übungen</a></li>
+                <li class="nav-item"><a class="nav-link active" href="#events" data-toggle="tab">Einträge / Aktenvermerke</a></li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane" id="home">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Kategorie</th>
+                                    <th>Größe</th>
+                                    <th>Nummer</th>
+                                    <th>Barcode</th>
+                                    <th>Rückgabe</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in inventory %}
+                                    <tr>
+                                        <td>{{ item.category }}</td>
+                                        <td>{{ item.size }}</td>
+                                        <td>{{ item.identifier1 }}</td>
+                                        <td><small>{{ item.identifier2 }}</small></td>
+                                        <td><a href="#">zurückgeben</a></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!--/table-resp-->
+                </div>
+                <div class="tab-pane" id="services">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <td>Date</td>
+                                <td>Thema</td>
+                                <td>Anwesenheit</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for object in attendances %}
+                            <tr>
+                                <td>{{ object.service.start }}</td>
+                                <td>{{ object.service.topic }}</td>
+                                <td>{{ object.state }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tab-pane active" id="events">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Datum</th>
+                                    <th>Bemerkungen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in events %}
+                                    <tr>
+                                        <td>{{ item.type }}</td>
+                                        <td>{{ item.datetime }}</td>
+                                        <td>{{ item.notes }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="jumbotron jumbotron-fluid">
+                          <div class="container">
+                              {% crispy form %}
+                          </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--/tab-pane-->
+        </div>
+        <!--/tab-content-->
+
+    </div>
+    <!--/col-9-->
+
+<!--/row-->
+
+
+{% endblock content %}

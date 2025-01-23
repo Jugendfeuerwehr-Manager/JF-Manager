@@ -1,0 +1,96 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load django_tables2 %}
+
+{% block title %}👨‍👩‍👧‍👦 Eltern{% endblock %}
+{% block content %}
+<div class="row">
+    <div class=" col-lg-12">
+        <h1 class="page-header">Eltern
+            <div>
+                <a href="mailto:jugend@feuerwehr-laudenbach.de?bcc={{ allmail }}" class="btn btn-default">📧 Mail</a>
+                {% if 'members.add_parent' in perms %}
+                    <a href="{% url 'members:parent_create' %}" class="btn btn-success">Neu</a>
+                {% endif %}
+            </div>
+
+        </h1>
+    </div>
+</div>
+    <div class="row ">
+        <div class="col-lg-12 ">
+            <div class="d-none d-md-block d-lg-block">
+                {% if filter %}
+                    {% crispy filter.form filter.form.helper %}
+                {% endif %}
+                {% render_table table %}
+            </div>
+
+
+                <div class="d-block d-md-none">
+
+                    <div id="member-list">
+                           <div class="input-group mb-2">
+                            <div class="input-group-prepend">
+                              <div class="input-group-text">🔎</div>
+                            </div>
+                            <input type="text" class="form-control search" id="inlineFormInputGroup" placeholder="Suchen">
+                          </div>
+                    <div class="list">#
+                        {% for parent in parents %}
+                                <div class="card" style="margin-bottom: 1rem;">
+                                  <div class="card-body">
+                                    <h5 class="card-title name" >{{ parent.name }} {{ parent.lastname }}</h5>
+                                    <h6 class="card-subtitle mb-2 text-muted">{{ parent.mobile }} </h6>
+
+                                  </div>
+                                {% if 'members.change_parent' in perms or 'members.delete_parent' in perms %}
+                                    <div class="card-footer d-flex justify-content-between text-muted">
+                                        {% if 'members.change_parent' in perms %}
+                                            <div class="btn-group" role="group" aria-label="Basic example">
+                                                <a href="{% url 'members:parent_edit' parent.pk %}" class="btn btn-outline-info card-link">✏️</a>
+
+
+                                                  <button class="btn btn-outline-info card-link dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                    Kontaktieren
+                                                  </button>
+                                                  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+
+                                                    <a href="tel:{{ parent.mobile }}" class="dropdown-item">📱 Mobil anrufen</a>
+                                                    <a href="tel:{{ parent.phone }}" class="dropdown-item">☎️ Festnetz anrufen</a>
+                                                    <a href="mailto:{{ parent.email }}" class="dropdown-item">✉️ E-Mail Schreiben</a>
+                                                    <a href="https://wa.me/{{ parent.get_whatsapp_number }}" class="dropdown-item">💬 Whatsapp</a>
+                                                  </div>
+
+                                            </div>
+                                        {% endif %}
+                                        {% if 'members.delete_parent' in perms%}
+                                        <a href="{% url 'members:parent_delete' parent.pk %}" class="btn btn-outline-danger card-link">🗑 Löschen</a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                </div>
+                        {% endfor %}
+                    </div>
+
+                    </div>
+                </div>
+
+        </div>
+    </div>
+
+
+{% endblock content %}
+
+{% block pagescripts %}
+    {{ block.super }}
+<script>
+$(document).ready(function () {
+    var options = {
+      valueNames: ['name']
+    };
+    const list = new List('member-list', options);
+});
+
+</script>
+{% endblock %}

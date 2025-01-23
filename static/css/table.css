@@ -1,0 +1,64 @@
+@media only screen
+
+  and (min-device-width: 150px)
+
+  and (max-device-width: 812px)
+
+  and (orientation: portrait) {
+
+  
+    .table-responsive-grid .table thead { 
+        display: none; 
+    }
+    .table-responsive-grid .table tbody {
+        margin-top: 1rem;
+        display: block;
+    }
+
+    .table-responsive-grid .table tbody td {
+        border: none;
+        padding: 5px;
+    }
+    .table-responsive-grid .table tbody td:nth-child(1){
+        grid-area: header;
+        font-size: 1rem;
+        font-weight: bold;
+      }
+    .table-responsive-grid  .table tbody td:nth-child(2){
+        grid-area: main;
+      }
+    .table-responsive-grid .table tbody td:nth-child(3){
+        grid-area: footer-l;
+      }
+    .table-responsive-grid .table tbody td:nth-child(4) {
+        grid-area: footer-r;
+        display: flex;
+        justify-content: flex-end;
+      }
+    .table-responsive-grid .table tbody td:nth-child(5) {
+        grid-area: aside;
+        justify-self: end;
+      }
+    .table-responsive-grid .table tbody td:nth-child(6) {
+        grid-area: sidebar;
+        display: flex;
+        justify-content: flex-end;
+        display: none;
+
+      }
+      
+    .table-responsive-grid .table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: auto;
+        grid-template-areas: 
+            "header header header aside"
+            "main main . sidebar"
+            "footer-l footer-l footer-r footer-r";
+        border: 1px solid #ccc;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.25rem;
+    }
+
+}
