@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     'import_export',
     'django_cleanup.apps.CleanupConfig',
     'imagefit',
-    'des',# Dynamic Email Settings:
     'bootstrap_datepicker_plus',
     'dynamic_preferences',
     'colorfield',
