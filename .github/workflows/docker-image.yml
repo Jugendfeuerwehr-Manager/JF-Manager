@@ -7,12 +7,29 @@ on:
     branches: [ "main" ]
 
 jobs:
-
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag jf-manager-server:$(date +%s)
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      run: |
+        IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/jf-manager-server
+        VERSION=$(date +%s)
+        
+        docker build . --file Dockerfile --tag $IMAGE_NAME:$VERSION
+        docker tag $IMAGE_NAME:$VERSION $IMAGE_NAME:latest
+        
+        docker push $IMAGE_NAME:$VERSION
+        docker push $IMAGE_NAME:latest
