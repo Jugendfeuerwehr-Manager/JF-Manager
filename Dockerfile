@@ -13,6 +13,9 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     default-mysql-client \
+    pkg-config \
+    default-libmysqlclient-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir pipenv uwsgi mysqlclient
@@ -45,11 +48,17 @@ COPY --chown=django:django . .
 
 ENV DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings
 
+# Set environment variables for static files
+ENV STATIC_ROOT=/static \
+    STATIC_URL=/static/ \
+    MEDIA_ROOT=/uploads \
+    MEDIA_URL=/uploads/
+
 # Switch to non-root user
 USER django
 
-# Collect static files
-RUN DATABASE_URL=none python manage.py collectstatic --noinput
+# Note: Static files should be collected during deployment.
+# Example: docker-compose exec web python manage.py collectstatic --noinput
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
