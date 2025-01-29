@@ -30,12 +30,14 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.admin',
+    # Third party apps
+    'dynamic_preferences',  # moved after django.contrib apps
     'guardian',
     'mptt',
     'bootstrap4',
@@ -54,12 +56,9 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'imagefit',
     'bootstrap_datepicker_plus',
-    'dynamic_preferences',
     'colorfield',
     'health',
-    # comment the following line if you don't want to use user preferences
-    #'dynamic_preferences.users.apps.UserPreferencesConfig',
-
+    'setup.apps.SetupConfig',
 ]
 
 BOOTSTRAP4 = {
@@ -74,6 +73,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'setup.middleware.SetupMiddleware',
 ]
 
 ROOT_URLCONF = 'jf_manager_backend.urls'

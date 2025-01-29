@@ -19,6 +19,7 @@ from django.shortcuts import redirect
 from django.urls import include, path
 from django.views.generic import RedirectView
 from rest_framework.authtoken import views
+from setup.views import SetupView  # Add this import
 
 from .rest_urls import api
 
@@ -55,6 +56,11 @@ health_patterns = [
 
 # Combine all URL patterns
 urlpatterns = api_patterns + app_patterns + auth_patterns + util_patterns + health_patterns
+
+# Add setup URL
+urlpatterns += [
+    path('setup/', include('setup.urls', namespace='setup')),
+]
 
 # Serve media and static files in development
 if settings.DEBUG:
