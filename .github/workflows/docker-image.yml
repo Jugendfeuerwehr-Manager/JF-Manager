@@ -26,6 +26,7 @@ jobs:
     - name: Build and push Docker image
       run: |
         IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/jf-manager-server
+        IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
         VERSION=$(date +%s)
         
         docker build . --file Dockerfile --tag $IMAGE_NAME:$VERSION
