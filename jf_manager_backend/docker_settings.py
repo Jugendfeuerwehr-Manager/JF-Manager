@@ -10,6 +10,8 @@ env = environ.Env(
     ALLOWED_HOSTS=(str, 'localhost'),
     MEDIA_URL=(str, '/uploads/'),
     CACHE_TTL=(int, 1),
+    DEFAULT_FROM_EMAIL=(str, 'webmaster@localhost'),
+    REDIS_URL=(str, 'none'),
 )
 # Set the project base directory
 
@@ -25,23 +27,29 @@ DEBUG = env('DEBUG')
 # Raises Django's ImproperlyConfigured
 # exception if SECRET_KEY not in os.environ
 SECRET_KEY = env('SECRET_KEY')
-DATABASE_URL = env('DATABASE_URL')
+DATABASE_URL = env('DATABASE_URL', default='sqlite:///db.sqlite3')
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS').split(',')
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 
 CACHE_TTL = env('CACHE_TTL')
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env('REDIS_URL'),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient"
-        },
-        "KEY_PREFIX": "jf_manager_backend"
+
+REDIS_URL = env('REDIS_URL', default='none')
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+if REDIS_URL != "none":
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient"
+            },
+            "KEY_PREFIX": "jf_manager_backend"
+        }
     }
-}
 
 if DATABASE_URL != "none":
-    DATABASES['default'] = dj_database_url.parse(env('DATABASE_URL'), conn_max_age=600)
+    DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=600)

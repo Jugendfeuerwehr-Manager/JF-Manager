@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     default-libmysqlclient-dev \
     build-essential \
+    libpcre3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir pipenv uwsgi mysqlclient
@@ -34,17 +35,20 @@ FROM python:3.11-slim-bullseye
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Create non-root user
-RUN useradd -m -u 1000 django
-
+# Create non-root user and group
+RUN groupadd -g 2000 django_group && useradd -m -u 1000 -g django_group django
+RUN mkdir -p /etc/uwsgi/apps-enabled
 WORKDIR /app
 
 # Create required directories
 RUN mkdir -p /static /uploads /tmp/django_imagefit \
-    && chown -R django:django /app /static /uploads /tmp/django_imagefit
+    && chown -R django:django_group /app /static /uploads /tmp/django_imagefit
 
 # Copy application code
 COPY --chown=django:django . .
+
+# Copy uwsgi.ini to the correct location
+COPY --chown=django:django uwsgi.ini /etc/uwsgi/apps-enabled/uwsgi.ini
 
 ENV DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings
 
