@@ -19,6 +19,21 @@ from servicebook.selectors import get_services_of_member, get_number_of_services
 #
 
 class MemberDetailView(LoginRequiredMixin, View):
+    """
+    A view class that handles member detail operations with required login.
+
+    This view acts as a router between GET and POST requests:
+    - GET requests are forwarded to MemberDisplayView for displaying member details
+    - POST requests are forwarded to MemberEventView for handling member events
+
+    Inherits from:
+        LoginRequiredMixin: Ensures user is logged in before accessing view
+        View: Base view class from Django
+
+    Methods:
+        get: Handles GET requests by delegating to MemberDisplayView
+        post: Handles POST requests by delegating to MemberEventView
+    """
     def get(self, request, *args, **kwargs):
         view = MemberDisplayView.as_view()
         return view(request, *args, **kwargs)
@@ -29,6 +44,31 @@ class MemberDetailView(LoginRequiredMixin, View):
 
 
 class MemberDisplayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    """
+    A view class for displaying detailed member information.
+
+    This class implements a detail view for a Member instance, requiring both
+    authentication and specific permissions to access. It displays member details
+    along with related information such as parents, rented inventory items,
+    service attendance records, and associated events.
+
+    Attributes:
+        model (Member): The model class this view displays
+        template_name (str): The template used for rendering the view
+        permission_required (str): The permission required to access this view
+
+    Methods:
+        get_context_data(**kwargs): Enhances the template context with additional
+            member-related data including:
+            - Associated parents
+            - Rented inventory items
+            - Service attendance records and statistics
+            - Events the member is involved in
+            - Event form for new entries
+
+    Returns:
+        dict: Enhanced context dictionary containing all member-related data
+    """
     model = Member
     template_name = 'member_detail.html'
     permission_required = 'members.view_member'
@@ -48,6 +88,30 @@ class MemberDisplayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         return context
 
 class MemberEventView(LoginRequiredMixin, SingleObjectMixin, FormView):
+    """
+    A view for handling member events that requires user authentication.
+    This view combines LoginRequiredMixin, SingleObjectMixin and FormView to handle
+    the creation of events associated with a member. It supports both GET and POST
+    requests, where POST requests create new events based on form data.
+    Attributes:
+        model (Member): The model class this view operates on
+        template_name (str): The template used for rendering the view
+        form_class (EventForm): The form class used for event creation
+        permission_required (str): The required permission to access this view
+    Methods:
+        post(request, *args, **kwargs): 
+            Handles POST requests for creating new events
+            Returns HTTP 403 if user is not authenticated
+        parse_date(date_str):
+            Parses date strings in either ISO (YYYY-MM-DD) or German (DD.MM.YYYY) format
+            Returns datetime object
+            Raises ValueError if date string is invalid
+        get_success_url():
+            Returns the URL to redirect to after successful form submission
+    Example:
+        This view is typically used in URL patterns like:
+        path('member/<int:pk>/', MemberEventView.as_view(), name='detail')
+    """
     model = Member
     template_name = 'member_detail.html'
     form_class = EventForm
@@ -63,23 +127,24 @@ class MemberEventView(LoginRequiredMixin, SingleObjectMixin, FormView):
         if form.is_valid():
             event = Event()
             event.member = self.object
-            event.notes = form.data['notes']
-            event.type = EventType.objects.get(pk=form.data['type'])
+            event.notes = form.cleaned_data['notes']
+            event.type = EventType.objects.get(pk=form.cleaned_data['type'])
             
             # Handle both ISO and German date formats
-            date_str = form.data['date']
-            try:
-                # First try ISO format
-                event.datetime = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                try:
-                    # Then try German format
-                    event.datetime = datetime.strptime(date_str, '%d.%m.%Y')
-                except ValueError:
-                    raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD or DD.MM.YYYY")
+            date_str = form.cleaned_data['date']
+            event.datetime = self.parse_date(date_str)
             
             event.save()
         return super().post(request, *args, **kwargs)
+
+    def parse_date(self, date_str):
+        """Parse date string in ISO or German format."""
+        for fmt in ('%Y-%m-%d', '%d.%m.%Y'):
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD or DD.MM.YYYY")
 
     def get_success_url(self):
         return reverse('members:detail', kwargs={'pk': self.object.pk})

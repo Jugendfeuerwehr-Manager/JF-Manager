@@ -27,9 +27,17 @@ class Member(models.Model):
     status = models.ForeignKey(Status, on_delete=models.SET_NULL, null=True, blank=True)
 
     def get_absolute_url(self):
+        """
+        Returns the URL to access a particular member instance.
+        """
         return reverse('members:detail', kwargs={'pk': self.pk})
 
     def get_age(self):
+        """
+        Calculate the age of the member based on their birthday.
+        Returns:
+            int: The age of the member. If the birthday is not set, returns 0.
+        """
         if not self.birthday:
             return 0
 
@@ -38,4 +46,5 @@ class Member(models.Model):
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
     def __str__(self):
+        """Returns the string representation of the Member instance."""
         return self.name + " " + self.lastname

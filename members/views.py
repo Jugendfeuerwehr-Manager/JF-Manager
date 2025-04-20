@@ -1,5 +1,8 @@
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
+
+from members.models.member import Member
+from members.tables import MemberTable
 from .forms import MemberFilter, MemberFilterFormHelper
 
 class MemberListView(SingleTableMixin, FilterView):

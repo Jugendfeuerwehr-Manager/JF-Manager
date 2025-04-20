@@ -31,7 +31,10 @@ class MemberTable(tables.Table):
         return mark_safe('<a href="%s">%s %s</a>' % (url, has_alert, record.name,))
 
     def render_status(self, value, record):
-        return mark_safe('<span style="color: %s">%s</span>' % (value.color, value.name,))
+        try:
+            return mark_safe('<span style="color: %s">%s</span>' % (value.color, value.name,))
+        except AttributeError:
+            return mark_safe('<span>%s</span>' % value)
 
     def render_birthday(self, value, record):
         return (mark_safe('%s (<b>%s</b> Jahre alt)' % (record.birthday, record.get_age())))
