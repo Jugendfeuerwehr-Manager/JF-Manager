@@ -12,11 +12,11 @@ class MemberTable(tables.Table):
 
     edit = tables.LinkColumn('members:edit', text='', args=[A('pk')], orderable=False, empty_values=())
     delete = tables.LinkColumn('members:delete', text='', args=[A('pk')], orderable=False, empty_values=())
-    name = tables.Column(attrs={'td': {'class': 'align-middle'}})
-    lastname = tables.Column(attrs={'td': {'class': 'align-middle'}})
-    status = tables.Column(attrs={'td': {'class': 'align-middle'}})
-    group = tables.Column(attrs={'td': {'class': 'align-middle'}})
-    birthday = tables.Column(attrs={'td': {'class': 'align-middle'}})
+    name = tables.Column(attrs={'td': {'class': 'align-middle name'}}, orderable=True)
+    lastname = tables.Column(attrs={'td': {'class': 'align-middle lastname'}}, orderable=True)
+    status = tables.Column(attrs={'td': {'class': 'align-middle status'}}, orderable=True)
+    group = tables.Column(attrs={'td': {'class': 'align-middle group'}}, orderable=True)
+    birthday = tables.Column(attrs={'td': {'class': 'align-middle birthday'}}, orderable=True)
 
     def render_edit(self):
         return mark_safe('<i class="fas fa-edit"></i>')
@@ -37,8 +37,7 @@ class MemberTable(tables.Table):
             return mark_safe('<span>%s</span>' % value)
 
     def render_birthday(self, value, record):
-        return (mark_safe('%s (<b>%s</b> Jahre alt)' % (record.birthday, record.get_age())))
-
+        return (mark_safe('%s (<b><span class="age">%s</span></b> Jahre alt)' % (record.birthday, record.get_age())))
 
     class Meta:
         model = Member
@@ -48,6 +47,8 @@ class MemberTable(tables.Table):
             'class': 'table table-hover',
             'thead': {'class': 'bg-light'}
         }
+        # Define order_by_field to match our view's parameter name
+        order_by_field = 'sort'
 
 
 class ParentTable(tables.Table):

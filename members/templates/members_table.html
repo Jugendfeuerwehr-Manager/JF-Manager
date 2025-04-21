@@ -1,5 +1,4 @@
 {% extends 'home.html' %}
-{% load crispy_forms_tags %}
 {% load django_tables2 %}
 {% load filename %}
 {% load imagefit %}
@@ -142,13 +141,7 @@
 
 <div class="search-bar">
     <div class="search-inputs">
-        <input type="text" class="form-control search" placeholder="Suchen...">
-        <button class="sort btn btn-outline-secondary" data-sort="age">
-            <i class="fas fa-sort-numeric-down mr-1"></i>Alter
-        </button>
-        <button class="sort btn btn-outline-secondary" data-sort="group">
-            <i class="fas fa-sort-alpha-down mr-1"></i>Gruppe
-        </button>
+        <input type="text" class="form-control search" id="search-input" placeholder="Namen oder Gruppe suchen...">
     </div>
 </div>
 
@@ -190,13 +183,6 @@
     </div>
 
     <div class="table-view">
-        {% if filter %}
-            <div class="filter-card mb-3">
-                <div class="card-body p-2">
-                    {% crispy filter.form filter.form.helper %}
-                </div>
-            </div>
-        {% endif %}
         {% render_table table %}
     </div>
 </div>
@@ -205,18 +191,109 @@
 
 {% block pagescripts %}
     {{ block.super }}
+    <!-- Add Fuse.js for fuzzy searching -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <script>
         $(document).ready(function () {
-            // Initialize list.js with both grid and table elements
-            var options = {
-                valueNames: ['name', 'lastname', 'age', 'group'],
-                listClass: 'list'  // Make sure both views have this class
-            };
-
-            // Add list class to table tbody for ListJS to work
-            $('.table-view table tbody').addClass('list');
+            // Get all member cards and table rows on the current page
+            const memberCards = Array.from(document.querySelectorAll('.members-grid .member-card'));
+            const tableRows = Array.from(document.querySelectorAll('.table-view table tbody tr'));
             
-            var membersList = new List('members-container', options);
+            // Create an array of all visible member data for Fuse.js
+            const memberItems = memberCards.map(card => {
+                const firstname = card.querySelector('.name').textContent.trim();
+                const lastname = card.querySelector('.lastname').textContent.trim();
+                const age = card.querySelector('.age').textContent.trim();
+                const group = card.querySelector('.group').textContent.trim();
+                
+                return {
+                    element: card,
+                    firstname: firstname,
+                    lastname: lastname,
+                    fullname: `${firstname} ${lastname}`,
+                    reverseName: `${lastname} ${firstname}`,
+                    age: parseInt(age) || 0,
+                    group: group
+                };
+            });
+            
+            // Add visible table rows
+            if (tableRows.length > 0) {
+                tableRows.forEach((row, index) => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 4) {
+                        // The table structure has name, lastname, status, group, birthday
+                        const firstname = cells[0].textContent.trim();
+                        const lastname = cells[1].textContent.trim();
+                        const group = cells[3].textContent.trim();
+                        
+                        // Extract age from birthday cell if available
+                        let age = 0;
+                        const birthdayCell = cells[4]?.textContent || '';
+                        const ageMatch = birthdayCell.match(/\((\d+) Jahre/);
+                        if (ageMatch && ageMatch[1]) {
+                            age = parseInt(ageMatch[1]);
+                        }
+                        
+                        memberItems.push({
+                            element: row,
+                            firstname: firstname,
+                            lastname: lastname,
+                            fullname: `${firstname} ${lastname}`,
+                            reverseName: `${lastname} ${firstname}`,
+                            age: age,
+                            group: group,
+                            isTableRow: true
+                        });
+                    }
+                });
+            }
+            
+            // Configure Fuse.js options for fuzzy search
+            const fuseOptions = {
+                shouldSort: true,
+                threshold: 0.4, // Lower threshold means more strict matching
+                location: 0,
+                distance: 100,
+                maxPatternLength: 32,
+                minMatchCharLength: 1,
+                keys: [
+                    "firstname",
+                    "lastname",
+                    "fullname",
+                    "reverseName",
+                    "group"
+                ]
+            };
+            
+            // Initialize Fuse instance
+            const fuse = new Fuse(memberItems, fuseOptions);
+            
+            // Handle search input events - fuzzy search on currently visible items
+            $('#search-input').on('input', function() {
+                const searchValue = $(this).val().trim();
+                
+                // Show all members if search is empty
+                if (searchValue === '') {
+                    memberItems.forEach(item => {
+                        item.element.style.display = '';
+                    });
+                    return;
+                }
+                
+                // Perform the fuzzy search
+                const results = fuse.search(searchValue);
+                
+                // Hide all elements first
+                memberItems.forEach(item => {
+                    item.element.style.display = 'none';
+                });
+                
+                // Show only matched elements
+                results.forEach(result => {
+                    result.item.element.style.display = '';
+                });
+            });
 
             // View toggle (desktop only)
             $('.view-toggle .btn').click(function() {
@@ -225,16 +302,12 @@
                 
                 var view = $(this).data('view');
                 $('#members-container').removeClass('show-grid show-table').addClass('show-' + view);
-
-                // Force ListJS to re-index when switching views
-                membersList.reIndex();
             });
 
             // Initialize with table view on desktop
             if ($(window).width() >= 992) {
                 $('#members-container').addClass('show-table');
                 $('.view-toggle .btn[data-view="table"]').addClass('active');
-                membersList.reIndex();
             }
         });
     </script>
