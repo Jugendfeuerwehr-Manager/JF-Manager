@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "48cf306dfaf4008752784ef3056257284a917bc05e4455000258d2c12992e03f"
+            "sha256": "ba0b7940567262b129014dd76eb84b56f3e63b5e5de0f311f5ebdfa7363be2bf"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -263,14 +263,6 @@
             "markers": "python_version >= '3.8'",
             "version": "==2.3"
         },
-        "django-des": {
-            "hashes": [
-                "sha256:3b8611c4367bfee8216b424d428040ba3b1492773c32d7ba63b38a35a13ce1ff",
-                "sha256:7e8a5d109e62a72451b6f298f232a483fd1bbd78126127fb48177822559ac6c9"
-            ],
-            "index": "pypi",
-            "version": "==2.4.1"
-        },
         "django-dynamic-preferences": {
             "hashes": [
                 "sha256:8ec6e3a1156346fd6c21fb9b12739910cff1c7582d61f2c10b8d3f2fd4b5b067",
@@ -357,12 +349,6 @@
             "index": "pypi",
             "markers": "python_version >= '3.6'",
             "version": "==5.4.0"
-        },
-        "django-solo": {
-            "hashes": [
-                "sha256:b1206b9a9411b19a4354f7d7d245909a9ea7e9cd566b594363b5adce7dc13e5d"
-            ],
-            "version": "==1.1.3"
         },
         "django-tables2": {
             "hashes": [
