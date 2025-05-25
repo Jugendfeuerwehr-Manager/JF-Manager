@@ -74,6 +74,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'setup.middleware.SetupMiddleware',
+    'jf_manager_backend.email_middleware.EmailConfigMiddleware',  # Add email config middleware
 ]
 
 ROOT_URLCONF = 'jf_manager_backend.urls'
@@ -178,6 +179,16 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+
+# Default email settings (can be overridden by dynamic preferences)
+EMAIL_HOST = ''
+EMAIL_PORT = 587
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+DEFAULT_FROM_EMAIL = 'webmaster@localhost'
 
 
 # Static files (CSS, JavaScript, Images)

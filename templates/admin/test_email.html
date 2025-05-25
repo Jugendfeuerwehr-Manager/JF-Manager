@@ -1,0 +1,79 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .email-settings {
+      margin-top: 20px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .email-settings h3 {
+      margin-top: 0;
+    }
+    .email-settings-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .email-settings-table th, .email-settings-table td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    .email-settings-table th {
+      font-weight: bold;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <form method="post">
+    {% csrf_token %}
+    <div>
+      <fieldset class="module aligned">
+        <h2>Test E-Mail senden</h2>
+        
+        <div class="email-settings">
+          <h3>Aktuelle E-Mail Einstellungen</h3>
+          <p>Diese Einstellungen können im Bereich "Global preferences" unter der Sektion "Email" geändert werden.</p>
+          <table class="email-settings-table">
+            <tr>
+              <th>Einstellung</th>
+              <th>Wert</th>
+            </tr>
+            {% for key, value in email_settings.items %}
+            <tr>
+              <td>{{ key }}</td>
+              <td>{{ value }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+        
+        {% for field in form %}
+          <div class="form-row field-{{ field.name }}">
+            <div>
+              {{ field.errors }}
+              {{ field.label_tag }}
+              {{ field }}
+              {% if field.help_text %}
+                <div class="help">{{ field.help_text|safe }}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </fieldset>
+      
+      <div class="submit-row">
+        <input type="submit" value="Test E-Mail senden" class="default" name="_send_email">
+        <a href="{% url 'admin:dynamic_preferences_globalpreferencemodel_changelist' %}" class="closelink">Abbrechen</a>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

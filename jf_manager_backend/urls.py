@@ -23,6 +23,9 @@ from setup.views import SetupView  # Add this import
 
 from .rest_urls import api
 
+# Import custom email admin
+import jf_manager_backend.email_admin
+
 # API URLs
 api_patterns = [
     path('api/v1/', include(api.urls)),
