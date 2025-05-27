@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'inventory.apps.InventoryConfig',
     'members.apps.MembersConfig',
     'servicebook.apps.ServicebookConfig',
+    'orders.apps.OrdersConfig',
     'phonenumber_field',
     'django_tables2',
     'django_filters',

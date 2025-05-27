@@ -38,6 +38,7 @@ app_patterns = [
     path('inventory/', include('inventory.urls')),
     path('members/', include('members.urls')),
     path('servicebook/', include('servicebook.urls')),
+    path('orders/', include('orders.urls')),
 ]
 
 # Authentication URLs
