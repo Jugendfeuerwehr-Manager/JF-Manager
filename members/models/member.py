@@ -45,6 +45,14 @@ class Member(models.Model):
         today = date.today()
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
+    def get_full_name(self):
+        """
+        Returns the full name of the member.
+        Returns:
+            str: The full name (firstname + lastname)
+        """
+        return f"{self.name} {self.lastname}".strip()
+
     def __str__(self):
         """Returns the string representation of the Member instance."""
         return self.name + " " + self.lastname

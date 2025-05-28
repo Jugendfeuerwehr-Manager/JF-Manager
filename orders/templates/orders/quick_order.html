@@ -1,0 +1,213 @@
+{% extends 'home.html' %}
+{% load bootstrap4 %}
+
+{% block title %}Schnellbestellung{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-bolt text-success"></i> Schnellbestellung</h1>
+            <p class="text-muted">Erstellen Sie schnell eine Bestellung mit den häufigsten Artikeln</p>
+        </div>
+        <div>
+            <a href="{% url 'orders:list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Zurück zur Übersicht
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-user"></i> Mitglied auswählen</h5>
+                    </div>
+                    <div class="card-body">
+                        {% bootstrap_field form.member %}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-boxes"></i> Artikel auswählen</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for field in form %}
+                                {% if field.name != 'member' and not field.name|slice:":5" == "size_" %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label font-weight-bold" for="{{ field.id_for_label }}">
+                                                        {{ field.label }}
+                                                    </label>
+                                                </div>
+                                                
+                                                {% comment %}Größenfeld anzeigen falls vorhanden{% endcomment %}
+                                                {% for size_field in form %}
+                                                    {% if size_field.name == "size_"|add:field.name|slice:"5:" %}
+                                                        <div class="mt-2 size-field" id="size-for-{{ field.name }}" style="display: none;">
+                                                            {% bootstrap_field size_field %}
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-bolt"></i> Schnellbestellung erstellen
+                    </button>
+                    <a href="{% url 'orders:list' %}" class="btn btn-secondary btn-lg ml-2">
+                        <i class="fas fa-times"></i> Abbrechen
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Hilfe -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Schnellbestellung</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6><i class="fas fa-rocket"></i> Schnell & Einfach</h6>
+                        <p class="small text-muted">
+                            Die Schnellbestellung zeigt die häufigsten Artikel an. 
+                            Wählen Sie einfach das Mitglied und die gewünschten Artikel aus.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-check-circle"></i> Automatische Konfiguration</h6>
+                        <p class="small text-muted">
+                            Alle ausgewählten Artikel erhalten automatisch den Status "Bestellt" 
+                            und die Anzahl wird auf 1 gesetzt.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-tools"></i> Erweiterte Optionen</h6>
+                        <p class="small text-muted">
+                            Für komplexere Bestellungen mit mehreren Artikeln, 
+                            Mengen oder Bemerkungen nutzen Sie die 
+                            <a href="{% url 'orders:create' %}">normale Bestellung</a>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kategorien Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-tags"></i> Verfügbare Kategorien</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <span class="badge badge-primary">Uniform</span>
+                        <span class="badge badge-warning">Schutzausrüstung</span>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        Die Schnellbestellung zeigt nur die wichtigsten Artikel 
+                        aus den Kategorien Uniform und Schutzausrüstung an.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        transition: all 0.2s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .form-check-input:checked ~ .form-check-label {
+        color: #007bff;
+    }
+    
+    .size-field {
+        border-left: 3px solid #007bff;
+        padding-left: 0.75rem;
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Größenfelder ein-/ausblenden basierend auf Artikel-Auswahl
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="item_"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const itemId = this.name.replace('item_', '');
+            const sizeField = document.getElementById('size-for-item_' + itemId);
+            
+            if (sizeField) {
+                if (this.checked) {
+                    sizeField.style.display = 'block';
+                } else {
+                    sizeField.style.display = 'none';
+                    // Größenfeld zurücksetzen
+                    const sizeSelect = sizeField.querySelector('select');
+                    if (sizeSelect) {
+                        sizeSelect.value = '';
+                    }
+                }
+            }
+        });
+    });
+    
+    // Artikel-Karten hervorheben bei Auswahl
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const card = this.closest('.card');
+            if (this.checked) {
+                card.classList.add('border-success');
+                card.style.backgroundColor = '#f8fff8';
+            } else {
+                card.classList.remove('border-success');
+                card.style.backgroundColor = '';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

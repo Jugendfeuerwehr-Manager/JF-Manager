@@ -1,0 +1,337 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load bootstrap4 %}
+
+{% block title %}Neue Bestellung erstellen{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-plus text-success"></i> Neue Bestellung</h1>
+            <p class="text-muted">Erstellen Sie eine neue Equipment-Bestellung für ein Mitglied</p>
+        </div>
+        <div>
+            <a href="{% url 'orders:list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Zurück zur Übersicht
+            </a>
+        </div>
+    </div>
+
+    <form method="post" id="order-form">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> Bestellinformationen</h5>
+                    </div>
+                    <div class="card-body">
+                        {% crispy form %}
+                    </div>
+                </div>
+
+                <!-- Bestellartikel -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-boxes"></i> Bestellartikel</h5>
+                        <button type="button" class="btn btn-success btn-sm" id="add-item-btn">
+                            <i class="fas fa-plus"></i> Artikel hinzufügen
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="formset-container">
+                            {{ formset.management_form }}
+                            {% for form in formset %}
+                                <div class="formset-form border rounded p-3 mb-3" data-form-index="{{ forloop.counter0 }}">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">Artikel {{ forloop.counter }}</h6>
+                                        {% if not forloop.first %}
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-form-btn">
+                                                <i class="fas fa-times"></i> Entfernen
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            {% bootstrap_field form.item %}
+                                        </div>
+                                        <div class="col-md-3">
+                                            {% bootstrap_field form.size %}
+                                        </div>
+                                        <div class="col-md-3">
+                                            {% bootstrap_field form.quantity %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% bootstrap_field form.notes %}
+                                    
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    
+                                    {% if form.DELETE %}
+                                        <div class="d-none">
+                                            {% bootstrap_field form.DELETE %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div id="empty-form" class="d-none">
+                            <div class="formset-form border rounded p-3 mb-3" data-form-index="__prefix__">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">Artikel</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-form-btn">
+                                        <i class="fas fa-times"></i> Entfernen
+                                    </button>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="id_items-__prefix__-item">Artikel:</label>
+                                            <select name="items-__prefix__-item" class="form-control" id="id_items-__prefix__-item">
+                                                <option value="">---------</option>
+                                                {% for item in orderable_items %}
+                                                    <option value="{{ item.pk }}" 
+                                                            data-has-sizes="{{ item.has_sizes|yesno:'true,false' }}"
+                                                            data-sizes="{% for size in item.get_sizes_list %}{{ size }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                                        {{ item.category }} - {{ item.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="id_items-__prefix__-size">Größe:</label>
+                                            <select name="items-__prefix__-size" class="form-control" id="id_items-__prefix__-size">
+                                                <option value="">---------</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="id_items-__prefix__-quantity">Anzahl:</label>
+                                            <input type="number" name="items-__prefix__-quantity" value="1" min="1" class="form-control" id="id_items-__prefix__-quantity">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="id_items-__prefix__-notes">Bemerkungen:</label>
+                                    <textarea name="items-__prefix__-notes" cols="40" rows="2" class="form-control" id="id_items-__prefix__-notes"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Hilfe -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Hilfe</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6><i class="fas fa-user"></i> Mitglied auswählen</h6>
+                            <p class="small text-muted">Wählen Sie das Mitglied aus, für das die Bestellung erstellt werden soll.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6><i class="fas fa-box"></i> Artikel hinzufügen</h6>
+                            <p class="small text-muted">Fügen Sie die gewünschten Artikel hinzu. Bei Artikeln mit Größen wird automatisch ein Größenfeld angezeigt.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6><i class="fas fa-sticky-note"></i> Bemerkungen</h6>
+                            <p class="small text-muted">Zusätzliche Informationen zur Bestellung oder zu einzelnen Artikeln können in den Bemerkungsfeldern hinterlegt werden.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aktionen -->
+                <div class="card">
+                    <div class="card-body">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-save"></i> Bestellung erstellen
+                        </button>
+                        <a href="{% url 'orders:list' %}" class="btn btn-secondary btn-block mt-2">
+                            <i class="fas fa-times"></i> Abbrechen
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .formset-form {
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    
+    .formset-form:hover {
+        background-color: #e9ecef;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing formset management');
+    
+    let formIndex = parseInt('{{ formset.total_form_count }}');
+    const addButton = document.getElementById('add-item-btn');
+    const formsetContainer = document.getElementById('formset-container');
+    const emptyForm = document.getElementById('empty-form');
+    const totalFormsInput = document.querySelector('[name$="-TOTAL_FORMS"]');
+    
+    console.log('Initial formIndex:', formIndex);
+    console.log('Add button found:', !!addButton);
+    console.log('Formset container found:', !!formsetContainer);
+    console.log('Empty form found:', !!emptyForm);
+    console.log('Total forms input found:', !!totalFormsInput);
+
+    if (!addButton) {
+        console.error('Add button not found!');
+        return;
+    }
+
+    // Artikel hinzufügen
+    addButton.addEventListener('click', function() {
+        console.log('Add button clicked, current formIndex:', formIndex);
+        
+        if (!emptyForm) {
+            console.error('Empty form template not found!');
+            return;
+        }
+        
+        const newFormHtml = emptyForm.innerHTML.replace(/__prefix__/g, formIndex);
+        console.log('New form HTML created for index:', formIndex);
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newFormHtml;
+        const newFormElement = tempDiv.firstElementChild;
+        
+        if (!newFormElement) {
+            console.error('Failed to create new form element!');
+            return;
+        }
+        
+        // Form-Index im data-Attribut aktualisieren
+        newFormElement.setAttribute('data-form-index', formIndex);
+        
+        // Neue Form vor dem empty-form einfügen
+        formsetContainer.insertBefore(newFormElement, emptyForm);
+        
+        formIndex++;
+        totalFormsInput.value = formIndex;
+        
+        console.log('New form added successfully, total forms now:', formIndex);
+        
+        updateFormNumbers();
+        attachItemChangeHandlers();
+        attachRemoveHandlers();
+    });
+
+    // Formular entfernen
+    function attachRemoveHandlers() {
+        document.querySelectorAll('.remove-form-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const form = this.closest('.formset-form');
+                const deleteField = form.querySelector('[name$="-DELETE"]');
+                
+                if (deleteField) {
+                    deleteField.checked = true;
+                    form.style.display = 'none';
+                } else {
+                    form.remove();
+                    formIndex--;
+                    totalFormsInput.value = formIndex;
+                    updateFormNumbers();
+                }
+            });
+        });
+    }
+
+    // Artikel-Auswahl Handler
+    function attachItemChangeHandlers() {
+        document.querySelectorAll('[name$="-item"]').forEach(select => {
+            select.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const sizeSelect = this.closest('.formset-form').querySelector('[name$="-size"]');
+                
+                // Größenfeld leeren
+                sizeSelect.innerHTML = '<option value="">---------</option>';
+                
+                if (selectedOption.dataset.hasSizes === 'true') {
+                    const sizes = selectedOption.dataset.sizes.split(',');
+                    sizes.forEach(size => {
+                        if (size.trim()) {
+                            const option = document.createElement('option');
+                            option.value = size.trim();
+                            option.textContent = size.trim();
+                            sizeSelect.appendChild(option);
+                        }
+                    });
+                    sizeSelect.disabled = false;
+                    sizeSelect.closest('.form-group').style.display = 'block';
+                } else {
+                    sizeSelect.disabled = true;
+                    sizeSelect.closest('.form-group').style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Formularnummern aktualisieren
+    function updateFormNumbers() {
+        document.querySelectorAll('.formset-form:not([style*="display: none"])').forEach((form, index) => {
+            const title = form.querySelector('h6');
+            if (title) {
+                title.textContent = `Artikel ${index + 1}`;
+            }
+        });
+    }
+
+    // Initial ausführen
+    attachRemoveHandlers();
+    attachItemChangeHandlers();
+    
+    // Bestehende Größenfelder konfigurieren
+    document.querySelectorAll('[name$="-item"]').forEach(select => {
+        if (select.value) {
+            select.dispatchEvent(new Event('change'));
+        }
+    });
+});
+</script>
+{% endblock %}

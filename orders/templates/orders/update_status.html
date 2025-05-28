@@ -1,0 +1,204 @@
+{% extends 'home.html' %}
+{% load bootstrap4 %}
+{% load crispy_forms_tags %}
+
+{% block title %}Status aktualisieren - {{ order_item.item.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-edit text-warning"></i> Status aktualisieren</h1>
+            <p class="text-muted">{{ order_item.item.name }} - Bestellung #{{ order.pk }}</p>
+        </div>
+        <div>
+            <a href="{% url 'orders:detail' order.pk %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Zurück zur Bestellung
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-cog"></i> Status ändern</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% crispy form %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Artikel Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-box"></i> Artikel Details</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">Artikel:</dt>
+                        <dd class="col-sm-7"><strong>{{ order_item.item.name }}</strong></dd>
+                        
+                        <dt class="col-sm-5">Kategorie:</dt>
+                        <dd class="col-sm-7">{{ order_item.item.category }}</dd>
+                        
+                        {% if order_item.size %}
+                            <dt class="col-sm-5">Größe:</dt>
+                            <dd class="col-sm-7">
+                                <span class="badge badge-secondary">{{ order_item.size }}</span>
+                            </dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-5">Anzahl:</dt>
+                        <dd class="col-sm-7">{{ order_item.quantity }}</dd>
+                        
+                        <dt class="col-sm-5">Aktueller Status:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge" style="background-color: {{ order_item.status.color }}; color: white;">
+                                {{ order_item.status.name }}
+                            </span>
+                        </dd>
+                    </dl>
+                    
+                    {% if order_item.item.description %}
+                        <hr>
+                        <dt>Beschreibung:</dt>
+                        <dd class="mt-2">
+                            <div class="border rounded p-2 bg-light">
+                                {{ order_item.item.description }}
+                            </div>
+                        </dd>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Bestellinformation -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Bestellung</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">Nummer:</dt>
+                        <dd class="col-sm-7">
+                            <a href="{% url 'orders:detail' order.pk %}">#{{ order.pk }}</a>
+                        </dd>
+                        
+                        <dt class="col-sm-5">Mitglied:</dt>
+                        <dd class="col-sm-7"><strong>{{ order.member.get_full_name }}</strong></dd>
+                        
+                        <dt class="col-sm-5">Bestellt von:</dt>
+                        <dd class="col-sm-7">{{ order.ordered_by.get_full_name }}</dd>
+                        
+                        <dt class="col-sm-5">Datum:</dt>
+                        <dd class="col-sm-7">{{ order.order_date|date:"d.m.Y H:i" }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Status Hilfe -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Status Hilfe</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6><i class="fas fa-clock"></i> Bestellt</h6>
+                        <p class="small text-muted">Artikel wurde bestellt, aber noch nicht eingegangen.</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-truck"></i> Eingegangen</h6>
+                        <p class="small text-muted">Artikel ist eingegangen, aber noch nicht an das Mitglied ausgegeben. Setzen Sie das Eingangsdatum.</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-check"></i> Ausgegeben</h6>
+                        <p class="small text-muted">Artikel wurde an das Mitglied ausgegeben. Setzen Sie das Ausgabedatum.</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-times"></i> Storniert</h6>
+                        <p class="small text-muted">Bestellung wurde storniert.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    dl.row dt {
+        font-weight: 600;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusField = document.querySelector('[name="status"]');
+    const receivedField = document.querySelector('[name="received_date"]');
+    const deliveredField = document.querySelector('[name="delivered_date"]');
+    
+    if (statusField) {
+        statusField.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const statusCode = selectedOption.dataset.code || selectedOption.text.toLowerCase();
+            
+            // Automatisch Datum setzen basierend auf Status
+            if (statusCode.includes('eingegangen') || statusCode.includes('received')) {
+                if (receivedField && !receivedField.value) {
+                    const now = new Date();
+                    const isoString = now.toISOString().slice(0, 16);
+                    receivedField.value = isoString;
+                }
+            }
+            
+            if (statusCode.includes('ausgegeben') || statusCode.includes('delivered')) {
+                if (deliveredField && !deliveredField.value) {
+                    const now = new Date();
+                    const isoString = now.toISOString().slice(0, 16);
+                    deliveredField.value = isoString;
+                }
+                
+                // Auch Eingangsdatum setzen falls nicht vorhanden
+                if (receivedField && !receivedField.value) {
+                    const now = new Date();
+                    const isoString = now.toISOString().slice(0, 16);
+                    receivedField.value = isoString;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
