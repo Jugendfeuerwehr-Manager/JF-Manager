@@ -1,0 +1,175 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Benachrichtigung Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="page-header">
+                <i class="fas fa-bell mr-2"></i>Benachrichtigung Details
+            </h1>
+            <a href="{% url 'orders:admin_notification_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Zurück zum Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle mr-2"></i>Benachrichtigung Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Typ:</strong>
+                        <span class="badge badge-info">{{ notification.notification_type }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong>
+                        {% if notification.sent_at %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-check mr-1"></i>Gesendet
+                            </span>
+                        {% else %}
+                            <span class="badge badge-warning">
+                                <i class="fas fa-clock mr-1"></i>Ausstehend
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Empfänger:</strong>
+                        <p>{{ notification.recipient_email }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Erstellt:</strong>
+                        <p>{{ notification.created_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                </div>
+                {% if notification.sent_at %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Gesendet:</strong>
+                        <p>{{ notification.sent_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Versuche:</strong>
+                        <p>{{ notification.retry_count }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                {% if notification.error_message %}
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Fehlermeldung:</strong>
+                        <div class="alert alert-danger mt-2">
+                            {{ notification.error_message }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if notification.order %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shopping-cart mr-2"></i>Zugehörige Bestellung
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Bestell-ID:</strong>
+                        <p>{{ notification.order.id }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Status:</strong>
+                        <p>{{ notification.order.status }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Erstellt:</strong>
+                        <p>{{ notification.order.created_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Kunde:</strong>
+                        <p>{{ notification.order.customer_name }} ({{ notification.order.customer_email }})</p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Gesamtbetrag:</strong>
+                        <p>{{ notification.order.total_amount|floatformat:2 }} €</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs mr-2"></i>Aktionen
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if not notification.sent_at %}
+                <form method="post" action="{% url 'orders:retry_notification' notification.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-block mb-3">
+                        <i class="fas fa-redo mr-2"></i>Erneut versuchen
+                    </button>
+                </form>
+                {% endif %}
+                
+                <a href="{% url 'orders:admin_notification_dashboard' %}" class="btn btn-secondary btn-block">
+                    <i class="fas fa-list mr-2"></i>Alle Benachrichtigungen
+                </a>
+            </div>
+        </div>
+
+        {% if notification.email_template %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-envelope mr-2"></i>E-Mail Template
+                </h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> {{ notification.email_template.name }}</p>
+                <p><strong>Betreff:</strong> {{ notification.email_template.subject }}</p>
+                <small class="text-muted">
+                    Template ID: {{ notification.email_template.id }}
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock content %}
+
+{% block pagescripts %}
+{{ block.super }}
+<script>
+$(document).ready(function() {
+    // Auto-refresh if notification is pending
+    {% if not notification.sent_at %}
+    setTimeout(function() {
+        location.reload();
+    }, 30000); // Refresh every 30 seconds for pending notifications
+    {% endif %}
+});
+</script>
+{% endblock pagescripts %}

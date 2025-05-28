@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellübersicht - JF-Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .summary-stats {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+        .category-section {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #28a745;
+        }
+        .item-list {
+            margin: 10px 0;
+        }
+        .item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            border-left: 3px solid #17a2b8;
+        }
+        .item-header {
+            font-weight: bold;
+            color: #495057;
+        }
+        .item-details {
+            margin-left: 20px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .notes {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-bestellt { background-color: #ffc107; color: #212529; }
+        .status-eingegangen { background-color: #17a2b8; color: white; }
+        .status-ausgegeben { background-color: #28a745; color: white; }
+        .status-storniert { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 Bestellübersicht für Gerätewart</h1>
+        <p>Generiert am: {% now "d.m.Y H:i" %}</p>
+    </div>
+    
+    <div class="content">
+        <div class="summary-stats">
+            <h3>📊 Zusammenfassung</h3>
+            <table>
+                <tr>
+                    <td><strong>Anzahl Bestellungen:</strong></td>
+                    <td>{{ orders.count }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Gesamtanzahl Artikel:</strong></td>
+                    <td>{{ total_items }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Zeitraum:</strong></td>
+                    <td>
+                        {% if date_from %}{{ date_from|date:"d.m.Y" }}{% else %}Alle{% endif %}
+                        {% if date_to %} bis {{ date_to|date:"d.m.Y" }}{% endif %}
+                    </td>
+                </tr>
+                {% if status_filter %}
+                <tr>
+                    <td><strong>Status Filter:</strong></td>
+                    <td>
+                        {% for status in status_filter %}
+                            <span class="status-badge status-{{ status.name|lower }}">{{ status.name }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+
+        {% if additional_notes %}
+        <div class="notes">
+            <h4>📝 Zusätzliche Bemerkungen</h4>
+            <p>{{ additional_notes|linebreaks }}</p>
+        </div>
+        {% endif %}
+
+        {% if group_by_category %}
+            <h3>🛍️ Artikel nach Kategorien</h3>
+            
+            {% for category, items in grouped_items.items %}
+            <div class="category-section">
+                <h4>{{ category|default:"Keine Kategorie" }}</h4>
+                
+                {% for item_data in items %}
+                <div class="item">
+                    <div class="item-header">
+                        {{ item_data.item.name }}
+                        {% if item_data.total_quantity > 1 %}
+                            <span style="color: #007bff;">({{ item_data.total_quantity }}x gesamt)</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% for order_item in item_data.order_items %}
+                    <div class="item-details">
+                        • {{ order_item.quantity }}x
+                        {% if order_item.size %}- Größe: {{ order_item.size }}{% endif %}
+                        - <strong>{{ order_item.order.member.get_full_name }}</strong>
+                        - <span class="status-badge status-{{ order_item.status.name|lower }}">{{ order_item.status.name }}</span>
+                        - Bestellt: {{ order_item.order.order_date|date:"d.m.Y" }}
+                        {% if include_notes and order_item.notes %}
+                        <br>📝 {{ order_item.notes }}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+                
+                <div class="total-row">
+                    Gesamt für {{ category|default:"Keine Kategorie" }}: 
+                    {{ items|length }} verschiedene Artikel, 
+                    {% with total=0 %}
+                        {% for item_data in items %}
+                            {% with total=total|add:item_data.total_quantity %}{% endwith %}
+                        {% endfor %}
+                        {{ total }} Stück
+                    {% endwith %}
+                </div>
+            </div>
+            {% endfor %}
+            
+        {% else %}
+            <h3>📋 Alle Bestellungen</h3>
+            
+            {% for order in orders %}
+            <div class="category-section">
+                <h4>Bestellung #{{ order.pk }} - {{ order.member.get_full_name }}</h4>
+                <p><strong>Bestellt am:</strong> {{ order.order_date|date:"d.m.Y H:i" }}</p>
+                <p><strong>Bestellt von:</strong> {{ order.ordered_by.get_full_name|default:"System" }}</p>
+                
+                {% if include_notes and order.notes %}
+                <div class="notes">
+                    <strong>Bestellnotizen:</strong> {{ order.notes|linebreaks }}
+                </div>
+                {% endif %}
+                
+                <div class="item-list">
+                    {% for item in order.items.all %}
+                    <div class="item">
+                        <div class="item-header">
+                            {{ item.item.name }}
+                            {% if item.size %}- Größe: {{ item.size }}{% endif %}
+                            - {{ item.quantity }}x
+                            - <span class="status-badge status-{{ item.status.name|lower }}">{{ item.status.name }}</span>
+                        </div>
+                        
+                        {% if include_notes and item.notes %}
+                        <div class="item-details">
+                            📝 {{ item.notes }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if item.received_date %}
+                        <div class="item-details">
+                            ✅ Eingegangen: {{ item.received_date|date:"d.m.Y H:i" }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if item.delivered_date %}
+                        <div class="item-details">
+                            📦 Ausgegeben: {{ item.delivered_date|date:"d.m.Y H:i" }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="summary-stats">
+            <h3>🔍 Schnellübersicht für Einkauf</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Artikel</th>
+                        <th>Kategorie</th>
+                        <th>Größen</th>
+                        <th>Gesamt</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item_summary in shopping_list %}
+                    <tr>
+                        <td><strong>{{ item_summary.item_name }}</strong></td>
+                        <td>{{ item_summary.category|default:"-" }}</td>
+                        <td>
+                            {% for size, qty in item_summary.sizes.items %}
+                                {{ size|default:"Keine" }}: {{ qty }}x<br>
+                            {% endfor %}
+                        </td>
+                        <td><strong>{{ item_summary.total_quantity }}x</strong></td>
+                        <td>
+                            {% for status in item_summary.statuses %}
+                                <span class="status-badge status-{{ status|lower }}">{{ status }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Diese E-Mail wurde automatisch vom JF-Manager System generiert.</p>
+        <p>{{ protocol }}://{{ domain }}</p>
+        <p>Bei Fragen wenden Sie sich an die Jugendwarte.</p>
+    </div>
+</body>
+</html>

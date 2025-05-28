@@ -30,10 +30,11 @@ django-imagefit = "*"
 awesome-slugify = "==1.6.5"
 gunicorn = "*"
 phonenumbers = "*"
-openpyxl = "~=3.1.2"
 crispy-bootstrap5 = "*"
 django-bootstrap4 = "*"
 django-bootstrap-datepicker-plus = "*"
+pandas = "*"
+openpyxl = "*"
 
 [requires]
 python_version = "3.10"

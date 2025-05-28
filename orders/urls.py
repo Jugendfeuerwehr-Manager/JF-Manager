@@ -1,5 +1,10 @@
 from django.urls import path
 from . import views
+from .views_notifications import (
+    notification_preferences, admin_notification_dashboard, notification_detail,
+    retry_failed_notification, email_template_list, notification_stats_api,
+    OrderSummaryView
+)
 
 app_name = 'orders'
 
@@ -24,4 +29,15 @@ urlpatterns = [
     # Analytics & Reports
     path('analytics/', views.order_analytics_dashboard, name='analytics'),
     path('export/', views.export_orders, name='export'),
+    
+    # Notifications
+    path('notifications/preferences/', notification_preferences, name='notification_preferences'),
+    path('notifications/dashboard/', admin_notification_dashboard, name='admin_notification_dashboard'),
+    path('notifications/<int:log_id>/', notification_detail, name='notification_detail'),
+    path('notifications/<int:log_id>/retry/', retry_failed_notification, name='retry_notification'),
+    path('notifications/templates/', email_template_list, name='email_template_list'),
+    path('api/notifications/stats/', notification_stats_api, name='notification_stats_api'),
+    
+    # Order Summary for External Personnel
+    path('summary/send/', OrderSummaryView.as_view(), name='send_order_summary'),
 ]

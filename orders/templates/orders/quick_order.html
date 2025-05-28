@@ -38,9 +38,10 @@
                     <div class="card-body">
                         <div class="row">
                             {% for field in form %}
-                                {% if field.name != 'member' and not field.name|slice:":5" == "size_" %}
+                                {% if field.name != 'member' and field.name|slice:":5" == "item_" %}
+                                    {% with item_id=field.name|slice:"5:" %}
                                     <div class="col-md-6 mb-3">
-                                        <div class="card h-100">
+                                        <div class="card h-100 item-card" data-item-id="{{ item_id }}">
                                             <div class="card-body">
                                                 <div class="form-check">
                                                     {{ field }}
@@ -51,15 +52,22 @@
                                                 
                                                 {% comment %}Größenfeld anzeigen falls vorhanden{% endcomment %}
                                                 {% for size_field in form %}
-                                                    {% if size_field.name == "size_"|add:field.name|slice:"5:" %}
-                                                        <div class="mt-2 size-field" id="size-for-{{ field.name }}" style="display: none;">
-                                                            {% bootstrap_field size_field %}
+                                                    {% if size_field.name == "size_"|add:item_id %}
+                                                        <div class="mt-2 size-field" id="size-for-item_{{ item_id }}" style="display: none;">
+                                                            <label for="{{ size_field.id_for_label }}" class="form-label">
+                                                                <i class="fas fa-ruler"></i> {{ size_field.label }}
+                                                            </label>
+                                                            {{ size_field }}
+                                                            {% if size_field.help_text %}
+                                                                <small class="form-text text-muted">{{ size_field.help_text }}</small>
+                                                            {% endif %}
                                                         </div>
                                                     {% endif %}
                                                 {% endfor %}
                                             </div>
                                         </div>
                                     </div>
+                                    {% endwith %}
                                 {% endif %}
                             {% endfor %}
                         </div>
@@ -89,6 +97,16 @@
                         <p class="small text-muted">
                             Die Schnellbestellung zeigt die häufigsten Artikel an. 
                             Wählen Sie einfach das Mitglied und die gewünschten Artikel aus.
+                            Bei Artikeln mit Größen können Sie direkt die passende Größe auswählen.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-ruler"></i> Größenauswahl</h6>
+                        <p class="small text-muted">
+                            Wenn Sie einen Artikel mit verfügbaren Größen auswählen, 
+                            erscheint automatisch ein Größenfeld. Wählen Sie die 
+                            passende Größe aus, bevor Sie die Bestellung erstellen.
                         </p>
                     </div>
                     
@@ -165,6 +183,28 @@
         padding-left: 0.75rem;
         background-color: #f8f9fa;
         border-radius: 0.25rem;
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .size-field label {
+        font-weight: 600;
+        color: #007bff;
+        margin-bottom: 0.25rem;
+    }
+    
+    .size-field select {
+        border: 1px solid #007bff;
+        border-radius: 0.25rem;
+    }
+    
+    .item-card.selected {
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .item-card.selected .card-body {
+        background-color: #f8fff8;
     }
 </style>
 {% endblock %}
@@ -179,13 +219,28 @@ document.addEventListener('DOMContentLoaded', function() {
         checkbox.addEventListener('change', function() {
             const itemId = this.name.replace('item_', '');
             const sizeField = document.getElementById('size-for-item_' + itemId);
+            const itemCard = this.closest('.item-card');
             
-            if (sizeField) {
-                if (this.checked) {
+            if (this.checked) {
+                // Artikel wurde ausgewählt
+                itemCard.classList.add('selected');
+                
+                // Größenfeld anzeigen falls vorhanden
+                if (sizeField) {
                     sizeField.style.display = 'block';
-                } else {
+                    // Fokus auf Größenfeld setzen für bessere UX
+                    const sizeSelect = sizeField.querySelector('select');
+                    if (sizeSelect) {
+                        setTimeout(() => sizeSelect.focus(), 100);
+                    }
+                }
+            } else {
+                // Artikel wurde abgewählt
+                itemCard.classList.remove('selected');
+                
+                // Größenfeld verstecken und zurücksetzen
+                if (sizeField) {
                     sizeField.style.display = 'none';
-                    // Größenfeld zurücksetzen
                     const sizeSelect = sizeField.querySelector('select');
                     if (sizeSelect) {
                         sizeSelect.value = '';
@@ -193,19 +248,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        
+        // Initial state für bereits ausgewählte Artikel
+        if (checkbox.checked) {
+            checkbox.dispatchEvent(new Event('change'));
+        }
     });
     
-    // Artikel-Karten hervorheben bei Auswahl
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const card = this.closest('.card');
-            if (this.checked) {
-                card.classList.add('border-success');
-                card.style.backgroundColor = '#f8fff8';
-            } else {
-                card.classList.remove('border-success');
-                card.style.backgroundColor = '';
+    // Formular-Validierung: Warnung wenn Artikel ohne Größe ausgewählt wurden
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const selectedItems = document.querySelectorAll('input[type="checkbox"][name^="item_"]:checked');
+            let hasIncompleteSelection = false;
+            
+            selectedItems.forEach(checkbox => {
+                const itemId = checkbox.name.replace('item_', '');
+                const sizeField = document.getElementById('size-for-item_' + itemId);
+                
+                if (sizeField) {
+                    const sizeSelect = sizeField.querySelector('select');
+                    if (sizeSelect && !sizeSelect.value) {
+                        // Größenfeld ist sichtbar aber nicht ausgefüllt
+                        sizeSelect.style.borderColor = '#dc3545';
+                        sizeSelect.parentElement.style.backgroundColor = '#f8d7da';
+                        hasIncompleteSelection = true;
+                    }
+                }
+            });
+            
+            if (hasIncompleteSelection) {
+                e.preventDefault();
+                alert('Bitte wählen Sie für alle markierten Artikel eine Größe aus, oder lassen Sie das Größenfeld leer wenn keine Größe erforderlich ist.');
+                return false;
             }
+        });
+    }
+    
+    // Größenfeld-Validierung zurücksetzen bei Änderung
+    document.querySelectorAll('select[name^="size_"]').forEach(select => {
+        select.addEventListener('change', function() {
+            this.style.borderColor = '';
+            this.parentElement.style.backgroundColor = '';
         });
     });
 });
