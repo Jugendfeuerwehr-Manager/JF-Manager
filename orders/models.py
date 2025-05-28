@@ -123,3 +123,72 @@ class OrderItem(models.Model):
     def __str__(self):
         size_info = f" (Größe: {self.size})" if self.size else ""
         return f"{self.item.name}{size_info} - {self.status.name}"
+    
+    def clean(self):
+        """Validate status transitions using workflow rules"""
+        super().clean()
+        
+        if self.pk:  # Only validate for existing instances
+            try:
+                original = OrderItem.objects.get(pk=self.pk)
+                if original.status != self.status:
+                    # Check if status transition is allowed
+                    from .notifications import OrderWorkflowService
+                    if not OrderWorkflowService.can_transition_to(original.status, self.status):
+                        from django.core.exceptions import ValidationError
+                        raise ValidationError(
+                            f'Status transition from "{original.status.name}" to "{self.status.name}" is not allowed.'
+                        )
+            except OrderItem.DoesNotExist:
+                pass  # New instance, no validation needed
+    
+    def get_available_next_statuses(self):
+        """Get list of statuses this item can transition to"""
+        from .notifications import OrderWorkflowService
+        return OrderWorkflowService.get_next_statuses(self.status)
+    
+    def can_transition_to_status(self, target_status):
+        """Check if this item can transition to the given status"""
+        from .notifications import OrderWorkflowService
+        return OrderWorkflowService.can_transition_to(self.status, target_status)
+    
+
+class OrderItemStatusHistory(models.Model):
+    """History of status changes for order items"""
+    order_item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.CASCADE,
+        related_name='status_history',
+        verbose_name="Bestellartikel"
+    )
+    from_status = models.ForeignKey(
+        OrderStatus,
+        on_delete=models.PROTECT,
+        related_name='status_history_from',
+        null=True,
+        blank=True,
+        verbose_name="Von Status"
+    )
+    to_status = models.ForeignKey(
+        OrderStatus,
+        on_delete=models.PROTECT,
+        related_name='status_history_to',
+        verbose_name="Zu Status"
+    )
+    changed_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Geändert von"
+    )
+    changed_at = models.DateTimeField(auto_now_add=True, verbose_name="Geändert am")
+    notes = models.TextField(blank=True, verbose_name="Bemerkungen")
+    
+    class Meta:
+        ordering = ['-changed_at']
+        verbose_name = "Status-Änderung"
+        verbose_name_plural = "Status-Änderungen"
+    
+    def __str__(self):
+        from_str = self.from_status.name if self.from_status else "Neu"
+        return f"{self.order_item} - {from_str} → {self.to_status.name}"

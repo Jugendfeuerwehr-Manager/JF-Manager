@@ -1,0 +1,204 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load django_tables2 %}
+
+{% block title %}Bulk Status-Update{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-edit"></i> Bulk Status-Update
+                </h2>
+                <div>
+                    <a href="{% url 'orders:list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Zurück zu Bestellungen
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Filter
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% crispy filter_form %}
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            {% if queryset_count > 0 %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Gefundene Artikel ({{ queryset_count }})
+                        {% if queryset_count > 100 %}
+                        <small class="text-muted"> - Zeige erste 100</small>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Bulk Update Form -->
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Status and Options -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ bulk_form.new_status|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ bulk_form.update_dates|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                {{ bulk_form.notes|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <!-- Item Selection -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold">Artikel auswählen:</label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">
+                                        Alle auswählen
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNone()">
+                                        Alle abwählen
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="50">
+                                                <input type="checkbox" id="select-all" class="form-check-input">
+                                            </th>
+                                            <th>Bestellung</th>
+                                            <th>Mitglied</th>
+                                            <th>Artikel</th>
+                                            <th>Größe</th>
+                                            <th>Anzahl</th>
+                                            <th>Aktueller Status</th>
+                                            <th>Bestelldatum</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in queryset %}
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" name="order_items" value="{{ item.pk }}" 
+                                                       class="form-check-input item-checkbox">
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'orders:detail' item.order.pk %}" class="text-decoration-none">
+                                                    #{{ item.order.pk }}
+                                                </a>
+                                            </td>
+                                            <td>{{ item.order.member.get_full_name }}</td>
+                                            <td>
+                                                <strong>{{ item.item.name }}</strong>
+                                                <br><small class="text-muted">{{ item.item.category }}</small>
+                                            </td>
+                                            <td>{{ item.size|default:"-" }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>
+                                                <span class="badge" style="background-color: {{ item.status.color }}; color: white;">
+                                                    {{ item.status.name }}
+                                                </span>
+                                            </td>
+                                            <td>{{ item.order.order_date|date:"d.m.Y H:i" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary btn-lg" onclick="return confirmBulkUpdate()">
+                                <i class="fas fa-save"></i> Status für ausgewählte Artikel aktualisieren
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 
+                Keine Artikel gefunden. Passen Sie die Filter an, um Artikel zu finden.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block pagescripts %}
+<script>
+function selectAll() {
+    document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+    document.getElementById('select-all').checked = true;
+}
+
+function selectNone() {
+    document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+    document.getElementById('select-all').checked = false;
+}
+
+// Master checkbox functionality
+document.getElementById('select-all').addEventListener('change', function() {
+    const isChecked = this.checked;
+    document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
+        checkbox.checked = isChecked;
+    });
+});
+
+// Update master checkbox when individual checkboxes change
+document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+        const allCheckboxes = document.querySelectorAll('.item-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+        const masterCheckbox = document.getElementById('select-all');
+        
+        if (checkedCheckboxes.length === 0) {
+            masterCheckbox.indeterminate = false;
+            masterCheckbox.checked = false;
+        } else if (checkedCheckboxes.length === allCheckboxes.length) {
+            masterCheckbox.indeterminate = false;
+            masterCheckbox.checked = true;
+        } else {
+            masterCheckbox.indeterminate = true;
+        }
+    });
+});
+
+function confirmBulkUpdate() {
+    const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+    const newStatus = document.querySelector('[name="new_status"]').selectedOptions[0].text;
+    
+    if (checkedItems.length === 0) {
+        alert('Bitte wählen Sie mindestens einen Artikel aus.');
+        return false;
+    }
+    
+    return confirm(`Sind Sie sicher, dass Sie ${checkedItems.length} Artikel(n) auf Status "${newStatus}" setzen möchten?`);
+}
+</script>
+{% endblock %}

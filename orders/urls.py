@@ -17,4 +17,11 @@ urlpatterns = [
     
     # AJAX Endpoints
     path('api/item/<int:item_id>/sizes/', views.get_item_sizes, name='item_sizes'),
+    
+    # Bulk Operations
+    path('bulk-status-update/', views.bulk_status_update, name='bulk_status_update'),
+    
+    # Analytics & Reports
+    path('analytics/', views.order_analytics_dashboard, name='analytics'),
+    path('export/', views.export_orders, name='export'),
 ]

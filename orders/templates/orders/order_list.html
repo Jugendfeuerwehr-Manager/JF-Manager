@@ -13,6 +13,12 @@
             <p class="text-muted">Verwalten Sie Equipment-Bestellungen für Mitglieder</p>
         </div>
         <div class="d-flex gap-2">
+            <a href="{% url 'orders:analytics' %}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
+            <a href="{% url 'orders:bulk_status_update' %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Bulk Status-Update
+            </a>
             <a href="{% url 'orders:quick_create' %}" class="btn btn-success">
                 <i class="fas fa-bolt"></i> Schnellbestellung
             </a>
@@ -137,7 +143,7 @@
 </style>
 {% endblock %}
 
-{% block extra_js %}
+{% block pagescripts %}
 <script>
     // Automatisches Refresh alle 30 Sekunden für Live-Updates
     setTimeout(function() {

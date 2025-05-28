@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status-Update für Ihre Bestellung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #28a745;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .status-update {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #28a745;
+        }
+        .status-change {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .old-status {
+            color: #6c757d;
+            text-decoration: line-through;
+        }
+        .new-status {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 Status-Update</h1>
+    </div>
+    
+    <div class="content">
+        <p>Hallo {{ member.get_full_name }},</p>
+        
+        <p>der Status für einen Artikel in Ihrer Bestellung hat sich geändert:</p>
+        
+        <div class="status-update">
+            <h3>Artikel-Details</h3>
+            <p><strong>Artikel:</strong> {{ order_item.item.name }}</p>
+            {% if order_item.size %}
+            <p><strong>Größe:</strong> {{ order_item.size }}</p>
+            {% endif %}
+            <p><strong>Anzahl:</strong> {{ order_item.quantity }}</p>
+            <p><strong>Bestellung Nr.:</strong> #{{ order.pk }}</p>
+            
+            <div class="status-change">
+                <p><strong>Status-Änderung:</strong></p>
+                <span class="old-status">{{ old_status.name }}</span>
+                →
+                <span class="new-status">{{ new_status.name }}</span>
+            </div>
+            
+            {% if order_item.notes %}
+            <p><strong>Bemerkungen:</strong> {{ order_item.notes }}</p>
+            {% endif %}
+            
+            <p><strong>Geändert von:</strong> {{ updated_by.get_full_name|default:"System" }}</p>
+            <p><strong>Änderungsdatum:</strong> {% now "d.m.Y H:i" %}</p>
+        </div>
+        
+        <p>
+            <a href="{{ order_url }}" class="button">Vollständige Bestellung ansehen</a>
+        </p>
+    </div>
+    
+    <div class="footer">
+        <p>Diese E-Mail wurde automatisch vom JF-Manager System generiert.</p>
+        <p>{{ protocol }}://{{ domain }}</p>
+    </div>
+</body>
+</html>

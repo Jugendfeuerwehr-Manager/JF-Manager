@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import OrderStatus, OrderableItem, Order, OrderItem
+from .models import OrderStatus, OrderableItem, Order, OrderItem, OrderItemStatusHistory
 
 
 @admin.register(OrderStatus)
@@ -60,6 +60,12 @@ class OrderAdmin(admin.ModelAdmin):
         }),
     )
 
+class OrderItemStatusHistoryInline(admin.TabularInline):
+    model = OrderItemStatusHistory
+    extra = 0
+    fields = ['from_status', 'to_status', 'changed_by', 'changed_at', 'notes']
+    readonly_fields = ['changed_at']
+    ordering = ['-changed_at']
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
@@ -68,6 +74,7 @@ class OrderItemAdmin(admin.ModelAdmin):
     search_fields = ['order__member__name', 'order__member__lastname', 'item__name']
     autocomplete_fields = ['order', 'item', 'status']
     list_editable = ['status']
+    inlines = [OrderItemStatusHistoryInline]
     
     fieldsets = (
         ('Artikel', {
@@ -75,6 +82,45 @@ class OrderItemAdmin(admin.ModelAdmin):
         }),
         ('Status', {
             'fields': ('status', 'received_date', 'delivered_date')
+        }),
+        ('Bemerkungen', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Override save to track status changes"""
+        if change:
+            # Get the original instance to compare status
+            original = OrderItem.objects.get(pk=obj.pk)
+            if original.status != obj.status:
+                # Create status history entry
+                OrderItemStatusHistory.objects.create(
+                    order_item=obj,
+                    from_status=original.status,
+                    to_status=obj.status,
+                    changed_by=request.user,
+                    notes=f"Status changed via admin interface"
+                )
+        
+        super().save_model(request, obj, form, change)
+
+
+
+
+
+@admin.register(OrderItemStatusHistory)
+class OrderItemStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = ['order_item', 'from_status', 'to_status', 'changed_by', 'changed_at']
+    list_filter = ['from_status', 'to_status', 'changed_at', 'changed_by']
+    search_fields = ['order_item__order__member__name', 'order_item__order__member__lastname', 'order_item__item__name']
+    readonly_fields = ['changed_at']
+    autocomplete_fields = ['order_item', 'from_status', 'to_status', 'changed_by']
+    
+    fieldsets = (
+        ('Status-Änderung', {
+            'fields': ('order_item', 'from_status', 'to_status', 'changed_by', 'changed_at')
         }),
         ('Bemerkungen', {
             'fields': ('notes',),

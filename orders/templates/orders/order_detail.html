@@ -16,19 +16,22 @@
                 <i class="fas fa-arrow-left"></i> Zurück zur Übersicht
             </a>
             {% if can_manage_orders %}
-                <div class="dropdown">
-                    <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                <div class="btn-group dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-cog"></i> Aktionen
                     </button>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="#">
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-edit"></i> Bestellung bearbeiten
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-danger" href="#">
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'orders:export' %}?order_id={{ order.pk }}">
+                            <i class="fas fa-download"></i> Als PDF exportieren
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="confirmDelete()">
                             <i class="fas fa-trash"></i> Bestellung löschen
-                        </a>
-                    </div>
+                        </a></li>
+                    </ul>
                 </div>
             {% endif %}
         </div>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neue Bestellung erstellt</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .order-details {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .item:last-child {
+            border-bottom: none;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📦 Neue Bestellung erstellt</h1>
+    </div>
+    
+    <div class="content">
+        <p>Eine neue Bestellung wurde im JF-Manager System erstellt:</p>
+        
+        <div class="order-details">
+            <h3>Bestelldetails</h3>
+            <p><strong>Bestellung Nr.:</strong> #{{ order.pk }}</p>
+            <p><strong>Mitglied:</strong> {{ member.get_full_name }}</p>
+            <p><strong>Bestelldatum:</strong> {{ order.order_date|date:"d.m.Y H:i" }}</p>
+            <p><strong>Bestellt von:</strong> {{ order.ordered_by.get_full_name|default:"System" }}</p>
+            
+            {% if order.notes %}
+            <p><strong>Bemerkungen:</strong> {{ order.notes }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="order-details">
+            <h3>Bestellte Artikel ({{ items|length }})</h3>
+            {% for item in items %}
+            <div class="item">
+                <strong>{{ item.item.name }}</strong>
+                {% if item.size %} - Größe: {{ item.size }}{% endif %}
+                <br>
+                <small>Anzahl: {{ item.quantity }} | Status: {{ item.status.name }}</small>
+                {% if item.notes %}
+                <br><small>Bemerkung: {{ item.notes }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        
+        <p>
+            <a href="{{ order_url }}" class="button">Bestellung ansehen</a>
+        </p>
+    </div>
+    
+    <div class="footer">
+        <p>Diese E-Mail wurde automatisch vom JF-Manager System generiert.</p>
+        <p>{{ protocol }}://{{ domain }}</p>
+    </div>
+</body>
+</html>
