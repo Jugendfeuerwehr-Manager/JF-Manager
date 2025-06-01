@@ -1,0 +1,13 @@
+Hallo {{ customer_name }},
+
+vielen Dank für Ihre Bestellung!
+
+Bestelldetails:
+- Bestell-ID: {{ order.id }}
+- Erstellt am: {{ order.created_at|date:"d.m.Y H:i" }}
+- Gesamtbetrag: {{ order.total_amount|floatformat:2 }} €
+
+Wir werden Ihre Bestellung schnellstmöglich bearbeiten und Sie über den Status informieren.
+
+Mit freundlichen Grüßen
+Ihr Team

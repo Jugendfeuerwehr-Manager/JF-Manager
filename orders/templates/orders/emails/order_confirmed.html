@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellung bestätigt</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #28a745;">Bestellung bestätigt</h2>
+        
+        <p>Hallo <strong>{{ customer_name }}</strong>,</p>
+        
+        <p>Ihre Bestellung wurde bestätigt und wird nun bearbeitet.</p>
+        
+        <div style="background-color: #d4edda; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #28a745;">
+            <h3 style="margin-top: 0; color: #155724;">✓ Bestellung bestätigt</h3>
+            <p style="margin-bottom: 0;">Bestell-ID: <strong>{{ order.id }}</strong><br>
+            Gesamtbetrag: <strong>{{ order.total_amount|floatformat:2 }} €</strong></p>
+        </div>
+        
+        <p>Sie erhalten eine weitere Benachrichtigung, sobald Ihre Bestellung versandt wurde.</p>
+        
+        <p style="margin-top: 30px;">Mit freundlichen Grüßen<br>
+        <strong>Ihr Team</strong></p>
+    </div>
+</body>
+</html>

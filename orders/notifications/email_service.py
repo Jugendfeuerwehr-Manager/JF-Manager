@@ -547,6 +547,8 @@ class OrderNotificationService(BaseNotificationService):
         shopping_list_final = []
         for item_data in shopping_list.values():
             item_data['statuses'] = list(item_data['statuses'])
+            # Convert defaultdict to regular dict for Django template compatibility
+            item_data['sizes'] = dict(item_data['sizes'])
             shopping_list_final.append(item_data)
         
         shopping_list_final.sort(key=lambda x: (x['category'] or 'ZZZ', x['item_name']))

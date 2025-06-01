@@ -1,0 +1,13 @@
+Hallo {{ customer_name }},
+
+Ihre Bestellung wurde versandt!
+
+Bestelldetails:
+- Bestell-ID: {{ order.id }}
+- Versanddatum: {{ order.shipped_at|date:"d.m.Y" }}
+- Tracking-Nummer: {{ tracking_number|default:"Wird nachgereicht" }}
+
+Ihre Bestellung sollte in den nächsten 2-3 Werktagen bei Ihnen ankommen.
+
+Mit freundlichen Grüßen
+Ihr Team

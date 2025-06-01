@@ -1,0 +1,13 @@
+Hallo {{ customer_name }},
+
+Ihre Bestellung wurde bestätigt und wird nun bearbeitet.
+
+Bestelldetails:
+- Bestell-ID: {{ order.id }}
+- Status: Bestätigt
+- Gesamtbetrag: {{ order.total_amount|floatformat:2 }} €
+
+Sie erhalten eine weitere Benachrichtigung, sobald Ihre Bestellung versandt wurde.
+
+Mit freundlichen Grüßen
+Ihr Team

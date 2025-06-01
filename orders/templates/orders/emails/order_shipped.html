@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellung versandt</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #17a2b8;">Bestellung versandt</h2>
+        
+        <p>Hallo <strong>{{ customer_name }}</strong>,</p>
+        
+        <p>Ihre Bestellung wurde versandt! 📦</p>
+        
+        <div style="background-color: #d1ecf1; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #17a2b8;">
+            <h3 style="margin-top: 0; color: #0c5460;">🚚 Versandinformationen</h3>
+            <p><strong>Bestell-ID:</strong> {{ order.id }}<br>
+            <strong>Versanddatum:</strong> {{ order.shipped_at|date:"d.m.Y" }}<br>
+            {% if tracking_number %}
+            <strong>Tracking-Nummer:</strong> {{ tracking_number }}
+            {% else %}
+            <strong>Tracking-Nummer:</strong> Wird nachgereicht
+            {% endif %}</p>
+        </div>
+        
+        <p>Ihre Bestellung sollte in den nächsten <strong>2-3 Werktagen</strong> bei Ihnen ankommen.</p>
+        
+        <p style="margin-top: 30px;">Mit freundlichen Grüßen<br>
+        <strong>Ihr Team</strong></p>
+    </div>
+</body>
+</html>

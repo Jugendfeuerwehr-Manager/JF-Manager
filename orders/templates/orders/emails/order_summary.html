@@ -184,13 +184,7 @@
                 
                 <div class="total-row">
                     Gesamt für {{ category|default:"Keine Kategorie" }}: 
-                    {{ items|length }} verschiedene Artikel, 
-                    {% with total=0 %}
-                        {% for item_data in items %}
-                            {% with total=total|add:item_data.total_quantity %}{% endwith %}
-                        {% endfor %}
-                        {{ total }} Stück
-                    {% endwith %}
+                    {{ items|length }} verschiedene Artikel
                 </div>
             </div>
             {% endfor %}

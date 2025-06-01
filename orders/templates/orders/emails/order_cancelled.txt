@@ -1,0 +1,13 @@
+Hallo {{ customer_name }},
+
+Ihre Bestellung wurde storniert.
+
+Bestelldetails:
+- Bestell-ID: {{ order.id }}
+- Storniert am: {{ order.cancelled_at|date:"d.m.Y H:i" }}
+- Grund: {{ cancellation_reason|default:"Nicht angegeben" }}
+
+Falls Sie Fragen haben, kontaktieren Sie uns gerne.
+
+Mit freundlichen Grüßen
+Ihr Team

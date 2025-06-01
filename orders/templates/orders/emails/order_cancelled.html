@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bestellung storniert</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc3545;">Bestellung storniert</h2>
+        
+        <p>Hallo <strong>{{ customer_name }}</strong>,</p>
+        
+        <p>Ihre Bestellung wurde storniert.</p>
+        
+        <div style="background-color: #f8d7da; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #dc3545;">
+            <h3 style="margin-top: 0; color: #721c24;">❌ Stornierung</h3>
+            <p><strong>Bestell-ID:</strong> {{ order.id }}<br>
+            <strong>Storniert am:</strong> {{ order.cancelled_at|date:"d.m.Y H:i" }}<br>
+            {% if cancellation_reason %}
+            <strong>Grund:</strong> {{ cancellation_reason }}
+            {% endif %}</p>
+        </div>
+        
+        <p>Falls Sie Fragen haben oder eine neue Bestellung aufgeben möchten, kontaktieren Sie uns gerne.</p>
+        
+        <p style="margin-top: 30px;">Mit freundlichen Grüßen<br>
+        <strong>Ihr Team</strong></p>
+    </div>
+</body>
+</html>

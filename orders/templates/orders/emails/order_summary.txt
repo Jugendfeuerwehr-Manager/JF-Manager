@@ -1,0 +1,28 @@
+Hallo {{ recipient_name }},
+
+hier ist die Bestellübersicht für den Zeitraum {{ date_range }}:
+
+OFFENE BESTELLUNGEN ({{ open_orders_count }}):
+{% for order in open_orders %}
+- Bestellung #{{ order.id }} ({{ order.member.name }} {{ order.member.lastname }})
+  Bestellt am: {{ order.order_date|date:"d.m.Y" }}
+  Status: {{ order.status }}
+  Artikel: {{ order.items.count }}
+{% endfor %}
+
+KÜRZLICH BESTELLTE ARTIKEL:
+{% for item in recent_items %}
+- {{ item.item.name }}{% if item.size %} ({{ item.size }}){% endif %} 
+  Menge: {{ item.quantity }}
+  Status: {{ item.status }}
+  Für: {{ item.order.member.name }} {{ item.order.member.lastname }}
+{% endfor %}
+
+ZUSAMMENFASSUNG:
+- Gesamt offene Bestellungen: {{ open_orders_count }}
+- Neue Bestellungen: {{ new_orders_count }}
+- Versandete Artikel: {{ shipped_items_count }}
+- Ausgelieferte Artikel: {{ delivered_items_count }}
+
+Mit freundlichen Grüßen
+JF-Manager System
