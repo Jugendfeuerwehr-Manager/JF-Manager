@@ -131,18 +131,22 @@ class OrderFilterFormHelper(FormHelper):
     """Helper für das Filterformular"""
     
     form_method = 'GET'
-    form_class = 'form-inline'
+    form_class = 'filter-form'
     layout = Layout(
         Row(
-            Column('member', css_class='form-group col-md-3 mb-0'),
-            Column('ordered_by', css_class='form-group col-md-3 mb-0'),
-            Column('items__status', css_class='form-group col-md-2 mb-0'),
-            Column('order_date', css_class='form-group col-md-3 mb-0'),
-            Column(
-                Submit('submit', 'Filtern', css_class='btn btn-primary'),
-                css_class='form-group col-md-1 mb-0'
-            ),
+            Column('member', css_class='col-md-3 mb-2'),
+            Column('ordered_by', css_class='col-md-3 mb-2'),
+            Column('items__status', css_class='col-md-2 mb-2'),
+            Column('order_date', css_class='col-md-4 mb-2'),
             css_class='form-row'
+        ),
+        Row(
+            Column(
+                Submit('submit', 'Filtern', css_class='btn btn-primary btn-sm mr-2'),
+                HTML('<a href="?" class="btn btn-outline-secondary btn-sm">Zurücksetzen</a>'),
+                css_class='col-12 text-left'
+            ),
+            css_class='form-row mt-2'
         )
     )
 
