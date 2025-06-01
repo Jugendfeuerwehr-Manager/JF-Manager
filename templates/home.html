@@ -92,6 +92,11 @@
                                 <i class="fas fa-book"></i>
                             </a>
                         {% endif %}
+                        {% if 'orders.view_order' in perms %}
+                            <a class="btn" href="{% url 'orders:list' %}" title="Bestellungen">
+                                <i class="fas fa-shopping-cart"></i>
+                            </a>
+                        {% endif %}
                     </div>
 
                     <button class="navbar-toggler" type="button" data-toggle="collapse"
@@ -127,6 +132,13 @@
                                 <li class="nav-item">
                                     <a class="nav-link px-3" href="{% url 'servicebook:home' %}">
                                         <i class="fas fa-book mr-2"></i>Dienstbuch
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if 'orders.view_order' in perms %}
+                                <li class="nav-item">
+                                    <a class="nav-link px-3" href="{% url 'orders:list' %}">
+                                        <i class="fas fa-shopping-cart mr-2"></i>Bestellungen
                                     </a>
                                 </li>
                             {% endif %}
