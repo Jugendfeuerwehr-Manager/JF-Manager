@@ -1,11 +1,15 @@
+from datetime import date
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import TemplateView
+from django.db.models import Count, Q
 from django_tables2 import RequestConfig
 
 from members.filters import MemberFilter
 from members.selectors import get_members_list
 from members.tables import MemberTable
 from members.views.member_table_filter_form_helper import MemberTableFilterFormHelper
+from members.models import Member, Status
+from servicebook.selectors import get_attandance_alert_by_member
 
 
 class MemberTableView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
@@ -47,6 +51,9 @@ class MemberTableView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView)
         table = MemberTable(filter.qs)
         RequestConfig(self.request, paginate={"per_page": 50}).configure(table)
         
+        # Calculate statistics
+        context['statistics'] = self.get_member_statistics(filter.qs)
+        
         # Add everything to the context
         context['filter'] = filter
         context['table'] = table
@@ -55,3 +62,67 @@ class MemberTableView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView)
         context['sort_direction'] = getattr(self, 'sort_direction', 'asc')
         
         return context
+
+    def get_member_statistics(self, queryset):
+        """Calculate member statistics for age and status"""
+        statistics = {}
+        
+        # Status statistics
+        status_stats = queryset.values('status__name', 'status__color').annotate(
+            count=Count('id')
+        ).order_by('status__name')
+        
+        statistics['status_counts'] = list(status_stats)
+        statistics['total_members'] = queryset.count()
+        
+        # Attendance alert statistics
+        members_with_alerts = 0
+        for member in queryset:
+            if get_attandance_alert_by_member(member):
+                members_with_alerts += 1
+        
+        statistics['attendance_alerts'] = members_with_alerts
+        
+        # Age statistics
+        members_with_birthday = queryset.filter(birthday__isnull=False)
+        if members_with_birthday.exists():
+            today = date.today()
+            ages = []
+            # Create age ranges for individual years from 8 to 18, plus under 8 and over 18
+            age_ranges = {}
+            for age in range(8, 19):  # 8 to 18 inclusive
+                age_ranges[str(age)] = 0
+            age_ranges['< 8'] = 0
+            age_ranges['> 18'] = 0
+            
+            for member in members_with_birthday:
+                age = member.get_age()
+                ages.append(age)
+                
+                # Categorize age into ranges
+                if age < 8:
+                    age_ranges['< 8'] += 1
+                elif age > 18:
+                    age_ranges['> 18'] += 1
+                else:
+                    age_ranges[str(age)] += 1
+            
+            statistics['age_stats'] = {
+                'average_age': round(sum(ages) / len(ages), 1) if ages else 0,
+                'min_age': min(ages) if ages else 0,
+                'max_age': max(ages) if ages else 0,
+                'age_ranges': age_ranges,
+                'members_with_birthday': len(ages),
+                'members_without_birthday': queryset.count() - len(ages)
+            }
+        else:
+            statistics['age_stats'] = {
+                'average_age': 0,
+                'min_age': 0,
+                'max_age': 0,
+                'age_ranges': {},
+                'members_with_birthday': 0,
+                'members_without_birthday': queryset.count()
+            }
+        
+        return statistics
