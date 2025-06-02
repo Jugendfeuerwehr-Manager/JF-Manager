@@ -128,11 +128,10 @@ class MemberEventView(LoginRequiredMixin, SingleObjectMixin, FormView):
             event = Event()
             event.member = self.object
             event.notes = form.cleaned_data['notes']
-            event.type = EventType.objects.get(pk=form.cleaned_data['type'])
+            event.type = form.cleaned_data['type']
             
-            # Handle both ISO and German date formats
-            date_str = form.cleaned_data['date']
-            event.datetime = self.parse_date(date_str)
+            # Handle date - it's already a date object from DateField
+            event.datetime = form.cleaned_data['date']
             
             event.save()
         return super().post(request, *args, **kwargs)
