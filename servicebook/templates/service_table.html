@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="{% static 'css/select2.min.css' %}">
     <script src="{% static 'js/select2.min.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/servicebook.css' %}">
+    <!-- Load Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 {% endblock extrahead %}
 {% block title %}📕 Dienstbuch{% endblock %}
 
@@ -333,6 +335,20 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Attendance Over Time Chart -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card border-info summary-card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar mr-2"></i>Anwesenheit über Zeit
+                                </div>
+                                <div class="card-body" style="height: 400px;">
+                                    <canvas id="attendanceChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -429,6 +445,8 @@
 
 {% block pagescripts %}
     {{ block.super }}
+    <!-- Load Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         $(document).ready(function () {
             // Initialize select2 with custom styles
@@ -456,6 +474,124 @@
                 $('#services-container').addClass('show-table');
                 $('.view-toggle .btn[data-view="table"]').addClass('active');
             }
+            
+            // Initialize Attendance Over Time Chart with timeout to ensure Chart.js is loaded
+            setTimeout(function() {
+                initializeAttendanceChart();
+            }, 100);
         });
+        
+        function initializeAttendanceChart() {
+            {% if attendance_chart_data.service_labels %}
+                if (typeof Chart !== 'undefined') {
+                    const attendanceCtx = document.getElementById('attendanceChart');
+                    if (attendanceCtx) {
+                        new Chart(attendanceCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: [
+                                    {% for label in attendance_chart_data.service_labels %}
+                                        '{{ label|escapejs }}',
+                                    {% endfor %}
+                                ],
+                                datasets: [{
+                                    label: 'Anwesend',
+                                    data: [
+                                        {% for count in attendance_chart_data.attendance_data.A %}
+                                            {{ count }},
+                                        {% endfor %}
+                                    ],
+                                    backgroundColor: '#28a745',
+                                    borderColor: '#28a745',
+                                    borderWidth: 1
+                                }, {
+                                    label: 'Entschuldigt',
+                                    data: [
+                                        {% for count in attendance_chart_data.attendance_data.E %}
+                                            {{ count }},
+                                        {% endfor %}
+                                    ],
+                                    backgroundColor: '#ffc107',
+                                    borderColor: '#ffc107',
+                                    borderWidth: 1
+                                }, {
+                                    label: 'Fehlend',
+                                    data: [
+                                        {% for count in attendance_chart_data.attendance_data.F %}
+                                            {{ count }},
+                                        {% endfor %}
+                                    ],
+                                    backgroundColor: '#dc3545',
+                                    borderColor: '#dc3545',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    mode: 'index',
+                                    intersect: false,
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Anwesenheitstrend über die letzten Dienste'
+                                    },
+                                    legend: {
+                                        display: true,
+                                        position: 'top'
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.dataset.label + ': ' + context.parsed.y + ' Personen';
+                                            },
+                                            afterBody: function(tooltipItems) {
+                                                let total = 0;
+                                                tooltipItems.forEach(function(tooltipItem) {
+                                                    total += tooltipItem.parsed.y;
+                                                });
+                                                return 'Gesamt: ' + total + ' Personen';
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        stacked: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Dienste (chronologisch)'
+                                        },
+                                        ticks: {
+                                            maxRotation: 45,
+                                            minRotation: 45
+                                        }
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Anzahl Personen'
+                                        },
+                                        ticks: {
+                                            stepSize: 1
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        console.error('Canvas element not found');
+                    }
+                } else {
+                    console.error('Chart.js is not loaded');
+                    // Try again after a delay
+                    setTimeout(initializeAttendanceChart, 500);
+                }
+            {% endif %}
+        }
     </script>
 {% endblock %}

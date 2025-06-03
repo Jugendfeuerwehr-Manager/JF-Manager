@@ -19,7 +19,7 @@ from .forms import ServiceForm
 from .models import Service, Attendance
 from .serializers import ServiceSerializer, AttendanceSerializer
 from .tables import ServiceTable
-from .selectors import get_services_list, get_top_lists_by_state, get_attandance_list
+from .selectors import get_services_list, get_top_lists_by_state, get_attandance_list, get_attendance_over_time_data
 
 
 class ServiceTableView(LoginRequiredMixin, TemplateView):
@@ -40,6 +40,7 @@ class ServiceTableView(LoginRequiredMixin, TemplateView):
         context['top_present'] = get_top_lists_by_state('A')
         context['top_e'] = get_top_lists_by_state('E')
         context['top_f'] = get_top_lists_by_state('F')
+        context['attendance_chart_data'] = get_attendance_over_time_data()
         return context
 
 

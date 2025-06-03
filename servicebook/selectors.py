@@ -52,3 +52,58 @@ def get_attandance_alert_by_member(member: Member, n_not_present=5, n_last_items
     c = Counter(services)
     failed = c['F'] + c['E']
     return failed >= n_not_present
+
+def get_attendance_over_time_data(limit=100):
+    """
+    Get attendance data over time for chart visualization.
+    
+    Args:
+        limit (int): Number of recent services to include
+        
+    Returns:
+        dict: Contains service_labels, service_dates and attendance counts for A, E, F
+    """
+    # Get recent services ordered chronologically (oldest first for timeline)
+    services = Service.objects.all().order_by('start')[:limit]
+    
+    if not services:
+        return {
+            'service_labels': [],
+            'service_dates': [],
+            'attendance_data': {
+                'A': [],
+                'E': [],
+                'F': []
+            }
+        }
+    
+    service_labels = []
+    service_dates = []
+    attendance_a = []
+    attendance_e = []
+    attendance_f = []
+    
+    for service in services:
+        # Create label for the service
+        date_str = service.start.strftime('%d.%m.%Y')
+        topic = service.topic or 'Kein Thema'
+        if len(topic) > 20:
+            topic = topic[:17] + '...'
+        service_labels.append(f"{date_str}")
+        service_dates.append(service.start.strftime('%Y-%m-%d'))
+        
+        # Get attendance counts for this service
+        summary = get_summary_of_attendances_per_service(service)
+        attendance_a.append(summary['A'])
+        attendance_e.append(summary['E']) 
+        attendance_f.append(summary['F'])
+    
+    return {
+        'service_labels': service_labels,
+        'service_dates': service_dates,
+        'attendance_data': {
+            'A': attendance_a,
+            'E': attendance_e,
+            'F': attendance_f
+        }
+    }
