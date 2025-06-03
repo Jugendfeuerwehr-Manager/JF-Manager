@@ -1,7 +1,15 @@
 {% extends 'home.html' %}
 {% load crispy_forms_tags %}
 {% load django_tables2 %}
+{% load static %}
+{% load i18n %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/select2.min.css' %}">
+    <script src="{% static 'js/select2.min.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/servicebook.css' %}">
+{% endblock extrahead %}
 {% block title %}📕 Dienstbuch{% endblock %}
 
 {% block content %}
@@ -12,11 +20,41 @@
             align-items: center;
             margin-bottom: 1.5rem;
         }
+        @media (max-width: 576px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .page-header h1 {
+                font-size: 1.5rem;
+            }
+            .d-flex.gap-2 {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
         .filter-card {
             background: white;
             border-radius: 0.5rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.04);
             margin-bottom: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .filter-card .card-body {
+                padding: 1rem !important;
+            }
+            .filter-form .form-inline {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-form .form-group {
+                margin-bottom: 0.75rem;
+                width: 100%;
+            }
+            .filter-form .form-control {
+                width: 100%;
+            }
         }
         .filter-form {
             display: flex;
@@ -85,6 +123,20 @@
             font-size: 0.75rem;
             padding: 0.25rem 0.5rem;
         }
+        
+        /* Mobile optimizations for summary cards */
+        @media (max-width: 768px) {
+            .summary-card .card-header {
+                font-size: 0.9rem;
+            }
+            .summary-card .list-group-item {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+            .col-md-4.mt-4 {
+                margin-top: 1rem !important;
+            }
+        }
         /* Table styles */
         .table {
             background: white;
@@ -96,13 +148,127 @@
             background: #f8fafc;
             font-weight: 500;
         }
+        
+        /* Mobile Cards Styles */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .service-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            transition: all 0.2s ease;
+            overflow: hidden;
+        }
+        .service-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+        }
+        .service-card .card-body {
+            padding: 1rem;
+        }
+        @media (max-width: 768px) {
+            .service-card {
+                margin-bottom: 0.5rem;
+            }
+            .service-card .card-body {
+                padding: 1.25rem;
+            }
+            .services-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+        }
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+        .service-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #2d3748;
+            flex: 1;
+        }
+        .service-actions {
+            margin-left: 0.5rem;
+        }
+        .service-meta {
+            font-size: 0.875rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+        .service-meta .meta-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        .service-meta .meta-item i {
+            width: 16px;
+            margin-right: 0.5rem;
+        }
+        .service-attendance {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .attendance-label {
+            font-size: 0.75rem;
+            color: #4a5568;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .table-view {
+            display: none;
+        }
+        
+        @media (min-width: 992px) {
+            .view-toggle {
+                display: flex;
+                gap: 0.5rem;
+            }
+            .services-grid {
+                display: none;
+            }
+            .table-view {
+                display: block;
+            }
+            /* These classes will override the defaults when toggling */
+            .show-grid .services-grid {
+                display: grid;
+            }
+            .show-grid .table-view {
+                display: none;
+            }
+            .show-table .services-grid {
+                display: none;
+            }
+            .show-table .table-view {
+                display: block;
+            }
+        }
     </style>
 
     <div class="page-header">
         <h1 class="h3 m-0">Dienstbuch</h1>
-        <a href="{% url 'servicebook:create' %}" class="btn btn-primary">
-            <i class="fas fa-plus mr-2"></i>Neu
-        </a>
+        <div class="d-flex gap-2">
+            <div class="view-toggle btn-group d-none d-lg-flex">
+                <button class="btn btn-outline-secondary" data-view="grid">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <button class="btn btn-outline-secondary active" data-view="table">
+                    <i class="fas fa-table"></i>
+                </button>
+            </div>
+            <a href="{% url 'servicebook:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>Neu
+            </a>
+        </div>
     </div>
 
     <!-- Summary Accordion -->
@@ -183,8 +349,79 @@
                 </div>
             {% endif %}
             
-            <div class="table-responsive">
-                {% render_table table %}
+            <div id="services-container">
+                <!-- Mobile Card View -->
+                <div class="services-grid">
+                    {% for service in filter.qs %}
+                        <div class="service-card">
+                            <div class="card-body">
+                                <div class="service-header">
+                                    <div class="service-title">
+                                        {% if service.has_events %}❗️{% endif %}
+                                        <a href="{{ service.get_absolute_url }}" class="text-decoration-none text-dark">
+                                            {{ service.topic|default:"Kein Thema" }}
+                                        </a>
+                                    </div>
+                                    <div class="service-actions">
+                                        <a href="{{ service.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
+                                            ✏️
+                                        </a>
+                                    </div>
+                                </div>
+                                
+                                <div class="service-meta">
+                                    <div class="meta-item">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>{{ service.start|date:"d.m.Y H:i" }} - {{ service.end|date:"H:i" }}</span>
+                                    </div>
+                                    {% if service.place %}
+                                    <div class="meta-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>{{ service.place }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if service.operations_manager.all %}
+                                    <div class="meta-item">
+                                        <i class="fas fa-user-cog"></i>
+                                        <span>
+                                            {% for manager in service.operations_manager.all %}
+                                                {{ manager.get_full_name }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="service-attendance">
+                                    <div class="attendance-label">Anwesenheit</div>
+                                    {% load servicebook_tags %}
+                                    {% get_attendance_summary service as attendance %}
+                                    <div>
+                                        <span class="badge badge-success">{{ attendance.A }}</span>
+                                        <span class="badge badge-warning">{{ attendance.E }}</span>
+                                        <span class="badge badge-danger">{{ attendance.F }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-5">
+                            <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Keine Dienste gefunden</h5>
+                            <p class="text-muted">Erstellen Sie einen neuen Dienst, um zu beginnen.</p>
+                            <a href="{% url 'servicebook:create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Ersten Dienst erstellen
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Desktop Table View -->
+                <div class="table-view">
+                    <div class="table-responsive">
+                        {% render_table table %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -204,6 +441,21 @@
             $('.selectmultiple').on("select2:select", function(e) {
                 $(this).find(':selected').prop('selected', true);
             });
+            
+            // Handle view toggle
+            $('.view-toggle .btn').click(function() {
+                $('.view-toggle .btn').removeClass('active');
+                $(this).addClass('active');
+                
+                var view = $(this).data('view');
+                $('#services-container').removeClass('show-grid show-table').addClass('show-' + view);
+            });
+
+            // Initialize with table view on desktop
+            if ($(window).width() >= 992) {
+                $('#services-container').addClass('show-table');
+                $('.view-toggle .btn[data-view="table"]').addClass('active');
+            }
         });
     </script>
 {% endblock %}
