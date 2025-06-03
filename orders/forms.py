@@ -5,9 +5,30 @@ from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column, HTML, Div
 from crispy_forms.bootstrap import InlineRadios
 from django_filters import FilterSet, DateFromToRangeFilter
 from django_filters.widgets import RangeWidget
+import django_filters
 
 from members.models import Member
 from .models import Order, OrderItem, OrderableItem, OrderStatus
+
+
+class Select2Widget(forms.Select):
+    """Custom Select2 widget for searchable dropdowns"""
+    
+    def __init__(self, attrs=None, choices=()):
+        default_attrs = {
+            'class': 'form-control select2-widget',
+            'data-allow-clear': 'true',
+            'data-placeholder': 'Suchen...'
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(default_attrs, choices)
+    
+    class Media:
+        css = {
+            'all': ('css/select2-custom.css',)
+        }
+        js = ('js/select2-init.js',)
 
 
 class OrderForm(forms.ModelForm):
@@ -18,6 +39,7 @@ class OrderForm(forms.ModelForm):
         fields = ['member', 'notes']
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 3}),
+            'member': Select2Widget(attrs={'data-placeholder': 'Mitglied suchen...'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -145,10 +167,14 @@ class OrderFilter(FilterSet):
         label='Bestelldatum'
     )
     
+    member = django_filters.ModelChoiceFilter(
+        queryset=Member.objects.all(),
+        widget=Select2Widget(attrs={'data-placeholder': 'Mitglied suchen...'})
+    )
+    
     class Meta:
         model = Order
         fields = {
-            'member': ['exact'],
             'ordered_by': ['exact'],
             'items__status': ['exact'],
         }
@@ -183,7 +209,8 @@ class QuickOrderForm(forms.Form):
     
     member = forms.ModelChoiceField(
         queryset=Member.objects.all(),
-        label='Mitglied'
+        label='Mitglied',
+        widget=Select2Widget(attrs={'data-placeholder': 'Mitglied suchen...'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -300,7 +327,8 @@ class OrderItemFilterForm(forms.Form):
         queryset=Member.objects.all(),
         required=False,
         label='Mitglied',
-        empty_label='Alle Mitglieder'
+        empty_label='Alle Mitglieder',
+        widget=Select2Widget(attrs={'data-placeholder': 'Mitglied suchen...'})
     )
     
     date_from = forms.DateField(
