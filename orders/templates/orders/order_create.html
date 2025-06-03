@@ -56,17 +56,44 @@
                                     
                                     <div class="row">
                                         <div class="col-md-6">
-                                            {% bootstrap_field form.item %}
+                                            <div class="form-group">
+                                                <label for="id_items-{{ forloop.counter0 }}-item">Artikel:</label>
+                                                <select name="items-{{ forloop.counter0 }}-item" class="form-control" id="id_items-{{ forloop.counter0 }}-item">
+                                                    <option value="">---------</option>
+                                                    {% for item in orderable_items %}
+                                                        <option value="{{ item.pk }}" 
+                                                                {% if form.item.value == item.pk %}selected{% endif %}
+                                                                data-has-sizes="{{ item.has_sizes|yesno:'true,false' }}"
+                                                                data-sizes="{% for size in item.get_sizes_list %}{{ size }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                                            {{ item.category }} - {{ item.name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="col-md-3">
-                                            {% bootstrap_field form.size %}
+                                            <div class="form-group">
+                                                <label for="id_items-{{ forloop.counter0 }}-size">Größe:</label>
+                                                <select name="items-{{ forloop.counter0 }}-size" class="form-control" id="id_items-{{ forloop.counter0 }}-size">
+                                                    <option value="">---------</option>
+                                                    {% if form.size.value %}
+                                                        <option value="{{ form.size.value }}" selected>{{ form.size.value }}</option>
+                                                    {% endif %}
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="col-md-3">
-                                            {% bootstrap_field form.quantity %}
+                                            <div class="form-group">
+                                                <label for="id_items-{{ forloop.counter0 }}-quantity">Anzahl:</label>
+                                                <input type="number" name="items-{{ forloop.counter0 }}-quantity" value="{{ form.quantity.value|default:'1' }}" min="1" class="form-control" id="id_items-{{ forloop.counter0 }}-quantity">
+                                            </div>
                                         </div>
                                     </div>
                                     
-                                    {% bootstrap_field form.notes %}
+                                    <div class="form-group">
+                                        <label for="id_items-{{ forloop.counter0 }}-notes">Bemerkungen:</label>
+                                        <textarea name="items-{{ forloop.counter0 }}-notes" cols="40" rows="2" class="form-control" id="id_items-{{ forloop.counter0 }}-notes">{{ form.notes.value|default:'' }}</textarea>
+                                    </div>
                                     
                                     {% for hidden in form.hidden_fields %}
                                         {{ hidden }}
@@ -286,14 +313,55 @@ document.addEventListener('DOMContentLoaded', function() {
     function attachItemChangeHandlers() {
         document.querySelectorAll('[name$="-item"]').forEach(select => {
             select.addEventListener('change', function() {
+                console.log('Item changed:', this.value);
                 const selectedOption = this.options[this.selectedIndex];
-                const sizeSelect = this.closest('.formset-form').querySelector('[name$="-size"]');
+                const formContainer = this.closest('.formset-form');
+                
+                // Verschiedene Selektoren für Größenfeld versuchen
+                let sizeSelect = formContainer.querySelector('[name$="-size"]');
+                let sizeFormGroup = null;
+                
+                if (!sizeSelect) {
+                    // Fallback: nach ID suchen
+                    const formIndex = formContainer.getAttribute('data-form-index');
+                    sizeSelect = document.getElementById(`id_items-${formIndex}-size`);
+                }
+                
+                if (!sizeSelect) {
+                    console.error('Size select field not found!');
+                    return;
+                }
+                
+                // Finde den Container für das Größenfeld
+                // Versuche verschiedene Ansätze je nach Struktur
+                sizeFormGroup = sizeSelect.closest('.col-md-3'); // Bootstrap-Spalte
+                
+                if (!sizeFormGroup) {
+                    // Falls das nicht funktioniert, versuche .form-group
+                    sizeFormGroup = sizeSelect.closest('.form-group');
+                }
+                
+                if (!sizeFormGroup) {
+                    // Als letzter Ausweg, schaue nach einem div-Element das das select enthält
+                    sizeFormGroup = sizeSelect.parentElement;
+                    while (sizeFormGroup && sizeFormGroup.tagName !== 'DIV') {
+                        sizeFormGroup = sizeFormGroup.parentElement;
+                    }
+                }
+                
+                console.log('Found size select:', !!sizeSelect);
+                console.log('Found size form group:', !!sizeFormGroup);
+                console.log('Size form group tagName:', sizeFormGroup ? sizeFormGroup.tagName : 'null');
+                console.log('Size form group className:', sizeFormGroup ? sizeFormGroup.className : 'null');
+                console.log('Has sizes:', selectedOption.dataset.hasSizes);
                 
                 // Größenfeld leeren
                 sizeSelect.innerHTML = '<option value="">---------</option>';
                 
                 if (selectedOption.dataset.hasSizes === 'true') {
                     const sizes = selectedOption.dataset.sizes.split(',');
+                    console.log('Available sizes:', sizes);
+                    
                     sizes.forEach(size => {
                         if (size.trim()) {
                             const option = document.createElement('option');
@@ -303,10 +371,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
                     sizeSelect.disabled = false;
-                    sizeSelect.closest('.form-group').style.display = 'block';
+                    if (sizeFormGroup) {
+                        sizeFormGroup.style.display = 'block';
+                        sizeFormGroup.style.visibility = 'visible';
+                        sizeFormGroup.style.opacity = '1';
+                    }
                 } else {
                     sizeSelect.disabled = true;
-                    sizeSelect.closest('.form-group').style.display = 'none';
+                    if (sizeFormGroup) {
+                        sizeFormGroup.style.display = 'none';
+                    }
                 }
             });
         });

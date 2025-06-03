@@ -58,6 +58,33 @@ class OrderItemForm(forms.ModelForm):
         self.fields['item'].queryset = OrderableItem.objects.filter(is_active=True)
         self.fields['size'].required = False
         
+        # Custom widget für das Item-Feld mit data-Attributen
+        items = OrderableItem.objects.filter(is_active=True)
+        choices = [('', '---------')]
+        
+        for item in items:
+            # Create option with data attributes
+            choice_attrs = {
+                'data-has-sizes': 'true' if item.has_sizes else 'false',
+                'data-sizes': ','.join(item.get_sizes_list()) if item.has_sizes else ''
+            }
+            choices.append((item.pk, f'{item.category} - {item.name}'))
+        
+        # Custom Select widget mit option_attrs
+        class ItemSelectWidget(forms.Select):
+            def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+                option = super().create_option(name, value, label, selected, index, subindex, attrs)
+                if value:  # Skip empty option
+                    try:
+                        item = OrderableItem.objects.get(pk=value)
+                        option['attrs']['data-has-sizes'] = 'true' if item.has_sizes else 'false'
+                        option['attrs']['data-sizes'] = ','.join(item.get_sizes_list()) if item.has_sizes else ''
+                    except OrderableItem.DoesNotExist:
+                        pass
+                return option
+        
+        self.fields['item'].widget = ItemSelectWidget()
+        
         # Größenfeld nur anzeigen wenn Item ausgewählt und Größen hat
         try:
             if self.instance.pk and self.instance.item and self.instance.item.has_sizes:
