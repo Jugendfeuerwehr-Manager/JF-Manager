@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
+import environ
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,6 +27,10 @@ DEBUG = os.environ.get('DEBUG', 'True')
 
 ALLOWED_HOSTS = ['*']
 
+env = environ.Env(
+    # set casting, default value
+    REDIS_URL=(str, 'none'),
+)
 
 # Application definition
 
@@ -182,6 +187,26 @@ USE_L10N = True
 USE_TZ = True
 
 
+# Cache configuration
+# Default to local memory cache for development
+REDIS_URL = env('REDIS_URL', default='none')
+if REDIS_URL != "none":
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient"
+            },
+            "KEY_PREFIX": "jf_manager_backend"
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 # Default email settings (can be overridden by dynamic preferences)
 EMAIL_HOST = ''
 EMAIL_PORT = 587

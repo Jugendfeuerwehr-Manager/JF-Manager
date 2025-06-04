@@ -1,4 +1,5 @@
-from django.db.models import Count
+from django.db.models import Count, Case, When, IntegerField
+from django.core.cache import cache
 from dynamic_preferences.registries import global_preferences_registry
 from members.models import Member
 from .models import Service, Attendance
@@ -59,11 +60,17 @@ def get_attendance_over_time_data():
     Returns:
         dict: Contains service_labels, service_dates and attendance counts for A, E, F
     """
+    # Try to get cached data first
+    cache_key = 'attendance_over_time_data'
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     # Get recent services ordered chronologically (oldest first for timeline)
     services = Service.objects.all().order_by('start')
     
     if not services:
-        return {
+        empty_data = {
             'service_labels': [],
             'service_dates': [],
             'attendance_data': {
@@ -72,7 +79,30 @@ def get_attendance_over_time_data():
                 'F': []
             }
         }
+        # Cache empty result for 5 minutes
+        cache.set(cache_key, empty_data, 300)
+        return empty_data
+
+    # Optimize database queries by getting all attendance data in one query
+    # and then aggregating it per service in Python
+    attendance_data = Attendance.objects.filter(
+        service__in=services
+    ).values('service_id', 'state').annotate(
+        count=Count('id')
+    )
     
+    # Create a lookup dictionary for attendance counts per service
+    attendance_lookup = {}
+    for item in attendance_data:
+        service_id = item['service_id']
+        state = item['state']
+        count = item['count']
+        
+        if service_id not in attendance_lookup:
+            attendance_lookup[service_id] = {'A': 0, 'E': 0, 'F': 0}
+        
+        attendance_lookup[service_id][state] = count
+
     service_labels = []
     service_dates = []
     attendance_a = []
@@ -88,13 +118,13 @@ def get_attendance_over_time_data():
         service_labels.append(f"{date_str}")
         service_dates.append(service.start.strftime('%Y-%m-%d'))
         
-        # Get attendance counts for this service
-        summary = get_summary_of_attendances_per_service(service)
-        attendance_a.append(summary['A'])
-        attendance_e.append(summary['E']) 
-        attendance_f.append(summary['F'])
-    
-    return {
+        # Get attendance counts for this service from our lookup
+        counts = attendance_lookup.get(service.id, {'A': 0, 'E': 0, 'F': 0})
+        attendance_a.append(counts['A'])
+        attendance_e.append(counts['E']) 
+        attendance_f.append(counts['F'])
+
+    result = {
         'service_labels': service_labels,
         'service_dates': service_dates,
         'attendance_data': {
@@ -103,3 +133,17 @@ def get_attendance_over_time_data():
             'F': attendance_f
         }
     }
+    
+    # Cache result for 7 days (604800 seconds) since data only changes 1-2 times per week
+    cache.set(cache_key, result, 604800)
+    
+    return result
+
+def invalidate_attendance_over_time_cache():
+    """
+    Utility function to manually invalidate the attendance over time cache.
+    Can be called from management commands or other parts of the application.
+    """
+    cache_key = 'attendance_over_time_data'
+    cache.delete(cache_key)
+    return cache_key

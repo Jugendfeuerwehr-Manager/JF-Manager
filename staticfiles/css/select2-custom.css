@@ -59,3 +59,16 @@
 .select2-selection__clear:hover {
     color: #495057 !important;
 }
+
+/* Ensure Select2 takes full width in form groups */
+.select2-container {
+    width: 100% !important;
+}
+
+/* Focus states to match Bootstrap forms */
+.select2-container--focus .select2-selection,
+.select2-container--open .select2-selection {
+    border-color: #80bdff !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
