@@ -53,18 +53,14 @@ def get_attandance_alert_by_member(member: Member, n_not_present=5, n_last_items
     failed = c['F'] + c['E']
     return failed >= n_not_present
 
-def get_attendance_over_time_data(limit=100):
+def get_attendance_over_time_data():
     """
     Get attendance data over time for chart visualization.
-    
-    Args:
-        limit (int): Number of recent services to include
-        
     Returns:
         dict: Contains service_labels, service_dates and attendance counts for A, E, F
     """
     # Get recent services ordered chronologically (oldest first for timeline)
-    services = Service.objects.all().order_by('start')[:limit]
+    services = Service.objects.all().order_by('start')
     
     if not services:
         return {
