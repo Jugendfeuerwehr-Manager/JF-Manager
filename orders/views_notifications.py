@@ -9,8 +9,7 @@ from django.views.generic import FormView
 from django.utils.decorators import method_decorator
 from datetime import timedelta
 from .models import NotificationPreference, NotificationLog, EmailTemplate, Order, OrderStatus
-from .forms_notifications import NotificationPreferenceForm, AdminNotificationDashboardFilterForm
-from .forms import OrderSummaryForm
+from .forms import NotificationPreferenceForm, AdminNotificationDashboardFilterForm, OrderSummaryForm
 from .notifications import OrderNotificationService
 
 
