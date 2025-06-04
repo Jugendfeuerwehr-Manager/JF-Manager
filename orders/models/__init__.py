@@ -1,17 +1,12 @@
 # Import all models to make them available when importing from orders.models
-from .orders import (
-    OrderStatus,
-    OrderableItem,
-    Order,
-    OrderItem,
-    OrderItemStatusHistory,
-)
-
-from .notifications import (
-    NotificationPreference,
-    NotificationLog,
-    EmailTemplate,
-)
+from .order_status import OrderStatus
+from .orderable_item import OrderableItem
+from .order import Order
+from .order_item import OrderItem
+from .order_item_status_history import OrderItemStatusHistory
+from .notification_preference import NotificationPreference
+from .notification_log import NotificationLog
+from .email_template import EmailTemplate
 
 # Make all models available at the package level
 __all__ = [
