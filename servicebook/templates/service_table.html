@@ -410,12 +410,10 @@
                                 
                                 <div class="service-attendance">
                                     <div class="attendance-label">Anwesenheit</div>
-                                    {% load servicebook_tags %}
-                                    {% get_attendance_summary service as attendance %}
                                     <div>
-                                        <span class="badge badge-success">{{ attendance.A }}</span>
-                                        <span class="badge badge-warning">{{ attendance.E }}</span>
-                                        <span class="badge badge-danger">{{ attendance.F }}</span>
+                                        <span class="badge badge-success">{{ service.attendance_summary.A }}</span>
+                                        <span class="badge badge-warning">{{ service.attendance_summary.E }}</span>
+                                        <span class="badge badge-danger">{{ service.attendance_summary.F }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -460,13 +458,22 @@
                 $(this).find(':selected').prop('selected', true);
             });
             
-            // Handle view toggle
+            // Handle view toggle with conditional loading
             $('.view-toggle .btn').click(function() {
                 $('.view-toggle .btn').removeClass('active');
                 $(this).addClass('active');
                 
                 var view = $(this).data('view');
-                $('#services-container').removeClass('show-grid show-table').addClass('show-' + view);
+                
+                if (view === 'table') {
+                    // Show table view
+                    $('.services-grid').hide();
+                    $('.table-view').show();
+                } else {
+                    // Show grid view
+                    $('.table-view').hide();
+                    $('.services-grid').show();
+                }
             });
 
             // Initialize with table view on desktop

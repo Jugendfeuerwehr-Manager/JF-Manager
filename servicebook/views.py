@@ -8,6 +8,7 @@ from django.shortcuts import redirect, get_object_or_404
 # Create your views here.
 from django.views.generic import TemplateView, UpdateView, CreateView, DetailView
 from django_tables2 import RequestConfig
+from django.core.paginator import Paginator
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
@@ -19,14 +20,14 @@ from .forms import ServiceForm
 from .models import Service, Attendance
 from .serializers import ServiceSerializer, AttendanceSerializer
 from .tables import ServiceTable
-from .selectors import get_services_list, get_top_lists_by_state, get_attandance_list, get_attendance_over_time_data
+from .selectors import get_services_list, get_top_lists_by_state, get_attandance_list, get_attendance_over_time_data, get_services_with_attendance_summary
 
 
 class ServiceTableView(LoginRequiredMixin, TemplateView):
     template_name = 'service_table.html'
 
     def get_queryset(self, **kwargs):
-        return get_services_list()
+        return get_services_with_attendance_summary()
 
     def get_context_data(self, **kwargs):
         context = super(ServiceTableView, self).get_context_data(**kwargs)

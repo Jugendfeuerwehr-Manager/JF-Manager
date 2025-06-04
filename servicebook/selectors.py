@@ -9,7 +9,11 @@ global_preferences = global_preferences_registry.manager()
 
 
 def get_services_list():
-    return Service.objects.all().order_by('-start')
+    """Get services list with optimized prefetch for better performance."""
+    return Service.objects.select_related().prefetch_related(
+        'operations_manager',
+        'attendance_set'
+    ).order_by('-start')
 
 def get_attandance_list():
     return Attendance.objects.all()
@@ -147,3 +151,65 @@ def invalidate_attendance_over_time_cache():
     cache_key = 'attendance_over_time_data'
     cache.delete(cache_key)
     return cache_key
+
+def get_services_with_attendance_summary():
+    """
+    Get services list with pre-calculated attendance summaries for better performance.
+    This avoids N+1 queries by calculating all attendance summaries in bulk.
+    """
+    from django.db.models import Count, Case, When, IntegerField
+    
+    # Get services with prefetched relations
+    services = Service.objects.select_related().prefetch_related(
+        'operations_manager',
+        'attendance_set'
+    ).order_by('-start')
+    
+    # Pre-calculate attendance summaries for all services in bulk
+    attendance_summaries = {}
+    if services:
+        # Get all attendance data for these services in one query
+        attendance_data = Attendance.objects.filter(
+            service__in=services
+        ).values('service_id', 'state').annotate(
+            count=Count('id')
+        )
+        
+        # Organize by service_id and state
+        for item in attendance_data:
+            service_id = item['service_id']
+            state = item['state']
+            count = item['count']
+            
+            if service_id not in attendance_summaries:
+                attendance_summaries[service_id] = {'A': 0, 'E': 0, 'F': 0}
+            
+            attendance_summaries[service_id][state] = count
+    
+    # Attach attendance summaries to services
+    for service in services:
+        service.attendance_summary = attendance_summaries.get(
+            service.id, 
+            {'A': 0, 'E': 0, 'F': 0}
+        )
+    
+    return services
+
+# Cache invalidation functions
+def invalidate_service_caches():
+    """Invalidate all service-related caches when data changes."""
+    from django.core.cache import cache
+    cache.delete('attendance_over_time_data')
+    # Add more cache keys here as needed
+    
+def get_services_with_attendance_summary_paginated(page_size=50):
+    """
+    Get paginated services list with pre-calculated attendance summaries.
+    This helps with very large datasets by limiting initial rendering.
+    """
+    from django.core.paginator import Paginator
+    
+    services = get_services_with_attendance_summary()
+    paginator = Paginator(services, page_size)
+    
+    return paginator

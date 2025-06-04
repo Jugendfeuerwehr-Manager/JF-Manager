@@ -14,7 +14,11 @@ class ServiceTable(tables.Table):
         return '✏️'
 
     def render_presence(self, record):
-        state = get_summary_of_attendances_per_service(record)
+        # Use pre-calculated attendance summary if available, otherwise fallback to selector
+        if hasattr(record, 'attendance_summary'):
+            state = record.attendance_summary
+        else:
+            state = get_summary_of_attendances_per_service(record)
 
         return mark_safe('<span class="badge badge-success">%s</span> <span class="badge badge-warning">%s</span> <span class="badge badge-danger">%s</span>' % (state['A'], state['E'], state['F']))
 
