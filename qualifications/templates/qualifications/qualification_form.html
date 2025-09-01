@@ -4,6 +4,19 @@
 {% block title %}{% if object.pk %}Qualifikation bearbeiten{% else %}Neue Qualifikation{% endif %}{% endblock %}
 
 {% block content_body %}
+<!-- Breadcrumbs -->
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:qualification_list' %}">Qualifikationen</a></li>
+    <li class="breadcrumb-item active">
+        {% if object.pk %}
+            Qualifikation bearbeiten
+        {% else %}
+            Neue Qualifikation
+        {% endif %}
+    </li>
+</ol>
+
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card">

@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Div, Submit, Field, Row, Column
+from crispy_forms.layout import Layout, Div, Submit, Field, Row, Column, HTML
 from crispy_forms.bootstrap import PrependedText
 from dateutil.relativedelta import relativedelta
 from datetime import date
@@ -30,7 +30,11 @@ class QualificationTypeForm(forms.ModelForm):
                 css_class='form-row'
             ),
             'description',
-            Submit('submit', 'Speichern', css_class='btn btn-primary'),
+            Div(
+                Submit('submit', 'Speichern', css_class='btn btn-primary'),
+                HTML('<a href="#" onclick="history.back()" class="btn btn-secondary ms-2"><i class="fas fa-times"></i> Abbrechen</a>'),
+                css_class='d-flex gap-2'
+            ),
         )
 
     def clean(self):
@@ -89,7 +93,11 @@ class QualificationForm(forms.ModelForm):
                 css_class='form-row'
             ),
             'note',
-            Submit('submit', 'Speichern', css_class='btn btn-primary'),
+            Div(
+                Submit('submit', 'Speichern', css_class='btn btn-primary'),
+                HTML('<a href="#" onclick="history.back()" class="btn btn-secondary ms-2"><i class="fas fa-times"></i> Abbrechen</a>'),
+                css_class='d-flex gap-2'
+            ),
         )
 
         # Auto-berechnung des Ablaufdatums via JavaScript

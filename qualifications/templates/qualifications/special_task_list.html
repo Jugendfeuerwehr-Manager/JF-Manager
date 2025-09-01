@@ -12,6 +12,12 @@
 {% endblock %}
 
 {% block content_body %}
+<!-- Breadcrumbs -->
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
+    <li class="breadcrumb-item active">Sonderaufgaben</li>
+</ol>
+
 <!-- Filter -->
 <div class="card mb-4">
     <div class="card-body">

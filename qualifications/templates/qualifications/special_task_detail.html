@@ -26,6 +26,13 @@
 {% endblock %}
 
 {% block content_body %}
+<!-- Breadcrumbs -->
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:special_task_list' %}">Sonderaufgaben</a></li>
+    <li class="breadcrumb-item active">{{ object.task.name }} - {{ object.get_person_name }}</li>
+</ol>
+
 <div class="row">
     <div class="col-lg-8">
         <div class="card">

@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Div, Submit, Field, Row, Column
+from crispy_forms.layout import Layout, Div, Submit, Field, Row, Column, HTML
 from datetime import date
 
 from ..models import SpecialTaskType, SpecialTask
@@ -23,7 +23,11 @@ class SpecialTaskTypeForm(forms.ModelForm):
         self.helper.layout = Layout(
             'name',
             'description',
-            Submit('submit', 'Speichern', css_class='btn btn-primary'),
+            Div(
+                Submit('submit', 'Speichern', css_class='btn btn-primary'),
+                HTML('<a href="#" onclick="history.back()" class="btn btn-secondary ms-2"><i class="fas fa-times"></i> Abbrechen</a>'),
+                css_class='d-flex gap-2'
+            ),
         )
 
 
@@ -68,7 +72,11 @@ class SpecialTaskForm(forms.ModelForm):
                 css_class='form-row'
             ),
             'note',
-            Submit('submit', 'Speichern', css_class='btn btn-primary'),
+            Div(
+                Submit('submit', 'Speichern', css_class='btn btn-primary'),
+                HTML('<a href="#" onclick="history.back()" class="btn btn-secondary ms-2"><i class="fas fa-times"></i> Abbrechen</a>'),
+                css_class='d-flex gap-2'
+            ),
         )
 
     def clean(self):
@@ -163,7 +171,11 @@ class SpecialTaskEndForm(forms.Form):
         self.helper.layout = Layout(
             'end_date',
             'note',
-            Submit('submit', 'Aufgabe beenden', css_class='btn btn-warning'),
+            Div(
+                Submit('submit', 'Aufgabe beenden', css_class='btn btn-warning'),
+                HTML('<a href="#" onclick="history.back()" class="btn btn-secondary ms-2"><i class="fas fa-times"></i> Abbrechen</a>'),
+                css_class='d-flex gap-2'
+            ),
         )
 
     def clean_end_date(self):

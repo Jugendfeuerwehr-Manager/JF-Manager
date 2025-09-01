@@ -7,6 +7,14 @@
 {% endblock %}
 
 {% block content %}
+<!-- Breadcrumbs -->
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:admin' %}">Verwaltung</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:qualification_type_list' %}">Qualifikationstypen</a></li>
+    <li class="breadcrumb-item active">{{ object.name }} löschen</li>
+</ol>
+
 <div class="card">
     <div class="card-header bg-danger text-white">
         <h5 class="card-title mb-0">

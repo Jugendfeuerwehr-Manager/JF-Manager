@@ -3,7 +3,10 @@
 
 {% block title %}Sonderaufgaben-Typen{% endblock %}
 
-{% block page_header %}
+
+
+{% block content %}
+{% block content_header %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0">Sonderaufgaben-Typen</h1>
     {% if perms.qualifications.add_specialtasktype %}
@@ -14,7 +17,13 @@
 </div>
 {% endblock %}
 
-{% block content %}
+<!-- Breadcrumbs -->
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:admin' %}">Verwaltung</a></li>
+    <li class="breadcrumb-item active">Sonderaufgaben-Typen</li>
+</ol>
+
 <!-- Suchbereich -->
 <div class="card mb-4">
     <div class="card-body">

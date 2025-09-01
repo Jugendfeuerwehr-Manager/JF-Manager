@@ -4,6 +4,14 @@
 {% block title %}Sonderaufgabe beenden{% endblock %}
 
 {% block content_body %}
+<!-- Breadcrumbs -->
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:special_task_list' %}">Sonderaufgaben</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'qualifications:special_task_detail' special_task.pk %}">{{ special_task.task.name }} - {{ special_task.get_person_name }}</a></li>
+    <li class="breadcrumb-item active">Beenden</li>
+</ol>
+
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card border-warning">
