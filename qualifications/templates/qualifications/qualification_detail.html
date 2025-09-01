@@ -135,6 +135,77 @@
                     {{ object.note|linebreaks }}
                 </div>
                 {% endif %}
+                
+                <!-- Attachments Section -->
+                <hr>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-paperclip me-2"></i>Anhänge
+                        {% if object.attachments.count %}
+                            <span class="badge bg-secondary ms-2">{{ object.attachments.count }}</span>
+                        {% endif %}
+                    </h6>
+                    {% if perms.qualifications.change_qualification %}
+                    <a href="{% url 'qualifications:qualification_attachment_upload' object.pk %}" 
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i>Anhang hinzufügen
+                    </a>
+                    {% endif %}
+                </div>
+                
+                {% if object.attachments.exists %}
+                    <div class="list-group">
+                        {% for attachment in object.attachments.all %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <i class="{% if attachment.is_pdf %}fas fa-file-pdf text-danger{% elif attachment.is_image %}fas fa-image text-primary{% else %}fas fa-file text-secondary{% endif %} me-2"></i>
+                                            {{ attachment.name }}
+                                        </h6>
+                                        {% if attachment.description %}
+                                            <p class="mb-1 text-muted">{{ attachment.description }}</p>
+                                        {% endif %}
+                                        <small class="text-muted">
+                                            {{ attachment.get_file_size_human }} • 
+                                            {{ attachment.uploaded_at|date:"d.m.Y H:i" }}
+                                            {% if attachment.uploaded_by %} • {{ attachment.uploaded_by }}{% endif %}
+                                        </small>
+                                    </div>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'qualifications:attachment_download' attachment.pk %}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Herunterladen">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        {% if perms.qualifications.change_qualification %}
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    onclick="deleteAttachment({{ attachment.pk }}, '{{ attachment.name|escapejs }}')"
+                                                    title="Löschen">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-2">
+                        <a href="{% url 'qualifications:qualification_attachment_list' object.pk %}" 
+                           class="btn btn-sm btn-link">
+                            <i class="fas fa-list me-1"></i>Alle Anhänge verwalten
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-paperclip fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Keine Anhänge vorhanden</p>
+                        {% if perms.qualifications.change_qualification %}
+                            <small class="text-muted">Fügen Sie Zertifikate oder andere Dokumente hinzu</small>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -205,4 +276,47 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function deleteAttachment(attachmentId, attachmentName) {
+    if (!confirm(`Anhang "${attachmentName}" wirklich löschen?`)) {
+        return;
+    }
+    
+    fetch(`{% url 'qualifications:qualification_attachment_delete' object.pk 0 %}`.replace('0', attachmentId), {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Löschen des Anhangs.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Fehler beim Löschen des Anhangs.');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 {% endblock %}

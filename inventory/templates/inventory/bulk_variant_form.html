@@ -1,0 +1,448 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}📦 Varianten erstellen - {{ parent_item.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.variant-preview {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.size-grid, .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.size-checkbox, .color-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.size-checkbox:hover, .color-checkbox:hover {
+    background-color: #e9ecef;
+}
+
+.size-checkbox input[type="checkbox"]:checked + label,
+.color-checkbox input[type="checkbox"]:checked + label {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.section-toggle {
+    display: none;
+}
+
+#sizes-section, #colors-section {
+    transition: all 0.3s ease;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">
+                <i class="fas fa-plus-circle text-primary"></i>
+                Varianten erstellen
+            </h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:item_list' %}">Artikel</a></li>
+                <li class="breadcrumb-item">
+                    <a href="{{ parent_item.get_absolute_url }}">{{ parent_item.name }}</a>
+                </li>
+                <li class="breadcrumb-item active">Varianten erstellen</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-layer-group text-primary me-2"></i>
+                        Bulk-Erstellung für: {{ parent_item.name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="bulk-variant-form">
+                        {% csrf_token %}
+                        {% crispy form %}
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle text-info me-2"></i>
+                        Hilfe
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Verfügbare Optionen</h6>
+                    <div class="small mb-3">
+                        <div class="alert alert-info py-2">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Die verfügbaren Varianten-Arten werden automatisch basierend auf den Attributen des Hauptartikels bestimmt.
+                        </div>
+                    </div>
+                    
+                    <h6>Varianten-Arten</h6>
+                    <ul class="small">
+                        <li><strong>Größen:</strong> Erstellt Varianten für verschiedene Größen</li>
+                        <li><strong>Farben:</strong> Erstellt Varianten für verschiedene Farben</li>
+                        <li><strong>Größen und Farben:</strong> Erstellt alle Kombinationen</li>
+                        <li><strong>Benutzerdefiniert:</strong> Nutzt Custom Fields des Artikels</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Custom Fields</h6>
+                    <div class="small">
+                        <div class="alert alert-success py-2">
+                            <strong>✓ Unterstützte Feldtypen:</strong><br>
+                            • <strong>Text/String:</strong> Kommagetrennte Werte<br>
+                            • <strong>Number:</strong> Range-basierte Werte (von-bis)
+                        </div>
+                        <div class="alert alert-warning py-2">
+                            <strong>Kartesisches Produkt:</strong><br>
+                            Unterschiedliche Anzahl → Alle Kombinationen<br>
+                            <code>geschmack: erdbeere,vanille<br>größe: S,M,L</code><br>
+                            → 6 Varianten: alle Kombinationen
+                        </div>
+                    </div>
+                    
+                    <h6 class="mt-3">Beispiele</h6>
+                    <div class="small">
+                        <div class="mb-2">
+                            <strong>Größen:</strong><br>
+                            Jacke → Gr. 164, Gr. 176, Gr. 188
+                        </div>
+                        <div class="mb-2">
+                            <strong>Größen + Farben:</strong><br>
+                            T-Shirt → M/Blau, M/Rot, L/Blau, L/Rot
+                        </div>
+                        <div class="mb-2">
+                            <strong>SKU-Präfix:</strong><br>
+                            "JACKE" → JACKE-164, JACKE-176
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-eye text-secondary me-2"></i>
+                        Vorschau
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="variant-preview">
+                        <div class="text-muted small">
+                            Wählen Sie eine Option aus, um eine Vorschau der zu erstellenden Varianten zu sehen.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('bulk-variant-form');
+    const creationTypeRadios = form.querySelectorAll('input[name="creation_type"]');
+    const sizesSection = document.getElementById('sizes-section');
+    const colorsSection = document.getElementById('colors-section');
+    const preview = document.getElementById('variant-preview');
+    
+    // Stelle sicher, dass ein Radio-Button ausgewählt ist
+    const selectedRadio = form.querySelector('input[name="creation_type"]:checked');
+    if (!selectedRadio && creationTypeRadios.length > 0) {
+        creationTypeRadios[0].checked = true;
+    }
+    
+    // Initial setup
+    updateSectionVisibility();
+    updatePreview();
+    
+    // Event Listeners
+    creationTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            updateSectionVisibility();
+            updatePreview();
+        });
+    });
+    
+    // Listen to all form changes for preview update
+    form.addEventListener('change', updatePreview);
+    form.addEventListener('input', updatePreview);
+    
+    function updateSectionVisibility() {
+        const selectedType = form.querySelector('input[name="creation_type"]:checked')?.value;
+        
+        if (!sizesSection || !colorsSection) return;
+        
+        // Hide all sections first
+        sizesSection.style.display = 'none';
+        colorsSection.style.display = 'none';
+        
+        // Show relevant sections
+        switch(selectedType) {
+            case 'sizes':
+                sizesSection.style.display = 'block';
+                break;
+            case 'colors':
+                colorsSection.style.display = 'block';
+                break;
+            case 'sizes_colors':
+                sizesSection.style.display = 'block';
+                colorsSection.style.display = 'block';
+                break;
+            case 'custom':
+                // Both hidden, only additional attributes visible
+                break;
+        }
+    }
+    
+    function updatePreview() {
+        const formData = new FormData(form);
+        const selectedType = formData.get('creation_type');
+        const skuPrefix = formData.get('sku_prefix') || '';
+        
+        let previewHtml = '';
+        let variants = [];
+        
+        try {
+            switch(selectedType) {
+                case 'sizes':
+                    variants = generateSizeVariants(formData, skuPrefix);
+                    break;
+                case 'colors':
+                    variants = generateColorVariants(formData, skuPrefix);
+                    break;
+                case 'sizes_colors':
+                    variants = generateSizeColorVariants(formData, skuPrefix);
+                    break;
+                case 'custom':
+                    variants = generateCustomVariants(formData, skuPrefix);
+                    break;
+                default:
+                    variants = ['Bitte Varianten-Art wählen'];
+            }
+        } catch (error) {
+            variants = ['Fehler bei der Varianten-Generierung: ' + error.message];
+        }
+        
+        if (variants.length > 0) {
+            previewHtml = `
+                <h6 class="mb-2">Zu erstellende Varianten (${variants.length}):</h6>
+                <div class="small">
+                    ${variants.slice(0, 10).map(v => `<div class="badge bg-light text-dark mb-1 me-1">${v}</div>`).join('')}
+                    ${variants.length > 10 ? `<div class="text-muted mt-1">... und ${variants.length - 10} weitere</div>` : ''}
+                </div>
+            `;
+        } else {
+            previewHtml = '<div class="text-muted small">Keine Varianten zur Vorschau verfügbar.</div>';
+        }
+        
+        if (preview) {
+            preview.innerHTML = previewHtml;
+        }
+    }
+    
+    function generateSizeVariants(formData, skuPrefix) {
+        const sizes = formData.getAll('sizes');
+        const customSizes = formData.get('custom_sizes');
+        
+        let allSizes = [...sizes];
+        if (customSizes) {
+            const customList = customSizes.split(',').map(s => s.trim()).filter(s => s);
+            allSizes = allSizes.concat(customList);
+        }
+        
+        return allSizes.map(size => {
+            const sku = skuPrefix ? `${skuPrefix}-${size}` : '';
+            return `{{ parent_item.name }} (Größe: ${size})${sku ? ` [${sku}]` : ''}`;
+        });
+    }
+    
+    function generateColorVariants(formData, skuPrefix) {
+        const colors = formData.getAll('colors');
+        const customColors = formData.get('custom_colors');
+        
+        let allColors = [...colors];
+        if (customColors) {
+            const customList = customColors.split(',').map(c => c.trim()).filter(c => c);
+            allColors = allColors.concat(customList);
+        }
+        
+        return allColors.map(color => {
+            const sku = skuPrefix ? `${skuPrefix}-${color}` : '';
+            return `{{ parent_item.name }} (Farbe: ${color})${sku ? ` [${sku}]` : ''}`;
+        });
+    }
+    
+    function generateSizeColorVariants(formData, skuPrefix) {
+        const sizes = formData.getAll('sizes');
+        const customSizes = formData.get('custom_sizes');
+        const colors = formData.getAll('colors');
+        const customColors = formData.get('custom_colors');
+        
+        let allSizes = [...sizes];
+        if (customSizes) {
+            const customList = customSizes.split(',').map(s => s.trim()).filter(s => s);
+            allSizes = allSizes.concat(customList);
+        }
+        
+        let allColors = [...colors];
+        if (customColors) {
+            const customList = customColors.split(',').map(c => c.trim()).filter(c => c);
+            allColors = allColors.concat(customList);
+        }
+        
+        const variants = [];
+        for (const size of allSizes) {
+            for (const color of allColors) {
+                const sku = skuPrefix ? `${skuPrefix}-${size}-${color}` : '';
+                variants.push(`{{ parent_item.name }} (Größe: ${size}, Farbe: ${color})${sku ? ` [${sku}]` : ''}`);
+            }
+        }
+        
+        return variants;
+    }
+    
+    function generateCustomVariants(formData, skuPrefix) {
+        const customFieldsData = {};
+        
+        // Sammle alle Custom Field Werte
+        for (const [key, value] of formData.entries()) {
+            if (key.startsWith('custom_field_')) {
+                if (key.includes('_from') || key.includes('_to')) {
+                    // Range-Felder werden speziell behandelt
+                    continue;
+                }
+                
+                const fieldName = key.replace('custom_field_', '');
+                
+                // String-Feld mit kommagetrennte Werten
+                if (value.trim()) {
+                    const values = value.split(',').map(v => v.trim()).filter(v => v);
+                    if (values.length > 0) {
+                        customFieldsData[fieldName] = values;
+                    }
+                }
+            }
+        }
+        
+        // Range-Felder verarbeiten
+        const processedRangeFields = new Set();
+        for (const [key, value] of formData.entries()) {
+            if (key.includes('_from') && value.trim()) {
+                const baseFieldName = key.replace('custom_field_', '').replace('_from', '');
+                if (processedRangeFields.has(baseFieldName)) continue;
+                
+                const fromVal = parseFloat(value);
+                const toVal = parseFloat(formData.get(`custom_field_${baseFieldName}_to`) || '');
+                
+                if (!isNaN(fromVal) && !isNaN(toVal) && fromVal <= toVal) {
+                    const values = [];
+                    for (let current = fromVal; current <= toVal; current += 1) {
+                        values.push(current.toString());
+                        if (values.length > 20) break; // Limit für Preview
+                    }
+                    if (values.length > 0) {
+                        customFieldsData[baseFieldName] = values;
+                    }
+                }
+                processedRangeFields.add(baseFieldName);
+            }
+        }
+        
+        if (Object.keys(customFieldsData).length === 0) {
+            return ['Keine Custom Fields definiert'];
+        }
+        
+        const fieldNames = Object.keys(customFieldsData);
+        const fieldValues = Object.values(customFieldsData);
+        
+        // Prüfe ob parallel mapping möglich ist (gleiche Längen)
+        const lengths = fieldValues.map(values => values.length);
+        const isParallelMapping = lengths.every(length => length === lengths[0]);
+        
+        const variants = [];
+        
+        if (isParallelMapping) {
+            // Parallel Mapping: 1:1 Zuordnung
+            for (let i = 0; i < lengths[0]; i++) {
+                const attributes = [];
+                const skuParts = [skuPrefix].filter(p => p);
+                
+                for (let j = 0; j < fieldNames.length; j++) {
+                    const fieldName = fieldNames[j];
+                    const value = fieldValues[j][i];
+                    attributes.push(`${fieldName}: ${value}`);
+                    skuParts.push(value.substring(0, 10)); // Max 10 Zeichen
+                }
+                
+                const sku = skuParts.length > 0 ? ` [${skuParts.join('-')}]` : '';
+                variants.push(`{{ parent_item.name }} (${attributes.join(', ')})${sku}`);
+            }
+        } else {
+            // Kartesisches Produkt: Alle Kombinationen
+            function* cartesianProduct(arrays) {
+                if (arrays.length === 0) yield [];
+                else {
+                    const [head, ...tail] = arrays;
+                    for (const value of head) {
+                        for (const rest of cartesianProduct(tail)) {
+                            yield [value, ...rest];
+                        }
+                    }
+                }
+            }
+            
+            let combinationCount = 0;
+            for (const combination of cartesianProduct(fieldValues)) {
+                if (combinationCount >= 50) { // Limit für Preview
+                    variants.push('... (zu viele Kombinationen für Vorschau)');
+                    break;
+                }
+                
+                const attributes = [];
+                const skuParts = [skuPrefix].filter(p => p);
+                
+                for (let i = 0; i < fieldNames.length; i++) {
+                    attributes.push(`${fieldNames[i]}: ${combination[i]}`);
+                    skuParts.push(combination[i].toString().substring(0, 10));
+                }
+                
+                const sku = skuParts.length > 0 ? ` [${skuParts.join('-')}]` : '';
+                variants.push(`{{ parent_item.name }} (${attributes.join(', ')})${sku}`);
+                combinationCount++;
+            }
+        }
+        
+        return variants;
+    }
+});
+</script>
+{% endblock %}

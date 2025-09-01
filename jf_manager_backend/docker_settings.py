@@ -9,6 +9,7 @@ env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(str, 'localhost'),
     MEDIA_URL=(str, '/uploads/'),
+    MEDIA_ROOT=(str, '/app/uploads'),
     CACHE_TTL=(int, 1),
     DEFAULT_FROM_EMAIL=(str, 'webmaster@localhost'),
     EMAIL_HOST=(str, ''),
@@ -28,7 +29,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 STATIC_ROOT = env('STATIC_ROOT')
 MEDIA_ROOT = env('MEDIA_ROOT')
 MEDIA_URL = env('MEDIA_URL')
-
+MEMBER_UPLOAD_FOLDER = env('MEMBER_UPLOAD_FOLDER', default='members/avatars')
 DEBUG = env('DEBUG')
 # Raises Django's ImproperlyConfigured
 # exception if SECRET_KEY not in os.environ

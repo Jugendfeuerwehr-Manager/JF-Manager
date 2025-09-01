@@ -9,7 +9,7 @@ from .views import (
     InventoryDashboardView,
     CategoryListView, CategoryDetailView, CategoryCreateView, CategoryUpdateView, CategoryDeleteView, CategoryBrowserView,
     StorageLocationListView, StorageLocationDetailView, StorageLocationCreateView, StorageLocationUpdateView, StorageLocationDeleteView,
-    ItemVariantCreateView, ItemVariantDetailView,
+    ItemVariantCreateView, ItemVariantDetailView, BulkVariantCreateView, ItemVariantUpdateView, ItemVariantDeleteView,
     get_stock_info, get_filtered_locations, search_items, search_locations,
 )
 
@@ -30,6 +30,9 @@ urlpatterns = [
     # Varianten URLs
     path('variants/<int:pk>/', ItemVariantDetailView.as_view(), name='variant_detail'),
     path('variants/new/', ItemVariantCreateView.as_view(), name='variant_create'),
+    path('variants/<int:pk>/edit/', ItemVariantUpdateView.as_view(), name='variant_edit'),
+    path('variants/<int:pk>/delete/', ItemVariantDeleteView.as_view(), name='variant_delete'),
+    path('items/<int:parent_pk>/variants/bulk-create/', BulkVariantCreateView.as_view(), name='bulk_variant_create'),
     
     # Bestände URLs
     path('stocks/', StockListView.as_view(), name='stock_list'),

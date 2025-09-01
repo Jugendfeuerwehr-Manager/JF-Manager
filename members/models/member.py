@@ -1,6 +1,7 @@
 from datetime import date
 from django.db import models
 from django.urls import reverse
+from django.contrib.contenttypes.fields import GenericRelation
 from .group import Group
 from .status import Status
 from .utils import get_file_path
@@ -34,6 +35,12 @@ class Member(models.Model):
         blank=True,
         verbose_name='Lagerplatz',
         related_name='assigned_members'
+    )
+    
+    # Generic relation to attachments
+    attachments = GenericRelation(
+        'Attachment',
+        related_query_name='member'
     )
 
     def get_absolute_url(self):

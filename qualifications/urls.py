@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .autocomplete_views import user_autocomplete, member_autocomplete
+from .views import attachment_views
 
 app_name = 'qualifications'
 
@@ -39,6 +40,26 @@ urlpatterns = [
     # AJAX Endpoints
     path('api/qualification-type/<int:pk>/', views.qualification_type_details, name='qualification_type_details'),
     path('api/calculate-expiry/', views.calculate_expiry_date, name='calculate_expiry_date'),
+    
+    # Attachment URLs for Qualifications
+    path('qualifications/<int:qualification_id>/attachments/', 
+         attachment_views.qualification_attachment_list, name='qualification_attachment_list'),
+    path('qualifications/<int:qualification_id>/attachments/upload/', 
+         attachment_views.qualification_attachment_upload, name='qualification_attachment_upload'),
+    path('qualifications/<int:qualification_id>/attachments/<int:attachment_id>/delete/', 
+         attachment_views.qualification_attachment_delete, name='qualification_attachment_delete'),
+    
+    # Attachment URLs for Special Tasks
+    path('special-tasks/<int:specialtask_id>/attachments/', 
+         attachment_views.specialtask_attachment_list, name='specialtask_attachment_list'),
+    path('special-tasks/<int:specialtask_id>/attachments/upload/', 
+         attachment_views.specialtask_attachment_upload, name='specialtask_attachment_upload'),
+    path('special-tasks/<int:specialtask_id>/attachments/<int:attachment_id>/delete/', 
+         attachment_views.specialtask_attachment_delete, name='specialtask_attachment_delete'),
+    
+    # General attachment download
+    path('attachments/<int:attachment_id>/download/', 
+         attachment_views.attachment_download, name='attachment_download'),
     
     # Autocomplete endpoints
     path('autocomplete/users/', user_autocomplete, name='user_autocomplete'),

@@ -1,0 +1,144 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}📎 Anhänge - {{ specialtask }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'qualifications:special_task_detail' specialtask.pk %}">{{ specialtask.task.name }}</a></li>
+                    <li class="breadcrumb-item active">Anhänge</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="page-header">
+                    <i class="fas fa-paperclip me-2"></i>Anhänge - {{ specialtask }}
+                </h1>
+                <a href="{% url 'qualifications:specialtask_attachment_upload' specialtask.pk %}" 
+                   class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Anhang hinzufügen
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            {% if attachments %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">{{ attachments|length }} Anhang{{ attachments|length|pluralize:"e" }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Beschreibung</th>
+                                        <th>Dateigröße</th>
+                                        <th>Hochgeladen</th>
+                                        <th>Von</th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for attachment in attachments %}
+                                        <tr>
+                                            <td>
+                                                <i class="{% if attachment.is_pdf %}fas fa-file-pdf text-danger{% elif attachment.is_image %}fas fa-image text-primary{% else %}fas fa-file text-secondary{% endif %} me-2"></i>
+                                                {{ attachment.name }}
+                                            </td>
+                                            <td>{{ attachment.description|default:"-" }}</td>
+                                            <td>{{ attachment.get_file_size_human }}</td>
+                                            <td>{{ attachment.uploaded_at|date:"d.m.Y H:i" }}</td>
+                                            <td>{{ attachment.uploaded_by|default:"Unbekannt" }}</td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'qualifications:attachment_download' attachment.pk %}" 
+                                                       class="btn btn-sm btn-outline-primary"
+                                                       title="Herunterladen">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                    {% if perms.qualifications.change_specialtask %}
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-danger"
+                                                                onclick="deleteAttachment({{ attachment.pk }}, '{{ attachment.name|escapejs }}')"
+                                                                title="Löschen">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-paperclip fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Keine Anhänge vorhanden</h5>
+                        <p class="text-muted">Es wurden noch keine Anhänge für diese Sonderaufgabe hochgeladen.</p>
+                        <a href="{% url 'qualifications:specialtask_attachment_upload' specialtask.pk %}" 
+                           class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Ersten Anhang hinzufügen
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteAttachment(attachmentId, attachmentName) {
+    if (!confirm(`Anhang "${attachmentName}" wirklich löschen?`)) {
+        return;
+    }
+    
+    fetch(`{% url 'qualifications:specialtask_attachment_delete' specialtask.pk 0 %}`.replace('0', attachmentId), {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Löschen des Anhangs.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Fehler beim Löschen des Anhangs.');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

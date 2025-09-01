@@ -1,9 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import get_object_or_404, redirect
+from django.db import models as dj_models
 
 from inventory.forms import DynamicItemForm
+from inventory.forms.variant_forms import BulkVariantCreationForm, ItemVariantForm
 from inventory.models import Item, ItemVariant, Stock, Category, Transaction
 
 
@@ -153,3 +156,124 @@ class ItemVariantCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
     def get_success_url(self):  # pragma: no cover
         return self.object.parent_item.get_absolute_url()
+
+
+class BulkVariantCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    """Bulk-Erstellung von Artikel-Varianten"""
+    form_class = BulkVariantCreationForm
+    template_name = 'inventory/bulk_variant_form.html'
+    permission_required = 'inventory.add_item'
+
+    def get_parent_item(self):
+        """Holt das Eltern-Item aus der URL"""
+        parent_id = self.kwargs.get('parent_pk')
+        return get_object_or_404(Item, pk=parent_id)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # Remove instance kwarg as this is not a ModelForm
+        kwargs.pop('instance', None)
+        kwargs['parent_item'] = self.get_parent_item()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['parent_item'] = self.get_parent_item()
+        return context
+
+    def form_valid(self, form):
+        parent_item = self.get_parent_item()
+        
+        # Sicherstellen, dass das Item als Varianten-Parent markiert ist
+        if not parent_item.is_variant_parent:
+            parent_item.is_variant_parent = True
+            parent_item.save()
+        
+        try:
+            # Varianten erstellen
+            created_variants = form.create_variants()
+            
+            # Erfolgs-Nachricht
+            count = len(created_variants)
+            if count == 1:
+                messages.success(
+                    self.request, 
+                    f'1 Variante wurde erfolgreich erstellt.'
+                )
+            else:
+                messages.success(
+                    self.request, 
+                    f'{count} Varianten wurden erfolgreich erstellt.'
+                )
+            
+            # Details der erstellten Varianten anzeigen
+            variant_names = [str(variant) for variant in created_variants[:5]]  # Nur die ersten 5 anzeigen
+            if len(created_variants) > 5:
+                variant_names.append(f'... und {len(created_variants) - 5} weitere')
+            
+            messages.info(
+                self.request,
+                f'Erstellt: {", ".join(variant_names)}'
+            )
+            
+        except Exception as e:
+            messages.error(
+                self.request, 
+                f'Fehler beim Erstellen der Varianten: {str(e)}'
+            )
+            return self.form_invalid(form)
+        
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return self.get_parent_item().get_absolute_url()
+
+
+class ItemVariantUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    """Einzelne Variante bearbeiten"""
+    model = ItemVariant
+    form_class = ItemVariantForm
+    template_name = 'inventory/variant_form.html'
+    permission_required = 'inventory.change_item'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['parent_item'] = self.object.parent_item
+        return kwargs
+
+    def get_success_url(self):
+        return self.object.parent_item.get_absolute_url()
+
+
+class ItemVariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    """Variante löschen"""
+    model = ItemVariant
+    template_name = 'inventory/variant_confirm_delete.html'
+    permission_required = 'inventory.delete_item'
+
+    def get_success_url(self):
+        return self.object.parent_item.get_absolute_url()
+
+    def delete(self, request, *args, **kwargs):
+        variant = self.get_object()
+        parent_item = variant.parent_item
+        variant_name = str(variant)
+        
+        result = super().delete(request, *args, **kwargs)
+        
+        messages.success(
+            request, 
+            f'Variante "{variant_name}" wurde erfolgreich gelöscht.'
+        )
+        
+        # Prüfen, ob noch andere Varianten existieren
+        remaining_variants = ItemVariant.objects.filter(parent_item=parent_item).count()
+        if remaining_variants == 0:
+            parent_item.is_variant_parent = False
+            parent_item.save()
+            messages.info(
+                request,
+                f'"{parent_item.name}" hat keine Varianten mehr und wurde als normaler Artikel markiert.'
+            )
+        
+        return result

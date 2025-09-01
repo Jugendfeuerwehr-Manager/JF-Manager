@@ -253,7 +253,7 @@
             <div class="member-card">
                 <div class="card-body">
                     <div class="member-info">
-                        <img class="member-avatar" src="{% if member.avatar %}{{ member.avatar|filename|media_resize:'150x150,C' }}{% else %}data:image/png;base64,...{% endif %}" 
+                        <img class="member-avatar" src="{% if member.avatar %}{{ member.avatar.url }}{% else %}data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' fill='%23dee2e6'%3E%3Crect width='150' height='150'/%3E%3Ccircle cx='75' cy='60' r='20' fill='%23adb5bd'/%3E%3Cpath d='M75 90c-20 0-35 15-35 25v35h70v-35c0-10-15-25-35-25z' fill='%23adb5bd'/%3E%3C/svg%3E{% endif %}" 
                              alt="{{ member.name }} {{ member.lastname }}">
                         <div class="member-details">
                             <div class="member-name">

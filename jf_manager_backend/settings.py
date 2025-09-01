@@ -92,8 +92,15 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static")
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Media files configuration
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
+
+# Upload folder configuration (can be overridden via environment variables)
+MEMBER_UPLOAD_FOLDER = os.environ.get('MEMBER_UPLOAD_FOLDER', 'members/avatars')
+ATTACHMENT_UPLOAD_FOLDER = os.environ.get('ATTACHMENT_UPLOAD_FOLDER', 'attachments')
+
 IMAGEFIT_ROOT = os.path.join(BASE_DIR, 'imagefit')
 
 SITE_ID = 1

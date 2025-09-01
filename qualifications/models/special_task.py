@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.fields import GenericRelation
 from datetime import date
 
 
@@ -76,6 +77,12 @@ class SpecialTask(models.Model):
     note = models.TextField(
         blank=True,
         verbose_name="Notiz"
+    )
+    
+    # Generic relation to attachments
+    attachments = GenericRelation(
+        'members.Attachment',
+        related_query_name='specialtask'
     )
 
     def __str__(self):

@@ -1,13 +1,7 @@
-{% extends 'qualifications/base.html' %}
+{% extends 'home.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}
-{% if object %}
-    🎓 Qualifikation bearbeiten
-{% else %}
-    🎓 Neue Qualifikation
-{% endif %}
-{% endblock %}
+{% block title %}📎 Anhang hinzufügen - {{ qualification }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -51,82 +45,95 @@
 </style>
 {% endblock %}
 
-{% block content_body %}
-<!-- Breadcrumbs -->
-<ol class="breadcrumb mb-4">
-    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen & Sonderaufgaben</a></li>
-    <li class="breadcrumb-item"><a href="{% url 'qualifications:qualification_list' %}">Qualifikationen</a></li>
-    <li class="breadcrumb-item active">
-        {% if object.pk %}
-            Qualifikation bearbeiten
-        {% else %}
-            Neue Qualifikation
-        {% endif %}
-    </li>
-</ol>
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'qualifications:dashboard' %}">Qualifikationen</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'qualifications:qualification_detail' qualification.pk %}">{{ qualification.type.name }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'qualifications:qualification_attachment_list' qualification.pk %}">Anhänge</a></li>
+                    <li class="breadcrumb-item active">Hinzufügen</li>
+                </ol>
+            </nav>
+            
+            <h1 class="page-header">
+                <i class="fas fa-plus me-2"></i>Anhang hinzufügen
+            </h1>
+            <p class="text-muted">Für: {{ qualification }}</p>
+        </div>
+    </div>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-certificate"></i>
-                    {% if object.pk %}
-                        Qualifikation bearbeiten
-                    {% else %}
-                        Neue Qualifikation
-                    {% endif %}
-                </h5>
-            </div>
-            <div class="card-body">
-                {% crispy form %}
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Datei hochladen</h5>
+                </div>
+                <div class="card-body">
+                    {% crispy form %}
+                    <div class="file-info" id="file-info">
+                        <strong>Ausgewählte Datei:</strong> <span id="file-name"></span><br>
+                        <small class="text-muted">Größe: <span id="file-size"></span></small>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Hilfe-Karte -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-info-circle"></i> Hinweise
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>Ablaufdatum</h6>
-                        <p class="small text-muted">
-                            Bei Qualifikationstypen mit aktivierter Ablaufoption wird das Ablaufdatum 
-                            automatisch basierend auf dem Erwerbsdatum und der Gültigkeitsdauer berechnet.
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Person auswählen</h6>
-                        <p class="small text-muted">
-                            Wählen Sie entweder einen Benutzer oder ein Mitglied aus, aber nicht beide. 
-                            Benutzer sind registrierte Systemnutzer, Mitglieder sind Einträge im Mitgliederverzeichnis.
-                        </p>
-                    </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Hinweise</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Maximale Dateigröße: 10 MB
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                            Geben Sie einen aussagekräftigen Namen an
+                        </li>
+                        <li>
+                            <i class="fas fa-shield-alt text-info me-2"></i>
+                            Dateien werden sicher gespeichert
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Elements
+    // Try to find the file input with different possible IDs
+    let fileInput = document.getElementById('id_file');
+    if (!fileInput) {
+        fileInput = document.querySelector('input[type="file"]');
+    }
+    
     const dragDropArea = document.getElementById('drag-drop-area');
-    const fileInput = document.getElementById('id_file');
     const fileInfo = document.getElementById('file-info');
     const fileName = document.getElementById('file-name');
     const fileSize = document.getElementById('file-size');
     const nameField = document.getElementById('id_name');
 
-    // Safety checks for elements
-    if (!dragDropArea || !fileInput) {
-        console.warn('Drag and drop elements not found');
+    if (!fileInput) {
+        console.error('File input not found. Available inputs:', document.querySelectorAll('input'));
+        return;
+    }
+
+    console.log('File input found:', fileInput);
+
+    if (!dragDropArea) {
+        console.error('Drag drop area not found');
         return;
     }
 
@@ -135,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fileInput.click();
     });
 
-    // Drag and drop events
+    // Drag and drop functionality
     dragDropArea.addEventListener('dragover', function(e) {
         e.preventDefault();
         dragDropArea.classList.add('dragover');
@@ -193,17 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fileSize) fileSize.textContent = formatFileSize(file.size);
         if (fileInfo) fileInfo.style.display = 'block';
 
-        // Show attachment fields
-        const attachmentFields = document.getElementById('attachment-fields');
-        if (attachmentFields) {
-            attachmentFields.style.display = 'block';
-            
-            // Auto-fill name field if empty
-            const nameField = document.getElementById('id_attachment_name');
-            if (nameField && !nameField.value) {
-                const baseName = file.name.replace(/\.[^/.]+$/, "");
-                nameField.value = baseName;
-            }
+        // Auto-fill name field if empty
+        if (nameField && !nameField.value) {
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            nameField.value = baseName;
         }
     }
 
@@ -240,15 +240,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dragIcon) dragIcon.className = 'fas fa-cloud-upload-alt fa-3x text-muted mb-3';
         if (fileInfo) fileInfo.style.display = 'none';
         
-        // Hide and clear attachment fields
-        const attachmentFields = document.getElementById('attachment-fields');
-        if (attachmentFields) {
-            attachmentFields.style.display = 'none';
-            const nameField = document.getElementById('id_attachment_name');
-            const descField = document.getElementById('id_attachment_description');
-            if (nameField) nameField.value = '';
-            if (descField) descField.value = '';
-        }
+        // Clear name field if it was auto-filled
+        if (nameField) nameField.value = '';
     }
 
     function formatFileSize(bytes) {
@@ -258,24 +251,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
-
-    // Auto-calculation of expiry date when type or acquired date changes
-    const typeField = document.getElementById('id_type');
-    const acquiredField = document.getElementById('id_date_acquired');
-    const expiresField = document.getElementById('id_date_expires');
-
-    function updateExpiryDate() {
-        if (typeField && acquiredField && expiresField && typeField.value && acquiredField.value) {
-            // This would need to make an AJAX call to get qualification type details
-            // For now, just clear the expiry field when changing type
-            if (typeField.value) {
-                // AJAX call could go here to fetch qualification type details
-            }
-        }
-    }
-
-    if (typeField) typeField.addEventListener('change', updateExpiryDate);
-    if (acquiredField) acquiredField.addEventListener('change', updateExpiryDate);
 });
 </script>
 {% endblock %}

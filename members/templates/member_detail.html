@@ -126,8 +126,8 @@
     <div class="row align-items-center">
         <div class="col-md-2 text-center">
             {% if object.avatar %}
-                <img src="{{ object.avatar|filename|media_resize:'200x200' }}" 
-                     alt="{{ object.get_full_name }}" 
+                <img src="{{ object.avatar.url }}" 
+                     alt="{{ object.get_full_name }}"
                      class="member-avatar">
             {% else %}
                 <div class="member-avatar d-flex align-items-center justify-content-center" 
@@ -434,6 +434,11 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="equipment-details-tab" data-bs-toggle="tab" data-bs-target="#equipment-details" type="button" role="tab">
                     <i class="fas fa-toolbox me-1"></i>Ausrüstung Details
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab">
+                    <i class="fas fa-paperclip me-1"></i>Anhänge ({{ member_attachments|length }})
                 </button>
             </li>
         </ul>
@@ -844,11 +849,334 @@
                     </div>
                 {% endif %}
             </div>
+            
+            <!-- Attachments Tab -->
+            <div class="tab-pane fade" id="attachments" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <h6 class="mb-3">Anhänge</h6>
+                        {% if member_attachments %}
+                            <div class="row">
+                                {% for attachment in member_attachments %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fas fa-file me-2"></i>{{ attachment.name }}
+                                                </h6>
+                                                <p class="card-text">
+                                                    {% if attachment.description %}
+                                                        {{ attachment.description|truncatechars:100 }}
+                                                    {% else %}
+                                                        <span class="text-muted">Keine Beschreibung</span>
+                                                    {% endif %}
+                                                </p>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">
+                                                        {{ attachment.file_size_human }} • 
+                                                        {{ attachment.uploaded_at|date:"d.m.Y" }}
+                                                    </small>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <a href="{{ attachment.file.url }}" class="btn btn-outline-primary" target="_blank" title="Datei öffnen">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ attachment.file.url }}" class="btn btn-outline-success" download title="Herunterladen">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                        {% if perms.members.change_member %}
+                                                            <button class="btn btn-outline-danger" onclick="deleteAttachment({{ attachment.pk }}, '{{ attachment.name }}')" title="Löschen">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-paperclip fa-3x text-muted mb-3"></i>
+                                <h6 class="text-muted">Keine Anhänge vorhanden</h6>
+                                <p class="text-muted">Für dieses Mitglied wurden noch keine Anhänge hochgeladen.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    </div>
+                    <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-plus me-2"></i>Neuen Anhang hinzufügen
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" enctype="multipart/form-data" id="member-attachment-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_attachment">
+                                    
+                                    <div class="drag-drop-area" id="drag-drop-area">
+                                        <div class="drag-drop-content">
+                                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                            <h5>Datei hier ablegen oder klicken zum Auswählen</h5>
+                                            <p class="text-muted">PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <input type="file" class="d-none" id="attachment_file" name="attachment_file" 
+                                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" required>
+                                    
+                                    <div class="file-info" id="file-info" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <strong>Ausgewählte Datei:</strong> <span id="file-name"></span><br>
+                                            <small class="text-muted">Größe: <span id="file-size"></span></small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="attachment_name" class="form-label">Name *</label>
+                                        <input type="text" class="form-control" id="attachment_name" name="attachment_name" 
+                                               placeholder="z.B. Ärztliches Attest" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="attachment_description" class="form-label">Beschreibung</label>
+                                        <textarea class="form-control" id="attachment_description" name="attachment_description" 
+                                                 rows="3" placeholder="Optionale Beschreibung des Anhangs"></textarea>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-upload me-1"></i>Anhang hinzufügen
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="resetFileSelection()">
+                                            <i class="fas fa-times me-1"></i>Zurücksetzen
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>Anhang-Typen
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="small mb-0">
+                                    <li>Ärztliche Atteste</li>
+                                    <li>Tauglichkeitsuntersuchungen</li>
+                                    <li>Schwimmabzeichen</li>
+                                    <li>Andere wichtige Dokumente</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<style>
+.drag-drop-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+}
+
+.drag-drop-area:hover,
+.drag-drop-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.drag-drop-area.dragover {
+    border-style: solid;
+}
+
+.drag-drop-content {
+    pointer-events: none;
+}
+
+.file-selected {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+.file-info {
+    margin-bottom: 1rem;
+}
+</style>
+
 <script>
+// Delete attachment function
+function deleteAttachment(attachmentId, attachmentName) {
+    if (confirm(`Möchten Sie den Anhang "${attachmentName}" wirklich löschen?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.style.display = 'none';
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'delete_attachment';
+        
+        const attachmentInput = document.createElement('input');
+        attachmentInput.type = 'hidden';
+        attachmentInput.name = 'attachment_id';
+        attachmentInput.value = attachmentId;
+        
+        form.appendChild(csrfInput);
+        form.appendChild(actionInput);
+        form.appendChild(attachmentInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// File upload drag and drop functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('attachment_file');
+    const dragDropArea = document.getElementById('drag-drop-area');
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const nameField = document.getElementById('attachment_name');
+
+    if (!fileInput || !dragDropArea) {
+        return; // Elements not found, skip initialization
+    }
+
+    // Click to select file
+    dragDropArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    // Drag and drop functionality
+    dragDropArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dragDropArea.classList.add('dragover');
+    });
+
+    dragDropArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dragDropArea.classList.remove('dragover');
+    });
+
+    dragDropArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dragDropArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            // Create a new DataTransfer object to set files
+            const dt = new DataTransfer();
+            dt.items.add(files[0]);
+            fileInput.files = dt.files;
+            
+            // Trigger change event
+            const event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        }
+    });
+
+    // File input change event
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelection(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelection(file) {
+        // Validate file first
+        if (!validateFile(file)) {
+            return;
+        }
+        
+        // Update drag-drop area appearance
+        dragDropArea.classList.add('file-selected');
+        const dragTitle = dragDropArea.querySelector('h5');
+        const dragText = dragDropArea.querySelector('p');
+        const dragIcon = dragDropArea.querySelector('i');
+        
+        if (dragTitle) dragTitle.textContent = 'Datei ausgewählt!';
+        if (dragText) dragText.textContent = file.name;
+        if (dragIcon) dragIcon.className = 'fas fa-check-circle fa-3x text-success mb-3';
+
+        // Show file info
+        if (fileName) fileName.textContent = file.name;
+        if (fileSize) fileSize.textContent = formatFileSize(file.size);
+        if (fileInfo) fileInfo.style.display = 'block';
+
+        // Auto-fill name field if empty
+        if (nameField && !nameField.value) {
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            nameField.value = baseName;
+        }
+    }
+
+    function validateFile(file) {
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+
+        if (file.size > maxSize) {
+            alert('Datei ist zu groß. Maximale Größe: 10MB');
+            resetFileSelection();
+            return false;
+        }
+
+        if (!allowedExtensions.includes(fileExtension)) {
+            alert('Dateityp nicht unterstützt. Erlaubte Formate: PDF, DOC, DOCX, JPG, PNG, GIF');
+            resetFileSelection();
+            return false;
+        }
+
+        return true;
+    }
+
+    // Make resetFileSelection globally available
+    window.resetFileSelection = function() {
+        fileInput.value = '';
+        dragDropArea.classList.remove('file-selected');
+        const dragTitle = dragDropArea.querySelector('h5');
+        const dragText = dragDropArea.querySelector('p');
+        const dragIcon = dragDropArea.querySelector('i');
+        
+        if (dragTitle) dragTitle.textContent = 'Datei hier ablegen oder klicken zum Auswählen';
+        if (dragText) dragText.textContent = 'PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)';
+        if (dragIcon) dragIcon.className = 'fas fa-cloud-upload-alt fa-3x text-muted mb-3';
+        if (fileInfo) fileInfo.style.display = 'none';
+        
+        // Clear name field if it was auto-filled
+        if (nameField) nameField.value = '';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+});
+
 // Bootstrap 5 Tab functionality
 document.addEventListener('DOMContentLoaded', function() {
     const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');

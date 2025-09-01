@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.contenttypes.models import ContentType
+from django.contrib import messages
 from django.http import HttpResponseForbidden
 from django.urls import reverse
 from django.views import View
@@ -10,7 +12,7 @@ from django.views.generic.detail import SingleObjectMixin
 from inventory.models import Item
 from inventory.models.stock import Stock
 from members.forms import EventForm
-from members.models import Member, Parent, Event, EventType
+from members.models import Member, Parent, Event, EventType, Attachment
 from members.selectors import get_events_list
 from servicebook.selectors import get_services_of_member, get_number_of_services
 
@@ -40,8 +42,111 @@ class MemberDetailView(LoginRequiredMixin, View):
         return view(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        # Handle attachment upload
+        if request.POST.get('action') == 'add_attachment':
+            return self.handle_attachment_upload(request, *args, **kwargs)
+        
+        # Handle attachment deletion
+        if request.POST.get('action') == 'delete_attachment':
+            return self.handle_attachment_delete(request, *args, **kwargs)
+        
+        # Default: handle member events
         view = MemberEventView.as_view()
         return view(request, *args, **kwargs)
+    
+    def handle_attachment_upload(self, request, *args, **kwargs):
+        """Handle member attachment upload"""
+        from django.shortcuts import get_object_or_404, redirect
+        
+        member = get_object_or_404(Member, pk=kwargs['pk'])
+        
+        # Check permissions
+        if not request.user.has_perm('members.change_member'):
+            messages.error(request, 'Sie haben keine Berechtigung, Anhänge hochzuladen.')
+            return redirect('members:detail', pk=member.pk)
+        
+        # Get form data
+        attachment_name = request.POST.get('attachment_name', '').strip()
+        attachment_description = request.POST.get('attachment_description', '').strip()
+        attachment_file = request.FILES.get('attachment_file')
+        
+        # Validation
+        if not attachment_name:
+            messages.error(request, 'Bitte geben Sie einen Namen für den Anhang ein.')
+            return redirect('members:detail', pk=member.pk)
+        
+        if not attachment_file:
+            messages.error(request, 'Bitte wählen Sie eine Datei aus.')
+            return redirect('members:detail', pk=member.pk)
+        
+        # File validation
+        max_size = 10 * 1024 * 1024  # 10MB
+        allowed_extensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif']
+        file_extension = attachment_file.name.split('.')[-1].lower()
+        
+        if attachment_file.size > max_size:
+            messages.error(request, 'Die Datei ist zu groß. Maximale Größe: 10MB')
+            return redirect('members:detail', pk=member.pk)
+        
+        if file_extension not in allowed_extensions:
+            messages.error(request, 'Dateityp nicht unterstützt. Erlaubte Formate: PDF, DOC, DOCX, JPG, PNG, GIF')
+            return redirect('members:detail', pk=member.pk)
+        
+        try:
+            # Create attachment
+            content_type = ContentType.objects.get_for_model(Member)
+            attachment = Attachment.objects.create(
+                content_type=content_type,
+                object_id=member.pk,
+                name=attachment_name,
+                description=attachment_description,
+                file=attachment_file,
+                uploaded_by=request.user
+            )
+            
+            messages.success(request, f'Anhang "{attachment.name}" wurde erfolgreich hinzugefügt.')
+        
+        except Exception as e:
+            messages.error(request, f'Fehler beim Hochladen des Anhangs: {str(e)}')
+        
+        return redirect('members:detail', pk=member.pk)
+
+    def handle_attachment_delete(self, request, *args, **kwargs):
+        """Handle member attachment deletion"""
+        from django.shortcuts import get_object_or_404, redirect
+        
+        member = get_object_or_404(Member, pk=kwargs['pk'])
+        
+        # Check permissions
+        if not request.user.has_perm('members.change_member'):
+            messages.error(request, 'Sie haben keine Berechtigung, Anhänge zu löschen.')
+            return redirect('members:detail', pk=member.pk)
+        
+        # Get attachment ID
+        attachment_id = request.POST.get('attachment_id')
+        if not attachment_id:
+            messages.error(request, 'Anhang-ID nicht gefunden.')
+            return redirect('members:detail', pk=member.pk)
+        
+        try:
+            # Get attachment and verify it belongs to this member
+            content_type = ContentType.objects.get_for_model(Member)
+            attachment = get_object_or_404(
+                Attachment,
+                pk=attachment_id,
+                content_type=content_type,
+                object_id=member.pk
+            )
+            
+            attachment_name = attachment.name
+            attachment.delete()
+            
+            messages.success(request, f'Anhang "{attachment_name}" wurde erfolgreich gelöscht.')
+        
+        except Exception as e:
+            messages.error(request, f'Fehler beim Löschen des Anhangs: {str(e)}')
+        
+        return redirect('members:detail', pk=member.pk)
 
 
 class MemberDisplayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -114,6 +219,13 @@ class MemberDisplayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
             # Falls qualifications App nicht installiert ist
             context['member_qualifications'] = []
             context['member_special_tasks'] = []
+        
+        # Member Anhänge hinzufügen
+        content_type = ContentType.objects.get_for_model(Member)
+        context['member_attachments'] = Attachment.objects.filter(
+            content_type=content_type,
+            object_id=obj.pk
+        ).order_by('-uploaded_at')
         
         return context
 

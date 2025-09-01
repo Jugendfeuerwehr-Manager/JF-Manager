@@ -126,8 +126,8 @@
     <div class="row align-items-center">
         <div class="col-md-2 text-center">
             {% if object.avatar %}
-                <img src="{{ object.avatar|filename|media_resize:'200x200' }}" 
-                     alt="{{ object.get_full_name }}" 
+                <img src="{{ object.avatar.url }}" 
+                     alt="{{ object.get_full_name }}"
                      class="member-avatar">
             {% else %}
                 <div class="member-avatar d-flex align-items-center justify-content-center" 
@@ -426,6 +426,11 @@
                     <i class="fas fa-toolbox me-1"></i>Ausrüstung Details
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab">
+                    <i class="fas fa-paperclip me-1"></i>Anhänge
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content" id="memberTabsContent">
@@ -639,6 +644,111 @@
                         {% endif %}
                     </div>
                 {% endif %}
+            </div>
+            
+            <!-- Attachments Tab -->
+            <div class="tab-pane fade" id="attachments" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <h6 class="mb-3">Anhänge</h6>
+                        {% if member_attachments %}
+                            <div class="row">
+                                {% for attachment in member_attachments %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fas fa-file me-2"></i>{{ attachment.name }}
+                                                </h6>
+                                                <p class="card-text">
+                                                    {% if attachment.description %}
+                                                        {{ attachment.description|truncatechars:100 }}
+                                                    {% else %}
+                                                        <span class="text-muted">Keine Beschreibung</span>
+                                                    {% endif %}
+                                                </p>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">
+                                                        {{ attachment.file_size_human }} • 
+                                                        {{ attachment.uploaded_at|date:"d.m.Y" }}
+                                                    </small>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <a href="{{ attachment.file.url }}" class="btn btn-outline-primary" target="_blank" title="Datei öffnen">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ attachment.file.url }}" class="btn btn-outline-success" download title="Herunterladen">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                        {% if perms.members.change_member %}
+                                                            <a href="{% url 'members:attachment_delete' object.pk attachment.pk %}" class="btn btn-outline-danger" title="Löschen">
+                                                                <i class="fas fa-trash"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-paperclip fa-3x text-muted mb-3"></i>
+                                <h6 class="text-muted">Keine Anhänge vorhanden</h6>
+                                <p class="text-muted">Für dieses Mitglied wurden noch keine Anhänge hochgeladen.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="info-card p-4">
+                            <h6 class="mb-3">
+                                <i class="fas fa-plus me-2"></i>Neuen Anhang hinzufügen
+                            </h6>
+                            <form method="post" enctype="multipart/form-data" id="member-attachment-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="add_attachment">
+                                
+                                <div class="mb-3">
+                                    <label for="attachment_name" class="form-label">Name *</label>
+                                    <input type="text" class="form-control" id="attachment_name" name="attachment_name" 
+                                           placeholder="z.B. Ärztliches Attest" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="attachment_description" class="form-label">Beschreibung</label>
+                                    <textarea class="form-control" id="attachment_description" name="attachment_description" 
+                                             rows="3" placeholder="Optionale Beschreibung des Anhangs"></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="attachment_file" class="form-label">Datei *</label>
+                                    <input type="file" class="form-control" id="attachment_file" name="attachment_file" 
+                                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" required>
+                                    <small class="form-text text-muted">
+                                        Zulässige Formate: PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)
+                                    </small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-1"></i>Anhang hinzufügen
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="info-card p-4 mt-3">
+                            <h6 class="mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Anhang-Typen
+                            </h6>
+                            <ul class="small mb-0">
+                                <li>Ärztliche Atteste</li>
+                                <li>Tauglichkeitsuntersuchungen</li>
+                                <li>Schwimmabzeichen</li>
+                                <li>Andere wichtige Dokumente</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

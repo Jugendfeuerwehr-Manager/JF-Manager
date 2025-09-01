@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Div, Submit, Field, Row, Column, HTML
 from crispy_forms.bootstrap import PrependedText
@@ -8,6 +9,7 @@ from datetime import date
 
 from ..models import QualificationType, Qualification
 from ..widgets import UserSelect2Widget, MemberSelect2Widget
+from members.models import Attachment
 
 
 class QualificationTypeForm(forms.ModelForm):
@@ -79,6 +81,7 @@ class QualificationForm(forms.ModelForm):
 
         self.helper = FormHelper()
         self.helper.form_method = 'post'
+        self.helper.form_enctype = 'multipart/form-data'
         self.helper.layout = Layout(
             'type',
             Row(
@@ -93,6 +96,45 @@ class QualificationForm(forms.ModelForm):
                 css_class='form-row'
             ),
             'note',
+            HTML('<hr><h5>Anhänge</h5>'),
+            HTML('''
+                <div class="drag-drop-area" id="drag-drop-area">
+                    <div class="drag-drop-content">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Datei hier ablegen oder klicken zum Auswählen</h5>
+                        <p class="text-muted">PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)</p>
+                    </div>
+                    <input type="file" id="id_file" name="file" class="d-none" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+                </div>
+                <div class="file-info" id="file-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Dateiname:</strong> <span id="file-name"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Größe:</strong> <span id="file-size"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="resetFileSelection()">
+                                <i class="fas fa-times"></i> Entfernen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3" id="attachment-fields" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="id_attachment_name" class="form-label">Name des Anhangs *</label>
+                            <input type="text" class="form-control" id="id_attachment_name" name="attachment_name" 
+                                   placeholder="z.B. Zertifikat Grundlehrgang" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_attachment_description" class="form-label">Beschreibung</label>
+                            <textarea class="form-control" id="id_attachment_description" name="attachment_description" 
+                                     rows="2" placeholder="Optionale Beschreibung des Anhangs"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div id="attachments-section"></div>
+            '''),
             Div(
                 Submit('submit', 'Speichern', css_class='btn btn-primary'),
                 HTML('<a href="#" onclick="history.back()" class="btn btn-secondary ms-2"><i class="fas fa-times"></i> Abbrechen</a>'),

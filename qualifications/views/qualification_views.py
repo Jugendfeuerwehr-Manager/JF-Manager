@@ -5,10 +5,11 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.http import JsonResponse
 from django.db.models import Q
+from django.contrib.contenttypes.models import ContentType
 
 from ..models import Qualification, QualificationType
 from ..forms import QualificationForm, QualificationTypeForm
-from members.models import Member
+from members.models import Member, Attachment
 from users.models import CustomUser
 
 
@@ -42,8 +43,29 @@ class QualificationCreateView(LoginRequiredMixin, PermissionRequiredMixin, Creat
         return kwargs
 
     def form_valid(self, form):
+        # Erst das Qualifikationsobjekt speichern
+        response = super().form_valid(form)
+        
+        # Dann den File-Upload verarbeiten
+        uploaded_file = self.request.FILES.get('file')
+        if uploaded_file:
+            # Get attachment name and description from form
+            attachment_name = self.request.POST.get('attachment_name', uploaded_file.name.rsplit('.', 1)[0])
+            attachment_description = self.request.POST.get('attachment_description', '')
+            
+            # Create attachment for the qualification
+            attachment = Attachment.objects.create(
+                content_type=ContentType.objects.get_for_model(Qualification),
+                object_id=self.object.pk,
+                name=attachment_name,
+                description=attachment_description,
+                file=uploaded_file,
+                uploaded_by=self.request.user
+            )
+            messages.success(self.request, f'Anhang "{attachment.name}" wurde erfolgreich hinzugefügt.')
+        
         messages.success(self.request, 'Qualifikation wurde erfolgreich erstellt.')
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse('qualifications:qualification_detail', kwargs={'pk': self.object.pk})
@@ -69,8 +91,28 @@ class QualificationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, Updat
         return obj
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        
+        # Handle file upload if present
+        uploaded_file = self.request.FILES.get('file')
+        if uploaded_file:
+            # Get attachment name and description from form
+            attachment_name = self.request.POST.get('attachment_name', uploaded_file.name.rsplit('.', 1)[0])
+            attachment_description = self.request.POST.get('attachment_description', '')
+            
+            # Create attachment for the qualification
+            attachment = Attachment.objects.create(
+                content_type=ContentType.objects.get_for_model(Qualification),
+                object_id=self.object.pk,
+                name=attachment_name,
+                description=attachment_description,
+                file=uploaded_file,
+                uploaded_by=self.request.user
+            )
+            messages.success(self.request, f'Anhang "{attachment.name}" wurde erfolgreich hinzugefügt.')
+        
         messages.success(self.request, 'Qualifikation wurde erfolgreich aktualisiert.')
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse('qualifications:qualification_detail', kwargs={'pk': self.object.pk})

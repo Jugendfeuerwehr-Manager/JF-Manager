@@ -13,7 +13,7 @@ Remove re-exports only after all external references are updated.
 
 from .items import (
     ItemListView, ItemDetailView, ItemCreateView, ItemUpdateView, ItemDeleteView,
-    ItemVariantDetailView, ItemVariantCreateView,
+    ItemVariantDetailView, ItemVariantCreateView, BulkVariantCreateView, ItemVariantUpdateView, ItemVariantDeleteView,
 )
 from .stock import StockListView
 from .transactions import (
