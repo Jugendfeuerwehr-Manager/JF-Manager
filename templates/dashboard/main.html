@@ -1,0 +1,337 @@
+{% extends 'home.html' %}
+{% load static %}
+
+{% block title %}Dashboard - JF Manager{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        height: 100%;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+    
+    .module-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .module-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 15px;
+    }
+    
+    .stat-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    .activity-item {
+        border-left: 3px solid #007bff;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .activity-item:hover {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        margin-left: -0.5rem;
+    }
+    
+    .reminder-item {
+        border-left: 3px solid;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .reminder-warning {
+        border-left-color: #ffc107;
+        background-color: #fff3cd;
+    }
+    
+    .reminder-danger {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+    }
+    
+    .welcome-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .icon-large {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.8;
+    }
+    
+    .counter {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+    <!-- Welcome Header -->
+    <div class="welcome-header text-center">
+        <h1 class="mb-3">
+            <i class="fas fa-fire mr-3"></i>
+            Willkommen im JF Manager, {{ user.first_name|default:user.username }}!
+        </h1>
+        <p class="lead mb-0">Zentrale Verwaltungsoberfläche für die Jugendfeuerwehr Laudenbach</p>
+    </div>
+
+    <!-- Schnellzugriff Module -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="fas fa-th-large mr-2"></i>
+                Module
+            </h3>
+        </div>
+        {% for module in modules %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <a href="{{ module.url }}" class="module-card card h-100 text-decoration-none">
+                    <div class="card-body text-center">
+                        <div class="icon-large text-{{ module.color }}">
+                            <i class="{{ module.icon }}"></i>
+                        </div>
+                        <h5 class="card-title">{{ module.name }}</h5>
+                        <p class="card-text text-muted">{{ module.description }}</p>
+                        {% if module.count %}
+                            <div class="counter text-{{ module.color }}">{{ module.count }}</div>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Statistiken -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="fas fa-chart-bar mr-2"></i>
+                Übersicht
+            </h3>
+        </div>
+        
+        <!-- Mitglieder Stats -->
+        {% if 'members.view_member' in perms %}
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card stat-card dashboard-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users icon-large"></i>
+                        <div class="counter">{{ stats.total_members }}</div>
+                        <div>Mitglieder</div>
+                        {% if stats.active_members %}
+                            <small>{{ stats.active_members }} aktiv</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Inventar Stats -->
+        {% if 'inventory.view_item' in perms %}
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card stat-card dashboard-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-boxes icon-large"></i>
+                        <div class="counter">{{ stats.total_items }}</div>
+                        <div>Inventar</div>
+                        {% if stats.low_stock_items %}
+                            <small class="text-warning">{{ stats.low_stock_items }} niedrig</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Qualifikationen Stats -->
+        {% if 'qualifications.view_qualification' in perms %}
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card stat-card dashboard-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-certificate icon-large"></i>
+                        <div class="counter">{{ stats.total_qualifications }}</div>
+                        <div>Qualifikationen</div>
+                        {% if stats.expiring_qualifications %}
+                            <small class="text-warning">{{ stats.expiring_qualifications }} laufen ab</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Orders Stats -->
+        {% if 'orders.view_order' in perms %}
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card stat-card dashboard-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-shopping-cart icon-large"></i>
+                        <div class="counter">{{ stats.pending_orders|default:0 }}</div>
+                        <div>Offene Bestellungen</div>
+                        {% if stats.processing_orders %}
+                            <small>{{ stats.processing_orders }} in Bearbeitung</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Aktivitäten und Erinnerungen -->
+    <div class="row">
+        <!-- Kürzliche Aktivitäten -->
+        <div class="col-lg-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock mr-2"></i>
+                        Kürzliche Aktivitäten
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activities %}
+                        {% for activity in recent_activities %}
+                            <div class="activity-item">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-3">
+                                        <i class="{{ activity.icon }} text-primary"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ activity.title }}</h6>
+                                        <p class="mb-1 text-muted small">{{ activity.description }}</p>
+                                        <small class="text-muted">{{ activity.date }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Keine kürzlichen Aktivitäten verfügbar
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Wichtige Erinnerungen -->
+        <div class="col-lg-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bell mr-2"></i>
+                        Wichtige Erinnerungen
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if reminders %}
+                        {% for reminder in reminders %}
+                            <div class="reminder-item reminder-{{ reminder.type }}">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-3">
+                                        <i class="{{ reminder.icon }}"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ reminder.title }}</h6>
+                                        <p class="mb-0 small">{{ reminder.description }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Keine offenen Erinnerungen
+                        </p>
+                    {% endif %}
+                </div>
+                {% if reminders %}
+                    <div class="card-footer">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Klicken Sie auf die Module für weitere Details
+                        </small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Hilfe und Support -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-question-circle mr-2"></i>
+                        Hilfe benötigt?
+                    </h5>
+                    <p class="card-text">
+                        Bei Fragen oder Problemen wenden Sie sich an Ihren Administrator oder konsultieren Sie die Dokumentation.
+                    </p>
+                    {% if user.is_staff %}
+                        <a href="/admin" target="_blank" class="btn btn-outline-primary mr-2">
+                            <i class="fas fa-toolbox mr-1"></i>
+                            Django Admin
+                        </a>
+                    {% endif %}
+                    <a href="#" class="btn btn-outline-secondary">
+                        <i class="fas fa-book mr-1"></i>
+                        Dokumentation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Module-Karten klickbar machen und Hover-Effekte
+    $(document).ready(function() {
+        $('.module-card').on('click', function(e) {
+            if (!$(e.target).closest('a').length) {
+                window.location.href = $(this).attr('href');
+            }
+        });
+        
+        // Tooltips für bessere UX
+        $('[data-toggle="tooltip"]').tooltip();
+        
+        // Sanfte Animationen beim Laden
+        $('.dashboard-card').each(function(index) {
+            $(this).css('opacity', '0').delay(index * 100).animate({
+                opacity: 1
+            }, 500);
+        });
+    });
+</script>
+{% endblock extra_js %}

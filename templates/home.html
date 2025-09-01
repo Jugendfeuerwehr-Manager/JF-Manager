@@ -72,6 +72,9 @@
                     
                     <!-- Mobile Quick Actions -->
                     <div class="btn-group quick-actions d-md-none mr-2" role="group">
+                        <a class="btn" href="{% url 'dashboard' %}" title="Dashboard">
+                            <i class="fas fa-home"></i>
+                        </a>
                         {% if 'members.view_member' in perms %}
                             <a class="btn" href="{% url 'members:index' %}" title="Mitglieder">
                                 <i class="fas fa-users"></i>
@@ -112,6 +115,11 @@
 
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav mr-auto">
+                            <li class="nav-item">
+                                <a class="nav-link px-3" href="{% url 'dashboard' %}">
+                                    <i class="fas fa-home mr-2"></i>Dashboard
+                                </a>
+                            </li>
                             {% if 'members.view_member' in perms %}
                                 <li class="nav-item">
                                     <a class="nav-link px-3" href="{% url 'members:index' %}">

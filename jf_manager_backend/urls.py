@@ -20,6 +20,7 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from rest_framework.authtoken import views
 from setup.views import SetupView  # Add this import
+from .views import DashboardView  # Add this import
 
 from .rest_urls import api
 
@@ -52,7 +53,7 @@ auth_patterns = [
 # Utility URLs
 util_patterns = [
     path('imagefit/', include('imagefit.urls')),
-    path('', RedirectView.as_view(url='/inventory/', permanent=False), name='home'),
+    path('', DashboardView.as_view(), name='dashboard'),
 ]
 
 # Health check URLs
