@@ -1,0 +1,126 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}
+{% if object %}
+Lagerort bearbeiten - {{ block.super }}
+{% else %}
+Neuer Lagerort - {{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">
+                {% if object %}
+                Lagerort bearbeiten: {{ object.name }}
+                {% else %}
+                    {% if parent_location %}
+                    Unterlagerort für {{ parent_location.name }} erstellen
+                    {% else %}
+                    Neuen Lagerort erstellen
+                    {% endif %}
+                {% endif %}
+            </h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:location_list' %}">Lagerorte</a></li>
+                {% if object %}
+                <li class="breadcrumb-item"><a href="{% url 'inventory:location_detail' object.pk %}">{{ object.name }}</a></li>
+                <li class="breadcrumb-item active">Bearbeiten</li>
+                {% else %}
+                <li class="breadcrumb-item active">Neu</li>
+                {% endif %}
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-warehouse mr-2"></i>
+                        {% if object %}Lagerort bearbeiten{% else %}Neuer Lagerort{% endif %}
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    {% if parent_location %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Dieser Lagerort wird als Unterlagerort von <strong>{{ parent_location.get_full_path }}</strong> erstellt.
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post" id="location-form">
+                        {% csrf_token %}
+                        {% crispy form %}
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i>
+                                {% if object %}Aktualisieren{% else %}Erstellen{% endif %}
+                            </button>
+                            <a href="{% if object %}{% url 'inventory:location_detail' object.pk %}{% else %}{% url 'inventory:location_list' %}{% endif %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times mr-1"></i>Abbrechen
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle mr-2"></i>Hilfe
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Lagerort-Typen</h6>
+                    <ul class="small text-muted">
+                        <li><strong>Standard-Lagerort:</strong> Normale Lagerorte wie Räume, Regale, Kisten etc.</li>
+                        <li><strong>Mitglied-Lagerort:</strong> Persönlicher Lagerort eines Mitglieds für ausgeliehene Artikel</li>
+                    </ul>
+                    
+                    <h6>Mitglied-Lagerorte</h6>
+                    <p class="small text-muted">
+                        Markieren Sie "Ist Mitglied" und wählen Sie ein Mitglied aus, um einen persönlichen 
+                        Lagerort für dieses Mitglied zu erstellen. Dort werden ausgeliehene Artikel verfolgt.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isMemberCheckbox = document.getElementById('id_is_member');
+    const memberField = document.getElementById('id_member');
+    const memberFormGroup = memberField.closest('.form-group');
+
+    function toggleMemberField() {
+        if (isMemberCheckbox.checked) {
+            memberFormGroup.style.display = 'block';
+            memberField.required = true;
+        } else {
+            memberFormGroup.style.display = 'none';
+            memberField.required = false;
+            memberField.value = '';
+        }
+    }
+
+    // Initial state
+    toggleMemberField();
+
+    // Listen for changes
+    isMemberCheckbox.addEventListener('change', toggleMemberField);
+});
+</script>
+{% endblock %}

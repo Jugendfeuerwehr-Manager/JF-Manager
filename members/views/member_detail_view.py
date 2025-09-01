@@ -8,6 +8,7 @@ from django.views.generic import DetailView, FormView
 from django.views.generic.detail import SingleObjectMixin
 
 from inventory.models import Item
+from inventory.models.stock import Stock
 from members.forms import EventForm
 from members.models import Member, Parent, Event, EventType
 from members.selectors import get_events_list
@@ -79,6 +80,20 @@ class MemberDisplayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         obj = super().get_object()
         context['parents'] = Parent.objects.filter(children=obj.pk)
         context['inventory'] = Item.objects.filter(rented_by=obj.pk)
+        # Bestände am persönlichen Lagerort (falls vorhanden)
+        if obj.storage_location:
+            context['member_location_stocks'] = Stock.objects.filter(location=obj.storage_location, quantity__gt=0).select_related('item', 'item_variant', 'item_variant__parent_item')
+            # Pfad-Hierarchie für Breadcrumb
+            path = []
+            loc = obj.storage_location
+            visited = set()
+            while loc and loc.pk not in visited:
+                path.append(loc)
+                visited.add(loc.pk)
+                loc = loc.parent
+            context['storage_location_path'] = list(reversed(path))
+        else:
+            context['member_location_stocks'] = []
         context['attendances'] = get_services_of_member(member=obj).order_by('-service__start')
         context['n_missed_services'] = get_number_of_services(member=obj, state='F')
         context['n_attended_services'] = get_number_of_services(member=obj, state='A')

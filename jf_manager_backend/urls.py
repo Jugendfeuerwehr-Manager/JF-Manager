@@ -34,9 +34,10 @@ api_patterns = [
 ]
 
 # Application URLs
+# App URLs
 app_patterns = [
-    path('inventory/', include('inventory.urls')),
     path('members/', include('members.urls')),
+    path('inventory/', include('inventory.urls')),
     path('servicebook/', include('servicebook.urls')),
     path('orders/', include('orders.urls')),
 ]
@@ -50,7 +51,7 @@ auth_patterns = [
 # Utility URLs
 util_patterns = [
     path('imagefit/', include('imagefit.urls')),
-    path('', RedirectView.as_view(url='/members/', permanent=False), name='home'),
+    path('', RedirectView.as_view(url='/inventory/', permanent=False), name='home'),
 ]
 
 # Health check URLs

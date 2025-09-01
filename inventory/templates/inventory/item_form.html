@@ -1,0 +1,274 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}{{ object.name }} bearbeiten{% else %}Neuer Artikel{% endif %} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">
+                {% if object %}
+                    Artikel bearbeiten: {{ object.name }}
+                {% else %}
+                    Neuer Artikel
+                {% endif %}
+            </h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:item_list' %}">Artikel</a></li>
+                <li class="breadcrumb-item active">
+                    {% if object %}Bearbeiten{% else %}Neu{% endif %}
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-{% if object %}edit{% else %}plus{% endif %} mr-2"></i>
+                        Artikeldaten
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="item-form">
+                        {% csrf_token %}
+                        
+                        <!-- Statische Felder -->
+                        <div class="form-group">
+                            <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% if form.name.help_text %}
+                                <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+                            {{ form.category }}
+                            {% if form.category.help_text %}
+                                <small class="form-text text-muted">{{ form.category.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.base_unit.id_for_label }}">{{ form.base_unit.label }}</label>
+                            {{ form.base_unit }}
+                            {% if form.base_unit.help_text %}
+                                <small class="form-text text-muted">{{ form.base_unit.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Container für dynamische Felder -->
+                        <div id="dynamic-fields-container">
+                            <h6 class="mt-4 mb-3">Kategoriefelder</h6>
+                            <div id="dynamic-fields">
+                                <!-- Hier werden die dynamischen Felder eingefügt -->
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden Field für Attributes -->
+                        {{ form.attributes }}
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save"></i>
+                                {% if object %}Artikel aktualisieren{% else %}Artikel erstellen{% endif %}
+                            </button>
+                            <a href="{% url 'inventory:item_list' %}" class="btn btn-secondary ml-2">
+                                <i class="fa fa-times"></i> Abbrechen
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Hilfe
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Kategoriefelder</h6>
+                    <p class="small text-muted">
+                        Basierend auf der gewählten Kategorie werden automatisch spezifische Felder angezeigt.
+                        Diese Felder werden durch das Kategorie-Schema definiert.
+                    </p>
+                    
+                    <h6>Grundeinheit</h6>
+                    <p class="small text-muted">
+                        Die Einheit, in der der Artikel gezählt wird (z.B. "Stück", "Liter", "Meter").
+                    </p>
+                    
+                    <h6>Kategorie-Schema</h6>
+                    <p class="small text-muted">
+                        Jede Kategorie kann spezifische Eigenschaften definieren, die für alle Artikel 
+                        dieser Kategorie relevant sind.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryField = document.getElementById('{{ form.category.id_for_label }}');
+    const dynamicFieldsContainer = document.getElementById('dynamic-fields');
+    const attributesField = document.getElementById('{{ form.attributes.id_for_label }}');
+    
+    // Aktuelle Attribute aus dem Hidden Field laden (für Edit-Modus)
+    let currentAttributes = {};
+    try {
+        if (attributesField.value) {
+            currentAttributes = JSON.parse(attributesField.value);
+        }
+    } catch (e) {
+        console.error('Error parsing current attributes:', e);
+        currentAttributes = {};
+    }
+    
+    // Kategoriedaten abrufen
+    async function loadCategorySchema(categoryId) {
+        if (!categoryId) {
+            dynamicFieldsContainer.innerHTML = '<p class="text-muted">Wählen Sie eine Kategorie aus, um spezifische Felder anzuzeigen.</p>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/inventory/api/categories/${categoryId}/schema/`);
+            if (!response.ok) {
+                throw new Error('Failed to load category schema');
+            }
+            
+            const data = await response.json();
+            generateDynamicFields(data.schema);
+        } catch (error) {
+            console.error('Error loading category schema:', error);
+            dynamicFieldsContainer.innerHTML = '<p class="text-danger">Fehler beim Laden der Kategoriefelder.</p>';
+        }
+    }
+    
+    // Dynamische Felder generieren
+    function generateDynamicFields(schema) {
+        dynamicFieldsContainer.innerHTML = '';
+        
+        if (Object.keys(schema).length === 0) {
+            dynamicFieldsContainer.innerHTML = '<p class="text-muted">Diese Kategorie hat keine spezifischen Felder.</p>';
+            return;
+        }
+        
+        Object.keys(schema).forEach(fieldName => {
+            const fieldConfig = schema[fieldName];
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'form-group';
+            
+            const label = document.createElement('label');
+            label.textContent = fieldConfig.label || fieldName;
+            label.setAttribute('for', `dynamic_${fieldName}`);
+            fieldDiv.appendChild(label);
+            
+            let input;
+            
+            switch (fieldConfig.type) {
+                case 'select':
+                    input = document.createElement('select');
+                    input.className = 'form-control';
+                    
+                    // Leere Option hinzufügen
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = '--- Auswählen ---';
+                    input.appendChild(emptyOption);
+                    
+                    // Optionen hinzufügen
+                    if (fieldConfig.options) {
+                        fieldConfig.options.forEach(option => {
+                            const optionElement = document.createElement('option');
+                            optionElement.value = option;
+                            optionElement.textContent = option;
+                            input.appendChild(optionElement);
+                        });
+                    }
+                    break;
+                    
+                case 'number':
+                    input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'form-control';
+                    break;
+                    
+                case 'text':
+                default:
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control';
+                    break;
+            }
+            
+            input.id = `dynamic_${fieldName}`;
+            input.name = `dynamic_${fieldName}`;
+            
+            // Aktuellen Wert setzen
+            if (currentAttributes[fieldName] !== undefined) {
+                input.value = currentAttributes[fieldName];
+            }
+            
+            // Event Listener für Änderungen
+            input.addEventListener('change', updateAttributesField);
+            input.addEventListener('input', updateAttributesField);
+            
+            fieldDiv.appendChild(input);
+            dynamicFieldsContainer.appendChild(fieldDiv);
+        });
+    }
+    
+    // Attributes-Field aktualisieren
+    function updateAttributesField() {
+        const attributes = {};
+        
+        // Alle dynamischen Felder durchgehen
+        const dynamicInputs = dynamicFieldsContainer.querySelectorAll('input, select');
+        dynamicInputs.forEach(input => {
+            const fieldName = input.name.replace('dynamic_', '');
+            if (input.value.trim() !== '') {
+                attributes[fieldName] = input.value;
+            }
+        });
+        
+        attributesField.value = JSON.stringify(attributes);
+    }
+    
+    // Event Listener für Kategorie-Änderung
+    if (categoryField) {
+        categoryField.addEventListener('change', function() {
+            const categoryId = this.value;
+            if (categoryId) {
+                loadCategorySchema(categoryId);
+            } else {
+                dynamicFieldsContainer.innerHTML = '<p class="text-muted">Wählen Sie eine Kategorie aus, um spezifische Felder anzuzeigen.</p>';
+            }
+        });
+        
+        // Initial laden falls bereits eine Kategorie gewählt ist
+        if (categoryField.value) {
+            loadCategorySchema(categoryField.value);
+        }
+    }
+    
+    // Form Submit Handler
+    document.getElementById('item-form').addEventListener('submit', function(e) {
+        updateAttributesField(); // Sicherstellen, dass Attributes aktuell sind
+    });
+});
+</script>
+{% endblock %}

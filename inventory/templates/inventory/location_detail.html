@@ -1,0 +1,270 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ object.name }} - Lagerorte - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">{{ object.name }}</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:location_list' %}">Lagerorte</a></li>
+                <li class="breadcrumb-item active">{{ object.name }}</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-warehouse mr-2"></i>Lagerort-Details
+                    </h5>
+                    <div class="btn-group" role="group">
+                        {% if can_edit %}
+                        <a href="{% url 'inventory:location_edit' object.pk %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit mr-1"></i>Bearbeiten
+                        </a>
+                        {% endif %}
+                        {% if can_delete %}
+                        <a href="{% url 'inventory:location_delete' object.pk %}" class="btn btn-danger btn-sm ml-2">
+                            <i class="fas fa-trash mr-1"></i>Löschen
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Name:</dt>
+                        <dd class="col-sm-9">{{ object.name }}</dd>
+                        
+                        {% if object.code %}
+                        <dt class="col-sm-3">Code:</dt>
+                        <dd class="col-sm-9"><code>{{ object.code }}</code></dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-3">Typ:</dt>
+                        <dd class="col-sm-9">
+                            {% if object.location_type == 'building' %}
+                            <span class="badge badge-primary">Gebäude</span>
+                            {% elif object.location_type == 'room' %}
+                            <span class="badge badge-info">Raum</span>
+                            {% elif object.location_type == 'storage' %}
+                            <span class="badge badge-success">Lager</span>
+                            {% elif object.location_type == 'shelf' %}
+                            <span class="badge badge-warning">Regal</span>
+                            {% elif object.location_type == 'box' %}
+                            <span class="badge badge-secondary">Kiste</span>
+                            {% elif object.location_type == 'vehicle' %}
+                            <span class="badge badge-danger">Fahrzeug</span>
+                            {% else %}
+                            <span class="badge badge-light">{{ object.get_location_type_display }}</span>
+                            {% endif %}
+                        </dd>
+                        
+                        {% if object.parent %}
+                        <dt class="col-sm-3">Übergeordnet:</dt>
+                        <dd class="col-sm-9">
+                            <a href="{% url 'inventory:location_detail' object.parent.pk %}" class="text-decoration-none">
+                                {{ object.parent.name }}
+                            </a>
+                        </dd>
+                        {% endif %}
+                        
+                        {% if object.description %}
+                        <dt class="col-sm-3">Beschreibung:</dt>
+                        <dd class="col-sm-9">{{ object.description }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-3">Unterorte:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge badge-info">{{ child_locations|length }}</span>
+                        </dd>
+                        
+                        <dt class="col-sm-3">Bestände:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge badge-success">{{ stocks|length }}</span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if child_locations %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sitemap mr-2"></i>Untergeordnete Lagerorte
+                        <span class="badge badge-secondary ml-2">{{ child_locations|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for child in child_locations %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-left-info">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-1">
+                                        <a href="{% url 'inventory:location_detail' child.pk %}" class="text-decoration-none">
+                                            {{ child.name }}
+                                        </a>
+                                    </h6>
+                                    <p class="card-text text-muted small mb-1">
+                                        {% if child.location_type == 'building' %}
+                                        <span class="badge badge-primary badge-sm">Gebäude</span>
+                                        {% elif child.location_type == 'room' %}
+                                        <span class="badge badge-info badge-sm">Raum</span>
+                                        {% elif child.location_type == 'storage' %}
+                                        <span class="badge badge-success badge-sm">Lager</span>
+                                        {% elif child.location_type == 'shelf' %}
+                                        <span class="badge badge-warning badge-sm">Regal</span>
+                                        {% elif child.location_type == 'box' %}
+                                        <span class="badge badge-secondary badge-sm">Kiste</span>
+                                        {% elif child.location_type == 'vehicle' %}
+                                        <span class="badge badge-danger badge-sm">Fahrzeug</span>
+                                        {% endif %}
+                                        {% if child.stock_set.count %}
+                                        <span class="badge badge-light badge-sm">{{ child.stock_set.count }} Bestände</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if stocks %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes mr-2"></i>Bestände an diesem Lagerort
+                        <span class="badge badge-secondary ml-2">{{ stocks|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Artikel / Variante</th>
+                                    <th>Kategorie</th>
+                                    <th>Variante</th>
+                                    <th>Bestand</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in stocks %}
+                                <tr>
+                                    <td>
+                                        {% if stock.item %}
+                                            <a href="{% url 'inventory:item_detail' stock.item.pk %}" class="text-decoration-none">{{ stock.item.name }}</a>
+                                            {% if stock.item.identifier1 %}
+                                                <br><small class="text-muted">{{ stock.item.identifier1 }}</small>
+                                            {% endif %}
+                                        {% elif stock.item_variant %}
+                                            <a href="{% url 'inventory:variant_detail' stock.item_variant.pk %}" class="text-decoration-none">{{ stock.item_variant.name }}</a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stock.item and stock.item.category %}
+                                            <a href="{% url 'inventory:category_detail' stock.item.category.pk %}" class="text-decoration-none">
+                                                <span class="badge badge-light">{{ stock.item.category.name }}</span>
+                                            </a>
+                                        {% elif stock.item_variant and stock.item_variant.parent_item.category %}
+                                            <a href="{% url 'inventory:category_detail' stock.item_variant.parent_item.category.pk %}" class="text-decoration-none">
+                                                <span class="badge badge-light">{{ stock.item_variant.parent_item.category.name }}</span>
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stock.item_variant %}
+                                            {% for k,v in stock.item_variant.variant_attributes.items %}
+                                                <span class="badge badge-secondary">{{ k }}: {{ v }}</span>
+                                            {% empty %}
+                                                <span class="text-muted">-</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-success">{{ stock.quantity }}</span>
+                                    </td>
+                                    <td>
+                                        {% if stock.item %}
+                                            <a href="{% url 'inventory:item_detail' stock.item.pk %}" class="btn btn-outline-info btn-sm" title="Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'inventory:transaction_create' %}?item={{ stock.item.pk }}&source={{ object.pk }}" class="btn btn-outline-primary btn-sm" title="Transaktion">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </a>
+                                        {% elif stock.item_variant %}
+                                            <a href="{% url 'inventory:variant_detail' stock.item_variant.pk %}" class="btn btn-outline-info btn-sm" title="Variante">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'inventory:transaction_create' %}?item={{ stock.item_variant.parent_item.pk }}&source={{ object.pk }}" class="btn btn-outline-primary btn-sm" title="Transaktion (Hauptartikel)">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tools mr-2"></i>Aktionen
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'inventory:location_create' %}?parent={{ object.pk }}" class="btn btn-success btn-block mb-2">
+                        <i class="fas fa-plus mr-1"></i>Unterlagerort erstellen
+                    </a>
+                    <a href="{% url 'inventory:transaction_create' %}?target={{ object.pk }}" class="btn btn-primary btn-block mb-2">
+                        <i class="fas fa-plus mr-1"></i>Artikel einlagern
+                    </a>
+                    <a href="{% url 'inventory:location_list' %}" class="btn btn-outline-secondary btn-block">
+                        <i class="fas fa-arrow-left mr-1"></i>Zurück zur Übersicht
+                    </a>
+                </div>
+            </div>
+
+            {% if object.parent %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-level-up-alt mr-2"></i>Übergeordnet
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'inventory:location_detail' object.parent.pk %}" class="btn btn-outline-info btn-block">
+                        <i class="fas fa-warehouse mr-1"></i>{{ object.parent.name }}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

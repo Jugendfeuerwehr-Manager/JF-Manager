@@ -1,0 +1,209 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Inventar Dashboard - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Inventar Dashboard</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item active">Inventar</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Statistik-Karten -->
+    <div class="row">
+        {% if perms.inventory.view_item %}
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">Artikel</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_items|default:0 }}</div>
+                        </div>
+                        <div class="fa fa-box fa-2x text-gray-300"></div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" href="{% url 'inventory:item_list' %}">Alle anzeigen</a>
+                    <div class="small text-white"><i class="fa fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">Kategorien</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_categories|default:0 }}</div>
+                        </div>
+                        <div class="fa fa-tags fa-2x text-gray-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if perms.inventory.view_stock %}
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">Lagerorte</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_locations|default:0 }}</div>
+                        </div>
+                        <div class="fa fa-warehouse fa-2x text-gray-300"></div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" href="{% url 'inventory:stock_list' %}">Bestände anzeigen</a>
+                    <div class="small text-white"><i class="fa fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-warning text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">Gesamtbestand</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_stock_value|default:0 }}</div>
+                        </div>
+                        <div class="fa fa-cubes fa-2x text-gray-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <!-- Aktuelle Aktionen -->
+        <div class="col-lg-8">
+            {% if perms.inventory.view_transaction %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa fa-history mr-1"></i>
+                    Letzte Transaktionen
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Typ</th>
+                                    <th>Artikel</th>
+                                    <th>Menge</th>
+                                    <th>Von/Nach</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in recent_transactions %}
+                                <tr>
+                                    <td>{{ transaction.date|date:"d.m.Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if transaction.transaction_type == 'IN' %}success{% elif transaction.transaction_type == 'OUT' %}warning{% elif transaction.transaction_type == 'LOAN' %}info{% elif transaction.transaction_type == 'RETURN' %}primary{% elif transaction.transaction_type == 'DISCARD' %}danger{% else %}secondary{% endif %}">
+                                            {{ transaction.get_transaction_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ transaction.item.name }}</td>
+                                    <td>{{ transaction.quantity }}</td>
+                                    <td>
+                                        {% if transaction.source %}{{ transaction.source.name }}{% endif %}
+                                        {% if transaction.source and transaction.target %} → {% endif %}
+                                        {% if transaction.target %}{{ transaction.target.name }}{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Keine Transaktionen vorhanden.</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'inventory:transaction_list' %}" class="btn btn-sm btn-outline-primary">Alle Transaktionen anzeigen</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Schnellaktionen & Meine Ausleihen -->
+        <div class="col-lg-4">
+            <!-- Schnellaktionen -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa fa-bolt mr-1"></i>
+                    Schnellaktionen
+                </div>
+                <div class="card-body">
+                    {% if perms.inventory.add_item %}
+                    <a href="{% url 'inventory:item_create' %}" class="btn btn-success btn-block mb-2">
+                        <i class="fa fa-plus"></i> Neuer Artikel
+                    </a>
+                    {% endif %}
+                    {% if perms.inventory.add_transaction %}
+                    <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary btn-block mb-2">
+                        <i class="fa fa-exchange-alt"></i> Neue Transaktion
+                    </a>
+                    {% endif %}
+                    {% if perms.inventory.view_item %}
+                    <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-secondary btn-block mb-2">
+                        <i class="fa fa-list"></i> Alle Artikel
+                    </a>
+                    {% endif %}
+                    {% if perms.inventory.view_stock %}
+                    <a href="{% url 'inventory:stock_list' %}" class="btn btn-outline-info btn-block mb-2">
+                        <i class="fa fa-warehouse"></i> Bestände
+                    </a>
+                    {% endif %}
+                    {% if perms.inventory.view_category %}
+                    <a href="{% url 'inventory:category_list' %}" class="btn btn-outline-warning btn-block mb-2">
+                        <i class="fa fa-tags"></i> Kategorien
+                    </a>
+                    {% endif %}
+                    {% if perms.inventory.view_storagelocation %}
+                    <a href="{% url 'inventory:location_list' %}" class="btn btn-outline-dark btn-block">
+                        <i class="fa fa-map-marker-alt"></i> Lagerorte
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Meine Ausleihen (für Mitglieder) -->
+            {% if my_loans %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa fa-user mr-1"></i>
+                    Meine Ausleihen
+                </div>
+                <div class="card-body">
+                    {% for loan in my_loans %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ loan.item.name }}</span>
+                        <span class="badge badge-info">{{ loan.quantity }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'inventory:member_loans' %}" class="btn btn-sm btn-outline-primary">Alle anzeigen</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Kategorie löschen - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Kategorie löschen</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:category_list' %}">Kategorien</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:category_detail' object.pk %}">{{ object.name }}</a></li>
+                <li class="breadcrumb-item active">Löschen</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 col-md-8 mx-auto">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Kategorie löschen
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Achtung!</strong> Diese Aktion kann nicht rückgängig gemacht werden.
+                    </div>
+
+                    <p>Sind Sie sicher, dass Sie die Kategorie <strong>"{{ object.name }}"</strong> löschen möchten?</p>
+                    
+                    {% if items_count > 0 %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <strong>Löschung nicht möglich!</strong> Diese Kategorie wird noch von {{ items_count }} Artikel(n) verwendet. 
+                        Sie müssen zuerst die Kategorie dieser Artikel ändern oder die Artikel löschen.
+                    </div>
+                    
+                    <h6>Artikel in dieser Kategorie:</h6>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for item in related_items|slice:":10" %}
+                        <li class="list-group-item py-2">
+                            <i class="fas fa-box mr-2"></i>
+                            <a href="{% url 'inventory:item_detail' item.pk %}">{{ item.name }}</a>
+                            {% if item.identifier1 %}- {{ item.identifier1 }}{% endif %}
+                        </li>
+                        {% endfor %}
+                        {% if items_count > 10 %}
+                        <li class="list-group-item py-2 text-muted">
+                            <i class="fas fa-ellipsis-h mr-2"></i>... und {{ items_count|add:"-10" }} weitere Artikel
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'inventory:category_detail' object.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-2"></i>Zurück
+                        </a>
+                        <a href="{% url 'inventory:item_list' %}?category={{ object.pk }}" class="btn btn-info">
+                            <i class="fas fa-edit mr-2"></i>Artikel bearbeiten
+                        </a>
+                    </div>
+                    {% else %}
+                    
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Diese Kategorie enthält keine Artikel und kann sicher gelöscht werden.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inventory:category_detail' object.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-2"></i>Abbrechen
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash mr-2"></i>Kategorie löschen
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

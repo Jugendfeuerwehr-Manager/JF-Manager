@@ -1,0 +1,412 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Kategorie-Browser - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">
+                <i class="fas fa-tags mr-2"></i>
+                Kategorie-Browser
+            </h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item active">Kategorie-Browser</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Kategorie-Sidebar -->
+        <div class="col-lg-4 col-xl-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-search mr-2"></i>
+                        Kategorien
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Kategorie-Suche -->
+                    <div class="form-group">
+                        <input type="text" 
+                               id="category-search" 
+                               class="form-control" 
+                               placeholder="Kategorie suchen...">
+                    </div>
+                    
+                    <!-- Kategorie-Liste -->
+                    <div id="category-list" class="list-group list-group-flush">
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Lade Kategorien...
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'inventory:category_create' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Neue Kategorie
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Artikel-Hauptbereich -->
+        <div class="col-lg-8 col-xl-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0" id="category-title">
+                        <i class="fas fa-cube mr-2"></i>
+                        Artikel
+                    </h5>
+                    <div class="mt-2" id="category-info" style="display: none;">
+                        <small class="text-muted" id="category-description"></small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Filter und Sortierung -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                </div>
+                                <input type="text" 
+                                       id="item-search" 
+                                       class="form-control" 
+                                       placeholder="Artikel suchen...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="sort-by" class="form-control">
+                                <option value="name">Name</option>
+                                <option value="stock">Bestand</option>
+                                <option value="created">Erstellt</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="filter-stock" class="form-control">
+                                <option value="all">Alle Artikel</option>
+                                <option value="in-stock">Verfügbar</option>
+                                <option value="low-stock">Niedrig</option>
+                                <option value="out-of-stock">Nicht verfügbar</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Artikel-Grid -->
+                    <div id="items-container">
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-cube fa-3x mb-3"></i>
+                            <h5>Wählen Sie eine Kategorie</h5>
+                            <p>Wählen Sie eine Kategorie aus der linken Sidebar, um Artikel anzuzeigen.</p>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav id="pagination-container" style="display: none;">
+                        <ul class="pagination justify-content-center" id="pagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Item Details Modal -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemModalTitle">Artikel Details</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="itemModalBody">
+                <!-- Artikel-Details werden hier eingefügt -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+                <a href="#" id="editItemBtn" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Bearbeiten
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class CategoryBrowser {
+    constructor() {
+        this.currentCategory = null;
+        this.currentItems = [];
+        this.currentPage = 1;
+        this.itemsPerPage = 12;
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.loadCategories();
+    }
+
+    setupEventListeners() {
+        // Kategorie-Suche
+        document.getElementById('category-search').addEventListener('input', (e) => {
+            this.searchCategories(e.target.value);
+        });
+
+        // Artikel-Suche
+        document.getElementById('item-search').addEventListener('input', (e) => {
+            this.filterItems();
+        });
+
+        // Sortierung
+        document.getElementById('sort-by').addEventListener('change', (e) => {
+            this.sortItems(e.target.value);
+        });
+
+        // Bestandsfilter
+        document.getElementById('filter-stock').addEventListener('change', (e) => {
+            this.filterItems();
+        });
+    }
+
+    async loadCategories() {
+        try {
+            const response = await fetch('/inventory/api/search/categories/?q=');
+            const data = await response.json();
+            this.renderCategories(data.results);
+        } catch (error) {
+            console.error('Error loading categories:', error);
+            document.getElementById('category-list').innerHTML = 
+                '<div class="text-danger">Fehler beim Laden der Kategorien</div>';
+        }
+    }
+
+    renderCategories(categories) {
+        const container = document.getElementById('category-list');
+        
+        if (categories.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-3">Keine Kategorien gefunden</div>';
+            return;
+        }
+
+        container.innerHTML = categories.map(category => `
+            <a href="#" class="list-group-item list-group-item-action category-item" data-category-id="${category.id}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${category.name}</strong>
+                    </div>
+                    <span class="badge badge-primary badge-pill">${category.item_count}</span>
+                </div>
+            </a>
+        `).join('');
+
+        // Event Listeners für Kategorie-Klicks
+        container.querySelectorAll('.category-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const categoryId = e.currentTarget.dataset.categoryId;
+                this.selectCategory(categoryId);
+            });
+        });
+    }
+
+    async selectCategory(categoryId) {
+        // Aktive Kategorie markieren
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-category-id="${categoryId}"]`).classList.add('active');
+
+        this.currentCategory = categoryId;
+        this.currentPage = 1;
+
+        try {
+            const response = await fetch(`/inventory/api/categories/${categoryId}/items/`);
+            const data = await response.json();
+            
+            document.getElementById('category-title').innerHTML = 
+                `<i class="fas fa-cube mr-2"></i>Artikel - ${data.category.name}`;
+            
+            this.currentItems = data.items;
+            this.renderItems();
+        } catch (error) {
+            console.error('Error loading category items:', error);
+            document.getElementById('items-container').innerHTML = 
+                '<div class="text-danger text-center py-5">Fehler beim Laden der Artikel</div>';
+        }
+    }
+
+    renderItems() {
+        const container = document.getElementById('items-container');
+        
+        if (this.currentItems.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-cube fa-3x mb-3"></i>
+                    <h5>Keine Artikel gefunden</h5>
+                    <p>Diese Kategorie enthält noch keine Artikel.</p>
+                    <a href="/inventory/items/new/?category=${this.currentCategory}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Artikel hinzufügen
+                    </a>
+                </div>
+            `;
+            return;
+        }
+
+        // Grid-Layout für Artikel
+        container.innerHTML = `
+            <div class="row">
+                ${this.currentItems.map(item => this.renderItemCard(item)).join('')}
+            </div>
+        `;
+
+        // Event Listeners für Artikel-Klicks
+        container.querySelectorAll('.item-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const itemId = e.currentTarget.dataset.itemId;
+                this.showItemDetails(itemId);
+            });
+        });
+    }
+
+    renderItemCard(item) {
+        const totalStock = item.total_stock || 0;
+        const stockClass = totalStock > 10 ? 'success' : totalStock > 0 ? 'warning' : 'danger';
+        const stockIcon = totalStock > 0 ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+
+        return `
+            <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+                <div class="card item-card h-100" data-item-id="${item.id}" style="cursor: pointer;">
+                    <div class="card-body">
+                        <h6 class="card-title">${item.name}</h6>
+                        <div class="mb-2">
+                            <span class="badge badge-${stockClass}">
+                                <i class="${stockIcon}"></i> ${totalStock} verfügbar
+                            </span>
+                        </div>
+                        
+                        ${item.locations.length > 0 ? `
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${item.locations.slice(0, 2).map(loc => loc.location_name).join(', ')}
+                                ${item.locations.length > 2 ? `... (+${item.locations.length - 2})` : ''}
+                            </small>
+                        ` : '<small class="text-muted">Keine Lagerorte</small>'}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="btn-group btn-group-sm w-100">
+                            <button class="btn btn-outline-primary flex-fill" onclick="event.stopPropagation(); window.location.href='/inventory/items/${item.id}/'">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary flex-fill" onclick="event.stopPropagation(); window.location.href='/inventory/items/${item.id}/edit/'">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-success flex-fill" onclick="event.stopPropagation(); window.location.href='/inventory/transactions/new/?item=${item.id}'">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    showItemDetails(itemId) {
+        const item = this.currentItems.find(i => i.id == itemId);
+        if (!item) return;
+
+        document.getElementById('itemModalTitle').textContent = item.name;
+        document.getElementById('editItemBtn').href = `/inventory/items/${item.id}/edit/`;
+        
+        const modalBody = document.getElementById('itemModalBody');
+        modalBody.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Bestandsinfo</h6>
+                    <p><strong>Gesamtbestand:</strong> ${item.total_stock} Stück</p>
+                    
+                    ${item.locations.length > 0 ? `
+                        <h6>Lagerorte</h6>
+                        <ul class="list-unstyled">
+                            ${item.locations.map(loc => `
+                                <li>
+                                    <i class="fas fa-map-marker-alt text-muted"></i>
+                                    ${loc.location_name}: ${loc.quantity} Stück
+                                </li>
+                            `).join('')}
+                        </ul>
+                    ` : '<p class="text-muted">Keine Lagerorte zugewiesen</p>'}
+                </div>
+                <div class="col-md-6">
+                    <h6>Aktionen</h6>
+                    <div class="btn-group-vertical w-100">
+                        <a href="/inventory/transactions/new/?item=${item.id}" class="btn btn-success btn-sm mb-2">
+                            <i class="fas fa-plus"></i> Eingang buchen
+                        </a>
+                        <a href="/inventory/transactions/new/?item=${item.id}&type=out" class="btn btn-warning btn-sm mb-2">
+                            <i class="fas fa-minus"></i> Ausgang buchen
+                        </a>
+                        <a href="/inventory/transactions/new/?item=${item.id}&type=move" class="btn btn-info btn-sm">
+                            <i class="fas fa-exchange-alt"></i> Umlagerung
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        $('#itemDetailModal').modal('show');
+    }
+
+    async searchCategories(query) {
+        if (query.length < 2) {
+            this.loadCategories();
+            return;
+        }
+
+        try {
+            const response = await fetch(`/inventory/api/search/categories/?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            this.renderCategories(data.results);
+        } catch (error) {
+            console.error('Error searching categories:', error);
+        }
+    }
+
+    filterItems() {
+        // Implementierung für Artikel-Filterung
+        // Wird basierend auf Suchbegriff und Bestandsfilter ausgeführt
+        this.renderItems();
+    }
+
+    sortItems(sortBy) {
+        switch (sortBy) {
+            case 'name':
+                this.currentItems.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'stock':
+                this.currentItems.sort((a, b) => (b.total_stock || 0) - (a.total_stock || 0));
+                break;
+            case 'created':
+                // Implementierung für Erstellungsdatum-Sortierung
+                break;
+        }
+        this.renderItems();
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    new CategoryBrowser();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,237 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}
+    {% if object %}
+        Kategorie bearbeiten: {{ object.name }}
+    {% else %}
+        Neue Kategorie erstellen
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {% if object %}
+                            <i class="fas fa-edit"></i> Kategorie bearbeiten: {{ object.name }}
+                        {% else %}
+                            <i class="fas fa-plus"></i> Neue Kategorie erstellen
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="category-form">
+                        {% csrf_token %}
+                        
+                        <!-- Grunddaten -->
+                        <div class="form-group">
+                            <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Dynamische Felder Verwaltung -->
+                        <div class="form-group">
+                            <label>Dynamische Attribute</label>
+                            <p class="text-muted">
+                                Definieren Sie Felder, die für Artikel dieser Kategorie verfügbar sein sollen.
+                            </p>
+                            
+                            <div id="dynamic-fields-container">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-cogs"></i> Attribute-Schema
+                                            <button type="button" class="btn btn-sm btn-success float-right" id="add-field-btn">
+                                                <i class="fas fa-plus"></i> Feld hinzufügen
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="fields-list">
+                                            <!-- Dynamic fields will be added here -->
+                                        </div>
+                                        
+                                        <!-- Verstecktes JSON-Feld für das Schema -->
+                                        {{ form.schema.as_hidden }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Speichern
+                            </button>
+                            <a href="{% url 'inventory:category_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Abbrechen
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template für dynamische Felder -->
+<template id="field-template">
+    <div class="field-row mb-3 p-3 border rounded">
+        <div class="row">
+            <div class="col-md-4">
+                <label>Feldname</label>
+                <input type="text" class="form-control field-name" placeholder="z.B. größe, farbe">
+            </div>
+            <div class="col-md-3">
+                <label>Feldtyp</label>
+                <select class="form-control field-type">
+                    <option value="string">Text</option>
+                    <option value="number">Zahl</option>
+                    <option value="boolean">Ja/Nein</option>
+                    <option value="date">Datum</option>
+                    <option value="select">Auswahlliste</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>Pflichtfeld</label>
+                <select class="form-control field-required">
+                    <option value="false">Nein</option>
+                    <option value="true">Ja</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label>&nbsp;</label>
+                <button type="button" class="btn btn-danger btn-block remove-field">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="row mt-2 field-options" style="display: none;">
+            <div class="col-md-12">
+                <label>Auswahloptionen (eine pro Zeile)</label>
+                <textarea class="form-control field-select-options" rows="3" placeholder="Option 1&#10;Option 2&#10;Option 3"></textarea>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fieldsContainer = document.getElementById('fields-list');
+    const addFieldBtn = document.getElementById('add-field-btn');
+    const schemaField = document.getElementById('{{ form.schema.id_for_label }}');
+    const template = document.getElementById('field-template');
+
+    // Load existing schema
+    loadExistingSchema();
+
+    // Add field button
+    addFieldBtn.addEventListener('click', function() {
+        addFieldRow();
+    });
+
+    // Form submission
+    document.getElementById('category-form').addEventListener('submit', function() {
+        updateSchemaField();
+    });
+
+    function addFieldRow(fieldData = null) {
+        const fieldRow = template.content.cloneNode(true);
+        
+        if (fieldData) {
+            fieldRow.querySelector('.field-name').value = fieldData.name || '';
+            fieldRow.querySelector('.field-type').value = fieldData.type || 'string';
+            fieldRow.querySelector('.field-required').value = fieldData.required || 'false';
+            
+            if (fieldData.type === 'select' && fieldData.options) {
+                fieldRow.querySelector('.field-select-options').value = fieldData.options.join('\n');
+                fieldRow.querySelector('.field-options').style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        fieldRow.querySelector('.remove-field').addEventListener('click', function() {
+            this.closest('.field-row').remove();
+            updateSchemaField();
+        });
+
+        fieldRow.querySelector('.field-type').addEventListener('change', function() {
+            const optionsDiv = this.closest('.field-row').querySelector('.field-options');
+            if (this.value === 'select') {
+                optionsDiv.style.display = 'block';
+            } else {
+                optionsDiv.style.display = 'none';
+            }
+        });
+
+        fieldRow.querySelector('.field-name').addEventListener('input', updateSchemaField);
+        fieldRow.querySelector('.field-type').addEventListener('change', updateSchemaField);
+        fieldRow.querySelector('.field-required').addEventListener('change', updateSchemaField);
+        fieldRow.querySelector('.field-select-options').addEventListener('input', updateSchemaField);
+
+        fieldsContainer.appendChild(fieldRow);
+        updateSchemaField();
+    }
+
+    function updateSchemaField() {
+        const fields = {};
+        
+        document.querySelectorAll('.field-row').forEach(row => {
+            const name = row.querySelector('.field-name').value.trim();
+            const type = row.querySelector('.field-type').value;
+            const required = row.querySelector('.field-required').value === 'true';
+            
+            if (name) {
+                fields[name] = {
+                    type: type,
+                    required: required
+                };
+                
+                if (type === 'select') {
+                    const options = row.querySelector('.field-select-options').value
+                        .split('\n')
+                        .map(opt => opt.trim())
+                        .filter(opt => opt);
+                    if (options.length > 0) {
+                        fields[name].options = options;
+                    }
+                }
+            }
+        });
+
+        schemaField.value = Object.keys(fields).length > 0 ? JSON.stringify(fields) : '';
+    }
+
+    function loadExistingSchema() {
+        try {
+            const schema = JSON.parse(schemaField.value || '{}');
+            Object.entries(schema).forEach(([name, config]) => {
+                addFieldRow({
+                    name: name,
+                    type: config.type || 'string',
+                    required: config.required || false,
+                    options: config.options || []
+                });
+            });
+        } catch (e) {
+            console.log('No valid schema found, starting fresh');
+        }
+        
+        // If no fields loaded, add one empty field
+        if (fieldsContainer.children.length === 0) {
+            addFieldRow();
+        }
+    }
+});
+</script>
+{% endblock %}

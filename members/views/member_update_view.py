@@ -2,12 +2,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.shortcuts import redirect
 from django.views.generic import UpdateView
 
-from inventory.forms import FormActionMixin
 from members.forms import MemberForm
 from members.models import Member
 
 
-class MemberUpdateView(LoginRequiredMixin, PermissionRequiredMixin, FormActionMixin, UpdateView):
+class MemberUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Member
     form_class = MemberForm
     template_name = 'member_edit.html'

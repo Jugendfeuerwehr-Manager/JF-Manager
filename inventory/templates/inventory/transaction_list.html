@@ -1,0 +1,213 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Transaktionen - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Transaktionen</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item active">Transaktionen</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fa fa-history mr-2"></i>
+                        Alle Transaktionen
+                    </h5>
+                    {% if can_add_transaction %}
+                    <a href="{% url 'inventory:transaction_create' %}" class="btn btn-success">
+                        <i class="fa fa-plus"></i> Neue Transaktion
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <div class="row mb-3">
+                            <div class="col-md-3 mb-2">
+                                <input id="tx-search" type="text" class="form-control" placeholder="Suchen..." />
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <select id="tx-filter-type" class="form-control">
+                                    <option value="">Typ (alle)</option>
+                                    <option>IN</option><option>OUT</option><option>MOVE</option><option>LOAN</option><option>RETURN</option><option>DISCARD</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <input id="tx-filter-source" type="text" class="form-control" placeholder="Quelle" />
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <input id="tx-filter-target" type="text" class="form-control" placeholder="Ziel" />
+                            </div>
+                        </div>
+                        <table id="transaction-table" class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Typ</th>
+                                    <th>Artikel / Variante</th>
+                                    <th>Menge</th>
+                                    <th>Von</th>
+                                    <th>Nach</th>
+                                    <th>Benutzer</th>
+                                    <th>Notiz</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.date|date:"d.m.Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if transaction.transaction_type == 'IN' %}success{% elif transaction.transaction_type == 'OUT' %}warning{% elif transaction.transaction_type == 'LOAN' %}info{% elif transaction.transaction_type == 'RETURN' %}primary{% elif transaction.transaction_type == 'DISCARD' %}danger{% else %}secondary{% endif %}">
+                                            {{ transaction.get_transaction_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if transaction.item %}
+                                            <a href="{% url 'inventory:item_detail' transaction.item.pk %}" class="text-decoration-none">{{ transaction.item.name }}</a>
+                                        {% elif transaction.item_variant %}
+                                            <a href="{% url 'inventory:variant_detail' transaction.item_variant.pk %}" class="text-decoration-none">{{ transaction.item_variant.name }}</a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-light">{{ transaction.quantity }} {% if transaction.item %}{{ transaction.item.base_unit }}{% elif transaction.item_variant %}{{ transaction.item_variant.parent_item.base_unit }}{% endif %}</span>
+                                    </td>
+                                    <td>
+                                        {% if transaction.source %}
+                                        {{ transaction.source.name }}
+                                        {% if transaction.source.is_member %}
+                                        <i class="fa fa-user text-info" title="Mitglied"></i>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.target %}
+                                        {{ transaction.target.name }}
+                                        {% if transaction.target.is_member %}
+                                        <i class="fa fa-user text-info" title="Mitglied"></i>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.user %}
+                                        {{ transaction.user.get_full_name|default:transaction.user.username }}
+                                        {% else %}
+                                        <span class="text-muted">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.note %}
+                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ transaction.note }}">
+                                            {{ transaction.note }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'inventory:transaction_detail' transaction.pk %}" class="btn btn-outline-info btn-sm" title="Details anzeigen">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                                                </table>
+                                                <script>
+                                                (function(){
+                                                    function initTx(){
+                                                        if (!(window.jQuery && $.fn.dataTable)) return;
+                                                        if ($.fn.dataTable.isDataTable('#transaction-table')) return;
+                                                        var tbl = $('#transaction-table').DataTable({
+                                                                paging: true,
+                                                                pageLength: 30,
+                                                                order: [[0,'desc']],
+                                                                language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json' },
+                                                                columnDefs: [ { targets: 8, orderable: false }, { targets:7, orderable:false }]
+                                                        });
+                                                        $('#tx-search').on('keyup change', function(){ tbl.search(this.value).draw(); });
+                                                        $('#tx-filter-type').on('change', function(){
+                                                                var val = this.value;
+                                                                if (!val) { tbl.column(1).search('').draw(); }
+                                                                else { tbl.column(1).search('^'+val+'$', true, false).draw(); }
+                                                        });
+                                                        $('#tx-filter-source').on('keyup change', function(){ tbl.column(4).search(this.value).draw(); });
+                                                        $('#tx-filter-target').on('keyup change', function(){ tbl.column(5).search(this.value).draw(); });
+                                                    }
+                                                    if (document.readyState !== 'loading') initTx(); else document.addEventListener('DOMContentLoaded', initTx);
+                                                    setTimeout(initTx, 800);
+                                                })();
+                                                </script>
+                                        </div>
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo; Vorherige</a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Nächste &raquo;</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fa fa-history fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-3">Keine Transaktionen vorhanden.</p>
+                        {% if can_add_transaction %}
+                        <a href="{% url 'inventory:transaction_create' %}" class="btn btn-success">
+                            <i class="fa fa-plus"></i> Erste Transaktion erstellen
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table td {
+    vertical-align: middle;
+}
+.text-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}

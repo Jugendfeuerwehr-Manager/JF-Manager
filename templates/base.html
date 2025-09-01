@@ -35,8 +35,11 @@
               integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP"
               crossorigin="anonymous">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 
     {% endblock %}
+    {# Optionale zusätzliche CSS-Blöcke aus Unter-Templates (z.B. item_form_with_variants.html) #}
+    {% block extra_css %}{% endblock extra_css %}
     {% block extra_head %}
         
     {% endblock extra_head %}
@@ -66,17 +69,17 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
                 integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
                 crossorigin="anonymous"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
+    {# list.js entfernt - DataTables übernimmt Suche/Filter #}
 
 
         <!-- <script src="{% static 'vendor/bootstrap/js/bootstrap.min.js' %}"></script>-->
         <script src="{% static 'vendor/metisMenu/metisMenu.min.js' %}"></script>
-        <script src="{% static 'vendor/raphael/raphael.min.js' %}"></script>
         <script src="{% static 'js/sb-admin-2.min.js' %}"></script>
         <script src="{% static 'vendor/chosen_v1.8.7/chosen.jquery.js' %}"></script>
         <script src="{% static 'vendor/quagga/quagga.min.js' %}"></script>
         <script src="{% static 'vendor/toast-plugin/jquery.toast.min.js' %}"></script>
         <!-- Project JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
     {% endblock javascript %}
 </head>
@@ -94,5 +97,6 @@
 {% block pagescripts %}
 
 {% endblock pagescripts %}
+{% block extra_js %}{% endblock extra_js %}
 </body>
 </html>

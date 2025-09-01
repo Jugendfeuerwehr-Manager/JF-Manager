@@ -2,12 +2,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.shortcuts import redirect
 from django.views.generic import UpdateView
 
-from inventory.forms import FormActionMixin
 from members.forms import ParentForm
 from members.models import Parent
 
 
-class ParentUpdateView(LoginRequiredMixin, FormActionMixin, PermissionRequiredMixin, UpdateView):
+class ParentUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Parent
     form_class = ParentForm
     template_name = 'parent_edit.html'

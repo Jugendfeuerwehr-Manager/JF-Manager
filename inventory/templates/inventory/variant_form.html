@@ -1,0 +1,69 @@
+{% extends 'home.html' %}
+{% load i18n %}
+
+{% block title %}Neue Variante - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <h1 class="mt-4">Neue Artikel-Variante</h1>
+  <ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+    {% if parent_item_obj %}
+      <li class="breadcrumb-item"><a href="{{ parent_item_obj.get_absolute_url }}">{{ parent_item_obj.name }}</a></li>
+    {% endif %}
+    <li class="breadcrumb-item active">Neue Variante</li>
+  </ol>
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">Variante anlegen</div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+              <label for="id_parent_item">Hauptartikel</label>
+              {{ form.parent_item }}
+            </div>
+            <div class="form-group">
+              <label for="id_sku">SKU / Artikelnummer</label>
+              {{ form.sku }}
+              <small class="form-text text-muted">Optional – eindeutige Kennung dieser Variante.</small>
+            </div>
+            {% if category_schema %}
+              <h6 class="mt-4">Varianten-Attribute</h6>
+              <div class="row">
+              {% for key, val in category_schema.items %}
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="id_attr_{{ key }}">{{ key|capfirst }}</label>
+                    <input type="text" class="form-control" name="attr_{{ key }}" id="id_attr_{{ key }}">
+                  </div>
+                </div>
+              {% endfor %}
+              </div>
+            {% endif %}
+            <div class="form-group mt-3">
+              <button type="submit" class="btn btn-primary">Speichern</button>
+              {% if parent_item_obj %}
+              <a href="{{ parent_item_obj.get_absolute_url }}" class="btn btn-secondary ml-2">Abbrechen</a>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">Hinweis</div>
+        <div class="card-body small text-muted">
+          <p>Hier können Varianten separat angelegt werden, falls das Inline-Modal nicht genutzt werden soll.</p>
+          <ul>
+            <li>Varianten erben Basis-Attribute vom Hauptartikel.</li>
+            <li>Bestand wird pro Variante geführt.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

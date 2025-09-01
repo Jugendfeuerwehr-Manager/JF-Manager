@@ -1,0 +1,162 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ object.name }} - Kategorien - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">{{ object.name }}</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:category_list' %}">Kategorien</a></li>
+                <li class="breadcrumb-item active">{{ object.name }}</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tag mr-2"></i>Kategoriedetails
+                    </h5>
+                    <div class="btn-group" role="group">
+                        {% if can_edit %}
+                        <a href="{% url 'inventory:category_edit' object.pk %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit mr-1"></i>Bearbeiten
+                        </a>
+                        {% endif %}
+                        {% if can_delete %}
+                        <a href="{% url 'inventory:category_delete' object.pk %}" class="btn btn-danger btn-sm ml-2">
+                            <i class="fas fa-trash mr-1"></i>Löschen
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Name:</dt>
+                        <dd class="col-sm-9">{{ object.name }}</dd>
+                        
+                        {% if object.description %}
+                        <dt class="col-sm-3">Beschreibung:</dt>
+                        <dd class="col-sm-9">{{ object.description }}</dd>
+                        {% endif %}
+                        
+                        {% if object.required_attributes %}
+                        <dt class="col-sm-3">Erforderliche Attribute:</dt>
+                        <dd class="col-sm-9">
+                            {% for attr in object.required_attributes %}
+                            <span class="badge badge-primary mr-1">{{ attr }}</span>
+                            {% endfor %}
+                        </dd>
+                        {% endif %}
+                        
+                        {% if object.default_attributes %}
+                        <dt class="col-sm-3">Standard-Attribute:</dt>
+                        <dd class="col-sm-9">
+                            <pre class="bg-light p-2 rounded">{{ object.default_attributes|pprint }}</pre>
+                        </dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-3">Artikel-Anzahl:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge badge-info">{{ items|length }}</span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if items %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-box mr-2"></i>Artikel in dieser Kategorie
+                        <span class="badge badge-secondary ml-2">{{ items|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Größe</th>
+                                    <th>Status</th>
+                                    <th>Bestand</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'inventory:item_detail' item.pk %}" class="text-decoration-none">
+                                            {{ item.name }}
+                                        </a>
+                                        {% if item.identifier1 %}
+                                        <br><small class="text-muted">{{ item.identifier1 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.size %}
+                                        <span class="badge badge-light">{{ item.size }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.status == 'available' %}
+                                        <span class="badge badge-success">Verfügbar</span>
+                                        {% elif item.status == 'maintenance' %}
+                                        <span class="badge badge-warning">Wartung</span>
+                                        {% elif item.status == 'defect' %}
+                                        <span class="badge badge-danger">Defekt</span>
+                                        {% elif item.status == 'retired' %}
+                                        <span class="badge badge-dark">Ausgemustert</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ item.total_stock }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'inventory:item_detail' item.pk %}" class="btn btn-outline-info btn-sm" title="Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tools mr-2"></i>Aktionen
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'inventory:item_create' %}?category={{ object.pk }}" class="btn btn-success btn-block mb-2">
+                        <i class="fas fa-plus mr-1"></i>Neuen Artikel erstellen
+                    </a>
+                    <a href="{% url 'inventory:category_list' %}" class="btn btn-outline-secondary btn-block">
+                        <i class="fas fa-arrow-left mr-1"></i>Zurück zur Übersicht
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

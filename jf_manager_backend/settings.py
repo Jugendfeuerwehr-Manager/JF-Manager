@@ -151,6 +151,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Verwende BigAutoField als Standard um W042 Warnungen zu beseitigen
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Session Serializer auf JSON setzen (robuster, verhindert Pickle Probleme)
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
+
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'guardian.backends.ObjectPermissionBackend'

@@ -1,0 +1,83 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Artikel löschen - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Artikel löschen</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:item_list' %}">Artikel</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:item_detail' object.pk %}">{{ object.name }}</a></li>
+                <li class="breadcrumb-item active">Löschen</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fa fa-trash mr-2"></i>
+                        Artikel löschen
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fa fa-exclamation-triangle mr-2"></i>
+                        <strong>Achtung!</strong> Diese Aktion kann nicht rückgängig gemacht werden.
+                    </div>
+                    
+                    <p>Möchten Sie den folgenden Artikel wirklich löschen?</p>
+                    
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6><strong>{{ object.name }}</strong></h6>
+                            <p class="mb-1">
+                                <strong>Kategorie:</strong> 
+                                {% if object.category %}{{ object.category.name }}{% else %}-{% endif %}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Gesamtbestand:</strong> {{ object.total_stock }}
+                            </p>
+                            {% if object.attributes %}
+                            <p class="mb-0">
+                                <strong>Attribute:</strong>
+                                {% for key, value in object.attributes.items %}
+                                    {{ key }}: {{ value }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if object.total_stock > 0 %}
+                    <div class="alert alert-warning mt-3" role="alert">
+                        <i class="fa fa-exclamation-circle mr-2"></i>
+                        <strong>Hinweis:</strong> Dieser Artikel hat noch einen Bestand von {{ object.total_stock }}. 
+                        Beim Löschen gehen alle Bestandsdaten verloren.
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inventory:item_detail' object.pk %}" class="btn btn-secondary">
+                                <i class="fa fa-times"></i> Abbrechen
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fa fa-trash"></i> Endgültig löschen
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

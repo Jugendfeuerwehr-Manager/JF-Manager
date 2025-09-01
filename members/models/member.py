@@ -25,6 +25,16 @@ class Member(models.Model):
     canSwimm = models.BooleanField(default=False, verbose_name='Kann schwimmen')
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.ForeignKey(Status, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Lagerplatz - Referenz zu einem Lagerort aus dem Inventory
+    storage_location = models.ForeignKey(
+        'inventory.StorageLocation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Lagerplatz',
+        related_name='assigned_members'
+    )
 
     def get_absolute_url(self):
         """

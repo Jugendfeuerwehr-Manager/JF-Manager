@@ -1,0 +1,438 @@
+{% extends 'home.html' %}
+{% load static %}
+
+{% block title %}Neue Transaktion - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+.transaction-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px 15px 0 0;
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+}
+
+.transaction-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.field-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #007bff;
+}
+
+.select2-container--bootstrap-5 .select2-selection {
+    min-height: calc(2.25rem + 2px);
+    border-radius: 0.375rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single {
+    padding: 0.375rem 0.75rem;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.btn-smart {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-smart:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    color: white;
+}
+
+.text-muted .form-floating input,
+.text-muted .form-floating select {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.text-muted small {
+    opacity: 0.5;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main Form -->
+        <div class="col-lg-8">
+            <div class="transaction-card">
+                <div class="transaction-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-exchange-alt me-2"></i>
+                        Neue Transaktion
+                    </h2>
+                </div>
+
+                <form method="post" id="transaction-form" class="p-4">
+                    {% csrf_token %}
+                    
+                    <!-- Transaction Type -->
+                    <div class="field-section">
+                        <h6><i class="fas fa-tag me-2"></i>Transaktionstyp</h6>
+                        <div class="form-floating">
+                            {{ form.transaction_type }}
+                            <label for="{{ form.transaction_type.id_for_label }}">{{ form.transaction_type.label }}</label>
+                        </div>
+                        {% if form.transaction_type.errors %}
+                            <div class="text-danger small mt-1">{{ form.transaction_type.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Item Selection -->
+                    <div class="field-section">
+                        <h6><i class="fas fa-box me-2"></i>Artikel auswählen</h6>
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Wichtig:</strong> Wählen Sie <strong>entweder</strong> einen Artikel <strong>oder</strong> eine Artikel-Variante aus, nicht beide gleichzeitig.
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.item }}
+                                    <label for="{{ form.item.id_for_label }}">
+                                        <i class="fas fa-box me-1"></i>Artikel (Hauptkategorie)
+                                    </label>
+                                </div>
+                                {% if form.item.errors %}
+                                    <div class="text-danger small">{{ form.item.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Wählen Sie hier einen allgemeinen Artikel aus</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.item_variant }}
+                                    <label for="{{ form.item_variant.id_for_label }}">
+                                        <i class="fas fa-tags me-1"></i>Artikel-Variante (spezifisch)
+                                    </label>
+                                </div>
+                                {% if form.item_variant.errors %}
+                                    <div class="text-danger small">{{ form.item_variant.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Oder wählen Sie eine spezifische Variante</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-floating">
+                            {{ form.quantity }}
+                            <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+                        </div>
+                        {% if form.quantity.errors %}
+                            <div class="text-danger small mt-1">{{ form.quantity.errors }}</div>
+                        {% endif %}
+                        
+                        <!-- Live Stock Display -->
+                        <div id="stock-info" class="mt-2 p-2 bg-light rounded d-none">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span id="stock-text">Bestand wird geprüft...</span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Source Location -->
+                    <div class="field-section">
+                        <h6><i class="fas fa-warehouse me-2"></i>Quellort</h6>
+                        <div class="form-floating">
+                            {{ form.source }}
+                            <label for="{{ form.source.id_for_label }}">{{ form.source.label }}</label>
+                        </div>
+                        {% if form.source.errors %}
+                            <div class="text-danger small mt-1">{{ form.source.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Destination Location -->
+                    <div class="field-section">
+                        <h6><i class="fas fa-map-marker-alt me-2"></i>Zielort</h6>
+                        <div class="form-floating">
+                            {{ form.target }}
+                            <label for="{{ form.target.id_for_label }}">{{ form.target.label }}</label>
+                        </div>
+                        {% if form.target.errors %}
+                            <div class="text-danger small mt-1">{{ form.target.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="field-section">
+                        <h6><i class="fas fa-sticky-note me-2"></i>Notizen</h6>
+                        <div class="form-floating">
+                            {{ form.note }}
+                            <label for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+                        </div>
+                        {% if form.note.errors %}
+                            <div class="text-danger small mt-1">{{ form.note.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div>
+                            <!-- Optional: Add draft save button later -->
+                        </div>
+                        <div>
+                            <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-times me-2"></i>Abbrechen
+                            </a>
+                            <button type="submit" class="btn btn-smart">
+                                <i class="fas fa-check me-2"></i>Transaktion erstellen
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Display form errors -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger mt-3">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="col-lg-4">
+            <!-- Information Panel -->
+            <div class="transaction-card p-4">
+                <h6><i class="fas fa-info-circle me-2"></i>Hilfe & Tipps</h6>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        <strong>Tipp:</strong> Alle Felder werden über Select2 durchsuchbar
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-keyboard text-info me-2"></i>
+                        <strong>Shortcut:</strong> Tab für nächstes Feld
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <strong>Validierung:</strong> Erforderliche Felder werden geprüft
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize Select2 on all select fields
+    $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        allowClear: true
+    });
+
+    // Initialize item select with AJAX search
+    $('#id_item').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Artikel suchen...',
+        allowClear: true,
+        width: '100%',
+        ajax: {
+            url: '/inventory/api/search/items/',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term,
+                    page: params.page
+                };
+            },
+            processResults: function(data) {
+                return {
+                    results: data.results.map(function(item) {
+                        return {
+                            id: item.id,
+                            text: item.category ? `${item.category} - ${item.name}` : item.name
+                        };
+                    }),
+                    pagination: {
+                        more: data.has_more
+                    }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 2,
+        language: {
+            inputTooShort: function() {
+                return 'Bitte mindestens 2 Zeichen eingeben';
+            },
+            searching: function() {
+                return 'Suche...';
+            },
+            noResults: function() {
+                return 'Keine Artikel gefunden';
+            }
+        }
+    });
+
+    // Initialize location selects with AJAX search
+    $('#id_source, #id_target').each(function() {
+        $(this).select2({
+            theme: 'bootstrap-5',
+            placeholder: $(this).attr('id') === 'id_source' ? 'Quellort suchen...' : 'Zielort suchen...',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: '/inventory/api/search/locations/',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term,
+                        page: params.page
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.results.map(function(location) {
+                            return {
+                                id: location.id,
+                                text: location.name
+                            };
+                        }),
+                        pagination: {
+                            more: data.has_more
+                        }
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: function() {
+                    return 'Bitte mindestens 2 Zeichen eingeben';
+                },
+                searching: function() {
+                    return 'Suche...';
+                },
+                noResults: function() {
+                    return 'Keine Lagerorte gefunden';
+                }
+            }
+        });
+    });
+
+    // Form submission handler
+    $('form').submit(function() {
+        $('.btn-smart').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Speichere...');
+    });
+
+    // Item/Variant mutual exclusion logic
+    $('#id_item').on('change', function() {
+        if ($(this).val()) {
+            // Clear variant when item is selected
+            $('#id_item_variant').val('').trigger('change');
+            // Visual feedback
+            $('#id_item_variant').closest('.col-md-6').addClass('text-muted');
+            $('#id_item').closest('.col-md-6').removeClass('text-muted');
+        } else {
+            // Re-enable variant selection
+            $('#id_item_variant').closest('.col-md-6').removeClass('text-muted');
+        }
+    });
+
+    $('#id_item_variant').on('change', function() {
+        if ($(this).val()) {
+            // Clear item when variant is selected
+            $('#id_item').val('').trigger('change');
+            // Visual feedback
+            $('#id_item').closest('.col-md-6').addClass('text-muted');
+            $('#id_item_variant').closest('.col-md-6').removeClass('text-muted');
+        } else {
+            // Re-enable item selection
+            $('#id_item').closest('.col-md-6').removeClass('text-muted');
+        }
+        // Check stock when item/variant changes
+        checkStockAvailability();
+    });
+
+    // Stock availability checking
+    function checkStockAvailability() {
+        const transactionType = $('#id_transaction_type').val();
+        const itemId = $('#id_item').val();
+        const variantId = $('#id_item_variant').val();
+        const sourceId = $('#id_source').val();
+        const quantity = parseInt($('#id_quantity').val()) || 0;
+        
+        // Only check stock for outbound transactions
+        if (!['OUT', 'DISCARD', 'LOAN', 'MOVE'].includes(transactionType)) {
+            $('#stock-info').addClass('d-none');
+            return;
+        }
+        
+        // Need item/variant and source to check stock
+        if ((!itemId && !variantId) || !sourceId) {
+            $('#stock-info').addClass('d-none');
+            return;
+        }
+        
+        // Make AJAX request to check stock
+        const params = {
+            location_id: sourceId
+        };
+        
+        if (itemId) {
+            params.item_id = itemId;
+        } else if (variantId) {
+            params.variant_id = variantId;
+        }
+        
+        $.get('/inventory/ajax/stock-info/', params)
+            .done(function(data) {
+                const stockInfo = $('#stock-info');
+                const stockText = $('#stock-text');
+                
+                stockInfo.removeClass('d-none bg-success bg-warning bg-danger');
+                
+                if (data.quantity === 0) {
+                    stockInfo.addClass('bg-danger text-white');
+                    stockText.html(`<i class="fas fa-exclamation-triangle me-1"></i>Kein Bestand verfügbar von "${data.item_name}" am Lagerort "${data.location_name}"`);
+                } else if (quantity > data.quantity) {
+                    stockInfo.addClass('bg-warning text-dark');
+                    stockText.html(`<i class="fas fa-exclamation-triangle me-1"></i>Nicht genügend Bestand! Verfügbar: ${data.quantity}, Benötigt: ${quantity}`);
+                } else {
+                    stockInfo.addClass('bg-success text-white');
+                    stockText.html(`<i class="fas fa-check me-1"></i>Bestand verfügbar: ${data.quantity} von "${data.item_name}"`);
+                }
+            })
+            .fail(function() {
+                $('#stock-info').addClass('d-none');
+            });
+    }
+    
+    // Trigger stock check when relevant fields change
+    $('#id_transaction_type, #id_item, #id_item_variant, #id_source, #id_quantity').on('change input', function() {
+        checkStockAvailability();
+    });
+});
+</script>
+{% endblock %}

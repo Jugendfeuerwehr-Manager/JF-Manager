@@ -2,12 +2,11 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.shortcuts import redirect
 from django.views.generic import CreateView
 
-from inventory.forms import FormActionMixin
 from members.forms import MemberForm
 from members.models import Member
 
 
-class MemberCreateView(FormActionMixin, PermissionRequiredMixin, CreateView):
+class MemberCreateView( PermissionRequiredMixin, CreateView):
     model = Member
     form_class = MemberForm
     template_name = 'member_edit.html'

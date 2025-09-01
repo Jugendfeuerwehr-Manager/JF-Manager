@@ -18,6 +18,10 @@ class Parent(models.Model):
     def __str__(self):
         return self.name + " " + self.lastname
 
+    def get_full_name(self):
+        """Gibt den vollständigen Namen des Elternteils zurück"""
+        return f"{self.name} {self.lastname}".strip()
+
     def get_whatsapp_number(self):
         number = self.mobile.replace(' ','').replace('+','')
         return number

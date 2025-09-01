@@ -1,3 +1,4 @@
+
 """
 Notification logging service for tracking email activities.
 

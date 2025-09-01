@@ -1,0 +1,235 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Artikel - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Artikel</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item active">Artikel</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fa fa-box mr-2"></i>
+                        Alle Artikel
+                    </h5>
+                    {% if can_add_item %}
+                    <a href="{% url 'inventory:item_create' %}" class="btn btn-success">
+                        <i class="fa fa-plus"></i> Neuer Artikel
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle="collapse" data-target="#item-filters" aria-expanded="false">
+                            <i class="fa fa-filter"></i> Filter
+                        </button>
+                    </div>
+                    <div id="item-filters" class="collapse mb-3">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="item-table-search" class="small mb-1">Suche</label>
+                                <input id="item-table-search" type="text" class="form-control form-control-sm" placeholder="Suchen..." />
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="item-category-filter" class="small mb-1">Kategorie</label>
+                                <select id="item-category-filter" class="form-control form-control-sm">
+                                    <option value="">Alle</option>
+                                    {% for cat in filter_categories %}
+                                    <option value="{{ cat.name }}">{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="item-location-filter" class="small mb-1">Lagerort</label>
+                                <select id="item-location-filter" class="form-control form-control-sm">
+                                    <option value="">Alle</option>
+                                    {% for loc in filter_locations %}
+                                    <option value="{{ loc.name }}">{{ loc.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {% if items %}
+                    <div class="table-responsive">
+                        <table id="item-table" class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th data-orderable="true">Name</th>
+                                    <th data-orderable="true">Kategorie</th>
+                                    <th data-orderable="true">Einheit</th>
+                                    <th data-orderable="true">Bestand</th>
+                                    <th data-orderable="false" style="display:none;">Lagerorte</th>
+                                    <th data-orderable="false">Attribute</th>
+                                    <th data-orderable="false">Varianten</th>
+                                    <th data-orderable="false">Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'inventory:item_detail' item.pk %}" class="text-decoration-none">
+                                            <strong>{{ item.name }}</strong>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if item.category %}
+                                        <span class="badge badge-secondary">{{ item.category.name }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.base_unit }}</td>
+                                    <td>
+                                        {% if item.total_stock > 0 %}
+                                        <span class="badge badge-success">{{ item.total_stock }}</span>
+                                        {% else %}
+                                        <span class="badge badge-danger">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.attributes %}
+                                        <small class="text-muted">
+                                            {% for key, value in item.attributes.items %}
+                                                {{ key }}: {{ value }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </small>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.is_variant_parent %}
+                                            <div class="small">
+                                                {% for v in item.variants.all %}
+                                                    <div>
+                                                        <strong>{{ v.sku|default:"#" }}</strong>
+                                                        {% if v.variant_attributes %}
+                                                            <span class="text-muted">(
+                                                            {% for k,val in v.variant_attributes.items %}
+                                                                {{ k }}: {{ val }}{% if not forloop.last %}, {% endif %}
+                                                            {% endfor %}
+                                                            )</span>
+                                                        {% endif %}
+                                                        <span class="badge badge-light">{{ v.total_stock }}</span>
+                                                    </div>
+                                                {% empty %}
+                                                    <span class="text-muted">(keine Varianten)</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="display:none;">
+                                        {% for s in item.stock_set.all %}{{ s.location.name }}{% if not forloop.last %}|{% endif %}{% endfor %}
+                                        {% for vs in item.itemvariant_set.all %}{% for st in vs.stock_set.all %}|{{ st.location.name }}{% endfor %}{% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{% url 'inventory:item_detail' item.pk %}" class="btn btn-outline-info" title="Anzeigen">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            {% if perms.inventory.change_item %}
+                                            <a href="{% url 'inventory:item_edit' item.pk %}" class="btn btn-outline-warning" title="Bearbeiten">
+                                                <i class="fa fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                            {% if perms.inventory.delete_item %}
+                                            <a href="{% url 'inventory:item_delete' item.pk %}" class="btn btn-outline-danger" title="Löschen">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                                                <script>
+                                                (function(){
+                                                    function initItemTable(){
+                                                        if (!(window.jQuery && $.fn.dataTable)) { return; }
+                                                        if ($.fn.dataTable.isDataTable('#item-table')) { return; }
+                                                        var table = $('#item-table').DataTable({
+                                                            paging: true,
+                                                            pageLength: 25,
+                                                            order: [[0,'asc']],
+                                                            columnDefs: [
+                                                                { targets: 4, visible: false, searchable: true } // versteckte Lagerorte-Spalte
+                                                            ],
+                                                            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json' }
+                                                        });
+                                                        $('#item-table-search').on('keyup change', function(){ table.search(this.value).draw(); });
+                                                        $('#item-category-filter').on('change', function(){
+                                                            var val = this.value;
+                                                            table.column(1).search(val ? '^'+$.fn.dataTable.util.escapeRegex(val)+'$' : '', true, false).draw();
+                                                        });
+                                                        $('#item-location-filter').on('change', function(){
+                                                            var val = this.value;
+                                                            if(!val){ table.column(4).search('').draw(); return; }
+                                                            var regex = '(^|\\|)'+$.fn.dataTable.util.escapeRegex(val)+'(\\|$)';
+                                                            table.column(4).search(regex, true, false).draw();
+                                                        });
+                                                    }
+                                                    if (document.readyState !== 'loading') { initItemTable(); }
+                                                    else document.addEventListener('DOMContentLoaded', initItemTable);
+                                                    setTimeout(initItemTable, 800);
+                                                })();
+                                                </script>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo; Vorherige</a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Nächste &raquo;</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-3">Keine Artikel vorhanden.</p>
+                        {% if can_add_item %}
+                        <a href="{% url 'inventory:item_create' %}" class="btn btn-success">
+                            <i class="fa fa-plus"></i> Ersten Artikel erstellen
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

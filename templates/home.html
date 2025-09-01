@@ -83,7 +83,7 @@
                             </a>
                         {% endif %}
                         {% if 'inventory.view_item' in perms %}
-                            <a class="btn" href="{% url 'inventory:items' %}" title="Kleiderkammer">
+                            <a class="btn" href="{% url 'inventory:dashboard' %}" title="Lager">
                                 <i class="fas fa-tshirt"></i>
                             </a>
                         {% endif %}
@@ -123,8 +123,8 @@
                             {% endif %}
                             {% if 'inventory.view_item' in perms %}
                                 <li class="nav-item">
-                                    <a class="nav-link px-3" href="{% url 'inventory:items' %}">
-                                        <i class="fas fa-tshirt mr-2"></i>Kleiderkammer
+                                    <a class="nav-link px-3" href="{% url 'inventory:dashboard' %}">
+                                        <i class="fas fa-tshirt mr-2"></i>Lager
                                     </a>
                                 </li>
                             {% endif %}

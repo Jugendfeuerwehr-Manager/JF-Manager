@@ -1,0 +1,191 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Lagerorte - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Lagerorte</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item active">Lagerorte</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-warehouse mr-2"></i>Lagerorte
+                        <span class="badge badge-secondary ml-2">{{ locations|length }}</span>
+                    </h5>
+                    {% if can_add_location %}
+                    <a href="{% url 'inventory:location_create' %}" class="btn btn-success">
+                        <i class="fas fa-plus mr-1"></i>Neuer Lagerort
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-5">
+                            <input id="location-search" type="text" class="form-control" placeholder="Lagerorte durchsuchen (Name, Mitglied) ..." />
+                        </div>
+                        <div class="col-md-3 small text-muted d-flex align-items-center">
+                            Live-Suche filtert Zeilen; Hierarchieeinrückung bleibt erhalten.
+                        </div>
+                    </div>
+                    {% if locations %}
+                        <div class="table-responsive">
+                            <table id="location-table" class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Typ</th>
+                                        <th>Übergeordnet</th>
+                                        <th>Unterorte</th>
+                                        <th>Bestände</th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for location in locations %}
+                                    <tr>
+                                        <td>
+                                            {# Hierarchie-Einrückung: Ebene * 16px (berechnet via CSS custom attr fallback) #}
+                                            <div class="location-indent level-{{ location.get_level }}">
+                                                {% if location.get_level > 0 %}
+                                                    <span class="text-muted">{{ "└─ "|slice:":2" }}</span>
+                                                {% endif %}
+                                                <a href="{% url 'inventory:location_detail' location.pk %}" class="text-decoration-none">
+                                                    <strong>{{ location.name }}</strong>
+                                                </a>
+                                                {% if location.is_member and location.member %}
+                                                <br><small class="text-info">
+                                                    <i class="fas fa-user mr-1"></i>{{ location.member.name }} {{ location.member.lastname }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if location.is_member %}
+                                            <span class="badge badge-info">
+                                                <i class="fas fa-user mr-1"></i>Mitglied
+                                            </span>
+                                            {% else %}
+                                            <span class="badge badge-primary">
+                                                <i class="fas fa-warehouse mr-1"></i>Standard
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if location.parent %}
+                                            <a href="{% url 'inventory:location_detail' location.parent.pk %}" class="text-decoration-none">
+                                                {{ location.parent.name }}
+                                            </a>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if location.children.count %}
+                                            <span class="badge badge-secondary">{{ location.children.count }}</span>
+                                            <a href="{% url 'inventory:location_create' %}?parent={{ location.pk }}" 
+                                               class="btn btn-sm btn-outline-success ml-1" 
+                                               title="Unterlagerort hinzufügen">
+                                                <i class="fas fa-plus"></i>
+                                            </a>
+                                            {% else %}
+                                            <a href="{% url 'inventory:location_create' %}?parent={{ location.pk }}" 
+                                               class="btn btn-sm btn-outline-success" 
+                                               title="Unterlagerort hinzufügen">
+                                                <i class="fas fa-plus mr-1"></i>Hinzufügen
+                                            </a>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if location.stock_set.count %}
+                                            <span class="badge badge-success">{{ location.stock_set.count }}</span>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'inventory:location_detail' location.pk %}" class="btn btn-outline-info" title="Anzeigen">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if perms.inventory.change_storagelocation %}
+                                                <a href="{% url 'inventory:location_edit' location.pk %}" class="btn btn-outline-warning" title="Bearbeiten">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% endif %}
+                                                {% if perms.inventory.delete_storagelocation %}
+                                                <a href="{% url 'inventory:location_delete' location.pk %}" class="btn btn-outline-danger" title="Löschen">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function(){
+                            var input = document.getElementById('location-search');
+                            if (!input) return;
+                            input.addEventListener('keyup', function(){
+                                var term = this.value.toLowerCase();
+                                var rows = document.querySelectorAll('#location-table tbody tr');
+                                rows.forEach(function(r){
+                                    if (!term) { r.classList.remove('d-none'); return; }
+                                    var txt = r.innerText.toLowerCase();
+                                    if (txt.indexOf(term) !== -1) {
+                                        r.classList.remove('d-none');
+                                    } else {
+                                        r.classList.add('d-none');
+                                    }
+                                });
+                            });
+                        });
+                        </script>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-warehouse fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Keine Lagerorte vorhanden</h5>
+                            <p class="text-muted">Erstellen Sie Ihren ersten Lagerort, um Artikel zu organisieren.</p>
+                            {% if can_add_location %}
+                            <a href="{% url 'inventory:location_create' %}" class="btn btn-success">
+                                <i class="fas fa-plus mr-1"></i>Ersten Lagerort erstellen
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<style>
+/* Hierarchie-Einrückung für Lagerorte */
+.location-indent { position: relative; }
+.location-indent.level-0 { margin-left: 0; }
+.location-indent.level-1 { margin-left: 1rem; }
+.location-indent.level-2 { margin-left: 2rem; }
+.location-indent.level-3 { margin-left: 3rem; }
+.location-indent.level-4 { margin-left: 4rem; }
+.location-indent.level-5 { margin-left: 5rem; }
+.location-indent.level-6 { margin-left: 6rem; }
+.location-indent.level-7 { margin-left: 7rem; }
+.location-indent.level-8 { margin-left: 8rem; }
+</style>

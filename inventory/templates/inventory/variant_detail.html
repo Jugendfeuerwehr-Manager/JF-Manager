@@ -1,0 +1,212 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}{{ variant.name }} - {{ variant.parent_item.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'inventory:item_list' %}">Artikel</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'inventory:item_detail' variant.parent_item.pk %}">{{ variant.parent_item.name }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ variant.name }}</li>
+                </ol>
+            </nav>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-box-open me-2"></i>
+                    {{ variant.name }}
+                    <small class="text-muted">{{ variant.parent_item.name }}</small>
+                </h1>
+                
+                <div class="btn-group">
+                    {% if can_edit_item %}
+                        <a href="{% url 'inventory:item_edit' variant.parent_item.pk %}" class="btn btn-primary">
+                            <i class="fas fa-edit me-1"></i>Hauptartikel bearbeiten
+                        </a>
+                    {% endif %}
+                    {% if can_add_transaction %}
+                        <a href="{% url 'inventory:transaction_create' %}?item_variant={{ variant.pk }}" class="btn btn-success">
+                            <i class="fas fa-exchange-alt me-1"></i>Transaktion
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Artikel-Info -->
+                <div class="col-lg-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Varianten-Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">Grundartikel:</dt>
+                                <dd class="col-sm-8">
+                                    <a href="{% url 'inventory:item_detail' variant.parent_item.pk %}">
+                                        {{ variant.parent_item.name }}
+                                    </a>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Kategorie:</dt>
+                                <dd class="col-sm-8">{{ variant.parent_item.category.name }}</dd>
+                                
+                                <dt class="col-sm-4">Einheit:</dt>
+                                <dd class="col-sm-8">{{ variant.parent_item.base_unit }}</dd>
+                            </dl>
+                            
+                            {% if variant.variant_attributes %}
+                                <h6 class="mt-3">Varianten-Eigenschaften:</h6>
+                                <div class="row">
+                                    {% for key, value in variant.variant_attributes.items %}
+                                        <div class="col-sm-6">
+                                            <span class="badge bg-secondary me-1">{{ key }}:</span>
+                                            <span class="fw-bold">{{ value }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bestand -->
+                <div class="col-lg-6">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-warehouse me-2"></i>Bestand
+                            </h5>
+                            <span class="badge bg-info fs-6">{{ total_stock }} {{ variant.parent_item.base_unit }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% if stocks %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Lager</th>
+                                                <th class="text-end">Menge</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for stock in stocks %}
+                                                <tr>
+                                                    <td>{{ stock.location.name }}</td>
+                                                    <td class="text-end">
+                                                        <span class="fw-bold {% if stock.quantity < 0 %}text-danger{% elif stock.quantity == 0 %}text-warning{% else %}text-success{% endif %}">
+                                                            {{ stock.quantity }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <th>Gesamt</th>
+                                                <th class="text-end">
+                                                    <span class="fw-bold {% if total_stock < 0 %}text-danger{% elif total_stock == 0 %}text-warning{% else %}text-success{% endif %}">
+                                                        {{ total_stock }} {{ variant.parent_item.base_unit }}
+                                                    </span>
+                                                </th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p>Kein Bestand vorhanden</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaktionen -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-exchange-alt me-2"></i>Letzte Transaktionen
+                            </h5>
+                            {% if can_add_transaction %}
+                                <a href="{% url 'inventory:transaction_create' %}?item_variant={{ variant.pk }}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-plus me-1"></i>Neue Transaktion
+                                </a>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if recent_transactions %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Datum</th>
+                                                <th>Typ</th>
+                                                <th>Von</th>
+                                                <th>Nach</th>
+                                                <th class="text-end">Menge</th>
+                                                <th>Benutzer</th>
+                                                <th>Kommentar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for transaction in recent_transactions %}
+                                                <tr>
+                                                    <td>{{ transaction.date|date:"d.m.Y H:i" }}</td>
+                                                    <td>
+                                                        <span class="badge bg-{% if transaction.transaction_type == 'IN' %}success{% elif transaction.transaction_type == 'OUT' %}danger{% else %}primary{% endif %}">
+                                                            {{ transaction.get_transaction_type_display }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ transaction.source|default:"-" }}</td>
+                                                    <td>{{ transaction.target|default:"-" }}</td>
+                                                    <td class="text-end">
+                                                        <span class="fw-bold {% if transaction.quantity < 0 %}text-danger{% else %}text-success{% endif %}">
+                                                            {{ transaction.quantity|floatformat:2 }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ transaction.user.get_full_name|default:transaction.user.username }}</td>
+                                                    <td>{{ transaction.comment|default:"-" }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="text-center mt-3">
+                                    <a href="{% url 'inventory:transaction_list' %}?item_variant={{ variant.pk }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-list me-1"></i>Alle Transaktionen anzeigen
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p>Keine Transaktionen vorhanden</p>
+                                    {% if can_add_transaction %}
+                                        <a href="{% url 'inventory:transaction_create' %}?item_variant={{ variant.pk }}" class="btn btn-primary">
+                                            <i class="fas fa-plus me-1"></i>Erste Transaktion erstellen
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

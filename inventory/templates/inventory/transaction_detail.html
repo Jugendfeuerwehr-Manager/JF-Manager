@@ -1,0 +1,202 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Transaktion #{{ object.pk }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Transaktion #{{ object.pk }}</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:transaction_list' %}">Transaktionen</a></li>
+                <li class="breadcrumb-item active">#{{ object.pk }}</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Transaktions-Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Grunddaten</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Datum:</strong></td>
+                                    <td>{{ object.date|date:"d.m.Y H:i:s" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Typ:</strong></td>
+                                    <td>
+                                        <span class="badge badge-lg badge-{% if object.transaction_type == 'IN' %}success{% elif object.transaction_type == 'OUT' %}warning{% elif object.transaction_type == 'LOAN' %}info{% elif object.transaction_type == 'RETURN' %}primary{% elif object.transaction_type == 'DISCARD' %}danger{% else %}secondary{% endif %}">
+                                            {{ object.get_transaction_type_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Artikel:</strong></td>
+                                    <td>
+                                        {% if object.item %}
+                                            <a href="{% url 'inventory:item_detail' object.item.pk %}" class="text-decoration-none">{{ object.item.name }}</a>
+                                        {% elif object.item_variant %}
+                                            <a href="{% url 'inventory:variant_detail' object.item_variant.pk %}" class="text-decoration-none">{{ object.item_variant.name }}</a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Menge:</strong></td>
+                                    <td>
+                                        <span class="badge badge-light">{{ object.quantity }} {% if object.item %}{{ object.item.base_unit }}{% elif object.item_variant %}{{ object.item_variant.parent_item.base_unit }}{% endif %}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Bewegung</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Von (Quelle):</strong></td>
+                                    <td>
+                                        {% if object.source %}
+                                        {{ object.source.name }}
+                                        {% if object.source.is_member %}
+                                        <i class="fa fa-user text-info" title="Mitglied"></i>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Nach (Ziel):</strong></td>
+                                    <td>
+                                        {% if object.target %}
+                                        {{ object.target.name }}
+                                        {% if object.target.is_member %}
+                                        <i class="fa fa-user text-info" title="Mitglied"></i>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Benutzer:</strong></td>
+                                    <td>
+                                        {% if object.user %}
+                                        {{ object.user.get_full_name|default:object.user.username }}
+                                        {% else %}
+                                        <span class="text-muted">System</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    {% if object.note %}
+                    <div class="mt-4">
+                        <h6>Notiz</h6>
+                        <div class="alert alert-light">
+                            {{ object.note|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Bewegungsvisualisierung -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa fa-route mr-2"></i>
+                        Bewegungsflow
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    {% if object.transaction_type == 'IN' or object.transaction_type == 'RETURN' %}
+                    <div class="mb-3">
+                        <i class="fa fa-arrow-down fa-2x text-success"></i>
+                    </div>
+                    <div class="badge badge-success">{{ object.target.name }}</div>
+                    <div class="mt-2 small text-muted">+ {{ object.quantity }} {% if object.item %}{{ object.item.base_unit }}{% elif object.item_variant %}{{ object.item_variant.parent_item.base_unit }}{% endif %}</div>
+                    
+                    {% elif object.transaction_type == 'OUT' or object.transaction_type == 'DISCARD' %}
+                    <div class="mb-3">
+                        <i class="fa fa-arrow-up fa-2x text-warning"></i>
+                    </div>
+                    <div class="badge badge-warning">{{ object.source.name }}</div>
+                    <div class="mt-2 small text-muted">- {{ object.quantity }} {% if object.item %}{{ object.item.base_unit }}{% elif object.item_variant %}{{ object.item_variant.parent_item.base_unit }}{% endif %}</div>
+                    
+                    {% elif object.transaction_type == 'MOVE' or object.transaction_type == 'LOAN' %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-center">
+                            <div class="badge badge-secondary">{{ object.source.name }}</div>
+                            <div class="mt-1 small text-muted">- {{ object.quantity }}</div>
+                        </div>
+                        <div class="mx-3">
+                            <i class="fa fa-arrow-right fa-2x text-{% if object.transaction_type == 'LOAN' %}info{% else %}secondary{% endif %}"></i>
+                        </div>
+                        <div class="text-center">
+                            <div class="badge badge-{% if object.transaction_type == 'LOAN' %}info{% else %}secondary{% endif %}">{{ object.target.name }}</div>
+                            <div class="mt-1 small text-muted">+ {{ object.quantity }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Schnellaktionen -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa fa-bolt mr-2"></i>
+                        Aktionen
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if object.item %}
+                        <a href="{% url 'inventory:item_detail' object.item.pk %}" class="btn btn-outline-primary btn-block mb-2">
+                            <i class="fa fa-box"></i> Artikel anzeigen
+                        </a>
+                    {% elif object.item_variant %}
+                        <a href="{% url 'inventory:variant_detail' object.item_variant.pk %}" class="btn btn-outline-primary btn-block mb-2">
+                            <i class="fa fa-box"></i> Variante anzeigen
+                        </a>
+                    {% endif %}
+                    
+                    {% if perms.inventory.add_transaction %}
+                    {% if object.transaction_type == 'LOAN' %}
+                        {% if object.item or object.item_variant %}
+                        <a href="{% url 'inventory:transaction_create' %}?type=RETURN&item={% if object.item %}{{ object.item.pk }}{% else %}{{ object.item_variant.parent_item.pk }}{% endif %}&source={{ object.target.pk }}" class="btn btn-outline-success btn-block mb-2">
+                            <i class="fa fa-undo"></i> Rückgabe erstellen
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if object.item or object.item_variant %}
+                        <a href="{% url 'inventory:transaction_create' %}?item={% if object.item %}{{ object.item.pk }}{% else %}{{ object.item_variant.parent_item.pk }}{% endif %}" class="btn btn-outline-secondary btn-block">
+                            <i class="fa fa-plus"></i> Neue Transaktion
+                        </a>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

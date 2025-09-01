@@ -1,0 +1,275 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}{{ object.name }} bearbeiten{% else %}Neuer Artikel{% endif %} - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.variant-interface {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    background-color: #f8f9fa;
+}
+.variant-attributes {
+    background-color: #fff;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    border: 1px solid #e9ecef;
+}
+#dynamic-fields-container {
+    border: 1px solid #e9ecef;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">
+                {% if object %}
+                    Artikel bearbeiten: {{ object.name }}
+                {% else %}
+                    Neuer Artikel
+                {% endif %}
+            </h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:item_list' %}">Artikel</a></li>
+                <li class="breadcrumb-item active">
+                    {% if object %}Bearbeiten{% else %}Neu{% endif %}
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-{% if object %}edit{% else %}plus{% endif %} mr-2"></i>
+                        Artikeldaten
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="item-form">
+                        {% csrf_token %}
+                        {% if object %}
+                            <input type="hidden" id="item-id" value="{{ object.id }}">
+                        {% endif %}
+                        
+                        <!-- Grunddaten -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                                    {{ form.name }}
+                                    {% if form.name.help_text %}
+                                        <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+                                    {{ form.category }}
+                                    {% if form.category.help_text %}
+                                        <small class="form-text text-muted">{{ form.category.help_text }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.base_unit.id_for_label }}">{{ form.base_unit.label }}</label>
+                                    {{ form.base_unit }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4 pt-2">
+                                    {{ form.is_variant_parent }}
+                                    <label class="form-check-label" for="{{ form.is_variant_parent.id_for_label }}">
+                                        {{ form.is_variant_parent.label }}
+                                    </label>
+                                    <small class="form-text text-muted">{{ form.is_variant_parent.help_text }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dynamic Fields Container: JS füllt Inhalte -->
+                        <div id="dynamic-fields-container" data-dynamic="1" style="display:none"></div>
+                        
+                        <!-- Hidden Attributes Field -->
+                        {{ form.attributes }}
+                        
+                        <!-- Variant Interface -->
+                        <div id="variant-interface" class="variant-interface" style="display: none;">
+                            <h6 class="mb-3">
+                                <i class="fas fa-layer-group mr-2"></i>
+                                Artikel-Varianten
+                            </h6>
+                            <p class="text-muted">
+                                Erstellen Sie Varianten dieses Artikels (z.B. verschiedene Größen, Farben).
+                            </p>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <button type="button" id="add-variant-btn" class="btn btn-success">
+                                        <i class="fas fa-plus mr-2"></i>Variante hinzufügen
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="variants-list">
+                                <!-- Varianten werden hier geladen -->
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save mr-2"></i>
+                                {% if object %}Änderungen speichern{% else %}Artikel erstellen{% endif %}
+                            </button>
+                            <a href="{% url 'inventory:item_list' %}" class="btn btn-secondary ml-2">
+                                <i class="fa fa-times mr-2"></i>Abbrechen
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Hilfe
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Artikelverwaltung</h6>
+                    <ul class="small text-muted">
+                        <li><strong>Name:</strong> Eindeutiger Artikelname</li>
+                        <li><strong>Kategorie:</strong> Bestimmt verfügbare Attribute</li>
+                        <li><strong>Grundeinheit:</strong> Maßeinheit (Stück, kg, Liter, etc.)</li>
+                        <li><strong>Varianten:</strong> Für Artikel mit verschiedenen Größen/Farben</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Varianten</h6>
+                    <ul class="small text-muted">
+                        <li>Aktivieren Sie "Hat Varianten" für Artikel mit verschiedenen Ausprägungen</li>
+                        <li>Beispiel: Hose als Hauptartikel, Größen 164, 176, 188 als Varianten</li>
+                        <li>Jede Variante hat eigenen Bestand</li>
+                        <li>Transaktionen beziehen sich auf spezifische Varianten</li>
+                    </ul>
+                    
+                    {% if object %}
+                    <h6 class="mt-3">Bestand</h6>
+                    <div class="small">
+                        <strong>Gesamtbestand:</strong> {{ object.total_stock }} {{ object.base_unit }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if object and object.is_variant_parent %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa fa-chart-bar mr-2"></i>
+                        Varianten-Übersicht
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="variants-summary">
+                        <!-- Varianten-Zusammenfassung wird hier geladen -->
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Variant Modal -->
+<div class="modal fade" id="variant-modal" tabindex="-1" role="dialog" aria-labelledby="variant-modal-label" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="variant-modal-label">Variante bearbeiten</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="variant-form">
+                    <input type="hidden" id="variant-id" name="variant_id">
+                    
+                    <div class="form-group">
+                        <label for="variant-sku">SKU/Artikelnummer</label>
+                        <input type="text" class="form-control" id="variant-sku" name="sku" placeholder="Optional">
+                        <small class="form-text text-muted">Eindeutige Artikelnummer für diese Variante</small>
+                    </div>
+                    
+                    <div id="variant-attributes-container">
+                        <!-- Dynamische Attributfelder werden hier eingefügt -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="saveVariant()">Speichern</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dynamic-item-form.js' %}"></script>
+<script src="{% static 'js/item-variants.js' %}"></script>
+<script>
+// Initialize variant interface visibility
+document.addEventListener('DOMContentLoaded', function() {
+    const isVariantParentField = document.getElementById('id_is_variant_parent');
+    const variantInterface = document.getElementById('variant-interface');
+    const dynamicContainer = document.getElementById('dynamic-fields-container');
+    
+    function updateInterfaceVisibility() {
+        const isVariantParent = isVariantParentField.checked;
+        const hasCategory = document.getElementById('id_category').value;
+        
+        if (variantInterface) {
+            variantInterface.style.display = isVariantParent ? 'block' : 'none';
+        }
+        
+        if (dynamicContainer) {
+            dynamicContainer.style.display = hasCategory ? 'block' : 'none';
+        }
+    }
+    
+    if (isVariantParentField) {
+        updateInterfaceVisibility();
+        isVariantParentField.addEventListener('change', updateInterfaceVisibility);
+    }
+    
+    const categoryField = document.getElementById('id_category');
+    if (categoryField) {
+        categoryField.addEventListener('change', updateInterfaceVisibility);
+    }
+});
+</script>
+{% endblock %}

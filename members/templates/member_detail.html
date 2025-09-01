@@ -3,162 +3,683 @@
 {% load guardian_tags %}
 {% load static %}
 {% load imagefit %}
-{% load crispy_forms_tags %}
 {% load filename %}
-{% block title %}{{ object.name }} {{ object.lastname }}{% endblock %}
 
+{% block title %}{{ object.get_full_name }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.member-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.member-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 5px solid rgba(255,255,255,0.3);
+    object-fit: cover;
+}
+
+.info-card {
+    background: white;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+}
+
+.storage-badge {
+    background: linear-gradient(45deg, #2196F3, #1976D2);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    text-decoration: none;
+    display: inline-block;
+    margin: 0.25rem;
+    transition: transform 0.2s ease;
+}
+
+.storage-badge:hover {
+    transform: scale(1.05);
+    color: white;
+    text-decoration: none;
+}
+
+.equipment-item {
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0 8px 8px 0;
+}
+
+.tab-content {
+    background: white;
+    border-radius: 0 15px 15px 15px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-radius: 15px 15px 0 0;
+    background: #f8f9fa;
+    color: #666;
+    margin-right: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link.active {
+    background: white;
+    color: #007bff;
+    border-bottom: 3px solid #007bff;
+}
+
+.btn-group-modern .btn {
+    border-radius: 25px;
+    margin: 0 0.25rem;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.contact-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.contact-item:hover {
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .member-header {
+        text-align: center;
+        padding: 1.5rem;
+    }
+    
+    .member-avatar {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-     <h1>{{ object.name }} {{ object.lastname }}</h1>
-    <div class="row">
-        <div class="col-md-10">
-            <div class="btn-group" role="group" aria-label="Basic example">
-                <a class="btn btn-outline-info" href="{% url 'members:edit' object.pk %}">Bearbeiten</a>
-                <a class="btn btn-primary" role="button" href="{% url 'members:rent' object.pk %}">Ausleihen</a>
-                <a class="btn btn-danger" role="button" href="{% url 'members:delete' object.pk %}">Löschen</a>
-            </div>
-
-        </div>
-        <div class="col-md-2 center-block col-xs-12">
+<!-- Member Header -->
+<div class="member-header">
+    <div class="row align-items-center">
+        <div class="col-md-2 text-center">
             {% if object.avatar %}
-            <img title="Bild von {{ object.name }} {{ object.lastname }}" class="img-circle pull-right img-responsive" style="max-width: 250px;" src="{{ object.avatar|filename|media_resize:'640x480' }}">
+                <img src="{{ object.avatar|filename|media_resize:'200x200' }}" 
+                     alt="{{ object.get_full_name }}" 
+                     class="member-avatar">
+            {% else %}
+                <div class="member-avatar d-flex align-items-center justify-content-center" 
+                     style="background: rgba(255,255,255,0.2);">
+                    <i class="fas fa-user fa-3x" style="opacity: 0.7;"></i>
+                </div>
             {% endif %}
         </div>
-    </div>
-    <div class="row">
-        <div class="col-sm-3">
-            <!--left col-->
-
-            <ul class="list-group" style="margin-bottom: 20px;">
-                <li class="list-group-item text-muted"><strong>Profile</strong></li>
-                <li class="list-group-item text-right"><span class="pull-left"><strong>Ausweis Nr.</strong></span> {{ object.identityCardNumber }}</li>
-                <li class="list-group-item text-right"><span class="pull-left"><strong>Aufgenommen</strong></span> {{ object.joined }}</li>
-                <li class="list-group-item text-right"><span class="pull-left"><strong>Geburtstag</strong></span> {{ object.birthday }}</li>
-                <li class="list-group-item "><span class="pull-left">{{ object.street }} <br> {{ object.zip_code }} {{ object.city }}</span></li>
-                {% for parent in parents %}
-                    <li class="list-group-item"><a class="dropdown-toggle" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                      {{ parent.name }} {{ parent.lastname }}
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <a href="tel:{{ parent.mobile }}" class="dropdown-item">📱 Mobil anrufen</a>
-                        <a href="tel:{{ parent.phone }}" class="dropdown-item">☎️ Festnetz anrufen</a>
-                        <a href="mailto:{{ parent.email }}" class="dropdown-item">✉️ E-Mail Schreiben</a>
-                        <a href="https://wa.me/{{ parent.get_whatsapp_number }}" class="dropdown-item">💬 Whatsapp</a>
-                    </div></li>
-                {% endfor %}
-            </ul>
-
-
-            <ul class="list-group">
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                Anwesend
-                <span class="badge badge-primary badge-pill">{{ n_attended_services }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                Entschuldigt
-                <span class="badge badge-primary badge-pill">{{ n_excused_services }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                Fehlend
-                <span class="badge badge-primary badge-pill">{{ n_missed_services }}</span>
-              </li>
-            </ul>
-
-        </div>
-        <!--/col-3-->
-        <div class="col-sm-9">
-
-            <ul class="nav nav-tabs" id="myTab">
-                <li class="nav-item"><a class="nav-link" href="#home" data-toggle="tab">Ausrüstung</a></li>
-                <li class="nav-item"><a class="nav-link" href="#services" data-toggle="tab">Übungen</a></li>
-                <li class="nav-item"><a class="nav-link active" href="#events" data-toggle="tab">Einträge / Aktenvermerke</a></li>
-            </ul>
-
-            <div class="tab-content">
-                <div class="tab-pane" id="home">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Kategorie</th>
-                                    <th>Größe</th>
-                                    <th>Nummer</th>
-                                    <th>Barcode</th>
-                                    <th>Rückgabe</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in inventory %}
-                                    <tr>
-                                        <td>{{ item.category }}</td>
-                                        <td>{{ item.size }}</td>
-                                        <td>{{ item.identifier1 }}</td>
-                                        <td><small>{{ item.identifier2 }}</small></td>
-                                        <td><a href="#">zurückgeben</a></td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <!--/table-resp-->
+        <div class="col-md-7">
+            <h1 class="mb-2">{{ object.get_full_name }}</h1>
+            <div class="row">
+                <div class="col-md-6">
+                    {% if object.identityCardNumber %}
+                        <p class="mb-1"><i class="fas fa-id-card me-2"></i>Ausweis: {{ object.identityCardNumber }}</p>
+                    {% endif %}
+                    {% if object.birthday %}
+                        <p class="mb-1"><i class="fas fa-birthday-cake me-2"></i>{{ object.birthday|date:"d.m.Y" }} ({{ object.get_age }} Jahre)</p>
+                    {% endif %}
                 </div>
-                <div class="tab-pane" id="services">
-                    <table class="table">
-                        <thead>
+                <div class="col-md-6">
+                    {% if object.joined %}
+                        <p class="mb-1"><i class="fas fa-calendar-plus me-2"></i>Aufgenommen: {{ object.joined|date:"d.m.Y" }}</p>
+                    {% endif %}
+                    {% if object.group %}
+                        <p class="mb-1"><i class="fas fa-users me-2"></i>{{ object.group.name }}</p>
+                    {% endif %}
+                    {% if object.status %}
+                        <p class="mb-1"><i class="fas fa-user-check me-2"></i>{{ object.status.name }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 text-end">
+            <div class="btn-group-modern">
+                <a class="btn btn-light" href="{% url 'members:edit' object.pk %}">
+                    <i class="fas fa-edit me-1"></i>Bearbeiten
+                </a>
+                <a class="btn btn-outline-light" href="{% url 'members:delete' object.pk %}">
+                    <i class="fas fa-trash me-1"></i>Löschen
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="row">
+    <!-- Linke Spalte: Stammdaten -->
+    <div class="col-lg-4">
+        <!-- Stammdaten -->
+        <div class="info-card p-4 mb-4">
+            <h5 class="mb-3"><i class="fas fa-address-card me-2"></i>Stammdaten</h5>
+            
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Name:</strong></div>
+                <div class="col-sm-7">{{ object.get_full_name }}</div>
+            </div>
+            
+            {% if object.identityCardNumber %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Ausweis Nr.:</strong></div>
+                <div class="col-sm-7">{{ object.identityCardNumber }}</div>
+            </div>
+            {% endif %}
+            
+            {% if object.birthday %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Geburtstag:</strong></div>
+                <div class="col-sm-7">{{ object.birthday|date:"d.m.Y" }} ({{ object.get_age }} Jahre)</div>
+            </div>
+            {% endif %}
+            
+            {% if object.joined %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Aufgenommen:</strong></div>
+                <div class="col-sm-7">{{ object.joined|date:"d.m.Y" }}</div>
+            </div>
+            {% endif %}
+            
+            {% if object.group %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Gruppe:</strong></div>
+                <div class="col-sm-7">{{ object.group.name }}</div>
+            </div>
+            {% endif %}
+            
+            {% if object.status %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Status:</strong></div>
+                <div class="col-sm-7">{{ object.status.name }}</div>
+            </div>
+            {% endif %}
+            
+            {% if object.canSwimm %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Schwimmer:</strong></div>
+                <div class="col-sm-7"><i class="fas fa-check text-success"></i> Ja</div>
+            </div>
+            {% else %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Schwimmer:</strong></div>
+                <div class="col-sm-7"><i class="fas fa-times text-danger"></i> Nein</div>
+            </div>
+            {% endif %}
+            
+            {% if object.notes %}
+            <div class="row mb-2">
+                <div class="col-sm-5"><strong>Bemerkungen:</strong></div>
+                <div class="col-sm-7">{{ object.notes }}</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Kontaktdaten -->
+        <div class="info-card p-4 mb-4">
+            <h5 class="mb-3"><i class="fas fa-phone me-2"></i>Kontaktdaten</h5>
+            
+            {% if object.street or object.city %}
+                <div class="contact-item">
+                    <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                    <strong>Adresse:</strong><br>
+                    {{ object.street }}<br>
+                    {{ object.zip_code }} {{ object.city }}
+                </div>
+            {% endif %}
+            
+            {% if object.phone %}
+                <div class="contact-item">
+                    <i class="fas fa-phone text-success me-2"></i>
+                    <strong>Telefon:</strong>
+                    <a href="tel:{{ object.phone }}" class="ms-2">{{ object.phone }}</a>
+                </div>
+            {% endif %}
+            
+            {% if object.mobile %}
+                <div class="contact-item">
+                    <i class="fas fa-mobile-alt text-info me-2"></i>
+                    <strong>Mobil:</strong>
+                    <a href="tel:{{ object.mobile }}" class="ms-2">{{ object.mobile }}</a>
+                </div>
+            {% endif %}
+            
+            {% if object.email %}
+                <div class="contact-item">
+                    <i class="fas fa-envelope text-warning me-2"></i>
+                    <strong>E-Mail:</strong>
+                    <a href="mailto:{{ object.email }}" class="ms-2">{{ object.email }}</a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Erziehungsberechtigte -->
+        {% if parents %}
+            <div class="info-card p-4 mb-4">
+                <h5 class="mb-3"><i class="fas fa-user-friends me-2"></i>Erziehungsberechtigte</h5>
+                {% for parent in parents %}
+                    <div class="contact-item mb-3">
+                        <h6 class="mb-2">{{ parent.get_full_name }}</h6>
+                        <div class="btn-group btn-group-sm">
+                            {% if parent.mobile %}
+                                <a href="tel:{{ parent.mobile }}" class="btn btn-outline-primary btn-sm" title="📱 Mobil anrufen">
+                                    <i class="fas fa-mobile-alt"></i> {{ parent.mobile }}
+                                </a>
+                            {% endif %}
+                            {% if parent.phone %}
+                                <a href="tel:{{ parent.phone }}" class="btn btn-outline-secondary btn-sm" title="☎️ Festnetz anrufen">
+                                    <i class="fas fa-phone"></i>
+                                </a>
+                            {% endif %}
+                            {% if parent.email %}
+                                <a href="mailto:{{ parent.email }}" class="btn btn-outline-info btn-sm" title="✉️ E-Mail schreiben">
+                                    <i class="fas fa-envelope"></i>
+                                </a>
+                            {% endif %}
+                            {% if parent.get_whatsapp_number %}
+                                <a href="https://wa.me/{{ parent.get_whatsapp_number }}" class="btn btn-outline-success btn-sm" title="💬 WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- Anwesenheitsstatistik (kompakt) -->
+        <div class="info-card p-4 mb-4">
+            <h6 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Übungsstatistik</h6>
+            <div class="row text-center">
+                <div class="col-4">
+                    <div class="badge bg-success mb-1">{{ n_attended_services }}</div>
+                    <div class="small">Anwesend</div>
+                </div>
+                <div class="col-4">
+                    <div class="badge bg-warning mb-1">{{ n_excused_services }}</div>
+                    <div class="small">Entschuldigt</div>
+                </div>
+                <div class="col-4">
+                    <div class="badge bg-danger mb-1">{{ n_missed_services }}</div>
+                    <div class="small">Fehlend</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rechte Spalte: Lagerplätze und Tabs -->
+    <div class="col-lg-8">
+        <!-- Lagerplätze und Ausleihe-Info -->
+        <div class="info-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="fas fa-warehouse me-2"></i>Lagerplätze & Ausrüstung</h5>
+                {% if perms.inventory.add_transaction %}
+                    <a href="{% url 'inventory:transaction_create' %}?type=LOAN&member={{ object.pk }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i>Neue Ausleihe
+                    </a>
+                {% endif %}
+            </div>
+            
+            {% if storage_location_path %}
+                <div class="mb-3">
+                    <strong>Aktueller Lagerplatz:</strong><br>
+                    {% for loc in storage_location_path %}
+                        <a href="{% url 'inventory:location_detail' loc.pk %}" class="storage-badge">
+                            {{ loc.name }}
+                        </a>
+                        {% if not forloop.last %}<i class="fas fa-chevron-right mx-2"></i>{% endif %}
+                    {% endfor %}
+                </div>
+            {% elif object.storage_location %}
+                <div class="mb-3">
+                    <strong>Persönlicher Lagerplatz:</strong><br>
+                    <a href="{% url 'inventory:location_detail' object.storage_location.pk %}" class="storage-badge">
+                        <i class="fas fa-warehouse me-1"></i>{{ object.storage_location.name }}
+                    </a>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Noch kein persönlicher Lagerplatz.</strong><br>
+                    Beim ersten Ausleihen wird automatisch ein persönlicher Lagerplatz erstellt.
+                </div>
+            {% endif %}
+            
+            {% if member_location_stocks %}
+                <div class="mt-3">
+                    <strong>Aktuell ausgeliehen:</strong>
+                    <div class="row mt-2">
+                        {% for stock in member_location_stocks %}
+                            <div class="col-md-6 mb-2">
+                                <div class="equipment-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>
+                                                {% if stock.item %}
+                                                    <a href="{% url 'inventory:item_detail' stock.item.pk %}">{{ stock.item.name }}</a>
+                                                {% elif stock.item_variant %}
+                                                    <a href="{% url 'inventory:variant_detail' stock.item_variant.pk %}">{{ stock.item_variant.name }}</a>
+                                                {% endif %}
+                                            </strong>
+                                            <small class="text-muted d-block">Menge: {{ stock.quantity }}</small>
+                                        </div>
+                                        {% if perms.inventory.add_transaction %}
+                                            <a href="{% url 'inventory:transaction_create' %}?type=RETURN&source={{ stock.location.pk }}{% if stock.item %}&item={{ stock.item.pk }}{% else %}&item_variant={{ stock.item_variant.pk }}{% endif %}" 
+                                               class="btn btn-outline-primary btn-sm" title="Rückgabe erfassen">
+                                                <i class="fas fa-undo"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-muted">
+                    <i class="fas fa-toolbox me-2"></i>Noch keine Ausrüstung ausgeliehen
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Tabs für detaillierte Informationen -->
+        <ul class="nav nav-tabs" id="memberTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="services-tab" data-bs-toggle="tab" data-bs-target="#services" type="button" role="tab">
+                    <i class="fas fa-calendar-check me-1"></i>Alle Übungen ({{ attendances|length }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
+                    <i class="fas fa-clipboard-list me-1"></i>Alle Einträge ({{ events|length }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="equipment-details-tab" data-bs-toggle="tab" data-bs-target="#equipment-details" type="button" role="tab">
+                    <i class="fas fa-toolbox me-1"></i>Ausrüstung Details
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="memberTabsContent">
+            <!-- Services Tab - Alle Übungen -->
+            <div class="tab-pane fade show active" id="services" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
                             <tr>
-                                <td>Date</td>
-                                <td>Thema</td>
-                                <td>Anwesenheit</td>
+                                <th>Datum</th>
+                                <th>Thema</th>
+                                <th>Anwesenheit</th>
+                                <th>Details</th>
                             </tr>
                         </thead>
                         <tbody>
-                        {% for object in attendances %}
-                            <tr>
-                                <td>{{ object.service.start }}</td>
-                                <td>{{ object.service.topic }}</td>
-                                <td>{{ object.state }}</td>
-                            </tr>
-                        {% endfor %}
+                            {% for attendance in attendances %}
+                                <tr>
+                                    <td>
+                                        {% if attendance.service.start %}
+                                            {{ attendance.service.start|date:"d.m.Y" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ attendance.service.topic }}</td>
+                                    <td>
+                                        {% if attendance.state == 'A' %}
+                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Anwesend</span>
+                                        {% elif attendance.state == 'E' %}
+                                            <span class="badge bg-warning"><i class="fas fa-exclamation me-1"></i>Entschuldigt</span>
+                                        {% else %}
+                                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Fehlend</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if attendance.service.description %}
+                                            <small class="text-muted">{{ attendance.service.description|truncatechars:50 }}</small>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
+                                        Noch keine Übungsdaten vorhanden
+                                    </td>
+                                </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                <div class="tab-pane active" id="events">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Event</th>
-                                    <th>Datum</th>
-                                    <th>Bemerkungen</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in events %}
-                                    <tr>
-                                        <td>{{ item.type }}</td>
-                                        <td>{{ item.datetime }}</td>
-                                        <td>{{ item.notes }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        <div class="jumbotron jumbotron-fluid">
-                          <div class="container">
-                              {% crispy form %}
-                          </div>
+                
+                <!-- Übungsstatistik Details -->
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-success">{{ n_attended_services }}</h5>
+                                <p class="card-text">Anwesend</p>
+                                <small class="text-muted">
+                                    {% if attendances|length > 0 %}
+                                        {{ n_attended_services|floatformat:0 }}/{{ attendances|length }} 
+                                        ({% widthratio n_attended_services attendances|length 100 %}%)
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-warning">{{ n_excused_services }}</h5>
+                                <p class="card-text">Entschuldigt</p>
+                                <small class="text-muted">
+                                    {% if attendances|length > 0 %}
+                                        {{ n_excused_services|floatformat:0 }}/{{ attendances|length }} 
+                                        ({% widthratio n_excused_services attendances|length 100 %}%)
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-danger">{{ n_missed_services }}</h5>
+                                <p class="card-text">Fehlend</p>
+                                <small class="text-muted">
+                                    {% if attendances|length > 0 %}
+                                        {{ n_missed_services|floatformat:0 }}/{{ attendances|length }} 
+                                        ({% widthratio n_missed_services attendances|length 100 %}%)
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <!--/tab-pane-->
+            
+            <!-- Events Tab - Alle Einträge -->
+            <div class="tab-pane fade" id="events" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Datum</th>
+                                        <th>Bemerkungen</th>
+                                        <th>Erstellt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in events %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">{{ event.type }}</span>
+                                            </td>
+                                            <td>
+                                                {% if event.datetime %}
+                                                    {{ event.datetime|date:"d.m.Y" }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if event.notes %}
+                                                    {{ event.notes }}
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {% if event.created_at %}
+                                                        {{ event.created_at|date:"d.m.Y" }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">
+                                                <i class="fas fa-clipboard fa-2x mb-2"></i><br>
+                                                Noch keine Einträge vorhanden
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="info-card p-4">
+                            <h6 class="mb-3">
+                                <i class="fas fa-plus me-2"></i>Neuen Eintrag hinzufügen
+                            </h6>
+                            {% crispy form %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Equipment Details Tab -->
+            <div class="tab-pane fade" id="equipment-details" role="tabpanel">
+                {% if member_location_stocks %}
+                    <div class="row">
+                        {% for stock in member_location_stocks %}
+                            <div class="col-lg-6 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            {% if stock.item %}
+                                                <a href="{% url 'inventory:item_detail' stock.item.pk %}">{{ stock.item.name }}</a>
+                                            {% elif stock.item_variant %}
+                                                <a href="{% url 'inventory:variant_detail' stock.item_variant.pk %}">{{ stock.item_variant.name }}</a>
+                                            {% endif %}
+                                        </h6>
+                                        <p class="card-text">
+                                            <strong>Menge:</strong> {{ stock.quantity }}<br>
+                                            <strong>Lagerort:</strong> 
+                                            <a href="{% url 'inventory:location_detail' stock.location.pk %}">{{ stock.location.name }}</a>
+                                        </p>
+                                        {% if perms.inventory.add_transaction %}
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'inventory:transaction_create' %}?type=RETURN&source={{ stock.location.pk }}{% if stock.item %}&item={{ stock.item.pk }}{% else %}&item_variant={{ stock.item_variant.pk }}{% endif %}" 
+                                                   class="btn btn-outline-primary" title="Rückgabe erfassen">
+                                                    <i class="fas fa-undo me-1"></i>Rückgabe
+                                                </a>
+                                                <a href="{% url 'inventory:transaction_create' %}?type=LOAN&member={{ object.pk }}" 
+                                                   class="btn btn-outline-success" title="Weitere Ausleihe">
+                                                    <i class="fas fa-plus me-1"></i>Mehr ausleihen
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-toolbox fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted">Keine Ausrüstung ausgeliehen</h5>
+                        <p class="text-muted">Das Mitglied hat aktuell keine Ausrüstung ausgeliehen.</p>
+                        {% if perms.inventory.add_transaction %}
+                            <a href="{% url 'inventory:transaction_create' %}?type=LOAN&member={{ object.pk }}" 
+                               class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-1"></i>Erste Ausleihe starten
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
-        <!--/tab-content-->
-
     </div>
-    <!--/col-9-->
+</div>
 
-<!--/row-->
-
-
+<script>
+// Bootstrap 5 Tab functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active from all tabs and content
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('show', 'active');
+            });
+            
+            // Add active to clicked tab
+            this.classList.add('active');
+            
+            // Show target content
+            const target = document.querySelector(this.getAttribute('data-bs-target'));
+            if (target) {
+                target.classList.add('show', 'active');
+            }
+        });
+    });
+});
+</script>
 {% endblock content %}

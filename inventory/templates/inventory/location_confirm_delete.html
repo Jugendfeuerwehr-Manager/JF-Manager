@@ -1,0 +1,98 @@
+{% extends 'home.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Lagerort löschen - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Lagerort löschen</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:location_list' %}">Lagerorte</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:location_detail' object.pk %}">{{ object.name }}</a></li>
+                <li class="breadcrumb-item active">Löschen</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 col-md-8 mx-auto">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Lagerort löschen
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Achtung!</strong> Diese Aktion kann nicht rückgängig gemacht werden.
+                    </div>
+
+                    <p>Sind Sie sicher, dass Sie den Lagerort <strong>"{{ object.name }}"</strong> löschen möchten?</p>
+                    
+                    {% if object.stock_set.count %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <strong>Warnung:</strong> Dieser Lagerort enthält noch {{ object.stock_set.count }} Bestände. 
+                        Wenn Sie den Lagerort löschen, werden alle Bestände entfernt.
+                    </div>
+                    
+                    <h6>Betroffene Bestände:</h6>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for stock in object.stock_set.all|slice:":5" %}
+                        <li class="list-group-item py-2">
+                            <i class="fas fa-box mr-2"></i>{{ stock.item.name }} 
+                            <span class="badge badge-primary">{{ stock.quantity }}</span>
+                        </li>
+                        {% endfor %}
+                        {% if object.stock_set.count > 5 %}
+                        <li class="list-group-item py-2 text-muted">
+                            <i class="fas fa-ellipsis-h mr-2"></i>und {{ object.stock_set.count|add:"-5" }} weitere...
+                        </li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+
+                    {% if object.children.count %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-sitemap mr-2"></i>
+                        <strong>Hinweis:</strong> Dieser Lagerort hat {{ object.children.count }} untergeordnete Lagerorte. 
+                        Diese werden ebenfalls gelöscht.
+                    </div>
+                    
+                    <h6>Untergeordnete Lagerorte:</h6>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for child in object.children.all|slice:":5" %}
+                        <li class="list-group-item py-2">
+                            <i class="fas fa-warehouse mr-2"></i>{{ child.name }}
+                        </li>
+                        {% endfor %}
+                        {% if object.children.count > 5 %}
+                        <li class="list-group-item py-2 text-muted">
+                            <i class="fas fa-ellipsis-h mr-2"></i>und {{ object.children.count|add:"-5" }} weitere...
+                        </li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash mr-1"></i>Ja, löschen
+                        </button>
+                        <a href="{% url 'inventory:location_detail' object.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-times mr-1"></i>Abbrechen
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
