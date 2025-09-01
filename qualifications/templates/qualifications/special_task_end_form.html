@@ -1,0 +1,53 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Sonderaufgabe beenden{% endblock %}
+
+{% block content_body %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-stop"></i> Sonderaufgabe beenden
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Sie sind dabei, die folgende Sonderaufgabe zu beenden:
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6>{{ special_task.task.name }}</h6>
+                        <p class="mb-1">
+                            <strong>Person:</strong> {{ special_task.get_person_name }}
+                        </p>
+                        <p class="mb-1">
+                            <strong>Startdatum:</strong> {{ special_task.start_date|date:"d.m.Y" }}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Bisherige Dauer:</strong> {{ special_task.get_duration_days }} Tage
+                        </p>
+                    </div>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'qualifications:special_task_detail' special_task.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Abbrechen
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-stop"></i> Aufgabe beenden
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

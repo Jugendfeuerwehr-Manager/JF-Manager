@@ -1,0 +1,50 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object.pk %}Qualifikationstyp bearbeiten{% else %}Neuer Qualifikationstyp{% endif %}{% endblock %}
+
+{% block content_body %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tags"></i>
+                    {% if object.pk %}
+                        Qualifikationstyp bearbeiten
+                    {% else %}
+                        Neuer Qualifikationstyp
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% crispy form %}
+            </div>
+        </div>
+        
+        <!-- Hilfe-Karte -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Hinweise
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>Ablaufende Qualifikationen</h6>
+                <p class="small text-muted">
+                    Wenn Sie "Läuft ab" aktivieren, müssen Sie eine Gültigkeitsdauer in Monaten angeben. 
+                    Diese wird automatisch verwendet, um das Ablaufdatum bei neuen Qualifikationen zu berechnen.
+                </p>
+                
+                <h6>Beispiele</h6>
+                <ul class="small text-muted">
+                    <li><strong>Grundlehrgang:</strong> Läuft nicht ab</li>
+                    <li><strong>Sprechfunk:</strong> Läuft ab nach 24 Monaten</li>
+                    <li><strong>Erste Hilfe:</strong> Läuft ab nach 24 Monaten</li>
+                    <li><strong>Maschinistenlehrgang:</strong> Läuft nicht ab</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

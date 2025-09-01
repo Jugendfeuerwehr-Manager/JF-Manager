@@ -1,0 +1,53 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object.pk %}Sonderaufgabe bearbeiten{% else %}Neue Sonderaufgabe{% endif %}{% endblock %}
+
+{% block content_body %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tasks"></i>
+                    {% if object.pk %}
+                        Sonderaufgabe bearbeiten
+                    {% else %}
+                        Neue Sonderaufgabe
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% crispy form %}
+            </div>
+        </div>
+        
+        <!-- Hilfe-Karte -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Hinweise
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Enddatum</h6>
+                        <p class="small text-muted">
+                            Lassen Sie das Enddatum leer, wenn die Sonderaufgabe noch aktiv ist. 
+                            Sie können die Aufgabe später über die Detailansicht beenden.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Person auswählen</h6>
+                        <p class="small text-muted">
+                            Wählen Sie entweder einen Benutzer oder ein Mitglied aus, aber nicht beide. 
+                            Benutzer sind registrierte Systemnutzer, Mitglieder sind Einträge im Mitgliederverzeichnis.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

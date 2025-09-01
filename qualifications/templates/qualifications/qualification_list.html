@@ -1,0 +1,216 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Qualifikationen{% endblock %}
+
+{% block header_actions %}
+{% if perms.qualifications.add_qualification %}
+    <a href="{% url 'qualifications:qualification_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Neue Qualifikation
+    </a>
+{% endif %}
+{% endblock %}
+
+{% block content_body %}
+<!-- Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        {% crispy filter_form %}
+    </div>
+</div>
+
+<!-- Qualifikationen Liste -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-certificate"></i> Qualifikationen
+            <span class="badge bg-secondary">{{ qualifications|length }}</span>
+        </h5>
+    </div>
+    
+    {% if qualifications %}
+    <div class="card-body p-0">
+        <!-- Desktop Tabelle -->
+        <div class="table-responsive desktop-only">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Person</th>
+                        <th>Qualifikation</th>
+                        <th>Erworben</th>
+                        <th>Läuft ab</th>
+                        <th>Status</th>
+                        <th>Ausgestellt von</th>
+                        <th class="text-end">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for qualification in qualifications %}
+                    <tr class="{{ qualification.get_status_class }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <strong>{{ qualification.get_person_name }}</strong>
+                                    {% if qualification.user %}
+                                        <br><small class="text-muted">Benutzer</small>
+                                    {% else %}
+                                        <br><small class="text-muted">Mitglied</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>{{ qualification.type.name }}</strong>
+                            {% if qualification.type.description %}
+                                <br><small class="text-muted">{{ qualification.type.description|truncatechars:50 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ qualification.date_acquired|date:"d.m.Y" }}</td>
+                        <td>
+                            {% if qualification.date_expires %}
+                                {{ qualification.date_expires|date:"d.m.Y" }}
+                            {% else %}
+                                <span class="text-muted">Läuft nicht ab</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if qualification.is_expired %}
+                                <span class="badge bg-danger">Abgelaufen</span>
+                            {% elif qualification.expires_soon %}
+                                <span class="badge bg-warning">Läuft bald ab</span>
+                            {% else %}
+                                <span class="badge bg-success">Gültig</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ qualification.issued_by|default:"-" }}</td>
+                        <td class="text-end">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'qualifications:qualification_detail' qualification.pk %}" 
+                                   class="btn btn-sm btn-outline-primary"
+                                   data-bs-toggle="tooltip" title="Details anzeigen">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if perms.qualifications.change_qualification %}
+                                <a href="{% url 'qualifications:qualification_edit' qualification.pk %}" 
+                                   class="btn btn-sm btn-outline-secondary"
+                                   data-bs-toggle="tooltip" title="Bearbeiten">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                                {% if perms.qualifications.delete_qualification %}
+                                <a href="{% url 'qualifications:qualification_delete' qualification.pk %}" 
+                                   class="btn btn-sm btn-outline-danger"
+                                   data-bs-toggle="tooltip" title="Löschen">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Karten -->
+        <div class="mobile-only">
+            {% for qualification in qualifications %}
+            <div class="card m-2 qualification-card {% if qualification.is_expired %}qualification-expired{% elif qualification.expires_soon %}qualification-expiring{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-1">{{ qualification.get_person_name }}</h6>
+                            <p class="card-text mb-1">
+                                <strong>{{ qualification.type.name }}</strong>
+                            </p>
+                            <small class="text-muted">
+                                Erworben: {{ qualification.date_acquired|date:"d.m.Y" }}
+                                {% if qualification.date_expires %}
+                                    | Läuft ab: {{ qualification.date_expires|date:"d.m.Y" }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            {% if qualification.is_expired %}
+                                <span class="badge bg-danger mb-2">Abgelaufen</span>
+                            {% elif qualification.expires_soon %}
+                                <span class="badge bg-warning mb-2">Läuft bald ab</span>
+                            {% else %}
+                                <span class="badge bg-success mb-2">Gültig</span>
+                            {% endif %}
+                            <br>
+                            <div class="btn-group-vertical" role="group">
+                                <a href="{% url 'qualifications:qualification_detail' qualification.pk %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if perms.qualifications.change_qualification %}
+                                <a href="{% url 'qualifications:qualification_edit' qualification.pk %}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.qualification_type %}&qualification_type={{ request.GET.qualification_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            &laquo; Erste
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.qualification_type %}&qualification_type={{ request.GET.qualification_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            Zurück
+                        </a>
+                    </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.qualification_type %}&qualification_type={{ request.GET.qualification_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            Weiter
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.qualification_type %}&qualification_type={{ request.GET.qualification_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            Letzte &raquo;
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="card-body text-center py-5">
+        <i class="fas fa-certificate fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Keine Qualifikationen gefunden</h5>
+        <p class="text-muted">Es wurden keine Qualifikationen gefunden, die Ihren Filterkriterien entsprechen.</p>
+        {% if perms.qualifications.add_qualification %}
+        <a href="{% url 'qualifications:qualification_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Erste Qualifikation hinzufügen
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

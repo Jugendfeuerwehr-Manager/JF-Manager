@@ -1,0 +1,50 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object.pk %}Sonderaufgaben-Typ bearbeiten{% else %}Neuer Sonderaufgaben-Typ{% endif %}{% endblock %}
+
+{% block content_body %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tags"></i>
+                    {% if object.pk %}
+                        Sonderaufgaben-Typ bearbeiten
+                    {% else %}
+                        Neuer Sonderaufgaben-Typ
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% crispy form %}
+            </div>
+        </div>
+        
+        <!-- Hilfe-Karte -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Hinweise
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>Sonderaufgaben-Typen</h6>
+                <p class="small text-muted">
+                    Definieren Sie hier die verschiedenen Arten von Sonderaufgaben, die Mitglieder übernehmen können.
+                </p>
+                
+                <h6>Beispiele</h6>
+                <ul class="small text-muted">
+                    <li><strong>Jugendsprecher:</strong> Vertretung der Jugendgruppe</li>
+                    <li><strong>Kleiderwart:</strong> Verwaltung der Schutzausrüstung</li>
+                    <li><strong>Gerätewart:</strong> Wartung und Pflege der Geräte</li>
+                    <li><strong>Kassenwart:</strong> Verwaltung der Finanzen</li>
+                    <li><strong>Schriftführer:</strong> Protokollführung und Dokumentation</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

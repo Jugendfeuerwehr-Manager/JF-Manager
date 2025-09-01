@@ -1,0 +1,338 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Dashboard - Qualifikationen & Sonderaufgaben{% endblock %}
+
+{% block header_actions %}
+<div class="btn-group" role="group">
+    {% if perms.qualifications.manage_qualifications %}
+        <a href="{% url 'qualifications:admin' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-cogs"></i> Verwaltung
+        </a>
+    {% endif %}
+    {% if perms.qualifications.add_qualification %}
+        <a href="{% url 'qualifications:qualification_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Neue Qualifikation
+        </a>
+    {% endif %}
+    {% if perms.qualifications.add_specialtask %}
+        <a href="{% url 'qualifications:special_task_create' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Neue Sonderaufgabe
+        </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content_body %}
+<!-- Statistik-Karten -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Qualifikationen gesamt</h6>
+                        <h3 class="mb-0">{{ total_qualifications }}</h3>
+                    </div>
+                    <div class="text-primary">
+                        <i class="fas fa-certificate fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card border-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Abgelaufen</h6>
+                        <h3 class="mb-0 text-danger">{{ expired_qualifications }}</h3>
+                    </div>
+                    <div class="text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card border-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Läuft bald ab</h6>
+                        <h3 class="mb-0 text-warning">{{ expiring_qualifications }}</h3>
+                    </div>
+                    <div class="text-warning">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stats-card border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Aktive Aufgaben</h6>
+                        <h3 class="mb-0 text-success">{{ active_special_tasks }}</h3>
+                    </div>
+                    <div class="text-success">
+                        <i class="fas fa-tasks fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hauptinhalt -->
+<div class="row">
+    <!-- Linke Spalte - Desktop -->
+    <div class="col-lg-8 desktop-only">
+        <!-- Bald ablaufende Qualifikationen -->
+        {% if expiring_qualifications_list %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock"></i> Bald ablaufende Qualifikationen
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Person</th>
+                                <th>Qualifikation</th>
+                                <th>Erworben</th>
+                                <th>Läuft ab</th>
+                                <th>Tage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for qualification in expiring_qualifications_list %}
+                            <tr class="{{ qualification.get_status_class }}">
+                                <td>
+                                    <a href="{% url 'qualifications:qualification_detail' qualification.pk %}">
+                                        {{ qualification.get_person_name }}
+                                    </a>
+                                </td>
+                                <td>{{ qualification.type.name }}</td>
+                                <td>{{ qualification.date_acquired|date:"d.m.Y" }}</td>
+                                <td>{{ qualification.date_expires|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% with days_left=qualification.date_expires|timeuntil %}
+                                        <span class="badge bg-warning">{{ days_left }}</span>
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'qualifications:qualification_list' %}?status=expiring" class="btn btn-sm btn-warning">
+                    Alle anzeigen
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Kürzlich erworbene Qualifikationen -->
+        {% if recent_qualifications %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i> Kürzlich erworbene Qualifikationen
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Person</th>
+                                <th>Qualifikation</th>
+                                <th>Erworben</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for qualification in recent_qualifications %}
+                            <tr class="{{ qualification.get_status_class }}">
+                                <td>
+                                    <a href="{% url 'qualifications:qualification_detail' qualification.pk %}">
+                                        {{ qualification.get_person_name }}
+                                    </a>
+                                </td>
+                                <td>{{ qualification.type.name }}</td>
+                                <td>{{ qualification.date_acquired|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% if qualification.is_expired %}
+                                        <span class="badge bg-danger">Abgelaufen</span>
+                                    {% elif qualification.expires_soon %}
+                                        <span class="badge bg-warning">Läuft bald ab</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Gültig</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-sm btn-primary">
+                    Alle Qualifikationen
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Rechte Spalte - Desktop -->
+    <div class="col-lg-4 desktop-only">
+        <!-- Aktuelle Sonderaufgaben -->
+        {% if current_special_tasks %}
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-tasks"></i> Aktuelle Sonderaufgaben
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                {% for task in current_special_tasks %}
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                    <div>
+                        <strong>{{ task.get_person_name }}</strong><br>
+                        <small class="text-muted">{{ task.task.name }}</small><br>
+                        <small class="text-muted">seit {{ task.start_date|date:"d.m.Y" }}</small>
+                    </div>
+                    <div>
+                        <a href="{% url 'qualifications:special_task_detail' task.pk %}" 
+                           class="btn btn-sm btn-outline-primary">
+                            Details
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'qualifications:special_task_list' %}?status=active" class="btn btn-sm btn-success">
+                    Alle aktiven Aufgaben
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Mobile Layout -->
+    <div class="col-12 mobile-only">
+        <!-- Mobile Karten-Layout -->
+        {% if expiring_qualifications_list %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Bald ablaufende Qualifikationen</h6>
+            </div>
+            <div class="card-body">
+                {% for qualification in expiring_qualifications_list|slice:":3" %}
+                <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div>
+                        <strong>{{ qualification.get_person_name }}</strong><br>
+                        <small>{{ qualification.type.name }}</small><br>
+                        <small class="text-muted">Läuft ab: {{ qualification.date_expires|date:"d.m.Y" }}</small>
+                    </div>
+                    <span class="badge bg-warning">
+                        {{ qualification.date_expires|timeuntil }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if current_special_tasks %}
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">Aktuelle Sonderaufgaben</h6>
+            </div>
+            <div class="card-body">
+                {% for task in current_special_tasks|slice:":3" %}
+                <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div>
+                        <strong>{{ task.get_person_name }}</strong><br>
+                        <small>{{ task.task.name }}</small><br>
+                        <small class="text-muted">seit {{ task.start_date|date:"d.m.Y" }}</small>
+                    </div>
+                    <a href="{% url 'qualifications:special_task_detail' task.pk %}" 
+                       class="btn btn-sm btn-outline-primary">
+                        Details
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt"></i> Schnellzugriff
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if perms.qualifications.view_qualification %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-list"></i><br>
+                            <small>Alle Qualifikationen</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if perms.qualifications.view_specialtask %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:special_task_list' %}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-tasks"></i><br>
+                            <small>Alle Sonderaufgaben</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if perms.qualifications.add_qualification %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:qualification_create' %}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-plus-circle"></i><br>
+                            <small>Neue Qualifikation</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if perms.qualifications.add_specialtask %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:special_task_create' %}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-user-plus"></i><br>
+                            <small>Neue Sonderaufgabe</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

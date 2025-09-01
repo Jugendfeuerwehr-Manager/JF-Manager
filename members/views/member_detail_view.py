@@ -100,6 +100,21 @@ class MemberDisplayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         context['n_excused_services'] = get_number_of_services(member=obj, state='E')
         context['events'] = get_events_list().filter(member=obj.pk)
         context['form'] = EventForm()
+        
+        # Qualifikationen und Sonderaufgaben hinzufügen
+        try:
+            from qualifications.models import Qualification, SpecialTask
+            context['member_qualifications'] = Qualification.objects.filter(
+                member=obj
+            ).select_related('type').order_by('-date_acquired')
+            context['member_special_tasks'] = SpecialTask.objects.filter(
+                member=obj
+            ).select_related('task').order_by('-start_date')
+        except ImportError:
+            # Falls qualifications App nicht installiert ist
+            context['member_qualifications'] = []
+            context['member_special_tasks'] = []
+        
         return context
 
 class MemberEventView(LoginRequiredMixin, SingleObjectMixin, FormView):

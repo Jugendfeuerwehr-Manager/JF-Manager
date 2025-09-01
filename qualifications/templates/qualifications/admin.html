@@ -1,0 +1,278 @@
+{% extends 'qualifications/base.html' %}
+
+{% block title %}Qualifikationen - Verwaltung{% endblock %}
+
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">
+        <i class="fas fa-cogs"></i>
+        Verwaltung
+    </h1>
+    <a href="{% url 'qualifications:dashboard' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Zurück zum Dashboard
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Statistiken -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center stats-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-primary rounded-circle p-3 me-3">
+                        <i class="fas fa-certificate text-white fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ qualification_types_count }}</h3>
+                        <small class="text-muted">Qualifikationstypen</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center stats-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-success rounded-circle p-3 me-3">
+                        <i class="fas fa-tasks text-white fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ special_task_types_count }}</h3>
+                        <small class="text-muted">Aufgabentypen</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center stats-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-info rounded-circle p-3 me-3">
+                        <i class="fas fa-award text-white fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ total_qualifications }}</h3>
+                        <small class="text-muted">Qualifikationen</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center stats-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-warning rounded-circle p-3 me-3">
+                        <i class="fas fa-clipboard-list text-white fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ total_special_tasks }}</h3>
+                        <small class="text-muted">Sonderaufgaben</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Warnung für ablaufende Qualifikationen -->
+{% if expired_qualifications > 0 or expiring_soon_count > 0 %}
+<div class="alert alert-warning">
+    <h6><i class="fas fa-exclamation-triangle"></i> Aufmerksamkeit erforderlich</h6>
+    <div class="row">
+        {% if expired_qualifications > 0 %}
+        <div class="col-md-6">
+            <strong>{{ expired_qualifications }}</strong> Qualifikation{{ expired_qualifications|pluralize:"en" }} 
+            bereits abgelaufen
+        </div>
+        {% endif %}
+        {% if expiring_soon_count > 0 %}
+        <div class="col-md-6">
+            <strong>{{ expiring_soon_count }}</strong> Qualifikation{{ expiring_soon_count|pluralize:"en" }} 
+            laufen bald ab
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Verwaltungsbereiche -->
+<div class="row">
+    <!-- Qualifikationen verwalten -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-certificate"></i>
+                    Qualifikationen verwalten
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    Verwaltung von Qualifikationstypen und einzelnen Qualifikationen.
+                </p>
+                
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'qualifications:qualification_type_list' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-list text-primary"></i>
+                                <strong>Qualifikationstypen</strong>
+                                <br>
+                                <small class="text-muted">Arten von Qualifikationen verwalten</small>
+                            </div>
+                            <span class="badge bg-primary">{{ qualification_types_count }}</span>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'qualifications:qualification_list' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-award text-info"></i>
+                                <strong>Alle Qualifikationen</strong>
+                                <br>
+                                <small class="text-muted">Individuelle Qualifikationen verwalten</small>
+                            </div>
+                            <span class="badge bg-info">{{ total_qualifications }}</span>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'qualifications:qualification_create' %}" class="list-group-item list-group-item-action">
+                        <div>
+                            <i class="fas fa-plus text-success"></i>
+                            <strong>Neue Qualifikation</strong>
+                            <br>
+                            <small class="text-muted">Qualifikation hinzufügen</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sonderaufgaben verwalten -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tasks"></i>
+                    Sonderaufgaben verwalten
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    Verwaltung von Aufgabentypen und einzelnen Sonderaufgaben.
+                </p>
+                
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'qualifications:special_task_type_list' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-list text-success"></i>
+                                <strong>Aufgabentypen</strong>
+                                <br>
+                                <small class="text-muted">Arten von Sonderaufgaben verwalten</small>
+                            </div>
+                            <span class="badge bg-success">{{ special_task_types_count }}</span>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'qualifications:special_task_list' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-clipboard-list text-warning"></i>
+                                <strong>Alle Sonderaufgaben</strong>
+                                <br>
+                                <small class="text-muted">Individuelle Sonderaufgaben verwalten</small>
+                            </div>
+                            <span class="badge bg-warning text-dark">{{ total_special_tasks }}</span>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'qualifications:special_task_create' %}" class="list-group-item list-group-item-action">
+                        <div>
+                            <i class="fas fa-plus text-success"></i>
+                            <strong>Neue Sonderaufgabe</strong>
+                            <br>
+                            <small class="text-muted">Sonderaufgabe hinzufügen</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Management Tools -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools"></i>
+                    Management-Tools
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-grid">
+                            <a href="{% url 'qualifications:qualification_type_create' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-plus"></i>
+                                Neuer Qualifikationstyp
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="d-grid">
+                            <a href="{% url 'qualifications:special_task_type_create' %}" class="btn btn-outline-success">
+                                <i class="fas fa-plus"></i>
+                                Neuer Aufgabentyp
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="d-grid">
+                            <a href="/admin/qualifications/" class="btn btn-outline-secondary" target="_blank">
+                                <i class="fas fa-cog"></i>
+                                Django Admin
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Aktuelle Aktivitäten -->
+{% if active_special_tasks > 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock"></i>
+                    Aktuelle Aktivitäten
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Derzeit sind <strong>{{ active_special_tasks }}</strong> Sonderaufgabe{{ active_special_tasks|pluralize:"n" }} aktiv.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

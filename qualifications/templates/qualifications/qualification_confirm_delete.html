@@ -1,0 +1,59 @@
+{% extends 'qualifications/base.html' %}
+
+{% block title %}Qualifikation löschen{% endblock %}
+
+{% block content_body %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-trash"></i> Qualifikation löschen
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Achtung!</strong> Diese Aktion kann nicht rückgängig gemacht werden.
+                </div>
+                
+                <p>Sind Sie sicher, dass Sie die folgende Qualifikation löschen möchten?</p>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h6>{{ object.type.name }}</h6>
+                        <p class="mb-1">
+                            <strong>Person:</strong> {{ object.get_person_name }}
+                        </p>
+                        <p class="mb-1">
+                            <strong>Erworben am:</strong> {{ object.date_acquired|date:"d.m.Y" }}
+                        </p>
+                        {% if object.date_expires %}
+                        <p class="mb-1">
+                            <strong>Läuft ab am:</strong> {{ object.date_expires|date:"d.m.Y" }}
+                        </p>
+                        {% endif %}
+                        {% if object.issued_by %}
+                        <p class="mb-0">
+                            <strong>Ausgestellt von:</strong> {{ object.issued_by }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'qualifications:qualification_detail' object.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Abbrechen
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Endgültig löschen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

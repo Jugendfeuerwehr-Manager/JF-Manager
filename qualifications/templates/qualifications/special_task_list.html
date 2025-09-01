@@ -1,0 +1,228 @@
+{% extends 'qualifications/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Sonderaufgaben{% endblock %}
+
+{% block header_actions %}
+{% if perms.qualifications.add_specialtask %}
+    <a href="{% url 'qualifications:special_task_create' %}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Neue Sonderaufgabe
+    </a>
+{% endif %}
+{% endblock %}
+
+{% block content_body %}
+<!-- Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        {% crispy filter_form %}
+    </div>
+</div>
+
+<!-- Sonderaufgaben Liste -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-tasks"></i> Sonderaufgaben
+            <span class="badge bg-secondary">{{ special_tasks|length }}</span>
+        </h5>
+    </div>
+    
+    {% if special_tasks %}
+    <div class="card-body p-0">
+        <!-- Desktop Tabelle -->
+        <div class="table-responsive desktop-only">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Person</th>
+                        <th>Aufgabe</th>
+                        <th>Startdatum</th>
+                        <th>Enddatum</th>
+                        <th>Status</th>
+                        <th>Dauer</th>
+                        <th class="text-end">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in special_tasks %}
+                    <tr class="{{ task.get_status_class }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <strong>{{ task.get_person_name }}</strong>
+                                    {% if task.user %}
+                                        <br><small class="text-muted">Benutzer</small>
+                                    {% else %}
+                                        <br><small class="text-muted">Mitglied</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>{{ task.task.name }}</strong>
+                            {% if task.task.description %}
+                                <br><small class="text-muted">{{ task.task.description|truncatechars:50 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ task.start_date|date:"d.m.Y" }}</td>
+                        <td>
+                            {% if task.end_date %}
+                                {{ task.end_date|date:"d.m.Y" }}
+                            {% else %}
+                                <span class="text-muted">Noch aktiv</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if task.is_active %}
+                                <span class="badge bg-success">Aktiv</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Beendet</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ task.get_duration_days }} Tage
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'qualifications:special_task_detail' task.pk %}" 
+                                   class="btn btn-sm btn-outline-primary"
+                                   data-bs-toggle="tooltip" title="Details anzeigen">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if perms.qualifications.change_specialtask %}
+                                <a href="{% url 'qualifications:special_task_edit' task.pk %}" 
+                                   class="btn btn-sm btn-outline-secondary"
+                                   data-bs-toggle="tooltip" title="Bearbeiten">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                                {% if task.is_active and perms.qualifications.change_specialtask %}
+                                <a href="{% url 'qualifications:special_task_end' task.pk %}" 
+                                   class="btn btn-sm btn-outline-warning"
+                                   data-bs-toggle="tooltip" title="Beenden">
+                                    <i class="fas fa-stop"></i>
+                                </a>
+                                {% endif %}
+                                {% if perms.qualifications.delete_specialtask %}
+                                <a href="{% url 'qualifications:special_task_delete' task.pk %}" 
+                                   class="btn btn-sm btn-outline-danger"
+                                   data-bs-toggle="tooltip" title="Löschen">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Karten -->
+        <div class="mobile-only">
+            {% for task in special_tasks %}
+            <div class="card m-2 {% if task.is_active %}special-task-active{% else %}special-task-completed{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-1">{{ task.get_person_name }}</h6>
+                            <p class="card-text mb-1">
+                                <strong>{{ task.task.name }}</strong>
+                            </p>
+                            <small class="text-muted">
+                                Start: {{ task.start_date|date:"d.m.Y" }}
+                                {% if task.end_date %}
+                                    | Ende: {{ task.end_date|date:"d.m.Y" }}
+                                {% endif %}
+                                <br>Dauer: {{ task.get_duration_days }} Tage
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            {% if task.is_active %}
+                                <span class="badge bg-success mb-2">Aktiv</span>
+                            {% else %}
+                                <span class="badge bg-secondary mb-2">Beendet</span>
+                            {% endif %}
+                            <br>
+                            <div class="btn-group-vertical" role="group">
+                                <a href="{% url 'qualifications:special_task_detail' task.pk %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if perms.qualifications.change_specialtask %}
+                                <a href="{% url 'qualifications:special_task_edit' task.pk %}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                                {% if task.is_active and perms.qualifications.change_specialtask %}
+                                <a href="{% url 'qualifications:special_task_end' task.pk %}" 
+                                   class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-stop"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.task_type %}&task_type={{ request.GET.task_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            &laquo; Erste
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.task_type %}&task_type={{ request.GET.task_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            Zurück
+                        </a>
+                    </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.task_type %}&task_type={{ request.GET.task_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            Weiter
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.task_type %}&task_type={{ request.GET.task_type }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            Letzte &raquo;
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="card-body text-center py-5">
+        <i class="fas fa-tasks fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Keine Sonderaufgaben gefunden</h5>
+        <p class="text-muted">Es wurden keine Sonderaufgaben gefunden, die Ihren Filterkriterien entsprechen.</p>
+        {% if perms.qualifications.add_specialtask %}
+        <a href="{% url 'qualifications:special_task_create' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Erste Sonderaufgabe hinzufügen
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

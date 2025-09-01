@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'colorfield',
     'health',
     'setup.apps.SetupConfig',
+    'qualifications.apps.QualificationsConfig',
 ]
 
 BOOTSTRAP4 = {

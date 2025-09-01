@@ -87,6 +87,11 @@
                                 <i class="fas fa-tshirt"></i>
                             </a>
                         {% endif %}
+                        {% if 'qualifications.view_qualification' in perms %}
+                            <a class="btn" href="{% url 'qualifications:dashboard' %}" title="Qualifikationen">
+                                <i class="fas fa-certificate"></i>
+                            </a>
+                        {% endif %}
                         {% if 'servicebook.view_service' in perms %}
                             <a class="btn" href="{% url 'servicebook:home' %}" title="Dienstbuch">
                                 <i class="fas fa-book"></i>
@@ -125,6 +130,13 @@
                                 <li class="nav-item">
                                     <a class="nav-link px-3" href="{% url 'inventory:dashboard' %}">
                                         <i class="fas fa-tshirt mr-2"></i>Lager
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if 'qualifications.view_qualification' in perms %}
+                                <li class="nav-item">
+                                    <a class="nav-link px-3" href="{% url 'qualifications:dashboard' %}">
+                                        <i class="fas fa-certificate mr-2"></i>Qualifikationen
                                     </a>
                                 </li>
                             {% endif %}

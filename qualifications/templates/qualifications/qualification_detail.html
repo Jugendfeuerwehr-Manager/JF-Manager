@@ -1,0 +1,201 @@
+{% extends 'qualifications/base.html' %}
+
+{% block title %}{{ object.type.name }} - {{ object.get_person_name }}{% endblock %}
+
+{% block header_actions %}
+<div class="btn-group" role="group">
+    {% if perms.qualifications.change_qualification %}
+    <a href="{% url 'qualifications:qualification_edit' object.pk %}" class="btn btn-secondary">
+        <i class="fas fa-edit"></i> Bearbeiten
+    </a>
+    {% endif %}
+    {% if perms.qualifications.delete_qualification %}
+    <a href="{% url 'qualifications:qualification_delete' object.pk %}" class="btn btn-outline-danger">
+        <i class="fas fa-trash"></i> Löschen
+    </a>
+    {% endif %}
+    <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left"></i> Zurück zur Liste
+    </a>
+</div>
+{% endblock %}
+
+{% block content_body %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-certificate"></i> {{ object.type.name }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Grundinformationen</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td class="fw-bold">Person:</td>
+                                <td>{{ object.get_person_name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Typ:</td>
+                                <td>
+                                    {% if object.user %}
+                                        <span class="badge bg-primary">Benutzer</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Mitglied</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Qualifikation:</td>
+                                <td>{{ object.type.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Erworben am:</td>
+                                <td>{{ object.date_acquired|date:"d.m.Y" }}</td>
+                            </tr>
+                            {% if object.date_expires %}
+                            <tr>
+                                <td class="fw-bold">Läuft ab am:</td>
+                                <td>
+                                    {{ object.date_expires|date:"d.m.Y" }}
+                                    {% if object.is_expired %}
+                                        <span class="badge bg-danger ms-2">Abgelaufen</span>
+                                    {% elif object.expires_soon %}
+                                        <span class="badge bg-warning ms-2">Läuft bald ab</span>
+                                    {% else %}
+                                        <span class="badge bg-success ms-2">Gültig</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td class="fw-bold">Gültigkeit:</td>
+                                <td>
+                                    <span class="badge bg-success">Läuft nicht ab</span>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% if object.issued_by %}
+                            <tr>
+                                <td class="fw-bold">Ausgestellt von:</td>
+                                <td>{{ object.issued_by }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Status</h6>
+                        <div class="card border-0 {{ object.get_status_class }}">
+                            <div class="card-body text-center">
+                                {% if object.is_expired %}
+                                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-2"></i>
+                                    <h5 class="text-danger">Abgelaufen</h5>
+                                    <p class="text-muted mb-0">
+                                        Diese Qualifikation ist seit dem {{ object.date_expires|date:"d.m.Y" }} abgelaufen.
+                                    </p>
+                                {% elif object.expires_soon %}
+                                    <i class="fas fa-clock fa-3x text-warning mb-2"></i>
+                                    <h5 class="text-warning">Läuft bald ab</h5>
+                                    <p class="text-muted mb-0">
+                                        Diese Qualifikation läuft am {{ object.date_expires|date:"d.m.Y" }} ab.
+                                    </p>
+                                {% elif object.date_expires %}
+                                    <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                                    <h5 class="text-success">Gültig</h5>
+                                    <p class="text-muted mb-0">
+                                        Gültig bis {{ object.date_expires|date:"d.m.Y" }}
+                                    </p>
+                                {% else %}
+                                    <i class="fas fa-infinity fa-3x text-primary mb-2"></i>
+                                    <h5 class="text-primary">Unbegrenzt gültig</h5>
+                                    <p class="text-muted mb-0">
+                                        Diese Qualifikation läuft nicht ab.
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if object.note %}
+                <hr>
+                <h6>Notizen</h6>
+                <div class="alert alert-light">
+                    {{ object.note|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Qualifikationstyp-Details -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Qualifikationstyp
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>{{ object.type.name }}</h6>
+                {% if object.type.description %}
+                <p class="text-muted">{{ object.type.description }}</p>
+                {% endif %}
+                
+                <table class="table table-sm">
+                    <tr>
+                        <td class="fw-bold">Läuft ab:</td>
+                        <td>
+                            {% if object.type.expires %}
+                                <span class="badge bg-warning">Ja</span>
+                            {% else %}
+                                <span class="badge bg-success">Nein</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if object.type.validity_period %}
+                    <tr>
+                        <td class="fw-bold">Gültigkeitsdauer:</td>
+                        <td>{{ object.type.validity_period }} Monate</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+        
+        <!-- Weitere Qualifikationen dieser Person -->
+        {% if related_qualifications %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-list"></i> Weitere Qualifikationen
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for qualification in related_qualifications %}
+                <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div>
+                        <strong>{{ qualification.type.name }}</strong><br>
+                        <small class="text-muted">{{ qualification.date_acquired|date:"d.m.Y" }}</small>
+                    </div>
+                    <div>
+                        {% if qualification.is_expired %}
+                            <span class="badge bg-danger">Abgelaufen</span>
+                        {% elif qualification.expires_soon %}
+                            <span class="badge bg-warning">Läuft bald ab</span>
+                        {% else %}
+                            <span class="badge bg-success">Gültig</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
