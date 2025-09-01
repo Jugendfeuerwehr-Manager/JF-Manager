@@ -220,4 +220,18 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         context['modules'] = modules
 
+        # Schnellzugriff-Daten
+        if user.has_perm('qualifications.view_qualification'):
+            # Kürzlich erworbene Qualifikationen
+            context['recent_qualifications'] = Qualification.objects.select_related(
+                'type', 'user', 'member'
+            ).order_by('-date_acquired')[:5]
+            
+            # Aktuelle Sonderaufgaben
+            context['current_special_tasks'] = SpecialTask.objects.select_related(
+                'task', 'user', 'member'
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gt=today)
+            ).order_by('-start_date')[:5]
+
         return context

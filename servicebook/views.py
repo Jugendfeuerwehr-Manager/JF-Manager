@@ -11,6 +11,7 @@ from django_tables2 import RequestConfig
 from django.core.paginator import Paginator
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 
 from inventory.forms import FormActionMixin
 from members.models import Member
@@ -123,9 +124,10 @@ class ServiceCreateView(FormActionMixin, CreateView):
 
 class ServiceViewSet(viewsets.ModelViewSet):
     """
-    API Endpoint that allows Service to be viewed or edited
+    API Endpoint that allows Service to be viewed or edited - nur für authentifizierte und berechtigte Benutzer
     """
     authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = get_services_list()
     serializer_class = ServiceSerializer
     filterset_fields = '__all__'
@@ -136,11 +138,12 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
 class AttandenceViewSet(viewsets.ModelViewSet):
     """
-    API Endpoint that allows Attandance to be viewed or edited
+    API Endpoint that allows Attandance to be viewed or edited - nur für authentifizierte und berechtigte Benutzer
 
     search is indexed to person name and lastname
     """
     authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = get_attandance_list()
     serializer_class = AttendanceSerializer
     filterset_fields = '__all__'

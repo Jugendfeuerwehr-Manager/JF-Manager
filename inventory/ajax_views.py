@@ -1,11 +1,12 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q
 from inventory.models import StorageLocation, Stock, Item, ItemVariant
 
 
 @login_required
+@permission_required('inventory.view_stock', raise_exception=True)
 @require_http_methods(["GET"])
 def get_stock_info(request):
     """Get stock information for a specific item at a location"""
@@ -47,6 +48,7 @@ def get_stock_info(request):
 
 
 @login_required
+@permission_required('inventory.view_storagelocation', raise_exception=True)
 @require_http_methods(["GET"])
 def get_filtered_locations(request):
     """Get filtered storage locations based on criteria"""
@@ -116,6 +118,7 @@ def _sort_locations_hierarchically(locations):
 
 
 @login_required
+@permission_required('inventory.view_item', raise_exception=True)
 @require_http_methods(["GET"])
 def search_items(request):
     """Search for items and variants"""
@@ -161,6 +164,7 @@ def search_items(request):
 
 
 @login_required
+@permission_required('inventory.view_storagelocation', raise_exception=True)
 @require_http_methods(["GET"])
 def search_locations(request):
     """Search for storage locations"""

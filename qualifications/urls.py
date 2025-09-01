@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .autocomplete_views import user_autocomplete, member_autocomplete
 
 app_name = 'qualifications'
 
@@ -38,4 +39,8 @@ urlpatterns = [
     # AJAX Endpoints
     path('api/qualification-type/<int:pk>/', views.qualification_type_details, name='qualification_type_details'),
     path('api/calculate-expiry/', views.calculate_expiry_date, name='calculate_expiry_date'),
+    
+    # Autocomplete endpoints
+    path('autocomplete/users/', user_autocomplete, name='user_autocomplete'),
+    path('autocomplete/members/', member_autocomplete, name='member_autocomplete'),
 ]

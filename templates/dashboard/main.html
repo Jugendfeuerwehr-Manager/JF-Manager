@@ -205,6 +205,100 @@
         {% endif %}
     </div>
 
+    <!-- Schnellzugriff -->
+    {% if 'qualifications.view_qualification' in perms %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="fas fa-tachometer-alt mr-2"></i>
+                Schnellzugriff
+            </h3>
+        </div>
+        
+        <!-- Aktive Sonderaufgaben -->
+        <div class="col-lg-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks mr-2"></i>
+                        Aktive Sonderaufgaben
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if current_special_tasks %}
+                        {% for task in current_special_tasks %}
+                            <a href="{% url 'qualifications:special_task_detail' task.pk %}" class="activity-item text-decoration-none">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-3">
+                                        <i class="fas fa-play-circle text-success"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ task.task.name }}</h6>
+                                        <p class="mb-1 text-muted small">{{ task.get_person_name }}</p>
+                                        <small class="text-muted">Seit: {{ task.start_date }}</small>
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'qualifications:special_task_list' %}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-list mr-1"></i>
+                                Alle Sonderaufgaben anzeigen
+                            </a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Keine aktiven Sonderaufgaben
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Kürzlich erworbene Qualifikationen -->
+        <div class="col-lg-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-certificate mr-2"></i>
+                        Kürzlich erworbene Qualifikationen
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_qualifications %}
+                        {% for qual in recent_qualifications %}
+                            <a href="{% url 'qualifications:qualification_detail' qual.pk %}" class="activity-item text-decoration-none">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-3">
+                                        <i class="fas fa-award text-info"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ qual.type.name }}</h6>
+                                        <p class="mb-1 text-muted small">{{ qual.get_person_name }}</p>
+                                        <small class="text-muted">{{ qual.date_acquired }}</small>
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-list mr-1"></i>
+                                Alle Qualifikationen anzeigen
+                            </a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Keine kürzlichen Qualifikationen
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Aktivitäten und Erinnerungen -->
     <div class="row">
         <!-- Kürzliche Aktivitäten -->
@@ -219,7 +313,7 @@
                 <div class="card-body">
                     {% if recent_activities %}
                         {% for activity in recent_activities %}
-                            <div class="activity-item">
+                            <a href="{{ activity.url }}" class="activity-item text-decoration-none">
                                 <div class="d-flex align-items-start">
                                     <div class="mr-3">
                                         <i class="{{ activity.icon }} text-primary"></i>
@@ -230,8 +324,14 @@
                                         <small class="text-muted">{{ activity.date }}</small>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
                         {% endfor %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-list mr-1"></i>
+                                Alle Qualifikationen anzeigen
+                            </a>
+                        </div>
                     {% else %}
                         <p class="text-muted text-center py-3">
                             <i class="fas fa-info-circle mr-2"></i>

@@ -10,7 +10,7 @@
         <div class="col-12">
             <h1 class="mt-4">{{ object.name }}</h1>
             <ol class="breadcrumb mb-4">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
                 <li class="breadcrumb-item"><a href="{% url 'inventory:dashboard' %}">Inventar</a></li>
                 <li class="breadcrumb-item"><a href="{% url 'inventory:location_list' %}">Lagerorte</a></li>
                 <li class="breadcrumb-item active">{{ object.name }}</li>

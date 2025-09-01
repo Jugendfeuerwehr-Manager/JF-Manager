@@ -1,7 +1,7 @@
 """
 API Views für AJAX-Anfragen im Inventar-System
 """
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -22,6 +22,7 @@ def _deprecated(response: JsonResponse):  # helper
 
 
 @login_required
+@permission_required('inventory.view_item', raise_exception=True)
 @require_GET
 def search_items(request):
     """AJAX-Endpunkt für die Artikel-Suche"""
@@ -93,6 +94,7 @@ def search_items(request):
 
 
 @login_required
+@permission_required('inventory.view_storagelocation', raise_exception=True)
 @require_GET
 def search_locations(request):
     """AJAX-Endpunkt für die Lagerort-Suche"""
@@ -151,50 +153,57 @@ def search_locations(request):
 
 
 @login_required
+@permission_required('members.view_member', raise_exception=True)
 @require_GET
 def search_members(request):
-    """AJAX-Endpunkt für die Mitglieder-Suche"""
+    """AJAX-Endpunkt für die Mitglieder-Suche - nur notwendige Daten"""
     query = request.GET.get('q', '').strip()
     page = request.GET.get('page', 1)
     
     if len(query) < 2:
         return JsonResponse({'results': [], 'has_more': False})
     
-    # Mitglieder suchen
-    members = Member.objects.filter(
-        Q(name__icontains=query) |
-        Q(lastname__icontains=query) |
-        Q(email__icontains=query)
-    ).select_related('group', 'status')
+    # Basis-Queryset
+    members = Member.objects.select_related('group', 'status').all()
     
-    # Paginierung
+    # Nach Text suchen - nur in Name und Nachname
+    members = members.filter(
+        Q(name__icontains=query) |
+        Q(lastname__icontains=query)
+    )
+    
+    # Pagination
     paginator = Paginator(members, 20)
-    page_obj = paginator.get_page(page)
+    try:
+        page_obj = paginator.page(page)
+        members_page = page_obj.object_list
+        has_more = page_obj.has_next()
+    except:
+        members_page = []
+        has_more = False
     
     results = []
-    for member in page_obj:
+    for member in members_page:
+        # Nur notwendige Daten für Autocomplete - keine sensiblen Informationen
         full_name = f"{member.name} {member.lastname}".strip()
-        display_name = full_name
-        if member.group:
-            display_name += f" ({member.group.name})"
+        
+        # Nur Gruppenname als zusätzliche Info (falls vorhanden)
+        detail = member.group.name if member.group else None
         
         results.append({
             'id': member.id,
-            'name': full_name,
-            'display_name': display_name,
-            'email': member.email,
-            'group': member.group.name if member.group else '',
-            'status': member.status.name if member.status else ''
+            'text': full_name,
+            'detail': detail
         })
     
     return _deprecated(JsonResponse({
         'results': results,
-        'has_more': page_obj.has_next(),
-        'total_count': paginator.count
+        'has_more': has_more
     }))
 
 
 @login_required
+@permission_required('inventory.view_stock', raise_exception=True)
 @require_GET
 def get_stock_info(request):
     """AJAX-Endpunkt für Bestandsinformationen"""
@@ -405,7 +414,7 @@ def get_item_details(request, item_id):
     return _deprecated(JsonResponse(result))
 
 
-@method_decorator(login_required, name='dispatch')
+@method_decorator([login_required, permission_required('inventory.view_itemvariant', raise_exception=True)], name='dispatch')
 class ItemVariantAPIView(View):
     """API View für ItemVariant CRUD-Operationen"""
     
@@ -430,6 +439,10 @@ class ItemVariantAPIView(View):
     @method_decorator(csrf_exempt)
     def post(self, request):
         """POST neue Variante erstellen"""
+        # Zusätzliche Berechtigung für das Erstellen
+        if not request.user.has_perm('inventory.add_itemvariant'):
+            return JsonResponse({'error': 'Keine Berechtigung zum Erstellen von Varianten'}, status=403)
+            
         try:
             data = json.loads(request.body)
         except json.JSONDecodeError:
@@ -462,6 +475,10 @@ class ItemVariantAPIView(View):
     @method_decorator(csrf_exempt)
     def put(self, request, variant_id):
         """PUT Variante aktualisieren"""
+        # Zusätzliche Berechtigung für das Ändern
+        if not request.user.has_perm('inventory.change_itemvariant'):
+            return JsonResponse({'error': 'Keine Berechtigung zum Ändern von Varianten'}, status=403)
+            
         try:
             variant = ItemVariant.objects.get(pk=variant_id)
         except ItemVariant.DoesNotExist:
@@ -487,6 +504,10 @@ class ItemVariantAPIView(View):
     @method_decorator(csrf_exempt)
     def delete(self, request, variant_id):
         """DELETE Variante löschen"""
+        # Zusätzliche Berechtigung für das Löschen
+        if not request.user.has_perm('inventory.delete_itemvariant'):
+            return JsonResponse({'error': 'Keine Berechtigung zum Löschen von Varianten'}, status=403)
+            
         try:
             variant = ItemVariant.objects.get(pk=variant_id)
         except ItemVariant.DoesNotExist:

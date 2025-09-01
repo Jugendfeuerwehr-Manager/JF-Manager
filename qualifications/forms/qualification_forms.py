@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from datetime import date
 
 from ..models import QualificationType, Qualification
+from ..widgets import UserSelect2Widget, MemberSelect2Widget
 
 
 class QualificationTypeForm(forms.ModelForm):
@@ -51,6 +52,8 @@ class QualificationForm(forms.ModelForm):
         model = Qualification
         fields = ['type', 'user', 'member', 'date_acquired', 'date_expires', 'issued_by', 'note']
         widgets = {
+            'user': UserSelect2Widget(),
+            'member': MemberSelect2Widget(),
             'date_acquired': forms.DateInput(attrs={'type': 'date'}),
             'date_expires': forms.DateInput(attrs={'type': 'date'}),
             'note': forms.Textarea(attrs={'rows': 3}),

@@ -5,6 +5,7 @@ from crispy_forms.layout import Layout, Div, Submit, Field, Row, Column
 from datetime import date
 
 from ..models import SpecialTaskType, SpecialTask
+from ..widgets import UserSelect2Widget, MemberSelect2Widget
 
 
 class SpecialTaskTypeForm(forms.ModelForm):
@@ -31,6 +32,8 @@ class SpecialTaskForm(forms.ModelForm):
         model = SpecialTask
         fields = ['task', 'user', 'member', 'start_date', 'end_date', 'note']
         widgets = {
+            'user': UserSelect2Widget(),
+            'member': MemberSelect2Widget(),
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'end_date': forms.DateInput(attrs={'type': 'date'}),
             'note': forms.Textarea(attrs={'rows': 3}),
