@@ -99,8 +99,9 @@
     <!-- Welcome Header -->
     <div class="welcome-header text-center">
         <h1 class="mb-3">
+            {{ global_preferences.general__title }} <br>
             <i class="fas fa-fire mr-3"></i>
-            Willkommen im JF Manager, {{ user.first_name|default:user.username }}!
+            Willkommen , {{ user.first_name|default:user.username }}!
         </h1>
         <p class="lead mb-0">Zentrale Verwaltungsoberfläche für die Jugendfeuerwehr Laudenbach</p>
     </div>

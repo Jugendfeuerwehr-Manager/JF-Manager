@@ -90,7 +90,62 @@
         </div>
     </div>
 </div>
-
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt"></i> Schnellzugriff
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if perms.qualifications.view_qualification %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-list"></i><br>
+                            <small>Alle Qualifikationen</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if perms.qualifications.view_specialtask %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:special_task_list' %}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-tasks"></i><br>
+                            <small>Alle Sonderaufgaben</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if perms.qualifications.add_qualification %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:qualification_create' %}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-plus-circle"></i><br>
+                            <small>Neue Qualifikation</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if perms.qualifications.add_specialtask %}
+                    <div class="col-md-3 col-6 mb-2">
+                        <a href="{% url 'qualifications:special_task_create' %}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-user-plus"></i><br>
+                            <small>Neue Sonderaufgabe</small>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        &nbsp;
+    </div>
+</div>
 <!-- Hauptinhalt -->
 <div class="row">
     <!-- Linke Spalte - Desktop -->
@@ -281,58 +336,6 @@
             </div>
         </div>
         {% endif %}
-    </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-bolt"></i> Schnellzugriff
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    {% if perms.qualifications.view_qualification %}
-                    <div class="col-md-3 col-6 mb-2">
-                        <a href="{% url 'qualifications:qualification_list' %}" class="btn btn-outline-primary w-100">
-                            <i class="fas fa-list"></i><br>
-                            <small>Alle Qualifikationen</small>
-                        </a>
-                    </div>
-                    {% endif %}
-                    
-                    {% if perms.qualifications.view_specialtask %}
-                    <div class="col-md-3 col-6 mb-2">
-                        <a href="{% url 'qualifications:special_task_list' %}" class="btn btn-outline-success w-100">
-                            <i class="fas fa-tasks"></i><br>
-                            <small>Alle Sonderaufgaben</small>
-                        </a>
-                    </div>
-                    {% endif %}
-                    
-                    {% if perms.qualifications.add_qualification %}
-                    <div class="col-md-3 col-6 mb-2">
-                        <a href="{% url 'qualifications:qualification_create' %}" class="btn btn-outline-info w-100">
-                            <i class="fas fa-plus-circle"></i><br>
-                            <small>Neue Qualifikation</small>
-                        </a>
-                    </div>
-                    {% endif %}
-                    
-                    {% if perms.qualifications.add_specialtask %}
-                    <div class="col-md-3 col-6 mb-2">
-                        <a href="{% url 'qualifications:special_task_create' %}" class="btn btn-outline-warning w-100">
-                            <i class="fas fa-user-plus"></i><br>
-                            <small>Neue Sonderaufgabe</small>
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
