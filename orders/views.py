@@ -55,7 +55,7 @@ class OrderListView(LoginRequiredMixin, FilterView):
             'total_orders': queryset.count(),
             'pending_items': OrderItem.objects.filter(
                 order__in=queryset,
-                status__code='ORDERED'
+                status__code__in=['NEW', 'ORDERED']
             ).count(),
             'delivered_items': OrderItem.objects.filter(
                 order__in=queryset,
@@ -112,8 +112,11 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 formset.instance = self.object
                 items = formset.save(commit=False)
                 
-                # Default Status für neue Items setzen
-                default_status = OrderStatus.objects.filter(code='ORDERED').first()
+                # Default Status für neue Items setzen - beginne mit "Neu"
+                default_status = OrderStatus.objects.filter(code='NEW').first()
+                if not default_status:
+                    # Fallback auf ORDERED falls NEW noch nicht existiert
+                    default_status = OrderStatus.objects.filter(code='ORDERED').first()
                 if not default_status:
                     default_status = OrderStatus.objects.first()
                 
@@ -157,8 +160,11 @@ class QuickOrderCreateView(LoginRequiredMixin, FormView):
                 notes='Schnellbestellung'
             )
             
-            # Default Status
-            default_status = OrderStatus.objects.filter(code='ORDERED').first()
+            # Default Status für neue Items - beginne mit "Neu"
+            default_status = OrderStatus.objects.filter(code='NEW').first()
+            if not default_status:
+                # Fallback auf ORDERED falls NEW noch nicht existiert
+                default_status = OrderStatus.objects.filter(code='ORDERED').first()
             if not default_status:
                 default_status = OrderStatus.objects.first()
             
@@ -717,7 +723,7 @@ def analytics_dashboard_view(request):
             avg_processing_time = 7  # Placeholder - would need proper calculation
         
         # Pending items by age
-        pending_statuses = OrderStatus.objects.filter(code__in=['pending', 'ordered'])
+        pending_statuses = OrderStatus.objects.filter(code__in=['NEW', 'pending', 'ordered'])
         pending_items = OrderItem.objects.filter(status__in=pending_statuses)
         
         pending_by_age = {

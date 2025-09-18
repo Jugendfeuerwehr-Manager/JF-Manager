@@ -268,11 +268,64 @@ class OrderSummaryView(FormView):
             )
             
             if success:
-                messages.success(
-                    self.request,
-                    f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
-                    f'({orders_queryset.count()} Bestellungen)'
-                )
+                # Update status from NEW to ORDERED for all items in the sent orders
+                from django.db import transaction
+                from .models import OrderItem, OrderStatus
+                
+                with transaction.atomic():
+                    try:
+                        new_status = OrderStatus.objects.get(code='NEW')
+                        ordered_status = OrderStatus.objects.get(code='ORDERED')
+                        
+                        # Get all items with NEW status in the sent orders
+                        new_items = OrderItem.objects.filter(
+                            order__in=orders_queryset,
+                            status=new_status
+                        )
+                        
+                        updated_count = 0
+                        for item in new_items:
+                            old_status = item.status
+                            item.status = ordered_status
+                            item.save(changed_by=self.request.user, 
+                                    status_change_notes=f"Status automatisch aktualisiert nach Versendung der Bestellübersicht an {recipient_email}")
+                            updated_count += 1
+                        
+                        if updated_count > 0:
+                            messages.success(
+                                self.request,
+                                f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
+                                f'({orders_queryset.count()} Bestellungen, {updated_count} Artikel auf "Bestellt bei Gerätewart" gesetzt)'
+                            )
+                        else:
+                            messages.success(
+                                self.request,
+                                f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
+                                f'({orders_queryset.count()} Bestellungen)'
+                            )
+                            
+                    except OrderStatus.DoesNotExist:
+                        # If status doesn't exist, still show success but note the issue
+                        messages.success(
+                            self.request,
+                            f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
+                            f'({orders_queryset.count()} Bestellungen)'
+                        )
+                        messages.warning(
+                            self.request,
+                            'Status konnte nicht automatisch aktualisiert werden. Bitte prüfen Sie die Bestellstatus manuell.'
+                        )
+                    except Exception as status_update_error:
+                        # Email was sent successfully, but status update failed
+                        messages.success(
+                            self.request,
+                            f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
+                            f'({orders_queryset.count()} Bestellungen)'
+                        )
+                        messages.warning(
+                            self.request,
+                            f'Status-Update fehlgeschlagen: {str(status_update_error)}'
+                        )
             else:
                 messages.error(
                     self.request,

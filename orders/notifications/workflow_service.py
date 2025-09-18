@@ -24,16 +24,17 @@ class OrderWorkflowService(BaseNotificationService):
     
     # Define workflow transitions as a class constant for easy maintenance
     WORKFLOW_TRANSITIONS = {
-        'pending': ['ordered', 'cancelled'],
-        'ordered': ['received', 'cancelled'],
+        'NEW': ['ORDERED', 'CANCELLED'],  # New orders can be ordered or cancelled
+        'pending': ['ORDERED', 'CANCELLED'],
+        'ORDERED': ['RECEIVED', 'CANCELLED'],
         'received': ['ready', 'defective'],
         'ready': ['delivered'],
         'delivered': [],  # Final state - no transitions allowed
         'cancelled': [],  # Final state - no transitions allowed
-        'defective': ['ordered', 'cancelled'],  # Can reorder or cancel defective items
+        'defective': ['ORDERED', 'CANCELLED'],  # Can reorder or cancel defective items
         
-        # Legacy uppercase statuses (for backward compatibility)
-        'ORDERED': ['RECEIVED', 'CANCELLED'],
+        # Legacy statuses (for backward compatibility)
+        'ordered': ['RECEIVED', 'CANCELLED'],
         'RECEIVED': ['DELIVERED', 'CANCELLED'],
         'DELIVERED': [],
         'CANCELLED': []
@@ -41,11 +42,11 @@ class OrderWorkflowService(BaseNotificationService):
     
     # Define status categories for grouping and filtering
     STATUS_CATEGORIES = {
-        'active': ['pending', 'ordered', 'received', 'ready'],
-        'completed': ['delivered'],
-        'terminated': ['cancelled', 'defective'],
-        'actionable': ['pending', 'ordered', 'defective'],  # Statuses that require action
-        'final': ['delivered', 'cancelled'],  # Statuses that end the workflow
+        'active': ['NEW', 'pending', 'ORDERED', 'ordered', 'RECEIVED', 'received', 'ready'],
+        'completed': ['DELIVERED', 'delivered'],
+        'terminated': ['CANCELLED', 'cancelled', 'defective'],
+        'actionable': ['NEW', 'pending', 'ORDERED', 'ordered', 'defective'],  # Statuses that require action
+        'final': ['DELIVERED', 'delivered', 'CANCELLED', 'cancelled'],  # Statuses that end the workflow
     }
     
     @classmethod

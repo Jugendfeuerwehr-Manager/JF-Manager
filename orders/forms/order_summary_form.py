@@ -1,6 +1,7 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Row, Column
+from dynamic_preferences.registries import global_preferences_registry
 from ..models import OrderStatus
 
 
@@ -57,6 +58,12 @@ class OrderSummaryForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Set default email from global preferences
+        global_preferences = global_preferences_registry.manager()
+        equipment_email = global_preferences.get('orders__equipment_manager_email', '')
+        if equipment_email and not self.initial.get('recipient_email'):
+            self.fields['recipient_email'].initial = equipment_email
         
         self.helper = FormHelper()
         self.helper.form_method = 'post'

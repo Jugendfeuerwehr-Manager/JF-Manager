@@ -8,6 +8,7 @@ general = Section('general')
 members = Section('members')
 service = Section('service')
 email = Section('email')  # New section for email settings
+orders = Section('orders')  # New section for order settings
 
 @global_preferences_registry.register
 class SiteTitle(StringPreference):
@@ -121,4 +122,14 @@ class DefaultFromEmail(StringPreference):
     verbose_name = 'Absender E-Mail'
     help_text = 'E-Mail-Adresse, die als Absender verwendet wird'
     default = 'webmaster@localhost'
+    required = False
+
+# Order settings
+@global_preferences_registry.register
+class EquipmentManagerEmail(StringPreference):
+    section = orders
+    name = 'equipment_manager_email'
+    verbose_name = 'Gerätewart E-Mail'
+    help_text = 'E-Mail-Adresse des Gerätewarts für Bestellübersichten'
+    default = ''
     required = False

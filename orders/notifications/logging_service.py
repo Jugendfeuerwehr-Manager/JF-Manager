@@ -39,8 +39,7 @@ class NotificationLogger(BaseNotificationService):
         recipient_email: str,
         subject: str,
         order: Optional[Order] = None,
-        order_item: Optional[OrderItem] = None,
-        additional_data: Optional[Dict[str, Any]] = None
+        order_item: Optional[OrderItem] = None
     ) -> NotificationLog:
         """
         Create a new notification log entry.
@@ -51,7 +50,6 @@ class NotificationLogger(BaseNotificationService):
             subject: Email subject line
             order: Related order (optional)
             order_item: Related order item (optional)
-            additional_data: Additional metadata (optional)
             
         Returns:
             NotificationLog instance
@@ -63,8 +61,7 @@ class NotificationLogger(BaseNotificationService):
                 subject=subject,
                 order=order,
                 order_item=order_item,
-                status='pending',
-                additional_data=additional_data or {}
+                status='pending'
             )
             
             logger.info(
@@ -90,10 +87,6 @@ class NotificationLogger(BaseNotificationService):
         try:
             log_entry.status = 'sent'
             log_entry.sent_at = timezone.now()
-            
-            if delivery_info:
-                log_entry.additional_data.update({'delivery_info': delivery_info})
-            
             log_entry.save()
             
             logger.info(f"Marked notification log entry {log_entry.id} as sent")
