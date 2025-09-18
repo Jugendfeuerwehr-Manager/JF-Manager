@@ -22,7 +22,9 @@ class Attachment(models.Model):
     file = models.FileField(
         upload_to=get_attachment_file_path,
         verbose_name="Datei",
-        help_text="Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF"
+        help_text="Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF",
+        null=True,
+        blank=True
     )
     name = models.CharField(
         max_length=255,

@@ -36,7 +36,9 @@ class AttachmentForm(forms.ModelForm):
         
         # Make name required and add help text
         self.fields['name'].required = True
-        self.fields['file'].help_text = 'Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)'
+        # Make file field optional
+        self.fields['file'].required = False
+        self.fields['file'].help_text = 'Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB) - Optional'
         
         # Setup crispy forms
         self.helper = FormHelper()
@@ -70,8 +72,9 @@ class AttachmentForm(forms.ModelForm):
         
         if self.user:
             attachment.uploaded_by = self.user
-            
-        if commit:
+        
+        # Only save if we have a file or if this is an update to existing attachment
+        if commit and (attachment.file or attachment.pk):
             attachment.save()
         
         return attachment

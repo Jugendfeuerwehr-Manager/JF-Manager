@@ -102,7 +102,7 @@ class QualificationForm(forms.ModelForm):
                     <div class="drag-drop-content">
                         <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
                         <h5>Datei hier ablegen oder klicken zum Auswählen</h5>
-                        <p class="text-muted">PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)</p>
+                        <p class="text-muted">PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB) - <strong>Optional</strong></p>
                     </div>
                     <input type="file" id="id_file" name="file" class="d-none" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
                 </div>
@@ -122,9 +122,9 @@ class QualificationForm(forms.ModelForm):
                 <div class="mb-3" id="attachment-fields" style="display: none;">
                     <div class="row">
                         <div class="col-md-6">
-                            <label for="id_attachment_name" class="form-label">Name des Anhangs *</label>
+                            <label for="id_attachment_name" class="form-label">Name des Anhangs</label>
                             <input type="text" class="form-control" id="id_attachment_name" name="attachment_name" 
-                                   placeholder="z.B. Zertifikat Grundlehrgang" required>
+                                   placeholder="z.B. Zertifikat Grundlehrgang">
                         </div>
                         <div class="col-md-6">
                             <label for="id_attachment_description" class="form-label">Beschreibung</label>

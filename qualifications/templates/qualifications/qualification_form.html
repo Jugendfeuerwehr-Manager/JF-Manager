@@ -198,11 +198,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (attachmentFields) {
             attachmentFields.style.display = 'block';
             
-            // Auto-fill name field if empty
+            // Auto-fill name field if empty and make it required
             const nameField = document.getElementById('id_attachment_name');
-            if (nameField && !nameField.value) {
-                const baseName = file.name.replace(/\.[^/.]+$/, "");
-                nameField.value = baseName;
+            if (nameField) {
+                nameField.required = true;
+                if (!nameField.value) {
+                    const baseName = file.name.replace(/\.[^/.]+$/, "");
+                    nameField.value = baseName;
+                }
             }
         }
     }
@@ -236,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dragIcon = dragDropArea.querySelector('i');
         
         if (dragTitle) dragTitle.textContent = 'Datei hier ablegen oder klicken zum Auswählen';
-        if (dragText) dragText.textContent = 'PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB)';
+        if (dragText) dragText.textContent = 'PDF, DOC, DOCX, JPG, PNG, GIF (max. 10MB) - Optional';
         if (dragIcon) dragIcon.className = 'fas fa-cloud-upload-alt fa-3x text-muted mb-3';
         if (fileInfo) fileInfo.style.display = 'none';
         
@@ -246,7 +249,10 @@ document.addEventListener('DOMContentLoaded', function() {
             attachmentFields.style.display = 'none';
             const nameField = document.getElementById('id_attachment_name');
             const descField = document.getElementById('id_attachment_description');
-            if (nameField) nameField.value = '';
+            if (nameField) {
+                nameField.value = '';
+                nameField.required = false;
+            }
             if (descField) descField.value = '';
         }
     }
