@@ -42,6 +42,7 @@ app_patterns = [
     path('servicebook/', include('servicebook.urls')),
     path('orders/', include('orders.urls')),
     path('qualifications/', include('qualifications.urls')),
+    path('einstellungen/', include('settings_manager.urls')),
 ]
 
 # Authentication URLs

@@ -1,0 +1,410 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Einstellungen - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-cogs text-primary mr-2"></i>
+                    Einstellungen
+                </h1>
+            </div>
+            
+            {% if tabs %}
+            <!-- Alert Container für Messages -->
+            <div id="alert-container"></div>
+            
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs nav-tabs-custom" id="settingsTabs" role="tablist">
+                {% for tab in tabs %}
+                <li class="nav-item">
+                    <a class="nav-link{% if forloop.first %} active{% endif %}" 
+                       id="{{ tab.id }}-tab" 
+                       data-toggle="tab" 
+                       href="#{{ tab.id }}" 
+                       role="tab" 
+                       aria-controls="{{ tab.id }}" 
+                       aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                        <i class="{{ tab.icon }} mr-2"></i>
+                        <span class="tab-title">{{ tab.title }}</span>
+                        {% if not tab.can_edit %}
+                            <i class="fas fa-eye ml-2 text-muted" title="Nur Leseberechtigung"></i>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <!-- Tab Content -->
+            <div class="tab-content mt-4" id="settingsTabContent">
+                {% for tab in tabs %}
+                <div class="tab-pane fade{% if forloop.first %} show active{% endif %}" 
+                     id="{{ tab.id }}" 
+                     role="tabpanel" 
+                     aria-labelledby="{{ tab.id }}-tab">
+                    
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="{{ tab.icon }} mr-2"></i>
+                                {{ tab.title }} Einstellungen
+                            </h5>
+                        </div>
+                        
+                        <div class="card-body">
+                            {% if not tab.can_edit %}
+                            <div class="alert alert-warning mb-4">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Nur-Lese-Modus</strong><br>
+                                Sie haben keine Berechtigung, diese Einstellungen zu bearbeiten.
+                            </div>
+                            {% endif %}
+                            
+                            <form class="settings-form" 
+                                  data-tab-id="{{ tab.id }}" 
+                                  data-can-edit="{% if tab.can_edit %}true{% else %}false{% endif %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="tab_id" value="{{ tab.id }}">
+                                
+                                {% if tab.can_edit %}
+                                    {% crispy tab.form %}
+                                    <div class="mt-3">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save mr-2"></i>
+                                            Speichern
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <!-- Readonly version of the form -->
+                                    <div class="readonly-form">
+                                        {% for field in tab.form %}
+                                        <div class="form-group mb-3">
+                                            <label class="form-label">{{ field.label }}</label>
+                                            {% if field.field.widget.input_type == 'checkbox' %}
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" 
+                                                       {% if field.value %}checked{% endif %} disabled>
+                                                <label class="form-check-label text-muted">
+                                                    {% if field.value %}Aktiviert{% else %}Deaktiviert{% endif %}
+                                                </label>
+                                            </div>
+                                            {% elif field.field.widget.input_type == 'password' %}
+                                            <input type="password" class="form-control" 
+                                                   value="{% if field.value %}********{% endif %}" readonly>
+                                            {% else %}
+                                            <input type="text" class="form-control" 
+                                                   value="{{ field.value|default:'-' }}" readonly>
+                                            {% endif %}
+                                            {% if field.help_text %}
+                                            <div class="form-text">{{ field.help_text }}</div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                        
+                                        <div class="mt-4">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                Um diese Einstellungen zu bearbeiten, benötigen Sie entsprechende Berechtigungen.
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </form>
+                            
+                            <!-- Special actions for specific tabs -->
+                            {% if tab.id == 'email' and tab.can_edit %}
+                            <div class="mt-4 pt-4 border-top">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    E-Mail Test
+                                </h6>
+                                <p class="text-muted mb-3">
+                                    Testen Sie Ihre E-Mail-Konfiguration mit einer Test-Nachricht.
+                                </p>
+                                <a href="{% url 'admin:test_email' %}" 
+                                   class="btn btn-outline-success" 
+                                   target="_blank">
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    Test E-Mail senden
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle mr-2"></i>
+                <strong>Keine Einstellungen verfügbar</strong><br>
+                Sie haben keine Berechtigung, Einstellungen einzusehen. Wenden Sie sich an Ihren Administrator.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom Tab Styles */
+.nav-tabs-custom {
+    border-bottom: 2px solid #dee2e6;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.nav-tabs-custom .nav-link {
+    border: none;
+    border-radius: 0.375rem 0.375rem 0 0;
+    background: transparent;
+    color: #6c757d;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-right: 0.25rem;
+    padding: 0.75rem 1rem;
+}
+
+.nav-tabs-custom .nav-link:hover {
+    background: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+    transform: translateY(-2px);
+}
+
+.nav-tabs-custom .nav-link.active {
+    background: #fff;
+    color: #0d6efd;
+    border-bottom: 2px solid #0d6efd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Mobile responsive tabs */
+@media (max-width: 768px) {
+    .nav-tabs-custom {
+        padding: 0.25rem 0.5rem;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: thin;
+    }
+    
+    .nav-tabs-custom .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    .tab-title {
+        display: none;
+    }
+    
+    .nav-tabs-custom .nav-link i {
+        font-size: 1.1rem;
+    }
+    
+    /* Fix spacing for Bootstrap 4 */
+    .mr-2 { margin-right: 0.5rem !important; }
+    .ml-2 { margin-left: 0.5rem !important; }
+}
+
+/* Form Styles */
+.readonly-form .form-control {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+.form-check-input:disabled {
+    opacity: 0.6;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    border-bottom: 1px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+/* Loading states */
+.settings-form.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn.loading {
+    position: relative;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -8px 0 0 -8px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Alert animations */
+.alert {
+    border-radius: 0.375rem;
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tab functionality
+    initSettingsTabs();
+});
+
+function initSettingsTabs() {
+    // Handle form submissions via AJAX
+    const forms = document.querySelectorAll('.settings-form');
+    
+    forms.forEach(form => {
+        const canEdit = form.dataset.canEdit === 'true';
+        if (!canEdit) return;
+        
+        // Override form submission to prevent page reload and use AJAX instead
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitSettingsForm(form);
+        });
+        
+        // Find submit button and add click handler
+        const submitBtn = form.querySelector('input[type="submit"], button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                submitSettingsForm(form);
+            });
+        }
+    });
+}
+
+function submitSettingsForm(form) {
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('input[type="submit"], button[type="submit"]');
+    const tabId = form.dataset.tabId;
+    
+    // Show loading state
+    form.classList.add('loading');
+    if (submitBtn) {
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+    }
+    
+    fetch('{% url "settings_manager:tabbed" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message || 'Einstellungen erfolgreich gespeichert');
+        } else {
+            showAlert('danger', data.error || 'Fehler beim Speichern der Einstellungen');
+            
+            // Show form field errors if available
+            if (data.form_errors) {
+                highlightFormErrors(form, data.form_errors);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('danger', 'Ein unerwarteter Fehler ist aufgetreten');
+    })
+    .finally(() => {
+        // Remove loading state
+        form.classList.remove('loading');
+        if (submitBtn) {
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+        }
+    });
+}
+
+function showAlert(type, message) {
+    const alertContainer = document.getElementById('alert-container');
+    const alertId = 'alert-' + Date.now();
+    
+    const alert = document.createElement('div');
+    alert.id = alertId;
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>
+        ${message}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+    
+    alertContainer.appendChild(alert);
+    
+    // Auto-remove success alerts after 5 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            const alertElement = document.getElementById(alertId);
+            if (alertElement) {
+                $(alertElement).alert('close');
+            }
+        }, 5000);
+    }
+}
+
+function highlightFormErrors(form, errors) {
+    // Clear previous error states
+    const errorFields = form.querySelectorAll('.is-invalid');
+    errorFields.forEach(field => field.classList.remove('is-invalid'));
+    
+    const errorMessages = form.querySelectorAll('.invalid-feedback');
+    errorMessages.forEach(msg => msg.remove());
+    
+    // Add new error states
+    Object.keys(errors).forEach(fieldName => {
+        const field = form.querySelector(`[name="${fieldName}"]`);
+        if (field) {
+            field.classList.add('is-invalid');
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'invalid-feedback';
+            errorDiv.textContent = errors[fieldName][0]; // Show first error
+            
+            field.parentNode.appendChild(errorDiv);
+        }
+    });
+}
+</script>
+{% endblock %}

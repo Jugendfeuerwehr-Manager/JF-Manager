@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'health',
     'setup.apps.SetupConfig',
     'qualifications.apps.QualificationsConfig',
+    'settings_manager.apps.SettingsManagerConfig',
 ]
 
 BOOTSTRAP4 = {

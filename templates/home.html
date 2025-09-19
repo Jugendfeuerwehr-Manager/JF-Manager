@@ -105,6 +105,11 @@
                                 <i class="fas fa-shopping-cart"></i>
                             </a>
                         {% endif %}
+                        {% if 'settings_manager.view_general_settings' in perms or 'settings_manager.view_email_settings' in perms or 'settings_manager.view_member_settings' in perms or 'settings_manager.view_service_settings' in perms or 'settings_manager.view_order_settings' in perms or 'settings_manager.view_all_settings' in perms or user.is_superuser %}
+                            <a class="btn" href="{% url 'settings_manager:overview' %}" title="Einstellungen">
+                                <i class="fas fa-cogs"></i>
+                            </a>
+                        {% endif %}
                     </div>
 
                     <button class="navbar-toggler" type="button" data-toggle="collapse"
@@ -181,6 +186,11 @@
                                     <a class="dropdown-item py-2" href="{% url 'orders:notification_preferences' %}">
                                         <i class="fa fa-bell fa-fw mr-2"></i>Benachrichtigungen
                                     </a>
+                                    {% if 'settings_manager.view_general_settings' in perms or 'settings_manager.view_email_settings' in perms or 'settings_manager.view_member_settings' in perms or 'settings_manager.view_service_settings' in perms or 'settings_manager.view_order_settings' in perms or 'settings_manager.view_all_settings' in perms or user.is_superuser %}
+                                        <a class="dropdown-item py-2" href="{% url 'settings_manager:overview' %}">
+                                            <i class="fa fa-cogs fa-fw mr-2"></i>Einstellungen
+                                        </a>
+                                    {% endif %}
                                     {% if user.is_staff %}
                                         <a class="dropdown-item py-2" href="/admin" target="_blank">
                                             <i class="fa fa-toolbox fa-fw mr-2"></i>Django Admin
