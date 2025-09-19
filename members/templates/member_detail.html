@@ -446,55 +446,6 @@
         <div class="tab-content" id="memberTabsContent">
             <!-- Services Tab - Alle Übungen -->
             <div class="tab-pane fade show active" id="services" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Datum</th>
-                                <th>Thema</th>
-                                <th>Anwesenheit</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for attendance in attendances %}
-                                <tr>
-                                    <td>
-                                        {% if attendance.service.start %}
-                                            {{ attendance.service.start|date:"d.m.Y" }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ attendance.service.topic }}</td>
-                                    <td>
-                                        {% if attendance.state == 'A' %}
-                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Anwesend</span>
-                                        {% elif attendance.state == 'E' %}
-                                            <span class="badge bg-warning"><i class="fas fa-exclamation me-1"></i>Entschuldigt</span>
-                                        {% else %}
-                                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Fehlend</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if attendance.service.description %}
-                                            <small class="text-muted">{{ attendance.service.description|truncatechars:50 }}</small>
-                                        {% else %}
-                                            <small class="text-muted">-</small>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">
-                                        <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
-                                        Noch keine Übungsdaten vorhanden
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
                 
                 <!-- Übungsstatistik Details -->
                 <div class="row mt-4">
@@ -547,6 +498,58 @@
                         </div>
                     </div>
                 </div>
+                <br>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Datum</th>
+                                <th>Thema</th>
+                                <th>Anwesenheit</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in attendances %}
+                                <tr>
+                                    <td>
+                                        {% if attendance.service.start %}
+                                            {{ attendance.service.start|date:"d.m.Y" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ attendance.service.topic }}</td>
+                                    <td>
+                                        {% if attendance.state == 'A' %}
+                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Anwesend</span>
+                                        {% elif attendance.state == 'E' %}
+                                            <span class="badge bg-warning"><i class="fas fa-exclamation me-1"></i>Entschuldigt</span>
+                                        {% else %}
+                                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Fehlend</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if attendance.service.description %}
+                                            <small class="text-muted">{{ attendance.service.description|truncatechars:50 }}</small>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
+                                        Noch keine Übungsdaten vorhanden
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                
             </div>
             
             <!-- Events Tab - Alle Einträge -->
