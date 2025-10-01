@@ -1,5 +1,13 @@
 from rest_framework import routers
 from members.views import MemberViewSet, ParentViewSet
+from users.views import UserViewSet
+from orders.views import OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
+from qualifications.api_views import (
+    QualificationTypeViewSet, 
+    QualificationViewSet, 
+    SpecialTaskTypeViewSet, 
+    SpecialTaskViewSet
+)
 """Global REST API router registrations.
 
 Inventory viewsets now sourced from `inventory.api.viewsets` instead of
@@ -18,6 +26,7 @@ from inventory.api.viewsets import (
 from servicebook.views import ServiceViewSet, AttandenceViewSet
 
 api = routers.DefaultRouter()
+api.register(r'users', UserViewSet)
 api.register(r'members', MemberViewSet)
 api.register(r'parents', ParentViewSet)
 
@@ -32,3 +41,15 @@ api.register(r'inventory/transactions', TransactionViewSet)
 
 api.register(r'servicebook/services', ServiceViewSet)
 api.register(r'servicebook/attandances', AttandenceViewSet)
+
+# Orders endpoints
+api.register(r'orders', OrderViewSet)
+api.register(r'orders/items', OrderItemViewSet)
+api.register(r'orders/orderable-items', OrderableItemViewSet)
+api.register(r'orders/statuses', OrderStatusViewSet)
+
+# Qualifications endpoints
+api.register(r'qualifications/types', QualificationTypeViewSet)
+api.register(r'qualifications', QualificationViewSet)
+api.register(r'specialtasks/types', SpecialTaskTypeViewSet)
+api.register(r'specialtasks', SpecialTaskViewSet)

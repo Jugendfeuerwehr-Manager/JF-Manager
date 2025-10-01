@@ -34,3 +34,29 @@ class Order(models.Model):
     
     def get_absolute_url(self):
         return reverse('orders:detail', kwargs={'pk': self.pk})
+    
+    def get_common_status(self):
+        """Gibt den am häufigsten vorkommenden Status der Artikel zurück"""
+        from collections import Counter
+        if not self.items.exists():
+            return None
+        statuses = [item.status for item in self.items.all() if item.status]
+        if not statuses:
+            return None
+        counter = Counter(statuses)
+        return counter.most_common(1)[0][0]
+    
+    def get_next_status_options(self):
+        """Gibt die nächsten möglichen Status für die Bestellung zurück"""
+        from .order_status import OrderStatus
+        current_status = self.get_common_status()
+        if not current_status:
+            return OrderStatus.objects.filter(is_active=True)[:3]
+        
+        # Hole die nächsten 2-3 Status nach sort_order
+        next_statuses = OrderStatus.objects.filter(
+            is_active=True,
+            sort_order__gt=current_status.sort_order
+        ).order_by('sort_order')[:3]
+        
+        return next_statuses

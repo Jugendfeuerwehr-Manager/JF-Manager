@@ -10,6 +10,7 @@ from django.views.generic import TemplateView, UpdateView, CreateView, DetailVie
 from django_tables2 import RequestConfig
 from django.core.paginator import Paginator
 from rest_framework import viewsets
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 
@@ -34,7 +35,33 @@ class ServiceTableView(LoginRequiredMixin, TemplateView):
         context = super(ServiceTableView, self).get_context_data(**kwargs)
         filter = ServiceFilter(self.request.GET, queryset=self.get_queryset(**kwargs))
         filter.form.helper = ServiceTableFilterFormHelper()
-        table = ServiceTable(filter.qs)
+        
+        # Add attendance summary to filtered queryset
+        from .models import Attendance
+        from django.db.models import Count
+        filtered_services = filter.qs
+        attendance_summaries = {}
+        if filtered_services:
+            attendance_data = Attendance.objects.filter(
+                service__in=filtered_services
+            ).values('service_id', 'state').annotate(
+                count=Count('id')
+            )
+            for item in attendance_data:
+                service_id = item['service_id']
+                state = item['state']
+                count = item['count']
+                if service_id not in attendance_summaries:
+                    attendance_summaries[service_id] = {'A': 0, 'E': 0, 'F': 0}
+                attendance_summaries[service_id][state] = count
+            
+            for service in filtered_services:
+                service.attendance_summary = attendance_summaries.get(
+                    service.id, 
+                    {'A': 0, 'E': 0, 'F': 0}
+                )
+        
+        table = ServiceTable(filtered_services)
         RequestConfig(self.request).configure(table)
         context['filter'] = filter
         context['table'] = table
@@ -126,7 +153,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     """
     API Endpoint that allows Service to be viewed or edited - nur für authentifizierte und berechtigte Benutzer
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = get_services_list()
     serializer_class = ServiceSerializer
@@ -142,7 +169,7 @@ class AttandenceViewSet(viewsets.ModelViewSet):
 
     search is indexed to person name and lastname
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = get_attandance_list()
     serializer_class = AttendanceSerializer

@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 
@@ -10,7 +11,7 @@ class MemberViewSet(viewsets.ModelViewSet):
     """
     API Endpoint that allows members to be viewed or edited - nur für authentifizierte und berechtigte Benutzer
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = get_members_list()
     serializer_class = MemberSerializer

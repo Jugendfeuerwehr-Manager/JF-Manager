@@ -12,6 +12,7 @@ from django.core.paginator import Paginator
 from django_tables2 import RequestConfig
 from django_filters.views import FilterView
 from rest_framework import viewsets
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from datetime import datetime, timedelta
 import csv
@@ -81,7 +82,75 @@ class OrderDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['can_manage_orders'] = self.request.user.has_perm('orders.can_manage_orders')
         context['can_change_status'] = self.request.user.has_perm('orders.can_change_order_status')
+        context['order'].next_status_options = self.object.get_next_status_options()
         return context
+
+
+class OrderUpdateView(LoginRequiredMixin, UpdateView):
+    """Ansicht zum Bearbeiten von Bestellungen"""
+    model = Order
+    form_class = OrderForm
+    template_name = 'orders/order_update.html'
+    context_object_name = 'order'
+
+    def get_success_url(self):
+        return reverse_lazy('orders:detail', kwargs={'pk': self.object.pk})
+
+    def get_queryset(self):
+        return Order.objects.select_related('member', 'ordered_by').prefetch_related(
+            'items__item', 'items__status'
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.POST:
+            context['formset'] = OrderItemFormSet(self.request.POST, instance=self.object)
+        else:
+            context['formset'] = OrderItemFormSet(instance=self.object)
+        context['orderable_items'] = OrderableItem.objects.filter(is_active=True)
+        context['can_manage_orders'] = self.request.user.has_perm('orders.can_manage_orders')
+        return context
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        formset = context['formset']
+        
+        with transaction.atomic():
+            self.object = form.save()
+            
+            if formset.is_valid():
+                formset.instance = self.object
+                items = formset.save(commit=False)
+                
+                # Default Status für neue Items
+                default_status = OrderStatus.objects.filter(code='NEW').first()
+                if not default_status:
+                    default_status = OrderStatus.objects.filter(code='ORDERED').first()
+                if not default_status:
+                    default_status = OrderStatus.objects.first()
+                
+                for item in items:
+                    if not item.status_id:
+                        item.status = default_status
+                    item.save()
+                
+                # Gelöschte Items entfernen
+                for item in formset.deleted_objects:
+                    item.delete()
+                
+                formset.save_m2m()
+                
+                messages.success(
+                    self.request, 
+                    f'Bestellung für {self.object.member} wurde erfolgreich aktualisiert.'
+                )
+                return HttpResponseRedirect(self.get_success_url())
+            else:
+                return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Bitte korrigieren Sie die Fehler im Formular.')
+        return super().form_invalid(form)
 
 
 class OrderCreateView(LoginRequiredMixin, CreateView):
@@ -257,7 +326,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     API Endpoint für Bestellungen
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     queryset = get_order_list()
     serializer_class = OrderSerializer
     filterset_fields = ['member', 'ordered_by', 'order_date']
@@ -268,7 +337,7 @@ class OrderableItemViewSet(viewsets.ModelViewSet):
     """
     API Endpoint für bestellbare Artikel
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     queryset = get_orderable_item_list()
     serializer_class = OrderableItemSerializer
     filterset_fields = ['category', 'has_sizes', 'is_active']
@@ -279,7 +348,7 @@ class OrderStatusViewSet(viewsets.ModelViewSet):
     """
     API Endpoint für Bestellstatus
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     queryset = get_order_status_list()
     serializer_class = OrderStatusSerializer
     filterset_fields = ['is_active']
@@ -290,7 +359,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
     """
     API Endpoint für Bestellartikel
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     queryset = OrderItem.objects.select_related('order', 'item', 'status')
     serializer_class = OrderItemSerializer
     filterset_fields = ['order', 'item', 'status', 'size']
@@ -301,6 +370,34 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
 @login_required
 @permission_required('orders.can_change_order_status', raise_exception=True)
+@login_required
+@permission_required('orders.can_manage_orders', raise_exception=True)
+def quick_order_status_change(request, pk):
+    """Schneller Statuswechsel für eine Bestellung"""
+    order = get_object_or_404(Order, pk=pk)
+    new_status_id = request.GET.get('status')
+    
+    if not new_status_id:
+        messages.error(request, 'Kein Status ausgewählt.')
+        return redirect('orders:detail', pk=pk)
+    
+    new_status = get_object_or_404(OrderStatus, pk=new_status_id)
+    
+    # Alle Artikel der Bestellung auf den neuen Status setzen
+    updated_count = 0
+    with transaction.atomic():
+        for item in order.items.all():
+            item.status = new_status
+            item.save(changed_by=request.user, status_change_notes=f"Schnellwechsel zu {new_status.name}")
+            updated_count += 1
+    
+    messages.success(
+        request, 
+        f'Status aller {updated_count} Artikel wurde auf "{new_status.name}" geändert.'
+    )
+    return redirect('orders:detail', pk=pk)
+
+
 def bulk_status_update(request):
     """View for bulk status updates of order items"""
     filter_form = OrderItemFilterForm(request.GET or None)

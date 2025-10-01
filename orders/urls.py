@@ -11,9 +11,11 @@ app_name = 'orders'
 urlpatterns = [
     # Bestellungen
     path('', views.OrderListView.as_view(), name='list'),
-    path('<int:pk>/', views.OrderDetailView.as_view(), name='detail'),
     path('create/', views.OrderCreateView.as_view(), name='create'),
     path('quick/', views.QuickOrderCreateView.as_view(), name='quick_create'),
+    path('<int:pk>/', views.OrderDetailView.as_view(), name='detail'),
+    path('<int:pk>/update/', views.OrderUpdateView.as_view(), name='update'),
+    path('<int:pk>/quick-status/', views.quick_order_status_change, name='quick_status_change'),
     
     # Status Management
     path('<int:order_id>/item/<int:item_id>/status/', 

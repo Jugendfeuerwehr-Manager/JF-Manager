@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 
@@ -12,7 +13,7 @@ class ParentViewSet(viewsets.ModelViewSet):
 
     The search parameter searches in Name, Lastname, both mail addresses and the names of the children.
     """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = get_parent_list()
     serializer_class = ParentSerializer

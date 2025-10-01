@@ -1,0 +1,480 @@
+{% load static %}
+
+<style>
+    /* Mobile-First Navigation Styles */
+    .navbar {
+        background: linear-gradient(135deg, #3494e6, #4568dc);
+        transition: all 0.3s ease;
+        padding: 0.5rem 0;
+    }
+
+    .navbar-brand {
+        font-size: 1rem;
+        padding: 0;
+    }
+
+    .navbar > .container {
+        padding-bottom: unset;
+    }
+
+    .nav-link {
+        position: relative;
+        transition: all 0.2s ease;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .nav-link i {
+        font-size: 1rem;
+        width: 1.5rem;
+    }
+
+    .nav-link:after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 2px;
+        bottom: 0;
+        left: 50%;
+        background: rgba(255,255,255,0.8);
+        transition: all 0.3s ease;
+        transform: translateX(-50%);
+    }
+
+    .nav-link:hover:after {
+        width: 80%;
+    }
+
+    /* Mobile menu styles */
+    @media (max-width: 767px) {
+        .navbar-collapse {
+            background: linear-gradient(135deg, #3494e6, #4568dc);
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            padding: 0.5rem 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .navbar-nav {
+            padding: 0.5rem 0;
+        }
+
+        .nav-link {
+            border-left: 3px solid transparent;
+            margin: 0.25rem 0.5rem;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: rgba(255,255,255,0.8);
+            border-radius: 0.25rem;
+        }
+
+        .nav-link:after {
+            display: none;
+        }
+
+        .dropdown-menu {
+            background: rgba(255,255,255,0.95);
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 0.25rem 1rem;
+        }
+
+        .navbar-nav .dropdown-menu {
+            position: static;
+            float: none;
+        }
+
+        /* Section dividers */
+        .nav-section-title {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+            padding: 0.5rem 1rem 0.25rem;
+            margin-top: 0.5rem;
+        }
+    }
+
+    /* Desktop styles */
+    @media (min-width: 768px) {
+        .nav-section-title {
+            display: none;
+        }
+
+        .navbar-nav .nav-item + .nav-item {
+            margin-left: 0.25rem;
+        }
+    }
+
+    .dropdown-menu {
+        margin-top: 0.2rem;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+
+    .dropdown-item:hover {
+        background: rgba(52, 148, 230, 0.1);
+        padding-left: 1.25rem;
+    }
+
+    .dropdown-item i {
+        width: 1.5rem;
+    }
+
+    /* Reduced mobile padding since no bottom bar */
+    @media (max-width: 767px) {
+        .container-fluid,
+        .container {
+            padding-bottom: 2rem !important;
+        }
+    }
+
+    /* Badge for notifications/counts */
+    .nav-badge {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.25rem;
+        background: #dc3545;
+        color: white;
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.75rem;
+        font-weight: bold;
+    }
+</style>
+
+{% if user.is_authenticated %}
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top shadow-sm">
+        <div class="container-fluid px-3">
+            <a class="navbar-brand font-weight-bold d-flex align-items-center" href="{% url 'dashboard' %}">
+                <i class="fas fa-fire-extinguisher mr-2"></i>
+                <span class="d-none d-sm-inline">{{ global_preferences.general__title }}</span>
+                <span class="d-inline d-sm-none">JF Manager</span>
+            </a>
+
+            <button class="navbar-toggler border-0" type="button" data-toggle="collapse"
+                    data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    <!-- Main Navigation -->
+                    <li class="d-md-none nav-section-title">Hauptmenü</li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'dashboard' %}">
+                            <i class="fas fa-home mr-2"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+
+                    <!-- People Section -->
+                    {% if 'members.view_member' in perms or 'members.view_parent' in perms %}
+                        <li class="d-md-none nav-section-title">Personen</li>
+                        
+                        {% if 'members.view_member' in perms %}
+                            <li class="nav-item d-md-none">
+                                <a class="nav-link" href="{% url 'members:index' %}">
+                                    <i class="fas fa-users mr-2"></i>
+                                    <span>Mitglieder</span>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% if 'members.view_parent' in perms %}
+                            <li class="nav-item d-md-none">
+                                <a class="nav-link" href="{% url 'members:parents' %}">
+                                    <i class="fas fa-user-friends mr-2"></i>
+                                    <span>Eltern</span>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <!-- Desktop: Dropdown for People -->
+                        <li class="nav-item dropdown d-none d-md-block">
+                            <a class="nav-link dropdown-toggle" href="#" id="peopleDropdown"
+                               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-users mr-2"></i>
+                                <span>Personen</span>
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="peopleDropdown">
+                                {% if 'members.view_member' in perms %}
+                                    <a class="dropdown-item" href="{% url 'members:index' %}">
+                                        <i class="fas fa-users mr-2"></i>Mitglieder
+                                    </a>
+                                {% endif %}
+                                {% if 'members.view_parent' in perms %}
+                                    <a class="dropdown-item" href="{% url 'members:parents' %}">
+                                        <i class="fas fa-user-friends mr-2"></i>Eltern
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endif %}
+
+                    <!-- Modules Section -->
+                    <li class="d-md-none nav-section-title">Module</li>
+
+                    {% if 'inventory.view_item' in perms %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'inventory:dashboard' %}">
+                                <i class="fas fa-boxes mr-2"></i>
+                                <span>Lager</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if 'qualifications.view_qualification' in perms %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'qualifications:dashboard' %}">
+                                <i class="fas fa-certificate mr-2"></i>
+                                <span>Qualifikationen</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if 'servicebook.view_service' in perms %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'servicebook:home' %}">
+                                <i class="fas fa-book mr-2"></i>
+                                <span>Dienstbuch</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if 'orders.view_order' in perms %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'orders:list' %}">
+                                <i class="fas fa-shopping-cart mr-2"></i>
+                                <span>Bestellungen</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
+                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-user-circle mr-2"></i>
+                            <span class="d-none d-lg-inline">{{ user.first_name }} {{ user.last_name }}</span>
+                            <span class="d-inline d-lg-none">Profil</span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow border-0" aria-labelledby="userDropdown">
+                            <h6 class="dropdown-header">
+                                <i class="fas fa-user mr-2"></i>
+                                {{ user.first_name }} {{ user.last_name }}
+                            </h6>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'password_change' %}">
+                                <i class="fas fa-key mr-2"></i>Passwort ändern
+                            </a>
+                            <a class="dropdown-item" href="">
+                                <i class="fas fa-user-edit mr-2"></i>Profil bearbeiten
+                            </a>
+                            <a class="dropdown-item" href="{% url 'orders:notification_preferences' %}">
+                                <i class="fas fa-bell mr-2"></i>Benachrichtigungen
+                            </a>
+                            {% if 'settings_manager.view_general_settings' in perms or 'settings_manager.view_email_settings' in perms or 'settings_manager.view_member_settings' in perms or 'settings_manager.view_service_settings' in perms or 'settings_manager.view_order_settings' in perms or 'settings_manager.view_all_settings' in perms or user.is_superuser %}
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{% url 'settings_manager:overview' %}">
+                                    <i class="fas fa-cogs mr-2"></i>Einstellungen
+                                </a>
+                            {% endif %}
+                            {% if user.is_staff %}
+                                <a class="dropdown-item" href="/admin" target="_blank">
+                                    <i class="fas fa-toolbox mr-2"></i>Django Admin
+                                </a>
+                            {% endif %}
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-danger" href="{% url 'logout' %}" 
+                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Abmelden
+                            </a>
+                            <form id="logout-form" action="{% url 'logout' %}" method="POST" style="display: none;">
+                                {% csrf_token %}
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav d-md-none">
+        <a href="{% url 'servicebook:home' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'home' and request.resolver_match.namespace == 'servicebook' %}active{% endif %}">
+            <i class="fas fa-book"></i>
+            <span>Dienstbuch</span>
+        </a>
+        <a href="{% url 'members:index' %}" class="mobile-nav-item {% if request.resolver_match.namespace == 'members' and 'parent' not in request.path %}active{% endif %}">
+            <i class="fas fa-users"></i>
+            <span>Mitglieder</span>
+        </a>
+        <a href="{% url 'members:parents' %}" class="mobile-nav-item {% if 'parent' in request.path %}active{% endif %}">
+            <i class="fas fa-user-friends"></i>
+            <span>Eltern</span>
+        </a>
+        <a href="{% url 'orders:list' %}" class="mobile-nav-item {% if request.resolver_match.namespace == 'orders' %}active{% endif %}">
+            <i class="fas fa-shopping-cart"></i>
+            <span>Bestellungen</span>
+        </a>
+        <button class="mobile-nav-item" id="mobile-more-menu" data-toggle="modal" data-target="#moreMenuModal">
+            <i class="fas fa-ellipsis-h"></i>
+            <span>Mehr</span>
+        </button>
+    </nav>
+
+    <!-- More Menu Modal -->
+    <div class="modal fade" id="moreMenuModal" tabindex="-1" role="dialog" aria-labelledby="moreMenuModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moreMenuModalLabel">
+                        <i class="fas fa-th mr-2"></i>Weitere Module
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group list-group-flush">
+                        {% if 'inventory.view_item' in perms %}
+                        <a href="{% url 'inventory:dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-box mr-3"></i>Inventar
+                        </a>
+                        {% endif %}
+                        {% if 'qualifications.view_qualification' in perms %}
+                        <a href="{% url 'qualifications:dashboard' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-certificate mr-3"></i>Qualifikationen
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'orders:analytics' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-chart-bar mr-3"></i>Statistiken
+                        </a>
+                        {% if 'settings_manager.view_general_settings' in perms or user.is_superuser %}
+                        <a href="{% url 'settings_manager:overview' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-cogs mr-3"></i>Einstellungen
+                        </a>
+                        {% endif %}
+                        {% if user.is_staff %}
+                        <a href="/admin" target="_blank" class="list-group-item list-group-item-action">
+                            <i class="fas fa-toolbox mr-3"></i>Django Admin
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Mobile Bottom Navigation */
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0;
+            z-index: 1000;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .mobile-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 0.7rem;
+            transition: all 0.2s ease;
+            border: none;
+            background: transparent;
+            position: relative;
+        }
+
+        .mobile-nav-item i {
+            font-size: 1.3rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .mobile-nav-item.active {
+            color: #3494e6;
+        }
+
+        .mobile-nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background: #3494e6;
+            border-radius: 0 0 3px 3px;
+        }
+
+        .mobile-nav-item:active {
+            background: rgba(52, 148, 230, 0.1);
+        }
+
+        /* Add bottom padding to content on mobile */
+        @media (max-width: 767px) {
+            body {
+                padding-bottom: 70px;
+            }
+        }
+
+        /* Hide on desktop */
+        @media (min-width: 768px) {
+            .mobile-bottom-nav {
+                display: none !important;
+            }
+        }
+
+        /* More menu modal styling */
+        #moreMenuModal .modal-content {
+            border-radius: 1rem;
+        }
+
+        #moreMenuModal .list-group-item {
+            border: none;
+            padding: 1rem 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        #moreMenuModal .list-group-item:hover {
+            background: rgba(52, 148, 230, 0.1);
+            padding-left: 1.5rem;
+        }
+
+        #moreMenuModal .list-group-item i {
+            font-size: 1.2rem;
+            color: #3494e6;
+        }
+    </style>
+
+{% endif %}

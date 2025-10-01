@@ -17,21 +17,30 @@
             </a>
             {% if can_manage_orders %}
                 <div class="btn-group dropdown">
-                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" id="orderActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-cog"></i> Aktionen
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="orderActionsDropdown">
+                        <a class="dropdown-item" href="{% url 'orders:update' order.pk %}">
                             <i class="fas fa-edit"></i> Bestellung bearbeiten
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'orders:export' %}?order_id={{ order.pk }}">
+                        </a>
+                        <a class="dropdown-item" href="{% url 'orders:export' %}?order_id={{ order.pk }}">
                             <i class="fas fa-download"></i> Als PDF exportieren
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="#" onclick="confirmDelete()">
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        {% if order.next_status_options %}
+                        <h6 class="dropdown-header">Status ändern</h6>
+                        {% for status in order.next_status_options %}
+                        <a class="dropdown-item" href="{% url 'orders:quick_status_change' order.pk %}?status={{ status.id }}">
+                            <i class="fas fa-arrow-right"></i> Zu "{{ status.name }}"
+                        </a>
+                        {% endfor %}
+                        <div class="dropdown-divider"></div>
+                        {% endif %}
+                        <a class="dropdown-item text-danger" href="#" onclick="confirmDelete(); return false;">
                             <i class="fas fa-trash"></i> Bestellung löschen
-                        </a></li>
-                    </ul>
+                        </a>
+                    </div>
                 </div>
             {% endif %}
         </div>

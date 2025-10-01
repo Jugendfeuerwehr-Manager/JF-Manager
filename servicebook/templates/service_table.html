@@ -184,6 +184,20 @@
                 gap: 0.75rem;
             }
         }
+        .service-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: transform 0.2s ease;
+        }
+        .service-card-link:hover {
+            text-decoration: none;
+            color: inherit;
+            transform: translateY(-2px);
+        }
+        .service-card-link:hover .service-card {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
         .service-header {
             display: flex;
             justify-content: space-between;
@@ -198,6 +212,10 @@
         }
         .service-actions {
             margin-left: 0.5rem;
+            opacity: 0.5;
+        }
+        .service-card:hover .service-actions {
+            opacity: 1;
         }
         .service-meta {
             font-size: 0.875rem;
@@ -217,6 +235,46 @@
             margin-top: 0.75rem;
             padding-top: 0.75rem;
             border-top: 1px solid #e2e8f0;
+        }
+        .attendance-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .attendance-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            flex: 1;
+        }
+        .attendance-item .badge {
+            font-size: 0.875rem;
+            padding: 0.4em 0.6em;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            min-width: 40px;
+            justify-content: center;
+        }
+        .attendance-item small {
+            font-size: 0.7rem;
+            text-align: center;
+        }
+        @media (max-width: 576px) {
+            .service-title {
+                font-size: 1rem;
+            }
+            .service-meta {
+                font-size: 0.8rem;
+            }
+            .attendance-item small {
+                font-size: 0.65rem;
+            }
+            .attendance-item .badge {
+                font-size: 0.8rem;
+                padding: 0.3em 0.5em;
+            }
         }
         .attendance-label {
             font-size: 0.75rem;
@@ -296,7 +354,6 @@
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             {{ forloop.counter }}. {{ item.person__name }} {{ item.person__lastname }}:
                                             <span class="badge badge-primary badge-pill">{{ item.num_services }}</span>
-                                            <span class="badge badge-primary badge-pill">{{ n_attended_services }}</span>
                                         </li>
                                     {% endfor %}
                                 </ul>
@@ -312,7 +369,6 @@
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             {{ forloop.counter }}. {{ item.person__name }} {{ item.person__lastname }}:
                                             <span class="badge badge-primary badge-pill">{{ item.num_services }}</span>
-                                            <span class="badge badge-primary badge-pill">{{ n_attended_services }}</span>
                                         </li>
                                     {% endfor %}
                                 </ul>
@@ -328,7 +384,6 @@
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             {{ forloop.counter }}. {{ item.person__name }} {{ item.person__lastname }}:
                                             <span class="badge badge-primary badge-pill">{{ item.num_services }}</span>
-                                            <span class="badge badge-primary badge-pill">{{ n_attended_services }}</span>
                                         </li>
                                     {% endfor %}
                                 </ul>
@@ -369,55 +424,69 @@
                 <!-- Mobile Card View -->
                 <div class="services-grid">
                     {% for service in filter.qs %}
-                        <div class="service-card">
-                            <div class="card-body">
-                                <div class="service-header">
-                                    <div class="service-title">
-                                        {% if service.has_events %}❗️{% endif %}
-                                        <a href="{{ service.get_absolute_url }}" class="text-decoration-none text-dark">
+                        <a href="{{ service.get_absolute_url }}" class="service-card-link">
+                            <div class="service-card">
+                                <div class="card-body">
+                                    <div class="service-header">
+                                        <div class="service-title">
+                                            {% if service.has_events %}
+                                                <span class="badge badge-warning mr-1">❗️</span>
+                                            {% endif %}
                                             {{ service.topic|default:"Kein Thema" }}
-                                        </a>
+                                        </div>
+                                        <div class="service-actions">
+                                            <i class="fas fa-chevron-right text-muted"></i>
+                                        </div>
                                     </div>
-                                    <div class="service-actions">
-                                        <a href="{{ service.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
-                                            ✏️
-                                        </a>
+                                    
+                                    <div class="service-meta">
+                                        <div class="meta-item">
+                                            <i class="fas fa-calendar"></i>
+                                            <span>{{ service.start|date:"d.m.Y H:i" }} - {{ service.end|date:"H:i" }}</span>
+                                        </div>
+                                        {% if service.place %}
+                                        <div class="meta-item">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <span>{{ service.place }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if service.operations_manager.all %}
+                                        <div class="meta-item">
+                                            <i class="fas fa-user-cog"></i>
+                                            <span>
+                                                {% for manager in service.operations_manager.all %}
+                                                    {{ manager.get_full_name }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </span>
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                </div>
-                                
-                                <div class="service-meta">
-                                    <div class="meta-item">
-                                        <i class="fas fa-calendar"></i>
-                                        <span>{{ service.start|date:"d.m.Y H:i" }} - {{ service.end|date:"H:i" }}</span>
-                                    </div>
-                                    {% if service.place %}
-                                    <div class="meta-item">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <span>{{ service.place }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if service.operations_manager.all %}
-                                    <div class="meta-item">
-                                        <i class="fas fa-user-cog"></i>
-                                        <span>
-                                            {% for manager in service.operations_manager.all %}
-                                                {{ manager.get_full_name }}{% if not forloop.last %}, {% endif %}
-                                            {% endfor %}
-                                        </span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="service-attendance">
-                                    <div class="attendance-label">Anwesenheit</div>
-                                    <div>
-                                        <span class="badge badge-success">{{ service.attendance_summary.A }}</span>
-                                        <span class="badge badge-warning">{{ service.attendance_summary.E }}</span>
-                                        <span class="badge badge-danger">{{ service.attendance_summary.F }}</span>
+                                    
+                                    <div class="service-attendance">
+                                        <div class="attendance-stats">
+                                            <div class="attendance-item">
+                                                <span class="badge badge-success">
+                                                    <i class="fas fa-check"></i> {{ service.attendance_summary.A }}
+                                                </span>
+                                                <small class="text-muted">Anwesend</small>
+                                            </div>
+                                            <div class="attendance-item">
+                                                <span class="badge badge-warning">
+                                                    <i class="fas fa-exclamation"></i> {{ service.attendance_summary.E }}
+                                                </span>
+                                                <small class="text-muted">Entschuldigt</small>
+                                            </div>
+                                            <div class="attendance-item">
+                                                <span class="badge badge-danger">
+                                                    <i class="fas fa-times"></i> {{ service.attendance_summary.F }}
+                                                </span>
+                                                <small class="text-muted">Fehlend</small>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     {% empty %}
                         <div class="col-12 text-center py-5">
                             <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
