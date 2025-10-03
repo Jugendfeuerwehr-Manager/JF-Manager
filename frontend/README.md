@@ -1,6 +1,6 @@
-# frontend
+# JF-Manager Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Modern Vue.js 3 SPA for the Jugendfeuerwehr Management System built with TypeScript, Pinia, PrimeVue, and Vite.
 
 ## Recommended IDE Setup
 

@@ -1,0 +1,260 @@
+/* Base styles */
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background: var(--surface-ground);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* PrimeVue Grid System (PrimeFlex) */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -0.5rem;
+  margin-left: -0.5rem;
+  margin-top: -0.5rem;
+}
+
+.grid > * {
+  box-sizing: border-box;
+  padding: 0.5rem;
+}
+
+.col-12 { flex: 0 0 auto; width: 100%; }
+.col-6 { flex: 0 0 auto; width: 50%; }
+.col-4 { flex: 0 0 auto; width: 33.3333%; }
+.col-3 { flex: 0 0 auto; width: 25%; }
+
+@media screen and (min-width: 576px) {
+  .sm\\:col-12 { flex: 0 0 auto; width: 100%; }
+  .sm\\:col-6 { flex: 0 0 auto; width: 50%; }
+  .sm\\:col-4 { flex: 0 0 auto; width: 33.3333%; }
+}
+
+@media screen and (min-width: 768px) {
+  .md\\:col-12 { flex: 0 0 auto; width: 100%; }
+  .md\\:col-6 { flex: 0 0 auto; width: 50%; }
+  .md\\:col-4 { flex: 0 0 auto; width: 33.3333%; }
+  .md\\:col-3 { flex: 0 0 auto; width: 25%; }
+}
+
+@media screen and (min-width: 992px) {
+  .lg\\:col-12 { flex: 0 0 auto; width: 100%; }
+  .lg\\:col-8 { flex: 0 0 auto; width: 66.6667%; }
+  .lg\\:col-6 { flex: 0 0 auto; width: 50%; }
+  .lg\\:col-4 { flex: 0 0 auto; width: 33.3333%; }
+  .lg\\:col-3 { flex: 0 0 auto; width: 25%; }
+}
+
+/* Utility Classes */
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-3 {
+  gap: 0.75rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-48 {
+  width: 12rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Typography */
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+}
+
+.text-2xl {
+  font-size: 1.5rem;
+}
+
+.text-3xl {
+  font-size: 1.875rem;
+}
+
+.text-4xl {
+  font-size: 2.25rem;
+}
+
+.text-6xl {
+  font-size: 3.75rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.text-surface-500 {
+  color: var(--surface-500);
+}
+
+.text-surface-600 {
+  color: var(--surface-600);
+}
+
+.text-surface-900 {
+  color: var(--surface-900);
+}
+
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-green-500 {
+  color: #22c55e;
+}
+
+.text-blue-500 {
+  color: #3b82f6;
+}
+
+.text-orange-500 {
+  color: #f97316;
+}
+
+/* Responsive utilities */
+@media screen and (max-width: 991px) {
+  .lg\\:hidden {
+    display: none;
+  }
+}
+
+@media screen and (min-width: 992px) {
+  .lg\\:block {
+    display: block;
+  }
+  
+  .hidden {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .md\\:inline {
+    display: inline;
+  }
+  
+  .hidden {
+    display: none;
+  }
+}
+
+/* Width utilities */
+.md\\:w-\\[800px\\] {
+  width: 800px;
+}
+
+.md\\:w-\\[700px\\] {
+  width: 700px;
+}
+
+.md\\:w-\\[600px\\] {
+  width: 600px;
+}
+
+@media screen and (max-width: 768px) {
+  .md\\:w-\\[800px\\],
+  .md\\:w-\\[700px\\],
+  .md\\:w-\\[600px\\] {
+    width: 100%;
+  }
+}
+
+/* PrimeVue overrides */
+.p-button {
+  font-weight: 600;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--surface-50);
+  font-weight: 600;
+}
+
+.p-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.flex-1 {
+  flex: 1;
+}

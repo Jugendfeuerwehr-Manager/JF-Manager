@@ -4,6 +4,8 @@ from .models import Member, Parent
 
 class MemberSerializer(serializers.ModelSerializer):
     parents = serializers.SerializerMethodField()
+    status = serializers.CharField(source='status.name', read_only=True)
+
     class Meta:
         model = Member
         fields = [
@@ -23,17 +25,8 @@ class MemberSerializer(serializers.ModelSerializer):
             'canSwimm',
             'status',
         ]
+
     def get_parents(self, instance):
-        """
-        Retrieve the parents associated with the given member instance.
-
-        Args:
-            instance (Member): The member instance for which to retrieve parents.
-
-        Returns:
-            list: A list of serialized parent data.
-        """
-        parents = instance.parent_set.prefetch_related().all()
         parents = instance.parent_set.all()
         return ParentSerializer(parents, context=self.context, many=True).data
 

@@ -37,6 +37,8 @@ pandas = "*"
 openpyxl = "*"
 python-dateutil = "*"
 djangorestframework-simplejwt = "*"
+django-cors-headers = "*"
+drf-spectacular = "*"
 
 [requires]
 python_version = "3.10"

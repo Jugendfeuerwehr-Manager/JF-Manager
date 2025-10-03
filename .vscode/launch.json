@@ -8,7 +8,7 @@
             "name": "Django: Run Server",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/manage.py",
+            "program": "${workspaceFolder}/backend/manage.py",
             "args": [
                 "runserver"
             ],
@@ -24,12 +24,50 @@
             "name": "Django: Debug Tests",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/manage.py",
+            "program": "${workspaceFolder}/backend/manage.py",
             "args": [
                 "test"
             ],
             "django": true,
             "justMyCode": true
+        },
+        {
+            "name": "Vue: Debug Dev Server",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "runtimeExecutable": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin/npm",
+            "runtimeArgs": ["run", "dev"],
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "development",
+                "PATH": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin:/usr/local/bin:/usr/bin:/bin"
+            }
+        },
+        {
+            "name": "Vue: Debug in Chrome",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "skipFiles": ["<node_internals>/**"],
+            "sourceMaps": true,
+            "preLaunchTask": "npm: dev - frontend"
+        },
+        {
+            "name": "Vue: Debug Unit Tests",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "runtimeExecutable": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin/npm",
+            "runtimeArgs": ["run", "test:unit"],
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "test",
+                "PATH": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin:/usr/local/bin:/usr/bin:/bin"
+            }
         }
     ]
 }

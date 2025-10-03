@@ -19,16 +19,3 @@ class ParentViewSet(viewsets.ModelViewSet):
     serializer_class = ParentSerializer
     ordering_fields = ['id','name','lastname']
     search_fields = ['name', 'lastname', 'email', 'email2', 'children__name', 'children__lastname']
-
-
-class ParentViewSet(viewsets.ModelViewSet):
-    """
-    API Endpoint that allows parents to be viewed or edited
-
-    The search parameter searches in Name, Lastname, both mail addresses and the names of the children.
-    """
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
-    queryset = get_parent_list()
-    serializer_class = ParentSerializer
-    ordering_fields = ['id','name','lastname']
-    search_fields = ['name', 'lastname', 'email', 'email2', 'children__name', 'children__lastname']

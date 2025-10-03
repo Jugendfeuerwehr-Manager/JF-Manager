@@ -1,6 +1,9 @@
 from rest_framework import routers
-from members.views import MemberViewSet, ParentViewSet
-from users.views import UserViewSet
+from members.api_views import (
+    MemberViewSet, ParentViewSet, StatusViewSet, 
+    GroupViewSet, EventViewSet, EventTypeViewSet
+)
+from users.api_views import UserViewSet
 from orders.views import OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
 from qualifications.api_views import (
     QualificationTypeViewSet, 
@@ -29,6 +32,10 @@ api = routers.DefaultRouter()
 api.register(r'users', UserViewSet)
 api.register(r'members', MemberViewSet)
 api.register(r'parents', ParentViewSet)
+api.register(r'statuses', StatusViewSet)
+api.register(r'groups', GroupViewSet)
+api.register(r'events', EventViewSet)
+api.register(r'event-types', EventTypeViewSet)
 
 
 api.register(r'inventory/items', ItemViewSet)

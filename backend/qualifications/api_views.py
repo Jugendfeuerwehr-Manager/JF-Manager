@@ -19,9 +19,9 @@ class QualificationTypeViewSet(viewsets.ModelViewSet):
     serializer_class = QualificationTypeSerializer
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
-    filterset_fields = ['is_active', 'category']
+    filterset_fields = ['expires']
     search_fields = ['name', 'description']
-    ordering_fields = ['name', 'category', 'created_at']
+    ordering_fields = ['name']
     ordering = ['name']
 
 
@@ -45,9 +45,9 @@ class SpecialTaskTypeViewSet(viewsets.ModelViewSet):
     serializer_class = SpecialTaskTypeSerializer
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
-    filterset_fields = ['is_active']
+    filterset_fields = []
     search_fields = ['name', 'description']
-    ordering_fields = ['name', 'created_at']
+    ordering_fields = ['name']
     ordering = ['name']
 
 
