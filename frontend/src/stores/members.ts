@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { membersApi, type MemberListParams, statusesApi, groupsApi } from '@/api/members'
-import type { Member, Status, Group } from '@/types/api'
+import { ref, computed } from 'vue'
+import { membersApi, type MemberListParams, statusesApi, groupsApi, eventsApi, eventTypesApi } from '@/api/members'
+import type { Member, Status, Group, Event, EventType, MemberCreate } from '@/types/api'
 
 export const useMembersStore = defineStore('members', () => {
   // State
@@ -9,6 +9,8 @@ export const useMembersStore = defineStore('members', () => {
   const currentMember = ref<Member | null>(null)
   const statuses = ref<Status[]>([])
   const groups = ref<Group[]>([])
+  const events = ref<Event[]>([])
+  const eventTypes = ref<EventType[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   const pagination = ref({
@@ -16,6 +18,29 @@ export const useMembersStore = defineStore('members', () => {
     next: null as string | null,
     previous: null as string | null
   })
+
+  // Computed
+  const memberOptions = computed(() => 
+    members.value.map(m => ({ 
+      label: m.full_name, 
+      value: m.id 
+    }))
+  )
+
+  const statusOptions = computed(() => 
+    statuses.value.map(s => ({ 
+      label: s.name, 
+      value: s.id,
+      color: s.color
+    }))
+  )
+
+  const groupOptions = computed(() => 
+    groups.value.map(g => ({ 
+      label: g.name, 
+      value: g.id 
+    }))
+  )
 
   // Actions
   async function fetchMembers(params?: MemberListParams) {
@@ -53,7 +78,7 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function createMember(data: any) {
+  async function createMember(data: MemberCreate | FormData) {
     loading.value = true
     error.value = null
 
@@ -69,7 +94,7 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function updateMember(id: number, data: any) {
+  async function updateMember(id: number, data: Partial<MemberCreate> | FormData) {
     loading.value = true
     error.value = null
 
@@ -109,7 +134,7 @@ export const useMembersStore = defineStore('members', () => {
   async function fetchStatuses() {
     try {
       const response = await statusesApi.list()
-      statuses.value = Array.isArray(response.data.results) ? response.data.results : []
+      statuses.value = response.data.results || []
     } catch (err: any) {
       console.error('Failed to fetch statuses:', err)
       statuses.value = []
@@ -119,10 +144,46 @@ export const useMembersStore = defineStore('members', () => {
   async function fetchGroups() {
     try {
       const response = await groupsApi.list()
-      groups.value = Array.isArray(response.data.results) ? response.data.results : []
+      groups.value = response.data.results || []
     } catch (err: any) {
       console.error('Failed to fetch groups:', err)
       groups.value = []
+    }
+  }
+
+  async function fetchEvents(params?: { member?: number; type?: number; ordering?: string }) {
+    try {
+      const response = await eventsApi.list(params)
+      events.value = response.data.results || []
+    } catch (err: any) {
+      console.error('Failed to fetch events:', err)
+      events.value = []
+    }
+  }
+
+  async function fetchEventTypes() {
+    try {
+      const response = await eventTypesApi.list()
+      eventTypes.value = response.data.results || []
+    } catch (err: any) {
+      console.error('Failed to fetch event types:', err)
+      eventTypes.value = []
+    }
+  }
+
+  async function createEvent(data: Omit<Event, 'id' | 'member_name' | 'event_type'>) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await eventsApi.create(data)
+      events.value.unshift(response.data)
+      return response.data
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || 'Failed to create event'
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
@@ -132,9 +193,15 @@ export const useMembersStore = defineStore('members', () => {
     currentMember,
     statuses,
     groups,
+    events,
+    eventTypes,
     loading,
     error,
     pagination,
+    // Computed
+    memberOptions,
+    statusOptions,
+    groupOptions,
     // Actions
     fetchMembers,
     fetchMemberById,
@@ -142,13 +209,17 @@ export const useMembersStore = defineStore('members', () => {
     updateMember,
     deleteMember,
     fetchStatuses,
-    fetchGroups
-    ,
+    fetchGroups,
+    fetchEvents,
+    fetchEventTypes,
+    createEvent,
     resetStore: () => {
       members.value = []
       currentMember.value = null
       statuses.value = []
       groups.value = []
+      events.value = []
+      eventTypes.value = []
       error.value = null
       pagination.value = {
         count: 0,

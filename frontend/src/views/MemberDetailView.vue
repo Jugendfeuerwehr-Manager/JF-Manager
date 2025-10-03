@@ -4,9 +4,9 @@
       <ProgressSpinner />
     </div>
 
-    <div v-else-if="member" class="profile-container">
+    <div v-else-if="member" class="profile-container grid">
       <!-- Header Section -->
-      <Card class="profile-header-card">
+      <Card class="profile-header-card col-12">
         <template #content>
           <div class="profile-header">
             <div class="avatar-section">
@@ -74,11 +74,7 @@
         </template>
       </Card>
 
-      <!-- Main Content Tabs -->
-      <TabView class="profile-tabs">
-        <!-- Personal Information Tab -->
-        <TabPanel value="0" header="Persönliche Daten">
-          <div class="info-grid">
+    <div class="info-grid col-12">
             <Card class="info-card">
               <template #title>
                 <div class="card-title">
@@ -168,13 +164,10 @@
                 <p class="notes-content">{{ member.notes }}</p>
               </template>
             </Card>
-          </div>
-        </TabPanel>
-
-        <!-- Parents Tab (reusable component) -->
-        <TabPanel value="1" header="Eltern">
-          <ParentContacts :parents="parents" :loading="loadingParents" variant="detailed" />
-        </TabPanel>
+    </div>
+    <ParentContacts :parents="parents" :loading="loadingParents" variant="detailed" class="col-12"/>
+     <!-- Main Content Tabs -->
+    <TabView class="profile-tabs col-12">
 
         <!-- Inventory Tab -->
         <TabPanel value="2" header="Ausrüstung">
@@ -187,24 +180,7 @@
 
         <!-- Events Tab -->
         <TabPanel value="3" header="Einträge">
-          <div v-if="loadingEvents" class="loading-container">
-            <ProgressSpinner />
-          </div>
-          <div v-else-if="events.length === 0" class="empty-state">
-            <i class="pi pi-calendar" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
-            <p>Keine Einträge vorhanden</p>
-          </div>
-          <div v-else>
-            <DataTable :value="events" striped-rows paginator :rows="10">
-              <Column field="datetime" header="Datum" sortable>
-                <template #body="{ data }">
-                  {{ formatDateTime(data.datetime) }}
-                </template>
-              </Column>
-              <Column field="event_type.name" header="Typ" sortable />
-              <Column field="notes" header="Notizen" />
-            </DataTable>
-          </div>
+          <EventsManager :member-id="memberId" />
         </TabPanel>
 
         <!-- Qualifications Tab -->
@@ -222,15 +198,11 @@
             <p>Sonderaufgaben werden bald verfügbar sein</p>
           </div>
         </TabPanel>
-
         <!-- Attachments Tab -->
         <TabPanel value="6" header="Anhänge">
-          <div class="coming-soon">
-            <i class="pi pi-paperclip" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
-            <p>Anhangsverwaltung wird bald verfügbar sein</p>
-          </div>
+          <AttachmentsManager :member-id="memberId" />
         </TabPanel>
-      </TabView>
+     </TabView>
     </div>
 
     <ConfirmDialog />
@@ -242,8 +214,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { membersApi, parentsApi, eventsApi } from '@/api/members'
-import type { Member, Parent, Event } from '@/types/api'
+import { membersApi, parentsApi } from '@/api/members'
+import type { Member, Parent } from '@/types/api'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
@@ -252,11 +224,11 @@ import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
 import Divider from 'primevue/divider'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import ProgressSpinner from 'primevue/progressspinner'
 import ConfirmDialog from 'primevue/confirmdialog'
 import ParentContacts from '@/components/members/ParentContacts.vue'
+import EventsManager from '@/components/members/profile/EventsManager.vue'
+import AttachmentsManager from '@/components/members/profile/AttachmentsManager.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -265,10 +237,8 @@ const toast = useToast()
 
 const member = ref<Member | null>(null)
 const parents = ref<Parent[]>([])
-const events = ref<Event[]>([])
 const loading = ref(true)
 const loadingParents = ref(false)
-const loadingEvents = ref(false)
 const menu = ref()
 
 const memberId = Number(route.params.id)
@@ -297,10 +267,7 @@ const loadMember = async () => {
     member.value = response.data
     
     // Load related data
-    await Promise.all([
-      loadParents(),
-      loadEvents()
-    ])
+    await loadParents()
   } catch (error) {
     console.error('Error loading member:', error)
     toast.add({
@@ -327,18 +294,6 @@ const loadParents = async () => {
   }
 }
 
-const loadEvents = async () => {
-  try {
-    loadingEvents.value = true
-    const response = await eventsApi.list({ member: memberId })
-    events.value = response.data.results || []
-  } catch (error) {
-    console.error('Error loading events:', error)
-  } finally {
-    loadingEvents.value = false
-  }
-}
-
 const getInitials = (name: string) => {
   return name
     .split(' ')
@@ -355,17 +310,6 @@ const formatDate = (dateString: string | null) => {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  })
-}
-
-const formatDateTime = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
   })
 }
 

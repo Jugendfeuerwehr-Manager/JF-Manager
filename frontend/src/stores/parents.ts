@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { parentsApi, type Parent, type MemberParams } from '@/api/members'
+import { ref, computed } from 'vue'
+import { parentsApi, type Parent, type ParentCreate, type MemberListParams } from '@/api/members'
 
 export const useParentsStore = defineStore('parents', () => {
   // State
@@ -11,25 +11,29 @@ export const useParentsStore = defineStore('parents', () => {
   const pagination = ref({
     count: 0,
     next: null as string | null,
-    previous: null as string | null,
-    currentPage: 1,
-    pageSize: 20
+    previous: null as string | null
   })
 
+  // Computed
+  const parentOptions = computed(() => 
+    parents.value.map(p => ({ 
+      label: p.full_name, 
+      value: p.id 
+    }))
+  )
+
   // Actions
-  async function fetchParents(params?: MemberParams) {
+  async function fetchParents(params?: MemberListParams) {
     loading.value = true
     error.value = null
 
     try {
-      const response = await parentsApi.getAll(params)
+      const response = await parentsApi.list(params)
       parents.value = response.data.results
       pagination.value = {
         count: response.data.count,
         next: response.data.next,
-        previous: response.data.previous,
-        currentPage: params?.page || 1,
-        pageSize: params?.page_size || 20
+        previous: response.data.previous
       }
     } catch (err: any) {
       error.value = err.response?.data?.detail || 'Failed to fetch parents'
@@ -44,7 +48,7 @@ export const useParentsStore = defineStore('parents', () => {
     error.value = null
 
     try {
-      const response = await parentsApi.getById(id)
+      const response = await parentsApi.get(id)
       currentParent.value = response.data
       return response.data
     } catch (err: any) {
@@ -55,7 +59,7 @@ export const useParentsStore = defineStore('parents', () => {
     }
   }
 
-  async function createParent(data: Partial<Parent>) {
+  async function createParent(data: ParentCreate) {
     loading.value = true
     error.value = null
 
@@ -71,7 +75,7 @@ export const useParentsStore = defineStore('parents', () => {
     }
   }
 
-  async function updateParent(id: number, data: Partial<Parent>) {
+  async function updateParent(id: number, data: Partial<ParentCreate>) {
     loading.value = true
     error.value = null
 
@@ -115,11 +119,23 @@ export const useParentsStore = defineStore('parents', () => {
     loading,
     error,
     pagination,
+    // Computed
+    parentOptions,
     // Actions
     fetchParents,
     fetchParentById,
     createParent,
     updateParent,
-    deleteParent
+    deleteParent,
+    resetStore: () => {
+      parents.value = []
+      currentParent.value = null
+      error.value = null
+      pagination.value = {
+        count: 0,
+        next: null,
+        previous: null
+      }
+    }
   }
 })

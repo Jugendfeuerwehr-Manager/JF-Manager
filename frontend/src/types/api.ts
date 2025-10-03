@@ -72,6 +72,20 @@ export interface Parent {
   children: number[]
 }
 
+export interface ParentCreate {
+  name: string
+  lastname: string
+  email: string
+  email2?: string
+  phone?: string
+  mobile?: string
+  street?: string
+  zip_code?: string
+  city?: string
+  notes?: string
+  children?: number[]
+}
+
 export interface Event {
   id: number
   member: number
@@ -80,6 +94,13 @@ export interface Event {
   event_type: EventType | null
   datetime: string
   notes: string
+}
+
+export interface EventCreate {
+  member: number
+  type: number
+  datetime: string
+  notes?: string
 }
 
 export interface EventType {
@@ -198,6 +219,28 @@ export interface Attendance {
   service: number
   member: number
   attended: boolean
+}
+
+export interface Attachment {
+  id: number
+  file: string | null
+  file_url: string | null
+  name: string
+  description: string
+  uploaded_at: string
+  uploaded_by?: number
+  file_size?: number
+  mime_type: string
+  content_type: number
+  object_id: number
+}
+
+export interface AttachmentCreate {
+  file: File
+  name: string
+  description?: string
+  content_type: number
+  object_id: number
 }
 
 // Qualifications types

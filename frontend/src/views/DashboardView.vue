@@ -6,7 +6,7 @@
     </div>
 
     <div class="grid">
-      <div class="col-12 md:col-6 lg:col-3">
+      <div class="col-4 md:col-6 lg:col-3">
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -20,21 +20,7 @@
         </Card>
       </div>
 
-      <div class="col-12 md:col-6 lg:col-3">
-        <Card>
-          <template #content>
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-surface-500 text-sm mb-1">Active Members</div>
-                <div class="text-3xl font-bold">{{ stats.activeMembers }}</div>
-              </div>
-              <i class="pi pi-check-circle text-4xl text-green-500"></i>
-            </div>
-          </template>
-        </Card>
-      </div>
-
-      <div class="col-12 md:col-6 lg:col-3">
+      <div class="col-4 md:col-6 lg:col-3">
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -48,7 +34,7 @@
         </Card>
       </div>
 
-      <div class="col-12 md:col-6 lg:col-3">
+      <div class="col-4 md:col-6 lg:col-3">
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -131,7 +117,6 @@ const parentsStore = useParentsStore()
 
 const stats = ref({
   totalMembers: 0,
-  activeMembers: 0,
   totalParents: 0
 })
 
@@ -141,7 +126,6 @@ onMounted(async () => {
 
     stats.value = {
       totalMembers: membersStore.pagination.count,
-      activeMembers: membersStore.activeMembers.length,
       totalParents: parentsStore.pagination.count
     }
   } catch (error) {

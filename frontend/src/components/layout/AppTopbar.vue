@@ -134,6 +134,7 @@ const toggleUserMenu = (event: Event) => {
 .logo {
   display: flex;
   align-items: center;
+  cursor: pointer;
   gap: 0.75rem;
   color: var(--primary-color);
   font-weight: 700;

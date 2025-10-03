@@ -3,6 +3,7 @@ import type {
   Member,
   MemberCreate,
   Parent,
+  ParentCreate,
   Status,
   Group,
   Event,
@@ -11,7 +12,7 @@ import type {
 } from '@/types/api'
 
 // Re-export commonly used types so other modules can import them from this file
-export type { Member, MemberCreate, Parent, Status, Group, Event, EventType, PaginatedResponse }
+export type { Member, MemberCreate, Parent, ParentCreate, Status, Group, Event, EventType, PaginatedResponse }
 
 // Backwards-compatible alias for parameter type naming used in some stores
 export type MemberParams = MemberListParams
@@ -34,12 +35,16 @@ export const membersApi = {
     return apiClient.get<Member>(`/members/${id}/`)
   },
 
-  create(data: MemberCreate) {
-    return apiClient.post<Member>('/members/', data)
+  create(data: MemberCreate | FormData) {
+    return apiClient.post<Member>('/members/', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    })
   },
 
-  update(id: number, data: Partial<MemberCreate>) {
-    return apiClient.patch<Member>(`/members/${id}/`, data)
+  update(id: number, data: Partial<MemberCreate> | FormData) {
+    return apiClient.patch<Member>(`/members/${id}/`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    })
   },
 
   delete(id: number) {
@@ -68,11 +73,11 @@ export const parentsApi = {
     return apiClient.get<Parent>(`/parents/${id}/`)
   },
 
-  create(data: Partial<Parent>) {
+  create(data: ParentCreate) {
     return apiClient.post<Parent>('/parents/', data)
   },
 
-  update(id: number, data: Partial<Parent>) {
+  update(id: number, data: Partial<ParentCreate>) {
     return apiClient.patch<Parent>(`/parents/${id}/`, data)
   },
 
@@ -92,7 +97,7 @@ export const parentsApi = {
 
 export const statusesApi = {
   list() {
-    return apiClient.get<Status[]>('/statuses/')
+    return apiClient.get<PaginatedResponse<Status>>('/statuses/')
   },
 
   get(id: number) {
@@ -114,7 +119,7 @@ export const statusesApi = {
 
 export const groupsApi = {
   list() {
-    return apiClient.get<Group[]>('/groups/')
+    return apiClient.get<PaginatedResponse<Group>>('/groups/')
   },
 
   get(id: number) {
@@ -158,7 +163,7 @@ export const eventsApi = {
 
 export const eventTypesApi = {
   list() {
-    return apiClient.get<EventType[]>('/event-types/')
+    return apiClient.get<PaginatedResponse<EventType>>('/event-types/')
   },
 
   get(id: number) {

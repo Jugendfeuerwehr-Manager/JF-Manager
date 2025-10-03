@@ -128,18 +128,32 @@ class EventSerializer(serializers.ModelSerializer):
 
 class AttachmentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    mime_type = serializers.SerializerMethodField()
+    file_size = serializers.SerializerMethodField()
     
     class Meta:
         model = Attachment
         fields = [
-            'id', 'file', 'file_url', 'description', 'uploaded_at',
-            'content_type', 'object_id'
+            'id', 'name', 'file', 'file_url', 'description', 'uploaded_at',
+            'content_type', 'object_id', 'mime_type', 'file_size'
         ]
-        read_only_fields = ['id', 'uploaded_at']
+        read_only_fields = ['id', 'uploaded_at', 'file_url', 'mime_type', 'file_size']
     
     def get_file_url(self, obj):
         if obj.file:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.file.url)
+        return None
+    
+    def get_mime_type(self, obj):
+        if obj.file:
+            import mimetypes
+            mime_type, _ = mimetypes.guess_type(obj.file.name)
+            return mime_type
+        return None
+    
+    def get_file_size(self, obj):
+        if obj.file:
+            return obj.file.size
         return None

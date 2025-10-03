@@ -85,6 +85,22 @@ class MemberViewSet(viewsets.ModelViewSet):
         serializer = EventSerializer(events, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Get member's attachments",
+        description="Get all attachments associated with this member"
+    )
+    @action(detail=True, methods=['get'])
+    def attachments(self, request, pk=None):
+        from django.contrib.contenttypes.models import ContentType
+        member = self.get_object()
+        content_type = ContentType.objects.get_for_model(Member)
+        attachments = Attachment.objects.filter(
+            content_type=content_type,
+            object_id=member.id
+        ).order_by('-uploaded_at')
+        serializer = AttachmentSerializer(attachments, many=True, context={'request': request})
+        return Response(serializer.data)
+
 
 @extend_schema_view(
     list=extend_schema(summary="List all parents", description="Get a paginated list of all parents"),
@@ -166,3 +182,38 @@ class EventTypeViewSet(viewsets.ModelViewSet):
     serializer_class = EventTypeSerializer
     permission_classes = [IsAuthenticated]
     ordering = ['name']
+
+
+@extend_schema_view(
+    list=extend_schema(summary="List all attachments", description="Get a paginated list of all attachments"),
+    retrieve=extend_schema(summary="Get attachment details"),
+    create=extend_schema(summary="Create new attachment"),
+    update=extend_schema(summary="Update attachment"),
+    partial_update=extend_schema(summary="Partially update attachment"),
+    destroy=extend_schema(summary="Delete attachment")
+)
+class AttachmentViewSet(viewsets.ModelViewSet):
+    queryset = Attachment.objects.all().order_by('-uploaded_at')
+    serializer_class = AttachmentSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['content_type', 'object_id']
+    ordering_fields = ['uploaded_at', 'name']
+    ordering = ['-uploaded_at']
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+
+    @extend_schema(
+        summary="Download attachment",
+        description="Download the attachment file"
+    )
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        from django.http import FileResponse
+        attachment = self.get_object()
+        if attachment.file:
+            response = FileResponse(attachment.file.open('rb'))
+            response['Content-Disposition'] = f'attachment; filename="{attachment.name}"'
+            return response
+        return Response({"detail": "No file attached"}, status=404)
