@@ -61,6 +61,15 @@ export const membersApi = {
 
   getEvents(id: number) {
     return apiClient.get<Event[]>(`/members/${id}/events/`)
+  },
+
+  exportExcel() {
+    return apiClient.get('/members/export-excel/', {
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    })
   }
 }
 

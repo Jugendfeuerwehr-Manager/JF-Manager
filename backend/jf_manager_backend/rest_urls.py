@@ -4,7 +4,10 @@ from members.api_views import (
     GroupViewSet, EventViewSet, EventTypeViewSet, AttachmentViewSet
 )
 from users.api_views import UserViewSet
-from orders.views import OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
+# Import enhanced API viewsets from orders.api instead of legacy orders.views
+from orders.api.viewsets import (
+    OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
+)
 from qualifications.api_views import (
     QualificationTypeViewSet, 
     QualificationViewSet, 
@@ -26,7 +29,8 @@ from inventory.api.viewsets import (
 	StockViewSet,
 	TransactionViewSet,
 )
-from servicebook.views import ServiceViewSet, AttandenceViewSet
+# Import enhanced servicebook viewsets from servicebook.api
+from servicebook.api.viewsets import ServiceViewSet, AttendanceViewSet
 
 api = routers.DefaultRouter()
 api.register(r'users', UserViewSet)
@@ -48,13 +52,13 @@ api.register(r'inventory/transactions', TransactionViewSet)
 
 
 api.register(r'servicebook/services', ServiceViewSet)
-api.register(r'servicebook/attandances', AttandenceViewSet)
+api.register(r'servicebook/attendances', AttendanceViewSet)
 
 # Orders endpoints
 api.register(r'orders', OrderViewSet)
-api.register(r'orders/items', OrderItemViewSet)
-api.register(r'orders/orderable-items', OrderableItemViewSet)
-api.register(r'orders/statuses', OrderStatusViewSet)
+api.register(r'order-items', OrderItemViewSet)
+api.register(r'orderable-items', OrderableItemViewSet)
+api.register(r'order-statuses', OrderStatusViewSet)
 
 # Qualifications endpoints
 api.register(r'qualifications/types', QualificationTypeViewSet)

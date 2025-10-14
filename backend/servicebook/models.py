@@ -17,7 +17,7 @@ class Service(models.Model):
     attendees = models.ManyToManyField(Member, through='Attendance')
 
     def has_events(self):
-        return True if self.events.__len__() > 0 else False
+        return bool(self.events and len(self.events) > 0)
 
     def get_absolute_url(self):
         return reverse('servicebook:edit', kwargs={'pk': self.pk})

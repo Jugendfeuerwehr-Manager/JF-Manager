@@ -135,7 +135,7 @@ const secondaryNavItems = [
   { path: '/', label: 'Dashboard', icon: 'pi pi-home' },
   { path: '/inventory', label: 'Inventar', icon: 'pi pi-box' },
   { path: '/orders', label: 'Bestellungen', icon: 'pi pi-shopping-cart' },
-  { path: '/qualifications', label: 'Qualifikationen', icon: 'pi pi-certificate' },
+  { path: '/qualifications', label: 'Qualifikationen', icon: 'pi pi-crown' },
   { path: '/settings', label: 'Einstellungen', icon: 'pi pi-cog' }
 ]
 
@@ -250,7 +250,6 @@ onUnmounted(() => {
 
 .layout-content {
   flex: 1;
-  padding: 1.5rem;
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;

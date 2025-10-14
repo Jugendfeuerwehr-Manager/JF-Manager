@@ -24,6 +24,9 @@ class AppSettingsView(APIView):
             'organization_name': getattr(global_preferences.get('general__organization_name', None), 'value', '') if hasattr(global_preferences, 'general__organization_name') else '',
             'contact_email': getattr(global_preferences.get('general__contact_email', None), 'value', '') if hasattr(global_preferences, 'general__contact_email') else '',
             'equipment_manager_email': getattr(global_preferences.get('general__equipment_manager_email', None), 'value', '') if hasattr(global_preferences, 'general__equipment_manager_email') else '',
+            # Service default times
+            'service_start_time': global_preferences.get('service__service_start_time', '19:00'),
+            'service_end_time': global_preferences.get('service__service_end_time', '21:00'),
         }
         
         return Response(settings)

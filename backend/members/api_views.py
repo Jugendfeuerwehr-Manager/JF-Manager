@@ -1,7 +1,9 @@
+from django.http import HttpResponse
 from rest_framework import viewsets, filters, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, renderer_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import BaseRenderer
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -12,6 +14,18 @@ from .api_serializers import (
     ParentSerializer, StatusSerializer, GroupSerializer,
     EventSerializer, EventTypeSerializer, AttachmentSerializer
 )
+from .resources import MemberResource
+
+
+class PassthroughRenderer(BaseRenderer):
+    """
+    Return data as-is. View should supply a Response.
+    """
+    media_type = '*/*'
+    format = 'binary'
+    
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 
 @extend_schema_view(
@@ -100,6 +114,33 @@ class MemberViewSet(viewsets.ModelViewSet):
         ).order_by('-uploaded_at')
         serializer = AttachmentSerializer(attachments, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @extend_schema(
+        summary="Export members to Excel",
+        description="Export all members to an Excel file (.xlsx format)"
+    )
+    @action(detail=False, methods=['get'], url_path='export-excel', renderer_classes=[PassthroughRenderer])
+    def export_excel(self, request):
+        """Export all members to Excel file with JWT authentication"""
+        # Check permission
+        if not request.user.has_perm('members.view_member'):
+            return Response({'error': 'Keine Berechtigung für Mitglieder-Export'}, status=403)
+        
+        # Use import_export to generate Excel file
+        member_resource = MemberResource()
+        dataset = member_resource.export(queryset=self.queryset)
+        
+        # Generate Excel file
+        excel_data = dataset.xlsx
+        
+        # Create HTTP response with Excel file
+        response = HttpResponse(
+            excel_data,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="members.xlsx"'
+        
+        return response
 
 
 @extend_schema_view(

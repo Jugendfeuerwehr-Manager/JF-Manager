@@ -143,6 +143,8 @@ export interface AppSettings {
   organization_name: string
   contact_email: string
   equipment_manager_email: string
+  service_start_time: string  // Format: "HH:mm"
+  service_end_time: string     // Format: "HH:mm"
 }
 
 export interface PaginatedResponse<T> {

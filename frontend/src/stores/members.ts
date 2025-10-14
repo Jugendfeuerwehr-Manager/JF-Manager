@@ -187,6 +187,36 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
+  async function exportExcel() {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await membersApi.exportExcel()
+      
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      
+      // Generate filename with current date
+      const date = new Date().toISOString().split('T')[0]
+      link.setAttribute('download', `mitglieder_${date}.xlsx`)
+      
+      document.body.appendChild(link)
+      link.click()
+      
+      // Cleanup
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || 'Failed to export members'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     members,
@@ -213,6 +243,7 @@ export const useMembersStore = defineStore('members', () => {
     fetchEvents,
     fetchEventTypes,
     createEvent,
+    exportExcel,
     resetStore: () => {
       members.value = []
       currentMember.value = null

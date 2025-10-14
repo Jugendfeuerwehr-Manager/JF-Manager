@@ -5,12 +5,22 @@
         <h1>Mitglieder</h1>
         <p class="text-muted">Verwaltung der Jugendfeuerwehr-Mitglieder</p>
       </div>
-      <Button 
-        label="Mitglied hinzufügen" 
-        icon="pi pi-plus" 
-        @click="navigateToCreate"
-        severity="primary"
-      />
+      <div class="header-actions">
+        <Button 
+          label="Excel Export" 
+          icon="pi pi-file-excel" 
+          @click="handleExportExcel"
+          severity="success"
+          outlined
+          :loading="membersStore.loading"
+        />
+        <Button 
+          label="Mitglied hinzufügen" 
+          icon="pi pi-plus" 
+          @click="navigateToCreate"
+          severity="primary"
+        />
+      </div>
     </div>
 
     <Card class="filter-card">
@@ -403,6 +413,24 @@ const confirmDelete = (member: Member) => {
   })
 }
 
+const handleExportExcel = async () => {
+  try {
+    await membersStore.exportExcel()
+    toast.add({
+      severity: 'success',
+      summary: 'Erfolg',
+      detail: 'Mitgliederliste wurde erfolgreich exportiert',
+      life: 3000
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: 'Export fehlgeschlagen',
+      life: 3000
+    })
+  }
+}
 
 </script>
 
@@ -418,6 +446,11 @@ const confirmDelete = (member: Member) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .header-content h1 {
@@ -591,6 +624,10 @@ const confirmDelete = (member: Member) => {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
+  }
+
+  .header-actions {
+    flex-direction: column;
   }
 
   .filter-grid {

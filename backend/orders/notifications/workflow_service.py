@@ -210,6 +210,17 @@ class OrderWorkflowService(BaseNotificationService):
         }
     
     @classmethod
+    def get_workflow_graph(cls) -> Dict[str, any]:
+        """
+        Get workflow data suitable for creating workflow diagrams.
+        Alias for get_workflow_diagram_data.
+        
+        Returns:
+            Dictionary with nodes and edges for workflow visualization
+        """
+        return cls.get_workflow_diagram_data()
+    
+    @classmethod
     def get_workflow_diagram_data(cls) -> Dict[str, any]:
         """
         Get workflow data suitable for creating workflow diagrams.

@@ -61,7 +61,17 @@ const router = createRouter({
         {
           path: 'servicebook',
           name: 'servicebook',
-          component: () => import('@/views/ServicebookView.vue')
+          component: () => import('@/views/ServicesListView.vue')
+        },
+        {
+          path: 'servicebook/create',
+          name: 'service-create',
+          component: () => import('@/views/ServiceFormView.vue')
+        },
+        {
+          path: 'servicebook/:id/edit',
+          name: 'service-edit',
+          component: () => import('@/views/ServiceFormView.vue')
         },
         // Other modules
         {
@@ -69,10 +79,38 @@ const router = createRouter({
           name: 'inventory',
           component: () => import('@/views/InventoryView.vue')
         },
+        // Orders
         {
           path: 'orders',
           name: 'orders',
           component: () => import('@/views/OrdersView.vue')
+        },
+        {
+          path: 'orders/analytics',
+          name: 'orders-analytics',
+          component: () => import('@/components/orders/AnalyticsView.vue')
+        },
+        {
+          path: 'orders/quick',
+          name: 'orders-quick',
+          component: () => import('@/views/QuickOrderView.vue')
+        },
+        {
+          path: 'orders/create',
+          name: 'orders-create',
+          component: () => import('@/components/orders/OrderFormView.vue')
+        },
+        {
+          path: 'orders/:id',
+          name: 'order-detail',
+          component: () => import('@/components/orders/OrderDetailView.vue'),
+          props: (route) => ({ orderId: Number(route.params.id) })
+        },
+        {
+          path: 'orders/:id/edit',
+          name: 'order-edit',
+          component: () => import('@/components/orders/OrderFormView.vue'),
+          props: (route) => ({ orderId: Number(route.params.id) })
         },
         {
           path: 'qualifications',
