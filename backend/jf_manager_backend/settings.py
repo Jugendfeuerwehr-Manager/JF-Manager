@@ -27,6 +27,9 @@ DEBUG = os.environ.get('DEBUG', 'True')
 
 ALLOWED_HOSTS = ['*']
 
+# Frontend URL for password reset emails
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
 # CORS settings for Vue.js frontend
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vue.js dev server
