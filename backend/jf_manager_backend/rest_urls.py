@@ -8,10 +8,11 @@ from users.api_views import UserViewSet
 from orders.api.viewsets import (
     OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
 )
-from qualifications.api_views import (
-    QualificationTypeViewSet, 
-    QualificationViewSet, 
-    SpecialTaskTypeViewSet, 
+# Import enhanced qualifications viewsets from qualifications.api
+from qualifications.api.viewsets import (
+    QualificationTypeViewSet,
+    QualificationViewSet,
+    SpecialTaskTypeViewSet,
     SpecialTaskViewSet
 )
 """Global REST API router registrations.
@@ -60,8 +61,9 @@ api.register(r'order-items', OrderItemViewSet)
 api.register(r'orderable-items', OrderableItemViewSet)
 api.register(r'order-statuses', OrderStatusViewSet)
 
-# Qualifications endpoints
-api.register(r'qualifications/types', QualificationTypeViewSet)
-api.register(r'qualifications', QualificationViewSet)
-api.register(r'specialtasks/types', SpecialTaskTypeViewSet)
-api.register(r'specialtasks', SpecialTaskViewSet)
+# Qualifications endpoints - register most specific routes FIRST to avoid conflicts
+# More specific routes must come before generic ones or they won't match
+api.register(r'qualifications/types', QualificationTypeViewSet, basename='qualification-types')
+api.register(r'qualifications/specialtask-types', SpecialTaskTypeViewSet, basename='qualification-specialtask-types')
+api.register(r'qualifications/specialtasks', SpecialTaskViewSet, basename='qualification-specialtasks')
+api.register(r'qualifications', QualificationViewSet, basename='qualifications')

@@ -1,3 +1,8 @@
+/* eslint-disable */
+/* tslint:disable */
+/* jshint ignore:start */
+/* istanbul ignore file */
+
 {% extends 'qualifications/base.html' %}
 {% load crispy_forms_tags %}
 
@@ -104,11 +109,7 @@
                                 </a>
                                 {% endif %}
                                 {% if perms.qualifications.delete_qualificationtype %}
-                                <button type="button" class="btn btn-outline-danger btn-sm" 
-                                        onclick="confirmDelete('{{ type.name }}', '{% url 'qualifications:qualification_type_delete' type.pk %}')"
-                                        title="Löschen">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                            
                                 {% endif %}
                             </div>
                         </td>

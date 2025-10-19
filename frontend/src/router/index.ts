@@ -115,7 +115,47 @@ const router = createRouter({
         {
           path: 'qualifications',
           name: 'qualifications',
-          component: () => import('@/views/QualificationsView.vue')
+          component: () => import('@/views/qualifications/QualificationsDashboardView.vue')
+        },
+        {
+          path: 'qualifications/types',
+          name: 'qualification-types',
+          component: () => import('@/views/qualifications/QualificationTypesManagementView.vue')
+        },
+        {
+          path: 'qualifications/create',
+          name: 'qualification-create',
+          component: () => import('@/views/qualifications/QualificationCreateView.vue')
+        },
+        {
+          path: 'qualifications/:id/edit',
+          name: 'qualification-edit',
+          component: () => import('@/views/qualifications/QualificationEditView.vue')
+        },
+        {
+          path: 'qualifications/:id',
+          name: 'qualification-detail',
+          component: () => import('@/views/qualifications/QualificationDetailView.vue')
+        },
+        {
+          path: 'qualifications/specialtasks/types',
+          name: 'specialtask-types',
+          component: () => import('@/views/qualifications/SpecialTaskTypesManagementView.vue')
+        },
+        {
+          path: 'qualifications/specialtasks/create',
+          name: 'specialtask-create',
+          component: () => import('@/views/qualifications/SpecialTaskCreateView.vue')
+        },
+        {
+          path: 'qualifications/specialtasks/:id/edit',
+          name: 'specialtask-edit',
+          component: () => import('@/views/qualifications/SpecialTaskEditView.vue')
+        },
+        {
+          path: 'qualifications/specialtasks/:id',
+          name: 'specialtask-detail',
+          component: () => import('@/views/qualifications/SpecialTaskDetailView.vue')
         },
         {
           path: 'settings',

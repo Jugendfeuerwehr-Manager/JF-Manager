@@ -138,17 +138,6 @@ const handleBack = () => {
   font-weight: 600;
 }
 
-@media (max-width: 768px) {
-  .view-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    margin-bottom: 1rem;
-    border-radius: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-}
-
 .loading-container {
   display: flex;
   justify-content: center;

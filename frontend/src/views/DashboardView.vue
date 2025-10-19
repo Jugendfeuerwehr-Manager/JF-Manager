@@ -39,6 +39,23 @@
           <template #content>
             <div class="flex items-center justify-between">
               <div>
+                <div class="text-surface-500 text-sm mb-1">Qualifications</div>
+                <div class="text-3xl font-bold">{{ stats.totalQualifications }}</div>
+                <div v-if="stats.expiringQualifications > 0" class="text-xs text-orange-500 mt-1">
+                  {{ stats.expiringQualifications }} laufen bald ab
+                </div>
+              </div>
+              <i class="pi pi-certificate text-4xl text-purple-500"></i>
+            </div>
+          </template>
+        </Card>
+      </div>
+
+      <div class="col-4 md:col-6 lg:col-3">
+        <Card>
+          <template #content>
+            <div class="flex items-center justify-between">
+              <div>
                 <div class="text-surface-500 text-sm mb-1">Inventory Items</div>
                 <div class="text-3xl font-bold">-</div>
               </div>
@@ -95,6 +112,13 @@
                 outlined
                 class="w-full"
               />
+              <Button
+                label="Qualifications"
+                icon="pi pi-certificate"
+                @click="$router.push('/qualifications')"
+                outlined
+                class="w-full"
+              />
             </div>
           </template>
         </Card>
@@ -108,25 +132,35 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMembersStore } from '@/stores/members'
 import { useParentsStore } from '@/stores/parents'
+import { useQualificationsStore } from '@/stores/qualifications'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 
 const authStore = useAuthStore()
 const membersStore = useMembersStore()
 const parentsStore = useParentsStore()
+const qualificationsStore = useQualificationsStore()
 
 const stats = ref({
   totalMembers: 0,
-  totalParents: 0
+  totalParents: 0,
+  totalQualifications: 0,
+  expiringQualifications: 0
 })
 
 onMounted(async () => {
   try {
-    await Promise.all([membersStore.fetchMembers(), parentsStore.fetchParents()])
+    await Promise.all([
+      membersStore.fetchMembers(),
+      parentsStore.fetchParents(),
+      qualificationsStore.fetchStatistics()
+    ])
 
     stats.value = {
       totalMembers: membersStore.pagination.count,
-      totalParents: parentsStore.pagination.count
+      totalParents: parentsStore.pagination.count,
+      totalQualifications: qualificationsStore.statistics?.total_qualifications || 0,
+      expiringQualifications: qualificationsStore.statistics?.expiring_qualifications || 0
     }
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
