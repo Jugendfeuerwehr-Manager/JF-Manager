@@ -167,10 +167,24 @@
     </div>
     <ParentContacts :parents="parents" :loading="loadingParents" variant="detailed" class="col-12"/>
      <!-- Main Content Tabs -->
-    <TabView class="profile-tabs col-12">
+    <TabView v-model:activeIndex="activeTab" :lazy="true" class="profile-tabs col-12">
+        <!-- Qualifications Tab -->
+        <TabPanel :value="0" header="Qualifikationen">
+          <QualificationsManager :member-id="memberId" />
+        </TabPanel>
+
+        <!-- Special Tasks Tab -->
+        <TabPanel :value="1" header="Sonderaufgaben">
+          <SpecialTasksManager :member-id="memberId" />
+        </TabPanel>
+
+        <!-- Events Tab -->
+        <TabPanel :value="2" header="Einträge">
+          <EventsManager :member-id="memberId" />
+        </TabPanel>
 
         <!-- Inventory Tab -->
-        <TabPanel value="2" header="Ausrüstung">
+        <TabPanel :value="3" header="Ausrüstung">
           <div class="coming-soon">
             <i class="pi pi-box" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
             <p>Ausrüstungsverwaltung wird bald verfügbar sein</p>
@@ -178,34 +192,12 @@
           </div>
         </TabPanel>
 
-        <!-- Events Tab -->
-        <TabPanel value="3" header="Einträge">
-          <EventsManager :member-id="memberId" />
-        </TabPanel>
-
-        <!-- Qualifications Tab -->
-        <TabPanel value="4" header="Qualifikationen">
-          <div class="coming-soon">
-            <i class="pi pi-graduation-cap" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
-            <p>Qualifikationsverwaltung wird bald verfügbar sein</p>
-          </div>
-        </TabPanel>
-
-        <!-- Special Tasks Tab -->
-        <TabPanel value="5" header="Sonderaufgaben">
-          <div class="coming-soon">
-            <i class="pi pi-star" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
-            <p>Sonderaufgaben werden bald verfügbar sein</p>
-          </div>
-        </TabPanel>
         <!-- Attachments Tab -->
-        <TabPanel value="6" header="Anhänge">
+        <TabPanel :value="4" header="Anhänge">
           <AttachmentsManager :member-id="memberId" />
         </TabPanel>
      </TabView>
     </div>
-
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -225,10 +217,11 @@ import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
 import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 import EventsManager from '@/components/members/profile/EventsManager.vue'
 import AttachmentsManager from '@/components/members/profile/AttachmentsManager.vue'
+import QualificationsManager from '@/components/members/profile/QualificationsManager.vue'
+import SpecialTasksManager from '@/components/members/profile/SpecialTasksManager.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -240,6 +233,7 @@ const parents = ref<Parent[]>([])
 const loading = ref(true)
 const loadingParents = ref(false)
 const menu = ref()
+const activeTab = ref(0) // track active tab to lazily mount tab panels
 
 const memberId = Number(route.params.id)
 

@@ -23,10 +23,12 @@ from ..serializers import (
     QualificationListSerializer,
     QualificationDetailSerializer,
     QualificationCreateSerializer,
+    QualificationUpdateSerializer,
     SpecialTaskTypeSerializer,
     SpecialTaskListSerializer,
     SpecialTaskDetailSerializer,
-    SpecialTaskCreateSerializer
+    SpecialTaskCreateSerializer,
+    SpecialTaskUpdateSerializer
 )
 from ..filters import QualificationFilter, SpecialTaskFilter
 
@@ -75,8 +77,10 @@ class QualificationViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return QualificationListSerializer
-        elif self.action in ['create', 'update', 'partial_update']:
+        elif self.action == 'create':
             return QualificationCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return QualificationUpdateSerializer
         return QualificationDetailSerializer
     
     @action(detail=False, methods=['get'])
@@ -261,8 +265,10 @@ class SpecialTaskViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return SpecialTaskListSerializer
-        elif self.action in ['create', 'update', 'partial_update']:
+        elif self.action == 'create':
             return SpecialTaskCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return SpecialTaskUpdateSerializer
         return SpecialTaskDetailSerializer
     
     @action(detail=True, methods=['post'])

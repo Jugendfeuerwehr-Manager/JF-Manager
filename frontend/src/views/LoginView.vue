@@ -337,7 +337,7 @@ const handleLogin = async () => {
 /* ==================== Login Card ==================== */
 .login-card-wrapper {
   width: 100%;
-  max-width: 480px;
+  max-width: 420px;
   animation: cardEntrance 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -357,7 +357,7 @@ const handleLogin = async () => {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 24px;
+  border-radius: 20px;
   box-shadow: 
     0 20px 60px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
@@ -367,17 +367,17 @@ const handleLogin = async () => {
 }
 
 .glass-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   box-shadow: 
-    0 30px 80px rgba(0, 0, 0, 0.4),
+    0 25px 70px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 0 120px rgba(255, 255, 255, 0.15);
+    0 0 110px rgba(255, 255, 255, 0.15);
 }
 
 /* ==================== Header ==================== */
 .login-header {
   text-align: center;
-  padding: 3rem 2rem 2rem;
+  padding: 2rem 1.5rem 1.5rem;
   position: relative;
   color: white;
 }
@@ -385,27 +385,27 @@ const handleLogin = async () => {
 .icon-container {
   position: relative;
   display: inline-block;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   animation: iconFloat 3s ease-in-out infinite;
 }
 
 @keyframes iconFloat {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-10px) rotate(5deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
 }
 
 .shield-icon {
-  font-size: 5rem;
+  font-size: 3.5rem;
   color: white;
   position: relative;
   z-index: 2;
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.3));
   animation: shieldPulse 2s ease-in-out infinite;
 }
 
 @keyframes shieldPulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.03); }
 }
 
 .icon-glow {
@@ -446,18 +446,18 @@ const handleLogin = async () => {
 }
 
 .brand-title {
-  font-size: 3rem;
+  font-size: 2.25rem;
   font-weight: 800;
-  margin: 0 0 0.5rem;
-  letter-spacing: 2px;
-  text-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  margin: 0 0 0.4rem;
+  letter-spacing: 1.5px;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   animation: titleReveal 0.8s ease-out 0.3s backwards;
 }
 
 @keyframes titleReveal {
   0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(15px);
   }
   100% {
     opacity: 1;
@@ -483,18 +483,18 @@ const handleLogin = async () => {
 }
 
 .brand-subtitle {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 300;
   color: rgba(255, 255, 255, 0.95);
   margin: 0;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   animation: subtitleReveal 0.8s ease-out 0.5s backwards;
 }
 
 @keyframes subtitleReveal {
   0% {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
@@ -506,23 +506,23 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
 }
 
 .line-segment {
-  width: 60px;
-  height: 2px;
+  width: 50px;
+  height: 1.5px;
   background: linear-gradient(90deg, transparent, white, transparent);
   animation: lineGlow 2s ease-in-out infinite;
 }
 
 .line-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   background: white;
   border-radius: 50%;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
   animation: dotPulse 2s ease-in-out infinite;
 }
 
@@ -540,47 +540,47 @@ const handleLogin = async () => {
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
   padding: 0.5rem;
 }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.6rem;
   position: relative;
   transition: all 0.3s ease;
 }
 
 .input-group.is-focused {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .input-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
+  gap: 0.4rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: white;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .input-group.is-focused .input-label {
   color: #ffd700;
-  transform: translateX(5px);
+  transform: translateX(3px);
 }
 
 .label-icon {
-  font-size: 1.1rem;
+  font-size: 1rem;
   animation: iconBounce 2s ease-in-out infinite;
 }
 
 @keyframes iconBounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  50% { transform: translateY(-2px); }
 }
 
 .input-wrapper {
@@ -589,20 +589,20 @@ const handleLogin = async () => {
 
 :deep(.styled-input) {
   width: 100%;
-  padding: 1rem 1.25rem;
-  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.95);
   transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.styled-input:focus) {
   border-color: #ffd700;
   background: white;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.3);
   outline: none;
 }
 
@@ -616,20 +616,20 @@ const handleLogin = async () => {
 
 :deep(.styled-password .p-password-input) {
   width: 100%;
-  padding: 1rem 1.25rem;
-  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.95);
   transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.styled-password .p-password-input:focus) {
   border-color: #ffd700;
   background: white;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.3);
 }
 
 .input-underline {
@@ -637,12 +637,12 @@ const handleLogin = async () => {
   bottom: 0;
   left: 50%;
   width: 0;
-  height: 3px;
+  height: 2px;
   background: linear-gradient(90deg, #ffd700, #ffed4e);
   transform: translateX(-50%);
   transition: width 0.4s ease;
   border-radius: 2px;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
 }
 
 .input-group.is-focused .input-underline {
@@ -657,34 +657,35 @@ const handleLogin = async () => {
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
 }
 
 /* ==================== Error Message ==================== */
 .error-message {
   background: rgba(255, 107, 107, 0.95) !important;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 3px 12px rgba(255, 107, 107, 0.3);
 }
 
 .error-content {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   color: white;
   font-weight: 500;
+  font-size: 0.9rem;
 }
 
 .error-icon {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   animation: errorPulse 1s ease-in-out infinite;
 }
 
 @keyframes errorPulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  50% { transform: scale(1.08); }
 }
 
 .error-slide-enter-active,
@@ -694,27 +695,27 @@ const handleLogin = async () => {
 
 .error-slide-enter-from {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-8px);
 }
 
 .error-slide-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-8px);
 }
 
 /* ==================== Login Button ==================== */
 :deep(.login-button) {
   width: 100%;
-  padding: 1.25rem;
-  font-size: 1.1rem;
+  padding: 1rem;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 1px;
-  border-radius: 12px;
+  letter-spacing: 0.8px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
   border: none;
   color: #c31432;
   box-shadow: 
-    0 8px 20px rgba(255, 215, 0, 0.4),
+    0 6px 16px rgba(255, 215, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transition: all 0.3s ease;
   position: relative;
@@ -735,9 +736,9 @@ const handleLogin = async () => {
 }
 
 :deep(.login-button:hover) {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: 
-    0 12px 30px rgba(255, 215, 0, 0.5),
+    0 10px 24px rgba(255, 215, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
@@ -751,30 +752,30 @@ const handleLogin = async () => {
 }
 
 .button-icon {
-  margin-right: 0.5rem;
+  margin-right: 0.4rem;
   animation: iconSlide 2s ease-in-out infinite;
 }
 
 @keyframes iconSlide {
   0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(5px); }
+  50% { transform: translateX(4px); }
 }
 
 /* ==================== Forgot Password ==================== */
 .forgot-password {
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 }
 
 .forgot-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   color: white;
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 8px;
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.1);
@@ -783,18 +784,18 @@ const handleLogin = async () => {
 
 .forgot-link:hover {
   background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(255, 255, 255, 0.2);
 }
 
 .forgot-link i {
-  font-size: 1rem;
+  font-size: 0.9rem;
   animation: questionBounce 2s ease-in-out infinite;
 }
 
 @keyframes questionBounce {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  50% { transform: scale(1.08); }
 }
 
 /* ==================== Footer ==================== */
@@ -802,8 +803,8 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin-top: 0.5rem;
+  gap: 0.8rem;
+  margin-top: 0.4rem;
 }
 
 .footer-line {
@@ -813,48 +814,17 @@ const handleLogin = async () => {
 }
 
 .footer-text {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* ==================== Version Badge ==================== */
-.version-badge {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
-  color: white;
-  font-size: 0.85rem;
-  font-weight: 600;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  animation: badgeFadeIn 1s ease-out 1s backwards;
-}
-
-@keyframes badgeFadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* ==================== Responsive Design ==================== */
 @media (max-width: 768px) {
   .login-container {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 
   .login-card-wrapper {
@@ -866,68 +836,104 @@ const handleLogin = async () => {
   }
 
   .login-header {
-    padding: 2rem 1.5rem 1.5rem;
+    padding: 1.5rem 1.25rem 1.25rem;
   }
 
   .shield-icon {
-    font-size: 4rem;
+    font-size: 3rem;
   }
 
   .brand-title {
-    font-size: 2.5rem;
+    font-size: 1.875rem;
   }
 
   .brand-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.825rem;
   }
 
   .login-form {
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   :deep(.styled-input),
   :deep(.p-password-input) {
-    padding: 0.875rem 1rem;
-    font-size: 0.95rem;
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9rem;
   }
 
   :deep(.login-button) {
-    padding: 1rem;
-    font-size: 1rem;
-  }
-
-  .version-badge {
-    bottom: 1rem;
-    right: 1rem;
-    font-size: 0.75rem;
-    padding: 0.4rem 0.8rem;
-  }
-
-  .flame {
-    width: 60px;
-    height: 60px;
+    padding: 0.875rem;
+    font-size: 0.95rem;
   }
 }
 
 @media (max-width: 480px) {
+  .login-header {
+    padding: 1.25rem 1rem 1rem;
+  }
+
   .shield-icon {
-    font-size: 3.5rem;
+    font-size: 2.5rem;
+  }
+
+  .brand-title {
+    font-size: 1.625rem;
+    letter-spacing: 1px;
+  }
+
+  .brand-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .decorative-line {
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .line-segment {
+    width: 40px;
+  }
+
+  .login-form {
+    gap: 1rem;
+  }
+
+  .input-label {
+    font-size: 0.85rem;
+  }
+
+  :deep(.styled-input),
+  :deep(.p-password-input) {
+    padding: 0.7rem 0.8rem;
+    font-size: 0.875rem;
+  }
+
+  .forgot-link {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.7rem;
+  }
+}
+
+/* Ensure it fits on small MacBooks (13") */
+@media (max-height: 800px) {
+  .login-header {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  .shield-icon {
+    font-size: 3rem;
   }
 
   .brand-title {
     font-size: 2rem;
   }
 
-  .brand-subtitle {
-    font-size: 0.85rem;
+  .icon-container {
+    margin-bottom: 0.75rem;
   }
 
   .decorative-line {
-    gap: 0.5rem;
-  }
-
-  .line-segment {
-    width: 40px;
+    margin-top: 1rem;
   }
 
   .login-form {

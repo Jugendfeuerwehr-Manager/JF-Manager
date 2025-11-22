@@ -10,7 +10,6 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 
@@ -85,7 +84,6 @@ const handleFormCancel = () => {
 
 <template>
   <div class="p-4">
-    <ConfirmDialog />
     
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-3xl font-bold">Sonderaufgaben-Typen verwalten</h1>

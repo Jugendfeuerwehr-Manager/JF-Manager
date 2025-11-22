@@ -79,6 +79,8 @@
           removable-sort
           @page="onPage"
           @sort="onSort"
+          @row-click="onRowClick"
+          class="clickable-rows"
         >
           <Column 
             field="name" 
@@ -168,6 +170,7 @@
           v-for="member in membersStore.members" 
           :key="member.id" 
           class="member-card"
+          @click="navigateToView(member)"
         >
           <template #content>
             <div class="member-card-header">
@@ -196,7 +199,7 @@
             <!-- Contact Parents Section (reusable) -->
             <ParentContacts :member="member" variant="compact" />
 
-            <div class="member-card-actions">
+            <div class="member-card-actions" @click.stop>
               <Button
                 label="Ansehen"
                 icon="pi pi-eye"
@@ -245,7 +248,6 @@
       </div>
     </div>
 
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -265,7 +267,6 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 
@@ -383,6 +384,12 @@ const navigateToEdit = (member: Member) => {
   router.push(`/members/${member.id}/edit`)
 }
 
+const onRowClick = (event: any) => {
+  // Navigate to member detail when row is clicked
+  const member = event.data as Member
+  router.push(`/members/${member.id}`)
+}
+
 const confirmDelete = (member: Member) => {
   confirm.require({
     message: `Möchten Sie ${member.full_name} wirklich löschen?`,
@@ -485,6 +492,16 @@ const handleExportExcel = async () => {
   justify-content: center;
 }
 
+/* Clickable rows styling */
+.clickable-rows :deep(tbody tr) {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clickable-rows :deep(tbody tr:hover) {
+  background-color: var(--surface-hover) !important;
+}
+
 /* Mobile/Desktop view toggle */
 .mobile-view {
   display: none;
@@ -504,6 +521,7 @@ const handleExportExcel = async () => {
 .member-card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .member-card:hover {

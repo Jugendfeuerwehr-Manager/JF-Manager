@@ -104,7 +104,7 @@ class QualificationDetailSerializer(serializers.ModelSerializer):
 
 
 class QualificationCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating qualifications"""
+    """Serializer for creating qualifications"""
     
     class Meta:
         model = Qualification
@@ -133,6 +133,46 @@ class QualificationCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Only one of user or member can be provided, not both'
             )
+        
+        return data
+
+
+class QualificationUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating qualifications - allows partial updates"""
+    
+    class Meta:
+        model = Qualification
+        fields = [
+            'id',
+            'type',
+            'user',
+            'member',
+            'date_acquired',
+            'date_expires',
+            'issued_by',
+            'note'
+        ]
+        read_only_fields = ['id']
+    
+    def validate(self, data):
+        """Validate that user/member constraints are maintained if being changed"""
+        instance = self.instance
+        
+        # Determine final values after update
+        user = data.get('user', instance.user if instance else None)
+        member = data.get('member', instance.member if instance else None)
+        
+        # Only validate if user or member are being modified
+        if 'user' in data or 'member' in data:
+            if not user and not member:
+                raise serializers.ValidationError(
+                    'Either user or member must be provided'
+                )
+            
+            if user and member:
+                raise serializers.ValidationError(
+                    'Only one of user or member can be provided, not both'
+                )
         
         return data
 
@@ -223,7 +263,7 @@ class SpecialTaskDetailSerializer(serializers.ModelSerializer):
 
 
 class SpecialTaskCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating special tasks"""
+    """Serializer for creating special tasks"""
     
     # Make both fields optional but require at least one
     user = serializers.PrimaryKeyRelatedField(
@@ -279,6 +319,84 @@ class SpecialTaskCreateSerializer(serializers.ModelSerializer):
         # Validate dates
         start_date = data.get('start_date')
         end_date = data.get('end_date')
+        if end_date and start_date and end_date < start_date:
+            logger.error(f"Validation failed: end_date ({end_date}) before start_date ({start_date})")
+            raise serializers.ValidationError({
+                'end_date': 'Enddatum kann nicht vor Startdatum liegen.'
+            })
+        
+        logger.info("Validation passed successfully")
+        return data
+
+
+class SpecialTaskUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating special tasks - allows partial updates without user/member validation"""
+    
+    # Make all fields optional for partial updates
+    task = serializers.PrimaryKeyRelatedField(
+        queryset=SpecialTaskType.objects.all(),
+        required=False
+    )
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    member = serializers.PrimaryKeyRelatedField(
+        queryset=Member.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False, allow_null=True)
+    note = serializers.CharField(required=False, allow_blank=True)
+    
+    class Meta:
+        model = SpecialTask
+        fields = [
+            'id',
+            'task',
+            'user',
+            'member',
+            'start_date',
+            'end_date',
+            'note'
+        ]
+        read_only_fields = ['id']
+    
+    def validate(self, data):
+        """Validate constraints - only when user/member are being changed"""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"SpecialTaskUpdateSerializer.validate() called with data: {data}")
+        
+        # Get the instance being updated
+        instance = self.instance
+        
+        # Determine final values after update
+        user = data.get('user', instance.user if instance else None)
+        member = data.get('member', instance.member if instance else None)
+        
+        # Only validate user/member if they are being modified
+        if 'user' in data or 'member' in data:
+            # Check if both would be None
+            if user is None and member is None:
+                logger.error("Validation failed: Neither user nor member would be set")
+                raise serializers.ValidationError({
+                    'non_field_errors': ['Entweder Benutzer oder Mitglied muss ausgewählt werden.']
+                })
+            
+            # Check if both would be set
+            if user is not None and member is not None:
+                logger.error(f"Validation failed: Both user ({user}) and member ({member}) would be set")
+                raise serializers.ValidationError({
+                    'non_field_errors': ['Nur Benutzer oder Mitglied kann ausgewählt werden, nicht beide.']
+                })
+        
+        # Validate dates
+        start_date = data.get('start_date', instance.start_date if instance else None)
+        end_date = data.get('end_date', instance.end_date if instance else None)
+        
         if end_date and start_date and end_date < start_date:
             logger.error(f"Validation failed: end_date ({end_date}) before start_date ({start_date})")
             raise serializers.ValidationError({

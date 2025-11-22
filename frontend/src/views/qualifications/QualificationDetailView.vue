@@ -10,7 +10,6 @@ import Divider from 'primevue/divider'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
 import { useConfirm } from 'primevue/useconfirm'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 
 const route = useRoute()
@@ -200,7 +199,6 @@ watch(
     />
     </div>
 
-    <ConfirmDialog />
   </div>
 </template>
 

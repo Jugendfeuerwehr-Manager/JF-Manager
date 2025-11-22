@@ -148,7 +148,6 @@
       </Panel>
     </div>
 
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -160,7 +159,6 @@ import Button from 'primevue/button'
 import Panel from 'primevue/panel'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import StatisticsCard from '@/components/qualifications/molecules/StatisticsCard.vue'

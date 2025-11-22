@@ -144,7 +144,6 @@
       </template>
     </DataView>
 
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -162,7 +161,6 @@ import Textarea from 'primevue/textarea'
 import DataView from 'primevue/dataview'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 
 interface Props {
   memberId: number

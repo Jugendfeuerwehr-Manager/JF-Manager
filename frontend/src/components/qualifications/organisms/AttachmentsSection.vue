@@ -10,7 +10,6 @@ import Textarea from 'primevue/textarea'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import ProgressSpinner from 'primevue/progressspinner'
 import Image from 'primevue/image'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 
@@ -468,7 +467,6 @@ function formatDate(dateString: string): string {
     </div>
   </Dialog>
 
-  <ConfirmDialog />
 </template>
 
 <style scoped>

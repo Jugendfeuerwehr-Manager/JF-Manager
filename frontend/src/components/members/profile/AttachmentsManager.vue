@@ -206,7 +206,6 @@
       </div>
     </Dialog>
 
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -224,7 +223,6 @@ import FileUpload from 'primevue/fileupload'
 import Card from 'primevue/card'
 import Image from 'primevue/image'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 
 interface Props {
   memberId: number

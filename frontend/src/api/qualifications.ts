@@ -146,7 +146,7 @@ export const specialTasksApi = {
   },
 
   endTask(id: number) {
-    return apiClient.post<SpecialTask>(`/qualifications/specialtasks/${id}/end-task/`)
+    return apiClient.post<SpecialTask>(`/qualifications/specialtasks/${id}/end_task/`)
   },
 
   // Attachment endpoints using REST API custom actions

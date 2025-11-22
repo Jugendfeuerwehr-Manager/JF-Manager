@@ -330,5 +330,16 @@ cd frontend && npm run type-check
 
 ---
 
-**Last Updated**: January 4, 2025  
+
+General Instructiosn: 
+----
+  - avoid generading markdown files if not explicitly asked and only if you need them to store some strategies or plans for yourself. 
+  - when generating code, ensure it is syntactically correct and follows best practices for the given programming language.
+  - When referencing existing code or documentation, ensure that your suggestions align with the established patterns and conventions used in the project.
+  - When suggesting changes to the codebase, ensure that they are consistent with the project's architecture and coding standards.
+  - For new features or significant changes, provide clear instructions on where and how to implement them within the existing code structure.
+  - create Tests where applicable to ensure code quality and reliability. (e2e, unit, integration)
+  - ensure that generated API endpoints follow RESTful principles and integrate seamlessly with the existing backend structure. Use Django REST Framework best practices. All Endpoints must be added to the appropriate ViewSets in the `api/viewsets/` directory of the relevant Django app. They need to be authenticated using JWT and must return data in the established paginated format where applicable. Permissions should be enforced using the existing permission classes defined in `permissions.py`.
+  - Test the permissions and authentication of new API endpoints to ensure they align with the project's security requirements.
+
 **Reference Implementation**: `backend/orders/api/` + `frontend/src/components/orders/`

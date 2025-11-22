@@ -19,6 +19,7 @@ import SelectButton from 'primevue/selectbutton'
 interface Props {
   qualificationId?: number
   initialData?: Qualification
+  defaultMemberId?: number  // Pre-set member when creating from member profile
 }
 
 const props = defineProps<Props>()
@@ -92,28 +93,8 @@ onMounted(async () => {
     usersStore.fetchUsers({ limit: 1000, is_active: true })
   ])
 
-  if (props.initialData) {
-    formData.value = {
-      type: props.initialData.type,
-      member: props.initialData.member,
-      user: props.initialData.user,
-      date_acquired: props.initialData.date_acquired,
-      date_expires: props.initialData.date_expires,
-      issued_by: props.initialData.issued_by,
-      note: props.initialData.note
-    }
-    assignmentTarget.value = props.initialData.member ? 'member' : 'user'
-    autoCalculateExpiry.value = !!qualificationsStore.qualificationTypes.find(t => t.id === props.initialData!.type)?.expires
-    
-    // Calculate validity months if dates are present
-    if (props.initialData.date_acquired && props.initialData.date_expires) {
-      const acquired = new Date(props.initialData.date_acquired)
-      const expires = new Date(props.initialData.date_expires)
-      const monthsDiff = (expires.getFullYear() - acquired.getFullYear()) * 12 + 
-                        (expires.getMonth() - acquired.getMonth())
-      validityMonths.value = monthsDiff
-    }
-  } else if (props.qualificationId) {
+  // Priority 1: Load by ID (most reliable - fetches from API)
+  if (props.qualificationId) {
     const qualification = await qualificationsStore.fetchQualification(props.qualificationId)
     if (qualification) {
       formData.value = {
@@ -125,7 +106,8 @@ onMounted(async () => {
         issued_by: qualification.issued_by,
         note: qualification.note
       }
-      assignmentTarget.value = qualification.member ? 'member' : 'user'
+      // Determine assignment target based on which field has a valid ID
+      assignmentTarget.value = (qualification.member !== null && qualification.member !== undefined && qualification.member > 0) ? 'member' : 'user'
       autoCalculateExpiry.value = !!qualificationsStore.qualificationTypes.find(t => t.id === qualification.type)?.expires
       
       // Calculate validity months
@@ -138,8 +120,35 @@ onMounted(async () => {
       }
     }
   }
-  
-  if (!props.initialData && !props.qualificationId) {
+  // Priority 2: Use initialData (for backward compatibility, but less preferred)
+  else if (props.initialData) {
+    // Edit mode: load existing qualification data
+    formData.value = {
+      type: props.initialData.type,
+      member: props.initialData.member,
+      user: props.initialData.user,
+      date_acquired: props.initialData.date_acquired,
+      date_expires: props.initialData.date_expires,
+      issued_by: props.initialData.issued_by,
+      note: props.initialData.note
+    }
+    // Determine assignment target based on which field has a valid ID
+    assignmentTarget.value = (props.initialData.member !== null && props.initialData.member !== undefined && props.initialData.member > 0) ? 'member' : 'user'
+    autoCalculateExpiry.value = !!qualificationsStore.qualificationTypes.find(t => t.id === props.initialData!.type)?.expires
+    
+    // Calculate validity months if dates are present
+    if (props.initialData.date_acquired && props.initialData.date_expires) {
+      const acquired = new Date(props.initialData.date_acquired)
+      const expires = new Date(props.initialData.date_expires)
+      const monthsDiff = (expires.getFullYear() - acquired.getFullYear()) * 12 + 
+                        (expires.getMonth() - acquired.getMonth())
+      validityMonths.value = monthsDiff
+    }
+  }
+  // Priority 3: New qualification - pre-set member if creating from member profile
+  else if (props.defaultMemberId) {
+    formData.value.member = props.defaultMemberId
+    assignmentTarget.value = 'member'
     autoCalculateExpiry.value = false
   }
 
@@ -192,8 +201,13 @@ watch(
   }
 )
 
-// Ensure XOR between member and user selection
-watch(assignmentTarget, (target) => {
+// Ensure XOR between member and user selection (but not during initialization)
+watch(assignmentTarget, (target, oldTarget) => {
+  // Only clear fields if this is an actual user-initiated change, not during setup
+  if (oldTarget === undefined) {
+    return // Skip first initialization
+  }
+  
   if (target === 'member') {
     formData.value.user = null
   } else {
@@ -387,6 +401,7 @@ const handleCancel = () => {
               placeholder="TT.MM.JJJJ"
               :disabled="loading"
               showIcon
+              updateModelType="date"
               class="w-full"
             />
           </div>
@@ -410,7 +425,6 @@ const handleCancel = () => {
         </div>
 
         <!-- Row 3: Expiry Date and Issuer -->
-        <div class="form-row">
           <div class="form-field">
             <div class="field-label">
               <label for="date_expires" class="font-semibold">Ablaufdatum</label>
@@ -426,7 +440,9 @@ const handleCancel = () => {
               placeholder="TT.MM.JJJJ"
               :disabled="autoCalculateExpiry && !!selectedType?.expires"
               showIcon
+              updateModelType="date"
               class="w-full"
+            />
             />
             <small class="text-gray-600">
               <span v-if="selectedType?.expires">
@@ -448,7 +464,6 @@ const handleCancel = () => {
               class="w-full"
             />
           </div>
-        </div>
      
 
         <!-- Row 4: Notes (full width) -->

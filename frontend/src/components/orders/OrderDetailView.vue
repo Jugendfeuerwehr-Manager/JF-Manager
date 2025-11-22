@@ -155,8 +155,6 @@
       </Card>
     </div>
 
-    <ConfirmDialog />
-    
     <!-- Status Update Dialog -->
         <!-- Update Status Dialog -->
     <UpdateItemStatusDialog
@@ -171,8 +169,6 @@
     <!-- Send Summary Dialog -->
     
     
-
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -190,7 +186,6 @@ import Badge from 'primevue/badge'
 import Dropdown from 'primevue/dropdown'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useOrdersStore } from '@/stores/orders'
 import { useOrderStatusStore } from '@/stores/orderStatus'
 import { orderItemsApi } from '@/api/orderItems'

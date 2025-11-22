@@ -106,7 +106,6 @@
     </div>
 
     <!-- Delete Confirmation -->
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -125,7 +124,6 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import ParentCard from '@/components/parents/ParentCard.vue'
 
 const router = useRouter()

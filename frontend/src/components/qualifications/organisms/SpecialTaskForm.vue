@@ -16,6 +16,7 @@ import SelectButton from 'primevue/selectbutton'
 interface Props {
   taskId?: number
   initialData?: SpecialTask
+  defaultMemberId?: number  // Pre-set member when creating from member profile
 }
 
 const props = defineProps<Props>()
@@ -57,17 +58,8 @@ onMounted(async () => {
     usersStore.fetchUsers({ limit: 1000, is_active: true })
   ])
 
-  if (props.initialData) {
-    formData.value = {
-      task: props.initialData.task,
-      member: props.initialData.member || null,
-      user: props.initialData.user || null,
-      start_date: props.initialData.start_date,
-      end_date: props.initialData.end_date || '',
-      note: props.initialData.note || ''
-    }
-    assignmentTarget.value = props.initialData.member ? 'member' : 'user'
-  } else if (props.taskId) {
+  // Priority 1: Load by ID (most reliable - fetches from API)
+  if (props.taskId) {
     const task = await qualificationsStore.fetchSpecialTask(props.taskId)
     if (task) {
       formData.value = {
@@ -78,8 +70,28 @@ onMounted(async () => {
         end_date: task.end_date || '',
         note: task.note || ''
       }
-      assignmentTarget.value = task.member ? 'member' : 'user'
+      // Determine assignment target based on which field has a valid ID
+      assignmentTarget.value = (task.member !== null && task.member !== undefined && task.member > 0) ? 'member' : 'user'
     }
+  }
+  // Priority 2: Use initialData (for backward compatibility, but less preferred)
+  else if (props.initialData) {
+    // Edit mode: load existing special task data
+    formData.value = {
+      task: props.initialData.task,
+      member: props.initialData.member || null,
+      user: props.initialData.user || null,
+      start_date: props.initialData.start_date,
+      end_date: props.initialData.end_date || '',
+      note: props.initialData.note || ''
+    }
+    // Determine assignment target based on which field has a valid ID
+    assignmentTarget.value = (props.initialData.member !== null && props.initialData.member !== undefined && props.initialData.member > 0) ? 'member' : 'user'
+  }
+  // Priority 3: New task - pre-set member if creating from member profile
+  else if (props.defaultMemberId) {
+    formData.value.member = props.defaultMemberId
+    assignmentTarget.value = 'member'
   }
 })
 
@@ -141,7 +153,13 @@ const endDateModel = computed<Date | null>({
   }
 })
 
-watch(assignmentTarget, (target) => {
+// Ensure XOR between member and user selection (but not during initialization)
+watch(assignmentTarget, (target, oldTarget) => {
+  // Only clear fields if this is an actual user-initiated change, not during setup
+  if (oldTarget === undefined) {
+    return // Skip first initialization
+  }
+  
   if (target === 'member') {
     formData.value.user = null
   } else {

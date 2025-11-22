@@ -8,7 +8,6 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 
@@ -235,8 +234,6 @@ watch(
         :initial-attachments="specialTask.attachments || []"
       />
     </div>
-
-    <ConfirmDialog />
   </div>
 </template>
 
