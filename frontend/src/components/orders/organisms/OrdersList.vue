@@ -25,12 +25,13 @@
           </template>
       </Toolbar>
 
-    <!-- DataTable -->
+    <!-- Desktop Table -->
     <DataTable
+      v-if="!isMobile"
       :value="orders"
       :loading="loading"
       :rows="pageSize"
-      :totalRecords="ordersCount"
+      :total-records="ordersCount"
       :paginator="showPagination"
       :lazy="true"
       @page="handlePageChange"
@@ -103,19 +104,21 @@
               :value="`${status.status_name}: ${status.count}`"
               :style="{
                 backgroundColor: status.status_color,
-                color: (() => {
-                  const hex = (status.status_color || '#000').replace('#', '')
-                  const h = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex
-                  const r = parseInt(h.slice(0, 2), 16) || 0
-                  const g = parseInt(h.slice(2, 4), 16) || 0
-                  const b = parseInt(h.slice(4, 6), 16) || 0
-                  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-                  return luminance > 186 ? '#333' : '#fff'
-                })()
+                color: getContrastColor(status.status_color)
               }"
               class="text-xs"
             />
           </div>
+        </template>
+      </Column>
+
+      <Column header="Workflow" style="min-width: 220px">
+        <template #body="{ data }">
+          <OrderWorkflowQuickActions
+            :order="data"
+            layout="compact"
+            @status-changed="handleWorkflowUpdate"
+          />
         </template>
       </Column>
 
@@ -158,21 +161,141 @@
         </template>
       </Column>
     </DataTable>
+
+    <!-- Mobile Cards -->
+    <div v-else class="mobile-orders-list">
+      <ResponsiveList
+        :items="orders"
+        :loading="loading"
+        :rows="pageSize"
+        :total-records="ordersCount"
+        :paginator="showPagination && ordersCount > pageSize"
+        :lazy="true"
+        item-key="id"
+        @page="handlePageChange"
+      >
+        <template #item="{ item: order }">
+          <Card class="order-card mobile-entity-card">
+            <template #content>
+              <div class="mobile-entity-card__header">
+                <div>
+                  <h3 class="mobile-entity-card__title">#{{ order.id }} – {{ order.member_name }}</h3>
+                  <p class="mobile-entity-card__meta">
+                    {{ formatDate(order.order_date) }} · {{ order.items_count }} Artikel
+                  </p>
+                </div>
+                <Tag
+                  v-if="order.common_status"
+                  :value="order.common_status.name"
+                  :style="{
+                    backgroundColor: order.common_status.color,
+                    color: getContrastColor(order.common_status.color)
+                  }"
+                />
+              </div>
+
+              <div class="mobile-entity-card__section">
+                <div class="mobile-entity-card__row">
+                  <span class="mobile-entity-card__label">
+                    <i class="pi pi-user"></i>
+                    Bestellt von
+                  </span>
+                  <span class="mobile-entity-card__value">{{ order.ordered_by_name }}</span>
+                </div>
+              </div>
+
+              <div
+                v-if="order.status_summary?.length && shouldShowStatusBreakdown(order)"
+                class="order-status-tags"
+              >
+                <Tag
+                  v-for="status in order.status_summary"
+                  :key="status.status_id"
+                  :value="`${status.status_name}: ${status.count}`"
+                  :style="{
+                    backgroundColor: status.status_color,
+                    color: getContrastColor(status.status_color)
+                  }"
+                  class="text-xs"
+                />
+              </div>
+
+              <div class="mobile-entity-card__section">
+                <span class="mobile-entity-card__label">
+                  <i class="pi pi-shopping-bag"></i>
+                  Artikelübersicht
+                </span>
+                <p class="order-items-summary">
+                  {{ formatItemsSummary(order.items_summary) }}
+                </p>
+              </div>
+
+              <div class="mobile-entity-card__section">
+                <span class="mobile-entity-card__label">
+                  <i class="pi pi-refresh"></i>
+                  Workflow
+                </span>
+                <OrderWorkflowQuickActions
+                  :order="order"
+                  layout="full"
+                  @status-changed="handleWorkflowUpdate"
+                />
+              </div>
+
+              <div class="mobile-entity-card__actions" @click.stop>
+                <Button
+                  label="Ansehen"
+                  icon="pi pi-eye"
+                  size="small"
+                  outlined
+                  @click="$emit('view', order.id)"
+                />
+                <Button
+                  label="Bearbeiten"
+                  icon="pi pi-pencil"
+                  size="small"
+                  outlined
+                  severity="secondary"
+                  @click="$emit('edit', order.id)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  size="small"
+                  outlined
+                  severity="danger"
+                  @click="$emit('delete', order.id)"
+                />
+              </div>
+            </template>
+          </Card>
+        </template>
+
+        <template #empty>
+          <div class="mobile-list-empty">
+            <i class="pi pi-shopping-cart"></i>
+            <p>Keine Bestellungen gefunden</p>
+          </div>
+        </template>
+      </ResponsiveList>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Button from 'primevue/button'
-import Badge from 'primevue/badge'
 import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import Card from 'primevue/card'
 import type { Order } from '@/types/orders'
 import type { DataTablePageEvent, DataTableSortEvent, DataTableFilterEvent } from 'primevue/datatable'
+import type { DataViewPageEvent } from 'primevue/dataview'
 import { Toolbar } from 'primevue'
 
+import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import SendSummaryAction from '../molecules/SendSummaryAction.vue'
+import OrderWorkflowQuickActions from '../molecules/OrderWorkflowQuickActions.vue'
 
 const FilterMatchMode = {
   CONTAINS: 'contains'
@@ -202,12 +325,28 @@ const emit = defineEmits<{
   edit: [id: number]
   delete: [id: number]
   filter: [filters: any]
-  page: [event: DataTablePageEvent]
+  page: [event: DataTablePageEvent | DataViewPageEvent]
   sort: [event: DataTableSortEvent]
+  workflowUpdate: [orderId: number]
 }>()
 
 const filters = ref({
   member_name: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
+
+const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+
+const handleResize = () => {
+  if (typeof window === 'undefined') return
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 function formatDate(dateString: string): string {
@@ -218,7 +357,7 @@ function formatDate(dateString: string): string {
   })
 }
 
-function handlePageChange(event: DataTablePageEvent) {
+function handlePageChange(event: DataTablePageEvent | DataViewPageEvent) {
   emit('page', event)
 }
 
@@ -228,6 +367,10 @@ function handleSort(event: DataTableSortEvent) {
 
 function handleFilter(event: DataTableFilterEvent) {
   emit('filter', event.filters)
+}
+
+function handleWorkflowUpdate(orderId: number) {
+  emit('workflowUpdate', orderId)
 }
 
 function formatItemsSummary(items: any[]): string {
@@ -240,7 +383,62 @@ function formatItemsSummary(items: any[]): string {
   
   return summary.join(', ')
 }
+
+function shouldShowStatusBreakdown(order: Order): boolean {
+  if (!order.status_summary?.length) {
+    return false
+  }
+
+  if (!order.common_status) {
+    return true
+  }
+
+  if (order.status_summary.length > 1) {
+    return true
+  }
+
+  const onlyStatus = order.status_summary[0]
+  return onlyStatus.status_id !== order.common_status.id
+}
+
+function getContrastColor(color?: string) {
+  if (!color) return '#fff'
+  const hex = color.replace('#', '')
+  const normalized = hex.length === 3 ? hex.split('').map(char => char + char).join('') : hex.padEnd(6, '0')
+  const r = parseInt(normalized.slice(0, 2), 16) || 0
+  const g = parseInt(normalized.slice(2, 4), 16) || 0
+  const b = parseInt(normalized.slice(4, 6), 16) || 0
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return luminance > 186 ? '#333' : '#fff'
+}
 </script>
 
 <style scoped>
+.mobile-orders-list {
+  margin-top: 1rem;
+}
+
+.order-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.order-status-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.order-items-summary {
+  margin: 0.25rem 0 0;
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
 </style>

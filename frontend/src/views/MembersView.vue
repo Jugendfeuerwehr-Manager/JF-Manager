@@ -1,27 +1,26 @@
 <template>
   <div class="members-view">
-    <div class="header-section">
-      <div class="header-content">
-        <h1>Mitglieder</h1>
-        <p class="text-muted">Verwaltung der Jugendfeuerwehr-Mitglieder</p>
-      </div>
-      <div class="header-actions">
-        <Button 
-          label="Excel Export" 
-          icon="pi pi-file-excel" 
+    <OverviewHeader
+      title="Mitglieder"
+      subtitle="Verwaltung der Jugendfeuerwehr-Mitglieder"
+    >
+      <template #actions>
+        <Button
+          label="Excel Export"
+          icon="pi pi-file-excel"
           @click="handleExportExcel"
           severity="success"
           outlined
           :loading="membersStore.loading"
         />
-        <Button 
-          label="Mitglied hinzufügen" 
-          icon="pi pi-plus" 
+        <Button
+          label="Mitglied hinzufügen"
+          icon="pi pi-plus"
           @click="navigateToCreate"
           severity="primary"
         />
-      </div>
-    </div>
+      </template>
+    </OverviewHeader>
 
     <Card class="filter-card">
       <template #content>
@@ -156,96 +155,85 @@
 
     <!-- Mobile Card View -->
     <div class="mobile-view">
-      <div v-if="membersStore.loading" class="loading-container">
-        <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      </div>
-      
-      <div v-else-if="membersStore.members.length === 0" class="empty-state">
-        <i class="pi pi-users" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
-        <p>Keine Mitglieder gefunden</p>
-      </div>
-
-      <div v-else class="member-cards">
-        <Card 
-          v-for="member in membersStore.members" 
-          :key="member.id" 
-          class="member-card"
-          @click="navigateToView(member)"
-        >
-          <template #content>
-            <div class="member-card-header">
-              <div class="member-info">
-                <h3>{{ member.full_name }}</h3>
-                <Tag 
+      <ResponsiveList
+        :items="membersStore.members"
+        :loading="membersStore.loading"
+        :rows="lazyParams.rows"
+        :paginator="membersStore.pagination.count > lazyParams.rows"
+        :total-records="membersStore.pagination.count"
+        :lazy="true"
+        item-key="id"
+        @page="onPage"
+      >
+        <template #item="{ item: member }">
+          <Card
+            class="member-card mobile-entity-card"
+            @click="navigateToView(member)"
+          >
+            <template #content>
+              <div class="mobile-entity-card__header">
+                <div>
+                  <h3 class="mobile-entity-card__title">{{ member.full_name }}</h3>
+                  <p class="mobile-entity-card__meta">
+                    {{ formatDate(member.birthday) }} · {{ member.age }} Jahre
+                  </p>
+                </div>
+                <Tag
                   v-if="member.status"
                   :value="member.status.name"
                   :style="{ backgroundColor: member.status.color, color: 'white' }"
                 />
               </div>
-            </div>
-            
-            <div class="member-card-details">
-              <div class="detail-row">
-                <span class="detail-label">
-                  <i class="pi pi-calendar"></i>
-                  Geburtstag:
-                </span>
-                <span class="detail-value">
-                  {{ formatDate(member.birthday) }} ({{ member.age }})
-                </span>
+
+              <div class="mobile-entity-card__section">
+                <div class="mobile-entity-card__row">
+                  <span class="mobile-entity-card__label">
+                    <i class="pi pi-calendar"></i>
+                    Geburtstag
+                  </span>
+                  <span class="mobile-entity-card__value">
+                    {{ formatDate(member.birthday) }} ({{ member.age }})
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <!-- Contact Parents Section (reusable) -->
-            <ParentContacts :member="member" variant="compact" />
+              <ParentContacts :member="member" variant="compact" />
 
-            <div class="member-card-actions" @click.stop>
-              <Button
-                label="Ansehen"
-                icon="pi pi-eye"
-                size="small"
-                outlined
-                @click="navigateToView(member)"
-              />
-              <Button
-                label="Bearbeiten"
-                icon="pi pi-pencil"
-                size="small"
-                outlined
-                severity="secondary"
-                @click="navigateToEdit(member)"
-              />
-              <Button
-                icon="pi pi-trash"
-                size="small"
-                outlined
-                severity="danger"
-                @click="confirmDelete(member)"
-              />
-            </div>
-          </template>
-        </Card>
-      </div>
+              <div class="mobile-entity-card__actions" @click.stop>
+                <Button
+                  label="Ansehen"
+                  icon="pi pi-eye"
+                  size="small"
+                  outlined
+                  @click="navigateToView(member)"
+                />
+                <Button
+                  label="Bearbeiten"
+                  icon="pi pi-pencil"
+                  size="small"
+                  outlined
+                  severity="secondary"
+                  @click="navigateToEdit(member)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  size="small"
+                  outlined
+                  severity="danger"
+                  @click="confirmDelete(member)"
+                />
+              </div>
+            </template>
+          </Card>
+        </template>
 
-      <!-- Mobile Pagination -->
-      <div v-if="membersStore.members.length > 0" class="mobile-pagination">
-        <Button
-          icon="pi pi-angle-left"
-          :disabled="lazyParams.first === 0"
-          outlined
-          @click="onMobilePrevPage"
-        />
-        <span class="pagination-info">
-          {{ lazyParams.first + 1 }} - {{ Math.min(lazyParams.first + lazyParams.rows, membersStore.pagination.count) }} 
-          von {{ membersStore.pagination.count }}
-        </span>
-        <Button
-          icon="pi pi-angle-right"
-          :disabled="lazyParams.first + lazyParams.rows >= membersStore.pagination.count"
-          outlined
-          @click="onMobileNextPage"
-        />
-      </div>
+        <template #empty>
+          <div class="mobile-list-empty">
+            <i class="pi pi-users"></i>
+            <p>Keine Mitglieder gefunden</p>
+          </div>
+        </template>
+      </ResponsiveList>
     </div>
 
   </div>
@@ -268,7 +256,9 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
+import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentContacts from '@/components/members/ParentContacts.vue'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 
 const router = useRouter()
 const membersStore = useMembersStore()
@@ -346,20 +336,6 @@ const onFilterChange = () => {
     lazyParams.first = 0
     loadLazyData()
   }, 500)
-}
-
-const onMobilePrevPage = () => {
-  if (lazyParams.first > 0) {
-    lazyParams.first = Math.max(0, lazyParams.first - lazyParams.rows)
-    loadLazyData()
-  }
-}
-
-const onMobileNextPage = () => {
-  if (lazyParams.first + lazyParams.rows < membersStore.pagination.count) {
-    lazyParams.first += lazyParams.rows
-    loadLazyData()
-  }
 }
 
 const formatDate = (dateString: string | null) => {
@@ -448,30 +424,6 @@ const handleExportExcel = async () => {
   margin: 0 auto;
 }
 
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.header-content h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.text-muted {
-  color: var(--text-color-secondary);
-  margin: 0;
-}
-
 .filter-card {
   margin-bottom: 1.5rem;
 }
@@ -511,141 +463,19 @@ const handleExportExcel = async () => {
   display: block;
 }
 
-/* Mobile Card Styles */
-.member-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .member-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .member-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.member-card-header {
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--surface-border);
-}
-
-.member-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.member-info h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.member-card-details {
-  margin-bottom: 1rem;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-}
-
-
-
-
-.detail-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-color-secondary);
-  font-weight: 500;
-}
-
-.detail-label i {
-  color: var(--primary-color);
-}
-
-.detail-value {
-  color: var(--text-color);
-  font-weight: 500;
-}
-
-.member-card-actions {
-  display: flex;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--surface-border);
-}
-
-.member-card-actions :deep(.p-button) {
-  flex: 1;
-}
-
-.mobile-pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: var(--surface-card);
-  border-radius: var(--border-radius);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.pagination-info {
-  font-weight: 500;
-  color: var(--text-color);
-  white-space: nowrap;
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 3rem;
-  color: var(--primary-color);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
-  gap: 1rem;
-}
-
-.empty-state p {
-  margin: 0;
-  color: var(--text-color-secondary);
-  font-size: 1.1rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 @media (max-width: 768px) {
   .members-view {
     padding: 1rem;
-  }
-
-  .header-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-  }
-
-  .header-actions {
-    flex-direction: column;
   }
 
   .filter-grid {
@@ -660,19 +490,6 @@ const handleExportExcel = async () => {
   /* Show mobile cards on mobile */
   .mobile-view {
     display: block;
-  }
-
-  .member-card-actions {
-    flex-wrap: wrap;
-  }
-
-  .member-card-actions :deep(.p-button) {
-    flex: 1 1 calc(50% - 0.25rem);
-    min-width: 0;
-  }
-
-  .member-card-actions :deep(.p-button:last-child) {
-    flex: 1 1 100%;
   }
 }
 </style>

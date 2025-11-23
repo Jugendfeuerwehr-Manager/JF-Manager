@@ -37,6 +37,113 @@
       </div>
     </div>
 
+    <section v-if="isMobile" class="mobile-qualifications-section">
+      <TabView v-model:activeIndex="mobileTabIndex" class="mobile-tabview">
+        <TabPanel header="Qualifikationen">
+          <div class="mobile-tab-content">
+            <Card class="mobile-filter-card">
+              <template #content>
+                <div class="mobile-filter-grid">
+                  <div class="mobile-filter-field">
+                    <label for="qual-mobile-search">Suche</label>
+                    <InputText
+                      id="qual-mobile-search"
+                      v-model="mobileFilters.search"
+                      placeholder="Person oder Typ"
+                    />
+                  </div>
+                  <div class="mobile-filter-field">
+                    <label for="qual-mobile-status">Status</label>
+                    <Dropdown
+                      id="qual-mobile-status"
+                      v-model="mobileFilters.status"
+                      :options="mobileQualificationStatusOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                    />
+                  </div>
+                  <div class="mobile-filter-field">
+                    <label for="qual-mobile-type">Typ</label>
+                    <Dropdown
+                      id="qual-mobile-type"
+                      v-model="mobileFilters.type"
+                      :options="qualificationTypeOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      showClear
+                    />
+                  </div>
+                </div>
+              </template>
+            </Card>
+
+            <QualificationsMobileList
+              :items="mobileQualifications"
+              :loading="mobileQualificationListLoading"
+              :rows="mobilePageSize"
+              :total-records="mobileTotalRecords"
+              @page-change="handleMobilePageChange"
+              @view="router.push(`/qualifications/${$event}`)"
+              @edit="router.push(`/qualifications/${$event}/edit`)"
+              @delete="handleDeleteQualification"
+            />
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Sonderaufgaben">
+          <div class="mobile-tab-content">
+            <Card class="mobile-filter-card">
+              <template #content>
+                <div class="mobile-filter-grid">
+                  <div class="mobile-filter-field">
+                    <label for="special-mobile-search">Suche</label>
+                    <InputText
+                      id="special-mobile-search"
+                      v-model="mobileSpecialTaskFilters.search"
+                      placeholder="Person oder Aufgabe"
+                    />
+                  </div>
+                  <div class="mobile-filter-field">
+                    <label for="special-mobile-status">Status</label>
+                    <Dropdown
+                      id="special-mobile-status"
+                      v-model="mobileSpecialTaskFilters.status"
+                      :options="mobileSpecialTaskStatusOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                    />
+                  </div>
+                  <div class="mobile-filter-field">
+                    <label for="special-mobile-type">Aufgabentyp</label>
+                    <Dropdown
+                      id="special-mobile-type"
+                      v-model="mobileSpecialTaskFilters.task"
+                      :options="specialTaskTypeOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      showClear
+                    />
+                  </div>
+                </div>
+              </template>
+            </Card>
+
+            <SpecialTasksMobileList
+              :items="mobileSpecialTasks"
+              :loading="mobileSpecialTaskListLoading"
+              :rows="mobileSpecialTaskPageSize"
+              :total-records="mobileSpecialTaskTotalRecords"
+              @page-change="handleMobileSpecialTaskPageChange"
+              @view="handleViewSpecialTask"
+              @edit="handleEditSpecialTask"
+              @end="handleEndSpecialTask"
+              @delete="handleDeleteSpecialTask"
+            />
+          </div>
+        </TabPanel>
+      </TabView>
+    </section>
+
     <!-- Statistics Cards -->
     <div v-if="!loadingStatistics && statistics" class="statistics-grid">
       <StatisticsCard
@@ -74,9 +181,8 @@
     <Message v-if="error && !loadingStatistics" severity="error" :closable="false">
       {{ error }}
     </Message>
-
     <!-- Content Tables -->
-    <div v-if="!loadingStatistics && statistics" class="content-panels">
+    <div v-else-if="!loadingStatistics && statistics" class="content-panels">
       <!-- Expiring Qualifications Table (Priority) -->
       <Panel 
         v-if="statistics.expiring_qualifications > 0"
@@ -152,18 +258,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQualificationsStore } from '@/stores/qualifications'
 import Button from 'primevue/button'
 import Panel from 'primevue/panel'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import Card from 'primevue/card'
+import InputText from 'primevue/inputtext'
+import Dropdown from 'primevue/dropdown'
+import TabView from 'primevue/tabview'
+import TabPanel from 'primevue/tabpanel'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import StatisticsCard from '@/components/qualifications/molecules/StatisticsCard.vue'
 import QualificationsTable from '@/components/qualifications/organisms/QualificationsTable.vue'
 import SpecialTasksTable from '@/components/qualifications/organisms/SpecialTasksTable.vue'
+import QualificationsMobileList from '@/components/qualifications/organisms/QualificationsMobileList.vue'
+import SpecialTasksMobileList from '@/components/qualifications/organisms/SpecialTasksMobileList.vue'
+import type { QualificationListParams, SpecialTaskListParams } from '@/types/qualifications'
 
 const router = useRouter()
 const qualificationsStore = useQualificationsStore()
@@ -171,6 +285,24 @@ const toast = useToast()
 const confirm = useConfirm()
 const expiringTableRef = ref<InstanceType<typeof QualificationsTable> | null>(null)
 const allTableRef = ref<InstanceType<typeof QualificationsTable> | null>(null)
+const isMobile = ref(window.innerWidth < 768)
+const mobilePage = ref(1)
+const mobilePageSize = ref(10)
+const mobileLoading = ref(false)
+const mobileFilters = reactive({
+  search: '',
+  status: 'all' as QualificationListParams['status'],
+  type: null as number | null
+})
+const mobileTabIndex = ref(0)
+const mobileSpecialTaskPage = ref(1)
+const mobileSpecialTaskPageSize = ref(10)
+const mobileSpecialTaskLoading = ref(false)
+const mobileSpecialTaskFilters = reactive({
+  search: '',
+  status: 'active' as SpecialTaskListParams['status'],
+  task: null as number | null
+})
 
 // Computed properties from store
 const statistics = computed(() => qualificationsStore.statistics)
@@ -178,6 +310,168 @@ const loadingStatistics = computed(() => qualificationsStore.loadingStatistics)
 const error = computed(() => qualificationsStore.error)
 const activeSpecialTasks = computed(() => statistics.value?.active_special_tasks_list ?? [])
 const hasActiveSpecialTasks = computed(() => activeSpecialTasks.value.length > 0)
+let mobileSearchTimeout: ReturnType<typeof setTimeout> | null = null
+let mobileSpecialTaskSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+const loadMobileQualifications = async () => {
+  if (!isMobile.value) return
+  mobileLoading.value = true
+  try {
+    await qualificationsStore.fetchQualifications({
+      page: mobilePage.value,
+      page_size: mobilePageSize.value,
+      search: mobileFilters.search || undefined,
+      status: mobileFilters.status !== 'all' ? mobileFilters.status : undefined,
+      type: mobileFilters.type || undefined,
+      ordering: 'date_expires'
+    })
+  } catch (error) {
+    console.error('Failed to load qualifications for mobile view:', error)
+  } finally {
+    mobileLoading.value = false
+  }
+}
+
+const loadMobileSpecialTasks = async () => {
+  if (!isMobile.value) return
+  mobileSpecialTaskLoading.value = true
+  try {
+    await qualificationsStore.fetchSpecialTasks({
+      page: mobileSpecialTaskPage.value,
+      page_size: mobileSpecialTaskPageSize.value,
+      search: mobileSpecialTaskFilters.search || undefined,
+      status:
+        mobileSpecialTaskFilters.status !== 'all'
+          ? mobileSpecialTaskFilters.status
+          : undefined,
+      task: mobileSpecialTaskFilters.task || undefined,
+      ordering: '-start_date'
+    })
+  } catch (error) {
+    console.error('Failed to load special tasks for mobile view:', error)
+  } finally {
+    mobileSpecialTaskLoading.value = false
+  }
+}
+
+const handleMobilePageChange = async (page: number, size: number) => {
+  mobilePage.value = page
+  mobilePageSize.value = size
+  await loadMobileQualifications()
+}
+
+const handleMobileSpecialTaskPageChange = async (page: number, size: number) => {
+  mobileSpecialTaskPage.value = page
+  mobileSpecialTaskPageSize.value = size
+  await loadMobileSpecialTasks()
+}
+
+watch(isMobile, (value) => {
+  if (value) {
+    mobilePage.value = 1
+    loadMobileQualifications()
+    if (mobileTabIndex.value === 1) {
+      mobileSpecialTaskPage.value = 1
+      loadMobileSpecialTasks()
+    }
+  }
+})
+
+watch(mobileTabIndex, (index) => {
+  if (!isMobile.value) return
+  if (index === 0) {
+    mobilePage.value = 1
+    loadMobileQualifications()
+  } else {
+    mobileSpecialTaskPage.value = 1
+    loadMobileSpecialTasks()
+  }
+})
+
+watch(
+  () => [mobileFilters.status, mobileFilters.type],
+  () => {
+    if (!isMobile.value || mobileTabIndex.value !== 0) return
+    mobilePage.value = 1
+    loadMobileQualifications()
+  }
+)
+
+watch(
+  () => mobileFilters.search,
+  () => {
+    if (!isMobile.value || mobileTabIndex.value !== 0) return
+    if (mobileSearchTimeout) {
+      clearTimeout(mobileSearchTimeout)
+    }
+    mobileSearchTimeout = setTimeout(() => {
+      mobilePage.value = 1
+      loadMobileQualifications()
+    }, 350)
+  }
+)
+
+watch(
+  () => [mobileSpecialTaskFilters.status, mobileSpecialTaskFilters.task],
+  () => {
+    if (!isMobile.value || mobileTabIndex.value !== 1) return
+    mobileSpecialTaskPage.value = 1
+    loadMobileSpecialTasks()
+  }
+)
+
+watch(
+  () => mobileSpecialTaskFilters.search,
+  () => {
+    if (!isMobile.value || mobileTabIndex.value !== 1) return
+    if (mobileSpecialTaskSearchTimeout) {
+      clearTimeout(mobileSpecialTaskSearchTimeout)
+    }
+    mobileSpecialTaskSearchTimeout = setTimeout(() => {
+      mobileSpecialTaskPage.value = 1
+      loadMobileSpecialTasks()
+    }, 350)
+  }
+)
+const mobileQualifications = computed(() => qualificationsStore.qualifications)
+const mobileTotalRecords = computed(() => qualificationsStore.qualificationsTotal)
+const qualificationTypeOptions = computed(() => [
+  { label: 'Alle Typen', value: null },
+  ...qualificationsStore.qualificationTypes.map((type) => ({
+    label: type.name,
+    value: type.id
+  }))
+])
+const specialTaskTypeOptions = computed(() => [
+  { label: 'Alle Aufgaben', value: null },
+  ...qualificationsStore.specialTaskTypes.map((type) => ({
+    label: type.name,
+    value: type.id
+  }))
+])
+const mobileQualificationStatusOptions = [
+  { label: 'Alle', value: 'all' },
+  { label: 'Gültig', value: 'active' },
+  { label: 'Läuft bald ab', value: 'expiring' },
+  { label: 'Abgelaufen', value: 'expired' }
+]
+const mobileSpecialTaskStatusOptions = [
+  { label: 'Alle', value: 'all' },
+  { label: 'Aktiv', value: 'active' },
+  { label: 'Beendet', value: 'ended' }
+]
+const mobileQualificationListLoading = computed(
+  () => mobileLoading.value || qualificationsStore.loading
+)
+const mobileSpecialTasks = computed(() => qualificationsStore.specialTasks)
+const mobileSpecialTaskTotalRecords = computed(() => qualificationsStore.specialTasksTotal)
+const mobileSpecialTaskListLoading = computed(
+  () => mobileSpecialTaskLoading.value || qualificationsStore.loading
+)
 
 async function refreshStatistics() {
   try {
@@ -298,10 +592,32 @@ function handleDeleteSpecialTask(id: number) {
 
 // Lifecycle
 onMounted(async () => {
+  window.addEventListener('resize', handleResize)
   try {
-    await qualificationsStore.fetchStatistics()
+    await Promise.all([
+      qualificationsStore.fetchStatistics(),
+      qualificationsStore.fetchQualificationTypes(),
+      qualificationsStore.fetchSpecialTaskTypes()
+    ])
+    if (isMobile.value) {
+      if (mobileTabIndex.value === 0) {
+        await loadMobileQualifications()
+      } else {
+        await loadMobileSpecialTasks()
+      }
+    }
   } catch (e) {
     console.error('Failed to load dashboard:', e)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (mobileSearchTimeout) {
+    clearTimeout(mobileSearchTimeout)
+  }
+  if (mobileSpecialTaskSearchTimeout) {
+    clearTimeout(mobileSpecialTaskSearchTimeout)
   }
 })
 </script>
@@ -385,6 +701,54 @@ onMounted(async () => {
   justify-content: center;
   align-items: center;
   padding: 4rem;
+}
+
+.mobile-filter-card {
+  margin-bottom: 1rem;
+}
+
+.mobile-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.mobile-filter-field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.mobile-qualifications-section {
+  margin-top: 1rem;
+}
+
+.mobile-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mobile-tabview :deep(.p-tabview-nav) {
+  border-bottom: none;
+  gap: 0.5rem;
+}
+
+.mobile-tabview :deep(.p-tabview-nav li .p-tabview-nav-link) {
+  border-radius: var(--border-radius);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+}
+
+.mobile-tabview :deep(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.mobile-tabview :deep(.p-tabview-panels) {
+  background: transparent;
+  padding: 0;
 }
 
 @media (max-width: 768px) {

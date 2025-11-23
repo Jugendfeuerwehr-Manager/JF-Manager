@@ -1,23 +1,34 @@
 <template>
   <div class="layout-wrapper">
     <!-- Desktop: Top Navigation Bar -->
-    <AppTopbar v-if="!isMobile" @menu-click="toggleMenu" />
-    
-    <!-- Mobile: Header (optional, minimal) -->
-    <div v-else class="mobile-header">
-      <div class="logo">
-        <i class="pi pi-shield"></i>
-        <span class="logo-text">JF-Manager</span>
-      </div>
-      <div class="mobile-header-actions">
+    <AppTopbar v-if="!isMobile" @menu-click="toggleNavigation" />
+
+    <!-- Mobile: PrimeVue Toolbar -->
+    <Toolbar v-else class="mobile-toolbar">
+      <template #start>
+        <Button
+          icon="pi pi-bars"
+          text
+          rounded
+          class="mobile-toolbar-button"
+          @click="toggleNavigation"
+          aria-label="Navigation öffnen"
+        />
+        <div class="mobile-toolbar-title">
+          <i class="pi pi-shield"></i>
+          <span>JF-Manager</span>
+        </div>
+      </template>
+      <template #end>
         <Avatar
           :label="userInitials"
           shape="circle"
           size="normal"
+          class="mobile-toolbar-avatar"
           @click="toggleUserMenu"
         />
-      </div>
-    </div>
+      </template>
+    </Toolbar>
 
     <!-- Main Content -->
     <div class="layout-main" :class="{ 'has-bottom-nav': isMobile }">
@@ -31,73 +42,61 @@
     </div>
 
     <!-- Mobile: Bottom Tab Navigation -->
-    <div v-if="isMobile" class="bottom-nav">
-      <router-link
-        v-for="item in mainNavItems"
-        :key="item.path"
-        :to="item.path"
-        class="bottom-nav-item"
-        active-class="active"
-      >
-        <i :class="item.icon"></i>
-        <span class="nav-label">{{ item.label }}</span>
-      </router-link>
-      <button class="bottom-nav-item" @click="toggleMenu">
-        <i class="pi pi-bars"></i>
-        <span class="nav-label">Mehr</span>
-      </button>
+    <div v-if="isMobile" class="mobile-bottom-nav">
+      <TabMenu
+        :model="mobileNavItems"
+        :active-index="mobileActiveIndex"
+        class="mobile-tabmenu"
+      />
     </div>
 
-    <!-- Menu Overlay (for "Mehr" button on mobile and desktop menu) -->
+    <!-- PrimeVue Sidebar for global navigation -->
     <Sidebar
-      v-model:visible="menuVisible"
-      :position="isMobile ? 'bottom' : 'right'"
+      v-model:visible="navigationVisible"
+      position="left"
       class="menu-sidebar"
+      @hide="navigationVisible = false"
     >
       <template #header>
-        <h3 class="m-0">{{ isMobile ? 'Menü' : 'Navigation' }}</h3>
+        <div class="sidebar-header">
+          <i class="pi pi-shield"></i>
+          <span>JF-Manager</span>
+        </div>
       </template>
-      
-      <div class="menu-content">
-        <div class="menu-section">
-          <h4 class="menu-section-title">Hauptmodule</h4>
-          <router-link
-            v-for="item in mainNavItems"
-            :key="item.path"
-            :to="item.path"
-            class="menu-item"
-            @click="menuVisible = false"
-          >
-            <i :class="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </router-link>
-        </div>
 
-        <Divider />
-
-        <div class="menu-section">
-          <h4 class="menu-section-title">Weitere Module</h4>
-          <router-link
-            v-for="item in secondaryNavItems"
-            :key="item.path"
-            :to="item.path"
-            class="menu-item"
-            @click="menuVisible = false"
-          >
-            <i :class="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </router-link>
-        </div>
-
-        <Divider />
-
-        <div class="menu-section">
-          <button class="menu-item" @click="handleLogout">
-            <i class="pi pi-sign-out"></i>
-            <span>Abmelden</span>
-          </button>
+      <div class="sidebar-nav">
+        <div
+          v-for="section in sidebarSections"
+          :key="section.label"
+          class="sidebar-section"
+        >
+          <p class="sidebar-section__label">{{ section.label }}</p>
+          <div class="sidebar-links">
+            <button
+              v-for="item in section.items"
+              :key="item.to ?? item.label ?? item.icon"
+              class="sidebar-link"
+              :class="{ 'is-active': isActivePath(item) }"
+              type="button"
+              @click="navigateTo(item)"
+            >
+              <i :class="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      <Divider />
+
+      <Button
+        label="Abmelden"
+        icon="pi pi-sign-out"
+        severity="danger"
+        outlined
+        class="w-full"
+        @click="handleLogout"
+      />
     </Sidebar>
 
     <!-- User Menu -->
@@ -106,8 +105,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AppTopbar from './AppTopbar.vue'
 import Button from 'primevue/button'
@@ -115,29 +114,60 @@ import Avatar from 'primevue/avatar'
 import Sidebar from 'primevue/sidebar'
 import Divider from 'primevue/divider'
 import Menu from 'primevue/menu'
+import Toolbar from 'primevue/toolbar'
+import TabMenu from 'primevue/tabmenu'
+import type { MenuItem } from 'primevue/menuitem'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const userMenu = ref()
 
 const isMobile = ref(window.innerWidth < 768)
-const menuVisible = ref(false)
+const navigationVisible = ref(false)
 
-// Main navigation items (shown in bottom nav on mobile)
-const mainNavItems = [
-  { path: '/members', label: 'Mitglieder', icon: 'pi pi-users' },
-  { path: '/parents', label: 'Eltern', icon: 'pi pi-user' },
-  { path: '/servicebook', label: 'Dienstbuch', icon: 'pi pi-book' }
+const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
+  label,
+  icon,
+  to,
+  command: () => router.push(to)
+})
+
+const mainNavItems: MenuItem[] = [
+  createNavItem('Mitglieder', 'pi pi-users', '/members'),
+  createNavItem('Eltern', 'pi pi-user', '/parents'),
+  createNavItem('Dienstbuch', 'pi pi-book', '/servicebook')
 ]
 
-// Secondary navigation items (shown in menu)
-const secondaryNavItems = [
-  { path: '/', label: 'Dashboard', icon: 'pi pi-home' },
-  { path: '/inventory', label: 'Inventar', icon: 'pi pi-box' },
-  { path: '/orders', label: 'Bestellungen', icon: 'pi pi-shopping-cart' },
-  { path: '/qualifications', label: 'Qualifikationen', icon: 'pi pi-crown' },
-  { path: '/settings', label: 'Einstellungen', icon: 'pi pi-cog' }
+const secondaryNavItems: MenuItem[] = [
+  createNavItem('Dashboard', 'pi pi-home', '/'),
+  createNavItem('Inventar', 'pi pi-box', '/inventory'),
+  createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'),
+  createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'),
+  createNavItem('Einstellungen', 'pi pi-cog', '/settings')
 ]
+
+const membersNavItem = mainNavItems.find(item => item.to === '/members')
+const servicebookNavItem = mainNavItems.find(item => item.to === '/servicebook')
+const ordersNavItem = secondaryNavItems.find(item => item.to === '/orders')
+
+const sidebarSections = computed(() => [
+  { label: 'Hauptmodule', items: mainNavItems },
+  { label: 'Weitere Bereiche', items: secondaryNavItems }
+])
+
+const mobileNavItems = computed<MenuItem[]>(() => {
+  return [membersNavItem, servicebookNavItem, ordersNavItem].filter(Boolean) as MenuItem[]
+})
+
+const mobileActiveIndex = computed(() => {
+  const currentPath = route.path
+  const index = mobileNavItems.value.findIndex(item => {
+    if (!item.to) return false
+    return currentPath.startsWith(item.to as string)
+  })
+  return index === -1 ? 0 : index
+})
 
 const userInitials = computed(() => {
   if (!authStore.user) return 'U'
@@ -146,7 +176,7 @@ const userInitials = computed(() => {
   return `${first}${last}`.toUpperCase()
 })
 
-const userMenuItems = [
+const userMenuItems: MenuItem[] = [
   {
     label: 'Profil',
     icon: 'pi pi-user',
@@ -167,8 +197,8 @@ const userMenuItems = [
   }
 ]
 
-const toggleMenu = () => {
-  menuVisible.value = !menuVisible.value
+const toggleNavigation = () => {
+  navigationVisible.value = !navigationVisible.value
 }
 
 const toggleUserMenu = (event: Event) => {
@@ -176,13 +206,34 @@ const toggleUserMenu = (event: Event) => {
 }
 
 const handleLogout = () => {
-  menuVisible.value = false
+  navigationVisible.value = false
   authStore.logout()
+}
+
+const isActivePath = (item: MenuItem) => {
+  if (!item.to) return false
+  const target = item.to as string
+  return route.path === target || route.path.startsWith(`${target}/`)
+}
+
+const navigateTo = (item: MenuItem) => {
+  if (!item.to) return
+  router.push(item.to as string)
+  navigationVisible.value = false
 }
 
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
 }
+
+watch(
+  () => route.path,
+  () => {
+    if (navigationVisible.value) {
+      navigationVisible.value = false
+    }
+  }
+)
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
@@ -201,41 +252,6 @@ onUnmounted(() => {
   background: var(--surface-ground);
 }
 
-/* Mobile Header */
-.mobile-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: var(--p-menu-background);
-  border-bottom: 2px solid var(--p-menu-border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1rem;
-  z-index: 1000;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--primary-color);
-}
-
-.logo i {
-  font-size: 1.5rem;
-}
-
-.mobile-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 /* Main Content */
 .layout-main {
   flex: 1;
@@ -244,8 +260,8 @@ onUnmounted(() => {
 }
 
 .layout-main.has-bottom-nav {
-  padding-bottom: 70px; /* Space for bottom nav */
-  margin-top: 60px; /* Space for mobile header */
+  padding-bottom: 80px; /* Space for bottom nav */
+  margin-top: 60px; /* Space for mobile toolbar */
 }
 
 .layout-content {
@@ -266,113 +282,116 @@ onUnmounted(() => {
   }
 }
 
-/* Bottom Navigation (Mobile only) */
-.bottom-nav {
+.mobile-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border-bottom: 1px solid var(--p-menu-border-color);
+  background: var(--p-menu-background);
+  height: 60px;
+}
+
+.mobile-toolbar-button {
+  color: var(--text-color-secondary);
+}
+
+.mobile-toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--primary-color);
+}
+
+.mobile-toolbar-avatar {
+  cursor: pointer;
+}
+
+.mobile-bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 70px;
-  background: var(--p-menu-background);
-  border-top: 1px solid var(--p-menu-border-color);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 0.5rem 0;
   z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--p-menu-border-color);
+  background: var(--p-menu-background);
 }
 
-.bottom-nav-item {
+.mobile-tabmenu :deep(.p-tabmenu-nav) {
+  justify-content: space-around;
+}
+
+.mobile-tabmenu :deep(.p-menuitem-link) {
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.menu-sidebar {
+  max-width: 22rem;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--primary-color);
+}
+
+.sidebar-nav {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  gap: 0.25rem;
-  color: var(--text-color-secondary);
-  text-decoration: none;
-  transition: all 0.2s;
-  padding: 0.5rem;
-  border: none;
-  background: none;
-  cursor: pointer;
+  gap: 1.5rem;
 }
 
-.bottom-nav-item i {
-  font-size: 1.5rem;
-}
-
-.nav-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.bottom-nav-item:hover,
-.bottom-nav-item:active {
-  color: var(--primary-color);
-}
-
-.bottom-nav-item.active {
-  color: var(--primary-color);
-  font-weight: 600;
-}
-
-.bottom-nav-item.active i {
-  transform: scale(1.1);
-}
-
-/* Menu Sidebar */
-.menu-sidebar :deep(.p-sidebar) {
-  width: 100%;
-  max-width: 400px;
-}
-
-.menu-content {
-  padding: 1rem 0;
-}
-
-.menu-section {
-  padding: 0 0.5rem;
-}
-
-.menu-section-title {
-  font-size: 0.75rem;
+.sidebar-section__label {
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-color-secondary);
-  margin: 0.5rem 0;
-  padding: 0 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
-.menu-item {
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-link {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem;
-  border-radius: var(--border-radius);
-  color: var(--text-color);
-  text-decoration: none;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: none;
-  background: none;
+  gap: 0.65rem;
   width: 100%;
-  font-size: 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--surface-border);
+  background: transparent;
+  color: var(--text-color);
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.menu-item:hover {
-  background: var(--surface-hover);
+.sidebar-link i {
+  font-size: 1rem;
+  color: currentColor;
+}
+
+.sidebar-link:hover {
+  background: var(--surface-100);
+}
+
+.sidebar-link.is-active {
+  background: var(--primary-100);
+  border-color: var(--primary-color);
   color: var(--primary-color);
 }
-
-.menu-item i {
-  font-size: 1.25rem;
-  width: 1.5rem;
-  text-align: center;
-}
-
-
 
 .fade-enter-from,
 .fade-leave-to {
@@ -381,8 +400,8 @@ onUnmounted(() => {
 
 /* Hide mobile elements on desktop */
 @media (min-width: 768px) {
-  .mobile-header,
-  .bottom-nav {
+  .mobile-toolbar,
+  .mobile-bottom-nav {
     display: none;
   }
 }

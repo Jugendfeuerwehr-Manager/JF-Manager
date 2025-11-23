@@ -36,7 +36,7 @@ defineProps<Props>()
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.5rem;
+  padding: 0.25rem 0.45rem;
   border-radius: var(--border-radius);
   background: var(--surface-50);
 }
@@ -67,19 +67,18 @@ defineProps<Props>()
 
 @media (max-width: 576px) {
   .attendance-stats {
-    gap: 0.5rem;
+    gap: 0.3rem;
+    justify-content: flex-end;
   }
 
   .stat-item {
-    padding: 0.5rem;
+    padding: 0.2rem 0.35rem;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .stat-value {
-    font-size: 1.25rem;
-  }
-
-  .stat-label {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
   }
 }
 </style>

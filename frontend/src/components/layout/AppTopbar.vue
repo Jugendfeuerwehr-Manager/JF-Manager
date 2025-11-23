@@ -1,48 +1,31 @@
 <template>
   <div class="app-topbar">
-    <div class="topbar-content">
-      <div class="topbar-start">
+    <Menubar :model="menuItems" class="topbar-menubar">
+      <template #start>
         <div class="logo" @click="$router.push('/')">
           <i class="pi pi-shield"></i>
           <span class="logo-text">JF-Manager</span>
         </div>
+      </template>
 
-        <!-- Desktop Navigation Menu -->
-        <nav class="desktop-nav">
-          <router-link
-            v-for="item in navItems"
-            :key="item.path"
-            :to="item.path"
-            class="nav-item"
-            active-class="active"
-          >
-            <i :class="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </router-link>
-          
-          <button class="nav-item" @click="emit('menuClick')">
-            <i class="pi pi-ellipsis-h"></i>
-            <span>Mehr</span>
-          </button>
-        </nav>
-      </div>
-
-      <div class="topbar-end">
-        <div class="user-profile" @click="toggleUserMenu">
-          <Avatar
-            :label="userInitials"
-            shape="circle"
-            class="user-avatar"
-            size="normal"
-          />
-          <div class="user-info">
-            <span class="user-name">{{ authStore.user?.first_name || 'User' }}</span>
+      <template #end>
+        <div class="topbar-end">
+          <div class="user-profile" @click="toggleUserMenu">
+            <Avatar
+              :label="userInitials"
+              shape="circle"
+              class="user-avatar"
+              size="normal"
+            />
+            <div class="user-info">
+              <span class="user-name">{{ authStore.user?.first_name || 'User' }}</span>
+            </div>
+            <i class="pi pi-angle-down"></i>
           </div>
-          <i class="pi pi-angle-down"></i>
         </div>
-        <Menu ref="userMenu" :model="userMenuItems" popup class="user-menu" />
-      </div>
-    </div>
+      </template>
+    </Menubar>
+    <Menu ref="userMenu" :model="userMenuItems" popup class="user-menu" />
   </div>
 </template>
 
@@ -52,6 +35,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
+import Menubar from 'primevue/menubar'
+import type { MenuItem } from 'primevue/menuitem'
 
 const emit = defineEmits<{
   menuClick: []
@@ -61,11 +46,22 @@ const router = useRouter()
 const authStore = useAuthStore()
 const userMenu = ref()
 
-// Main navigation items for desktop top bar
-const navItems = [
-  { path: '/members', label: 'Mitglieder', icon: 'pi pi-users' },
-  { path: '/parents', label: 'Eltern', icon: 'pi pi-user' },
-  { path: '/servicebook', label: 'Dienstbuch', icon: 'pi pi-book' }
+const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
+  label,
+  icon,
+  to,
+  command: () => router.push(to)
+})
+
+const menuItems: MenuItem[] = [
+  createNavItem('Mitglieder', 'pi pi-users', '/members'),
+  createNavItem('Eltern', 'pi pi-user', '/parents'),
+  createNavItem('Dienstbuch', 'pi pi-book', '/servicebook'),
+  {
+    label: 'Mehr',
+    icon: 'pi pi-ellipsis-h',
+    command: () => emit('menuClick')
+  }
 ]
 
 const userInitials = computed(() => {
@@ -75,7 +71,7 @@ const userInitials = computed(() => {
   return `${first}${last}`.toUpperCase()
 })
 
-const userMenuItems = [
+const userMenuItems: MenuItem[] = [
   {
     label: 'Profil',
     icon: 'pi pi-user',
@@ -114,21 +110,17 @@ const toggleUserMenu = (event: Event) => {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.topbar-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.topbar-menubar {
   height: 100%;
+  border: none;
+  background: transparent;
   padding: 0 1.5rem;
   max-width: 1600px;
   margin: 0 auto;
 }
 
-.topbar-start {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  flex: 1;
+:deep(.p-menubar-root-list) {
+  gap: 0.25rem;
 }
 
 .logo {
@@ -149,55 +141,10 @@ const toggleUserMenu = (event: Event) => {
   display: inline;
 }
 
-/* Desktop Navigation */
-.desktop-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--border-radius);
-  color: var(--text-color);
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: none;
-  background: none;
-  font-size: 1rem;
-}
-
-.nav-item:hover {
-  background: var(--surface-hover);
-  color: var(--p-button-primary-background);
-}
-
-.nav-item.active {
-  background: var(--p-button-primary-background);
-  color: var(--p-button-primary-color);
-}
-
-.nav-item i {
-  font-size: 1.1rem;
-}
-
 .topbar-end {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.topbar-end :deep(.p-button) {
-  color: var(--text-color) !important;
-}
-
-.topbar-end :deep(.p-button:hover) {
-  background: var(--surface-hover) !important;
 }
 
 .user-profile {
@@ -231,11 +178,6 @@ const toggleUserMenu = (event: Event) => {
   font-weight: 600;
   font-size: 0.9rem;
   line-height: 1.2;
-}
-
-.user-role {
-  font-size: 0.75rem;
-  color: var(--text-color-secondary);
 }
 
 .user-profile i {

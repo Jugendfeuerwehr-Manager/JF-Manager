@@ -1,7 +1,7 @@
 <template>
-  <Card class="parent-card">
+  <Card class="parent-card mobile-entity-card">
     <template #content>
-      <div class="parent-card-content">
+      <div class="mobile-entity-card__header">
         <div class="parent-header">
           <Avatar
             :label="parentInitials"
@@ -10,64 +10,60 @@
             :style="{ backgroundColor: avatarColor, color: 'white' }"
           />
           <div class="parent-info">
-            <h3 class="parent-name">{{ parent.first_name }} {{ parent.last_name }}</h3>
-            <Tag v-if="parent.relation" :value="parent.relation" severity="info" />
+            <h3 class="mobile-entity-card__title">{{ parent.first_name }} {{ parent.last_name }}</h3>
           </div>
         </div>
+        <Tag v-if="parent.relation" :value="parent.relation" severity="info" />
+      </div>
 
-        <Divider />
-
-        <div class="parent-details">
-          <div class="detail-row">
-            <span class="detail-label">
-              <i class="pi pi-envelope"></i>
-              E-Mail
-            </span>
-            <span class="detail-value">{{ parent.email || '-' }}</span>
-          </div>
-
-          <div class="detail-row">
-            <span class="detail-label">
-              <i class="pi pi-phone"></i>
-              Telefon
-            </span>
-            <span class="detail-value">{{ parent.phone || '-' }}</span>
-          </div>
-
-          <div class="detail-row">
-            <span class="detail-label">
-              <i class="pi pi-mobile"></i>
-              Mobil
-            </span>
-            <span class="detail-value">{{ parent.mobile || '-' }}</span>
-          </div>
-
-          <div v-if="parent.address" class="detail-row">
-            <span class="detail-label">
-              <i class="pi pi-map-marker"></i>
-              Adresse
-            </span>
-            <span class="detail-value">{{ parent.address }}</span>
-          </div>
+      <div class="mobile-entity-card__section parent-details">
+        <div class="mobile-entity-card__row">
+          <span class="mobile-entity-card__label">
+            <i class="pi pi-envelope"></i>
+            E-Mail
+          </span>
+          <span class="mobile-entity-card__value">{{ parent.email || '-' }}</span>
         </div>
 
-        <Divider />
-
-        <div class="parent-actions">
-          <Button
-            label="Bearbeiten"
-            icon="pi pi-pencil"
-            outlined
-            @click="$emit('edit', parent)"
-            class="flex-1"
-          />
-          <Button
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            @click="$emit('delete', parent)"
-          />
+        <div class="mobile-entity-card__row">
+          <span class="mobile-entity-card__label">
+            <i class="pi pi-phone"></i>
+            Telefon
+          </span>
+          <span class="mobile-entity-card__value">{{ parent.phone || '-' }}</span>
         </div>
+
+        <div class="mobile-entity-card__row">
+          <span class="mobile-entity-card__label">
+            <i class="pi pi-mobile"></i>
+            Mobil
+          </span>
+          <span class="mobile-entity-card__value">{{ parent.mobile || '-' }}</span>
+        </div>
+
+        <div v-if="parent.address" class="mobile-entity-card__row">
+          <span class="mobile-entity-card__label">
+            <i class="pi pi-map-marker"></i>
+            Adresse
+          </span>
+          <span class="mobile-entity-card__value">{{ parent.address }}</span>
+        </div>
+      </div>
+
+      <div class="mobile-entity-card__actions">
+        <Button
+          label="Bearbeiten"
+          icon="pi pi-pencil"
+          outlined
+          @click="$emit('edit', parent)"
+          class="flex-1"
+        />
+        <Button
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          @click="$emit('delete', parent)"
+        />
       </div>
     </template>
   </Card>
@@ -122,12 +118,6 @@ const avatarColor = computed(() => {
   height: 100%;
 }
 
-.parent-card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
 .parent-header {
   display: flex;
   align-items: center;
@@ -138,60 +128,14 @@ const avatarColor = computed(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.parent-name {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-color);
+  gap: 0.25rem;
 }
 
 .parent-details {
-  display: flex;
-  flex-direction: column;
   gap: 0.75rem;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.detail-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--text-color-secondary);
-  font-weight: 500;
-  min-width: 100px;
-}
-
-.detail-label i {
-  font-size: 1rem;
-}
-
-.detail-value {
-  font-size: 0.875rem;
-  color: var(--text-color);
-  text-align: right;
-  word-break: break-word;
-}
-
-.parent-actions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .flex-1 {
   flex: 1;
-}
-
-:deep(.p-divider) {
-  margin: 1rem 0;
 }
 </style>

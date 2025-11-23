@@ -1,6 +1,23 @@
 <template>
   <div class="orders-view">
     <div class="view-container">
+      <OverviewHeader
+        title="Bestellungen"
+        subtitle="Workflow und Artikelstatus im Blick behalten"
+      >
+        <template #meta>
+          <Tag
+            severity="info"
+            :value="`${ordersCount} gesamt`"
+          />
+          <Tag
+            v-if="newOrdersCount"
+            severity="warning"
+            :value="`${newOrdersCount} neue Eingänge`"
+          />
+        </template>
+      </OverviewHeader>
+
       <!-- Orders List -->
       <OrdersList
         :orders="orders"
@@ -15,6 +32,7 @@
         @filter="handleFilter"
         @page="handlePage"
         @sort="handleSort"
+        @workflow-update="handleWorkflowUpdate"
       >
         <template #header-actions>
           <SendSummaryAction
@@ -32,13 +50,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
-import Card from 'primevue/card'
+import Tag from 'primevue/tag'
 import OrdersList from '@/components/orders/organisms/OrdersList.vue'
 import SendSummaryAction from '@/components/orders/molecules/SendSummaryAction.vue'
 import { useOrdersStore } from '@/stores/orders'
 import { useOrderStatusStore } from '@/stores/orderStatus'
-import { ordersApi } from '@/api/orders'
 import type { OrderListParams } from '@/types/orders'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 const router = useRouter()
 const toast = useToast()
 const ordersStore = useOrdersStore()
@@ -132,6 +150,10 @@ const handleSendSuccess = async () => {
 
 const handleSendError = (error: any) => {
   console.error('Error sending summary:', error)
+}
+
+const handleWorkflowUpdate = async () => {
+  await loadOrders()
 }
 
 const handleFilter = (newFilters: any) => {

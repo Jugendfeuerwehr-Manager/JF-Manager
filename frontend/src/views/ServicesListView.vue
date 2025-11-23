@@ -1,20 +1,17 @@
 <template>
   <div class="servicebook-list-view">
-    <Toolbar class="view-toolbar">
-      <template #start>
-        <div class="toolbar-title">
-          <h1>Dienstbuch</h1>
-          <p>Verwaltung der Dienste und Anwesenheiten</p>
-        </div>
-      </template>
-      <template #end>
+    <OverviewHeader
+      title="Dienstbuch"
+      subtitle="Verwaltung der Dienste und Anwesenheiten"
+    >
+      <template #actions>
         <Button
           label="Neuer Dienst"
           icon="pi pi-plus"
           @click="handleCreate"
         />
       </template>
-    </Toolbar>
+    </OverviewHeader>
 
     <!-- Statistics Panel (collapsible) -->
     <Panel header="Statistiken" :collapsed="true" toggleable class="mb-4">
@@ -71,7 +68,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onActivated, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import Toolbar from 'primevue/toolbar'
 import Button from 'primevue/button'
 import Panel from 'primevue/panel'
 import Card from 'primevue/card'
@@ -81,6 +77,7 @@ import ServicesList from '@/components/servicebook/organisms/ServicesList.vue'
 import ServiceFilters from '@/components/servicebook/molecules/ServiceFilters.vue'
 import { useServicebookStore } from '@/stores/servicebook'
 import type { ServiceFilters as ServiceFiltersType, ServiceListParams } from '@/types/servicebook'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 
 const router = useRouter()
 const servicebookStore = useServicebookStore()
@@ -200,21 +197,10 @@ const handleCreate = () => {
 </script>
 
 <style scoped>
-.view-toolbar {
-  margin-bottom: 1.5rem;
-  border-radius: var(--border-radius);
-}
-
-.toolbar-title h1 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-}
-
-.toolbar-title p {
-  margin: 0;
-  color: var(--text-color-secondary);
-  font-size: 0.95rem;
+.servicebook-list-view {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .loading-container {
@@ -262,8 +248,8 @@ const handleCreate = () => {
 }
 
 @media (max-width: 768px) {
-  .toolbar-title h1 {
-    font-size: 1.5rem;
+  .servicebook-list-view {
+    padding: 1rem;
   }
 
   .statistics-grid {

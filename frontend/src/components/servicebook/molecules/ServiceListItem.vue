@@ -87,11 +87,11 @@ const operationsManagerNames = computed(() => {
 </script>
 
 <style scoped>
+
 .service-list-item {
   display: flex;
   flex-direction: column;
-  padding: 1rem;
-
+  padding: 0.85rem 0.25rem;
   border-bottom: 1px solid var(--p-menu-border-color);
   gap: 0.75rem;
 }
@@ -115,8 +115,8 @@ const operationsManagerNames = computed(() => {
 /* Details Row: Grid layout for aligned columns */
 .item-details {
   display: grid;
-  grid-template-columns: 180px 1.5fr 1.5fr 140px auto;
-  gap: 1rem;
+  grid-template-columns: 180px 1.4fr 1.4fr 140px auto;
+  gap: 0.75rem 1rem;
   align-items: center;
 }
 
@@ -132,7 +132,7 @@ const operationsManagerNames = computed(() => {
 .service-meta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   color: var(--text-color-secondary);
   font-size: 0.9rem;
   white-space: nowrap;
@@ -164,16 +164,60 @@ const operationsManagerNames = computed(() => {
 /* Mobile responsive - stack vertically */
 @media (max-width: 1024px) {
   .item-details {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
+    grid-template-columns: 160px 1fr 1fr;
+    grid-template-areas:
+      "date attendance attendance"
+      "place place manager"
+      "actions actions actions";
+    align-items: flex-start;
+  }
+
+  .col-date {
+    grid-area: date;
+  }
+
+  .col-attendance {
+    grid-area: attendance;
+    justify-content: flex-end;
+  }
+
+  .col-place {
+    grid-area: place;
+  }
+
+  .col-manager {
+    grid-area: manager;
   }
 
   .col-actions {
+    grid-area: actions;
     justify-content: flex-start;
   }
-  .col-attendance {
-    justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .service-list-item {
+    padding: 0.75rem 0;
   }
+
+  .item-details {
+    grid-template-columns: 150px 1fr;
+    grid-template-areas:
+      "date attendance"
+      "place manager"
+      "actions actions";
+    row-gap: 0.65rem;
+  }
+
+  .col-attendance {
+    justify-content: flex-end;
+  }
+
+  .col-place,
+  .col-manager {
+    min-height: 28px;
+  }
+
   .col-actions {
     justify-content: flex-end;
   }

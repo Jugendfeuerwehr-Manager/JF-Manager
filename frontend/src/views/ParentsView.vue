@@ -1,18 +1,18 @@
 <template>
   <div class="parents-view">
-    <!-- Header -->
-    <div class="view-header">
-      <div>
-        <h1>Eltern</h1>
-        <p>Verwaltung der Elternkontakte</p>
-      </div>
-      <Button
-        :label="isMobile ? '' : 'Hinzufügen'"
-        icon="pi pi-plus"
-        @click="navigateToCreate"
-        severity="primary"
-      />
-    </div>
+    <OverviewHeader
+      title="Eltern"
+      subtitle="Verwaltung der Elternkontakte"
+    >
+      <template #actions>
+        <Button
+          :label="isMobile ? '' : 'Hinzufügen'"
+          icon="pi pi-plus"
+          @click="navigateToCreate"
+          severity="primary"
+        />
+      </template>
+    </OverviewHeader>
 
     <!-- Filters -->
     <Card class="filters-card">
@@ -77,33 +77,32 @@
       </template>
     </Card>
 
-    <!-- Mobile: Card Grid -->
-    <div v-else class="cards-grid">
-      <ParentCard
-        v-for="parent in parentsStore.parents"
-        :key="parent.id"
-        :parent="parent"
-        @edit="navigateToEdit"
-        @delete="confirmDelete"
-      />
-    </div>
-
-    <!-- Mobile Pagination -->
-    <div v-if="isMobile && parentsStore.parents.length > 0" class="mobile-pagination">
-      <Button
-        icon="pi pi-chevron-left"
-        outlined
-        :disabled="currentPage === 1"
-        @click="goToPage(currentPage - 1)"
-      />
-      <span class="page-info">Seite {{ currentPage }} von {{ totalPages }}</span>
-      <Button
-        icon="pi pi-chevron-right"
-        outlined
-        :disabled="currentPage >= totalPages"
-        @click="goToPage(currentPage + 1)"
-      />
-    </div>
+    <!-- Mobile: Responsive List -->
+    <ResponsiveList
+      v-else
+      :items="parentsStore.parents"
+      :loading="parentsStore.loading"
+      :rows="20"
+      :paginator="parentsStore.pagination.count > 20"
+      :total-records="parentsStore.pagination.count"
+      :lazy="true"
+      item-key="id"
+      @page="onPage"
+    >
+      <template #item="{ item }">
+        <ParentCard
+          :parent="item"
+          @edit="navigateToEdit"
+          @delete="confirmDelete"
+        />
+      </template>
+      <template #empty>
+        <div class="mobile-list-empty">
+          <i class="pi pi-user"></i>
+          <p>Keine Eltern gefunden</p>
+        </div>
+      </template>
+    </ResponsiveList>
 
     <!-- Delete Confirmation -->
   </div>
@@ -124,7 +123,9 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
+import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentCard from '@/components/parents/ParentCard.vue'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 
 const router = useRouter()
 const parentsStore = useParentsStore()
@@ -134,10 +135,6 @@ const toast = useToast()
 const isMobile = ref(window.innerWidth < 768)
 const searchQuery = ref('')
 const currentPage = ref(1)
-
-const totalPages = computed(() => {
-  return Math.ceil(parentsStore.pagination.count / 20)
-})
 
 onMounted(() => {
   fetchParents()
@@ -185,11 +182,6 @@ const onPage = (event: any) => {
     page_size: event.rows,
     search: searchQuery.value || undefined
   })
-}
-
-const goToPage = (page: number) => {
-  currentPage.value = page
-  fetchParents()
 }
 
 const navigateToCreate = () => {

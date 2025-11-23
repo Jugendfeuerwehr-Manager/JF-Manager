@@ -1,5 +1,124 @@
+<template>
+  <div class="type-management-view">
+    <OverviewHeader
+      title="Sonderaufgaben-Typen"
+      subtitle="Definiere Rollen und Aufgaben für besondere Verantwortungen"
+      eyebrow="Verwaltung"
+    >
+      <template #actions>
+        <Button
+          label="Zurück"
+          icon="pi pi-arrow-left"
+          outlined
+          severity="secondary"
+          @click="router.push('/qualifications')"
+        />
+        <Button
+          label="Neuer Typ"
+          icon="pi pi-plus"
+          @click="handleCreate"
+        />
+      </template>
+    </OverviewHeader>
+
+    <section class="type-management-toolbar">
+      <div class="toolbar-card">
+        <label for="special-task-search">Schnellsuche</label>
+        <InputText
+          id="special-task-search"
+          v-model="typeSearch"
+          placeholder="Name oder Beschreibung"
+        />
+      </div>
+      <div class="toolbar-stats">
+        <div class="stat-card">
+          <span>Typen gesamt</span>
+          <strong>{{ totalSpecialTaskTypes }}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Mit Beschreibung</span>
+          <strong>{{ describedTypesCount }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <Card class="type-management-card">
+      <template #title>Aufgabentypen</template>
+      <template #content>
+        <div v-if="qualificationsStore.loadingTypes" class="loading-state">
+          <ProgressSpinner />
+        </div>
+        <DataTable
+          v-else
+          :value="filteredSpecialTaskTypes"
+          :paginator="filteredSpecialTaskTypes.length > 10"
+          :rows="10"
+          :rowsPerPageOptions="[10, 25, 50]"
+          responsiveLayout="scroll"
+          breakpoint="960px"
+          stripedRows
+        >
+          <Column field="name" header="Name" sortable />
+          <Column field="description" header="Beschreibung">
+            <template #body="{ data }">
+              {{ data.description || '-' }}
+            </template>
+          </Column>
+          <Column header="Aktionen" style="width: 140px">
+            <template #body="{ data }">
+              <div class="action-buttons">
+                <Button
+                  icon="pi pi-pencil"
+                  text
+                  rounded
+                  size="small"
+                  severity="info"
+                  @click="handleEdit(data)"
+                  v-tooltip.bottom="'Bearbeiten'"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  text
+                  rounded
+                  size="small"
+                  severity="danger"
+                  @click="handleDelete(data)"
+                  v-tooltip.bottom="'Löschen'"
+                />
+              </div>
+            </template>
+          </Column>
+          <template #empty>
+            <div class="empty-state">
+              <i class="pi pi-briefcase"></i>
+              <p>
+                {{ typeSearch ? 'Keine passenden Aufgabentypen gefunden.' : 'Noch keine Aufgabentypen angelegt.' }}
+              </p>
+            </div>
+          </template>
+        </DataTable>
+      </template>
+    </Card>
+
+    <Dialog
+      v-model:visible="showForm"
+      :header="editingType ? 'Aufgabentyp bearbeiten' : 'Neuer Aufgabentyp'"
+      modal
+      :style="{ width: '50vw' }"
+      :breakpoints="{ '1200px': '60vw', '960px': '75vw', '640px': '95vw' }"
+    >
+      <SpecialTaskTypeForm
+        :typeId="editingType?.id"
+        :initialData="editingType || undefined"
+        @success="handleFormSuccess"
+        @cancel="handleFormCancel"
+      />
+    </Dialog>
+  </div>
+</template>
+
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQualificationsStore } from '@/stores/qualifications'
 import type { SpecialTaskType } from '@/types/qualifications'
@@ -10,6 +129,8 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
+import InputText from 'primevue/inputtext'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 
@@ -20,10 +141,27 @@ const confirm = useConfirm()
 
 const showForm = ref(false)
 const editingType = ref<SpecialTaskType | null>(null)
+const typeSearch = ref('')
 
 onMounted(async () => {
   await qualificationsStore.fetchSpecialTaskTypes()
 })
+
+const filteredSpecialTaskTypes = computed(() => {
+  const search = typeSearch.value.trim().toLowerCase()
+  if (!search) {
+    return qualificationsStore.specialTaskTypes
+  }
+  return qualificationsStore.specialTaskTypes.filter((type) => {
+    const haystack = `${type.name} ${type.description || ''}`.toLowerCase()
+    return haystack.includes(search)
+  })
+})
+
+const totalSpecialTaskTypes = computed(() => qualificationsStore.specialTaskTypes.length)
+const describedTypesCount = computed(() =>
+  qualificationsStore.specialTaskTypes.filter((type) => Boolean(type.description?.trim())).length
+)
 
 const handleCreate = () => {
   editingType.value = null
@@ -65,12 +203,13 @@ const handleDelete = (type: SpecialTaskType) => {
 }
 
 const handleFormSuccess = async () => {
+  const wasEditing = Boolean(editingType.value)
   showForm.value = false
   editingType.value = null
   toast.add({
     severity: 'success',
     summary: 'Erfolg',
-    detail: editingType.value ? 'Aufgabentyp aktualisiert' : 'Aufgabentyp erstellt',
+    detail: wasEditing ? 'Aufgabentyp aktualisiert' : 'Aufgabentyp erstellt',
     life: 3000
   })
   await qualificationsStore.fetchSpecialTaskTypes(true)
@@ -82,82 +221,112 @@ const handleFormCancel = () => {
 }
 </script>
 
-<template>
-  <div class="p-4">
-    
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Sonderaufgaben-Typen verwalten</h1>
-      <div class="flex gap-2">
-        <Button
-          label="Zurück"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          @click="router.push('/qualifications')"
-        />
-        <Button
-          label="Neuer Typ"
-          icon="pi pi-plus"
-          @click="handleCreate"
-        />
-      </div>
-    </div>
+<style scoped>
+.type-management-view {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
-    <Card>
-      <template #content>
-        <div v-if="qualificationsStore.loadingTypes" class="flex justify-center py-8">
-          <ProgressSpinner />
-        </div>
+.type-management-toolbar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
 
-        <DataTable
-          v-else
-          :value="qualificationsStore.specialTaskTypes"
-          :paginator="true"
-          :rows="10"
-          :rowsPerPageOptions="[10, 25, 50]"
-          responsiveLayout="scroll"
-        >
-          <Column field="name" header="Name" sortable />
-          <Column field="description" header="Beschreibung">
-            <template #body="{ data }">
-              {{ data.description || '-' }}
-            </template>
-          </Column>
-          <Column header="Aktionen">
-            <template #body="{ data }">
-              <div class="flex gap-2">
-                <Button
-                  icon="pi pi-pencil"
-                  severity="info"
-                  size="small"
-                  @click="handleEdit(data)"
-                />
-                <Button
-                  icon="pi pi-trash"
-                  severity="danger"
-                  size="small"
-                  @click="handleDelete(data)"
-                />
-              </div>
-            </template>
-          </Column>
-        </DataTable>
-      </template>
-    </Card>
+.toolbar-card {
+  flex: 1 1 260px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
-    <!-- Form Dialog -->
-    <Dialog
-      v-model:visible="showForm"
-      :header="editingType ? 'Aufgabentyp bearbeiten' : 'Neuer Aufgabentyp'"
-      :modal="true"
-      :style="{ width: '50vw' }"
-      :breakpoints="{ '960px': '75vw', '640px': '95vw' }"
-    >
-      <SpecialTaskTypeForm
-        :typeId="editingType?.id"
-        :initialData="editingType || undefined"
-        @success="handleFormSuccess"
-        @cancel="handleFormCancel"
-      />
-    </Dialog>
-  </div>
-</template>
+.toolbar-card label {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+}
+
+.toolbar-stats {
+  flex: 1 1 260px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-card {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  padding: 0.9rem 1rem;
+  background: var(--surface-section);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stat-card span {
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-card strong {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.type-management-card {
+  border: none;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+  color: var(--text-color-secondary);
+  gap: 0.5rem;
+}
+
+.empty-state i {
+  font-size: 1.6rem;
+}
+
+@media (max-width: 768px) {
+  .type-management-view {
+    padding: 1rem;
+  }
+
+  .type-management-toolbar {
+    flex-direction: column;
+  }
+
+  .toolbar-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar-stats {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
