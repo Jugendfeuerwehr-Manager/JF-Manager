@@ -1,7 +1,4 @@
 <template>
-
-
-
   <div class="order-detail-view">
     <ProgressSpinner v-if="loading" />
 
@@ -11,7 +8,7 @@
 
     <div v-else-if="order">
       <!-- Header -->
-        <Toolbar>
+        <Toolbar class="mb-4">
           <template #start>
             <div class="flex gap-2">
               
@@ -26,9 +23,15 @@
             <h4>Bestellung #{{ order?.id }} </h4>
             
           </template>
-
+          <template #center>
+           <OrderWorkflowQuickActions
+                :order="order"
+                layout="compact"
+                @status-changed="loadOrder" />
+          </template>
           <template #end>
             <div class="flex gap-2">
+              
               
               <Button 
                 label="Bearbeiten" 
@@ -36,7 +39,7 @@
                 @click="$emit('edit', order.id)"
               />
               <Button 
-                label="Löschen" 
+                label="" 
                 icon="pi pi-trash" 
                 severity="danger"
                 @click="confirmDelete"
@@ -80,9 +83,6 @@
                 :showClear="true"
                 @change="handleQuickStatusChange"
               />
-            </div>
-            <div v-else class="text-sm text-500">
-              Keine Status-Änderungen möglich
             </div>
           </div>
         </template>
@@ -192,6 +192,7 @@ import { orderItemsApi } from '@/api/orderItems'
 import UpdateItemStatusDialog from './molecules/UpdateItemStatusDialog.vue'
 import type { OrderItem } from '@/types/orders'
 import { Toolbar } from 'primevue'
+import OrderWorkflowQuickActions from './molecules/OrderWorkflowQuickActions.vue'
 
 interface Props {
   orderId: number

@@ -175,99 +175,11 @@
         @page="handlePageChange"
       >
         <template #item="{ item: order }">
-          <Card class="order-card mobile-entity-card">
-            <template #content>
-              <div class="mobile-entity-card__header">
-                <div>
-                  <h3 class="mobile-entity-card__title">#{{ order.id }} – {{ order.member_name }}</h3>
-                  <p class="mobile-entity-card__meta">
-                    {{ formatDate(order.order_date) }} · {{ order.items_count }} Artikel
-                  </p>
-                </div>
-                <Tag
-                  v-if="order.common_status"
-                  :value="order.common_status.name"
-                  :style="{
-                    backgroundColor: order.common_status.color,
-                    color: getContrastColor(order.common_status.color)
-                  }"
-                />
-              </div>
-
-              <div class="mobile-entity-card__section">
-                <div class="mobile-entity-card__row">
-                  <span class="mobile-entity-card__label">
-                    <i class="pi pi-user"></i>
-                    Bestellt von
-                  </span>
-                  <span class="mobile-entity-card__value">{{ order.ordered_by_name }}</span>
-                </div>
-              </div>
-
-              <div
-                v-if="order.status_summary?.length && shouldShowStatusBreakdown(order)"
-                class="order-status-tags"
-              >
-                <Tag
-                  v-for="status in order.status_summary"
-                  :key="status.status_id"
-                  :value="`${status.status_name}: ${status.count}`"
-                  :style="{
-                    backgroundColor: status.status_color,
-                    color: getContrastColor(status.status_color)
-                  }"
-                  class="text-xs"
-                />
-              </div>
-
-              <div class="mobile-entity-card__section">
-                <span class="mobile-entity-card__label">
-                  <i class="pi pi-shopping-bag"></i>
-                  Artikelübersicht
-                </span>
-                <p class="order-items-summary">
-                  {{ formatItemsSummary(order.items_summary) }}
-                </p>
-              </div>
-
-              <div class="mobile-entity-card__section">
-                <span class="mobile-entity-card__label">
-                  <i class="pi pi-refresh"></i>
-                  Workflow
-                </span>
-                <OrderWorkflowQuickActions
-                  :order="order"
-                  layout="full"
-                  @status-changed="handleWorkflowUpdate"
-                />
-              </div>
-
-              <div class="mobile-entity-card__actions" @click.stop>
-                <Button
-                  label="Ansehen"
-                  icon="pi pi-eye"
-                  size="small"
-                  outlined
-                  @click="$emit('view', order.id)"
-                />
-                <Button
-                  label="Bearbeiten"
-                  icon="pi pi-pencil"
-                  size="small"
-                  outlined
-                  severity="secondary"
-                  @click="$emit('edit', order.id)"
-                />
-                <Button
-                  icon="pi pi-trash"
-                  size="small"
-                  outlined
-                  severity="danger"
-                  @click="$emit('delete', order.id)"
-                />
-              </div>
-            </template>
-          </Card>
+          <OrderCard
+            :order="order"
+            @click="$emit('view', order.id)"
+            @workflow-update="handleWorkflowUpdate"
+          />
         </template>
 
         <template #empty>
@@ -286,8 +198,6 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
-import Card from 'primevue/card'
 import type { Order } from '@/types/orders'
 import type { DataTablePageEvent, DataTableSortEvent, DataTableFilterEvent } from 'primevue/datatable'
 import type { DataViewPageEvent } from 'primevue/dataview'
@@ -296,6 +206,8 @@ import { Toolbar } from 'primevue'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import SendSummaryAction from '../molecules/SendSummaryAction.vue'
 import OrderWorkflowQuickActions from '../molecules/OrderWorkflowQuickActions.vue'
+import OrderCard from '../molecules/OrderCard.vue'
+import OrderStatusBadge from '../atoms/OrderStatusBadge.vue'
 
 const FilterMatchMode = {
   CONTAINS: 'contains'
@@ -357,6 +269,17 @@ function formatDate(dateString: string): string {
   })
 }
 
+function formatItemsSummary(items: any[]): string {
+  if (!items || items.length === 0) return 'Keine Artikel'
+  
+  const summary = items.map(item => {
+    const size = item.size ? ` ${item.size}` : ''
+    return `${item.quantity}x ${item.item_name}${size}`
+  })
+  
+  return summary.join(', ')
+}
+
 function handlePageChange(event: DataTablePageEvent | DataViewPageEvent) {
   emit('page', event)
 }
@@ -371,34 +294,6 @@ function handleFilter(event: DataTableFilterEvent) {
 
 function handleWorkflowUpdate(orderId: number) {
   emit('workflowUpdate', orderId)
-}
-
-function formatItemsSummary(items: any[]): string {
-  if (!items || items.length === 0) return 'Keine Artikel'
-  
-  const summary = items.map(item => {
-    const size = item.size ? ` ${item.size}` : ''
-    return `${item.quantity}x ${item.item_name}${size}`
-  })
-  
-  return summary.join(', ')
-}
-
-function shouldShowStatusBreakdown(order: Order): boolean {
-  if (!order.status_summary?.length) {
-    return false
-  }
-
-  if (!order.common_status) {
-    return true
-  }
-
-  if (order.status_summary.length > 1) {
-    return true
-  }
-
-  const onlyStatus = order.status_summary[0]
-  return onlyStatus.status_id !== order.common_status.id
 }
 
 function getContrastColor(color?: string) {
@@ -416,29 +311,5 @@ function getContrastColor(color?: string) {
 <style scoped>
 .mobile-orders-list {
   margin-top: 1rem;
-}
-
-.order-card {
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.order-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.order-status-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin: 0.5rem 0;
-}
-
-.order-items-summary {
-  margin: 0.25rem 0 0;
-  color: var(--text-color-secondary);
-  font-size: 0.9rem;
-  white-space: pre-wrap;
 }
 </style>

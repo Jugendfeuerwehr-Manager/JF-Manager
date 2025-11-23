@@ -45,16 +45,7 @@
 
           <!-- Items -->
           <div class="field">
-            <div class="flex justify-content-between align-items-center mb-2">
-              <label>Artikel *</label>
-              <Button
-                label="Artikel hinzufügen"
-                icon="pi pi-plus"
-                size="small"
-                @click="addItem"
-                type="button"
-              />
-            </div>
+            
 
             <div v-if="formData.items.length === 0" class="text-center text-500 p-4 border-1 border-round">
               Keine Artikel hinzugefügt
@@ -127,9 +118,18 @@
               </div>
             </div>
           </div>
-
-          <!-- Actions -->
-          <div class="flex gap-2 justify-content-end">
+          <div class="flex justify-content-between align-items-center mb-2">
+              <label>Artikel *</label>
+              <Button
+                label="Artikel hinzufügen"
+                icon="pi pi-plus"
+                size="small"
+                @click="addItem"
+                type="button"
+              />
+            </div>
+            <hr><br>          <!-- Actions -->
+          <div class="flexgap-2 justify-content-end">
             <Button
               label="Abbrechen"
               severity="secondary"
