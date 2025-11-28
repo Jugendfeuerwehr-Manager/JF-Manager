@@ -32,6 +32,8 @@ from inventory.api.viewsets import (
 )
 # Import enhanced servicebook viewsets from servicebook.api
 from servicebook.api.viewsets import ServiceViewSet, AttendanceViewSet
+# Import settings viewset from settings_manager.api
+from settings_manager.api import SettingsViewSet, EmailTemplateViewSet
 
 api = routers.DefaultRouter()
 api.register(r'users', UserViewSet)
@@ -67,3 +69,7 @@ api.register(r'qualifications/types', QualificationTypeViewSet, basename='qualif
 api.register(r'qualifications/specialtask-types', SpecialTaskTypeViewSet, basename='qualification-specialtask-types')
 api.register(r'qualifications/specialtasks', SpecialTaskViewSet, basename='qualification-specialtasks')
 api.register(r'qualifications', QualificationViewSet, basename='qualifications')
+
+# Settings endpoints
+api.register(r'settings', SettingsViewSet, basename='settings')
+api.register(r'settings/email-templates', EmailTemplateViewSet, basename='email-templates')

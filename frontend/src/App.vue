@@ -1,7 +1,16 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import { RouterView } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
+import { useAppSettings } from '@/composables/useAppSettings'
+
+const { websiteTitle, setDocumentTitle } = useAppSettings()
+
+// Update document title when website title changes
+watch(websiteTitle, (newTitle) => {
+  setDocumentTitle()
+}, { immediate: true })
 </script>
 
 <template>

@@ -87,7 +87,8 @@ class NotificationLogger(BaseNotificationService):
         try:
             log_entry.status = 'sent'
             log_entry.sent_at = timezone.now()
-            log_entry.save()
+            # Use update_fields to avoid foreign key constraint issues
+            log_entry.save(update_fields=['status', 'sent_at'])
             
             logger.info(f"Marked notification log entry {log_entry.id} as sent")
             

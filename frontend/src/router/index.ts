@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -185,8 +186,9 @@ const router = createRouter({
 })
 
 // Navigation guard
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const settingsStore = useSettingsStore()
   const requiresAuth = to.meta.requiresAuth !== false
 
   if (requiresAuth && !authStore.isAuthenticated) {
@@ -194,6 +196,18 @@ router.beforeEach((to, from, next) => {
   } else if (to.path === '/login' && authStore.isAuthenticated) {
     next('/')
   } else {
+    // Load settings if authenticated and not already loaded
+    if (authStore.isAuthenticated && !settingsStore.general) {
+      try {
+        await settingsStore.fetchPermissions()
+        if (settingsStore.canViewCategory('general')) {
+          await settingsStore.fetchGeneral()
+        }
+      } catch (error) {
+        // Silently fail - settings are optional
+        console.warn('Failed to load general settings:', error)
+      }
+    }
     next()
   }
 })

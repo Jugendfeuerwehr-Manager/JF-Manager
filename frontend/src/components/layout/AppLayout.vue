@@ -16,7 +16,7 @@
         />
         <div class="mobile-toolbar-title">
           <i class="pi pi-shield"></i>
-          <span>JF-Manager</span>
+          <span>{{ websiteTitle }}</span>
         </div>
       </template>
       <template #end>
@@ -60,7 +60,7 @@
       <template #header>
         <div class="sidebar-header">
           <i class="pi pi-shield"></i>
-          <span>JF-Manager</span>
+          <span>{{ websiteTitle }}</span>
         </div>
       </template>
 
@@ -108,6 +108,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAppSettings } from '@/composables/useAppSettings'
 import AppTopbar from './AppTopbar.vue'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
@@ -121,6 +122,7 @@ import type { MenuItem } from 'primevue/menuitem'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { websiteTitle } = useAppSettings()
 const userMenu = ref()
 
 const isMobile = ref(window.innerWidth < 768)

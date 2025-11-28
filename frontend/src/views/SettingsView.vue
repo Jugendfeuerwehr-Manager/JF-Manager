@@ -1,22 +1,14 @@
 <template>
-  <div class="placeholder-view">
-    <Card>
-      <template #content>
-        <div class="placeholder-content">
-          <i class="pi pi-cog" style="font-size: 3rem; color: var(--primary-color);"></i>
-          <h2>Einstellungen</h2>
-          <p>Diese Ansicht wird noch implementiert.</p>
-          <Button label="Zurück" icon="pi pi-arrow-left" @click="$router.push('/')" />
-        </div>
-      </template>
-    </Card>
-  </div>
+  <SettingsView />
 </template>
 
 <script setup lang="ts">
-import Card from 'primevue/card'
-import Button from 'primevue/button'
+import SettingsView from '@/components/settings/organisms/SettingsView.vue'
 </script>
+
+<style scoped>
+/* Placeholder styles removed - actual implementation in organism component */
+</style>
 
 <style scoped>
 .placeholder-view {

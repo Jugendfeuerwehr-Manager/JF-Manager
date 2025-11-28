@@ -9,7 +9,7 @@
     <template #header>
       <div class="flex align-items-center gap-2">
         <i class="pi pi-users text-primary text-2xl"></i>
-        <span class="text-xl font-bold gradient-text">JF-Manager</span>
+        <span class="text-xl font-bold gradient-text">{{ websiteTitle }}</span>
       </div>
     </template>
     
@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAppSettings } from '@/composables/useAppSettings'
 import Sidebar from 'primevue/sidebar';
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
@@ -89,6 +90,7 @@ const emit = defineEmits<{
 }>();
 
 const route = useRoute();
+const { websiteTitle } = useAppSettings()const route = useRoute();
 const isCollapsed = ref(false);
 const sidebarVisible = computed({
   get: () => props.visible,

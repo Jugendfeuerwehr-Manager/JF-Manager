@@ -4,7 +4,7 @@
       <template #start>
         <div class="logo" @click="$router.push('/')">
           <i class="pi pi-shield"></i>
-          <span class="logo-text">JF-Manager</span>
+          <span class="logo-text">{{ websiteTitle }}</span>
         </div>
       </template>
 
@@ -33,6 +33,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAppSettings } from '@/composables/useAppSettings'
 import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
 import Menubar from 'primevue/menubar'
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { websiteTitle } = useAppSettings()
 const userMenu = ref()
 
 const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
