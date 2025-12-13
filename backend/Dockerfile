@@ -60,10 +60,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     default-mysql-client \
     libpq5 \
-    default-libmysqlclient21 \
+    default-libmysqlclient-dev \
     curl \
-    && rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages

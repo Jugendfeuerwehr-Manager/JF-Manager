@@ -67,10 +67,7 @@ services:
         max-file: "3"
 
   backend:
-    build:
-      context: https://github.com/Jugendfeuerwehr-Manager/JF-Manager.git#nextgeneration-frontend
-      dockerfile: backend/Dockerfile
-    image: jf_manager_backend:latest
+    image: ghcr.io/jugendfeuerwehr-manager/jf-manager/backend:latest
     container_name: jf_manager_backend
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
@@ -120,10 +117,7 @@ services:
         max-file: "3"
 
   frontend:
-    build:
-      context: https://github.com/Jugendfeuerwehr-Manager/JF-Manager.git#nextgeneration-frontend
-      dockerfile: frontend/Dockerfile
-    image: jf_manager_frontend:latest
+    image: ghcr.io/jugendfeuerwehr-manager/jf-manager/frontend:latest
     container_name: jf_manager_frontend
     depends_on:
       backend:
