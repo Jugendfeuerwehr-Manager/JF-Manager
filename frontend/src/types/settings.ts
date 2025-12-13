@@ -68,7 +68,7 @@ export interface SettingsPermissions {
 // API Request/Response Types
 // ============================================================================
 
-export type SettingsCategory = 'general' | 'email' | 'member' | 'service' | 'order'
+export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order'
 
 export interface CategorySettingsUpdate {
   category: SettingsCategory

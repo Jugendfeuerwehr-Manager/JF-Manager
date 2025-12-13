@@ -90,7 +90,7 @@ const emit = defineEmits<{
 }>();
 
 const route = useRoute();
-const { websiteTitle } = useAppSettings()const route = useRoute();
+const { websiteTitle } = useAppSettings();
 const isCollapsed = ref(false);
 const sidebarVisible = computed({
   get: () => props.visible,
