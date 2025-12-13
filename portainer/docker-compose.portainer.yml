@@ -67,7 +67,7 @@ services:
         max-file: "3"
 
   backend:
-    image: ghcr.io/jugendfeuerwehr-manager/jf-manager/backend:latest
+    image: ghcr.io/jugendfeuerwehr-manager/jf-manager/backend:nextgeneration-frontend
     container_name: jf_manager_backend
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
@@ -117,7 +117,7 @@ services:
         max-file: "3"
 
   frontend:
-    image: ghcr.io/jugendfeuerwehr-manager/jf-manager/frontend:latest
+    image: ghcr.io/jugendfeuerwehr-manager/jf-manager/frontend:nextgeneration-frontend
     container_name: jf_manager_frontend
     depends_on:
       backend:

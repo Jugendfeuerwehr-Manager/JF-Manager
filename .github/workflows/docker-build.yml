@@ -117,6 +117,8 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    # Only run on main branch to avoid failures on feature branches
+    if: github.ref == 'refs/heads/main'
 
     strategy:
       matrix:
@@ -126,7 +128,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:${{ github.ref_name }}
           format: 'sarif'
           output: 'trivy-results.sarif'
 
