@@ -135,12 +135,3 @@ Wir freuen uns über Beiträge zur Verbesserung des JF-Managers! Bitte lies dir 
 ## 📄 Lizenz
 
 [GNU AFFERO GENERAL PUBLIC LICENSE](./LICENSE)
-
-
-## 🚧 Roadmap
-
-- Funktion der Kleiderkammer vereinfachen und die Lagerhaltung nach Lagerstetten umstellen
-- Responsive Design stellenweise Fehlerhaft. Das optimieren.
-- Altlasten Entfernen
-- E-Mail Funktion integrieren.
-- usw.

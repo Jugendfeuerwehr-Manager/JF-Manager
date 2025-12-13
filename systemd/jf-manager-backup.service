@@ -1,0 +1,15 @@
+[Unit]
+Description=JF-Manager Daily Backup
+Requires=jf-manager.service
+After=jf-manager.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/jf-manager
+EnvironmentFile=/opt/jf-manager/.env
+ExecStart=/usr/bin/docker-compose run --rm backup
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jf-manager-backup

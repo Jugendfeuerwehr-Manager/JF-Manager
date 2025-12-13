@@ -1,0 +1,39 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore database
+db.sqlite3
+*.db
+
+# Ignore environment files
+.env
+.env.*
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.swp
+
+# Ignore logs
+*.log
+
+# Ignore static/media (collected at runtime)
+static/
+uploads/
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore tests
+tests/
+*.test.py
+
+# Ignore documentation
+*.md
+docs/
+
+# Ignore development files
+docker-compose.override.yml

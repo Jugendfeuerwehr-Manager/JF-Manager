@@ -1,0 +1,100 @@
+# JF-Manager Cron Jobs Configuration
+# Add these to your crontab with: crontab -e
+
+# Change this to your actual JF-Manager installation path
+JF_MANAGER_PATH=/path/to/JF-Manager
+
+# ============================================
+# Automated Database Backups
+# ============================================
+
+# Daily backup at 2:00 AM
+0 2 * * * cd $JF_MANAGER_PATH && docker-compose run --rm backup >> /var/log/jf-manager-backup.log 2>&1
+
+# Alternative: Using make command
+# 0 2 * * * cd $JF_MANAGER_PATH && make backup >> /var/log/jf-manager-backup.log 2>&1
+
+# ============================================
+# Health Checks & Monitoring
+# ============================================
+
+# Health check every 5 minutes
+*/5 * * * * cd $JF_MANAGER_PATH && ./healthcheck.sh >> /var/log/jf-manager-health.log 2>&1
+
+# Send health check email if failed (requires mail command)
+# */15 * * * * cd $JF_MANAGER_PATH && ./healthcheck.sh || echo "JF-Manager health check failed" | mail -s "JF-Manager Alert" admin@example.com
+
+# ============================================
+# SSL Certificate Renewal (Let's Encrypt)
+# ============================================
+
+# Renew certificates daily at 3:00 AM (certbot will only renew if needed)
+0 3 * * * certbot renew --quiet --post-hook "cd $JF_MANAGER_PATH && docker-compose restart frontend"
+
+# ============================================
+# Log Rotation & Cleanup
+# ============================================
+
+# Clean up old Docker logs weekly (Sunday at 4:00 AM)
+0 4 * * 0 docker system prune -f --volumes --filter "until=168h" >> /var/log/jf-manager-cleanup.log 2>&1
+
+# Clean up old application logs (keep last 30 days)
+0 4 * * 0 find /var/log/jf-manager-*.log -mtime +30 -delete
+
+# ============================================
+# Database Optimization
+# ============================================
+
+# Vacuum database weekly (Sunday at 5:00 AM)
+0 5 * * 0 cd $JF_MANAGER_PATH && docker-compose exec -T db vacuumdb -U jf_manager -d jf_manager_backend -z >> /var/log/jf-manager-vacuum.log 2>&1
+
+# ============================================
+# Update Check (optional)
+# ============================================
+
+# Check for updates weekly (Monday at 6:00 AM)
+# 0 6 * * 1 cd $JF_MANAGER_PATH && git fetch && git status >> /var/log/jf-manager-updates.log 2>&1
+
+# ============================================
+# Backup to Remote Storage (optional)
+# ============================================
+
+# Example: Sync backups to S3 daily at 6:00 AM
+# 0 6 * * * aws s3 sync $JF_MANAGER_PATH/backups/ s3://your-bucket/jf-manager-backups/ >> /var/log/jf-manager-s3.log 2>&1
+
+# Example: Sync backups to remote server via rsync
+# 0 6 * * * rsync -avz --delete $JF_MANAGER_PATH/backups/ user@backup-server:/backups/jf-manager/ >> /var/log/jf-manager-rsync.log 2>&1
+
+# ============================================
+# Monitoring & Alerts
+# ============================================
+
+# Check disk space and alert if > 80% (every hour)
+# 0 * * * * df -h / | awk '{if (int($5) > 80) print "Disk usage critical: " $5}' | mail -s "JF-Manager Disk Alert" admin@example.com
+
+# Check container status and restart if needed (every 10 minutes)
+# */10 * * * * cd $JF_MANAGER_PATH && docker-compose ps | grep -q "Exit" && docker-compose up -d
+
+# ============================================
+# Performance Metrics (if using Prometheus)
+# ============================================
+
+# Export metrics hourly
+# 0 * * * * cd $JF_MANAGER_PATH && docker stats --no-stream --format "{{.Container}},{{.CPUPerc}},{{.MemUsage}}" >> /var/log/jf-manager-metrics.csv
+
+# ============================================
+# Log Aggregation Example
+# ============================================
+
+# Aggregate logs and send to log management system
+# */5 * * * * cd $JF_MANAGER_PATH && docker-compose logs --tail=100 | logger -t jf-manager
+
+# ============================================
+# Notes:
+# ============================================
+# 1. Replace $JF_MANAGER_PATH with your actual installation path
+# 2. Replace email addresses with your actual admin email
+# 3. Ensure log directories exist: mkdir -p /var/log
+# 4. Test cron jobs manually before adding to crontab
+# 5. Check cron logs: grep CRON /var/log/syslog
+# 6. For systemd timers as alternative, see systemd/

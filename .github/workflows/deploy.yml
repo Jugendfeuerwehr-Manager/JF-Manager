@@ -1,0 +1,64 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull origin ${{ github.ref_name }}
+            
+            # Pull latest images
+            docker-compose pull
+            
+            # Backup database before deployment
+            docker-compose run --rm backup
+            
+            # Deploy
+            docker-compose up -d --remove-orphans
+            
+            # Run migrations
+            docker-compose exec -T backend python manage.py migrate --noinput
+            
+            # Collect static files
+            docker-compose exec -T backend python manage.py collectstatic --noinput
+            
+            # Check health
+            sleep 10
+            curl -f http://localhost/health || exit 1
+            
+            # Cleanup old images
+            docker image prune -f
+
+      - name: Notify deployment status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Deployment to ${{ github.event.inputs.environment }} ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
