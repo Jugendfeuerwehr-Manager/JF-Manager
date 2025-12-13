@@ -17,8 +17,8 @@ RUN npm ci && \
 # Copy application source
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the application (skip type-check in Docker build for faster builds)
+RUN npm run build-only
 
 # --- Nginx stage ---
 FROM nginx:1.27-alpine AS production
