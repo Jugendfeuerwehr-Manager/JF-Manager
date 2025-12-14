@@ -1,6 +1,9 @@
 # --- Build stage ---
 FROM node:22-alpine AS builder
 
+# Add build arguments
+ARG VITE_API_BASE_URL=/api/v1
+
 LABEL maintainer="info@lukas-bisdorf.de" \
       org.opencontainers.image.description="JF Manager Frontend" \
       org.opencontainers.image.source="https://github.com/Jugendfeuerwehr-Manager/JF-Manager"
@@ -17,7 +20,9 @@ RUN npm ci && \
 # Copy application source
 COPY . .
 
-# Build the application (skip type-check in Docker build for faster builds)
+# Build the application with environment variable
+# Use relative URL so it works behind nginx reverse proxy
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN npm run build-only
 
 # --- Nginx stage ---
