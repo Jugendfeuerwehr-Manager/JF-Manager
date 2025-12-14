@@ -55,10 +55,6 @@ RUN addgroup -g 101 -S nginx && \
 RUN mkdir -p /static /uploads && \
     chown -R nginx:nginx /static /uploads
 
-# Create PID directory
-RUN mkdir -p /var/run && \
-    chown -R nginx:nginx /var/run
-
 # Switch to non-root user
 USER nginx
 
