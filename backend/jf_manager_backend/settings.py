@@ -27,6 +27,11 @@ DEBUG = os.environ.get('DEBUG', 'True')
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF Trusted Origins - required for POST requests from frontend
+# Must include full URL scheme (https:// or http://)
+CSRF_TRUSTED_ORIGINS_ENV = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',') if origin.strip()]
+
 # Frontend URL for password reset emails
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
