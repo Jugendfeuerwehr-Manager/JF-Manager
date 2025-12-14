@@ -84,7 +84,7 @@ INSTALLED_APPS = [
     'bootstrap_datepicker_plus',
     'colorfield',
     'health',
-    'setup.apps.SetupConfig',
+    # 'setup.apps.SetupConfig',  # Temporarily disabled - causes Docker path conflicts
     'qualifications.apps.QualificationsConfig',
     'settings_manager.apps.SettingsManagerConfig',
 ]
