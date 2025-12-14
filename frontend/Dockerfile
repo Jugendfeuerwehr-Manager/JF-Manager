@@ -64,9 +64,9 @@ USER nginx
 
 # Health check endpoint
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-EXPOSE 80 443
+EXPOSE 8080
 
 STOPSIGNAL SIGTERM
 
