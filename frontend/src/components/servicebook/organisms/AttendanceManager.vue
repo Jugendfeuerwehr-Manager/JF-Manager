@@ -81,9 +81,8 @@ const loading = computed(() => membersStore.loading)
 
 // Load members and initialize attendance on mount
 onMounted(async () => {
-  if (membersStore.members.length === 0) {
-    await membersStore.fetchMembers({ limit: 1000 })
-  }
+  // Always fetch all members with no pagination limit for attendance control
+  await membersStore.fetchMembers({ limit: 10000 })
   initializeAttendance()
 })
 

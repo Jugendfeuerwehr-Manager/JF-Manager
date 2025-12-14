@@ -74,10 +74,9 @@
             :key="variant.value"
             class="variant-card"
             :class="{
-              selected: selectedVariantId === variant.value,
-              disabled: variant.available === 0
+              selected: selectedVariantId === variant.value
             }"
-            @click="variant.available > 0 && selectVariant(variant.value)"
+            @click="selectVariant(variant.value)"
           >
             <div class="variant-size">{{ variant.sizeLabel }}</div>
             <div class="variant-availability">
@@ -738,12 +737,6 @@ async function submit() {
   border-color: var(--primary-color);
   background: color-mix(in srgb, var(--primary-color) 15%, transparent);
   box-shadow: 0 0 0 1px var(--primary-color);
-}
-
-.variant-card.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--surface-ground);
 }
 
 .variant-size {
