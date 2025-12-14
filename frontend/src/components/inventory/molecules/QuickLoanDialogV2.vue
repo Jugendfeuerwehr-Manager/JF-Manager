@@ -516,10 +516,8 @@ async function submit() {
   background-color: var(--surface-hover);
 }
 
-.variant-card.selected {
-  border-color: var(--primary-color);
-  background-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 30%, transparent);
+.variant-card.selected{
+  border: 1px solid var(--p-primary-400)
 }
 
 .variant-card.disabled {
