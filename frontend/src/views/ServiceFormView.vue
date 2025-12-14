@@ -127,6 +127,11 @@ const handleBack = () => {
 </script>
 
 <style scoped>
+.service-detail-view {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .view-toolbar {
   margin-bottom: 1.5rem;
   border-radius: var(--border-radius);
@@ -149,11 +154,15 @@ const handleBack = () => {
   display: grid;
   grid-template-columns: 1fr 400px;
   gap: 1.5rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .form-card,
 .attendance-card {
   height: fit-content;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .attendance-card {
@@ -167,12 +176,21 @@ const handleBack = () => {
 @media (max-width: 1024px) {
   .form-layout {
     grid-template-columns: 1fr;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .attendance-card {
     position: relative;
     top: auto;
     max-height: none;
+    min-width: 0;
+    max-width: 100%;
+  }
+  
+  .form-card {
+    min-width: 0;
+    max-width: 100%;
   }
 }
 </style>

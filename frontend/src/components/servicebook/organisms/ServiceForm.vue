@@ -78,15 +78,11 @@
       <!-- Operations Manager -->
       <div class="form-field full-width">
         <label for="operations_manager">Übungsleitung</label>
-        <MultiSelect
-          id="operations_manager"
+        <UserChipSelector
           v-model="formData.operations_manager_ids"
           :options="usersOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Übungsleitung auswählen"
           :loading="usersLoading"
-          filter
+          :searchable="true"
         />
       </div>
 
@@ -132,8 +128,8 @@ import { ref, watch, onMounted, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Calendar from 'primevue/calendar'
-import MultiSelect from 'primevue/multiselect'
 import Button from 'primevue/button'
+import UserChipSelector from '@/components/servicebook/atoms/UserChipSelector.vue'
 import type { ServiceFormData, ServiceDetail } from '@/types/servicebook'
 import { useUsersStore } from '@/stores/users'
 import { settingsApi } from '@/api/user'
@@ -329,10 +325,12 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0; /* Allow shrinking below content size */
 }
 
 .form-field.full-width {
   grid-column: span 2;
+  min-width: 0; /* Allow shrinking below content size */
 }
 
 .form-field label {
@@ -356,10 +354,12 @@ const handleSubmit = () => {
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
+    min-width: 0;
   }
 
   .form-field.full-width {
     grid-column: span 1;
+    min-width: 0;
   }
 
   .form-actions {
