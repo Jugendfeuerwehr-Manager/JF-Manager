@@ -185,11 +185,7 @@
 
         <!-- Inventory Tab -->
         <TabPanel :value="3" header="Ausrüstung">
-          <div class="coming-soon">
-            <i class="pi pi-box" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
-            <p>Ausrüstungsverwaltung wird bald verfügbar sein</p>
-            <small v-if="member.storage_location">Lagerort ID: {{ member.storage_location }}</small>
-          </div>
+          <MemberEquipmentTab :member-id="memberId" />
         </TabPanel>
 
         <!-- Attachments Tab -->
@@ -222,6 +218,7 @@ import EventsManager from '@/components/members/profile/EventsManager.vue'
 import AttachmentsManager from '@/components/members/profile/AttachmentsManager.vue'
 import QualificationsManager from '@/components/members/profile/QualificationsManager.vue'
 import SpecialTasksManager from '@/components/members/profile/SpecialTasksManager.vue'
+import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -86,11 +86,35 @@ const router = createRouter({
           name: 'service-edit',
           component: () => import('@/views/ServiceFormView.vue')
         },
-        // Other modules
+        // Inventory - Stock Management & Loans
         {
           path: 'inventory',
           name: 'inventory',
-          component: () => import('@/views/InventoryView.vue')
+          component: () => import('@/components/inventory/InventoryView.vue')
+        },
+        {
+          path: 'inventory/loans',
+          name: 'inventory-loans',
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'loans' }
+        },
+        {
+          path: 'inventory/stock',
+          name: 'inventory-stock',
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'stock' }
+        },
+        {
+          path: 'inventory/items',
+          name: 'inventory-items',
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'items' }
+        },
+        {
+          path: 'inventory/locations',
+          name: 'inventory-locations',
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'locations' }
         },
         // Orders
         {

@@ -114,6 +114,111 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
         total = qs.aggregate(total=Sum("quantity"))['total'] or 0
         return Response({"total": total, "rows": serializer.data})
 
+    @action(detail=False, methods=["get", "post"], url_path="for-member/(?P<member_id>[^/.]+)")
+    def for_member(self, request, member_id=None):
+        """
+        GET: Returns the storage location for a member (creates it if needed)
+        POST: Creates a storage location for a member if it doesn't exist
+        
+        Auto-creates member storage location so users don't have to manage this manually.
+        """
+        from members.models import Member
+        
+        try:
+            member = Member.objects.get(pk=member_id)
+        except Member.DoesNotExist:
+            return Response(
+                {"detail": f"Member with ID {member_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if member already has a storage location (via reverse relation)
+        try:
+            location = member.personal_storage_location
+            serializer = self.get_serializer(location)
+            return Response(serializer.data)
+        except StorageLocation.DoesNotExist:
+            pass
+        
+        # For GET, we auto-create; for POST, we explicitly create
+        # Create a new storage location for the member
+        location = StorageLocation.objects.create(
+            name=f"{member.name} {member.lastname}",
+            is_member=True,
+            member=member,
+            parent=None  # Could be set to a default "Members" parent if desired
+        )
+        
+        serializer = self.get_serializer(location)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if request.method == "POST" else status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="member-equipment/(?P<member_id>[^/.]+)")
+    def member_equipment(self, request, member_id=None):
+        """
+        Returns all equipment (stock) currently loaned to a specific member.
+        Also returns transactions history for the member.
+        """
+        from members.models import Member
+        
+        try:
+            member = Member.objects.get(pk=member_id)
+        except Member.DoesNotExist:
+            return Response(
+                {"detail": f"Member with ID {member_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get or create member's storage location
+        try:
+            location = member.personal_storage_location
+        except StorageLocation.DoesNotExist:
+            # No storage location means no equipment
+            return Response({
+                "member_id": int(member_id),
+                "member_name": f"{member.name} {member.lastname}",
+                "location_id": None,
+                "equipment": [],
+                "total_items": 0,
+                "recent_transactions": []
+            })
+        
+        # Get current stock (equipment loaned to member)
+        stock_qs = Stock.objects.filter(
+            location=location,
+            quantity__gt=0
+        ).select_related(
+            "item",
+            "item_variant",
+            "item_variant__parent_item",
+            "location"
+        )
+        stock_serializer = StockSerializer(stock_qs, many=True)
+        total_items = sum(s.quantity for s in stock_qs)
+        
+        # Get recent transactions for this member's location
+        transactions_qs = Transaction.objects.filter(
+            Q(source=location) | Q(target=location)
+        ).select_related(
+            "item",
+            "item_variant",
+            "item_variant__parent_item",
+            "source",
+            "target",
+            "user"
+        ).order_by("-date")[:20]
+        
+        from .serializers import TransactionSerializer
+        transactions_serializer = TransactionSerializer(transactions_qs, many=True)
+        
+        return Response({
+            "member_id": int(member_id),
+            "member_name": f"{member.name} {member.lastname}",
+            "location_id": location.id,
+            "equipment": stock_serializer.data,
+            "total_items": total_items,
+            "recent_transactions": transactions_serializer.data
+        })
+
 
 class StockViewSet(BaseAuthMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Stock.objects.select_related(

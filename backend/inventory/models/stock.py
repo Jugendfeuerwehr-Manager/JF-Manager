@@ -137,8 +137,10 @@ class Transaction(models.Model):
             raise ValidationError('Entweder Artikel oder Artikel-Variante muss ausgewählt werden.')
         if self.item and self.item_variant:
             raise ValidationError('Nur eines von Artikel oder Artikel-Variante kann ausgewählt werden.')
-        if self.transaction_type in ['IN', 'RETURN'] and not self.target:
-            raise ValidationError('Ziel ist erforderlich für Eingang/Rückgabe.')
+        if self.transaction_type == 'IN' and not self.target:
+            raise ValidationError('Ziel ist erforderlich für Eingang.')
+        if self.transaction_type == 'RETURN' and (not self.source or not self.target):
+            raise ValidationError('Quelle und Ziel sind erforderlich für Rückgabe.')
         if self.transaction_type in ['OUT', 'DISCARD'] and not self.source:
             raise ValidationError('Quelle ist erforderlich für Ausgang/Aussortierung.')
         if self.transaction_type in ['MOVE', 'LOAN'] and (not self.source or not self.target):
@@ -172,7 +174,8 @@ class Transaction(models.Model):
             stock_params = {'item': self.item, 'item_variant': None}
         elif self.item_variant:
             stock_params = {'item': None, 'item_variant': self.item_variant}
-        if self.transaction_type in ['IN', 'RETURN']:
+        if self.transaction_type == 'IN':
+            # IN: Only add to target (stock coming from outside the system)
             stock, created = Stock.objects.get_or_create(
                 location=self.target,
                 defaults={'quantity': 0, **stock_params},
@@ -189,7 +192,8 @@ class Transaction(models.Model):
                 stock.save()
             except Stock.DoesNotExist:
                 raise ValidationError('Kein Bestand am Quellort vorhanden.')
-        elif self.transaction_type in ['MOVE', 'LOAN']:
+        elif self.transaction_type in ['MOVE', 'LOAN', 'RETURN']:
+            # MOVE, LOAN, RETURN: Subtract from source and add to target
             try:
                 source_stock = Stock.objects.get(location=self.source, **stock_params)
                 if source_stock.quantity < self.quantity:

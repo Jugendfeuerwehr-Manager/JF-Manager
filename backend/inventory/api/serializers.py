@@ -84,10 +84,12 @@ class StorageLocationSerializer(serializers.ModelSerializer):
 
 
 class StockSerializer(serializers.ModelSerializer):
-    item_name = serializers.CharField(source="item.name", read_only=True)
-    variant_display = serializers.CharField(source="item_variant.__str__", read_only=True)
+    item_name = serializers.CharField(source="item.name", read_only=True, allow_null=True)
+    variant_display = serializers.SerializerMethodField()
     location_name = serializers.CharField(source="location.name", read_only=True)
     category_id = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Stock
@@ -101,10 +103,26 @@ class StockSerializer(serializers.ModelSerializer):
             "location_name",
             "quantity",
             "category_id",
+            "category_name",
+            "display_name",
         ]
 
-    def get_category_id(self, obj):  # pragma: no cover
-        return obj.get_category().id if obj.get_category() else None
+    def get_variant_display(self, obj):
+        if obj.item_variant:
+            return str(obj.item_variant)
+        return None
+
+    def get_category_id(self, obj):
+        category = obj.get_category()
+        return category.id if category else None
+
+    def get_category_name(self, obj):
+        category = obj.get_category()
+        return category.name if category else None
+
+    def get_display_name(self, obj):
+        """Returns a unified display name for the stock item"""
+        return obj.get_item_name()
 
 
 class TransactionSerializer(serializers.ModelSerializer):
