@@ -22,6 +22,21 @@ export const useParentsStore = defineStore('parents', () => {
     }))
   )
 
+  const allParentEmails = computed(() => {
+    const emails: string[] = []
+    parents.value.forEach(parent => {
+      if (parent.email) emails.push(parent.email)
+      if (parent.email2) emails.push(parent.email2)
+    })
+    return emails.filter(email => email.trim() !== '')
+  })
+
+  const emailAllParentsLink = computed(() => {
+    const emails = allParentEmails.value
+    if (emails.length === 0) return ''
+    return `mailto:?bcc=${encodeURIComponent(emails.join(','))}`
+  })
+
   // Actions
   async function fetchParents(params?: MemberListParams) {
     loading.value = true
@@ -121,6 +136,8 @@ export const useParentsStore = defineStore('parents', () => {
     pagination,
     // Computed
     parentOptions,
+    allParentEmails,
+    emailAllParentsLink,
     // Actions
     fetchParents,
     fetchParentById,

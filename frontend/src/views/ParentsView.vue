@@ -6,6 +6,15 @@
     >
       <template #actions>
         <Button
+          :label="isMobile ? '' : 'E-Mail an alle'"
+          icon="pi pi-envelope"
+          @click="emailAllParents"
+          :disabled="!parentsStore.emailAllParentsLink"
+          severity="secondary"
+          outlined
+          class="mr-2"
+        />
+        <Button
           :label="isMobile ? '' : 'Hinzufügen'"
           icon="pi pi-plus"
           @click="navigateToCreate"
@@ -190,6 +199,20 @@ const navigateToCreate = () => {
 
 const navigateToEdit = (parent: Parent) => {
   router.push(`/parents/${parent.id}/edit`)
+}
+
+const emailAllParents = () => {
+  const mailtoLink = parentsStore.emailAllParentsLink
+  if (mailtoLink) {
+    window.location.href = mailtoLink
+  } else {
+    toast.add({
+      severity: 'warn',
+      summary: 'Keine E-Mail-Adressen',
+      detail: 'Es wurden keine E-Mail-Adressen gefunden',
+      life: 3000
+    })
+  }
 }
 
 const confirmDelete = (parent: Parent) => {
