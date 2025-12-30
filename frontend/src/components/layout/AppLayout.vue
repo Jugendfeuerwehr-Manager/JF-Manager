@@ -145,6 +145,7 @@ const secondaryNavItems: MenuItem[] = [
   createNavItem('Dashboard', 'pi pi-home', '/'),
   createNavItem('Inventar', 'pi pi-box', '/inventory'),
   createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'),
+  createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'),
   createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'),
   createNavItem('Einstellungen', 'pi pi-cog', '/settings')
 ]

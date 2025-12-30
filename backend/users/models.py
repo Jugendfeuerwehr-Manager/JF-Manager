@@ -22,6 +22,14 @@ class CustomUser(AbstractUser):
 
     # TODO: Add pre_delete hook to make sure to remove the file, not just the DB Recoard.
     avatar = models.ImageField(blank=True)
+    
+    # Email signature for bulk emails
+    email_signature = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='E-Mail-Signatur',
+        help_text='Ihre persönliche Signatur für E-Mails'
+    )
 
     def __str__(self):
         if self.last_name and self.first_name:

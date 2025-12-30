@@ -3,6 +3,7 @@ from members.api_views import (
     MemberViewSet, ParentViewSet, StatusViewSet, 
     GroupViewSet, EventViewSet, EventTypeViewSet, AttachmentViewSet
 )
+from members.api.viewsets.email_viewsets import EmailMessageViewSet
 from users.api_views import UserViewSet
 # Import enhanced API viewsets from orders.api instead of legacy orders.views
 from orders.api.viewsets import (
@@ -44,6 +45,7 @@ api.register(r'groups', GroupViewSet)
 api.register(r'events', EventViewSet)
 api.register(r'event-types', EventTypeViewSet)
 api.register(r'attachments', AttachmentViewSet)
+api.register(r'emails', EmailMessageViewSet)
 
 
 api.register(r'inventory/items', ItemViewSet)

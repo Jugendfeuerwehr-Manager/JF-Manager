@@ -41,9 +41,7 @@ class UserViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'patch', 'post', 'head', 'options']  # No delete or full update
 
     def get_serializer_class(self):
-        if self.action == 'me':
-            return UserInfoSerializer
-        elif self.action == 'retrieve':
+        if self.action in ['me', 'retrieve', 'update', 'partial_update']:
             return UserInfoSerializer
         return UserSerializer
 

@@ -129,6 +129,7 @@ export interface UserInfo {
   avatar_url: string | null
   dsgvo_internal: boolean
   dsgvo_external: boolean
+  email_signature?: string
   groups: UserGroup[]
   permissions: string[]
 }

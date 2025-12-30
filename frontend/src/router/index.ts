@@ -70,6 +70,17 @@ const router = createRouter({
           name: 'parent-edit',
           component: () => import('@/views/ParentEditView.vue')
         },
+        // Emails
+        {
+          path: 'emails/compose',
+          name: 'emails-compose',
+          component: () => import('@/views/EmailComposeView.vue')
+        },
+        {
+          path: 'emails/history',
+          name: 'emails-history',
+          component: () => import('@/views/EmailHistoryView.vue')
+        },
         // Servicebook
         {
           path: 'servicebook',

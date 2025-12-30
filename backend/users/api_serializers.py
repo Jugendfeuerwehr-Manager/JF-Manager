@@ -35,6 +35,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'date_joined', 'last_login',
             'avatar', 'avatar_url',
             'dsgvo_internal', 'dsgvo_external',
+            'email_signature',
             'groups', 'permissions'
         ]
         read_only_fields = [
