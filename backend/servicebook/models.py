@@ -35,6 +35,12 @@ class Attendance(models.Model):
     service = models.ForeignKey(Service, on_delete=models.CASCADE, null=True)
     state = models.CharField(max_length=1, choices=STATES, null=True)
 
+    class Meta:
+        unique_together = [['person', 'service']]
+        indexes = [
+            models.Index(fields=['person', 'service']),
+        ]
+
     def __str__(self):
         return '{0} war {1} bei {2}'.format(self.person.name, self.state, self.service.__str__())
         #return self.person.name + " war " + self.state + " bei " + self.service.__str__()
