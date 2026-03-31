@@ -21,6 +21,7 @@ from django.views.generic import RedirectView
 from rest_framework.authtoken import views
 from setup.views import SetupView  # Add this import
 from .views import DashboardView  # Add this import
+from users.views import CustomPasswordResetView
 
 from .rest_urls import api
 
@@ -58,6 +59,8 @@ app_patterns = [
 # Authentication URLs
 auth_patterns = [
     path('admin/', admin.site.urls),
+    # Override password_reset to use SITE_URL from environment for the reset link
+    path('accounts/password_reset/', CustomPasswordResetView.as_view(), name='password_reset'),
     path('accounts/', include('django.contrib.auth.urls')),
 ]
 

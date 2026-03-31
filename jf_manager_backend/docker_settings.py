@@ -19,6 +19,7 @@ env = environ.Env(
     EMAIL_USE_TLS=(bool, True),
     EMAIL_USE_SSL=(bool, False),
     REDIS_URL=(str, 'none'),
+    SITE_URL=(str, ''),
 )
 # Set the project base directory
 
@@ -47,6 +48,8 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = env('EMAIL_USE_TLS')
 EMAIL_USE_SSL = env('EMAIL_USE_SSL')
+
+SITE_URL = env('SITE_URL')
 
 CACHE_TTL = env('CACHE_TTL')
 

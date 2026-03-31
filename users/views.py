@@ -6,10 +6,42 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from django.contrib.auth import get_user_model
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.views import PasswordResetView as DjangoPasswordResetView
+from django.conf import settings
+from django.http import HttpResponseRedirect
+from urllib.parse import urlparse
 
 from .serializers import UserSerializer, UserProfileSerializer, ChangePasswordSerializer
 
 User = get_user_model()
+
+
+class CustomPasswordResetView(DjangoPasswordResetView):
+    """Overrides Django's PasswordResetView to use SITE_URL setting for the
+    reset link domain.  When the app runs behind a reverse proxy the default
+    behaviour (using request.get_host()) produces a localhost link.  Setting
+    SITE_URL in the environment fixes this."""
+
+    def form_valid(self, form):
+        site_url = getattr(settings, 'SITE_URL', '')
+        if site_url:
+            parsed = urlparse(site_url)
+            domain = parsed.netloc
+            use_https = parsed.scheme == 'https'
+            opts = {
+                'use_https': use_https,
+                'token_generator': self.token_generator,
+                'from_email': self.from_email,
+                'email_template_name': self.email_template_name,
+                'subject_template_name': self.subject_template_name,
+                'request': self.request,
+                'html_email_template_name': self.html_email_template_name,
+                'extra_email_context': self.extra_email_context,
+                'domain_override': domain,
+            }
+            form.save(**opts)
+            return HttpResponseRedirect(self.get_success_url())
+        return super().form_valid(form)
 
 
 class UserViewSet(viewsets.ModelViewSet):

@@ -253,6 +253,11 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = 'webmaster@localhost'
 
+# Site URL used for building absolute links in password reset emails.
+# Set this to your public-facing URL (e.g. https://yourdomain.com) so that
+# the reset link in the email points to the correct host instead of localhost.
+SITE_URL = os.environ.get('SITE_URL', '')
+
 # For development - use console backend to see emails in terminal
 #EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
