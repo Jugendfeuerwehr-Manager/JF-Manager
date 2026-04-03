@@ -206,6 +206,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
+    /* ── Constants ──────────────────────────────────────────────────────── */
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;   // 10 MB
+    const ALLOWED_EXTENSIONS  = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
+
     /* ── Recipient search / select-all ──────────────────────────────────── */
     const searchInput  = document.getElementById('recipient-search');
     const recipientList = document.getElementById('recipient-list');
@@ -227,9 +231,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     selectAll.addEventListener('click', function () {
-        recipientList.querySelectorAll('input[type=checkbox]:not([style*="display: none"])').forEach(function (cb) {
-            const item = cb.closest('.recipient-item');
-            if (!item || item.style.display !== 'none') cb.checked = true;
+        recipientList.querySelectorAll('.recipient-item').forEach(function (item) {
+            if (item.style.display !== 'none') {
+                const cb = item.querySelector('input[type=checkbox]');
+                if (cb) cb.checked = true;
+            }
         });
         updateCount();
     });
@@ -261,14 +267,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function validateFile(file) {
-        const maxSize = 10 * 1024 * 1024;
-        const allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
         const ext = file.name.split('.').pop().toLowerCase();
-        if (file.size > maxSize) {
+        if (file.size > MAX_FILE_SIZE_BYTES) {
             alert('Die Datei "' + file.name + '" ist zu groß (max. 10 MB).');
             return false;
         }
-        if (!allowed.includes(ext)) {
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
             alert('Dateityp "' + ext + '" wird nicht unterstützt.');
             return false;
         }

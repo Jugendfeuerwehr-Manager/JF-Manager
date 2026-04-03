@@ -5,6 +5,8 @@ from bootstrap_datepicker_plus.widgets import DatePickerInput
 from .models import Member, Parent, EventType
 import django_filters
 
+SIGNATURE_SEPARATOR = '\n\n--\n'
+
 
 class EventForm(forms.Form):
     type = forms.ModelChoiceField(queryset=EventType.objects.all(), required=True, label='Typ')
@@ -60,7 +62,7 @@ class SendMailForm(forms.Form):
         if 'initial' not in kwargs:
             kwargs['initial'] = {}
         if signature and not kwargs['initial'].get('body'):
-            kwargs['initial']['body'] = f'\n\n--\n{signature}'
+            kwargs['initial']['body'] = f'{SIGNATURE_SEPARATOR}{signature}'
 
         super().__init__(*args, **kwargs)
 

@@ -1,3 +1,5 @@
+import os
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.core.mail import EmailMessage
@@ -6,6 +8,11 @@ from django.views.generic import FormView
 
 from members.forms import SendMailForm
 from members.models import Member
+
+
+def _safe_attachment_name(name: str) -> str:
+    """Return a safe filename stripped of any directory components."""
+    return os.path.basename(name)
 
 
 class SendMailView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
@@ -58,7 +65,7 @@ class SendMailView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
             )
 
             for attachment in attachments:
-                email.attach(attachment.name, attachment.read(), attachment.content_type)
+                email.attach(_safe_attachment_name(attachment.name), attachment.read(), attachment.content_type)
 
             email.send(fail_silently=False)
 
