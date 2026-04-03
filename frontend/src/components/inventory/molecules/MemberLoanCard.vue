@@ -37,7 +37,7 @@
                 <StockBadge :quantity="data.quantity" />
               </template>
             </Column>
-            <Column header="Aktionen" style="width: 100px">
+            <Column header="Aktionen" style="width: 130px">
               <template #body="{ data }">
                 <Button
                   icon="pi pi-replay"
@@ -47,6 +47,15 @@
                   severity="success"
                   title="Rückgabe"
                   @click="$emit('return', data)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  size="small"
+                  text
+                  rounded
+                  severity="danger"
+                  title="Aussortieren (verloren/defekt)"
+                  @click="$emit('discard', data)"
                 />
               </template>
             </Column>
@@ -79,6 +88,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 defineEmits<{
   return: [item: MemberLoan['items'][0]]
+  discard: [item: MemberLoan['items'][0]]
 }>()
 
 const expanded = ref(props.initialExpanded)

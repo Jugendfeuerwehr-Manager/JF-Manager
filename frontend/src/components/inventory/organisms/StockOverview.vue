@@ -33,7 +33,7 @@
             <Button
               label="Neue Transaktion"
               icon="pi pi-plus"
-              @click="showTransactionDialog = true"
+              @click="selectedStock = undefined; transactionType = undefined; showTransactionDialog = true"
             />
           </div>
         </div>
@@ -79,7 +79,7 @@
             </template>
           </Column>
 
-          <Column header="Aktionen" style="width: 150px">
+          <Column header="Aktionen" style="width: 200px">
             <template #body="{ data }">
               <div class="action-buttons">
                 <Button
@@ -112,6 +112,16 @@
                   severity="info"
                   title="Umlagern"
                   @click="openMoveDialog(data)"
+                  :disabled="data.quantity === 0"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  size="small"
+                  text
+                  rounded
+                  severity="danger"
+                  title="Aussortieren"
+                  @click="openDiscardDialog(data)"
                   :disabled="data.quantity === 0"
                 />
               </div>
@@ -163,7 +173,7 @@ const filters = ref({
 })
 
 const showTransactionDialog = ref(false)
-const transactionType = ref<TransactionType>('IN')
+const transactionType = ref<TransactionType | undefined>(undefined)
 const selectedStock = ref<Stock | undefined>(undefined)
 
 const categoryOptions = computed(() => [
@@ -240,9 +250,16 @@ function openMoveDialog(stock: Stock) {
   showTransactionDialog.value = true
 }
 
+function openDiscardDialog(stock: Stock) {
+  selectedStock.value = stock
+  transactionType.value = 'DISCARD'
+  showTransactionDialog.value = true
+}
+
 function onTransactionSuccess() {
   showTransactionDialog.value = false
   selectedStock.value = undefined
+  transactionType.value = undefined
 }
 </script>
 

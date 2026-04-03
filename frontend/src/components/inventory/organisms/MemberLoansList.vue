@@ -52,6 +52,7 @@
         :key="loan.member_id"
         :loan="loan"
         @return="handleReturn"
+        @discard="handleDiscard"
       />
     </div>
 
@@ -81,6 +82,13 @@
       :initial-stock="selectedStock"
       @success="onTransactionSuccess"
     />
+
+    <TransactionDialog
+      v-model="showDiscardDialog"
+      initial-type="DISCARD"
+      :initial-stock="selectedStock"
+      @success="onTransactionSuccess"
+    />
   </div>
 </template>
 
@@ -101,6 +109,7 @@ const inventoryStore = useInventoryStore()
 const searchQuery = ref('')
 const showLoanDialog = ref(false)
 const showReturnDialog = ref(false)
+const showDiscardDialog = ref(false)
 const selectedStock = ref<Stock | undefined>(undefined)
 
 const filteredLoans = computed(() => {
@@ -116,7 +125,6 @@ const totalItemsOnLoan = computed(() => {
 })
 
 function handleReturn(item: MemberLoan['items'][0]) {
-  // Find the stock entry
   const stock = inventoryStore.stocks.find((s) => s.id === item.stock_id)
   if (stock) {
     selectedStock.value = stock
@@ -124,10 +132,18 @@ function handleReturn(item: MemberLoan['items'][0]) {
   }
 }
 
+function handleDiscard(item: MemberLoan['items'][0]) {
+  const stock = inventoryStore.stocks.find((s) => s.id === item.stock_id)
+  if (stock) {
+    selectedStock.value = stock
+    showDiscardDialog.value = true
+  }
+}
+
 function onTransactionSuccess() {
-  // Data is automatically refreshed by the store
   showLoanDialog.value = false
   showReturnDialog.value = false
+  showDiscardDialog.value = false
   selectedStock.value = undefined
 }
 </script>

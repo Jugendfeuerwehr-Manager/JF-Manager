@@ -26,6 +26,14 @@
             :disabled="equipment.length === 0"
             @click="showReturnDialog = true"
           />
+          <Button
+            label="Aussortieren"
+            icon="pi pi-trash"
+            severity="danger"
+            outlined
+            :disabled="equipment.length === 0"
+            @click="initiateDiscard(null)"
+          />
         </div>
       </div>
 
@@ -66,6 +74,14 @@
                   rounded
                   v-tooltip.top="'Zurückgeben'"
                   @click="initiateReturn(data)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  text
+                  rounded
+                  v-tooltip.top="'Aussortieren (verloren/defekt)'"
+                  @click="initiateDiscard(data)"
                 />
               </template>
             </Column>
@@ -131,6 +147,14 @@
       :preselected-member="memberLocationId || undefined"
       @success="onTransactionSuccess"
     />
+
+    <!-- Discard Dialog -->
+    <TransactionDialog
+      v-model="showDiscardDialog"
+      initial-type="DISCARD"
+      :initial-stock="selectedDiscardStock || undefined"
+      @success="onTransactionSuccess"
+    />
   </div>
 </template>
 
@@ -148,6 +172,7 @@ import Column from 'primevue/column'
 import ProgressSpinner from 'primevue/progressspinner'
 import QuickLoanDialog from '@/components/inventory/molecules/QuickLoanDialogV2.vue'
 import QuickReturnDialog from '@/components/inventory/molecules/QuickReturnDialog.vue'
+import TransactionDialog from '@/components/inventory/molecules/TransactionDialog.vue'
 
 interface Props {
   memberId: number
@@ -164,6 +189,8 @@ const recentTransactions = ref<Transaction[]>([])
 const memberLocationId = ref<number | null>(null)
 const showLoanDialog = ref(false)
 const showReturnDialog = ref(false)
+const showDiscardDialog = ref(false)
+const selectedDiscardStock = ref<Stock | null>(null)
 
 // Computed
 const totalItems = computed(() => equipment.value.reduce((sum, e) => sum + e.quantity, 0))
@@ -203,9 +230,16 @@ const initiateReturn = (stock: Stock) => {
   showReturnDialog.value = true
 }
 
+const initiateDiscard = (stock: Stock | null) => {
+  selectedDiscardStock.value = stock
+  showDiscardDialog.value = true
+}
+
 const onTransactionSuccess = async () => {
   showLoanDialog.value = false
   showReturnDialog.value = false
+  showDiscardDialog.value = false
+  selectedDiscardStock.value = null
   await loadEquipment()
   toast.add({
     severity: 'success',
