@@ -61,6 +61,16 @@
           <Column field="email" header="E-Mail" />
           <Column field="phone" header="Telefon" />
           <Column field="mobile" header="Mobil" />
+          <Column header="" style="width: 50px">
+            <template #body="{ data }">
+              <Tag
+                v-if="data.children && data.children.length === 0"
+                value="Kein Kind"
+                severity="warn"
+                v-tooltip.top="'Kein Mitglied mit diesem Elternteil verknüpft'"
+              />
+            </template>
+          </Column>
           <Column header="Aktionen" style="width: 120px">
             <template #body="{ data }">
               <div class="table-actions">
@@ -132,6 +142,7 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
+import Tag from 'primevue/tag'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentCard from '@/components/parents/ParentCard.vue'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'

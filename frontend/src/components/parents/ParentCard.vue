@@ -14,6 +14,12 @@
           </div>
         </div>
         <Tag v-if="parent.relation" :value="parent.relation" severity="info" />
+        <Tag
+          v-if="parent.children && parent.children.length === 0"
+          value="Kein Kind"
+          severity="warn"
+          v-tooltip.top="'Kein Mitglied mit diesem Elternteil verknüpft'"
+        />
       </div>
 
       <div class="mobile-entity-card__section parent-details">
@@ -86,6 +92,7 @@ interface Parent {
   phone?: string
   mobile?: string
   address?: string
+  children?: number[]
 }
 
 interface Props {

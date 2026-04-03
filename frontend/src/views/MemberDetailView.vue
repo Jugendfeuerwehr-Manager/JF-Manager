@@ -313,6 +313,11 @@ const toggleMenu = (event: any) => {
 }
 
 const confirmDelete = () => {
+  // Identify parents that would become childless after this deletion
+  const orphanedParents = parents.value.filter(
+    (p) => p.children.length === 1 && p.children[0] === memberId
+  )
+
   confirm.require({
     message: `Möchten Sie ${member.value?.full_name} wirklich löschen?`,
     header: 'Löschen bestätigen',
@@ -329,7 +334,42 @@ const confirmDelete = () => {
           detail: 'Mitglied wurde gelöscht',
           life: 3000
         })
-        router.push('/members')
+
+        if (orphanedParents.length > 0) {
+          const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
+          confirm.require({
+            message: `${orphanedParents.length === 1 ? 'Der folgende Elternteil hat' : 'Die folgenden Elternteile haben'} nun kein verknüpftes Mitglied mehr: ${parentNames}. Möchten Sie ${orphanedParents.length === 1 ? 'diesen' : 'diese'} ebenfalls löschen?`,
+            header: 'Eltern ohne Kind',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Ja, löschen',
+            rejectLabel: 'Behalten',
+            accept: async () => {
+              try {
+                await Promise.all(orphanedParents.map((p) => parentsApi.delete(p.id)))
+                toast.add({
+                  severity: 'success',
+                  summary: 'Eltern gelöscht',
+                  detail: `${orphanedParents.length === 1 ? 'Elternteil wurde' : 'Elternteile wurden'} gelöscht`,
+                  life: 3000
+                })
+              } catch {
+                toast.add({
+                  severity: 'error',
+                  summary: 'Fehler',
+                  detail: 'Elternteile konnten nicht gelöscht werden',
+                  life: 3000
+                })
+              } finally {
+                router.push('/members')
+              }
+            },
+            reject: () => {
+              router.push('/members')
+            }
+          })
+        } else {
+          router.push('/members')
+        }
       } catch (error) {
         toast.add({
           severity: 'error',

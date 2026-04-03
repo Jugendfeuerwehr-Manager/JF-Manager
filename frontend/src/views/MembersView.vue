@@ -245,6 +245,7 @@ import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
+import { parentsApi } from '@/api/members'
 import type { Member, Parent } from '@/types/api'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -367,6 +368,11 @@ const onRowClick = (event: any) => {
 }
 
 const confirmDelete = (member: Member) => {
+  // Identify parents that would become childless after this deletion
+  const orphanedParents = (member.parents || []).filter(
+    (p) => p.children.length === 1 && p.children[0] === member.id
+  )
+
   confirm.require({
     message: `Möchten Sie ${member.full_name} wirklich löschen?`,
     header: 'Löschen bestätigen',
@@ -384,6 +390,35 @@ const confirmDelete = (member: Member) => {
           life: 3000
         })
         loadLazyData()
+
+        if (orphanedParents.length > 0) {
+          const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
+          confirm.require({
+            message: `${orphanedParents.length === 1 ? 'Der folgende Elternteil hat' : 'Die folgenden Elternteile haben'} nun kein verknüpftes Mitglied mehr: ${parentNames}. Möchten Sie ${orphanedParents.length === 1 ? 'diesen' : 'diese'} ebenfalls löschen?`,
+            header: 'Eltern ohne Kind',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Ja, löschen',
+            rejectLabel: 'Behalten',
+            accept: async () => {
+              try {
+                await Promise.all(orphanedParents.map((p) => parentsApi.delete(p.id)))
+                toast.add({
+                  severity: 'success',
+                  summary: 'Eltern gelöscht',
+                  detail: `${orphanedParents.length === 1 ? 'Elternteil wurde' : 'Elternteile wurden'} gelöscht`,
+                  life: 3000
+                })
+              } catch {
+                toast.add({
+                  severity: 'error',
+                  summary: 'Fehler',
+                  detail: 'Elternteile konnten nicht gelöscht werden',
+                  life: 3000
+                })
+              }
+            }
+          })
+        }
       } catch (error) {
         toast.add({
           severity: 'error',
