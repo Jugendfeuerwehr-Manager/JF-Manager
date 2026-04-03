@@ -1,4 +1,5 @@
 import os
+import smtplib
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -9,10 +10,36 @@ from django.views.generic import FormView
 from members.forms import SendMailForm
 from members.models import Member
 
+# Mapping of allowed file extensions to their MIME types for content-type validation.
+_ALLOWED_MIME_TYPES: dict[str, str] = {
+    'pdf':  'application/pdf',
+    'doc':  'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'jpg':  'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png':  'image/png',
+    'gif':  'image/gif',
+}
+
 
 def _safe_attachment_name(name: str) -> str:
     """Return a safe filename stripped of any directory components."""
     return os.path.basename(name)
+
+
+def _safe_content_type(filename: str, declared_content_type: str) -> str:
+    """Return a validated MIME type based on the file extension.
+
+    If the declared content type doesn't match the expected type for the
+    file extension, fall back to the extension-based type to prevent a
+    caller from injecting a misleading content type.
+    """
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    expected = _ALLOWED_MIME_TYPES.get(ext)
+    if expected:
+        return expected
+    # Unknown extension – use the declared type but strip parameters to be safe.
+    return declared_content_type.split(';')[0].strip() or 'application/octet-stream'
 
 
 class SendMailView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
@@ -65,7 +92,9 @@ class SendMailView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
             )
 
             for attachment in attachments:
-                email.attach(_safe_attachment_name(attachment.name), attachment.read(), attachment.content_type)
+                safe_name = _safe_attachment_name(attachment.name)
+                safe_ct = _safe_content_type(safe_name, attachment.content_type)
+                email.attach(safe_name, attachment.read(), safe_ct)
 
             email.send(fail_silently=False)
 
@@ -73,7 +102,7 @@ class SendMailView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
                 self.request,
                 f'E-Mail wurde erfolgreich an {len(recipient_emails)} Empfänger gesendet.'
             )
-        except Exception as exc:
+        except (smtplib.SMTPException, OSError, ValueError) as exc:
             messages.error(self.request, f'Fehler beim Senden der E-Mail: {exc}')
             return self.form_invalid(form)
 

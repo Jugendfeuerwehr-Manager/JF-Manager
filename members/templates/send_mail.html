@@ -208,6 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── Constants ──────────────────────────────────────────────────────── */
     const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;   // 10 MB
+    const MAX_FILE_SIZE_LABEL = (MAX_FILE_SIZE_BYTES / (1024 * 1024)) + ' MB';
     const ALLOWED_EXTENSIONS  = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
 
     /* ── Recipient search / select-all ──────────────────────────────────── */
@@ -269,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function validateFile(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (file.size > MAX_FILE_SIZE_BYTES) {
-            alert('Die Datei "' + file.name + '" ist zu groß (max. 10 MB).');
+            alert('Die Datei "' + file.name + '" ist zu groß (max. ' + MAX_FILE_SIZE_LABEL + ').');
             return false;
         }
         if (!ALLOWED_EXTENSIONS.includes(ext)) {

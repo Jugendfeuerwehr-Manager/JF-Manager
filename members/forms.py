@@ -5,7 +5,9 @@ from bootstrap_datepicker_plus.widgets import DatePickerInput
 from .models import Member, Parent, EventType
 import django_filters
 
-SIGNATURE_SEPARATOR = '\n\n--\n'
+# Standard email signature delimiter per RFC 3676 (two dashes followed by a space and line break).
+# Most email clients recognise this and render the signature separately from the message body.
+SIGNATURE_SEPARATOR = '\n\n-- \n'
 
 
 class EventForm(forms.Form):
@@ -62,6 +64,7 @@ class SendMailForm(forms.Form):
         if 'initial' not in kwargs:
             kwargs['initial'] = {}
         if signature and not kwargs['initial'].get('body'):
+            # Place signature at the end so users can type their message above it.
             kwargs['initial']['body'] = f'{SIGNATURE_SEPARATOR}{signature}'
 
         super().__init__(*args, **kwargs)
