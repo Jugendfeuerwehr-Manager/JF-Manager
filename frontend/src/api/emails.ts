@@ -33,10 +33,28 @@ export const emailsApi = {
   },
 
   /**
-   * Create and send an email
+   * Create and send an email, optionally with file attachments.
+   * Uses multipart/form-data when attachments are present.
    */
   send(data: EmailMessageCreate) {
-    return apiClient.post<EmailSendResponse>('/emails/send/', data)
+    const { attachments, ...fields } = data
+
+    if (attachments && attachments.length > 0) {
+      const formData = new FormData()
+      Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, String(value))
+        }
+      })
+      attachments.forEach((file) => {
+        formData.append('attachments', file)
+      })
+      return apiClient.post<EmailSendResponse>('/emails/send/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    }
+
+    return apiClient.post<EmailSendResponse>('/emails/send/', fields)
   },
 
   /**

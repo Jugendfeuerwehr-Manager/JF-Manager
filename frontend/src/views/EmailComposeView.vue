@@ -122,6 +122,48 @@
             </label>
           </div>
 
+          <!-- Attachments -->
+          <div class="form-field">
+            <label>Anhänge</label>
+            <div
+              class="attachment-drop-zone"
+              :class="{ 'drop-zone-active': isDragging }"
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="handleDrop"
+            >
+              <i class="pi pi-cloud-upload"></i>
+              <p>Dateien hierher ziehen</p>
+              <span class="drop-zone-or">oder</span>
+              <FileUpload
+                mode="basic"
+                :auto="false"
+                multiple
+                :maxFileSize="10000000"
+                chooseLabel="Dateien auswählen"
+                @select="handleFileSelect"
+                class="attachment-file-upload"
+              />
+              <small>Max. 10 MB pro Datei &middot; Bilder, PDF, Office-Dokumente, CSV, TXT</small>
+            </div>
+            <div v-if="attachments.length" class="attachment-list">
+              <div v-for="(file, index) in attachments" :key="index" class="attachment-item">
+                <i :class="getFileIcon(file)"></i>
+                <span class="attachment-name">{{ file.name }}</span>
+                <span class="attachment-size">({{ formatFileSize(file.size) }})</span>
+                <Button
+                  icon="pi pi-times"
+                  text
+                  rounded
+                  size="small"
+                  severity="danger"
+                  @click="removeAttachment(index)"
+                  v-tooltip.top="'Entfernen'"
+                />
+              </div>
+            </div>
+          </div>
+
           <!-- Recipients List -->
           <RecipientsList
             :recipients="recipients"
@@ -204,6 +246,7 @@ import MultiSelect from 'primevue/multiselect'
 import Checkbox from 'primevue/checkbox'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
+import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import RecipientsList from '@/components/emails/molecules/RecipientsList.vue'
@@ -225,6 +268,8 @@ const recipients = ref<any[]>([])
 const loadingRecipients = ref(false)
 const includeSignature = ref(true)
 const userSignature = computed(() => authStore.user?.email_signature || '')
+const attachments = ref<File[]>([])
+const isDragging = ref(false)
 
 const form = ref({
   subject: '',
@@ -410,7 +455,8 @@ const sendEmail = async () => {
               subject: form.value.subject,
               body_html: emailBody,
               recipient_type: 'individual',
-              recipient_member: memberId
+              recipient_member: memberId,
+              attachments: attachments.value.length > 0 ? attachments.value : undefined
             })
             totalSuccessful += result.result.successful
             totalFailed += result.result.failed
@@ -438,7 +484,8 @@ const sendEmail = async () => {
             body_html: emailBody,
             recipient_type: form.value.recipient_type,
             recipient_group: form.value.recipient_group || undefined,
-            recipient_member: form.value.recipient_member || undefined
+            recipient_member: form.value.recipient_member || undefined,
+            attachments: attachments.value.length > 0 ? attachments.value : undefined
           })
 
           toast.add({
@@ -476,6 +523,37 @@ const sendEmail = async () => {
   })
 }
 
+const handleFileSelect = (event: FileUploadSelectEvent) => {
+  if (event.files) {
+    attachments.value.push(...Array.from(event.files as File[]))
+  }
+}
+
+const handleDrop = (event: DragEvent) => {
+  isDragging.value = false
+  if (event.dataTransfer?.files) {
+    attachments.value.push(...Array.from(event.dataTransfer.files))
+  }
+}
+
+const removeAttachment = (index: number) => {
+  attachments.value.splice(index, 1)
+}
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const getFileIcon = (file: File): string => {
+  if (file.type.startsWith('image/')) return 'pi pi-image'
+  if (file.type === 'application/pdf') return 'pi pi-file-pdf'
+  if (file.type.includes('word') || file.type.includes('document')) return 'pi pi-file-word'
+  if (file.type.includes('sheet') || file.type.includes('excel')) return 'pi pi-file-excel'
+  return 'pi pi-file'
+}
+
 const resetForm = () => {
   form.value = {
     subject: '',
@@ -487,6 +565,7 @@ const resetForm = () => {
   }
   recipientCount.value = null
   recipients.value = []
+  attachments.value = []
   updateRecipientCount()
 }
 
@@ -620,5 +699,90 @@ watch(() => form.value.recipient_type, updateRecipientCount)
 .preview-body :deep(h2),
 .preview-body :deep(h3) {
   margin: 1rem 0 0.5rem 0;
+}
+
+/* Attachment Drop Zone */
+.attachment-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.5rem;
+  border: 2px dashed var(--surface-border);
+  border-radius: var(--border-radius);
+  background: var(--surface-50);
+  text-align: center;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.attachment-drop-zone:hover {
+  border-color: var(--primary-color);
+  background: var(--primary-50);
+}
+
+.attachment-drop-zone.drop-zone-active {
+  border-color: var(--primary-color);
+  background: var(--primary-100);
+}
+
+.attachment-drop-zone .pi-cloud-upload {
+  font-size: 2rem;
+  color: var(--text-color-secondary);
+}
+
+.attachment-drop-zone p {
+  margin: 0;
+  color: var(--text-color-secondary);
+  font-weight: 500;
+}
+
+.attachment-drop-zone small {
+  color: var(--text-color-secondary);
+  margin-top: 0.25rem;
+}
+
+.drop-zone-or {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+}
+
+.attachment-file-upload {
+  margin: 0.25rem 0;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-50);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+}
+
+.attachment-item i:first-child {
+  font-size: 1.25rem;
+  color: var(--primary-color);
+}
+
+.attachment-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 </style>

@@ -27,6 +27,7 @@ export interface EmailMessage {
 
 export interface EmailMessageDetail extends EmailMessage {
   recipients: EmailRecipient[]
+  attachments: EmailAttachment[]
 }
 
 export interface EmailRecipient {
@@ -46,6 +47,15 @@ export interface EmailMessageCreate {
   recipient_type: 'all' | 'group' | 'individual'
   recipient_group?: number
   recipient_member?: number
+  attachments?: File[]
+}
+
+export interface EmailAttachment {
+  id: number
+  original_filename: string
+  file_size: number
+  content_type: string
+  created_at: string
 }
 
 export interface EmailTemplateVariable {

@@ -1,7 +1,17 @@
+import os
+import uuid
+
 from django.db import models
 from django.conf import settings
 from .member import Member
 from .group import Group
+
+
+def get_email_attachment_path(instance, filename):
+    """Generate a unique file path for email attachments."""
+    ext = filename.split('.')[-1]
+    unique_filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('email_attachments', unique_filename)
 
 
 class EmailMessage(models.Model):
@@ -145,3 +155,31 @@ class EmailRecipient(models.Model):
     
     def __str__(self):
         return f"{self.recipient_name} <{self.email_address}>"
+
+
+class EmailAttachment(models.Model):
+    """
+    Stores file attachments for email messages.
+    """
+    email_message = models.ForeignKey(
+        EmailMessage,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        verbose_name='E-Mail-Nachricht'
+    )
+    file = models.FileField(
+        upload_to=get_email_attachment_path,
+        verbose_name='Datei'
+    )
+    original_filename = models.CharField(max_length=255, verbose_name='Originaldateiname')
+    file_size = models.PositiveIntegerField(default=0, verbose_name='Dateigröße (Bytes)')
+    content_type = models.CharField(max_length=100, blank=True, verbose_name='MIME-Typ')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Erstellt am')
+
+    class Meta:
+        verbose_name = 'E-Mail-Anhang'
+        verbose_name_plural = 'E-Mail-Anhänge'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return self.original_filename

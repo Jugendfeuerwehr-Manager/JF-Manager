@@ -233,12 +233,8 @@ class MemberEmailService:
             if email not in unique_recipients:
                 unique_recipients[email] = recipient
         
-        # Get sender's signature
-        signature = ''
-        if email_message.sender and hasattr(email_message.sender, 'email_signature'):
-            signature = email_message.sender.email_signature or ''
-        
         # Create EmailRecipient records
+        # Note: Signature is already included in body_html by the frontend
         for email, recipient_data in unique_recipients.items():
             member = Member.objects.filter(id=recipient_data['member_id']).first()
             
@@ -246,8 +242,7 @@ class MemberEmailService:
             personalized_html, personalized_text = EmailTemplateRenderer.render_for_member(
                 email_message.body_html,
                 email_message.body_text,
-                member,
-                signature
+                member
             )
             
             EmailRecipient.objects.create(
@@ -282,6 +277,9 @@ class MemberEmailService:
         successful = 0
         failed = 0
         
+        # Pre-load attachments
+        attachments = list(email_message.attachments.all())
+        
         pending_recipients = email_message.recipients.filter(status='pending')
         
         for recipient in pending_recipients:
@@ -296,6 +294,18 @@ class MemberEmailService:
                 
                 # Attach HTML version
                 email.attach_alternative(recipient.personalized_body_html, "text/html")
+                
+                # Attach files
+                for attachment in attachments:
+                    try:
+                        attachment.file.seek(0)
+                        email.attach(
+                            attachment.original_filename,
+                            attachment.file.read(),
+                            attachment.content_type or 'application/octet-stream',
+                        )
+                    except Exception as attach_err:
+                        logger.warning(f"Could not attach file {attachment.original_filename}: {attach_err}")
                 
                 # Send
                 email.send(fail_silently=False)

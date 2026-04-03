@@ -6,11 +6,12 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.utils.html import strip_tags
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from members.models import EmailMessage, EmailRecipient, Member
+from members.models import EmailMessage, EmailRecipient, EmailAttachment, Member
 from members.services.email_service import (
     MemberEmailService,
     EmailTemplateRenderer,
@@ -37,6 +38,7 @@ class EmailMessageViewSet(viewsets.ModelViewSet):
     
     queryset = EmailMessage.objects.all()
     permission_classes = [IsAuthenticated, CanSendEmails]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['subject', 'recipient_member__name', 'recipient_member__lastname']
     filterset_fields = ['status', 'recipient_type', 'recipient_group', 'sender']
@@ -64,19 +66,13 @@ class EmailMessageViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def send(self, request):
         """
-        Create and send an email message.
+        Create and send an email message with optional file attachments.
         
         POST /api/v1/emails/send/
         
-        Request body:
-        {
-            "subject": "Email subject",
-            "body_html": "<p>Email body</p>",
-            "body_text": "Email body",
-            "recipient_type": "all|group|individual",
-            "recipient_group": 1,  // if type is "group"
-            "recipient_member": 1   // if type is "individual"
-        }
+        Accepts multipart/form-data with:
+        - subject, body_html, body_text, recipient_type, recipient_group, recipient_member
+        - attachments: one or more files (field name: "attachments")
         """
         create_serializer = EmailMessageCreateSerializer(
             data=request.data,
@@ -86,6 +82,40 @@ class EmailMessageViewSet(viewsets.ModelViewSet):
         
         # Create email message
         email_message = create_serializer.save()
+        
+        # Handle file attachments
+        ALLOWED_CONTENT_TYPES = {
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/plain', 'text/csv',
+        }
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+        files = request.FILES.getlist('attachments')
+        for f in files:
+            if f.content_type not in ALLOWED_CONTENT_TYPES:
+                email_message.delete()
+                return Response(
+                    {'error': f'Dateityp "{f.content_type}" ist nicht erlaubt für "{f.name}".'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if f.size > MAX_FILE_SIZE:
+                email_message.delete()
+                return Response(
+                    {'error': f'Datei "{f.name}" ist zu groß (max. 10 MB).'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            EmailAttachment.objects.create(
+                email_message=email_message,
+                file=f,
+                original_filename=f.name,
+                file_size=f.size,
+                content_type=f.content_type or '',
+            )
         
         try:
             # Prepare recipients
@@ -161,17 +191,11 @@ class EmailMessageViewSet(viewsets.ModelViewSet):
         
         member = Member.objects.get(id=request_serializer.validated_data['member_id'])
         
-        # Get signature
-        signature = ''
-        if hasattr(request.user, 'email_signature'):
-            signature = request.user.email_signature or ''
-        
-        # Render template
+        # Render template (signature is already included in body_html by the frontend)
         rendered_html, rendered_text = EmailTemplateRenderer.render_for_member(
             request_serializer.validated_data['body_html'],
             request_serializer.validated_data.get('body_text', ''),
-            member,
-            signature
+            member
         )
         
         # Get recipient count for this member

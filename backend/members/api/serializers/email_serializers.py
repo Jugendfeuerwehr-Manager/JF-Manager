@@ -3,7 +3,22 @@ API serializers for email messaging system.
 """
 
 from rest_framework import serializers
-from members.models import EmailMessage, EmailRecipient, Group, Member
+from members.models import EmailMessage, EmailRecipient, EmailAttachment, Group, Member
+
+
+class EmailAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for EmailAttachment model."""
+
+    class Meta:
+        model = EmailAttachment
+        fields = [
+            'id',
+            'original_filename',
+            'file_size',
+            'content_type',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
 
 
 class EmailRecipientSerializer(serializers.ModelSerializer):
@@ -75,6 +90,7 @@ class EmailMessageDetailSerializer(serializers.ModelSerializer):
     recipient_type_display = serializers.CharField(source='get_recipient_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     recipients = EmailRecipientSerializer(many=True, read_only=True)
+    attachments = EmailAttachmentSerializer(many=True, read_only=True)
     
     class Meta:
         model = EmailMessage
@@ -100,6 +116,7 @@ class EmailMessageDetailSerializer(serializers.ModelSerializer):
             'created_at',
             'sent_at',
             'recipients',
+            'attachments',
         ]
         read_only_fields = [
             'id',
