@@ -265,7 +265,7 @@ SPECTACULAR_SETTINGS = {
 
 LANGUAGE_CODE = 'de-de'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.environ.get('TIME_ZONE', 'Europe/Berlin')
 
 USE_I18N = True
 

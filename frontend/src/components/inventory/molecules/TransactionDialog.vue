@@ -154,6 +154,27 @@
         </small>
       </div>
 
+      <!-- Discard Reason (only for DISCARD transactions) -->
+      <div v-if="form.transaction_type === 'DISCARD'" class="field">
+        <label for="discardReason">Aussortierungsgrund *</label>
+        <Dropdown
+          id="discardReason"
+          v-model="form.discard_reason"
+          :options="discardReasonOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Grund auswählen"
+          class="w-full"
+        >
+          <template #option="{ option }">
+            <div class="flex align-items-center gap-2">
+              <i :class="['pi', option.icon]"></i>
+              <span>{{ option.label }}</span>
+            </div>
+          </template>
+        </Dropdown>
+      </div>
+
       <!-- Notes -->
       <div class="field">
         <label for="note">Notiz</label>
@@ -190,8 +211,8 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useInventoryStore } from '@/stores/inventory'
 import { useToast } from 'primevue/usetoast'
-import type { TransactionType, TransactionCreate, Stock } from '@/types/inventory'
-import { TRANSACTION_TYPES } from '@/types/inventory'
+import type { TransactionType, TransactionCreate, Stock, DiscardReason } from '@/types/inventory'
+import { TRANSACTION_TYPES, DISCARD_REASONS } from '@/types/inventory'
 
 interface Props {
   modelValue: boolean
@@ -220,8 +241,11 @@ const form = ref<TransactionCreate>({
   source: null,
   target: null,
   quantity: 1,
-  note: ''
+  note: '',
+  discard_reason: null
 })
+
+const discardReasonOptions = DISCARD_REASONS
 
 // Two-step selection: main item, then variant (if applicable)
 const selectedMainItem = ref<number | null>(null)
@@ -467,6 +491,7 @@ const isValid = computed(() => {
   if (needsSource.value && !form.value.source) return false
   if (needsTarget.value && !form.value.target) return false
   if (needsSource.value && form.value.quantity > maxQuantity.value) return false
+  if (form.value.transaction_type === 'DISCARD' && !form.value.discard_reason) return false
   return true
 })
 
@@ -483,7 +508,8 @@ watch(
         source: props.initialStock?.location || null,
         target: null,
         quantity: 1,
-        note: ''
+        note: '',
+        discard_reason: null
       }
 
       // Set initial item/variant selection
@@ -594,7 +620,8 @@ function autoSelectBestSource(type: string, id: number) {
 watch(
   () => form.value.transaction_type,
   () => {
-    // Reset source/target when type changes (unless we have initialStock)
+    // Reset source/target and discard_reason when type changes (unless we have initialStock)
+    form.value.discard_reason = null
     if (!props.initialStock) {
       form.value.source = null
       form.value.target = null
@@ -628,6 +655,9 @@ async function submit() {
     if (form.value.item_variant) data.item_variant = form.value.item_variant
     if (form.value.source) data.source = form.value.source
     if (form.value.target) data.target = form.value.target
+    if (form.value.transaction_type === 'DISCARD' && form.value.discard_reason) {
+      data.discard_reason = form.value.discard_reason
+    }
 
     const result = await inventoryStore.createTransaction(data)
 
