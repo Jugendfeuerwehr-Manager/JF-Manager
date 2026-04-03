@@ -75,7 +75,22 @@ class Transaction(models.Model):
         ('RETURN', 'Rückgabe'),
         ('DISCARD', 'Aussortierung'),
     ]
+    DISCARD_REASONS = [
+        ('LOST', 'Verloren'),
+        ('DAMAGED', 'Beschädigt'),
+        ('WORN_OUT', 'Verschlissen'),
+        ('STOLEN', 'Gestohlen'),
+        ('OTHER', 'Sonstiges'),
+    ]
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES, verbose_name='Transaktionstyp')
+    discard_reason = models.CharField(
+        max_length=20,
+        choices=DISCARD_REASONS,
+        blank=True,
+        null=True,
+        verbose_name='Aussortierungsgrund',
+        help_text='Grund für die Aussortierung (nur bei DISCARD-Transaktionen)'
+    )
     item = models.ForeignKey(
         Item,
         on_delete=models.PROTECT,
@@ -147,6 +162,11 @@ class Transaction(models.Model):
             raise ValidationError('Quelle und Ziel sind erforderlich für Umlagerung/Ausleihe.')
         if self.source == self.target and self.source is not None:
             raise ValidationError('Quelle und Ziel dürfen nicht identisch sein.')
+        # Validate discard_reason is only set for DISCARD transactions
+        if self.transaction_type == 'DISCARD' and not self.discard_reason:
+            raise ValidationError('Aussortierungsgrund ist erforderlich für DISCARD-Transaktionen.')
+        if self.transaction_type != 'DISCARD' and self.discard_reason:
+            raise ValidationError('Aussortierungsgrund kann nur bei DISCARD-Transaktionen angegeben werden.')
 
     def __str__(self):
         item_name = self.get_item_name()

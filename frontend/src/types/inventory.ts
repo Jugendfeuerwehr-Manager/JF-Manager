@@ -151,6 +151,8 @@ export interface Stock {
  */
 export type TransactionType = 'IN' | 'OUT' | 'MOVE' | 'LOAN' | 'RETURN' | 'DISCARD'
 
+export type DiscardReason = 'LOST' | 'DAMAGED' | 'WORN_OUT' | 'STOLEN' | 'OTHER'
+
 export const TRANSACTION_TYPES: { value: TransactionType; label: string; icon: string; color: string }[] = [
   { value: 'IN', label: 'Eingang', icon: 'pi-arrow-down', color: 'success' },
   { value: 'OUT', label: 'Ausgang', icon: 'pi-arrow-up', color: 'warning' },
@@ -158,6 +160,14 @@ export const TRANSACTION_TYPES: { value: TransactionType; label: string; icon: s
   { value: 'LOAN', label: 'Ausleihe', icon: 'pi-user', color: 'primary' },
   { value: 'RETURN', label: 'Rückgabe', icon: 'pi-replay', color: 'secondary' },
   { value: 'DISCARD', label: 'Aussortierung', icon: 'pi-trash', color: 'danger' }
+]
+
+export const DISCARD_REASONS: { value: DiscardReason; label: string; icon: string }[] = [
+  { value: 'LOST', label: 'Verloren', icon: 'pi-question-circle' },
+  { value: 'DAMAGED', label: 'Beschädigt', icon: 'pi-exclamation-triangle' },
+  { value: 'WORN_OUT', label: 'Verschlissen', icon: 'pi-clock' },
+  { value: 'STOLEN', label: 'Gestohlen', icon: 'pi-ban' },
+  { value: 'OTHER', label: 'Sonstiges', icon: 'pi-ellipsis-h' }
 ]
 
 /**
@@ -178,6 +188,8 @@ export interface Transaction {
   note: string
   user: number | null
   user_username: string | null
+  discard_reason: DiscardReason | null
+  discard_reason_display: string | null
 }
 
 export interface TransactionCreate {
@@ -188,6 +200,7 @@ export interface TransactionCreate {
   target?: number | null
   quantity: number
   note?: string
+  discard_reason?: DiscardReason | null
 }
 
 /**
@@ -241,8 +254,40 @@ export interface TransactionListParams {
   item_variant?: number
   source?: number
   target?: number
+  discard_reason?: DiscardReason
   limit?: number
   offset?: number
+}
+
+/**
+ * Discard statistics response
+ */
+export interface DiscardStatistics {
+  by_reason: {
+    discard_reason: DiscardReason
+    count: number
+    total_quantity: number
+  }[]
+  by_category: {
+    category: string
+    count: number
+    total_quantity: number
+  }[]
+  by_time_period: {
+    last_30_days: {
+      count: number
+      total_quantity: number
+    }
+    last_6_months: {
+      count: number
+      total_quantity: number
+    }
+    all_time: {
+      count: number
+      total_quantity: number
+    }
+  }
+  recent_discards: Transaction[]
 }
 
 /**

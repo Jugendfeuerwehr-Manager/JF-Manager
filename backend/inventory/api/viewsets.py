@@ -255,7 +255,89 @@ class TransactionViewSet(BaseAuthMixin, viewsets.ModelViewSet):
         "item_variant",
         "source",
         "target",
+        "discard_reason",
     ]
 
     def perform_create(self, serializer):
         serializer.save()  # user injected in serializer.create
+
+    @action(detail=False, methods=["get"], url_path="discard-statistics")
+    def discard_statistics(self, request):
+        """
+        Returns statistics about discarded items.
+        
+        Provides breakdown by:
+        - Discard reason (lost, damaged, worn out, stolen, other)
+        - Time period (last 30 days, last 6 months, all time)
+        - Category
+        - Total quantity and value
+        """
+        from django.db.models import Count, Sum
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Filter only DISCARD transactions
+        discard_qs = Transaction.objects.filter(transaction_type='DISCARD')
+        
+        # Breakdown by reason
+        by_reason = discard_qs.values('discard_reason').annotate(
+            count=Count('id'),
+            total_quantity=Sum('quantity')
+        ).order_by('-total_quantity')
+        
+        # Breakdown by category
+        by_category = discard_qs.select_related(
+            'item__category',
+            'item_variant__parent_item__category'
+        ).values(
+            'item__category__name',
+            'item_variant__parent_item__category__name'
+        ).annotate(
+            count=Count('id'),
+            total_quantity=Sum('quantity')
+        ).order_by('-total_quantity')
+        
+        # Normalize category breakdown (merge item and variant categories)
+        category_stats = {}
+        for entry in by_category:
+            cat_name = entry['item__category__name'] or entry['item_variant__parent_item__category__name']
+            if cat_name:
+                if cat_name not in category_stats:
+                    category_stats[cat_name] = {'category': cat_name, 'count': 0, 'total_quantity': 0}
+                category_stats[cat_name]['count'] += entry['count']
+                category_stats[cat_name]['total_quantity'] += entry['total_quantity'] or 0
+        
+        # Time-based breakdown
+        now = timezone.now()
+        last_30_days = discard_qs.filter(date__gte=now - timedelta(days=30)).aggregate(
+            count=Count('id'),
+            total_quantity=Sum('quantity')
+        )
+        last_6_months = discard_qs.filter(date__gte=now - timedelta(days=180)).aggregate(
+            count=Count('id'),
+            total_quantity=Sum('quantity')
+        )
+        all_time = discard_qs.aggregate(
+            count=Count('id'),
+            total_quantity=Sum('quantity')
+        )
+        
+        # Recent discard transactions
+        recent_discards = discard_qs.select_related(
+            'item',
+            'item_variant',
+            'item_variant__parent_item',
+            'source',
+            'user'
+        ).order_by('-date')[:10]
+        
+        return Response({
+            'by_reason': list(by_reason),
+            'by_category': list(category_stats.values()),
+            'by_time_period': {
+                'last_30_days': last_30_days,
+                'last_6_months': last_6_months,
+                'all_time': all_time
+            },
+            'recent_discards': TransactionSerializer(recent_discards, many=True).data
+        })

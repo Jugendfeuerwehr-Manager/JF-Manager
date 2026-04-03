@@ -29,7 +29,8 @@ import type {
   TransactionCreate,
   TransactionListParams,
   PaginatedResponse,
-  MemberEquipmentResponse
+  MemberEquipmentResponse,
+  DiscardStatistics
 } from '@/types/inventory'
 
 // ==================== Categories ====================
@@ -292,6 +293,14 @@ export const transactionsApi = {
    */
   delete(id: number) {
     return apiClient.delete(`/inventory/transactions/${id}/`)
+  },
+
+  /**
+   * Get discard statistics
+   * Returns breakdown by reason, category, and time period
+   */
+  getDiscardStatistics() {
+    return apiClient.get<DiscardStatistics>('/inventory/transactions/discard-statistics/')
   }
 }
 

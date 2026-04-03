@@ -130,6 +130,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     source_name = serializers.CharField(source="source.name", read_only=True)
     target_name = serializers.CharField(source="target.name", read_only=True)
     user_username = serializers.CharField(source="user.username", read_only=True)
+    discard_reason_display = serializers.CharField(source="get_discard_reason_display", read_only=True)
 
     class Meta:
         model = Transaction
@@ -149,7 +150,27 @@ class TransactionSerializer(serializers.ModelSerializer):
             "source_name",
             "target_name",
             "user_username",
+            "discard_reason",
+            "discard_reason_display",
         ]
+
+    def validate(self, attrs):
+        """Custom validation for transaction data"""
+        transaction_type = attrs.get('transaction_type')
+        discard_reason = attrs.get('discard_reason')
+        
+        # Validate discard_reason for DISCARD transactions
+        if transaction_type == 'DISCARD' and not discard_reason:
+            raise serializers.ValidationError({
+                'discard_reason': 'Aussortierungsgrund ist erforderlich für DISCARD-Transaktionen.'
+            })
+        
+        if transaction_type != 'DISCARD' and discard_reason:
+            raise serializers.ValidationError({
+                'discard_reason': 'Aussortierungsgrund kann nur bei DISCARD-Transaktionen angegeben werden.'
+            })
+        
+        return attrs
 
     def create(self, validated_data):
         request = self.context.get("request")
