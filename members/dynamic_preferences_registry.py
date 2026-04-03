@@ -111,9 +111,6 @@ class EmailHostPassword(StringPreference):
     field_kwargs = {
         'widget': forms.PasswordInput(render_value=True),
     }
-    field_kwargs = {
-        'widget': forms.PasswordInput(render_value=True),
-    }
 
 @global_preferences_registry.register
 class DefaultFromEmail(StringPreference):
@@ -123,6 +120,18 @@ class DefaultFromEmail(StringPreference):
     help_text = 'E-Mail-Adresse, die als Absender verwendet wird'
     default = 'webmaster@localhost'
     required = False
+
+@global_preferences_registry.register
+class EmailSignature(StringPreference):
+    section = email
+    name = 'email_signature'
+    verbose_name = 'E-Mail Signatur'
+    help_text = 'Signatur, die automatisch an neue E-Mails angehängt wird'
+    default = ''
+    required = False
+    field_kwargs = {
+        'widget': forms.Textarea(attrs={'rows': 4}),
+    }
 
 # Order settings
 @global_preferences_registry.register

@@ -1,0 +1,361 @@
+{% extends 'home.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}✉️ E-Mail an Mitglieder senden{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Drag-and-drop attachment area ─────────────────────────────────────── */
+.drag-drop-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+}
+.drag-drop-area:hover,
+.drag-drop-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+.drag-drop-area.dragover {
+    border-style: solid;
+}
+.drag-drop-content { pointer-events: none; }
+
+/* ── File-list ──────────────────────────────────────────────────────────── */
+.file-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #e9ecef;
+    border-radius: 4px;
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
+}
+.file-list-item .remove-file {
+    cursor: pointer;
+    color: #dc3545;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'members:index' %}">Mitglieder</a></li>
+                    <li class="breadcrumb-item active">E-Mail senden</li>
+                </ol>
+            </nav>
+            <h1 class="page-header">
+                <i class="fas fa-envelope me-2"></i>E-Mail an Mitglieder senden
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- ── Composition form ──────────────────────────────────────────── -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-pen me-2"></i>Neue E-Mail verfassen</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="send-mail-form">
+                        {% csrf_token %}
+
+                        <!-- Recipients -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Empfänger *</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="recipient-search"
+                                       placeholder="Mitglieder suchen …">
+                            </div>
+                            <div class="border rounded p-2" style="max-height:220px; overflow-y:auto;" id="recipient-list">
+                                {% for member in all_members %}
+                                <div class="form-check recipient-item" data-name="{{ member.name }} {{ member.lastname }}">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="recipients" value="{{ member.pk }}"
+                                           id="recipient-{{ member.pk }}"
+                                           {% if member in form.fields.recipients.initial.all %}checked{% endif %}>
+                                    <label class="form-check-label" for="recipient-{{ member.pk }}">
+                                        {{ member.lastname }}, {{ member.name }}
+                                        <small class="text-muted ms-1">{{ member.email }}</small>
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted mb-0">Keine Mitglieder mit E-Mail-Adresse vorhanden.</p>
+                                {% endfor %}
+                            </div>
+                            {% if form.recipients.errors %}
+                            <div class="invalid-feedback d-block">{{ form.recipients.errors }}</div>
+                            {% endif %}
+                            <div class="mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="select-all">Alle auswählen</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-1" id="deselect-all">Alle abwählen</button>
+                                <span class="ms-2 text-muted small" id="selected-count">0 ausgewählt</span>
+                            </div>
+                        </div>
+
+                        <!-- Subject -->
+                        <div class="mb-3">
+                            <label for="id_subject" class="form-label fw-bold">Betreff *</label>
+                            <input type="text" class="form-control {% if form.subject.errors %}is-invalid{% endif %}"
+                                   id="id_subject" name="subject"
+                                   value="{{ form.subject.value|default:'' }}">
+                            {% if form.subject.errors %}
+                            <div class="invalid-feedback">{{ form.subject.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Body (contains signature pre-filled client-side) -->
+                        <div class="mb-3">
+                            <label for="id_body" class="form-label fw-bold">Nachricht *</label>
+                            <textarea class="form-control {% if form.body.errors %}is-invalid{% endif %}"
+                                      id="id_body" name="body" rows="10">{{ form.body.value|default:'' }}</textarea>
+                            {% if form.body.errors %}
+                            <div class="invalid-feedback">{{ form.body.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- ── Attachment drag-and-drop area ──────────────── -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-paperclip me-1"></i>Anhänge
+                            </label>
+
+                            <!-- Hidden file input – multiple files allowed -->
+                            <input type="file" id="attachment-input" name="attachments" multiple
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+                                   class="d-none">
+
+                            <div id="drag-drop-area" class="drag-drop-area">
+                                <div class="drag-drop-content">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3" id="drop-icon"></i>
+                                    <h5 id="drop-title">Dateien hier ablegen oder klicken zum Auswählen</h5>
+                                    <p class="text-muted mb-0" id="drop-text">
+                                        PDF, DOC, DOCX, JPG, PNG, GIF (max. 10 MB je Datei)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- List of selected files -->
+                            <div id="attachment-list"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'members:index' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Abbrechen
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i>E-Mail senden
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Info sidebar ──────────────────────────────────────────────── -->
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Hinweise</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Nur Mitglieder mit hinterlegter E-Mail-Adresse können ausgewählt werden.
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Zulässige Anhang-Formate: PDF, DOC, DOCX, JPG, PNG, GIF
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Maximale Anhang-Größe: 10 MB je Datei
+                        </li>
+                        <li>
+                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                            Die Signatur kann in den <a href="{% url 'settings_manager:email' %}">E-Mail-Einstellungen</a> hinterlegt werden.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block pagescripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Recipient search / select-all ──────────────────────────────────── */
+    const searchInput  = document.getElementById('recipient-search');
+    const recipientList = document.getElementById('recipient-list');
+    const selectAll    = document.getElementById('select-all');
+    const deselectAll  = document.getElementById('deselect-all');
+    const selectedCount = document.getElementById('selected-count');
+
+    function updateCount() {
+        const n = recipientList.querySelectorAll('input[type=checkbox]:checked').length;
+        selectedCount.textContent = n + ' ausgewählt';
+    }
+
+    searchInput.addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        recipientList.querySelectorAll('.recipient-item').forEach(function (item) {
+            const name = item.dataset.name.toLowerCase();
+            item.style.display = name.includes(q) ? '' : 'none';
+        });
+    });
+
+    selectAll.addEventListener('click', function () {
+        recipientList.querySelectorAll('input[type=checkbox]:not([style*="display: none"])').forEach(function (cb) {
+            const item = cb.closest('.recipient-item');
+            if (!item || item.style.display !== 'none') cb.checked = true;
+        });
+        updateCount();
+    });
+
+    deselectAll.addEventListener('click', function () {
+        recipientList.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+            cb.checked = false;
+        });
+        updateCount();
+    });
+
+    recipientList.addEventListener('change', updateCount);
+    updateCount();
+
+    /* ── Drag-and-drop attachment handling ──────────────────────────────── */
+    const dragDropArea    = document.getElementById('drag-drop-area');
+    const attachmentInput = document.getElementById('attachment-input');
+    const attachmentList  = document.getElementById('attachment-list');
+
+    // Accumulated DataTransfer for keeping track of multiple files
+    let selectedFiles = new DataTransfer();
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function validateFile(file) {
+        const maxSize = 10 * 1024 * 1024;
+        const allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (file.size > maxSize) {
+            alert('Die Datei "' + file.name + '" ist zu groß (max. 10 MB).');
+            return false;
+        }
+        if (!allowed.includes(ext)) {
+            alert('Dateityp "' + ext + '" wird nicht unterstützt.');
+            return false;
+        }
+        return true;
+    }
+
+    function renderFileList() {
+        attachmentList.innerHTML = '';
+        Array.from(selectedFiles.files).forEach(function (file, idx) {
+            const item = document.createElement('div');
+            item.className = 'file-list-item';
+            item.innerHTML =
+                '<span><i class="fas fa-file me-2 text-secondary"></i>' +
+                file.name + ' <small class="text-muted">(' + formatFileSize(file.size) + ')</small></span>' +
+                '<button type="button" class="remove-file" data-idx="' + idx + '" title="Entfernen">' +
+                '<i class="fas fa-times"></i></button>';
+            attachmentList.appendChild(item);
+        });
+
+        // Sync back to the real file input
+        attachmentInput.files = selectedFiles.files;
+
+        // Update drop zone appearance
+        if (selectedFiles.files.length > 0) {
+            dragDropArea.style.borderColor = '#28a745';
+            dragDropArea.style.backgroundColor = '#d4edda';
+            document.getElementById('drop-icon').className = 'fas fa-check-circle fa-3x text-success mb-3';
+            document.getElementById('drop-title').textContent = selectedFiles.files.length + ' Datei(en) ausgewählt';
+            document.getElementById('drop-text').textContent = 'Weitere Dateien ablegen oder klicken zum Hinzufügen';
+        } else {
+            dragDropArea.style.borderColor = '';
+            dragDropArea.style.backgroundColor = '';
+            document.getElementById('drop-icon').className = 'fas fa-cloud-upload-alt fa-3x text-muted mb-3';
+            document.getElementById('drop-title').textContent = 'Dateien hier ablegen oder klicken zum Auswählen';
+            document.getElementById('drop-text').textContent = 'PDF, DOC, DOCX, JPG, PNG, GIF (max. 10 MB je Datei)';
+        }
+    }
+
+    function addFiles(fileList) {
+        Array.from(fileList).forEach(function (file) {
+            if (validateFile(file)) {
+                selectedFiles.items.add(file);
+            }
+        });
+        renderFileList();
+    }
+
+    // Remove a file by index
+    attachmentList.addEventListener('click', function (e) {
+        const btn = e.target.closest('.remove-file');
+        if (!btn) return;
+        const idx = parseInt(btn.dataset.idx);
+        const newDt = new DataTransfer();
+        Array.from(selectedFiles.files).forEach(function (f, i) {
+            if (i !== idx) newDt.items.add(f);
+        });
+        selectedFiles = newDt;
+        renderFileList();
+    });
+
+    // Click on drag-drop area → open file picker
+    dragDropArea.addEventListener('click', function () {
+        attachmentInput.click();
+    });
+
+    // File picker change
+    attachmentInput.addEventListener('change', function () {
+        addFiles(this.files);
+        // Reset so the same file can be selected again later
+        this.value = '';
+    });
+
+    // Drag-over
+    dragDropArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dragDropArea.classList.add('dragover');
+    });
+    dragDropArea.addEventListener('dragleave', function () {
+        dragDropArea.classList.remove('dragover');
+    });
+
+    // Drop
+    dragDropArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dragDropArea.classList.remove('dragover');
+        addFiles(e.dataTransfer.files);
+    });
+});
+</script>
+{% endblock %}

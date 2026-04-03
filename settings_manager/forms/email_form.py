@@ -57,6 +57,13 @@ class EmailSettingsForm(BaseSettingsForm):
         help_text='E-Mail-Adresse, die als Absender verwendet wird',
         required=False
     )
+
+    email_signature = forms.CharField(
+        label='E-Mail Signatur',
+        widget=forms.Textarea(attrs={'rows': 4}),
+        help_text='Signatur, die automatisch an neue E-Mails angehängt wird',
+        required=False
+    )
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -70,6 +77,7 @@ class EmailSettingsForm(BaseSettingsForm):
         self.fields['email_host_user'].initial = global_preferences.get('email__email_host_user')
         self.fields['email_host_password'].initial = global_preferences.get('email__email_host_password')
         self.fields['default_from_email'].initial = global_preferences.get('email__default_from_email')
+        self.fields['email_signature'].initial = global_preferences.get('email__email_signature')
     
     def get_preference_key(self, field_name):
         mapping = {
@@ -80,6 +88,7 @@ class EmailSettingsForm(BaseSettingsForm):
             'email_host_user': 'email__email_host_user',
             'email_host_password': 'email__email_host_password',
             'default_from_email': 'email__default_from_email',
+            'email_signature': 'email__email_signature',
         }
         return mapping.get(field_name)
     
@@ -106,6 +115,7 @@ class EmailSettingsForm(BaseSettingsForm):
             Fieldset(
                 'Absender Einstellungen',
                 'default_from_email',
+                'email_signature',
                 css_class='mb-4'
             ),
             HTML('<div class="alert alert-info"><i class="fas fa-info-circle"></i> '

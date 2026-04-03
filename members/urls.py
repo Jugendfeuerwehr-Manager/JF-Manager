@@ -14,6 +14,7 @@ from .views import (
     ParentDeleteView,
     ParentTableView,
     ParentUpdateView,
+    SendMailView,
 )
 
 app_name = 'members'
@@ -26,6 +27,7 @@ member_patterns: List[path] = [
     path('<int:pk>/edit/', login_required(MemberUpdateView.as_view()), name='edit'),
     path('<int:pk>/delete/', login_required(MemberDeleteView.as_view()), name='delete'),
     path('<int:pk>/rent/', MemberRentView.as_view(), name='rent'),
+    path('send-mail/', login_required(SendMailView.as_view()), name='send_mail'),
 ]
 
 # Parent management URLs

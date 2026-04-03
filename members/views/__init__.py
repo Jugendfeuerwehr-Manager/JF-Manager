@@ -7,6 +7,7 @@ from .member_update_view import *
 from .member_view_set import *
 from .member_table_filter_form_helper import *
 from .member_table_view import *
+from .send_mail_view import SendMailView
 
 
 from .parent_create_view import *
