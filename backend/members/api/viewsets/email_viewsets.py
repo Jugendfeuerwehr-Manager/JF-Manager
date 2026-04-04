@@ -144,7 +144,7 @@ class EmailMessageViewSet(viewsets.ModelViewSet):
             email_message.save()
             
             return Response(
-                {'error': str(e)},
+                {'error': 'Beim Versenden der E-Mail ist ein interner Fehler aufgetreten.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
