@@ -20,13 +20,24 @@
         </div>
       </template>
       <template #end>
-        <Avatar
-          :label="userInitials"
-          shape="circle"
-          size="normal"
-          class="mobile-toolbar-avatar"
-          @click="toggleUserMenu"
-        />
+        <div class="mobile-toolbar-end">
+          <Button
+            :icon="themeIcon"
+            text
+            rounded
+            size="small"
+            class="mobile-toolbar-button"
+            aria-label="Theme wechseln"
+            @click="cycleTheme"
+          />
+          <Avatar
+            :label="userInitials"
+            shape="circle"
+            size="normal"
+            class="mobile-toolbar-avatar"
+            @click="toggleUserMenu"
+          />
+        </div>
       </template>
     </Toolbar>
 
@@ -109,6 +120,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppSettings } from '@/composables/useAppSettings'
+import { useTheme } from '@/composables/useTheme'
 import AppTopbar from './AppTopbar.vue'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
@@ -123,6 +135,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { websiteTitle } = useAppSettings()
+const { themeMode, setMode } = useTheme()
 const userMenu = ref()
 
 const isMobile = ref(window.innerWidth < 768)
@@ -143,6 +156,7 @@ const mainNavItems: MenuItem[] = [
 
 const secondaryNavItems: MenuItem[] = [
   createNavItem('Dashboard', 'pi pi-home', '/'),
+  createNavItem('Protokoll', 'pi pi-list', '/log'),
   createNavItem('Inventar', 'pi pi-box', '/inventory'),
   createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'),
   createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'),
@@ -223,6 +237,18 @@ const navigateTo = (item: MenuItem) => {
   if (!item.to) return
   router.push(item.to as string)
   navigationVisible.value = false
+}
+
+const themeIcon = computed(() => {
+  if (themeMode.value === 'dark') return 'pi pi-moon'
+  if (themeMode.value === 'light') return 'pi pi-sun'
+  return 'pi pi-desktop'
+})
+
+const cycleTheme = () => {
+  const order: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system']
+  const idx = order.indexOf(themeMode.value)
+  setMode(order[(idx + 1) % order.length] as 'light' | 'dark' | 'system')
 }
 
 const handleResize = () => {
@@ -311,6 +337,12 @@ onUnmounted(() => {
 
 .mobile-toolbar-avatar {
   cursor: pointer;
+}
+
+.mobile-toolbar-end {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .mobile-bottom-nav {

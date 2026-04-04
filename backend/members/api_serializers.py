@@ -38,15 +38,16 @@ class MemberListSerializer(serializers.ModelSerializer):
     age = serializers.IntegerField(source='get_age', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
     avatar_url = serializers.SerializerMethodField()
-    
+    has_alert = serializers.SerializerMethodField()
+
     class Meta:
         model = Member
         fields = [
             'id', 'name', 'lastname', 'full_name', 'birthday', 'age',
-            'email', 'phone', 'mobile', 'city', 'joined',
-            'status', 'group', 'parents', 'avatar_url'
+            'email', 'phone', 'mobile', 'city', 'joined', 'gender',
+            'status', 'group', 'parents', 'avatar_url', 'has_alert'
         ]
-        read_only_fields = ['id', 'age', 'full_name', 'parents', 'avatar_url']
+        read_only_fields = ['id', 'age', 'full_name', 'parents', 'avatar_url', 'has_alert']
 
     def get_avatar_url(self, obj):
         if obj.avatar:
@@ -54,6 +55,13 @@ class MemberListSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.avatar.url)
         return None
+
+    def get_has_alert(self, obj):
+        try:
+            from servicebook.selectors import get_attandance_alert_by_member
+            return get_attandance_alert_by_member(obj)
+        except Exception:
+            return False
 
 
 class MemberDetailSerializer(serializers.ModelSerializer):
@@ -76,7 +84,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'lastname', 'full_name', 'birthday', 'age',
             'email', 'street', 'zip_code', 'city', 'phone', 'mobile',
-            'notes', 'joined', 'identityCardNumber', 'canSwimm',
+            'notes', 'joined', 'identityCardNumber', 'canSwimm', 'gender',
             'status', 'status_id', 'group', 'group_id', 
             'storage_location', 'parents', 'avatar', 'avatar_url'
         ]
@@ -98,7 +106,7 @@ class MemberCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'lastname', 'birthday',
             'email', 'street', 'zip_code', 'city', 'phone', 'mobile',
-            'notes', 'joined', 'identityCardNumber', 'canSwimm',
+            'notes', 'joined', 'identityCardNumber', 'canSwimm', 'gender',
             'status', 'group', 'storage_location', 'avatar'
         ]
         read_only_fields = ['id']

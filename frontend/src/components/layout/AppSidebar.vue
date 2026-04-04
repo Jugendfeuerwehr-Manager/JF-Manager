@@ -40,7 +40,7 @@
         size="small"
         class="sidebar-toggle-btn"
         @click="toggleCollapsed"
-        aria-label="Toggle Sidebar"
+        aria-label="Seitenleiste umschalten"
       />
     </div>
 
@@ -98,7 +98,7 @@ const sidebarVisible = computed({
 });
 
 const menuItems: MenuItem[] = [
-  { label: 'Dashboard', icon: 'pi pi-home', route: '/dashboard' },
+  { label: 'Übersicht', icon: 'pi pi-home', route: '/dashboard' },
   { separator: true },
   { label: 'Mitglieder', icon: 'pi pi-users', route: '/members' },
   { label: 'Eltern', icon: 'pi pi-user', route: '/parents' },

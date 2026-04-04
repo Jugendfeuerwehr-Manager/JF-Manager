@@ -7,8 +7,20 @@ from .status import Status
 from .utils import get_file_path
 
 class Member(models.Model):
+    class Gender(models.TextChoices):
+        MALE = 'male', 'Männlich'
+        FEMALE = 'female', 'Weiblich'
+        DIVERSE = 'diverse', 'Divers'
+
     name = models.CharField(max_length=200, default='', verbose_name="Name")
     lastname = models.CharField(max_length=200, default='', verbose_name="Nachname")
+    gender = models.CharField(
+        max_length=10,
+        choices=Gender.choices,
+        blank=True,
+        default='',
+        verbose_name='Geschlecht'
+    )
     avatar = models.FileField(upload_to=get_file_path,
                         null=True,
                         blank=True,

@@ -29,7 +29,7 @@
             <h1 class="brand-title">
               <span class="title-fire">JF</span>-<span class="title-manager">Manager</span>
             </h1>
-            <p class="brand-subtitle">Jugendfeuerwehr Management System</p>
+            <p class="brand-subtitle">Jugendfeuerwehr Verwaltungssystem</p>
             
             <!-- Decorative Line -->
             <div class="decorative-line">
@@ -99,7 +99,7 @@
             <!-- Login Button with Hover Effects -->
             <Button
               type="submit"
-              label="Login"
+              label="Anmelden"
               icon="pi pi-sign-in"
               :loading="loading"
               class="login-button"

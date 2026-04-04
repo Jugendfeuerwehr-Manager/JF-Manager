@@ -53,13 +53,16 @@
         />
 
         <!-- Member Settings -->
-        <MemberSettingsForm
-          v-else-if="tab.id === 'member'"
-          :settings="settingsStore.member"
-          :can-edit="settingsStore.canChangeCategory('member')"
-          :saving="settingsStore.loading"
-          @save="handleSaveMember"
-        />
+        <div v-else-if="tab.id === 'member'" class="flex flex-column gap-4">
+          <MemberSettingsForm
+            :settings="settingsStore.member"
+            :can-edit="settingsStore.canChangeCategory('member')"
+            :saving="settingsStore.loading"
+            @save="handleSaveMember"
+          />
+          <StatusesManager :can-edit="settingsStore.canChangeCategory('member')" />
+          <EventTypesManager :can-edit="settingsStore.canChangeCategory('member')" />
+        </div>
 
         <!-- Service Settings -->
         <ServiceSettingsForm
@@ -101,6 +104,8 @@ import EmailSettingsForm from '../molecules/EmailSettingsForm.vue'
 import MemberSettingsForm from '../molecules/MemberSettingsForm.vue'
 import ServiceSettingsForm from '../molecules/ServiceSettingsForm.vue'
 import OrderSettingsForm from '../molecules/OrderSettingsForm.vue'
+import StatusesManager from '../molecules/StatusesManager.vue'
+import EventTypesManager from '../molecules/EventTypesManager.vue'
 import EmailTemplatesView from './EmailTemplatesView.vue'
 import type {
   GeneralSettings,

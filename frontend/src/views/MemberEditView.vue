@@ -84,6 +84,17 @@
                 />
               </div>
 
+              <div class="field col-12">
+                <label>Geschlecht</label>
+                <SelectButton
+                  v-model="formData.gender"
+                  :options="genderOptions"
+                  option-label="label"
+                  option-value="value"
+                  class="gender-select-button"
+                />
+              </div>
+
               <div class="field field-checkbox">
                 <Checkbox 
                   id="canSwimm" 
@@ -247,6 +258,7 @@ import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
+import SelectButton from 'primevue/selectbutton'
 import FileUpload from 'primevue/fileupload'
 import Image from 'primevue/image'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -262,10 +274,17 @@ const isEditMode = computed(() => !!route.params.id)
 const avatarFile = ref<File | null>(null)
 const avatarPreview = ref<string | null>(null)
 
+const genderOptions = [
+  { label: 'Männlich', value: 'male' },
+  { label: 'Weiblich', value: 'female' },
+  { label: 'Divers', value: 'diverse' }
+]
+
 const formData = reactive({
   name: '',
   lastname: '',
   birthday: null as Date | null,
+  gender: '' as string,
   email: '',
   street: '',
   zip_code: '',
@@ -306,6 +325,7 @@ onMounted(async () => {
         name: member.name,
         lastname: member.lastname,
         birthday: member.birthday ? new Date(member.birthday) : null,
+        gender: member.gender || '',
         email: member.email,
         street: member.street,
         zip_code: member.zip_code,
@@ -411,6 +431,7 @@ async function handleSubmit() {
       }
     }
     if (formData.identityCardNumber) formDataToSend.append('identityCardNumber', formData.identityCardNumber)
+    if (formData.gender) formDataToSend.append('gender', formData.gender)
     formDataToSend.append('canSwimm', String(formData.canSwimm))
     
     if (formData.status !== null) formDataToSend.append('status', String(formData.status))
@@ -521,6 +542,15 @@ async function handleSubmit() {
 
 .field-checkbox label {
   margin: 0;
+}
+
+.gender-select-button :deep(.p-selectbutton) {
+  width: 100%;
+  display: flex;
+}
+
+.gender-select-button :deep(.p-togglebutton) {
+  flex: 1;
 }
 
 .p-error {

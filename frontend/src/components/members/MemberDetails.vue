@@ -51,6 +51,13 @@
 
       <div class="col-12 md:col-6">
         <div class="mb-3">
+          <label class="block text-sm font-semibold mb-1">Geschlecht</label>
+          <p class="m-0">{{ formatGender(member.gender) }}</p>
+        </div>
+      </div>
+
+      <div class="col-12 md:col-6">
+        <div class="mb-3">
           <label class="block text-sm font-semibold mb-1">Eingetreten</label>
           <p class="m-0">{{ formatDate(member.joined) }}</p>
         </div>
@@ -158,5 +165,14 @@ const formatDate = (dateString?: string | null) => {
     month: '2-digit',
     day: '2-digit'
   })
+}
+
+const formatGender = (gender?: string) => {
+  const genderLabels: Record<string, string> = {
+    male: 'Männlich',
+    female: 'Weiblich',
+    diverse: 'Divers'
+  }
+  return gender ? genderLabels[gender] || '-' : '-'
 }
 </script>

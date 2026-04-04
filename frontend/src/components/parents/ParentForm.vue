@@ -3,7 +3,7 @@
     <div class="grid">
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="first_name">First Name *</label>
+          <label for="first_name">Vorname *</label>
           <InputText
             id="first_name"
             v-model="formData.first_name"
@@ -15,7 +15,7 @@
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="last_name">Last Name *</label>
+          <label for="last_name">Nachname *</label>
           <InputText
             id="last_name"
             v-model="formData.last_name"
@@ -27,12 +27,12 @@
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="relation">Relation</label>
+          <label for="relation">Beziehung</label>
           <Dropdown
             id="relation"
             v-model="formData.relation"
             :options="relationOptions"
-            placeholder="Select relation"
+            placeholder="Beziehung wählen"
             class="w-full"
           />
         </div>
@@ -40,50 +40,50 @@
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="email">Email</label>
+          <label for="email">E-Mail</label>
           <InputText id="email" v-model="formData.email" type="email" class="w-full" />
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="phone">Phone</label>
+          <label for="phone">Telefon</label>
           <InputText id="phone" v-model="formData.phone" class="w-full" />
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="mobile">Mobile</label>
+          <label for="mobile">Mobil</label>
           <InputText id="mobile" v-model="formData.mobile" class="w-full" />
         </div>
       </div>
 
       <div class="col-12">
         <div class="field">
-          <label for="address">Address</label>
+          <label for="address">Straße</label>
           <InputText id="address" v-model="formData.address" class="w-full" />
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="postal_code">Postal Code</label>
+          <label for="postal_code">PLZ</label>
           <InputText id="postal_code" v-model="formData.postal_code" class="w-full" />
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="city">City</label>
+          <label for="city">Ort</label>
           <InputText id="city" v-model="formData.city" class="w-full" />
         </div>
       </div>
     </div>
 
     <div class="flex justify-end gap-2 mt-4">
-      <Button label="Cancel" severity="secondary" @click="emit('cancel')" type="button" />
-      <Button label="Save" type="submit" :loading="loading" />
+      <Button label="Abbrechen" severity="secondary" @click="emit('cancel')" type="button" />
+      <Button label="Speichern" type="submit" :loading="loading" />
     </div>
   </form>
 </template>
@@ -118,7 +118,7 @@ const formData = ref<Partial<Parent>>({
   city: ''
 })
 
-const relationOptions = ['Mother', 'Father', 'Guardian', 'Other']
+const relationOptions = ['Mutter', 'Vater', 'Erziehungsberechtigter', 'Sonstige']
 
 const submitted = ref(false)
 const loading = ref(false)

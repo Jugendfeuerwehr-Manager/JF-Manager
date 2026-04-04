@@ -23,6 +23,7 @@ export interface MemberListParams {
   search?: string
   status?: number
   group?: number
+  gender?: string
   ordering?: string
 }
 
@@ -52,7 +53,14 @@ export const membersApi = {
   },
 
   getStatistics() {
-    return apiClient.get<{ total: number; by_status: Record<string, number> }>('/members/statistics/')
+    return apiClient.get<{
+      total: number
+      gender: { male: number; female: number; diverse: number; unknown: number }
+      by_status: Array<{ name: string; color: string; count: number }>
+      by_group: Array<{ name: string; count: number }>
+      age: { avg: number; min: number; max: number; buckets: Array<{ label: string; count: number }> } | null
+      can_swim: number
+    }>('/members/statistics/')
   },
 
   getParents(id: number) {
@@ -149,7 +157,7 @@ export const groupsApi = {
 }
 
 export const eventsApi = {
-  list(params?: { member?: number; type?: number; ordering?: string }) {
+  list(params?: { member?: number; type?: number; search?: string; ordering?: string; limit?: number; offset?: number }) {
     return apiClient.get<PaginatedResponse<Event>>('/events/', { params })
   },
 

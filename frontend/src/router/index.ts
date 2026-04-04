@@ -211,6 +211,11 @@ const router = createRouter({
           component: () => import('@/views/SettingsView.vue')
         },
         {
+          path: 'log',
+          name: 'log',
+          component: () => import('@/views/LogView.vue')
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('@/views/ProfileView.vue')

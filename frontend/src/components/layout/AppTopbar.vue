@@ -10,6 +10,43 @@
 
       <template #end>
         <div class="topbar-end">
+          <!-- Dark/Light/System mode toggle -->
+          <div class="theme-toggle" role="group" aria-label="Theme wählen">
+            <Button
+              v-tooltip.bottom="'Hell'"
+              icon="pi pi-sun"
+              text
+              rounded
+              size="small"
+              :severity="themeMode === 'light' ? 'primary' : 'secondary'"
+              :class="{ 'theme-btn-active': themeMode === 'light' }"
+              aria-label="Helles Theme"
+              @click="setMode('light')"
+            />
+            <Button
+              v-tooltip.bottom="'Dunkel'"
+              icon="pi pi-moon"
+              text
+              rounded
+              size="small"
+              :severity="themeMode === 'dark' ? 'primary' : 'secondary'"
+              :class="{ 'theme-btn-active': themeMode === 'dark' }"
+              aria-label="Dunkles Theme"
+              @click="setMode('dark')"
+            />
+            <Button
+              v-tooltip.bottom="'System'"
+              icon="pi pi-desktop"
+              text
+              rounded
+              size="small"
+              :severity="themeMode === 'system' ? 'primary' : 'secondary'"
+              :class="{ 'theme-btn-active': themeMode === 'system' }"
+              aria-label="System Theme"
+              @click="setMode('system')"
+            />
+          </div>
+
           <div class="user-profile" @click="toggleUserMenu">
             <Avatar
               :label="userInitials"
@@ -34,7 +71,9 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppSettings } from '@/composables/useAppSettings'
+import { useTheme } from '@/composables/useTheme'
 import Avatar from 'primevue/avatar'
+import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Menubar from 'primevue/menubar'
 import type { MenuItem } from 'primevue/menuitem'
@@ -46,6 +85,7 @@ const emit = defineEmits<{
 const router = useRouter()
 const authStore = useAuthStore()
 const { websiteTitle } = useAppSettings()
+const { themeMode, setMode } = useTheme()
 const userMenu = ref()
 
 const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
@@ -147,6 +187,19 @@ const toggleUserMenu = (event: Event) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--p-border-radius-md);
+  padding: 0.1rem;
+}
+
+.theme-btn-active {
+  background: var(--p-primary-50) !important;
 }
 
 .user-profile {

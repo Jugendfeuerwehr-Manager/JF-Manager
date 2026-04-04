@@ -49,7 +49,7 @@ class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.select_related('status', 'group', 'storage_location').prefetch_related('parent_set')
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'group', 'canSwimm']
+    filterset_fields = ['status', 'group', 'canSwimm', 'gender']
     search_fields = ['name', 'lastname', 'email', 'identityCardNumber']
     ordering_fields = ['name', 'lastname', 'birthday', 'joined']
     ordering = ['lastname', 'name']
@@ -67,14 +67,70 @@ class MemberViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def statistics(self, request):
-        total = self.queryset.count()
-        by_status = {}
+        from django.db.models import Count, Avg, Min, Max
+        from datetime import date
+
+        qs = self.queryset
+        total = qs.count()
+
+        # Gender distribution
+        gender_counts = {g: 0 for g in ['male', 'female', 'diverse', '']}
+        for row in qs.values('gender').annotate(count=Count('id')):
+            gender_counts[row['gender'] or ''] = row['count']
+
+        # Status distribution
+        by_status = []
         for status_obj in Status.objects.all():
-            by_status[status_obj.name] = self.queryset.filter(status=status_obj).count()
-        
+            count = qs.filter(status=status_obj).count()
+            by_status.append({'name': status_obj.name, 'color': status_obj.color, 'count': count})
+        no_status_count = qs.filter(status__isnull=True).count()
+        if no_status_count:
+            by_status.append({'name': 'Kein Status', 'color': '#aaaaaa', 'count': no_status_count})
+
+        # Group distribution
+        by_group = []
+        for group_obj in Group.objects.all():
+            count = qs.filter(group=group_obj).count()
+            by_group.append({'name': group_obj.name, 'count': count})
+        no_group_count = qs.filter(group__isnull=True).count()
+        if no_group_count:
+            by_group.append({'name': 'Keine Gruppe', 'count': no_group_count})
+
+        # Age statistics
+        today = date.today()
+        ages = []
+        for birthday in qs.filter(birthday__isnull=False).values_list('birthday', flat=True):
+            age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
+            ages.append(age)
+
+        age_stats = {}
+        if ages:
+            age_stats = {
+                'avg': round(sum(ages) / len(ages), 1),
+                'min': min(ages),
+                'max': max(ages),
+            }
+            # Age buckets: one bucket per year
+            from collections import Counter
+            age_counter = Counter(ages)
+            buckets = [{'label': str(age), 'count': count} for age, count in sorted(age_counter.items())]
+            age_stats['buckets'] = buckets
+
+        # Swim capability
+        can_swim = qs.filter(canSwimm=True).count()
+
         return Response({
             'total': total,
-            'by_status': by_status
+            'gender': {
+                'male': gender_counts.get('male', 0),
+                'female': gender_counts.get('female', 0),
+                'diverse': gender_counts.get('diverse', 0),
+                'unknown': gender_counts.get('', 0),
+            },
+            'by_status': by_status,
+            'by_group': by_group,
+            'age': age_stats,
+            'can_swim': can_swim,
         })
 
     @extend_schema(
@@ -204,8 +260,9 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.select_related('member', 'type').order_by('-datetime')
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['member', 'type']
+    search_fields = ['member__name', 'member__lastname', 'notes', 'type__name']
     ordering_fields = ['datetime']
     ordering = ['-datetime']
 

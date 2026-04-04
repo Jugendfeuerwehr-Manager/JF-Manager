@@ -31,6 +31,19 @@ class CustomUser(AbstractUser):
         help_text='Ihre persönliche Signatur für E-Mails'
     )
 
+    THEME_MODE_CHOICES = [
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+        ('system', 'System'),
+    ]
+    theme_mode = models.CharField(
+        max_length=10,
+        choices=THEME_MODE_CHOICES,
+        default='system',
+        verbose_name='Theme-Modus',
+        help_text='Bevorzugter Farbmodus (Hell, Dunkel, System)'
+    )
+
     def __str__(self):
         if self.last_name and self.first_name:
             return self.get_full_name()

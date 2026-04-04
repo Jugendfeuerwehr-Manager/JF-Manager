@@ -141,7 +141,7 @@ app.use(PrimeVue, {
   theme: {
     preset: Aura,
     options: {
-      darkModeSelector: 'system',
+      darkModeSelector: '.app-dark',
       cssLayer: false
     }
   },
@@ -156,5 +156,10 @@ app.directive('tooltip', Tooltip)
 import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
 authStore.initialize()
+
+// Initialize theme
+import { useTheme } from './composables/useTheme'
+const { initTheme } = useTheme()
+initTheme()
 
 app.mount('#app')

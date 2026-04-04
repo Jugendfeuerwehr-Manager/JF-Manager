@@ -17,12 +17,14 @@ export interface Member {
   joined: string | null
   identityCardNumber: string
   canSwimm: boolean
+  gender: 'male' | 'female' | 'diverse' | ''
   status: Status | null
   group: Group | null
   storage_location: number | null
   avatar: string | null
   avatar_url: string | null
   parents?: Parent[]
+  has_alert: boolean
 }
 
 export interface MemberCreate {
@@ -39,6 +41,7 @@ export interface MemberCreate {
   joined?: string | null
   identityCardNumber?: string
   canSwimm?: boolean
+  gender?: 'male' | 'female' | 'diverse' | ''
   status?: number | null
   group?: number | null
   storage_location?: number | null
@@ -130,6 +133,7 @@ export interface UserInfo {
   dsgvo_internal: boolean
   dsgvo_external: boolean
   email_signature?: string
+  theme_mode?: 'light' | 'dark' | 'system'
   groups: UserGroup[]
   permissions: string[]
 }
