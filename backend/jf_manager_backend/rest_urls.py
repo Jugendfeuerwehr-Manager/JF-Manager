@@ -5,6 +5,7 @@ from members.api_views import (
 )
 from members.api.viewsets.email_viewsets import EmailMessageViewSet
 from users.api_views import UserViewSet
+from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
 # Import enhanced API viewsets from orders.api instead of legacy orders.views
 from orders.api.viewsets import (
     OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
@@ -38,6 +39,9 @@ from settings_manager.api import SettingsViewSet, EmailTemplateViewSet
 
 api = routers.DefaultRouter()
 api.register(r'users', UserViewSet)
+api.register(r'admin/users', AdminUserViewSet, basename='admin-users')
+api.register(r'admin/groups', AuthGroupViewSet, basename='admin-groups')
+api.register(r'admin/permissions', PermissionViewSet, basename='admin-permissions')
 api.register(r'members', MemberViewSet)
 api.register(r'parents', ParentViewSet)
 api.register(r'statuses', StatusViewSet)

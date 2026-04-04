@@ -78,21 +78,25 @@ import ServiceFilters from '@/components/servicebook/molecules/ServiceFilters.vu
 import { useServicebookStore } from '@/stores/servicebook'
 import type { ServiceFilters as ServiceFiltersType, ServiceListParams } from '@/types/servicebook'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
+import { useQueryTableState } from '@/composables/useQueryTableState'
 
 const router = useRouter()
 const servicebookStore = useServicebookStore()
+const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const filters = ref<ServiceFiltersType>({
-  search: undefined,
-  topic: undefined,
-  place: undefined,
-  operations_manager: undefined,
-  dateFrom: null,
-  dateTo: null
+  search: getString('search') || undefined,
+  topic: getString('topic') || undefined,
+  place: getString('place') || undefined,
+  operations_manager: getInt('operations_manager', 0) || undefined,
+  dateFrom: getString('dateFrom') ? new Date(getString('dateFrom')) : null,
+  dateTo: getString('dateTo') ? new Date(getString('dateTo')) : null
 })
 
-const currentPage = ref(1)
-const pageSize = ref(12)
+const currentPage = ref(getInt('page', 1))
+const pageSize = ref(getInt('rows', 12))
+
+const SERVICES_URL_DEFAULTS = { page: 1, rows: 12 }
 const statisticsLoading = ref(false)
 const statistics = ref(servicebookStore.statistics)
 
@@ -108,8 +112,8 @@ onActivated(async () => {
 
 const loadServices = async () => {
   const params: ServiceListParams = {
-    page: currentPage.value,
-    page_size: pageSize.value,
+    offset: (currentPage.value - 1) * pageSize.value,
+    limit: pageSize.value,
     ordering: '-start'
   }
 
@@ -174,12 +178,14 @@ const topLists = computed(() => {
 
 const applyFilters = async () => {
   currentPage.value = 1
+  syncToUrl({ search: filters.value.search, topic: filters.value.topic, place: filters.value.place, operations_manager: filters.value.operations_manager, dateFrom: filters.value.dateFrom?.toISOString().split('T')[0], dateTo: filters.value.dateTo?.toISOString().split('T')[0], page: currentPage.value, rows: pageSize.value }, SERVICES_URL_DEFAULTS)
   await loadServices()
 }
 
 const handlePageChange = async (page: number, size: number) => {
   currentPage.value = page
   pageSize.value = size
+  syncToUrl({ search: filters.value.search, topic: filters.value.topic, place: filters.value.place, operations_manager: filters.value.operations_manager, dateFrom: filters.value.dateFrom?.toISOString().split('T')[0], dateTo: filters.value.dateTo?.toISOString().split('T')[0], page: currentPage.value, rows: pageSize.value }, SERVICES_URL_DEFAULTS)
   await loadServices()
 }
 

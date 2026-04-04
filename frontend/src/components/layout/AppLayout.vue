@@ -161,7 +161,8 @@ const secondaryNavItems: MenuItem[] = [
   createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'),
   createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'),
   createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'),
-  createNavItem('Einstellungen', 'pi pi-cog', '/settings')
+  createNavItem('Einstellungen', 'pi pi-cog', '/settings'),
+  createNavItem('Benutzerverwaltung', 'pi pi-shield', '/users'),
 ]
 
 const membersNavItem = mainNavItems.find(item => item.to === '/members')

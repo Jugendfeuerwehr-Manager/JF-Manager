@@ -34,7 +34,7 @@
             optionLabel="label"
             optionValue="value"
             placeholder="Status filtern"
-            @change="fetchEmails"
+            @change="onStatusFilterChange"
             :showClear="true"
             class="status-filter"
           />
@@ -53,7 +53,9 @@
         <DataTable
           :value="emailsStore.emails"
           paginator
-          :rows="20"
+          :rows="currentRows"
+          :first="tableFirst"
+          :rows-per-page-options="[10, 20, 50]"
           :total-records="emailsStore.pagination.count"
           lazy
           @page="onPage"
@@ -270,6 +272,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useEmailsStore } from '@/stores/emails'
 import type { EmailMessage, EmailMessageDetail } from '@/types/emails'
+import { useQueryTableState } from '@/composables/useQueryTableState'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -288,11 +291,18 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const emailsStore = useEmailsStore()
+const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const isMobile = ref(window.innerWidth < 768)
-const searchQuery = ref('')
-const statusFilter = ref<'draft' | 'sending' | 'sent' | 'failed' | 'partial' | null>(null)
-const currentPage = ref(1)
+const searchQuery = ref(getString('search'))
+const statusFilter = ref<'draft' | 'sending' | 'sent' | 'failed' | 'partial' | null>(
+  (getString('status') as 'draft' | 'sending' | 'sent' | 'failed' | 'partial') || null
+)
+const currentPage = ref(getInt('page', 1))
+const currentRows = ref(getInt('rows', 20))
+const tableFirst = computed(() => (currentPage.value - 1) * currentRows.value)
+
+const EMAIL_URL_DEFAULTS = { page: 1, rows: 20 }
 const showDetailDialog = ref(false)
 const currentEmail = ref<EmailMessage | null>(null)
 const emailDetails = ref<EmailMessageDetail | null>(null)
@@ -320,8 +330,8 @@ const handleResize = () => {
 const fetchEmails = async () => {
   try {
     await emailsStore.fetchEmails({
-      page: currentPage.value,
-      page_size: 20,
+      offset: (currentPage.value - 1) * currentRows.value,
+      limit: currentRows.value,
       search: searchQuery.value || undefined,
       status: (statusFilter.value as EmailMessage['status']) || undefined,
       ordering: '-created_at'
@@ -341,19 +351,22 @@ const handleSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     currentPage.value = 1
+    syncToUrl({ search: searchQuery.value, status: statusFilter.value, page: currentPage.value, rows: currentRows.value }, EMAIL_URL_DEFAULTS)
     fetchEmails()
   }, 500)
 }
 
 const onPage = (event: any) => {
   currentPage.value = event.page + 1
-  emailsStore.fetchEmails({
-    page: currentPage.value,
-    page_size: event.rows,
-    search: searchQuery.value || undefined,
-    status: (statusFilter.value as EmailMessage['status']) || undefined,
-    ordering: '-created_at'
-  })
+  currentRows.value = event.rows
+  syncToUrl({ search: searchQuery.value, status: statusFilter.value, page: currentPage.value, rows: currentRows.value }, EMAIL_URL_DEFAULTS)
+  fetchEmails()
+}
+
+const onStatusFilterChange = () => {
+  currentPage.value = 1
+  syncToUrl({ search: searchQuery.value, status: statusFilter.value, page: currentPage.value, rows: currentRows.value }, EMAIL_URL_DEFAULTS)
+  fetchEmails()
 }
 
 const viewEmail = async (email: EmailMessage) => {

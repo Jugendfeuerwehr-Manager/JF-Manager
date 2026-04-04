@@ -27,7 +27,7 @@
             placeholder="Eintragstyp"
             show-clear
             class="filter-select"
-            @change="loadEvents"
+            @change="onTypeFilterChange"
           />
 
           <Select
@@ -39,7 +39,7 @@
             show-clear
             filter
             class="filter-select"
-            @change="loadEvents"
+            @change="onMemberFilterChange"
           />
 
           <Button
@@ -58,10 +58,12 @@
     <!-- Data Table -->
     <Card>
       <template #content>
+        <!-- Desktop Table -->
         <DataTable
           :value="events"
           :loading="loading"
           :rows="pageSize"
+          :first="currentPage * pageSize"
           lazy
           :total-records="totalCount"
           paginator
@@ -72,6 +74,7 @@
           striped-rows
           @page="onPage"
           @sort="onSort"
+          class="log-table"
         >
           <template #empty>
             <div class="empty-state">
@@ -114,25 +117,91 @@
             </template>
           </Column>
 
-          <Column field="notes" header="Notizen" style="min-width: 200px">
+          <Column field="notes" header="Notizen" style="min-width: 250px">
             <template #body="{ data }">
-              <span v-if="data.notes" class="notes-cell">{{ data.notes }}</span>
+              <div v-if="data.notes" class="notes-cell" v-tooltip.top="data.notes">
+                {{ data.notes }}
+              </div>
               <span v-else class="text-color-secondary">—</span>
             </template>
           </Column>
         </DataTable>
       </template>
     </Card>
+
+    <!-- Mobile Card List -->
+    <div class="mobile-log-list">
+      <div v-if="loading" class="flex justify-content-center p-4">
+        <ProgressSpinner style="width: 2rem; height: 2rem" />
+      </div>
+
+      <div v-else-if="!events.length" class="empty-state">
+        <i class="pi pi-list"></i>
+        <p>Keine Einträge gefunden</p>
+      </div>
+
+      <template v-else>
+        <Card v-for="event in events" :key="event.id" class="mobile-event-card mb-2">
+          <template #content>
+            <div class="mobile-event-header">
+              <RouterLink
+                v-if="event.member"
+                :to="`/members/${event.member}`"
+                class="member-link font-semibold"
+              >
+                {{ event.member_name }}
+              </RouterLink>
+              <span v-else class="font-semibold">{{ event.member_name }}</span>
+              <Tag
+                v-if="event.event_type"
+                :value="event.event_type.name"
+                severity="info"
+                class="ml-auto"
+              />
+            </div>
+            <div class="mobile-event-date text-color-secondary text-sm mt-1">
+              <i class="pi pi-calendar mr-1"></i>
+              {{ formatDate(event.datetime) }}
+            </div>
+            <div v-if="event.notes" class="mobile-event-notes mt-2">
+              {{ event.notes }}
+            </div>
+          </template>
+        </Card>
+
+        <!-- Mobile Pagination -->
+        <div class="mobile-pagination mt-3">
+          <Button
+            icon="pi pi-chevron-left"
+            severity="secondary"
+            text
+            :disabled="currentPage === 0"
+            @click="currentPage--; loadEvents()"
+          />
+          <span class="text-color-secondary text-sm">
+            Seite {{ currentPage + 1 }} von {{ Math.ceil(totalCount / pageSize) || 1 }}
+          </span>
+          <Button
+            icon="pi pi-chevron-right"
+            severity="secondary"
+            text
+            :disabled="(currentPage + 1) * pageSize >= totalCount"
+            @click="currentPage++; loadEvents()"
+          />
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useEventsStore } from '@/stores/events'
 import { useMembersStore } from '@/stores/members'
 import { eventsApi } from '@/api/members'
 import type { Event } from '@/types/api'
+import { useQueryTableState } from '@/composables/useQueryTableState'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
@@ -141,21 +210,26 @@ import type { DataTablePageEvent, DataTableSortEvent } from 'primevue/datatable'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import ProgressSpinner from 'primevue/progressspinner'
 
 const eventsStore = useEventsStore()
 const membersStore = useMembersStore()
+const router = useRouter()
+const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const events = ref<Event[]>([])
 const loading = ref(false)
 const totalCount = ref(0)
-const pageSize = ref(25)
-const currentPage = ref(0)
-const sortField = ref('datetime')
-const sortOrder = ref<-1 | 1>(-1)
+const pageSize = ref(getInt('rows', 25))
+const currentPage = ref(getInt('page', 1) - 1)  // DataTable uses 0-indexed page
+const sortField = ref(getString('sortField', 'datetime'))
+const sortOrder = ref<-1 | 1>((getInt('sortOrder', -1)) as -1 | 1)
 
-const search = ref('')
-const filterType = ref<number | null>(null)
-const filterMember = ref<number | null>(null)
+const search = ref(getString('search'))
+const filterType = ref<number | null>(getInt('type', 0) || null)
+const filterMember = ref<number | null>(getInt('member', 0) || null)
+
+const LOG_URL_DEFAULTS = { page: 1, rows: 25, sortField: 'datetime', sortOrder: -1 }
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -199,6 +273,7 @@ function onSearchInput() {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     currentPage.value = 0
+    syncToUrl({ search: search.value, type: filterType.value, member: filterMember.value, page: currentPage.value + 1, rows: pageSize.value, sortField: sortField.value, sortOrder: sortOrder.value }, LOG_URL_DEFAULTS)
     loadEvents()
   }, 350)
 }
@@ -206,6 +281,7 @@ function onSearchInput() {
 function onPage(event: DataTablePageEvent) {
   currentPage.value = event.page
   pageSize.value = event.rows
+  syncToUrl({ search: search.value, type: filterType.value, member: filterMember.value, page: currentPage.value + 1, rows: pageSize.value, sortField: sortField.value, sortOrder: sortOrder.value }, LOG_URL_DEFAULTS)
   loadEvents()
 }
 
@@ -213,6 +289,19 @@ function onSort(event: DataTableSortEvent) {
   sortField.value = (event.sortField as string) ?? 'datetime'
   sortOrder.value = (event.sortOrder as 1 | -1) ?? -1
   currentPage.value = 0
+  syncToUrl({ search: search.value, type: filterType.value, member: filterMember.value, page: currentPage.value + 1, rows: pageSize.value, sortField: sortField.value, sortOrder: sortOrder.value }, LOG_URL_DEFAULTS)
+  loadEvents()
+}
+
+function onTypeFilterChange() {
+  currentPage.value = 0
+  syncToUrl({ search: search.value, type: filterType.value, member: filterMember.value, page: currentPage.value + 1, rows: pageSize.value, sortField: sortField.value, sortOrder: sortOrder.value }, LOG_URL_DEFAULTS)
+  loadEvents()
+}
+
+function onMemberFilterChange() {
+  currentPage.value = 0
+  syncToUrl({ search: search.value, type: filterType.value, member: filterMember.value, page: currentPage.value + 1, rows: pageSize.value, sortField: sortField.value, sortOrder: sortOrder.value }, LOG_URL_DEFAULTS)
   loadEvents()
 }
 
@@ -269,11 +358,78 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
+/* Notes: readable multi-line with clamp */
 .notes-cell {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 300px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  max-width: 400px;
+  font-size: 0.875rem;
+  color: var(--p-text-color);
+  cursor: help;
+}
+
+/* Mobile card list hidden on desktop */
+.mobile-log-list {
+  display: none;
+}
+
+/* Desktop table visible on larger screens */
+.log-table {
   display: block;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .filters-row {
+    flex-direction: column;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+    min-width: unset;
+  }
+
+  /* Hide desktop table, show mobile cards */
+  .log-table {
+    display: none !important;
+  }
+
+  :deep(.p-card .p-card-body) {
+    padding: 0.75rem;
+  }
+
+  .mobile-log-list {
+    display: block;
+  }
+
+  .mobile-event-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .mobile-event-notes {
+    background: var(--p-surface-50);
+    border-radius: var(--p-border-radius);
+    padding: 0.5rem 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+    font-size: 0.875rem;
+    color: var(--p-text-color);
+  }
+
+  .mobile-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
 }
 </style>

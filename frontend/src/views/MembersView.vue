@@ -210,6 +210,7 @@
           :lazy="true"
           :paginator="true"
           :rows="lazyParams.rows"
+          :first="lazyParams.first"
           :total-records="membersStore.pagination.count"
           :loading="membersStore.loading"
           :rows-per-page-options="[10, 20, 50]"
@@ -398,6 +399,7 @@ import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
 import { membersApi, parentsApi } from '@/api/members'
 import type { Member, Parent } from '@/types/api'
+import { useQueryTableState } from '@/composables/useQueryTableState'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -416,6 +418,7 @@ const router = useRouter()
 const membersStore = useMembersStore()
 const confirm = useConfirm()
 const toast = useToast()
+const { getInt, getString, syncToUrl } = useQueryTableState()
 
 // Contact dialog
 const showContactDialog = ref(false)
@@ -426,10 +429,10 @@ onUnmounted(() => {
 })
 
 const filters = reactive({
-  search: '',
-  status: null as number | null,
-  group: null as number | null,
-  gender: '' as string,
+  search: getString('search'),
+  status: getInt('status', 0) || null as number | null,
+  group: getInt('group', 0) || null as number | null,
+  gender: getString('gender') as string,
 })
 
 const genderFilterOptions = [
@@ -475,12 +478,14 @@ const toggleStats = async () => {
 }
 
 const lazyParams = reactive({
-  first: 0,
-  rows: 20,
-  sortField: 'lastname',
-  sortOrder: 1,
+  first: getInt('offset', 0),
+  rows: getInt('rows', 20),
+  sortField: getString('sortField', 'lastname'),
+  sortOrder: getInt('sortOrder', 1) as 1 | -1,
   filters: {}
 })
+
+const MEMBERS_URL_DEFAULTS = { offset: 0, rows: 20, sortField: 'lastname', sortOrder: 1 }
 
 let filterTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -515,12 +520,14 @@ const loadLazyData = () => {
 const onPage = (event: any) => {
   lazyParams.first = event.first
   lazyParams.rows = event.rows
+  syncToUrl({ search: filters.search, status: filters.status, group: filters.group, gender: filters.gender, offset: lazyParams.first, rows: lazyParams.rows, sortField: lazyParams.sortField, sortOrder: lazyParams.sortOrder }, MEMBERS_URL_DEFAULTS)
   loadLazyData()
 }
 
 const onSort = (event: any) => {
   lazyParams.sortField = event.sortField
   lazyParams.sortOrder = event.sortOrder
+  syncToUrl({ search: filters.search, status: filters.status, group: filters.group, gender: filters.gender, offset: lazyParams.first, rows: lazyParams.rows, sortField: lazyParams.sortField, sortOrder: lazyParams.sortOrder }, MEMBERS_URL_DEFAULTS)
   loadLazyData()
 }
 
@@ -530,6 +537,7 @@ const onFilterChange = () => {
   }
   filterTimeout = setTimeout(() => {
     lazyParams.first = 0
+    syncToUrl({ search: filters.search, status: filters.status, group: filters.group, gender: filters.gender, offset: lazyParams.first, rows: lazyParams.rows, sortField: lazyParams.sortField, sortOrder: lazyParams.sortOrder }, MEMBERS_URL_DEFAULTS)
     loadLazyData()
   }, 500)
 }

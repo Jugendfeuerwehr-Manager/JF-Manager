@@ -102,8 +102,8 @@ export interface EmailRecipientCountResponse {
 }
 
 export interface EmailListParams {
-  page?: number
-  page_size?: number
+  limit?: number
+  offset?: number
   search?: string
   status?: EmailMessage['status']
   recipient_type?: EmailMessage['recipient_type']

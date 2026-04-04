@@ -49,8 +49,10 @@
         <DataTable
           :value="parentsStore.parents"
           paginator
-          :rows="20"
+          :rows="currentRows"
+          :first="tableFirst"
           :total-records="parentsStore.pagination.count"
+          :rows-per-page-options="[10, 20, 50]"
           lazy
           @page="onPage"
           striped-rows
@@ -101,8 +103,8 @@
       v-else
       :items="parentsStore.parents"
       :loading="parentsStore.loading"
-      :rows="20"
-      :paginator="parentsStore.pagination.count > 20"
+      :rows="currentRows"
+      :paginator="parentsStore.pagination.count > currentRows"
       :total-records="parentsStore.pagination.count"
       :lazy="true"
       item-key="id"
@@ -134,6 +136,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useParentsStore } from '@/stores/parents'
 import type { Parent } from '@/api/members'
+import { useQueryTableState } from '@/composables/useQueryTableState'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -151,10 +154,15 @@ const router = useRouter()
 const parentsStore = useParentsStore()
 const confirm = useConfirm()
 const toast = useToast()
+const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const isMobile = ref(window.innerWidth < 768)
-const searchQuery = ref('')
-const currentPage = ref(1)
+const searchQuery = ref(getString('search'))
+const currentPage = ref(getInt('page', 1))
+const currentRows = ref(getInt('rows', 20))
+const tableFirst = computed(() => (currentPage.value - 1) * currentRows.value)
+
+const URL_DEFAULTS = { page: 1, rows: 20 }
 
 onMounted(() => {
   fetchParents()
@@ -172,8 +180,8 @@ const handleResize = () => {
 const fetchParents = async () => {
   try {
     await parentsStore.fetchParents({
-      page: currentPage.value,
-      page_size: 20,
+      offset: (currentPage.value - 1) * currentRows.value,
+      limit: currentRows.value,
       search: searchQuery.value || undefined
     })
   } catch (error) {
@@ -191,17 +199,16 @@ const handleSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     currentPage.value = 1
+    syncToUrl({ search: searchQuery.value, page: currentPage.value, rows: currentRows.value }, URL_DEFAULTS)
     fetchParents()
   }, 500)
 }
 
 const onPage = (event: any) => {
   currentPage.value = event.page + 1
-  parentsStore.fetchParents({
-    page: currentPage.value,
-    page_size: event.rows,
-    search: searchQuery.value || undefined
-  })
+  currentRows.value = event.rows
+  syncToUrl({ search: searchQuery.value, page: currentPage.value, rows: currentRows.value }, URL_DEFAULTS)
+  fetchParents()
 }
 
 const navigateToCreate = () => {

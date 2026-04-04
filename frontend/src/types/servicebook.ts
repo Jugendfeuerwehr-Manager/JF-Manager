@@ -244,8 +244,8 @@ export interface PaginatedResponse<T> {
  * Service List Query Parameters
  */
 export interface ServiceListParams {
-  page?: number
-  page_size?: number
+  limit?: number
+  offset?: number
   ordering?: string
   search?: string
   topic?: string
