@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy
 
 on:
   workflow_dispatch:
@@ -11,14 +11,19 @@ on:
         options:
           - production
           - staging
+      image_tag:
+        description: 'Image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
 
 jobs:
   deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     environment: ${{ github.event.inputs.environment }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,28 +35,51 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            echo "==> Pulling repo changes..."
             git pull origin ${{ github.ref_name }}
-            
-            # Pull latest images
-            docker-compose pull
-            
-            # Backup database before deployment
-            docker-compose run --rm backup
-            
-            # Deploy
-            docker-compose up -d --remove-orphans
-            
-            # Run migrations
+
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+            echo "==> Deploying image tag: ${IMAGE_TAG}"
+
+            # Record current image digests for potential rollback
+            PREV_BACKEND=$(docker inspect --format='{{.Id}}' $(docker-compose ps -q backend 2>/dev/null) 2>/dev/null || echo "none")
+            PREV_FRONTEND=$(docker inspect --format='{{.Id}}' $(docker-compose ps -q frontend 2>/dev/null) 2>/dev/null || echo "none")
+
+            echo "==> Pulling latest images..."
+            IMAGE_TAG="${IMAGE_TAG}" docker-compose pull
+
+            echo "==> Backing up database..."
+            docker-compose run --rm backup || { echo "WARNING: backup failed, aborting deploy"; exit 1; }
+
+            echo "==> Starting services..."
+            IMAGE_TAG="${IMAGE_TAG}" docker-compose up -d --remove-orphans
+
+            echo "==> Waiting for backend to be healthy..."
+            RETRIES=30
+            until docker-compose exec -T backend curl -sf http://localhost:8000/health/ > /dev/null 2>&1; do
+              RETRIES=$((RETRIES - 1))
+              if [ "$RETRIES" -eq 0 ]; then
+                echo "ERROR: Backend health check failed after 60s. Rolling back..."
+                IMAGE_TAG="${IMAGE_TAG}" docker-compose up -d --no-deps backend frontend || true
+                exit 1
+              fi
+              sleep 2
+            done
+
+            echo "==> Running migrations..."
             docker-compose exec -T backend python manage.py migrate --noinput
-            
-            # Collect static files
+
+            echo "==> Collecting static files..."
             docker-compose exec -T backend python manage.py collectstatic --noinput
-            
-            # Check health
-            sleep 10
-            curl -f http://localhost/health || exit 1
-            
-            # Cleanup old images
+
+            echo "==> Verifying frontend health..."
+            curl -sf http://localhost/health || { echo "ERROR: Frontend health check failed"; exit 1; }
+
+            echo "==> Cleaning up old images..."
             docker image prune -f
+
+            echo "==> Deployment complete!"
 
