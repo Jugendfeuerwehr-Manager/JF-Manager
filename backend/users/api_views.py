@@ -46,12 +46,19 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     @extend_schema(
-        summary="Get current user info",
-        description="Get complete information about the currently authenticated user including permissions and groups"
+        summary="Get or update current user info",
+        description="GET: current user information. PATCH: update current user profile fields."
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'patch'])
     def me(self, request):
-        """Get current user information"""
+        """Get or partially update current user information"""
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(
+                request.user, data=request.data, partial=True, context={'request': request}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
         serializer = self.get_serializer(request.user, context={'request': request})
         return Response(serializer.data)
 

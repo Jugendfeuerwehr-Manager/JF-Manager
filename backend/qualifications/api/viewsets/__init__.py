@@ -69,10 +69,8 @@ class QualificationViewSet(viewsets.ModelViewSet):
         if user.has_perm('qualifications.view_all_qualifications'):
             return queryset
         
-        # Regular users see only their own
-        return queryset.filter(
-            Q(user=user) | Q(member__user=user)
-        )
+        # Regular users see only their own qualifications (linked via user FK)
+        return queryset.filter(Q(user=user))
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -97,12 +95,8 @@ class QualificationViewSet(viewsets.ModelViewSet):
             qualifications_qs = Qualification.objects.all()
             special_tasks_qs = SpecialTask.objects.all()
         else:
-            qualifications_qs = Qualification.objects.filter(
-                Q(user=user) | Q(member__user=user)
-            )
-            special_tasks_qs = SpecialTask.objects.filter(
-                Q(user=user) | Q(member__user=user)
-            )
+            qualifications_qs = Qualification.objects.filter(Q(user=user))
+            special_tasks_qs = SpecialTask.objects.filter(Q(user=user))
         
         today = date.today()
         soon_threshold = today + timedelta(days=30)
