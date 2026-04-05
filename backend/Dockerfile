@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip install --no-cache-dir pipenv uwsgi mysqlclient psycopg2-binary
+# Install Python dependencies (pin pipenv version to match local dev environment)
+RUN pip install --no-cache-dir "pipenv==2024.4.1" uwsgi mysqlclient psycopg2-binary
 
 WORKDIR /app
 
