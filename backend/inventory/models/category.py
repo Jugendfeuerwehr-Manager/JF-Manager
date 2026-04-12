@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Category(models.Model):
     """Kategorie für Inventar-Artikel"""
     name = models.CharField(max_length=100, verbose_name='Name')

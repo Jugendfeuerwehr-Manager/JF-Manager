@@ -1,7 +1,8 @@
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.contrib.contenttypes.fields import GenericRelation
 from datetime import date
+
+from django.contrib.contenttypes.fields import GenericRelation
+from django.core.exceptions import ValidationError
+from django.db import models
 
 
 class SpecialTaskType(models.Model):
@@ -45,7 +46,7 @@ class SpecialTask(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Aufgabe"
     )
-    
+
     # Sowohl CustomUser als auch Member können Sonderaufgaben haben
     user = models.ForeignKey(
         'users.CustomUser',
@@ -63,7 +64,7 @@ class SpecialTask(models.Model):
         verbose_name="Mitglied",
         related_name='special_tasks'
     )
-    
+
     start_date = models.DateField(
         verbose_name="Startdatum",
         help_text="Datum des Beginns der Aufgabe"
@@ -78,7 +79,7 @@ class SpecialTask(models.Model):
         blank=True,
         verbose_name="Notiz"
     )
-    
+
     # Generic relation to attachments
     attachments = GenericRelation(
         'members.Attachment',
@@ -121,11 +122,11 @@ class SpecialTask(models.Model):
         # Mindestens User oder Member muss gesetzt sein
         if not self.user and not self.member:
             raise ValidationError('Entweder Benutzer oder Mitglied muss ausgewählt werden.')
-        
+
         # Nicht beide gleichzeitig
         if self.user and self.member:
             raise ValidationError('Nur Benutzer oder Mitglied kann ausgewählt werden, nicht beide.')
-        
+
         # Enddatum nicht vor Startdatum
         if self.end_date and self.end_date < self.start_date:
             raise ValidationError({'end_date': 'Enddatum kann nicht vor Startdatum liegen.'})

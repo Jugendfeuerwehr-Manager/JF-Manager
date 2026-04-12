@@ -1,16 +1,16 @@
 """Service serializers with computed fields and attendance summaries."""
+from django.db.models import Count
 from rest_framework import serializers
-from django.db.models import Count, Q
 
-from servicebook.models import Service, Attendance
-from users.models import CustomUser
 from members.models import Member
+from servicebook.models import Attendance, Service
+from users.models import CustomUser
 
 
 class OperationsManagerSerializer(serializers.ModelSerializer):
     """Minimal serializer for operations managers."""
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    
+
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'full_name', 'email']
@@ -34,11 +34,11 @@ class ServiceListSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    
+
     # Attendance summary
     attendance_summary = serializers.SerializerMethodField()
     has_events = serializers.BooleanField(read_only=True)
-    
+
     class Meta:
         model = Service
         fields = [
@@ -52,7 +52,7 @@ class ServiceListSerializer(serializers.ModelSerializer):
             'attendance_summary',
             'has_events',
         ]
-    
+
     def get_attendance_summary(self, obj):
         """Calculate attendance summary for this service."""
         # Try to use pre-calculated summary if available
@@ -63,13 +63,13 @@ class ServiceListSerializer(serializers.ModelSerializer):
                 'absent': obj.attendance_summary.get('F', 0),
                 'total': sum(obj.attendance_summary.values()),
             }
-        
+
         # Otherwise calculate from database
         attendance_counts = Attendance.objects.filter(service=obj).values('state').annotate(count=Count('id'))
         counts = {'A': 0, 'E': 0, 'F': 0}
         for item in attendance_counts:
             counts[item['state']] = item['count']
-        
+
         return {
             'present': counts['A'],
             'excused': counts['E'],
@@ -82,11 +82,11 @@ class AttendeeDetailSerializer(serializers.ModelSerializer):
     """Serializer for attendee information in service details."""
     full_name = serializers.CharField(source='get_full_name', read_only=True)
     status = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Member
         fields = ['id', 'name', 'lastname', 'full_name', 'status']
-    
+
     def get_status(self, obj):
         """Get attendance status for this member."""
         service = self.context.get('service')
@@ -107,15 +107,15 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    
+
     # Attendance information
     attendance_summary = serializers.SerializerMethodField()
     attendees_with_status = serializers.SerializerMethodField()
     has_events = serializers.BooleanField(read_only=True)
-    
+
     # Computed fields
     duration_minutes = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Service
         fields = [
@@ -133,21 +133,21 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
             'has_events',
             'duration_minutes',
         ]
-    
+
     def get_attendance_summary(self, obj):
         """Calculate attendance summary."""
         attendance_counts = Attendance.objects.filter(service=obj).values('state').annotate(count=Count('id'))
         counts = {'A': 0, 'E': 0, 'F': 0}
         for item in attendance_counts:
             counts[item['state']] = item['count']
-        
+
         return {
             'present': counts['A'],
             'excused': counts['E'],
             'absent': counts['F'],
             'total': sum(counts.values()),
         }
-    
+
     def get_attendees_with_status(self, obj):
         """Get all attendees with their attendance status."""
         attendances = Attendance.objects.filter(service=obj).select_related('person')
@@ -162,7 +162,7 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
             }
             for att in attendances
         ]
-    
+
     def get_duration_minutes(self, obj):
         """Calculate service duration in minutes."""
         if obj.start and obj.end:
@@ -179,7 +179,7 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
-    
+
     class Meta:
         model = Service
         fields = [
@@ -191,14 +191,13 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
             'events',
             'operations_manager_ids',
         ]
-    
+
     def validate(self, data):
         """Validate service data."""
-        if data.get('start') and data.get('end'):
-            if data['end'] <= data['start']:
-                raise serializers.ValidationError({
-                    'end': 'End time must be after start time.'
-                })
+        if data.get('start') and data.get('end') and data['end'] <= data['start']:
+            raise serializers.ValidationError({
+                'end': 'End time must be after start time.'
+            })
         return data
 
 
@@ -210,7 +209,7 @@ class ServiceUpdateSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
-    
+
     class Meta:
         model = Service
         fields = [
@@ -222,12 +221,12 @@ class ServiceUpdateSerializer(serializers.ModelSerializer):
             'events',
             'operations_manager_ids',
         ]
-    
+
     def validate(self, data):
         """Validate service data."""
         start = data.get('start', self.instance.start if self.instance else None)
         end = data.get('end', self.instance.end if self.instance else None)
-        
+
         if start and end and end <= start:
             raise serializers.ValidationError({
                 'end': 'End time must be after start time.'

@@ -4,12 +4,20 @@ Serializers for Settings API
 
 from rest_framework import serializers
 
+from .email_template import (
+    EmailTemplateCreateUpdateSerializer,
+    EmailTemplateDetailSerializer,
+    EmailTemplateListSerializer,
+    EmailTemplatePreviewResponseSerializer,
+    EmailTemplatePreviewSerializer,
+)
+
 
 class GeneralSettingsSerializer(serializers.Serializer):
     """Serializer for general settings"""
     title = serializers.CharField(
-        max_length=200, 
-        required=False, 
+        max_length=200,
+        required=False,
         allow_blank=True,
         help_text='Website title displayed in browser tab'
     )
@@ -18,8 +26,8 @@ class GeneralSettingsSerializer(serializers.Serializer):
 class EmailSettingsSerializer(serializers.Serializer):
     """Serializer for email settings"""
     email_host = serializers.CharField(
-        max_length=200, 
-        required=False, 
+        max_length=200,
+        required=False,
         allow_blank=True,
         help_text='SMTP server hostname or IP address'
     )
@@ -38,19 +46,19 @@ class EmailSettingsSerializer(serializers.Serializer):
         help_text='Use SSL encryption for email connection (not together with TLS)'
     )
     email_host_user = serializers.CharField(
-        max_length=200, 
-        required=False, 
+        max_length=200,
+        required=False,
         allow_blank=True,
         help_text='Username for SMTP authentication'
     )
     email_host_password = serializers.CharField(
-        required=False, 
+        required=False,
         allow_blank=True,
         write_only=True,
         help_text='Password for SMTP authentication'
     )
     default_from_email = serializers.EmailField(
-        required=False, 
+        required=False,
         allow_blank=True,
         help_text='Email address used as sender'
     )
@@ -93,19 +101,18 @@ class ServiceSettingsSerializer(serializers.Serializer):
         """Validate that start time is before end time"""
         start_time = data.get('service_start_time')
         end_time = data.get('service_end_time')
-        
-        if start_time and end_time:
-            if start_time >= end_time:
-                raise serializers.ValidationError(
-                    'Start time must be before end time'
-                )
+
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError(
+                'Start time must be before end time'
+            )
         return data
 
 
 class OrderSettingsSerializer(serializers.Serializer):
     """Serializer for order settings"""
     equipment_manager_email = serializers.EmailField(
-        required=False, 
+        required=False,
         allow_blank=True,
         help_text='Equipment manager email address for order notifications'
     )
@@ -153,27 +160,18 @@ class UserPermissionsSerializer(serializers.Serializer):
     )
 
 
-# Import email template serializers
-from .email_template import (
-    EmailTemplateListSerializer,
-    EmailTemplateDetailSerializer,
-    EmailTemplateCreateUpdateSerializer,
-    EmailTemplatePreviewSerializer,
-    EmailTemplatePreviewResponseSerializer
-)
-
 __all__ = [
-    'GeneralSettingsSerializer',
-    'EmailSettingsSerializer',
-    'MemberSettingsSerializer',
-    'ServiceSettingsSerializer',
-    'OrderSettingsSerializer',
     'AllSettingsSerializer',
     'CategorySettingsUpdateSerializer',
-    'UserPermissionsSerializer',
-    'EmailTemplateListSerializer',
-    'EmailTemplateDetailSerializer',
+    'EmailSettingsSerializer',
     'EmailTemplateCreateUpdateSerializer',
-    'EmailTemplatePreviewSerializer',
+    'EmailTemplateDetailSerializer',
+    'EmailTemplateListSerializer',
     'EmailTemplatePreviewResponseSerializer',
+    'EmailTemplatePreviewSerializer',
+    'GeneralSettingsSerializer',
+    'MemberSettingsSerializer',
+    'OrderSettingsSerializer',
+    'ServiceSettingsSerializer',
+    'UserPermissionsSerializer',
 ]

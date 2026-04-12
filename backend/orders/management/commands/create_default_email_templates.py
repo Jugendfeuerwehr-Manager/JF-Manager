@@ -1,8 +1,9 @@
+
 from django.core.management.base import BaseCommand
-from django.template.loader import get_template
 from django.template import TemplateDoesNotExist
+from django.template.loader import get_template
+
 from orders.models import EmailTemplate
-import os
 
 
 class Command(BaseCommand):
@@ -65,7 +66,7 @@ class Command(BaseCommand):
             'html_template': self.load_template_content('order_summary', 'html'),
             'is_active': True
         }
-        
+
         templates.append(order_summary_template)
 
         created_count = 0
@@ -76,7 +77,7 @@ class Command(BaseCommand):
                 template_type=template_data['template_type'],
                 defaults=template_data
             )
-            
+
             if created:
                 created_count += 1
                 self.stdout.write(
@@ -89,7 +90,7 @@ class Command(BaseCommand):
                     if getattr(template, field) != value:
                         setattr(template, field, value)
                         updated = True
-                
+
                 if updated:
                     template.save()
                     updated_count += 1

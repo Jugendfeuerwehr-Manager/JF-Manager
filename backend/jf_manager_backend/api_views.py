@@ -1,8 +1,8 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class AppSettingsView(APIView):
@@ -17,7 +17,7 @@ class AppSettingsView(APIView):
     )
     def get(self, request):
         global_preferences = global_preferences_registry.manager()
-        
+
         # Extract relevant settings - adjust based on your dynamic_preferences_registry
         settings = {
             'app_name': getattr(global_preferences.get('general__app_name', None), 'value', 'JF-Manager') if hasattr(global_preferences, 'general__app_name') else 'JF-Manager',
@@ -28,5 +28,5 @@ class AppSettingsView(APIView):
             'service_start_time': global_preferences.get('service__service_start_time', '19:00'),
             'service_end_time': global_preferences.get('service__service_end_time', '21:00'),
         }
-        
+
         return Response(settings)

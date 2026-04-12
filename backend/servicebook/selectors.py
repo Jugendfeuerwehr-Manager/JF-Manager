@@ -1,9 +1,12 @@
-from django.db.models import Count, Case, When, IntegerField
-from django.core.cache import cache
-from dynamic_preferences.registries import global_preferences_registry
-from members.models import Member
-from .models import Service, Attendance
 from collections import Counter
+
+from django.core.cache import cache
+from django.db.models import Count
+from dynamic_preferences.registries import global_preferences_registry
+
+from members.models import Member
+
+from .models import Attendance, Service
 
 global_preferences = global_preferences_registry.manager()
 
@@ -72,7 +75,7 @@ def get_attendance_over_time_data():
 
     # Get recent services ordered chronologically (oldest first for timeline)
     services = Service.objects.all().order_by('start')
-    
+
     if not services:
         empty_data = {
             'service_labels': [],
@@ -94,17 +97,17 @@ def get_attendance_over_time_data():
     ).values('service_id', 'state').annotate(
         count=Count('id')
     )
-    
+
     # Create a lookup dictionary for attendance counts per service
     attendance_lookup = {}
     for item in attendance_data:
         service_id = item['service_id']
         state = item['state']
         count = item['count']
-        
+
         if service_id not in attendance_lookup:
             attendance_lookup[service_id] = {'A': 0, 'E': 0, 'F': 0}
-        
+
         attendance_lookup[service_id][state] = count
 
     service_labels = []
@@ -112,7 +115,7 @@ def get_attendance_over_time_data():
     attendance_a = []
     attendance_e = []
     attendance_f = []
-    
+
     for service in services:
         # Create label for the service
         date_str = service.start.strftime('%d.%m.%Y')
@@ -121,11 +124,11 @@ def get_attendance_over_time_data():
             topic = topic[:17] + '...'
         service_labels.append(f"{date_str}")
         service_dates.append(service.start.strftime('%Y-%m-%d'))
-        
+
         # Get attendance counts for this service from our lookup
         counts = attendance_lookup.get(service.id, {'A': 0, 'E': 0, 'F': 0})
         attendance_a.append(counts['A'])
-        attendance_e.append(counts['E']) 
+        attendance_e.append(counts['E'])
         attendance_f.append(counts['F'])
 
     result = {
@@ -137,10 +140,10 @@ def get_attendance_over_time_data():
             'F': attendance_f
         }
     }
-    
+
     # Cache result for 7 days (604800 seconds) since data only changes 1-2 times per week
     cache.set(cache_key, result, 604800)
-    
+
     return result
 
 def invalidate_attendance_over_time_cache():
@@ -157,14 +160,14 @@ def get_services_with_attendance_summary():
     Get services list with pre-calculated attendance summaries for better performance.
     This avoids N+1 queries by calculating all attendance summaries in bulk.
     """
-    from django.db.models import Count, Case, When, IntegerField
-    
+    from django.db.models import Count
+
     # Get services with prefetched relations
     services = Service.objects.select_related().prefetch_related(
         'operations_manager',
         'attendance_set'
     ).order_by('-start')
-    
+
     # Pre-calculate attendance summaries for all services in bulk
     attendance_summaries = {}
     if services:
@@ -174,25 +177,25 @@ def get_services_with_attendance_summary():
         ).values('service_id', 'state').annotate(
             count=Count('id')
         )
-        
+
         # Organize by service_id and state
         for item in attendance_data:
             service_id = item['service_id']
             state = item['state']
             count = item['count']
-            
+
             if service_id not in attendance_summaries:
                 attendance_summaries[service_id] = {'A': 0, 'E': 0, 'F': 0}
-            
+
             attendance_summaries[service_id][state] = count
-    
+
     # Attach attendance summaries to services
     for service in services:
         service.attendance_summary = attendance_summaries.get(
-            service.id, 
+            service.id,
             {'A': 0, 'E': 0, 'F': 0}
         )
-    
+
     return services
 
 # Cache invalidation functions
@@ -201,15 +204,15 @@ def invalidate_service_caches():
     from django.core.cache import cache
     cache.delete('attendance_over_time_data')
     # Add more cache keys here as needed
-    
+
 def get_services_with_attendance_summary_paginated(page_size=50):
     """
     Get paginated services list with pre-calculated attendance summaries.
     This helps with very large datasets by limiting initial rendering.
     """
     from django.core.paginator import Paginator
-    
+
     services = get_services_with_attendance_summary()
     paginator = Paginator(services, page_size)
-    
+
     return paginator

@@ -56,7 +56,7 @@ class EmailSettingsForm(forms.Form):
             raise forms.ValidationError(
                 "TLS und SSL können nicht gleichzeitig aktiviert sein. Bitte wähle nur eine Verschlüsselungsmethode."
             )
-        
+
         return cleaned_data
 
 
@@ -80,7 +80,7 @@ class EmailSettingsAdmin(admin.ModelAdmin):
         """View for managing email settings"""
         # Get the global preferences manager
         global_preferences = global_preferences_registry.manager()
-        
+
         if request.method == 'POST':
             form = EmailSettingsForm(request.POST)
             if form.is_valid():
@@ -88,10 +88,10 @@ class EmailSettingsAdmin(admin.ModelAdmin):
                 for field_name, value in form.cleaned_data.items():
                     pref_key = f'email__{field_name}'
                     global_preferences[pref_key] = value
-                
+
                 # Show success message
                 messages.success(request, 'E-Mail Einstellungen wurden erfolgreich gespeichert.')
-                
+
                 # Redirect to the same page to refresh settings
                 return HttpResponseRedirect(reverse('admin:email_settings'))
         else:
@@ -106,7 +106,7 @@ class EmailSettingsAdmin(admin.ModelAdmin):
                 'default_from_email': global_preferences.get('email__default_from_email'),
             }
             form = EmailSettingsForm(initial=initial_data)
-        
+
         # Current settings from Django's settings (after middleware has applied preferences)
         current_settings = {
             'EMAIL_HOST': settings.EMAIL_HOST,
@@ -117,7 +117,7 @@ class EmailSettingsAdmin(admin.ModelAdmin):
             'EMAIL_USE_SSL': settings.EMAIL_USE_SSL,
             'DEFAULT_FROM_EMAIL': settings.DEFAULT_FROM_EMAIL,
         }
-        
+
         context = {
             'title': 'E-Mail Einstellungen',
             'form': form,
@@ -127,26 +127,26 @@ class EmailSettingsAdmin(admin.ModelAdmin):
             'opts': self.model._meta if self.model else None,
             'app_label': 'email_settings',
         }
-        
+
         return render(request, self.template_name, context)
 
     def test_email_view(self, request):
         """View for testing email settings"""
         # Reuse the existing test email view
         from .email_admin import CustomGlobalPreferenceAdmin
-        
+
         # Create an instance of the custom admin to use its test email view
         admin_instance = CustomGlobalPreferenceAdmin(model=None, admin_site=admin.site)
         return admin_instance.test_email_view(request)
-    
+
     def has_add_permission(self, request):
         """No adding allowed as this isn't a real model"""
         return False
-    
+
     def has_change_permission(self, request, obj=None):
         """Always allow changes if user can access admin"""
         return True
-    
+
     def has_delete_permission(self, request, obj=None):
         """No deletion allowed as this isn't a real model"""
         return False
@@ -165,14 +165,14 @@ email_settings_site._meta = type('_meta', (object,), {'app_label': 'email_settin
 
 # Set up the admin URL for email settings
 admin.site.register_view(
-    path='email-settings/', 
+    path='email-settings/',
     view=EmailSettingsAdmin(model=email_settings_site, admin_site=admin.site).email_settings_view,
     name='Email Settings'
 )
 
 # Add a view for testing email
 admin.site.register_view(
-    path='email-settings/test/', 
+    path='email-settings/test/',
     view=EmailSettingsAdmin(model=email_settings_site, admin_site=admin.site).test_email_view,
     name='Test Email'
 )
@@ -182,7 +182,7 @@ original_app_list = admin.site.get_app_list
 
 def custom_app_list(request):
     app_list = original_app_list(request)
-    
+
     # Add email settings to app list
     email_app = {
         'name': 'E-Mail',
@@ -198,7 +198,7 @@ def custom_app_list(request):
             }
         ],
     }
-    
+
     app_list.append(email_app)
     return app_list
 

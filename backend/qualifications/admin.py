@@ -1,7 +1,8 @@
 from django.contrib import admin
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
-from .models import QualificationType, Qualification, SpecialTaskType, SpecialTask
+
+from .models import Qualification, QualificationType, SpecialTask, SpecialTaskType
 
 
 class QualificationTypeResource(resources.ModelResource):
@@ -42,11 +43,11 @@ class QualificationAdmin(ImportExportModelAdmin):
     resource_class = QualificationResource
     list_display = ['get_person_name', 'type', 'date_acquired', 'date_expires', 'is_expired', 'issued_by']
     list_filter = ['type', 'date_acquired', 'date_expires']
-    search_fields = ['user__username', 'user__first_name', 'user__last_name', 
+    search_fields = ['user__username', 'user__first_name', 'user__last_name',
                     'member__name', 'member__lastname', 'type__name', 'issued_by']
     ordering = ['-date_acquired']
     autocomplete_fields = ['user', 'member', 'type']
-    
+
     def get_person_name(self, obj):
         return obj.get_person_name()
     get_person_name.short_description = 'Person'
@@ -74,7 +75,7 @@ class SpecialTaskAdmin(ImportExportModelAdmin):
                     'member__name', 'member__lastname', 'task__name']
     ordering = ['-start_date']
     autocomplete_fields = ['user', 'member', 'task']
-    
+
     def get_person_name(self, obj):
         return obj.get_person_name()
     get_person_name.short_description = 'Person'

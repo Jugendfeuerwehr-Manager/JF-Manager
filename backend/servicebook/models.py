@@ -2,8 +2,9 @@ from django.db import models
 
 # Create your models here.
 from django.urls import reverse
-from users.models import CustomUser
+
 from members.models import Member
+from users.models import CustomUser
 
 
 class Service(models.Model):
@@ -23,7 +24,7 @@ class Service(models.Model):
         return reverse('servicebook:edit', kwargs={'pk': self.pk})
 
     def __str__(self):
-        return '{0} am {1}'.format(self.topic, self.start.date().__str__())
+        return f'{self.topic} am {self.start.date().__str__()}'
 
 class Attendance(models.Model):
     STATES = (
@@ -42,5 +43,5 @@ class Attendance(models.Model):
         ]
 
     def __str__(self):
-        return '{0} war {1} bei {2}'.format(self.person.name, self.state, self.service.__str__())
+        return f'{self.person.name} war {self.state} bei {self.service.__str__()}'
         #return self.person.name + " war " + self.state + " bei " + self.service.__str__()

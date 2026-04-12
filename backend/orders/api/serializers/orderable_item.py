@@ -3,14 +3,15 @@ Orderable Item serializers
 """
 
 from rest_framework import serializers
+
 from orders.models import OrderableItem
 
 
 class OrderableItemSerializer(serializers.ModelSerializer):
     """Serializer for OrderableItem with computed fields"""
-    
+
     sizes_list = serializers.ReadOnlyField(source='get_sizes_list')
-    
+
     class Meta:
         model = OrderableItem
         fields = [
@@ -30,7 +31,7 @@ class OrderableItemSerializer(serializers.ModelSerializer):
 
 class OrderableItemMinimalSerializer(serializers.ModelSerializer):
     """Minimal serializer for nested use"""
-    
+
     class Meta:
         model = OrderableItem
         fields = ['id', 'name', 'category', 'has_sizes']
@@ -38,7 +39,7 @@ class OrderableItemMinimalSerializer(serializers.ModelSerializer):
 
 class OrderableItemCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating orderable items"""
-    
+
     class Meta:
         model = OrderableItem
         fields = [
@@ -49,7 +50,7 @@ class OrderableItemCreateUpdateSerializer(serializers.ModelSerializer):
             'available_sizes',
             'is_active'
         ]
-    
+
     def validate_available_sizes(self, value):
         """Validate sizes format"""
         if value:

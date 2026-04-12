@@ -1,21 +1,19 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from users.api.permissions import IsAdminUser
 from users.api.serializers.admin_serializers import (
-    AdminUserListSerializer,
     AdminUserDetailSerializer,
+    AdminUserListSerializer,
     AdminUserWriteSerializer,
-    AuthGroupListSerializer,
     AuthGroupDetailSerializer,
+    AuthGroupListSerializer,
     AuthGroupWriteSerializer,
     PermissionSerializer,
 )

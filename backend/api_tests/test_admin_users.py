@@ -8,10 +8,10 @@ Tests cover:
 - Non-admin access is blocked
 """
 
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission, Group
+from django.contrib.auth.models import Group, Permission
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
 
 User = get_user_model()
 

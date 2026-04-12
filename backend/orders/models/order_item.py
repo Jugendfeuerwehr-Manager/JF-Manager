@@ -1,21 +1,22 @@
-from django.db import models
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils import timezone
+
+from .order import Order
 from .order_status import OrderStatus
 from .orderable_item import OrderableItem
-from .order import Order
 
 
 class OrderItem(models.Model):
     """Einzelne Artikel in einer Bestellung"""
     order = models.ForeignKey(
-        Order, 
-        on_delete=models.CASCADE, 
+        Order,
+        on_delete=models.CASCADE,
         related_name='items',
         verbose_name="Bestellung"
     )
     item = models.ForeignKey(
-        OrderableItem, 
+        OrderableItem,
         on_delete=models.CASCADE,
         verbose_name="Artikel"
     )
@@ -27,29 +28,29 @@ class OrderItem(models.Model):
         verbose_name="Status"
     )
     received_date = models.DateTimeField(
-        null=True, 
-        blank=True, 
+        null=True,
+        blank=True,
         verbose_name="Eingangsdatum"
     )
     delivered_date = models.DateTimeField(
-        null=True, 
-        blank=True, 
+        null=True,
+        blank=True,
         verbose_name="Ausgabedatum"
     )
     notes = models.TextField(blank=True, verbose_name="Bemerkungen")
-    
+
     class Meta:
         verbose_name = "Bestellartikel"
         verbose_name_plural = "Bestellartikel"
-    
+
     def __str__(self):
         size_info = f" (Größe: {self.size})" if self.size else ""
         return f"{self.item.name}{size_info} - {self.status.name}"
-    
+
     def clean(self):
         """Validate status transitions using workflow rules"""
         super().clean()
-        
+
         if self.pk:  # Only validate for existing instances
             try:
                 original = OrderItem.objects.get(pk=self.pk)
@@ -62,13 +63,13 @@ class OrderItem(models.Model):
                         )
             except OrderItem.DoesNotExist:
                 pass  # New instance, no validation needed
-    
+
     def save(self, *args, **kwargs):
         """Override save to automatically track status changes"""
         # Get the user from kwargs if provided (for tracking who made the change)
         changed_by = kwargs.pop('changed_by', None)
         notes = kwargs.pop('status_change_notes', '')
-        
+
         # Check if this is an update and status has changed
         old_status = None
         if self.pk:
@@ -76,19 +77,19 @@ class OrderItem(models.Model):
                 original = OrderItem.objects.get(pk=self.pk)
                 if original.status != self.status:
                     old_status = original.status
-                    
+
                     # Auto-update dates based on status
                     if self.status.code == 'received' and not self.received_date:
                         self.received_date = timezone.now()
                     elif self.status.code == 'delivered' and not self.delivered_date:
                         self.delivered_date = timezone.now()
-                        
+
             except OrderItem.DoesNotExist:
                 pass  # New instance
-        
+
         # Save the model first
         super().save(*args, **kwargs)
-        
+
         # Create status history entry if status changed
         if old_status and old_status != self.status:
             # Use string reference to avoid circular imports
@@ -101,12 +102,12 @@ class OrderItem(models.Model):
                 changed_by=changed_by,
                 notes=notes or f"Status changed from {old_status.name} to {self.status.name}"
             )
-    
+
     def get_available_next_statuses(self):
         """Get list of statuses this item can transition to"""
         from ..notifications import OrderWorkflowService
         return OrderWorkflowService.get_next_statuses(self.status)
-    
+
     def can_transition_to_status(self, target_status):
         """Check if this item can transition to the given status"""
         from ..notifications import OrderWorkflowService

@@ -1,20 +1,20 @@
 from rest_framework import viewsets
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import QualificationType, Qualification, SpecialTaskType, SpecialTask
+from .models import Qualification, QualificationType, SpecialTask, SpecialTaskType
 from .serializers import (
-    QualificationTypeSerializer, 
     QualificationSerializer,
-    SpecialTaskTypeSerializer, 
-    SpecialTaskSerializer
+    QualificationTypeSerializer,
+    SpecialTaskSerializer,
+    SpecialTaskTypeSerializer,
 )
 
 
 class QualificationTypeViewSet(viewsets.ModelViewSet):
     """ViewSet für Qualifikationstypen"""
-    
+
     queryset = QualificationType.objects.all()
     serializer_class = QualificationTypeSerializer
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
@@ -27,7 +27,7 @@ class QualificationTypeViewSet(viewsets.ModelViewSet):
 
 class QualificationViewSet(viewsets.ModelViewSet):
     """ViewSet für Qualifikationen"""
-    
+
     queryset = Qualification.objects.select_related('member', 'user', 'type')
     serializer_class = QualificationSerializer
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
@@ -40,7 +40,7 @@ class QualificationViewSet(viewsets.ModelViewSet):
 
 class SpecialTaskTypeViewSet(viewsets.ModelViewSet):
     """ViewSet für Sonderaufgaben-Typen"""
-    
+
     queryset = SpecialTaskType.objects.all()
     serializer_class = SpecialTaskTypeSerializer
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
@@ -53,7 +53,7 @@ class SpecialTaskTypeViewSet(viewsets.ModelViewSet):
 
 class SpecialTaskViewSet(viewsets.ModelViewSet):
     """ViewSet für Sonderaufgaben"""
-    
+
     queryset = SpecialTask.objects.select_related('member', 'user', 'task')
     serializer_class = SpecialTaskSerializer
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]

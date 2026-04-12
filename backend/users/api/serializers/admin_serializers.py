@@ -1,8 +1,8 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from rest_framework import serializers
 
 User = get_user_model()
 
@@ -144,18 +144,17 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
         try:
             validate_password(value)
         except ValidationError as e:
-            raise serializers.ValidationError(list(e.messages))
+            raise serializers.ValidationError(list(e.messages)) from e
         return value
 
     def validate(self, data):
         request = self.context.get("request")
-        if request and self.instance:
-            if (request.user == self.instance
-                    and request.user.is_superuser
-                    and data.get("is_superuser") is False):
-                raise serializers.ValidationError({
-                    "is_superuser": "Sie koennen Ihre eigene Superuser-Berechtigung nicht entfernen."
-                })
+        if request and self.instance and (request.user == self.instance
+                and request.user.is_superuser
+                and data.get("is_superuser") is False):
+            raise serializers.ValidationError({
+                "is_superuser": "Sie koennen Ihre eigene Superuser-Berechtigung nicht entfernen."
+            })
         return data
 
     def create(self, validated_data):

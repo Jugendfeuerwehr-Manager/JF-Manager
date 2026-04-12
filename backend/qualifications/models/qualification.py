@@ -1,8 +1,9 @@
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.contrib.contenttypes.fields import GenericRelation
 from datetime import date, timedelta
+
 from dateutil.relativedelta import relativedelta
+from django.contrib.contenttypes.fields import GenericRelation
+from django.core.exceptions import ValidationError
+from django.db import models
 
 
 class QualificationType(models.Model):
@@ -15,7 +16,7 @@ class QualificationType(models.Model):
         ordering = ['name']
 
     name = models.CharField(
-        max_length=200, 
+        max_length=200,
         verbose_name="Name",
         help_text="z.B. 'Grundlehrgang', 'Sprechfunk'"
     )
@@ -67,7 +68,7 @@ class Qualification(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Qualifikationstyp"
     )
-    
+
     # Sowohl CustomUser als auch Member können Qualifikationen haben
     user = models.ForeignKey(
         'users.CustomUser',
@@ -85,7 +86,7 @@ class Qualification(models.Model):
         verbose_name="Mitglied",
         related_name='qualifications'
     )
-    
+
     date_acquired = models.DateField(
         verbose_name="Erworben am",
         help_text="Datum des Erwerbs der Qualifikation"
@@ -106,7 +107,7 @@ class Qualification(models.Model):
         blank=True,
         verbose_name="Notiz"
     )
-    
+
     # Generic relation to attachments
     attachments = GenericRelation(
         'members.Attachment',
@@ -155,15 +156,14 @@ class Qualification(models.Model):
         # Mindestens User oder Member muss gesetzt sein
         if not self.user and not self.member:
             raise ValidationError('Entweder Benutzer oder Mitglied muss ausgewählt werden.')
-        
+
         # Nicht beide gleichzeitig
         if self.user and self.member:
             raise ValidationError('Nur Benutzer oder Mitglied kann ausgewählt werden, nicht beide.')
-        
+
         # Automatisches Setzen des Ablaufdatums
-        if self.type.expires:
-            if not self.date_expires and self.type.validity_period:
-                self.date_expires = self.date_acquired + relativedelta(months=self.type.validity_period)
+        if self.type.expires and not self.date_expires and self.type.validity_period:
+            self.date_expires = self.date_acquired + relativedelta(months=self.type.validity_period)
 
     def save(self, *args, **kwargs):
         self.clean()

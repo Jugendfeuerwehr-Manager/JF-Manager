@@ -1,26 +1,27 @@
-from django.db.models import Sum, Count, Q
-from rest_framework import viewsets, mixins, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from jf_manager_backend.permissions import CustomDefaultPermissions
-from rest_framework.filters import SearchFilter
+from django.db.models import Count, Q, Sum
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from inventory.models import (
     Category,
     Item,
     ItemVariant,
-    StorageLocation,
     Stock,
+    StorageLocation,
     Transaction,
 )
+from jf_manager_backend.permissions import CustomDefaultPermissions
+
 from .serializers import (
     CategorySerializer,
     ItemSerializer,
     ItemVariantSerializer,
-    StorageLocationSerializer,
     StockSerializer,
+    StorageLocationSerializer,
     TransactionSerializer,
 )
 
@@ -119,11 +120,11 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
         """
         GET: Returns the storage location for a member (creates it if needed)
         POST: Creates a storage location for a member if it doesn't exist
-        
+
         Auto-creates member storage location so users don't have to manage this manually.
         """
         from members.models import Member
-        
+
         try:
             member = Member.objects.get(pk=member_id)
         except Member.DoesNotExist:
@@ -131,7 +132,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
                 {"detail": f"Member with ID {member_id} not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         # Check if member already has a storage location (via reverse relation)
         try:
             location = member.personal_storage_location
@@ -139,7 +140,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
             return Response(serializer.data)
         except StorageLocation.DoesNotExist:
             pass
-        
+
         # For GET, we auto-create; for POST, we explicitly create
         # Create a new storage location for the member
         location = StorageLocation.objects.create(
@@ -148,7 +149,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
             member=member,
             parent=None  # Could be set to a default "Members" parent if desired
         )
-        
+
         serializer = self.get_serializer(location)
         return Response(serializer.data, status=status.HTTP_201_CREATED if request.method == "POST" else status.HTTP_200_OK)
 
@@ -159,7 +160,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
         Also returns transactions history for the member.
         """
         from members.models import Member
-        
+
         try:
             member = Member.objects.get(pk=member_id)
         except Member.DoesNotExist:
@@ -167,7 +168,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
                 {"detail": f"Member with ID {member_id} not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         # Get or create member's storage location
         try:
             location = member.personal_storage_location
@@ -181,7 +182,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
                 "total_items": 0,
                 "recent_transactions": []
             })
-        
+
         # Get current stock (equipment loaned to member)
         stock_qs = Stock.objects.filter(
             location=location,
@@ -194,7 +195,7 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
         )
         stock_serializer = StockSerializer(stock_qs, many=True)
         total_items = sum(s.quantity for s in stock_qs)
-        
+
         # Get recent transactions for this member's location
         transactions_qs = Transaction.objects.filter(
             Q(source=location) | Q(target=location)
@@ -206,10 +207,10 @@ class StorageLocationViewSet(BaseAuthMixin, viewsets.ModelViewSet):
             "target",
             "user"
         ).order_by("-date")[:20]
-        
+
         from .serializers import TransactionSerializer
         transactions_serializer = TransactionSerializer(transactions_qs, many=True)
-        
+
         return Response({
             "member_id": int(member_id),
             "member_name": f"{member.name} {member.lastname}",
@@ -265,26 +266,27 @@ class TransactionViewSet(BaseAuthMixin, viewsets.ModelViewSet):
     def discard_statistics(self, request):
         """
         Returns statistics about discarded items.
-        
+
         Provides breakdown by:
         - Discard reason (lost, damaged, worn out, stolen, other)
         - Time period (last 30 days, last 6 months, all time)
         - Category
         - Total quantity and value
         """
+        from datetime import timedelta
+
         from django.db.models import Count, Sum
         from django.utils import timezone
-        from datetime import timedelta
-        
+
         # Filter only DISCARD transactions
         discard_qs = Transaction.objects.filter(transaction_type='DISCARD')
-        
+
         # Breakdown by reason
         by_reason = discard_qs.values('discard_reason').annotate(
             count=Count('id'),
             total_quantity=Sum('quantity')
         ).order_by('-total_quantity')
-        
+
         # Breakdown by category
         by_category = discard_qs.select_related(
             'item__category',
@@ -296,7 +298,7 @@ class TransactionViewSet(BaseAuthMixin, viewsets.ModelViewSet):
             count=Count('id'),
             total_quantity=Sum('quantity')
         ).order_by('-total_quantity')
-        
+
         # Normalize category breakdown (merge item and variant categories)
         category_stats = {}
         for entry in by_category:
@@ -306,7 +308,7 @@ class TransactionViewSet(BaseAuthMixin, viewsets.ModelViewSet):
                     category_stats[cat_name] = {'category': cat_name, 'count': 0, 'total_quantity': 0}
                 category_stats[cat_name]['count'] += entry['count']
                 category_stats[cat_name]['total_quantity'] += entry['total_quantity'] or 0
-        
+
         # Time-based breakdown
         now = timezone.now()
         last_30_days = discard_qs.filter(date__gte=now - timedelta(days=30)).aggregate(
@@ -321,7 +323,7 @@ class TransactionViewSet(BaseAuthMixin, viewsets.ModelViewSet):
             count=Count('id'),
             total_quantity=Sum('quantity')
         )
-        
+
         # Recent discard transactions
         recent_discards = discard_qs.select_related(
             'item',
@@ -330,7 +332,7 @@ class TransactionViewSet(BaseAuthMixin, viewsets.ModelViewSet):
             'source',
             'user'
         ).order_by('-date')[:10]
-        
+
         return Response({
             'by_reason': list(by_reason),
             'by_category': list(category_stats.values()),

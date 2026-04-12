@@ -1,7 +1,7 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Member, Parent, Status, Group, Event, EventType, Attachment
+from rest_framework import serializers
 
+from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 
 User = get_user_model()
 
@@ -20,7 +20,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class ParentSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    
+
     class Meta:
         model = Parent
         fields = [
@@ -78,14 +78,14 @@ class MemberDetailSerializer(serializers.ModelSerializer):
     age = serializers.IntegerField(source='get_age', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
     avatar_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Member
         fields = [
             'id', 'name', 'lastname', 'full_name', 'birthday', 'age',
             'email', 'street', 'zip_code', 'city', 'phone', 'mobile',
             'notes', 'joined', 'identityCardNumber', 'canSwimm', 'gender',
-            'status', 'status_id', 'group', 'group_id', 
+            'status', 'status_id', 'group', 'group_id',
             'storage_location', 'parents', 'avatar', 'avatar_url'
         ]
         read_only_fields = ['id', 'age', 'full_name', 'parents', 'avatar_url']
@@ -100,7 +100,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
 
 class MemberCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for create/update operations"""
-    
+
     class Meta:
         model = Member
         fields = [
@@ -124,7 +124,7 @@ class EventSerializer(serializers.ModelSerializer):
         queryset=EventType.objects.all(), source='type', write_only=True, required=False
     )
     member_name = serializers.CharField(source='member.get_full_name', read_only=True)
-    
+
     class Meta:
         model = Event
         fields = [
@@ -138,7 +138,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     mime_type = serializers.SerializerMethodField()
     file_size = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Attachment
         fields = [
@@ -146,21 +146,21 @@ class AttachmentSerializer(serializers.ModelSerializer):
             'content_type', 'object_id', 'mime_type', 'file_size'
         ]
         read_only_fields = ['id', 'uploaded_at', 'file_url', 'mime_type', 'file_size']
-    
+
     def get_file_url(self, obj):
         if obj.file:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.file.url)
         return None
-    
+
     def get_mime_type(self, obj):
         if obj.file:
             import mimetypes
             mime_type, _ = mimetypes.guess_type(obj.file.name)
             return mime_type
         return None
-    
+
     def get_file_size(self, obj):
         if obj.file:
             return obj.file.size

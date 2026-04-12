@@ -1,8 +1,8 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission, Group
+from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from rest_framework import serializers
 
 User = get_user_model()
 
@@ -25,7 +25,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
     groups = GroupSerializer(many=True, read_only=True)
     avatar_url = serializers.SerializerMethodField()
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    
+
     class Meta:
         model = User
         fields = [
@@ -39,7 +39,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'groups', 'permissions'
         ]
         read_only_fields = [
-            'id', 'username', 'date_joined', 'last_login', 
+            'id', 'username', 'date_joined', 'last_login',
             'is_staff', 'is_superuser', 'groups', 'permissions'
         ]
 
@@ -47,12 +47,12 @@ class UserInfoSerializer(serializers.ModelSerializer):
         """Get all permissions (user + group permissions)"""
         if obj.is_superuser:
             return ['superuser']
-        
+
         # Get direct permissions
         user_perms = obj.user_permissions.values_list('codename', flat=True)
         # Get group permissions
         group_perms = Permission.objects.filter(group__user=obj).values_list('codename', flat=True)
-        
+
         all_perms = set(list(user_perms) + list(group_perms))
         return list(all_perms)
 
@@ -68,7 +68,7 @@ class UserSerializer(serializers.ModelSerializer):
     """Basic user serializer for lists"""
     full_name = serializers.CharField(source='get_full_name', read_only=True)
     avatar_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = User
         fields = [
@@ -91,11 +91,9 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         """Check if user with this email exists"""
-        try:
+        import contextlib
+        with contextlib.suppress(User.DoesNotExist):
             User.objects.get(email=value, is_active=True)
-        except User.DoesNotExist:
-            # Don't reveal whether user exists for security
-            pass
         return value
 
 
@@ -112,15 +110,15 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'new_password_confirm': 'Passwords do not match.'
             })
-        
+
         # Validate password strength
         try:
             validate_password(data['new_password'])
         except ValidationError as e:
             raise serializers.ValidationError({
                 'new_password': list(e.messages)
-            })
-        
+            }) from e
+
         return data
 
 
@@ -143,13 +141,13 @@ class PasswordChangeSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'new_password_confirm': 'Passwords do not match.'
             })
-        
+
         # Validate password strength
         try:
             validate_password(data['new_password'])
         except ValidationError as e:
             raise serializers.ValidationError({
                 'new_password': list(e.messages)
-            })
-        
+            }) from e
+
         return data

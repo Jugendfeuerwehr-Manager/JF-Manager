@@ -1,10 +1,11 @@
-from django.db import models
-from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models
 from django.db import transaction as db_transaction
+
 from .item import Item
-from .variant import ItemVariant
 from .location import StorageLocation
+from .variant import ItemVariant
 
 
 class Stock(models.Model):
@@ -196,7 +197,7 @@ class Transaction(models.Model):
             stock_params = {'item': None, 'item_variant': self.item_variant}
         if self.transaction_type == 'IN':
             # IN: Only add to target (stock coming from outside the system)
-            stock, created = Stock.objects.get_or_create(
+            stock, _created = Stock.objects.get_or_create(
                 location=self.target,
                 defaults={'quantity': 0, **stock_params},
                 **stock_params
@@ -210,8 +211,8 @@ class Transaction(models.Model):
                     raise ValidationError(f'Nicht genügend Bestand. Verfügbar: {stock.quantity}')
                 stock.quantity -= self.quantity
                 stock.save()
-            except Stock.DoesNotExist:
-                raise ValidationError('Kein Bestand am Quellort vorhanden.')
+            except Stock.DoesNotExist as e:
+                raise ValidationError('Kein Bestand am Quellort vorhanden.') from e
         elif self.transaction_type in ['MOVE', 'LOAN', 'RETURN']:
             # MOVE, LOAN, RETURN: Subtract from source and add to target
             try:
@@ -220,9 +221,9 @@ class Transaction(models.Model):
                     raise ValidationError(f'Nicht genügend Bestand. Verfügbar: {source_stock.quantity}')
                 source_stock.quantity -= self.quantity
                 source_stock.save()
-            except Stock.DoesNotExist:
-                raise ValidationError('Kein Bestand am Quellort vorhanden.')
-            target_stock, created = Stock.objects.get_or_create(
+            except Stock.DoesNotExist as e:
+                raise ValidationError('Kein Bestand am Quellort vorhanden.') from e
+            target_stock, _created = Stock.objects.get_or_create(
                 location=self.target,
                 defaults={'quantity': 0, **stock_params},
                 **stock_params

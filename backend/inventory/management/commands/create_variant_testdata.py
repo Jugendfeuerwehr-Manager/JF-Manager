@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
-from inventory.models import Category, Item, ItemVariant, StorageLocation, Stock
+
+from inventory.models import Category, Item, ItemVariant, Stock, StorageLocation
 
 
 class Command(BaseCommand):
@@ -7,10 +8,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Erstelle Test-Daten für Varianten...')
-        
+
         # Erstelle Kategorien mit Schema
         self.stdout.write('Erstelle Kategorien...')
-        
+
         clothing_category, created = Category.objects.get_or_create(
             name='Kleidung',
             defaults={
@@ -23,7 +24,7 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write(f'  ✓ Kategorie "{clothing_category.name}" erstellt')
-        
+
         equipment_category, created = Category.objects.get_or_create(
             name='Ausrüstung',
             defaults={
@@ -36,27 +37,27 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write(f'  ✓ Kategorie "{equipment_category.name}" erstellt')
-        
+
         # Erstelle Lagerorte falls nicht vorhanden
         self.stdout.write('Erstelle Lagerorte...')
-        
+
         main_storage, created = StorageLocation.objects.get_or_create(
             name='Hauptlager',
             defaults={'is_member': False}
         )
         if created:
             self.stdout.write(f'  ✓ Lagerort "{main_storage.name}" erstellt')
-        
+
         clothing_storage, created = StorageLocation.objects.get_or_create(
             name='Kleiderkammer',
             defaults={'parent': main_storage, 'is_member': False}
         )
         if created:
             self.stdout.write(f'  ✓ Lagerort "{clothing_storage.name}" erstellt')
-        
+
         # Erstelle Artikel mit Varianten
         self.stdout.write('Erstelle Artikel mit Varianten...')
-        
+
         # Feuerwehrhose
         pants_item, created = Item.objects.get_or_create(
             name='Feuerwehrhose',
@@ -72,7 +73,7 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write(f'  ✓ Artikel "{pants_item.name}" erstellt')
-        
+
         # Varianten für Feuerwehrhose
         pants_sizes = ['164', '176', '188', '200']
         for size in pants_sizes:
@@ -85,7 +86,7 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f'    ✓ Variante "Größe {size}" erstellt')
-                
+
                 # Erstelle Bestand für Variante
                 stock, stock_created = Stock.objects.get_or_create(
                     item_variant=variant,
@@ -94,7 +95,7 @@ class Command(BaseCommand):
                 )
                 if stock_created:
                     self.stdout.write(f'      ✓ Bestand von {stock.quantity} Stück angelegt')
-        
+
         # Feuerwehrjacke
         jacket_item, created = Item.objects.get_or_create(
             name='Feuerwehrjacke',
@@ -110,7 +111,7 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write(f'  ✓ Artikel "{jacket_item.name}" erstellt')
-        
+
         # Varianten für Feuerwehrjacke
         jacket_sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
         for size in jacket_sizes:
@@ -123,7 +124,7 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f'    ✓ Variante "Größe {size}" erstellt')
-                
+
                 # Erstelle Bestand für Variante
                 stock, stock_created = Stock.objects.get_or_create(
                     item_variant=variant,
@@ -132,7 +133,7 @@ class Command(BaseCommand):
                 )
                 if stock_created:
                     self.stdout.write(f'      ✓ Bestand von {stock.quantity} Stück angelegt')
-        
+
         # Atemschutzmaske mit verschiedenen Größen
         mask_item, created = Item.objects.get_or_create(
             name='Atemschutzmaske',
@@ -147,7 +148,7 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write(f'  ✓ Artikel "{mask_item.name}" erstellt')
-        
+
         # Varianten für Atemschutzmaske
         mask_sizes = ['S', 'M', 'L']
         for size in mask_sizes:
@@ -160,7 +161,7 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f'    ✓ Variante "Größe {size}" erstellt')
-                
+
                 # Erstelle Bestand für Variante
                 stock, stock_created = Stock.objects.get_or_create(
                     item_variant=variant,
@@ -169,7 +170,7 @@ class Command(BaseCommand):
                 )
                 if stock_created:
                     self.stdout.write(f'      ✓ Bestand von {stock.quantity} Stück angelegt')
-        
+
         # Erstelle auch einige Artikel ohne Varianten
         normal_item, created = Item.objects.get_or_create(
             name='Feuerlöscher 6L',
@@ -185,7 +186,7 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write(f'  ✓ Normaler Artikel "{normal_item.name}" erstellt')
-            
+
             # Bestand für normalen Artikel
             stock, stock_created = Stock.objects.get_or_create(
                 item=normal_item,
@@ -194,14 +195,14 @@ class Command(BaseCommand):
             )
             if stock_created:
                 self.stdout.write(f'    ✓ Bestand von {stock.quantity} Stück angelegt')
-        
+
         self.stdout.write(self.style.SUCCESS('Test-Daten erfolgreich erstellt!'))
-        
+
         # Zusammenfassung ausgeben
         total_items = Item.objects.count()
         total_variants = ItemVariant.objects.count()
         total_stock_entries = Stock.objects.count()
-        
+
         self.stdout.write('\nZusammenfassung:')
         self.stdout.write(f'  - {total_items} Artikel')
         self.stdout.write(f'  - {total_variants} Varianten')

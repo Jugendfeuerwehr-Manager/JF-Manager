@@ -8,38 +8,35 @@ This package provides a comprehensive REST API for the Orders feature:
 - Permissions: Access control
 """
 
-from .serializers import *
-from .viewsets import *
 from .filters import *
 from .permissions import *
+from .serializers import *
+from .viewsets import *
 
 __all__ = [
-    # Serializers
-    'OrderSerializer',
-    'OrderDetailSerializer',
-    'OrderCreateSerializer',
-    'OrderUpdateSerializer',
-    'OrderListSerializer',
-    'OrderItemSerializer',
-    'OrderItemCreateSerializer',
-    'OrderItemUpdateSerializer',
-    'OrderableItemSerializer',
-    'OrderStatusSerializer',
-    
-    # ViewSets
-    'OrderViewSet',
-    'OrderItemViewSet',
-    'OrderableItemViewSet',
-    'OrderStatusViewSet',
-    
-    # Filters
-    'OrderFilter',
-    'OrderItemFilter',
-    'OrderableItemFilter',
-    'OrderStatusFilter',
-    
+    'CanChangeOrderStatus',
     # Permissions
     'CanManageOrders',
-    'CanChangeOrderStatus',
     'IsOrderOwnerOrStaff',
+    'OrderCreateSerializer',
+    'OrderDetailSerializer',
+    # Filters
+    'OrderFilter',
+    'OrderItemCreateSerializer',
+    'OrderItemFilter',
+    'OrderItemSerializer',
+    'OrderItemUpdateSerializer',
+    'OrderItemViewSet',
+    'OrderListSerializer',
+    # Serializers
+    'OrderSerializer',
+    'OrderStatusFilter',
+    'OrderStatusSerializer',
+    'OrderStatusViewSet',
+    'OrderUpdateSerializer',
+    # ViewSets
+    'OrderViewSet',
+    'OrderableItemFilter',
+    'OrderableItemSerializer',
+    'OrderableItemViewSet',
 ]

@@ -1,9 +1,7 @@
-import json
-from django.urls import reverse
-from rest_framework.test import APITestCase, APIClient
 from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient, APITestCase
 
-from inventory.models import Category, Item, StorageLocation, Stock
+from inventory.models import Category, Item, Stock, StorageLocation
 
 
 class InventoryAPITest(APITestCase):

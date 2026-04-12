@@ -3,7 +3,7 @@ from django.apps import AppConfig
 
 class UsersConfig(AppConfig):
     name = 'users'
-    
+
     def ready(self):
         # Configure TokenAdmin fields after apps are loaded to avoid
         # importing auth token models at module import time which can

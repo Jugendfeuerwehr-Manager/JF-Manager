@@ -1,5 +1,3 @@
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 
@@ -10,7 +8,7 @@ class SettingsCategory(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name='Name')
     code = models.CharField(max_length=50, unique=True, verbose_name='Code')
     description = models.TextField(blank=True, verbose_name='Beschreibung')
-    
+
     class Meta:
         verbose_name = 'Einstellungskategorie'
         verbose_name_plural = 'Einstellungskategorien'
@@ -28,6 +26,6 @@ class SettingsCategory(models.Model):
             ('view_all_settings', 'Kann alle Einstellungen einsehen'),
             ('change_all_settings', 'Kann alle Einstellungen ändern'),
         ]
-    
+
     def __str__(self):
         return self.name

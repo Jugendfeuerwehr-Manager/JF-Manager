@@ -2,15 +2,16 @@
 Serializers for Qualifications API with computed fields and list/detail variants
 """
 from rest_framework import serializers
-from qualifications.models import QualificationType, Qualification, SpecialTaskType, SpecialTask
-from members.models import Member
+
 from members.api_serializers import AttachmentSerializer
+from members.models import Member
+from qualifications.models import Qualification, QualificationType, SpecialTask, SpecialTaskType
 from users.models import CustomUser
 
 
 class QualificationTypeSerializer(serializers.ModelSerializer):
     """Full serializer for QualificationType"""
-    
+
     class Meta:
         model = QualificationType
         fields = ['id', 'name', 'expires', 'validity_period', 'description']
@@ -18,7 +19,7 @@ class QualificationTypeSerializer(serializers.ModelSerializer):
 
 class QualificationTypeListSerializer(serializers.ModelSerializer):
     """Minimal serializer for dropdown/list views"""
-    
+
     class Meta:
         model = QualificationType
         fields = ['id', 'name', 'expires']
@@ -26,13 +27,13 @@ class QualificationTypeListSerializer(serializers.ModelSerializer):
 
 class QualificationListSerializer(serializers.ModelSerializer):
     """Serializer for qualification list view (minimal fields)"""
-    
+
     type_name = serializers.CharField(source='type.name', read_only=True)
     person_name = serializers.CharField(source='get_person_name', read_only=True)
     is_expired = serializers.SerializerMethodField()
     expires_soon = serializers.SerializerMethodField()
     status_class = serializers.CharField(source='get_status_class', read_only=True)
-    
+
     class Meta:
         model = Qualification
         fields = [
@@ -47,17 +48,17 @@ class QualificationListSerializer(serializers.ModelSerializer):
             'status_class',
             'issued_by'
         ]
-    
+
     def get_is_expired(self, obj):
         return obj.is_expired()
-    
+
     def get_expires_soon(self, obj):
         return obj.expires_soon()
 
 
 class QualificationDetailSerializer(serializers.ModelSerializer):
     """Serializer for qualification detail view (all fields)"""
-    
+
     type_name = serializers.CharField(source='type.name', read_only=True)
     type_details = QualificationTypeSerializer(source='type', read_only=True)
     user_name = serializers.SerializerMethodField()
@@ -67,7 +68,7 @@ class QualificationDetailSerializer(serializers.ModelSerializer):
     expires_soon = serializers.SerializerMethodField()
     status_class = serializers.CharField(source='get_status_class', read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Qualification
         fields = [
@@ -89,23 +90,23 @@ class QualificationDetailSerializer(serializers.ModelSerializer):
             'status_class',
             'attachments'
         ]
-    
+
     def get_is_expired(self, obj):
         return obj.is_expired()
-    
+
     def get_expires_soon(self, obj):
         return obj.expires_soon()
-    
+
     def get_user_name(self, obj):
         return obj.user.get_full_name() if obj.user else None
-    
+
     def get_member_name(self, obj):
         return obj.member.get_full_name() if obj.member else None
 
 
 class QualificationCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating qualifications"""
-    
+
     class Meta:
         model = Qualification
         fields = [
@@ -118,28 +119,28 @@ class QualificationCreateSerializer(serializers.ModelSerializer):
             'issued_by',
             'note'
         ]
-    
+
     def validate(self, data):
         """Validate that exactly one of user or member is provided"""
         user = data.get('user')
         member = data.get('member')
-        
+
         if not user and not member:
             raise serializers.ValidationError(
                 'Either user or member must be provided'
             )
-        
+
         if user and member:
             raise serializers.ValidationError(
                 'Only one of user or member can be provided, not both'
             )
-        
+
         return data
 
 
 class QualificationUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating qualifications - allows partial updates"""
-    
+
     class Meta:
         model = Qualification
         fields = [
@@ -153,33 +154,33 @@ class QualificationUpdateSerializer(serializers.ModelSerializer):
             'note'
         ]
         read_only_fields = ['id']
-    
+
     def validate(self, data):
         """Validate that user/member constraints are maintained if being changed"""
         instance = self.instance
-        
+
         # Determine final values after update
         user = data.get('user', instance.user if instance else None)
         member = data.get('member', instance.member if instance else None)
-        
+
         # Only validate if user or member are being modified
         if 'user' in data or 'member' in data:
             if not user and not member:
                 raise serializers.ValidationError(
                     'Either user or member must be provided'
                 )
-            
+
             if user and member:
                 raise serializers.ValidationError(
                     'Only one of user or member can be provided, not both'
                 )
-        
+
         return data
 
 
 class SpecialTaskTypeSerializer(serializers.ModelSerializer):
     """Serializer for SpecialTaskType"""
-    
+
     class Meta:
         model = SpecialTaskType
         fields = ['id', 'name', 'description']
@@ -187,13 +188,13 @@ class SpecialTaskTypeSerializer(serializers.ModelSerializer):
 
 class SpecialTaskListSerializer(serializers.ModelSerializer):
     """Serializer for special task list view"""
-    
+
     task_name = serializers.CharField(source='task.name', read_only=True)
     person_name = serializers.CharField(source='get_person_name', read_only=True)
     is_active = serializers.SerializerMethodField()
     duration_days = serializers.SerializerMethodField()
     status_class = serializers.CharField(source='get_status_class', read_only=True)
-    
+
     class Meta:
         model = SpecialTask
         fields = [
@@ -207,17 +208,17 @@ class SpecialTaskListSerializer(serializers.ModelSerializer):
             'duration_days',
             'status_class'
         ]
-    
+
     def get_is_active(self, obj):
         return obj.is_active()
-    
+
     def get_duration_days(self, obj):
         return obj.get_duration_days()
 
 
 class SpecialTaskDetailSerializer(serializers.ModelSerializer):
     """Serializer for special task detail view"""
-    
+
     task_name = serializers.CharField(source='task.name', read_only=True)
     task_details = SpecialTaskTypeSerializer(source='task', read_only=True)
     user_name = serializers.SerializerMethodField()
@@ -227,7 +228,7 @@ class SpecialTaskDetailSerializer(serializers.ModelSerializer):
     duration_days = serializers.SerializerMethodField()
     status_class = serializers.CharField(source='get_status_class', read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = SpecialTask
         fields = [
@@ -248,23 +249,23 @@ class SpecialTaskDetailSerializer(serializers.ModelSerializer):
             'status_class',
             'attachments'
         ]
-    
+
     def get_is_active(self, obj):
         return obj.is_active()
-    
+
     def get_duration_days(self, obj):
         return obj.get_duration_days()
-    
+
     def get_user_name(self, obj):
         return obj.user.get_full_name() if obj.user else None
-    
+
     def get_member_name(self, obj):
         return obj.member.get_full_name() if obj.member else None
 
 
 class SpecialTaskCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating special tasks"""
-    
+
     # Make both fields optional but require at least one
     user = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(),
@@ -276,7 +277,7 @@ class SpecialTaskCreateSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    
+
     class Meta:
         model = SpecialTask
         fields = [
@@ -288,7 +289,7 @@ class SpecialTaskCreateSerializer(serializers.ModelSerializer):
             'end_date',
             'note'
         ]
-    
+
     def validate(self, data):
         """Validate constraints"""
         # Debug logging
@@ -297,25 +298,25 @@ class SpecialTaskCreateSerializer(serializers.ModelSerializer):
         logger.info(f"SpecialTaskCreateSerializer.validate() called with data: {data}")
         logger.info(f"  user field: {data.get('user')} (type: {type(data.get('user'))})")
         logger.info(f"  member field: {data.get('member')} (type: {type(data.get('member'))})")
-        
+
         # Get values, treating None as falsy
         user = data.get('user')
         member = data.get('member')
-        
+
         # Check if neither is provided (both are None or missing)
         if user is None and member is None:
             logger.error("Validation failed: Neither user nor member provided")
             raise serializers.ValidationError({
                 'non_field_errors': ['Entweder Benutzer oder Mitglied muss ausgewählt werden.']
             })
-        
+
         # Check if both are provided (both have values)
         if user is not None and member is not None:
             logger.error(f"Validation failed: Both user ({user}) and member ({member}) provided")
             raise serializers.ValidationError({
                 'non_field_errors': ['Nur Benutzer oder Mitglied kann ausgewählt werden, nicht beide.']
             })
-        
+
         # Validate dates
         start_date = data.get('start_date')
         end_date = data.get('end_date')
@@ -324,14 +325,14 @@ class SpecialTaskCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'end_date': 'Enddatum kann nicht vor Startdatum liegen.'
             })
-        
+
         logger.info("Validation passed successfully")
         return data
 
 
 class SpecialTaskUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating special tasks - allows partial updates without user/member validation"""
-    
+
     # Make all fields optional for partial updates
     task = serializers.PrimaryKeyRelatedField(
         queryset=SpecialTaskType.objects.all(),
@@ -350,7 +351,7 @@ class SpecialTaskUpdateSerializer(serializers.ModelSerializer):
     start_date = serializers.DateField(required=False)
     end_date = serializers.DateField(required=False, allow_null=True)
     note = serializers.CharField(required=False, allow_blank=True)
-    
+
     class Meta:
         model = SpecialTask
         fields = [
@@ -363,20 +364,20 @@ class SpecialTaskUpdateSerializer(serializers.ModelSerializer):
             'note'
         ]
         read_only_fields = ['id']
-    
+
     def validate(self, data):
         """Validate constraints - only when user/member are being changed"""
         import logging
         logger = logging.getLogger(__name__)
         logger.info(f"SpecialTaskUpdateSerializer.validate() called with data: {data}")
-        
+
         # Get the instance being updated
         instance = self.instance
-        
+
         # Determine final values after update
         user = data.get('user', instance.user if instance else None)
         member = data.get('member', instance.member if instance else None)
-        
+
         # Only validate user/member if they are being modified
         if 'user' in data or 'member' in data:
             # Check if both would be None
@@ -385,23 +386,23 @@ class SpecialTaskUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'non_field_errors': ['Entweder Benutzer oder Mitglied muss ausgewählt werden.']
                 })
-            
+
             # Check if both would be set
             if user is not None and member is not None:
                 logger.error(f"Validation failed: Both user ({user}) and member ({member}) would be set")
                 raise serializers.ValidationError({
                     'non_field_errors': ['Nur Benutzer oder Mitglied kann ausgewählt werden, nicht beide.']
                 })
-        
+
         # Validate dates
         start_date = data.get('start_date', instance.start_date if instance else None)
         end_date = data.get('end_date', instance.end_date if instance else None)
-        
+
         if end_date and start_date and end_date < start_date:
             logger.error(f"Validation failed: end_date ({end_date}) before start_date ({start_date})")
             raise serializers.ValidationError({
                 'end_date': 'Enddatum kann nicht vor Startdatum liegen.'
             })
-        
+
         logger.info("Validation passed successfully")
         return data

@@ -1,6 +1,7 @@
-from django.db import models
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
+
 from .utils import get_attachment_file_path
 
 
@@ -36,7 +37,7 @@ class Attachment(models.Model):
         verbose_name="Beschreibung",
         help_text="Optionale Beschreibung des Anhangs"
     )
-    
+
     # Metadata
     uploaded_at = models.DateTimeField(
         auto_now_add=True,
@@ -80,7 +81,7 @@ class Attachment(models.Model):
                 'txt': 'text/plain',
             }
             self.mime_type = mime_types.get(file_extension, 'application/octet-stream')
-        
+
         super().save(*args, **kwargs)
 
     def get_file_extension(self):
@@ -107,7 +108,7 @@ class Attachment(models.Model):
         """Get human-readable file size."""
         if not self.file_size:
             return "Unbekannt"
-        
+
         # Convert bytes to human readable format
         for unit in ['B', 'KB', 'MB', 'GB']:
             if self.file_size < 1024.0:

@@ -4,8 +4,8 @@ from inventory.models import (
     Category,
     Item,
     ItemVariant,
-    StorageLocation,
     Stock,
+    StorageLocation,
     Transaction,
 )
 
@@ -158,18 +158,18 @@ class TransactionSerializer(serializers.ModelSerializer):
         """Custom validation for transaction data"""
         transaction_type = attrs.get('transaction_type')
         discard_reason = attrs.get('discard_reason')
-        
+
         # Validate discard_reason for DISCARD transactions
         if transaction_type == 'DISCARD' and not discard_reason:
             raise serializers.ValidationError({
                 'discard_reason': 'Aussortierungsgrund ist erforderlich für DISCARD-Transaktionen.'
             })
-        
+
         if transaction_type != 'DISCARD' and discard_reason:
             raise serializers.ValidationError({
                 'discard_reason': 'Aussortierungsgrund kann nur bei DISCARD-Transaktionen angegeben werden.'
             })
-        
+
         return attrs
 
     def create(self, validated_data):

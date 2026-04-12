@@ -1,6 +1,8 @@
 from django.db import models
 from django.urls import reverse
+
 from .member import Member
+
 
 class Parent(models.Model):
     name = models.CharField(max_length=200, default='', verbose_name="Name")

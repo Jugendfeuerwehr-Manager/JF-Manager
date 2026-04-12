@@ -115,18 +115,23 @@ docker run -d \
 
 ## 📚 Dokumentation
 
-Aktuell in Arbeit.
+Die vollständige Dokumentation befindet sich im [docs/](docs/) Verzeichnis:
 
-## 📦 Drittanbieter-Software
+- [Erste Schritte](docs/getting-started.md) – Lokale Entwicklung, Umgebungsvariablen
+- [Architektur](docs/architecture/overview.md) – Docker-Architektur, Netzwerk, Sicherheit
+- [API Referenz](docs/api/reference.md) – REST API Endpunkte, Authentifizierung
+- [Deployment](docs/deployment/docker.md) – Docker Compose, SSL, Backup
+- [Portainer](docs/deployment/portainer.md) – Deployment via Portainer
 
-JF-Manager verwendet die folgende Drittanbieter-Software:
+## 📦 Tech Stack
 
-| Projekt       | Beschreibung                                                | Lizenz                                                                 |
-|---------------|--------------------------------------------------------------|------------------------------------------------------------------------|
-| Metis Menu    | Ein einfaches, leichtgewichtiges Menü-Plugin für Bootstrap.  | [MIT License](https://opensource.org/licenses/MIT)                     |
-| QuaggaJS      | Eine Barcode-Scanner-Bibliothek, die auf JavaScript und HTML5 basiert. | [MIT License](https://opensource.org/licenses/MIT)                     |
-| Raphael       | Eine JavaScript-Bibliothek zum Zeichnen von Vektorgrafiken.  | [MIT License](https://opensource.org/licenses/MIT)                     |
-| Font Awesome  | Eine beliebte Icon-Bibliothek, die skalierbare Vektorsymbole bietet. | [Font Awesome Free License](https://fontawesome.com/license/free)      |
+| Komponente | Technologie |
+|------------|-------------|
+| Backend | Django 5.0 + Django REST Framework |
+| Frontend | Vue.js 3 + TypeScript + Pinia + PrimeVue |
+| Datenbank | PostgreSQL (Produktion) / SQLite (Entwicklung) |
+| Auth | JWT (djangorestframework-simplejwt) |
+| Build | Docker Multi-Stage, Vite |
 
 ## 🤝 Beitragen
 

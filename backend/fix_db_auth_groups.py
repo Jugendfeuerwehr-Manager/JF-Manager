@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """One-time fix: recreate auth_group_permissions with correct FK to auth_permission."""
-import os, sys, django
+import os
+import sys
+
+import django
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jf_manager_backend.settings')
@@ -17,7 +20,7 @@ if os.path.exists(env_path):
 
 django.setup()
 
-from django.db import connection
+from django.db import connection  # noqa: E402
 
 cursor = connection.cursor()
 cursor.execute('SELECT id, group_id, permission_id FROM auth_group_permissions')

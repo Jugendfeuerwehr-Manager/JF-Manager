@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Service, Attendance
+
+from .models import Attendance, Service
 
 
 class ServiceSerializer(serializers.ModelSerializer):

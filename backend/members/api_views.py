@@ -1,19 +1,25 @@
 from django.http import HttpResponse
-from rest_framework import viewsets, filters, status
-from rest_framework.decorators import action, renderer_classes
-from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from rest_framework import filters, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
-from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
-from drf_spectacular.types import OpenApiTypes
+from rest_framework.response import Response
 
-from .models import Member, Parent, Status, Group, Event, EventType, Attachment
 from .api_serializers import (
-    MemberListSerializer, MemberDetailSerializer, MemberCreateUpdateSerializer,
-    ParentSerializer, StatusSerializer, GroupSerializer,
-    EventSerializer, EventTypeSerializer, AttachmentSerializer
+    AttachmentSerializer,
+    EventSerializer,
+    EventTypeSerializer,
+    GroupSerializer,
+    MemberCreateUpdateSerializer,
+    MemberDetailSerializer,
+    MemberListSerializer,
+    ParentSerializer,
+    StatusSerializer,
 )
+from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 from .resources import MemberResource
 
 
@@ -23,7 +29,7 @@ class PassthroughRenderer(BaseRenderer):
     """
     media_type = '*/*'
     format = 'binary'
-    
+
     def render(self, data, accepted_media_type=None, renderer_context=None):
         return data
 
@@ -67,8 +73,9 @@ class MemberViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def statistics(self, request):
-        from django.db.models import Count, Avg, Min, Max
         from datetime import date
+
+        from django.db.models import Count
 
         qs = self.queryset
         total = qs.count()
@@ -181,21 +188,21 @@ class MemberViewSet(viewsets.ModelViewSet):
         # Check permission
         if not request.user.has_perm('members.view_member'):
             return Response({'error': 'Keine Berechtigung für Mitglieder-Export'}, status=403)
-        
+
         # Use import_export to generate Excel file
         member_resource = MemberResource()
         dataset = member_resource.export(queryset=self.queryset)
-        
+
         # Generate Excel file
         excel_data = dataset.xlsx
-        
+
         # Create HTTP response with Excel file
         response = HttpResponse(
             excel_data,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="members.xlsx"'
-        
+
         return response
 
 

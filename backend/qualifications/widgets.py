@@ -1,11 +1,10 @@
 from django import forms
 from django.urls import reverse_lazy
-from django.utils.safestring import mark_safe
 
 
 class Select2Widget(forms.Select):
     """Custom Select2 Widget für bessere Benutzerauswahl"""
-    
+
     def __init__(self, attrs=None, choices=(), url=None, placeholder="Auswählen..."):
         self.url = url
         self.placeholder = placeholder
@@ -32,10 +31,10 @@ class Select2Widget(forms.Select):
 
 class UserSelect2Widget(Select2Widget):
     """Select2 Widget speziell für User-Auswahl"""
-    
+
     def __init__(self, attrs=None, choices=()):
         super().__init__(
-            attrs=attrs, 
+            attrs=attrs,
             choices=choices,
             url=reverse_lazy('qualifications:user_autocomplete'),
             placeholder="Benutzer auswählen..."
@@ -44,10 +43,10 @@ class UserSelect2Widget(Select2Widget):
 
 class MemberSelect2Widget(Select2Widget):
     """Select2 Widget speziell für Member-Auswahl"""
-    
+
     def __init__(self, attrs=None, choices=()):
         super().__init__(
-            attrs=attrs, 
+            attrs=attrs,
             choices=choices,
             url=reverse_lazy('qualifications:member_autocomplete'),
             placeholder="Mitglied auswählen..."

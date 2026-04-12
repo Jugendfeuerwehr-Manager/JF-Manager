@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Item, ItemVariant, StorageLocation, Stock, Transaction
+from .models import Category, Item, ItemVariant, Stock, StorageLocation, Transaction
 
 
 @admin.register(Category)
@@ -17,7 +17,7 @@ class ItemAdmin(admin.ModelAdmin):
     search_fields = ['name', 'identifier1', 'identifier2']
     autocomplete_fields = ['rented_by', 'category']
     readonly_fields = ('total_stock',)
-    
+
     fieldsets = (
         ('Grunddaten', {
             'fields': ('name', 'category', 'base_unit', 'attributes')
@@ -72,10 +72,10 @@ class StockAdmin(admin.ModelAdmin):
     search_fields = ['item__name', 'location__name']
     autocomplete_fields = ['item', 'location']
     readonly_fields = ('item', 'location')  # Prevent direct editing
-    
+
     def has_add_permission(self, request):
         return False  # Stock wird nur über Transaktionen erstellt
-    
+
     def has_change_permission(self, request, obj=None):
         return False  # Stock wird nur über Transaktionen geändert
 
@@ -88,7 +88,7 @@ class TransactionAdmin(admin.ModelAdmin):
     autocomplete_fields = ['item', 'source', 'target', 'user']
     readonly_fields = ('date',)
     date_hierarchy = 'date'
-    
+
     fieldsets = (
         ('Transaktion', {
             'fields': ('transaction_type', 'item', 'quantity', 'date')
@@ -100,7 +100,7 @@ class TransactionAdmin(admin.ModelAdmin):
             'fields': ('user', 'note')
         })
     )
-    
+
     def save_model(self, request, obj, form, change):
         if not obj.user:
             obj.user = request.user

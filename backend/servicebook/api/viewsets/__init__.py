@@ -1,5 +1,5 @@
 """Servicebook API viewsets."""
-from .service_viewsets import ServiceViewSet
 from .attendance_viewsets import AttendanceViewSet
+from .service_viewsets import ServiceViewSet
 
-__all__ = ['ServiceViewSet', 'AttendanceViewSet']
+__all__ = ['AttendanceViewSet', 'ServiceViewSet']

@@ -1,10 +1,12 @@
 import io
+
+from django.contrib.auth.models import AbstractUser
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import models
-from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
 from phonenumber_field.modelfields import PhoneNumberField
 from PIL import Image as Img
+
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -22,7 +24,7 @@ class CustomUser(AbstractUser):
 
     # TODO: Add pre_delete hook to make sure to remove the file, not just the DB Recoard.
     avatar = models.ImageField(blank=True)
-    
+
     # Email signature for bulk emails
     email_signature = models.TextField(
         blank=True,
@@ -68,6 +70,6 @@ class CustomUser(AbstractUser):
             output = io.StringIO.StringIO()
             img.save(output, format='JPEG', quality=70)
             output.seek(0)
-            self.image = InMemoryUploadedFile(output, 'ImageField', "%s.jpg" % self.image.name.split('.')[0],
+            self.image = InMemoryUploadedFile(output, 'ImageField', "{}.jpg".format(self.image.name.split('.')[0]),
                                               'image/jpeg', output.len, None)
-        super(CustomUser, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)

@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from members.models import Member
+
 from inventory.models import StorageLocation
+from members.models import Member
 
 
 class Command(BaseCommand):
@@ -22,7 +23,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         parent_id = options.get('parent')
         dry_run = options.get('dry_run', False)
-        
+
         parent_location = None
         if parent_id:
             try:
@@ -62,7 +63,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             for member in members_without_storage:
                 storage_name = f"Lagerplatz {member.name} {member.lastname}"
-                
+
                 try:
                     storage_location = StorageLocation.objects.create(
                         name=storage_name,
@@ -76,7 +77,7 @@ class Command(BaseCommand):
                     )
                 except Exception as e:
                     self.stdout.write(
-                        self.style.ERROR(f'✗ Fehler bei {storage_name}: {str(e)}')
+                        self.style.ERROR(f'✗ Fehler bei {storage_name}: {e!s}')
                     )
 
         self.stdout.write(

@@ -1,8 +1,6 @@
 """Password reset token generator for secure password reset functionality."""
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.crypto import constant_time_compare
-from django.utils.http import base36_to_int
 import six
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 
 class AccountActivationTokenGenerator(PasswordResetTokenGenerator):
@@ -16,7 +14,7 @@ class AccountActivationTokenGenerator(PasswordResetTokenGenerator):
         Token becomes invalid when user changes their password.
         """
         return (
-            six.text_type(user.pk) + 
+            six.text_type(user.pk) +
             six.text_type(timestamp) +
             six.text_type(user.is_active)
         )

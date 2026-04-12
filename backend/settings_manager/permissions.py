@@ -1,6 +1,7 @@
+from functools import wraps
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.core.exceptions import PermissionDenied
-from functools import wraps
 
 
 def require_settings_permission(permission_name):
@@ -21,7 +22,7 @@ class SettingsPermissionMixin(PermissionRequiredMixin):
     """
     Mixin für Class-Based Views mit Einstellungsberechtigungen
     """
-    
+
     def get_permission_required(self):
         """
         Überschreibt die Standard-Permission-Logik für Einstellungen
@@ -29,7 +30,7 @@ class SettingsPermissionMixin(PermissionRequiredMixin):
         if hasattr(self, 'settings_permission'):
             return f'settings_manager.{self.settings_permission}'
         return super().get_permission_required()
-    
+
     def handle_no_permission(self):
         """
         Custom handling für fehlende Berechtigungen
@@ -44,7 +45,7 @@ class CategoryPermissionMixin:
     """
     Mixin um automatisch Kategorien-basierte Berechtigungen zu handhaben
     """
-    
+
     def get_category_permissions(self, category_code):
         """
         Gibt die erforderlichen Berechtigungen für eine Kategorie zurück
@@ -53,7 +54,7 @@ class CategoryPermissionMixin:
             'view': f'view_{category_code}_settings',
             'change': f'change_{category_code}_settings'
         }
-    
+
     def check_category_permission(self, user, category_code, permission_type='view'):
         """
         Prüft ob der User Berechtigung für eine Kategorie hat
@@ -61,15 +62,12 @@ class CategoryPermissionMixin:
         # Superuser hat alle Berechtigungen
         if user.is_superuser:
             return True
-            
+
         # Prüfe spezifische Berechtigung
         permission = f'settings_manager.{permission_type}_{category_code}_settings'
         if user.has_perm(permission):
             return True
-            
+
         # Prüfe globale Berechtigung
         global_permission = f'settings_manager.{permission_type}_all_settings'
-        if user.has_perm(global_permission):
-            return True
-            
-        return False
+        return bool(user.has_perm(global_permission))

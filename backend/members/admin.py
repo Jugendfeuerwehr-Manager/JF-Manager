@@ -1,8 +1,8 @@
 from django.contrib import admin
+from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
-from .models import Member, Parent, EventType, Event, Group, Status, Attachment
-from import_export import resources
+from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 
 
 class MemberRessource(resources.ModelResource):
@@ -41,11 +41,11 @@ class GroupAdmin(ImportExportModelAdmin):
     search_fields = ['name']
 
 @admin.register(Status)
-class GroupAdmin(ImportExportModelAdmin):
+class StatusAdmin(ImportExportModelAdmin):
     search_fields = ['name']
 
 @admin.register(EventType)
-class ParentAdmin(ImportExportModelAdmin):
+class EventTypeAdmin(ImportExportModelAdmin):
     search_fields = ['name']
     ordering = ['name']
     inlines = (EventsInline,)
@@ -58,6 +58,6 @@ class AttachmentAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description']
     readonly_fields = ['uploaded_at', 'file_size', 'mime_type']
     ordering = ['-uploaded_at']
-    
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('content_type', 'uploaded_by')

@@ -1,6 +1,8 @@
+from datetime import timedelta
+
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from datetime import timedelta
+
 from orders.models import OrderItem, OrderStatus
 from orders.notifications import OrderNotificationService
 
@@ -24,10 +26,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         days = options['days']
         dry_run = options['dry_run']
-        
+
         # Calculate date threshold
         threshold_date = timezone.now() - timedelta(days=days)
-        
+
         # Find pending order items older than threshold
         pending_status = OrderStatus.objects.filter(code='pending').first()
         if not pending_status:
@@ -35,18 +37,18 @@ class Command(BaseCommand):
                 self.style.WARNING('No "pending" status found in the system')
             )
             return
-        
+
         pending_items = OrderItem.objects.filter(
             status=pending_status,
             order__order_date__lt=threshold_date
         ).select_related('order', 'order__member', 'order__ordered_by', 'item')
-        
+
         if not pending_items.exists():
             self.stdout.write(
                 self.style.SUCCESS(f'No pending orders older than {days} days found')
             )
             return
-        
+
         # Group by order
         orders_dict = {}
         for item in pending_items:
@@ -56,14 +58,14 @@ class Command(BaseCommand):
                     'items': []
                 }
             orders_dict[item.order.pk]['items'].append(item)
-        
+
         sent_count = 0
         error_count = 0
-        
+
         for order_data in orders_dict.values():
             order = order_data['order']
             items = order_data['items']
-            
+
             if dry_run:
                 self.stdout.write(
                     f'Would send reminder for Order #{order.pk} with {len(items)} pending items'
@@ -89,7 +91,7 @@ class Command(BaseCommand):
                     self.stdout.write(
                         self.style.ERROR(f'Error processing Order #{order.pk}: {e}')
                     )
-        
+
         if dry_run:
             self.stdout.write(
                 self.style.SUCCESS(

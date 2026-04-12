@@ -1,7 +1,9 @@
+from datetime import timedelta
+
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from datetime import timedelta
-from orders.models import Order, OrderStatus, OrderItem
+
+from orders.models import Order, OrderStatus
 from orders.notifications import OrderNotificationService
 
 
@@ -24,41 +26,41 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         days_threshold = options['days']
         dry_run = options['dry_run']
-        
+
         # Calculate the cutoff date
         cutoff_date = timezone.now() - timedelta(days=days_threshold)
-        
+
         # Find pending status codes (you might need to adjust these based on your status setup)
         pending_status_codes = ['pending', 'ordered']
         pending_statuses = OrderStatus.objects.filter(
             code__in=pending_status_codes,
             is_active=True
         )
-        
+
         # Find orders with pending items older than the threshold
         orders_with_pending = Order.objects.filter(
             order_date__lt=cutoff_date,
             items__status__in=pending_statuses
         ).distinct()
-        
+
         self.stdout.write(
             self.style.SUCCESS(
                 f'Found {orders_with_pending.count()} orders with pending items older than {days_threshold} days'
             )
         )
-        
+
         emails_sent = 0
-        
+
         for order in orders_with_pending:
             # Get pending items for this order
             pending_items = order.items.filter(status__in=pending_statuses)
-            
+
             if pending_items.exists():
                 self.stdout.write(
                     f'Order #{order.pk} for {order.member.get_full_name()} '
                     f'has {pending_items.count()} pending items'
                 )
-                
+
                 if not dry_run:
                     try:
                         success = OrderNotificationService.send_pending_order_reminder(
@@ -79,7 +81,7 @@ class Command(BaseCommand):
                         )
                 else:
                     self.stdout.write('  (dry run - no email sent)')
-        
+
         if dry_run:
             self.stdout.write(
                 self.style.WARNING(

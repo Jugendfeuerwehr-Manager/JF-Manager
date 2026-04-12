@@ -1,4 +1,5 @@
-from .models import Member, Parent, Event
+from .models import Event, Member, Parent
+
 
 def get_members_list():
     return Member.objects.all().order_by('lastname')

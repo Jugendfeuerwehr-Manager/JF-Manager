@@ -9,15 +9,13 @@ Usage:
     python run_api_tests.py --verbose    # Run with verbose output
 """
 
-import sys
-import os
-import subprocess
 import argparse
+import subprocess
 
 
 def run_tests(test_path='api_tests', verbosity=1, with_coverage=False):
     """Run Django tests with optional coverage"""
-    
+
     if with_coverage:
         # Run with coverage
         print("Running tests with coverage analysis...")
@@ -28,14 +26,14 @@ def run_tests(test_path='api_tests', verbosity=1, with_coverage=False):
             f'--verbosity={verbosity}'
         ]
         subprocess.run(cmd)
-        
+
         print("\n" + "="*70)
         print("COVERAGE REPORT")
         print("="*70 + "\n")
-        
+
         # Show coverage report
         subprocess.run(['coverage', 'report', '--include=*/api/*,*/views.py,*/serializers.py'])
-        
+
         print("\n" + "="*70)
         print("Generate HTML coverage report with: coverage html")
         print("="*70)
@@ -67,12 +65,12 @@ def main():
                        help='Run tests with coverage analysis')
     parser.add_argument('--verbose', action='store_true',
                        help='Run tests with verbose output')
-    
+
     args = parser.parse_args()
-    
+
     # Determine test path
     test_path = 'api_tests'
-    
+
     if args.auth:
         test_path = 'api_tests.test_api_comprehensive.AuthenticationTests'
     elif args.permissions:
@@ -89,10 +87,10 @@ def main():
         test_path = 'api_tests.test_api_comprehensive.QualificationsAPITests'
     elif args.crud:
         test_path = 'api_tests.test_api_comprehensive.CRUDOperationsTests'
-    
+
     # Determine verbosity
     verbosity = 2 if args.verbose else 1
-    
+
     print("="*70)
     print("JF-MANAGER API TEST SUITE")
     print("="*70)
@@ -100,7 +98,7 @@ def main():
     print(f"Verbosity: {verbosity}")
     print(f"Coverage: {'Yes' if args.coverage else 'No'}")
     print("="*70 + "\n")
-    
+
     # Run tests
     run_tests(test_path, verbosity, args.coverage)
 

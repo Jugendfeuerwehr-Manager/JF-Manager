@@ -1,4 +1,4 @@
-from .models import OrderStatus, OrderableItem, Order, OrderItem
+from .models import Order, OrderableItem, OrderStatus
 
 
 def get_order_list():
@@ -25,13 +25,13 @@ def get_pending_orders():
     """Gibt alle nicht abgeschlossenen Bestellungen zurück"""
     delivered_status = OrderStatus.objects.filter(code='DELIVERED').first()
     cancelled_status = OrderStatus.objects.filter(code='CANCELLED').first()
-    
+
     exclude_statuses = []
     if delivered_status:
         exclude_statuses.append(delivered_status.pk)
     if cancelled_status:
         exclude_statuses.append(cancelled_status.pk)
-    
+
     return Order.objects.exclude(
         items__status__pk__in=exclude_statuses
     ).distinct().select_related('member', 'ordered_by')

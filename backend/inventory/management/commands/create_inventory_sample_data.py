@@ -1,5 +1,6 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+
 from inventory.models import Category, Item, StorageLocation, Transaction
 from members.models.member import Member
 
@@ -154,10 +155,10 @@ class Command(BaseCommand):
 
         # Beispiel-Transaktionen erstellen
         self.stdout.write('Erstelle Beispiel-Transaktionen...')
-        
+
         # Admin-User für Transaktionen
         admin_user = User.objects.filter(is_superuser=True).first()
-        
+
         example_transactions = [
             {
                 'type': 'IN',
@@ -184,7 +185,7 @@ class Command(BaseCommand):
         ]
 
         for trans_data in example_transactions:
-            transaction = Transaction.objects.create(
+            Transaction.objects.create(
                 transaction_type=trans_data['type'],
                 item=trans_data['item'],
                 source=trans_data.get('source'),

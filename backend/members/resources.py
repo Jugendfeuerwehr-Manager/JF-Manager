@@ -1,5 +1,6 @@
-from import_export import resources, fields, widgets
-from .models import Member, Parent
+from import_export import resources
+
+from .models import Member
 
 
 class MemberResource(resources.ModelResource):

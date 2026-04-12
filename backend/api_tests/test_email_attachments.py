@@ -1,14 +1,12 @@
 """
 Tests for email attachment feature and signature fix.
 """
-import io
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
 
-from members.models import Member, Group, EmailMessage, EmailAttachment
+from members.models import EmailAttachment, EmailMessage, Group, Member
 
 User = get_user_model()
 

@@ -1,11 +1,12 @@
-from django.test import TestCase
+from datetime import date, timedelta
+
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from datetime import date, timedelta
-from dateutil.relativedelta import relativedelta
+from django.test import TestCase
 
-from qualifications.models import QualificationType, Qualification
-from members.models import Member, Group, Status
+from members.models import Group, Member, Status
+from qualifications.models import Qualification, QualificationType
 
 User = get_user_model()
 
@@ -19,7 +20,7 @@ class QualificationTypeModelTest(TestCase):
             validity_period=24,
             description="Grundausbildung für Jugendfeuerwehr"
         )
-        
+
         self.assertEqual(qual_type.name, "Grundlehrgang")
         self.assertTrue(qual_type.expires)
         self.assertEqual(qual_type.validity_period, 24)
@@ -33,7 +34,7 @@ class QualificationTypeModelTest(TestCase):
             expires=True,
             validity_period=None
         )
-        
+
         with self.assertRaises(ValidationError):
             qual_type.clean()
 
@@ -43,7 +44,7 @@ class QualificationTypeModelTest(TestCase):
             name="Lifetime Certificate",
             expires=False
         )
-        
+
         self.assertFalse(qual_type.expires)
         self.assertIsNone(qual_type.validity_period)
 
@@ -57,7 +58,7 @@ class QualificationModelTest(TestCase):
             first_name='Test',
             last_name='User'
         )
-        
+
         # Member erstellen
         group = Group.objects.create(name="Jugendfeuerwehr")
         status = Status.objects.create(name="Aktiv")
@@ -67,14 +68,14 @@ class QualificationModelTest(TestCase):
             group=group,
             status=status
         )
-        
+
         # Qualifikationstypen
         self.expiring_type = QualificationType.objects.create(
             name="Sprechfunk",
             expires=True,
             validity_period=24
         )
-        
+
         self.permanent_type = QualificationType.objects.create(
             name="Grundlehrgang",
             expires=False
@@ -88,7 +89,7 @@ class QualificationModelTest(TestCase):
             date_acquired=date.today(),
             issued_by="Feuerwehrschule"
         )
-        
+
         self.assertEqual(qualification.get_person_name(), "Test User")
         self.assertEqual(qualification.get_person(), self.user)
         self.assertFalse(qualification.is_expired())
@@ -100,7 +101,7 @@ class QualificationModelTest(TestCase):
             member=self.member,
             date_acquired=date.today()
         )
-        
+
         self.assertEqual(qualification.get_person_name(), "Max Mustermann")
         self.assertEqual(qualification.get_person(), self.member)
         self.assertFalse(qualification.is_expired())
@@ -113,7 +114,7 @@ class QualificationModelTest(TestCase):
             user=self.user,
             date_acquired=acquired_date
         )
-        
+
         expected_expiry = acquired_date + relativedelta(months=24)
         self.assertEqual(qualification.date_expires, expected_expiry)
 
@@ -126,12 +127,12 @@ class QualificationModelTest(TestCase):
             date_acquired=date.today() - timedelta(days=800),
             date_expires=date.today() - timedelta(days=30)
         )
-        
+
         self.assertTrue(expired_qualification.is_expired())
         # Abgelaufene Qualifikationen sollten nicht als "bald ablaufend" gelten
         self.assertFalse(expired_qualification.expires_soon())
         self.assertEqual(expired_qualification.get_status_class(), 'table-danger')
-        
+
         # Bald ablaufende Qualifikation (nicht abgelaufen, aber läuft in weniger als 30 Tagen ab)
         expiring_qualification = Qualification.objects.create(
             type=self.expiring_type,
@@ -139,7 +140,7 @@ class QualificationModelTest(TestCase):
             date_acquired=date.today() - timedelta(days=700),
             date_expires=date.today() + timedelta(days=15)
         )
-        
+
         self.assertFalse(expiring_qualification.is_expired())
         self.assertTrue(expiring_qualification.expires_soon())
         self.assertEqual(expiring_qualification.get_status_class(), 'table-warning')
@@ -151,10 +152,10 @@ class QualificationModelTest(TestCase):
             type=self.permanent_type,
             date_acquired=date.today()
         )
-        
+
         with self.assertRaises(ValidationError):
             qualification.clean()
-        
+
         # Beide Personen ausgewählt
         qualification = Qualification(
             type=self.permanent_type,
@@ -162,7 +163,7 @@ class QualificationModelTest(TestCase):
             member=self.member,
             date_acquired=date.today()
         )
-        
+
         with self.assertRaises(ValidationError):
             qualification.clean()
 
@@ -173,6 +174,6 @@ class QualificationModelTest(TestCase):
             user=self.user,
             date_acquired=date.today()
         )
-        
+
         expected_str = f"Test User - {self.permanent_type.name}"
         self.assertEqual(str(qualification), expected_str)

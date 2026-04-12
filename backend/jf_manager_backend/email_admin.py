@@ -1,7 +1,6 @@
 from django import forms
 from django.conf import settings
-from django.contrib import admin
-from django.contrib import messages
+from django.contrib import admin, messages
 from django.core.mail import send_mail
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -47,11 +46,11 @@ class CustomGlobalPreferenceAdmin(GlobalPreferenceAdmin):
                 recipient = form.cleaned_data['recipient']
                 subject = form.cleaned_data['subject']
                 message = form.cleaned_data['message']
-                
+
                 try:
                     # Get current email settings from Django settings
                     from_email = settings.DEFAULT_FROM_EMAIL
-                    
+
                     # Send test email
                     send_mail(
                         subject=subject,
@@ -60,29 +59,29 @@ class CustomGlobalPreferenceAdmin(GlobalPreferenceAdmin):
                         recipient_list=[recipient],
                         fail_silently=False,
                     )
-                    
+
                     # Show success message
                     messages.success(
-                        request, 
+                        request,
                         f'Test-E-Mail erfolgreich gesendet an {recipient} von {from_email}. '
                         f'Aktuelle SMTP-Einstellungen: Host={settings.EMAIL_HOST}, '
                         f'Port={settings.EMAIL_PORT}, TLS={settings.EMAIL_USE_TLS}, '
                         f'SSL={settings.EMAIL_USE_SSL}'
                     )
-                    
+
                     # Redirect back to admin
                     return HttpResponseRedirect(reverse('admin:dynamic_preferences_globalpreferencemodel_changelist'))
-                
+
                 except Exception as e:
                     # Show error message
                     messages.error(
-                        request, 
-                        f'Fehler beim Senden der Test-E-Mail: {str(e)}. '
+                        request,
+                        f'Fehler beim Senden der Test-E-Mail: {e!s}. '
                         f'Bitte überprüfen Sie die SMTP-Einstellungen.'
                     )
         else:
             form = EmailTestForm()
-        
+
         # Display email settings
         context = {
             'form': form,
@@ -97,7 +96,7 @@ class CustomGlobalPreferenceAdmin(GlobalPreferenceAdmin):
                 'DEFAULT_FROM_EMAIL': settings.DEFAULT_FROM_EMAIL,
             }
         }
-        
+
         return render(request, 'admin/test_email.html', context)
 
 

@@ -9,12 +9,7 @@ For new development, import directly from the notifications package:
 """
 
 # Import all services from the new package structure for backward compatibility
-from .notifications import (
-    OrderNotificationService,
-    OrderWorkflowService,
-    NotificationLogger,
-    TemplateRenderer
-)
+from .notifications import OrderNotificationService, OrderWorkflowService
 
 # Maintain the same interface for existing code
 __all__ = ['OrderNotificationService', 'OrderWorkflowService']

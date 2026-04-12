@@ -17,21 +17,21 @@ class EmailTemplate(models.Model):
         ('order_cancelled', 'Bestellung storniert (Legacy)'),
         ('order_summary', 'Bestellübersicht (Legacy)'),
     ]
-    
+
     name = models.CharField(max_length=100, verbose_name="Name")
     template_type = models.CharField(max_length=20, choices=TEMPLATE_TYPES, unique=True, verbose_name="Typ")
     subject_template = models.CharField(max_length=255, verbose_name="Betreff-Vorlage")
     html_template = models.TextField(verbose_name="HTML-Vorlage")
     text_template = models.TextField(blank=True, verbose_name="Text-Vorlage")
-    
+
     is_active = models.BooleanField(default=True, verbose_name="Aktiv")
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "E-Mail-Vorlage"
         verbose_name_plural = "E-Mail-Vorlagen"
-    
+
     def __str__(self):
         return f"{self.name} ({self.get_template_type_display()})"

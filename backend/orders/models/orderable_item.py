@@ -8,22 +8,22 @@ class OrderableItem(models.Model):
     description = models.TextField(blank=True, verbose_name="Beschreibung")
     has_sizes = models.BooleanField(default=True, verbose_name="Hat Größen")
     available_sizes = models.TextField(
-        blank=True, 
+        blank=True,
         verbose_name="Verfügbare Größen",
         help_text="Größen kommagetrennt eingeben, z.B.: XS,S,M,L,XL oder 98,104,110,116"
     )
     is_active = models.BooleanField(default=True, verbose_name="Aktiv")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['category', 'name']
         verbose_name = "Bestellbarer Artikel"
         verbose_name_plural = "Bestellbare Artikel"
-    
+
     def __str__(self):
         return f"{self.category} - {self.name}"
-    
+
     def get_sizes_list(self):
         """Gibt die verfügbaren Größen als Liste zurück"""
         if not self.available_sizes:

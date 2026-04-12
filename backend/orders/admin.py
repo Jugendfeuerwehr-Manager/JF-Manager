@@ -1,7 +1,14 @@
 from django.contrib import admin
+
 from .models import (
-    OrderStatus, OrderableItem, Order, OrderItem, OrderItemStatusHistory,
-    NotificationPreference, NotificationLog, EmailTemplate
+    EmailTemplate,
+    NotificationLog,
+    NotificationPreference,
+    Order,
+    OrderableItem,
+    OrderItem,
+    OrderItemStatusHistory,
+    OrderStatus,
 )
 
 
@@ -21,7 +28,7 @@ class OrderableItemAdmin(admin.ModelAdmin):
     list_filter = ['category', 'has_sizes', 'is_active']
     search_fields = ['name', 'category', 'description']
     ordering = ['category', 'name']
-    
+
     fieldsets = (
         ('Grunddaten', {
             'fields': ('name', 'category', 'description', 'is_active')
@@ -48,11 +55,11 @@ class OrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ['member', 'ordered_by']
     inlines = [OrderItemInline]
     readonly_fields = ['order_date']
-    
+
     def get_items_count(self, obj):
         return obj.items.count()
     get_items_count.short_description = 'Anzahl Artikel'
-    
+
     fieldsets = (
         ('Bestellung', {
             'fields': ('member', 'ordered_by', 'order_date')
@@ -78,7 +85,7 @@ class OrderItemAdmin(admin.ModelAdmin):
     autocomplete_fields = ['order', 'item', 'status']
     list_editable = ['status']
     inlines = [OrderItemStatusHistoryInline]
-    
+
     fieldsets = (
         ('Artikel', {
             'fields': ('order', 'item', 'size', 'quantity')
@@ -91,7 +98,7 @@ class OrderItemAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def save_model(self, request, obj, form, change):
         """Override save to track status changes"""
         if change:
@@ -104,9 +111,9 @@ class OrderItemAdmin(admin.ModelAdmin):
                     from_status=original.status,
                     to_status=obj.status,
                     changed_by=request.user,
-                    notes=f"Status changed via admin interface"
+                    notes="Status changed via admin interface"
                 )
-        
+
         super().save_model(request, obj, form, change)
 
 
@@ -120,7 +127,7 @@ class OrderItemStatusHistoryAdmin(admin.ModelAdmin):
     search_fields = ['order_item__order__member__name', 'order_item__order__member__lastname', 'order_item__item__name']
     readonly_fields = ['changed_at']
     autocomplete_fields = ['order_item', 'from_status', 'to_status', 'changed_by']
-    
+
     fieldsets = (
         ('Status-Änderung', {
             'fields': ('order_item', 'from_status', 'to_status', 'changed_by', 'changed_at')
@@ -139,7 +146,7 @@ class NotificationPreferenceAdmin(admin.ModelAdmin):
     list_filter = ['email_new_orders', 'email_status_updates', 'email_bulk_updates', 'email_pending_reminders']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']
     autocomplete_fields = ['user']
-    
+
     fieldsets = (
         ('Benutzer', {
             'fields': ('user',)
@@ -165,7 +172,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
     search_fields = ['recipient_email', 'subject', 'order__pk', 'order_item__item__name']
     readonly_fields = ['notification_type', 'recipient_email', 'subject', 'status', 'order', 'order_item', 'sent_at', 'error_message', 'created_at']
     date_hierarchy = 'created_at'
-    
+
     fieldsets = (
         ('Benachrichtigung', {
             'fields': ('notification_type', 'recipient_email', 'subject', 'status')
@@ -183,15 +190,15 @@ class NotificationLogAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def has_add_permission(self, request):
         return False  # Logs should not be manually created
-    
+
     def has_change_permission(self, request, obj=None):
         return False  # Logs should not be edited
-    
+
     actions = ['mark_as_sent', 'mark_as_failed']
-    
+
     def mark_as_sent(self, request, queryset):
         updated = 0
         for log in queryset.filter(status='pending'):
@@ -199,7 +206,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
             updated += 1
         self.message_user(request, f'{updated} Benachrichtigungen wurden als gesendet markiert.')
     mark_as_sent.short_description = "Als gesendet markieren"
-    
+
     def mark_as_failed(self, request, queryset):
         updated = 0
         for log in queryset.filter(status='pending'):
@@ -215,7 +222,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
     list_filter = ['template_type', 'is_active', 'updated_at']
     search_fields = ['name', 'subject_template']
     actions = ['import_default_templates', 'send_order_summary']
-    
+
     fieldsets = (
         ('Template Info', {
             'fields': ('name', 'template_type', 'is_active')
@@ -224,34 +231,34 @@ class EmailTemplateAdmin(admin.ModelAdmin):
             'fields': ('subject_template', 'html_template', 'text_template')
         }),
     )
-    
+
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
             return ['template_type']
         return []
-    
+
     def import_default_templates(self, request, queryset):
         """Import or reset default email templates"""
-        from django.core.management import call_command
         from io import StringIO
-        
+
+        from django.core.management import call_command
+
         # Capture command output
         out = StringIO()
         try:
             call_command('create_default_email_templates', stdout=out)
             self.message_user(request, f"Standard-E-Mail-Templates erfolgreich importiert: {out.getvalue().strip()}")
         except Exception as e:
-            self.message_user(request, f"Fehler beim Importieren der Standard-Templates: {str(e)}", level='error')
-    
+            self.message_user(request, f"Fehler beim Importieren der Standard-Templates: {e!s}", level='error')
+
     import_default_templates.short_description = "Standard E-Mail-Templates importieren/zurücksetzen"
-    
+
     def send_order_summary(self, request, queryset):
         """Send manual order summary to Gerätewart"""
-        from django.contrib.auth.models import User
         from django.shortcuts import redirect
         from django.urls import reverse
-        
+
         # Redirect to order summary form
         return redirect(reverse('orders:admin_send_order_summary'))
-    
+
     send_order_summary.short_description = "Bestellübersicht an Gerätewart senden"

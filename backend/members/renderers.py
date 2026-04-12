@@ -1,7 +1,9 @@
 # renderers.py
 from io import BytesIO
-from rest_framework.renderers import BaseRenderer
+
 from openpyxl import Workbook
+from rest_framework.renderers import BaseRenderer
+
 
 class MemberExcelRenderer(BaseRenderer):
     media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -86,8 +88,7 @@ class MemberExcelRenderer(BaseRenderer):
                 member['status'],
             ]
 
-            counter = 0
-            for current_parent in member['parents']:
+            for counter, current_parent in enumerate(member['parents']):
                 parent_row_data = [
                     current_parent['name'],
                     current_parent['lastname'],
@@ -101,9 +102,8 @@ class MemberExcelRenderer(BaseRenderer):
                     current_parent['notes'],
                 ]
                 row = row + parent_row_data
-                counter += 1
-                if counter >= n_parents_to_render:
-                    break;
+                if counter + 1 >= n_parents_to_render:
+                    break
 
             sheet.append(row)
         # Save workbook to BytesIO object

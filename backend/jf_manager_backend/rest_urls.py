@@ -1,41 +1,34 @@
 from rest_framework import routers
-from members.api_views import (
-    MemberViewSet, ParentViewSet, StatusViewSet, 
-    GroupViewSet, EventViewSet, EventTypeViewSet, AttachmentViewSet
+
+from inventory.api.viewsets import (
+    CategoryViewSet,
+    ItemVariantViewSet,
+    ItemViewSet,
+    StockViewSet,
+    StorageLocationViewSet,
+    TransactionViewSet,
 )
 from members.api.viewsets.email_viewsets import EmailMessageViewSet
-from users.api_views import UserViewSet
-from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
-# Import enhanced API viewsets from orders.api instead of legacy orders.views
-from orders.api.viewsets import (
-    OrderViewSet, OrderableItemViewSet, OrderStatusViewSet, OrderItemViewSet
+from members.api_views import (
+    AttachmentViewSet,
+    EventTypeViewSet,
+    EventViewSet,
+    GroupViewSet,
+    MemberViewSet,
+    ParentViewSet,
+    StatusViewSet,
 )
-# Import enhanced qualifications viewsets from qualifications.api
+from orders.api.viewsets import OrderableItemViewSet, OrderItemViewSet, OrderStatusViewSet, OrderViewSet
 from qualifications.api.viewsets import (
     QualificationTypeViewSet,
     QualificationViewSet,
     SpecialTaskTypeViewSet,
-    SpecialTaskViewSet
+    SpecialTaskViewSet,
 )
-"""Global REST API router registrations.
-
-Inventory viewsets now sourced from `inventory.api.viewsets` instead of
-`inventory.views` (legacy location). The old imports are kept working via
-re-export for a short transition period.
-"""
-
-from inventory.api.viewsets import (
-	ItemViewSet,
-	CategoryViewSet,
-	ItemVariantViewSet,
-	StorageLocationViewSet,
-	StockViewSet,
-	TransactionViewSet,
-)
-# Import enhanced servicebook viewsets from servicebook.api
-from servicebook.api.viewsets import ServiceViewSet, AttendanceViewSet
-# Import settings viewset from settings_manager.api
-from settings_manager.api import SettingsViewSet, EmailTemplateViewSet
+from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
+from settings_manager.api import EmailTemplateViewSet, SettingsViewSet
+from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
+from users.api_views import UserViewSet
 
 api = routers.DefaultRouter()
 api.register(r'users', UserViewSet)

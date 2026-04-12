@@ -2,10 +2,9 @@
 Management command to grant all necessary permissions for SPA users.
 Run: python manage.py grant_spa_permissions <username>
 """
-from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+from django.core.management.base import BaseCommand, CommandError
 
 User = get_user_model()
 
@@ -29,8 +28,8 @@ class Command(BaseCommand):
             username = options['username']
             try:
                 users = [User.objects.get(username=username)]
-            except User.DoesNotExist:
-                raise CommandError(f'User "{username}" does not exist')
+            except User.DoesNotExist as e:
+                raise CommandError(f'User "{username}" does not exist') from e
 
         # Define models that need permissions for SPA
         models = [
@@ -55,11 +54,11 @@ class Command(BaseCommand):
         ]
 
         permission_types = ['view', 'add', 'change', 'delete']
-        
+
         for user in users:
             self.stdout.write(f'Granting permissions to user: {user.username}')
             granted_count = 0
-            
+
             for app_label, model_name in models:
                 for perm_type in permission_types:
                     try:
@@ -75,12 +74,12 @@ class Command(BaseCommand):
                                 f'  Permission {perm_type}_{model_name} not found for {app_label}'
                             )
                         )
-            
+
             user.save()
             self.stdout.write(
                 self.style.SUCCESS(
                     f'  Successfully granted {granted_count} permissions to {user.username}'
                 )
             )
-        
+
         self.stdout.write(self.style.SUCCESS('Done!'))

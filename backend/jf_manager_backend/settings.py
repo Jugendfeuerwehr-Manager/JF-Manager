@@ -11,21 +11,27 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
+from datetime import timedelta
+
 import environ
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+# Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True')
 
-ALLOWED_HOSTS = ['*']
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
+
+if not DEBUG and not SECRET_KEY:
+    raise Exception("DJANGO_SECRET_KEY must be set in production (DEBUG=False)")
+
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if h.strip()
+]
 
 # CSRF Trusted Origins - required for POST requests from frontend
 # Must include full URL scheme (https:// or http://)
@@ -36,21 +42,20 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.sp
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
 # CORS settings for Vue.js frontend
+CORS_ALLOWED_ORIGINS_ENV = os.environ.get('CORS_ALLOWED_ORIGINS', '')
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vue.js dev server
+    o.strip() for o in CORS_ALLOWED_ORIGINS_ENV.split(',') if o.strip()
+] if CORS_ALLOWED_ORIGINS_ENV else [
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-
-# Allow all origins in development (remove in production!)
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 env = environ.Env(
-    # set casting, default value
     REDIS_URL=(str, 'none'),
 )
 
@@ -64,60 +69,46 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.admin',
     # Third party apps
-    'corsheaders',  # CORS headers for frontend
-    'dynamic_preferences',  # moved after django.contrib apps
+    'corsheaders',
+    'dynamic_preferences',
     'guardian',
     'mptt',
-    'bootstrap4',
-    'crispy_forms',
-    'crispy_bootstrap5',
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
-    'drf_spectacular',  # API documentation
+    'drf_spectacular',
+    'django_filters',
+    'import_export',
+    'django_cleanup.apps.CleanupConfig',
+    'phonenumber_field',
+    'colorfield',
+    # Project apps
     'users.apps.UsersConfig',
     'inventory.apps.InventoryConfig',
     'members.apps.MembersConfig',
     'servicebook.apps.ServicebookConfig',
     'orders.apps.OrdersConfig',
-    'phonenumber_field',
-    'django_tables2',
-    'django_filters',
-    'import_export',
-    'django_cleanup.apps.CleanupConfig',
-    'imagefit',
-    'bootstrap_datepicker_plus',
-    'colorfield',
-    'health',
-    # 'setup.apps.SetupConfig',  # Temporarily disabled - causes Docker path conflicts
     'qualifications.apps.QualificationsConfig',
     'settings_manager.apps.SettingsManagerConfig',
+    'health',
 ]
-
-BOOTSTRAP4 = {
-    'include_jquery': True,
-}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # CORS middleware - must be before CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'setup.middleware.SetupMiddleware',
-    'jf_manager_backend.email_middleware.EmailConfigMiddleware',  # Add email config middleware
+    'jf_manager_backend.email_middleware.EmailConfigMiddleware',
 ]
 
 ROOT_URLCONF = 'jf_manager_backend.urls'
 
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static")
-]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Media files configuration
@@ -127,8 +118,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 # Upload folder configuration (can be overridden via environment variables)
 MEMBER_UPLOAD_FOLDER = os.environ.get('MEMBER_UPLOAD_FOLDER', 'members/avatars')
 ATTACHMENT_UPLOAD_FOLDER = os.environ.get('ATTACHMENT_UPLOAD_FOLDER', 'attachments')
-
-IMAGEFIT_ROOT = os.path.join(BASE_DIR, 'imagefit')
 
 SITE_ID = 1
 
@@ -149,10 +138,10 @@ TEMPLATES = [
         },
     },
 ]
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = 'login'
+LOGIN_REDIRECT_URL = '/admin/'
+LOGOUT_REDIRECT_URL = '/admin/login/'
 AUTH_USER_MODEL = 'users.CustomUser'
-LOGIN_URL = 'login'
+LOGIN_URL = '/admin/login/'
 
 WSGI_APPLICATION = 'jf_manager_backend.wsgi.application'
 
@@ -217,8 +206,6 @@ REST_FRAMEWORK = {
 }
 
 # JWT Settings
-from datetime import timedelta
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -307,8 +294,36 @@ DEFAULT_FROM_EMAIL = 'webmaster@localhost'
 #EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.0/howto/static-files/
-
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
-CRISPY_TEMPLATE_PACK = 'bootstrap5'
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO' if not DEBUG else 'DEBUG',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING' if not DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

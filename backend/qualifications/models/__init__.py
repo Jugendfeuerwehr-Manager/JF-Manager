@@ -1,9 +1,9 @@
-from .qualification import QualificationType, Qualification
-from .special_task import SpecialTaskType, SpecialTask
+from .qualification import Qualification, QualificationType
+from .special_task import SpecialTask, SpecialTaskType
 
 __all__ = [
+    'Qualification',
     'QualificationType',
-    'Qualification', 
-    'SpecialTaskType',
-    'SpecialTask'
+    'SpecialTask',
+    'SpecialTaskType'
 ]

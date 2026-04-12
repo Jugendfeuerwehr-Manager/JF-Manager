@@ -3,12 +3,12 @@ Management command to create sample qualification and special task data.
 """
 import random
 from datetime import date, timedelta
-from django.core.management.base import BaseCommand
-from django.utils import timezone
 
-from qualifications.models.qualification import QualificationType, Qualification
-from qualifications.models.special_task import SpecialTaskType, SpecialTask
+from django.core.management.base import BaseCommand
+
 from members.models import Member
+from qualifications.models.qualification import Qualification, QualificationType
+from qualifications.models.special_task import SpecialTask, SpecialTaskType
 
 
 class Command(BaseCommand):
@@ -107,7 +107,7 @@ class Command(BaseCommand):
 
         # Create sample qualifications and tasks for members
         members = Member.objects.all()[:10]  # Limit to first 10 members
-        
+
         if not members.exists():
             self.stdout.write(
                 self.style.WARNING(
@@ -117,7 +117,7 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(f'Creating sample data for {members.count()} members...')
-        
+
         qual_types = QualificationType.objects.all()
         task_types = SpecialTaskType.objects.all()
 
@@ -125,12 +125,12 @@ class Command(BaseCommand):
             # Create 1-3 random qualifications per member
             num_quals = random.randint(1, 3)
             selected_quals = random.sample(list(qual_types), min(num_quals, len(qual_types)))
-            
+
             for qual_type in selected_quals:
                 # Random issue date in the past
                 days_ago = random.randint(30, 730)  # 1 month to 2 years ago
                 issue_date = date.today() - timedelta(days=days_ago)
-                
+
                 # Some qualifications might be expired
                 if qual_type.expires and qual_type.validity_period:
                     expiry_date = issue_date + timedelta(days=qual_type.validity_period * 30)
@@ -147,18 +147,18 @@ class Command(BaseCommand):
                         'note': f'CERT-{random.randint(1000, 9999)}'
                     }
                 )
-                
+
                 if created:
                     self.stdout.write(f'Created qualification: {qualification}')
 
             # Create 0-1 special tasks per member
             if random.choice([True, False]) and task_types.exists():
                 task_type = random.choice(task_types)
-                
+
                 # Random start date
                 days_ago = random.randint(30, 365)
                 start_date = date.today() - timedelta(days=days_ago)
-                
+
                 # Some tasks might have end dates
                 if random.choice([True, False]):
                     end_date = start_date + timedelta(days=random.randint(180, 1095))  # 6 months to 3 years
@@ -174,7 +174,7 @@ class Command(BaseCommand):
                         'note': f'{task_type.description} für {member.get_full_name()}'
                     }
                 )
-                
+
                 if created:
                     self.stdout.write(f'Created special task: {special_task}')
 
@@ -185,12 +185,12 @@ class Command(BaseCommand):
         self.stdout.write(f'Qualifications: {Qualification.objects.count()}')
         self.stdout.write(f'Special Task Types: {SpecialTaskType.objects.count()}')
         self.stdout.write(f'Special Tasks: {SpecialTask.objects.count()}')
-        
+
         # Show some statistics
         expired_quals = Qualification.objects.filter(date_expires__lt=date.today()).count()
         expiring_soon = sum(1 for q in Qualification.objects.all() if q.expires_soon())
         active_tasks = sum(1 for t in SpecialTask.objects.all() if t.is_active)
-        
+
         self.stdout.write('')
         self.stdout.write('Statistics:')
         self.stdout.write(f'- Expired qualifications: {expired_quals}')

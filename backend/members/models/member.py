@@ -1,10 +1,13 @@
 from datetime import date
+
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.urls import reverse
-from django.contrib.contenttypes.fields import GenericRelation
+
 from .group import Group
 from .status import Status
 from .utils import get_file_path
+
 
 class Member(models.Model):
     class Gender(models.TextChoices):
@@ -38,7 +41,7 @@ class Member(models.Model):
     canSwimm = models.BooleanField(default=False, verbose_name='Kann schwimmen')
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.ForeignKey(Status, on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     # Lagerplatz - Referenz zu einem Lagerort aus dem Inventory
     storage_location = models.ForeignKey(
         'inventory.StorageLocation',
@@ -48,7 +51,7 @@ class Member(models.Model):
         verbose_name='Lagerplatz',
         related_name='assigned_members'
     )
-    
+
     # Generic relation to attachments
     attachments = GenericRelation(
         'Attachment',

@@ -1,5 +1,7 @@
 from django.db import models
+
 from .member import Member
+
 
 class EventType(models.Model):
     name = models.CharField(max_length=200, default='', verbose_name="Ereignistyp")

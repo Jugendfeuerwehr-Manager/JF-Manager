@@ -1,8 +1,9 @@
-from jf_manager_backend.settings import *
-import dj_database_url
-import environ
 import os
 
+import dj_database_url
+import environ
+
+from jf_manager_backend.settings import *  # noqa: F403
 
 env = environ.Env(
     # set casting, default value
@@ -23,7 +24,7 @@ env = environ.Env(
 # Set the project base directory
 
 # Take environment variables from .env file
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # noqa: F405
 
 ## Expected static files and media URLS --> Docker volumes will be mounted to this directory
 STATIC_ROOT = env('STATIC_ROOT')
@@ -67,4 +68,4 @@ if REDIS_URL != "none":
     }
 
 if DATABASE_URL != "none":
-    DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=600)  # noqa: F405

@@ -9,12 +9,13 @@ These serializers provide comprehensive functionality for the Vue frontend:
 """
 
 from rest_framework import serializers
+
 from orders.models import OrderStatus
 
 
 class OrderStatusSerializer(serializers.ModelSerializer):
     """Serializer for OrderStatus"""
-    
+
     class Meta:
         model = OrderStatus
         fields = [
@@ -31,7 +32,7 @@ class OrderStatusSerializer(serializers.ModelSerializer):
 
 class OrderStatusMinimalSerializer(serializers.ModelSerializer):
     """Minimal serializer for nested use"""
-    
+
     class Meta:
         model = OrderStatus
         fields = ['id', 'name', 'code', 'color']
