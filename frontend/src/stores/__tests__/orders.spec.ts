@@ -3,9 +3,21 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useOrdersStore } from '../orders'
 import { ordersApi } from '@/api/orders'
 import type { Order, OrderCreate } from '@/types/orders'
+import type { AxiosResponse } from 'axios'
 
 // Mock API module
 vi.mock('@/api/orders')
+
+// Helper to create mock Axios response
+function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {} as any
+  }
+}
 
 describe('Orders Store', () => {
   beforeEach(() => {
@@ -96,14 +108,12 @@ describe('Orders Store', () => {
   describe('Actions', () => {
     describe('fetchOrders', () => {
       it('fetches orders successfully', async () => {
-        const mockResponse = {
-          data: {
-            count: 1,
-            next: null,
-            previous: null,
-            results: [mockOrder]
-          }
-        }
+        const mockResponse = createMockAxiosResponse({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [mockOrder]
+        })
         
         vi.mocked(ordersApi.list).mockResolvedValue(mockResponse)
         
@@ -127,14 +137,12 @@ describe('Orders Store', () => {
       })
 
       it('passes query parameters to API', async () => {
-        const mockResponse = {
-          data: {
-            count: 0,
-            next: null,
-            previous: null,
-            results: []
-          }
-        }
+        const mockResponse = createMockAxiosResponse({
+          count: 0,
+          next: null,
+          previous: null,
+          results: []
+        })
         
         vi.mocked(ordersApi.list).mockResolvedValue(mockResponse)
         
@@ -148,7 +156,7 @@ describe('Orders Store', () => {
 
     describe('fetchOrder', () => {
       it('fetches single order successfully', async () => {
-        const mockResponse = { data: mockOrder }
+        const mockResponse = createMockAxiosResponse(mockOrder)
         
         vi.mocked(ordersApi.get).mockResolvedValue(mockResponse)
         
@@ -160,7 +168,7 @@ describe('Orders Store', () => {
       })
 
       it('fetches order with history when requested', async () => {
-        const mockResponse = { data: mockOrder }
+        const mockResponse = createMockAxiosResponse(mockOrder)
         
         vi.mocked(ordersApi.getWithHistory).mockResolvedValue(mockResponse)
         
@@ -182,7 +190,7 @@ describe('Orders Store', () => {
           notes: 'New order'
         }
         
-        const mockResponse = { data: mockOrder }
+        const mockResponse = createMockAxiosResponse(mockOrder)
         
         vi.mocked(ordersApi.create).mockResolvedValue(mockResponse)
         

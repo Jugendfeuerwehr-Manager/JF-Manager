@@ -10,9 +10,21 @@ import type {
   OrderSettings,
   SettingsPermissions
 } from '@/types/settings'
+import type { AxiosResponse } from 'axios'
 
 // Mock API module
 vi.mock('@/api/settings')
+
+// Helper to create mock Axios response
+function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {} as any
+  }
+}
 
 describe('Settings Store', () => {
   beforeEach(() => {
@@ -143,7 +155,7 @@ describe('Settings Store', () => {
   describe('Actions', () => {
     describe('fetchPermissions', () => {
       it('fetches permissions successfully', async () => {
-        const mockResponse = { data: mockPermissions }
+        const mockResponse = createMockAxiosResponse(mockPermissions)
         
         vi.mocked(settingsApi.getPermissions).mockResolvedValue(mockResponse)
         
@@ -167,13 +179,11 @@ describe('Settings Store', () => {
 
     describe('fetchAllSettings', () => {
       it('fetches all settings successfully', async () => {
-        const mockResponse = {
-          data: {
-            general: mockGeneralSettings,
-            email: mockEmailSettings,
-            order: mockOrderSettings
-          }
-        }
+        const mockResponse = createMockAxiosResponse({
+          general: mockGeneralSettings,
+          email: mockEmailSettings,
+          order: mockOrderSettings
+        })
         
         vi.mocked(settingsApi.getAll).mockResolvedValue(mockResponse)
         
@@ -188,7 +198,7 @@ describe('Settings Store', () => {
 
     describe('fetchCategorySettings', () => {
       it('fetches general settings', async () => {
-        const mockResponse = { data: mockGeneralSettings }
+        const mockResponse = createMockAxiosResponse(mockGeneralSettings)
         
         vi.mocked(settingsApi.getByCategory).mockResolvedValue(mockResponse)
         
@@ -200,7 +210,7 @@ describe('Settings Store', () => {
       })
 
       it('fetches email settings', async () => {
-        const mockResponse = { data: mockEmailSettings }
+        const mockResponse = createMockAxiosResponse(mockEmailSettings)
         
         vi.mocked(settingsApi.getByCategory).mockResolvedValue(mockResponse)
         
@@ -211,7 +221,7 @@ describe('Settings Store', () => {
       })
 
       it('fetches order settings', async () => {
-        const mockResponse = { data: mockOrderSettings }
+        const mockResponse = createMockAxiosResponse(mockOrderSettings)
         
         vi.mocked(settingsApi.getByCategory).mockResolvedValue(mockResponse)
         
@@ -225,7 +235,7 @@ describe('Settings Store', () => {
     describe('updateCategorySettings', () => {
       it('updates general settings', async () => {
         const updatedSettings = { title: 'New Title' }
-        const mockResponse = { data: updatedSettings as GeneralSettings }
+        const mockResponse = createMockAxiosResponse(updatedSettings as GeneralSettings)
         
         vi.mocked(settingsApi.updateByCategory).mockResolvedValue(mockResponse)
         
@@ -238,7 +248,7 @@ describe('Settings Store', () => {
 
       it('updates email settings', async () => {
         const updatedSettings = { email_host: 'smtp.new.com' }
-        const mockResponse = { data: { ...mockEmailSettings, ...updatedSettings } }
+        const mockResponse = createMockAxiosResponse({ ...mockEmailSettings, ...updatedSettings })
         
         vi.mocked(settingsApi.updateByCategory).mockResolvedValue(mockResponse)
         
@@ -252,7 +262,7 @@ describe('Settings Store', () => {
     describe('updateGeneral', () => {
       it('calls updateCategorySettings with general category', async () => {
         const updatedSettings = { title: 'Updated' }
-        const mockResponse = { data: updatedSettings as GeneralSettings }
+        const mockResponse = createMockAxiosResponse(updatedSettings as GeneralSettings)
         
         vi.mocked(settingsApi.updateByCategory).mockResolvedValue(mockResponse)
         

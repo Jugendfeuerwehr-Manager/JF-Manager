@@ -3,6 +3,9 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '../auth'
 import { authApi } from '@/api/auth'
 import { userApi } from '@/api/user'
+import router from '@/router'
+import type { LoginRequest, UserInfo } from '@/types/api'
+import type { AxiosResponse } from 'axios'
 
 // Mock API modules
 vi.mock('@/api/auth')
@@ -12,6 +15,46 @@ vi.mock('@/router', () => ({
     push: vi.fn()
   }
 }))
+
+// Helper to create mock Axios response
+function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {} as any
+  }
+}
+
+// Helper to create complete mock user
+function createMockUser(overrides: Partial<UserInfo> = {}): UserInfo {
+  return {
+    id: 1,
+    username: 'testuser',
+    email: 'test@example.com',
+    first_name: 'Test',
+    last_name: 'User',
+    full_name: 'Test User',
+    phone: '',
+    mobile_phone: '',
+    street: '',
+    zip_code: '',
+    city: '',
+    is_staff: false,
+    is_active: true,
+    is_superuser: false,
+    date_joined: '2026-01-01T00:00:00Z',
+    last_login: '2026-04-12T00:00:00Z',
+    avatar: null,
+    avatar_url: null,
+    dsgvo_internal: true,
+    dsgvo_external: false,
+    groups: [],
+    permissions: [],
+    ...overrides
+  }
+}
 
 describe('Auth Store', () => {
   beforeEach(() => {
@@ -64,15 +107,7 @@ describe('Auth Store', () => {
 
     it('userFullName returns user full name', () => {
       const store = useAuthStore()
-      store.user = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        full_name: 'Test User',
-        is_staff: false,
-        is_superuser: false,
-        permissions: []
-      }
+      store.user = createMockUser({ full_name: 'Test User' })
       
       expect(store.userFullName).toBe('Test User')
     })
@@ -85,60 +120,28 @@ describe('Auth Store', () => {
 
     it('permissions returns user permissions', () => {
       const store = useAuthStore()
-      store.user = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        full_name: 'Test User',
-        is_staff: false,
-        is_superuser: false,
-        permissions: ['view_members', 'edit_orders']
-      }
+      store.user = createMockUser({ permissions: ['view_members', 'edit_orders'] })
       
       expect(store.permissions).toEqual(['view_members', 'edit_orders'])
     })
 
     it('hasPermission returns true for superuser', () => {
       const store = useAuthStore()
-      store.user = {
-        id: 1,
-        username: 'admin',
-        email: 'admin@example.com',
-        full_name: 'Admin User',
-        is_staff: true,
-        is_superuser: true,
-        permissions: []
-      }
+      store.user = createMockUser({ is_staff: true, is_superuser: true })
       
       expect(store.hasPermission('any_permission')).toBe(true)
     })
 
     it('hasPermission returns true when user has permission', () => {
       const store = useAuthStore()
-      store.user = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        full_name: 'Test User',
-        is_staff: false,
-        is_superuser: false,
-        permissions: ['view_members']
-      }
+      store.user = createMockUser({ permissions: ['view_members'] })
       
       expect(store.hasPermission('view_members')).toBe(true)
     })
 
     it('hasPermission returns false when user lacks permission', () => {
       const store = useAuthStore()
-      store.user = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        full_name: 'Test User',
-        is_staff: false,
-        is_superuser: false,
-        permissions: ['view_members']
-      }
+      store.user = createMockUser({ permissions: ['view_members'] })
       
       expect(store.hasPermission('edit_orders')).toBe(false)
     })
@@ -147,24 +150,12 @@ describe('Auth Store', () => {
   describe('Actions', () => {
     describe('login', () => {
       it('successfully logs in and stores tokens', async () => {
-        const mockAuthResponse = {
-          data: {
-            access: 'new-access-token',
-            refresh: 'new-refresh-token'
-          }
-        }
+        const mockAuthResponse = createMockAxiosResponse({
+          access: 'new-access-token',
+          refresh: 'new-refresh-token'
+        })
         
-        const mockUserResponse = {
-          data: {
-            id: 1,
-            username: 'testuser',
-            email: 'test@example.com',
-            full_name: 'Test User',
-            is_staff: false,
-            is_superuser: false,
-            permissions: []
-          }
-        }
+        const mockUserResponse = createMockAxiosResponse(createMockUser())
         
         vi.mocked(authApi.login).mockResolvedValue(mockAuthResponse)
         vi.mocked(userApi.me).mockResolvedValue(mockUserResponse)
@@ -196,25 +187,15 @@ describe('Auth Store', () => {
         vi.mocked(authApi.login).mockImplementation(async () => {
           const store = useAuthStore()
           loadingDuringLogin = store.loading
-          return {
-            data: {
-              access: 'token',
-              refresh: 'refresh'
-            }
-          }
+          return createMockAxiosResponse({
+            access: 'token',
+            refresh: 'refresh'
+          })
         })
         
-        vi.mocked(userApi.me).mockResolvedValue({
-          data: {
-            id: 1,
-            username: 'testuser',
-            email: 'test@example.com',
-            full_name: 'Test User',
-            is_staff: false,
-            is_superuser: false,
-            permissions: []
-          }
-        })
+        vi.mocked(userApi.me).mockResolvedValue(
+          createMockAxiosResponse(createMockUser())
+        )
         
         const store = useAuthStore()
         await store.login('testuser', 'password')
@@ -229,15 +210,7 @@ describe('Auth Store', () => {
         const store = useAuthStore()
         store.accessToken = 'test-token'
         store.refreshToken = 'test-refresh'
-        store.user = {
-          id: 1,
-          username: 'testuser',
-          email: 'test@example.com',
-          full_name: 'Test User',
-          is_staff: false,
-          is_superuser: false,
-          permissions: []
-        }
+        store.user = createMockUser()
         
         store.logout()
         
@@ -259,11 +232,9 @@ describe('Auth Store', () => {
         const store = useAuthStore()
         store.refreshToken = 'old-refresh-token'
         
-        vi.mocked(authApi.refresh).mockResolvedValue({
-          data: {
-            access: 'new-access-token'
-          }
-        })
+        vi.mocked(authApi.refresh).mockResolvedValue(
+          createMockAxiosResponse({ access: 'new-access-token' })
+        )
         
         await store.refreshAccessToken()
         
