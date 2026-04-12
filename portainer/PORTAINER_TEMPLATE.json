@@ -1,0 +1,184 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 3,
+      "title": "JF-Manager",
+      "description": "Youth Fire Brigade (Jugendfeuerwehr) management system with Django backend and Vue.js frontend",
+      "note": "Complete management system for youth fire brigades including member management, inventory, orders, qualifications, and service books.",
+      "categories": ["management", "django", "vue"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/Jugendfeuerwehr-Manager/JF-Manager/main/frontend/src/assets/logo.svg",
+      "repository": {
+        "url": "https://github.com/Jugendfeuerwehr-Manager/JF-Manager",
+        "stackfile": "portainer/docker-compose.portainer.yml"
+      },
+      "env": [
+        {
+          "name": "POSTGRES_DB",
+          "label": "PostgreSQL Database Name",
+          "default": "jf_manager_backend",
+          "description": "Name of the PostgreSQL database"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "label": "PostgreSQL User",
+          "default": "jf_manager",
+          "description": "PostgreSQL database user"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "label": "PostgreSQL Password",
+          "description": "Strong password for PostgreSQL (generate with: openssl rand -base64 32)"
+        },
+        {
+          "name": "DJANGO_SECRET_KEY",
+          "label": "Django Secret Key",
+          "description": "Random secret key for Django (generate with: openssl rand -base64 50)"
+        },
+        {
+          "name": "DJANGO_ADMIN_PASSWORD",
+          "label": "Django Admin Password",
+          "description": "Password for Django admin user (generate with: openssl rand -base64 16)"
+        },
+        {
+          "name": "DJANGO_ADMIN_EMAIL",
+          "label": "Django Admin Email",
+          "default": "admin@example.com",
+          "description": "Email address for Django admin user"
+        },
+        {
+          "name": "ALLOWED_HOSTS",
+          "label": "Allowed Hosts",
+          "default": "localhost,127.0.0.1",
+          "description": "Comma-separated list of allowed hostnames (e.g., yourdomain.com,www.yourdomain.com)"
+        },
+        {
+          "name": "CSRF_TRUSTED_ORIGINS",
+          "label": "CSRF Trusted Origins",
+          "default": "http://localhost,http://127.0.0.1",
+          "description": "Comma-separated list of trusted origins for CSRF (e.g., https://yourdomain.com)"
+        },
+        {
+          "name": "DEBUG",
+          "label": "Debug Mode",
+          "default": "False",
+          "select": [
+            {
+              "text": "False (Production)",
+              "value": "False",
+              "default": true
+            },
+            {
+              "text": "True (Development)",
+              "value": "True"
+            }
+          ],
+          "description": "Enable Django debug mode (should be False in production)"
+        },
+        {
+          "name": "DJANGO_MANAGEPY_MIGRATE",
+          "label": "Auto-run Migrations",
+          "default": "on",
+          "select": [
+            {
+              "text": "On",
+              "value": "on",
+              "default": true
+            },
+            {
+              "text": "Off",
+              "value": "off"
+            }
+          ],
+          "description": "Automatically run database migrations on startup"
+        },
+        {
+          "name": "EMAIL_HOST",
+          "label": "Email SMTP Host",
+          "default": "",
+          "description": "SMTP server hostname (optional, e.g., smtp.gmail.com)"
+        },
+        {
+          "name": "EMAIL_PORT",
+          "label": "Email SMTP Port",
+          "default": "587",
+          "description": "SMTP server port (usually 587 for TLS or 465 for SSL)"
+        },
+        {
+          "name": "EMAIL_HOST_USER",
+          "label": "Email Username",
+          "default": "",
+          "description": "SMTP authentication username (optional)"
+        },
+        {
+          "name": "EMAIL_HOST_PASSWORD",
+          "label": "Email Password",
+          "default": "",
+          "description": "SMTP authentication password (optional)"
+        },
+        {
+          "name": "EMAIL_USE_TLS",
+          "label": "Email Use TLS",
+          "default": "True",
+          "select": [
+            {
+              "text": "True",
+              "value": "True",
+              "default": true
+            },
+            {
+              "text": "False",
+              "value": "False"
+            }
+          ],
+          "description": "Use TLS encryption for email"
+        },
+        {
+          "name": "DEFAULT_FROM_EMAIL",
+          "label": "Default From Email",
+          "default": "noreply@example.com",
+          "description": "Default sender email address"
+        },
+        {
+          "name": "HTTP_PORT",
+          "label": "HTTP Port",
+          "default": "80",
+          "description": "Port for HTTP traffic"
+        },
+        {
+          "name": "HTTPS_PORT",
+          "label": "HTTPS Port",
+          "default": "443",
+          "description": "Port for HTTPS traffic"
+        }
+      ],
+      "volumes": [
+        {
+          "container": "/var/lib/postgresql/data",
+          "bind": "jf_manager_database"
+        },
+        {
+          "container": "/data",
+          "bind": "jf_manager_redis"
+        },
+        {
+          "container": "/static",
+          "bind": "jf_manager_static"
+        },
+        {
+          "container": "/uploads",
+          "bind": "jf_manager_uploads"
+        },
+        {
+          "container": "/backups",
+          "bind": "jf_manager_backups"
+        }
+      ],
+      "ports": [
+        "80:80/tcp",
+        "443:443/tcp"
+      ]
+    }
+  ]
+}

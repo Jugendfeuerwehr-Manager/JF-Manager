@@ -86,7 +86,30 @@ __pycache__/
 local_settings.py
 
 .env
+.env.local
+.env.production
 db.sqlite3
+
+# Docker Compose overrides
+docker-compose.override.yml
+
+# Backups
+backups/*.sql.gz
+backups/daily/
+backups/weekly/
+backups/monthly/
+
+# SSL certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+
+# Docker volumes
+uploads/
+static/
+
+# Logs
+*.log
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
@@ -154,3 +177,5 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+.github/copilot-documentation

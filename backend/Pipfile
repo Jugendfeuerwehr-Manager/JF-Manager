@@ -1,0 +1,36 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+Django = "~=5.0.2"
+djangorestframework = "~=3.14.0"
+dj-database-url = "~=2.1.0"
+pillow = "~=10.0.1"
+psycopg2-binary = "~=2.9.9"
+urllib3 = "~=1.26.18"
+django-filter = "~=24.3"
+django-guardian = "~=2.4.0"
+django-mptt = "~=0.15.0"
+django-phonenumber-field = "~=7.1.0"
+django-redis = "~=5.4.0"
+django-colorfield = "~=0.11.0"
+django-environ = "~=0.11.2"
+django-dynamic-preferences = "~=1.15.0"
+django-import-export = "~=3.3.1"
+django-cleanup = "*"
+gunicorn = "*"
+phonenumbers = "*"
+pandas = "*"
+openpyxl = "*"
+python-dateutil = "*"
+djangorestframework-simplejwt = "*"
+drf-spectacular = "*"
+django-cors-headers = "*"
+ruff = "*"
+
+[requires]
+python_version = "3.10"
