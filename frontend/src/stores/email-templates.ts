@@ -13,8 +13,10 @@ import type {
   TemplateType,
   AllTemplateVariables,
   TemplatePreviewRequest,
-  TemplatePreviewResponse
+  TemplatePreviewResponse,
+  TemplateVariable
 } from '@/types/email-templates'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
   // State
@@ -46,8 +48,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       const response = await emailTemplatesApi.list()
       templates.value = response.data.results
       return templates.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der E-Mail-Vorlagen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der E-Mail-Vorlagen')
       throw err
     } finally {
       loading.value = false
@@ -61,8 +63,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       const response = await emailTemplatesApi.get(id)
       currentTemplate.value = response.data
       return currentTemplate.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der E-Mail-Vorlage'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der E-Mail-Vorlage')
       throw err
     } finally {
       loading.value = false
@@ -77,8 +79,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       templates.value.push(response.data)
       currentTemplate.value = response.data
       return currentTemplate.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Erstellen der E-Mail-Vorlage'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Erstellen der E-Mail-Vorlage')
       throw err
     } finally {
       saving.value = false
@@ -96,8 +98,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       }
       currentTemplate.value = response.data
       return currentTemplate.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Aktualisieren der E-Mail-Vorlage'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Aktualisieren der E-Mail-Vorlage')
       throw err
     } finally {
       saving.value = false
@@ -115,8 +117,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       }
       currentTemplate.value = response.data
       return currentTemplate.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Aktualisieren der E-Mail-Vorlage'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Aktualisieren der E-Mail-Vorlage')
       throw err
     } finally {
       saving.value = false
@@ -132,8 +134,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       if (currentTemplate.value?.id === id) {
         currentTemplate.value = null
       }
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Löschen der E-Mail-Vorlage'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Löschen der E-Mail-Vorlage')
       throw err
     } finally {
       saving.value = false
@@ -147,8 +149,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       const response = await emailTemplatesApi.getTypes()
       templateTypes.value = response.data
       return templateTypes.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der Vorlagentypen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Vorlagentypen')
       throw err
     } finally {
       loading.value = false
@@ -162,8 +164,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
       const response = await emailTemplatesApi.getVariables()
       allVariables.value = response.data as AllTemplateVariables
       return allVariables.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der Vorlagenvariablen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Vorlagenvariablen')
       throw err
     } finally {
       loading.value = false
@@ -175,13 +177,13 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
     error.value = null
     try {
       const response = await emailTemplatesApi.getVariables(templateType)
-      const data = response.data as { template_type: string; variables: any[]; sample_data: any }
+      const data = response.data as { template_type: string; variables: TemplateVariable[]; sample_data: Record<string, unknown> }
       return {
         variables: data.variables,
         sample_data: data.sample_data
       }
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der Vorlagenvariablen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Vorlagenvariablen')
       throw err
     } finally {
       loading.value = false
@@ -194,8 +196,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
     try {
       const response = await emailTemplatesApi.preview(data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler bei der Vorschau'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler bei der Vorschau')
       throw err
     } finally {
       previewing.value = false
@@ -208,8 +210,8 @@ export const useEmailTemplatesStore = defineStore('emailTemplates', () => {
     try {
       const response = await emailTemplatesApi.getDefaultContent(templateType)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden des Standard-Templates'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden des Standard-Templates')
       throw err
     } finally {
       loading.value = false

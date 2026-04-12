@@ -4,6 +4,7 @@ import { authApi } from '@/api/auth'
 import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import router from '@/router'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -40,8 +41,8 @@ export const useAuthStore = defineStore('auth', () => {
       await fetchUser()
 
       return true
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Login failed'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Login failed')
       throw err
     } finally {
       loading.value = false
@@ -52,7 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userApi.me()
       user.value = response.data
-    } catch (err: any) {
+    } catch (err) {
       error.value = 'Failed to fetch user data'
       throw err
     }
@@ -83,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await userApi.updateProfile(data)
       user.value = response.data
       return response.data
-    } catch (err: any) {
+    } catch (err) {
       error.value = 'Failed to update profile'
       throw err
     }
@@ -103,7 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (accessToken.value) {
       try {
         await fetchUser()
-      } catch (err) {
+      } catch {
         // Token invalid, logout
         logout()
       }

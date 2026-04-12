@@ -69,7 +69,7 @@ import { computed } from 'vue'
 import Card from 'primevue/card'
 import OrderStatusBadge from '../atoms/OrderStatusBadge.vue'
 import OrderWorkflowQuickActions from './OrderWorkflowQuickActions.vue'
-import type { Order } from '@/types/orders'
+import type { Order, OrderItem } from '@/types/orders'
 
 interface Props {
   order: Order
@@ -109,7 +109,7 @@ const formatDate = (dateString: string): string => {
   })
 }
 
-const formatItemsSummary = (items: any[]): string => {
+const formatItemsSummary = (items: OrderItem[]): string => {
   if (!items || items.length === 0) return 'Keine Artikel'
   
   const summary = items.map(item => {

@@ -25,7 +25,7 @@ declare module '@/types/api' {
   export type TokenRefreshResponse = { access: string }
 
   export type UserInfo = ApiTypes.UserInfo
-  export type AppSettings = { [k: string]: any }
+  export type AppSettings = { [k: string]: unknown }
 
   // Re-export a few APIs for convenience
   export { default as apiTypes } from '../api/types'

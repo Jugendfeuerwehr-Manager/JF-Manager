@@ -1,4 +1,4 @@
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -73,7 +73,7 @@ export function useTheme() {
     // Persist to user profile if possible
     try {
       const { userApi } = await import('@/api/user')
-      await userApi.updateProfile({ theme_mode: mode } as any)
+      await userApi.updateProfile({ theme_mode: mode } as Record<string, unknown>)
     } catch {
       // Silently ignore — preference is still saved locally
     }

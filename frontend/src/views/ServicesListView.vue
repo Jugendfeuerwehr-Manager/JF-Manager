@@ -144,8 +144,7 @@ const loadStatistics = async () => {
   try {
     await servicebookStore.fetchStatistics()
     statistics.value = servicebookStore.statistics
-  } catch (error) {
-    console.error('Failed to load statistics:', error)
+  } catch {
   } finally {
     statisticsLoading.value = false
   }

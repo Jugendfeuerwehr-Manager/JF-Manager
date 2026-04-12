@@ -12,6 +12,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Image from 'primevue/image'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   sourceId: number
@@ -64,11 +65,11 @@ async function ensureAttachmentsLoaded() {
         await qualificationsStore.fetchSpecialTaskAttachments(props.sourceId)
       }
     }
-  } catch (error: any) {
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Anhänge',
-      detail: error?.message || 'Anhänge konnten nicht geladen werden.',
+      detail: getApiErrorMessage(error, 'Anhänge konnten nicht geladen werden.'),
       life: 4000
     })
   }
@@ -162,17 +163,11 @@ async function submitUpload() {
     })
 
     closeUploadDialog()
-  } catch (error: any) {
-    formError.value = error?.message || 'Fehler beim Hochladen.'
+  } catch (error) {
+    formError.value = getApiErrorMessage(error, 'Fehler beim Hochladen.')
   }
 }
 
-function handleView(attachment: Attachment) {
-  const fileUrl = attachment.file_url || attachment.file
-  if (fileUrl) {
-    window.open(fileUrl, '_blank', 'noopener')
-  }
-}
 
 function handlePreview(attachment: Attachment) {
   previewAttachment.value = attachment
@@ -210,11 +205,11 @@ function handleDelete(attachment: Attachment) {
           detail: 'Der Anhang wurde entfernt.',
           life: 3000
         })
-      } catch (error: any) {
+      } catch (error) {
         toast.add({
           severity: 'error',
           summary: 'Löschen fehlgeschlagen',
-          detail: error?.message || 'Der Anhang konnte nicht gelöscht werden.',
+          detail: getApiErrorMessage(error, 'Der Anhang konnte nicht gelöscht werden.'),
           life: 4000
         })
       }

@@ -137,7 +137,7 @@
                     <div class="stat-bar-track">
                       <div
                         class="stat-bar-fill"
-                        :style="{ width: stats.total ? `${(bucket.count / stats.total) * 100}%` : '0%', backgroundColor: '#4facfe' }"
+                        :style="{ width: stats.total ? `${((bucket.count ?? 0) / stats.total) * 100}%` : '0%', backgroundColor: '#4facfe' }"
                       ></div>
                     </div>
                     <span class="stat-bar-value">{{ bucket.count }}</span>
@@ -398,7 +398,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
 import { membersApi, parentsApi } from '@/api/members'
-import type { Member, Parent } from '@/types/api'
+import type { Member } from '@/types/api'
 import { useQueryTableState } from '@/composables/useQueryTableState'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -409,7 +409,6 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
-import Dialog from 'primevue/dialog'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
@@ -419,10 +418,6 @@ const membersStore = useMembersStore()
 const confirm = useConfirm()
 const toast = useToast()
 const { getInt, getString, syncToUrl } = useQueryTableState()
-
-// Contact dialog
-const showContactDialog = ref(false)
-const selectedParent = ref<Parent | null>(null)
 
 onUnmounted(() => {
   
@@ -442,9 +437,17 @@ const genderFilterOptions = [
 ]
 
 // Statistics
+interface MemberStats {
+  total: number
+  gender: { male?: number; female?: number; diverse?: number; unknown?: number }
+  age?: { avg?: number | null; min?: number; max?: number; buckets?: { label: string; color?: string; count?: number }[] } | null
+  by_status: { name: string; count: number; color: string }[]
+  can_swim: number
+  by_group: { name: string; count: number }[]
+}
 const statsExpanded = ref(false)
 const statsLoading = ref(false)
-const stats = ref<any>(null)
+const stats = ref<MemberStats | null>(null)
 
 const genderStats = computed(() => {
   if (!stats.value) return []
@@ -517,16 +520,17 @@ const loadLazyData = () => {
   })
 }
 
-const onPage = (event: any) => {
+const onPage = (event: { first: number; rows: number }) => {
   lazyParams.first = event.first
   lazyParams.rows = event.rows
   syncToUrl({ search: filters.search, status: filters.status, group: filters.group, gender: filters.gender, offset: lazyParams.first, rows: lazyParams.rows, sortField: lazyParams.sortField, sortOrder: lazyParams.sortOrder }, MEMBERS_URL_DEFAULTS)
   loadLazyData()
 }
 
-const onSort = (event: any) => {
-  lazyParams.sortField = event.sortField
-  lazyParams.sortOrder = event.sortOrder
+const onSort = (event: import('primevue/datatable').DataTableSortEvent) => {
+  const sf = event.sortField
+  lazyParams.sortField = (typeof sf === 'string' ? sf : undefined) || 'lastname'
+  lazyParams.sortOrder = (event.sortOrder as 1 | -1) || 1
   syncToUrl({ search: filters.search, status: filters.status, group: filters.group, gender: filters.gender, offset: lazyParams.first, rows: lazyParams.rows, sortField: lazyParams.sortField, sortOrder: lazyParams.sortOrder }, MEMBERS_URL_DEFAULTS)
   loadLazyData()
 }
@@ -564,7 +568,7 @@ const navigateToEdit = (member: Member) => {
   router.push(`/members/${member.id}/edit`)
 }
 
-const onRowClick = (event: any) => {
+const onRowClick = (event: { data: Member }) => {
   // Navigate to member detail when row is clicked
   const member = event.data as Member
   router.push(`/members/${member.id}`)
@@ -622,7 +626,7 @@ const confirmDelete = (member: Member) => {
             }
           })
         }
-      } catch (error) {
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
@@ -643,7 +647,7 @@ const handleExportExcel = async () => {
       detail: 'Mitgliederliste wurde erfolgreich exportiert',
       life: 3000
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

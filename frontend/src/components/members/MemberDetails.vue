@@ -138,7 +138,6 @@ import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Chip from 'primevue/chip'
-import Card from 'primevue/card'
 import Divider from 'primevue/divider'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 

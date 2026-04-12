@@ -211,7 +211,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useInventoryStore } from '@/stores/inventory'
 import { useToast } from 'primevue/usetoast'
-import type { TransactionType, TransactionCreate, Stock, DiscardReason } from '@/types/inventory'
+import type { TransactionType, TransactionCreate, Stock } from '@/types/inventory'
 import { TRANSACTION_TYPES, DISCARD_REASONS } from '@/types/inventory'
 
 interface Props {

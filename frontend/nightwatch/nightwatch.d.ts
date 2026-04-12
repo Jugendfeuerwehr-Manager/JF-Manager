@@ -1,5 +1,4 @@
-import { NightwatchCustomAssertions, NightwatchCustomCommands } from 'nightwatch'
-
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 declare module 'nightwatch' {
   interface NightwatchCustomAssertions {
     // Add your custom assertions' types here

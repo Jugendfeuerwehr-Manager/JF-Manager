@@ -82,7 +82,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
-import SplitButton from 'primevue/splitbutton'
 import { useToast } from 'primevue/usetoast'
 import { orderItemsApi } from '@/api/orderItems'
 import { ordersApi } from '@/api/orders'
@@ -253,8 +252,7 @@ const handleStatusClick = async (statusId: number) => {
     })
 
     emit('statusChanged', props.order.id)
-  } catch (error) {
-    console.error('Workflow update failed', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Aktualisierung fehlgeschlagen',

@@ -129,7 +129,7 @@ import type { EventType } from '@/types/api'
 interface Props {
   canEdit: boolean
 }
-const props = defineProps<Props>()
+defineProps<Props>()
 
 const confirm = useConfirm()
 const toast = useToast()

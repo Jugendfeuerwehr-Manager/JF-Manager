@@ -15,6 +15,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import SelectButton from 'primevue/selectbutton'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   qualificationId?: number
@@ -293,8 +294,8 @@ const handleSubmit = async () => {
       const newQualification = await qualificationsStore.createQualification(createData)
       emit('success', newQualification.id)
     }
-  } catch (err: any) {
-    error.value = err.message || 'Fehler beim Speichern der Qualifikation'
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'Fehler beim Speichern der Qualifikation')
   } finally {
     loading.value = false
   }

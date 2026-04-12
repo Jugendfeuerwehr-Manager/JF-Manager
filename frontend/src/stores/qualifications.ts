@@ -27,6 +27,7 @@ import type {
   SpecialTaskTypeCreate,
   Attachment
 } from '@/types/qualifications'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useQualificationsStore = defineStore('qualifications', () => {
   // ==================== STATE ====================
@@ -119,8 +120,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return qualifications.value
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to fetch qualifications'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to fetch qualifications')
       throw e
     } finally {
       loading.value = false
@@ -135,8 +136,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await qualificationsApi.get(id)
       currentQualification.value = response.data
       return currentQualification.value
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to fetch qualification'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to fetch qualification')
       throw e
     } finally {
       loadingDetail.value = false
@@ -158,8 +159,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       qualificationsTotal.value++
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to create qualification'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to create qualification')
       throw e
     } finally {
       loading.value = false
@@ -185,8 +186,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to update qualification'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to update qualification')
       throw e
     } finally {
       loading.value = false
@@ -208,8 +209,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       if (currentQualification.value?.id === id) {
         currentQualification.value = null
       }
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to delete qualification'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to delete qualification')
       throw e
     } finally {
       loading.value = false
@@ -223,7 +224,7 @@ export const useQualificationsStore = defineStore('qualifications', () => {
         date_acquired: dateAcquired
       })
       return response.data.date_expires
-    } catch (e: any) {
+    } catch (e) {
       console.error('Failed to calculate expiry:', e)
       return null
     }
@@ -243,9 +244,9 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       qualificationTypes.value = response.data.results // Extract .results!
       qualificationTypesLoaded.value = true
       return qualificationTypes.value
-    } catch (e: any) {
+    } catch (e) {
       error.value =
-        e.response?.data?.detail || e.message || 'Failed to fetch qualification types'
+        getApiErrorMessage(e, 'Failed to fetch qualification types')
       throw e
     } finally {
       loadingTypes.value = false
@@ -259,9 +260,9 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await qualificationTypesApi.create(data)
       qualificationTypes.value.push(response.data)
       return response.data
-    } catch (e: any) {
+    } catch (e) {
       error.value =
-        e.response?.data?.detail || e.message || 'Failed to create qualification type'
+        getApiErrorMessage(e, 'Failed to create qualification type')
       throw e
     } finally {
       loadingTypes.value = false
@@ -278,9 +279,9 @@ export const useQualificationsStore = defineStore('qualifications', () => {
         qualificationTypes.value[index] = response.data
       }
       return response.data
-    } catch (e: any) {
+    } catch (e) {
       error.value =
-        e.response?.data?.detail || e.message || 'Failed to update qualification type'
+        getApiErrorMessage(e, 'Failed to update qualification type')
       throw e
     } finally {
       loadingTypes.value = false
@@ -293,9 +294,9 @@ export const useQualificationsStore = defineStore('qualifications', () => {
     try {
       await qualificationTypesApi.delete(id)
       qualificationTypes.value = qualificationTypes.value.filter((t) => t.id !== id)
-    } catch (e: any) {
+    } catch (e) {
       error.value =
-        e.response?.data?.detail || e.message || 'Failed to delete qualification type'
+        getApiErrorMessage(e, 'Failed to delete qualification type')
       throw e
     } finally {
       loadingTypes.value = false
@@ -318,8 +319,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return specialTasks.value
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to fetch special tasks'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to fetch special tasks')
       throw e
     } finally {
       loading.value = false
@@ -334,8 +335,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await specialTasksApi.get(id)
       currentSpecialTask.value = response.data
       return currentSpecialTask.value
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to fetch special task'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to fetch special task')
       throw e
     } finally {
       loadingDetail.value = false
@@ -356,8 +357,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       specialTasksTotal.value++
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to create special task'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to create special task')
       throw e
     } finally {
       loading.value = false
@@ -381,8 +382,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to update special task'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to update special task')
       throw e
     } finally {
       loading.value = false
@@ -402,8 +403,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       if (currentSpecialTask.value?.id === id) {
         currentSpecialTask.value = null
       }
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to delete special task'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to delete special task')
       throw e
     } finally {
       loading.value = false
@@ -429,8 +430,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to end special task'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to end special task')
       throw e
     } finally {
       loading.value = false
@@ -458,8 +459,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to load attachments'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to load attachments')
       throw e
     } finally {
       loadingAttachments.value = false
@@ -474,7 +475,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await qualificationsApi.attachments.upload(qualificationId, data)
       
       // Legacy view returns { success: true, attachment: {...} }
-      const attachment = (response.data as any).attachment || response.data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attachment = ((response.data as any).attachment || response.data) as Attachment
 
       const existing = qualificationAttachments.value[qualificationId] || []
       qualificationAttachments.value = {
@@ -490,8 +492,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return attachment
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to upload attachment'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to upload attachment')
       throw e
     } finally {
       loadingAttachments.value = false
@@ -517,8 +519,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
           attachments: currentQualification.value.attachments.filter((attachment) => attachment.id !== attachmentId)
         }
       }
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to delete attachment'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to delete attachment')
       throw e
     } finally {
       loadingAttachments.value = false
@@ -544,8 +546,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to load attachments'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to load attachments')
       throw e
     } finally {
       loadingAttachments.value = false
@@ -560,7 +562,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await specialTasksApi.attachments.upload(taskId, data)
       
       // Legacy view returns { success: true, attachment: {...} }
-      const attachment = (response.data as any).attachment || response.data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attachment = ((response.data as any).attachment || response.data) as Attachment
 
       const existing = specialTaskAttachments.value[taskId] || []
       specialTaskAttachments.value = {
@@ -576,8 +579,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       }
 
       return attachment
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to upload attachment'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to upload attachment')
       throw e
     } finally {
       loadingAttachments.value = false
@@ -603,8 +606,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
           attachments: currentSpecialTask.value.attachments.filter((attachment) => attachment.id !== attachmentId)
         }
       }
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to delete attachment'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to delete attachment')
       throw e
     } finally {
       loadingAttachments.value = false
@@ -625,8 +628,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       specialTaskTypes.value = response.data.results // Extract .results!
       specialTaskTypesLoaded.value = true
       return specialTaskTypes.value
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to fetch special task types'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to fetch special task types')
       throw e
     } finally {
       loadingTypes.value = false
@@ -640,8 +643,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await specialTaskTypesApi.create(data)
       specialTaskTypes.value.push(response.data)
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to create special task type'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to create special task type')
       throw e
     } finally {
       loadingTypes.value = false
@@ -658,8 +661,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
         specialTaskTypes.value[index] = response.data
       }
       return response.data
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to update special task type'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to update special task type')
       throw e
     } finally {
       loadingTypes.value = false
@@ -672,8 +675,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
     try {
       await specialTaskTypesApi.delete(id)
       specialTaskTypes.value = specialTaskTypes.value.filter((t) => t.id !== id)
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to delete special task type'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to delete special task type')
       throw e
     } finally {
       loadingTypes.value = false
@@ -690,8 +693,8 @@ export const useQualificationsStore = defineStore('qualifications', () => {
       const response = await qualificationsApi.statistics()
       statistics.value = response.data
       return statistics.value
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || e.message || 'Failed to fetch statistics'
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Failed to fetch statistics')
       throw e
     } finally {
       loadingStatistics.value = false

@@ -329,8 +329,7 @@ const loadMobileQualifications = async () => {
       type: mobileFilters.type || undefined,
       ordering: 'date_expires'
     })
-  } catch (error) {
-    console.error('Failed to load qualifications for mobile view:', error)
+  } catch {
   } finally {
     mobileLoading.value = false
   }
@@ -351,8 +350,7 @@ const loadMobileSpecialTasks = async () => {
       task: mobileSpecialTaskFilters.task || undefined,
       ordering: '-start_date'
     })
-  } catch (error) {
-    console.error('Failed to load special tasks for mobile view:', error)
+  } catch {
   } finally {
     mobileSpecialTaskLoading.value = false
   }
@@ -507,12 +505,11 @@ function handleDeleteQualification(id: number) {
           detail: 'Die Qualifikation wurde entfernt.',
           life: 3000
         })
-      } catch (error: any) {
-        console.error('Failed to delete qualification:', error)
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error?.message || 'Qualifikation konnte nicht gelöscht werden.',
+          detail: 'Qualifikation konnte nicht gelöscht werden.',
           life: 4000
         })
       }
@@ -546,12 +543,11 @@ function handleEndSpecialTask(id: number) {
           detail: 'Die Sonderaufgabe wurde erfolgreich beendet.',
           life: 3000
         })
-      } catch (error: any) {
-        console.error('Failed to end special task:', error)
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error?.message || 'Sonderaufgabe konnte nicht beendet werden.',
+          detail: 'Sonderaufgabe konnte nicht beendet werden.',
           life: 4000
         })
       }
@@ -577,12 +573,11 @@ function handleDeleteSpecialTask(id: number) {
           detail: 'Die Sonderaufgabe wurde entfernt.',
           life: 3000
         })
-      } catch (error: any) {
-        console.error('Failed to delete special task:', error)
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error?.message || 'Sonderaufgabe konnte nicht gelöscht werden.',
+          detail: 'Sonderaufgabe konnte nicht gelöscht werden.',
           life: 4000
         })
       }

@@ -104,10 +104,12 @@ export const parentsApi = {
 }
 
 // Provide legacy method names some stores expect
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(parentsApi as any).getAll = function (params?: MemberListParams) {
   return parentsApi.list(params)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(parentsApi as any).getById = function (id: number) {
   return parentsApi.get(id)
 }

@@ -429,8 +429,7 @@ async function submit() {
 
     emit('success')
     closeDialog()
-  } catch (error) {
-    console.error('Loan error:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

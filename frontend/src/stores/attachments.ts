@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { attachmentsApi } from '@/api/attachments'
-import type { Attachment, AttachmentCreate } from '@/types/api'
+import type { Attachment } from '@/types/api'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useAttachmentsStore = defineStore('attachments', () => {
   // State
@@ -28,8 +29,8 @@ export const useAttachmentsStore = defineStore('attachments', () => {
       const response = await attachmentsApi.getForMember(memberId)
       attachments.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der Anhänge'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Anhänge')
       throw err
     } finally {
       loading.value = false
@@ -43,8 +44,8 @@ export const useAttachmentsStore = defineStore('attachments', () => {
       const response = await attachmentsApi.create(formData)
       attachments.value.unshift(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Hochladen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Hochladen')
       throw err
     } finally {
       loading.value = false
@@ -57,8 +58,8 @@ export const useAttachmentsStore = defineStore('attachments', () => {
     try {
       await attachmentsApi.delete(id)
       attachments.value = attachments.value.filter(a => a.id !== id)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Löschen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Löschen')
       throw err
     } finally {
       loading.value = false
@@ -69,8 +70,8 @@ export const useAttachmentsStore = defineStore('attachments', () => {
     try {
       const response = await attachmentsApi.download(id)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Herunterladen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Herunterladen')
       throw err
     }
   }

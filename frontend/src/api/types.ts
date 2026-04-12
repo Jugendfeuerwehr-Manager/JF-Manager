@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
   Use the generated OpenAPI types as the canonical source of truth and
   provide a small set of convenience aliases used across the app. This file

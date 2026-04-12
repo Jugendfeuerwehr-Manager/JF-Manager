@@ -29,7 +29,7 @@ const formattedDate = computed(() => {
   try {
     const startDate = parseISO(props.start)
     return format(startDate, 'd. MMM yyyy', { locale: de })
-  } catch (error) {
+  } catch {
     return props.start
   }
 })
@@ -41,7 +41,7 @@ const formattedTime = computed(() => {
     const startTime = format(startDate, 'HH:mm')
     const endTime = format(endDate, 'HH:mm')
     return `${startTime} - ${endTime}`
-  } catch (error) {
+  } catch {
     return `${props.start} - ${props.end}`
   }
 })

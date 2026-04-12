@@ -217,12 +217,6 @@ const filteredStocks = computed(() => {
   })
 })
 
-function getCategoryName(categoryId: number | null): string {
-  if (!categoryId) return ''
-  const category = inventoryStore.categories.find((c) => c.id === categoryId)
-  return category?.name || ''
-}
-
 function isLocationMember(locationId: number): boolean {
   const location = inventoryStore.locations.find((l) => l.id === locationId)
   return location?.is_member || false

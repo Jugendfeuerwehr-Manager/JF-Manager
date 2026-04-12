@@ -196,7 +196,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { useEventsStore } from '@/stores/events'
 import { useMembersStore } from '@/stores/members'
 import { eventsApi } from '@/api/members'
@@ -214,7 +214,6 @@ import ProgressSpinner from 'primevue/progressspinner'
 
 const eventsStore = useEventsStore()
 const membersStore = useMembersStore()
-const router = useRouter()
 const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const events = ref<Event[]>([])

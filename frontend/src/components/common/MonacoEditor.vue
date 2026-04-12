@@ -76,8 +76,7 @@ onMounted(async () => {
       emit('update:modelValue', value)
       emit('change', value)
     })
-  } catch (error) {
-    console.error('Failed to initialize Monaco editor:', error)
+  } catch {
   }
 })
 

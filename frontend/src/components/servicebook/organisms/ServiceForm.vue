@@ -133,7 +133,7 @@ import UserChipSelector from '@/components/servicebook/atoms/UserChipSelector.vu
 import type { ServiceFormData, ServiceDetail } from '@/types/servicebook'
 import { useUsersStore } from '@/stores/users'
 import { settingsApi } from '@/api/user'
-import type { AppSettings } from '@/types/api'
+import type { AppSettings, UserInfo } from '@/types/api'
 
 interface Props {
   initialData?: ServiceDetail | null
@@ -179,7 +179,7 @@ const usersLoading = ref(false)
 const appSettings = ref<AppSettings | null>(null)
 
 const usersOptions = computed(() => {
-  return usersStore.users.map((user: any) => ({
+  return usersStore.users.map((user: UserInfo) => ({
     label: user.full_name || user.username,
     value: user.id
   }))
@@ -214,8 +214,7 @@ const setTodayWithDefaultTime = async () => {
     
     formData.value.start = startDate
     formData.value.end = endDate
-  } catch (error) {
-    console.error('Failed to load settings:', error)
+  } catch {
     // Fallback to default times if settings load fails
     const today = new Date()
     const startDate = new Date(today)
@@ -238,8 +237,7 @@ onMounted(async () => {
         appSettings.value = response.data
       })
     ])
-  } catch (error) {
-    console.error('Failed to load data:', error)
+  } catch {
   } finally {
     usersLoading.value = false
   }

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { parentsApi, type Parent, type ParentCreate, type MemberListParams } from '@/api/members'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useParentsStore = defineStore('parents', () => {
   // State
@@ -50,8 +51,8 @@ export const useParentsStore = defineStore('parents', () => {
         next: response.data.next,
         previous: response.data.previous
       }
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch parents'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch parents')
       throw err
     } finally {
       loading.value = false
@@ -66,8 +67,8 @@ export const useParentsStore = defineStore('parents', () => {
       const response = await parentsApi.get(id)
       currentParent.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch parent'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch parent')
       throw err
     } finally {
       loading.value = false
@@ -82,8 +83,8 @@ export const useParentsStore = defineStore('parents', () => {
       const response = await parentsApi.create(data)
       parents.value.unshift(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to create parent'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to create parent')
       throw err
     } finally {
       loading.value = false
@@ -104,8 +105,8 @@ export const useParentsStore = defineStore('parents', () => {
         currentParent.value = response.data
       }
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to update parent'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to update parent')
       throw err
     } finally {
       loading.value = false
@@ -119,8 +120,8 @@ export const useParentsStore = defineStore('parents', () => {
     try {
       await parentsApi.delete(id)
       parents.value = parents.value.filter((p) => p.id !== id)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to delete parent'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to delete parent')
       throw err
     } finally {
       loading.value = false

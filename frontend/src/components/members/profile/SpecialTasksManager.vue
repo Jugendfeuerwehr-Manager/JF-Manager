@@ -249,8 +249,7 @@ const loadSpecialTasks = async () => {
   try {
     loading.value = true
     await qualificationsStore.fetchSpecialTasks({ member: props.memberId })
-  } catch (error) {
-    console.error('Error loading special tasks:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -266,8 +265,7 @@ const onRowExpand = async (event: { data: SpecialTask }) => {
   // Load full details when row expands
   try {
     await qualificationsStore.fetchSpecialTask(event.data.id)
-  } catch (error) {
-    console.error('Error loading special task detail:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -327,8 +325,7 @@ const endTask = async () => {
     setTimeout(() => {
       endingTask.value = null
     }, 300)
-  } catch (error) {
-    console.error('Error ending special task:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -358,7 +355,7 @@ const confirmDelete = (task: SpecialTask) => {
           detail: 'Sonderaufgabe wurde gelöscht',
           life: 3000
         })
-      } catch (error) {
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',

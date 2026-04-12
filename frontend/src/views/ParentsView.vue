@@ -184,7 +184,7 @@ const fetchParents = async () => {
       limit: currentRows.value,
       search: searchQuery.value || undefined
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -194,7 +194,7 @@ const fetchParents = async () => {
   }
 }
 
-let searchTimeout: any
+let searchTimeout: ReturnType<typeof setTimeout> | undefined
 const handleSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
@@ -204,7 +204,7 @@ const handleSearch = () => {
   }, 500)
 }
 
-const onPage = (event: any) => {
+const onPage = (event: { page: number; rows: number }) => {
   currentPage.value = event.page + 1
   currentRows.value = event.rows
   syncToUrl({ search: searchQuery.value, page: currentPage.value, rows: currentRows.value }, URL_DEFAULTS)
@@ -254,7 +254,7 @@ const deleteParent = async (id: number) => {
       life: 3000
     })
     fetchParents()
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

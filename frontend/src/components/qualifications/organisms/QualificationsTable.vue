@@ -133,15 +133,16 @@ async function fetchQualifications() {
 }
 
 // Event handlers
-function onPage(event: any) {
+function onPage(event: { first: number; rows: number }) {
   first.value = event.first
   rows.value = event.rows
   fetchQualifications()
 }
 
-function onSort(event: any) {
-  sortField.value = event.sortField || props.sortField
-  sortOrder.value = event.sortOrder || props.sortOrder
+function onSort(event: import('primevue/datatable').DataTableSortEvent) {
+  const sf = event.sortField
+  sortField.value = (typeof sf === 'string' ? sf : undefined) || props.sortField
+  sortOrder.value = (event.sortOrder as 1 | -1) || props.sortOrder
   first.value = 0
   fetchQualifications()
 }

@@ -162,7 +162,8 @@ import Textarea from 'primevue/textarea'
 import { useOrdersStore } from '@/stores/orders'
 import { useOrderableItemsStore } from '@/stores/orderableItems'
 import { useMembersStore } from '@/stores/members'
-import type { OrderCreate, OrderItemCreate } from '@/types/orders'
+import type { OrderCreate } from '@/types/orders'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   orderId?: number
@@ -280,11 +281,11 @@ async function handleSubmit() {
       detail: isEdit.value ? 'Bestellung aktualisiert' : 'Bestellung erstellt',
       life: 3000
     })
-  } catch (e: any) {
+  } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: e.message || 'Fehler beim Speichern',
+      detail: getApiErrorMessage(e, 'Fehler beim Speichern'),
       life: 3000
     })
   } finally {
@@ -295,8 +296,7 @@ async function handleSubmit() {
 async function loadMembers() {
   try {
     await membersStore.fetchMembers({ limit: 1000 })
-  } catch (e: any) {
-    console.error('Failed to load members:', e)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -323,7 +323,7 @@ async function loadOrderForEdit() {
         }))
       }
     }
-  } catch (e) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

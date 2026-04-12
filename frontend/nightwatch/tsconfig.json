@@ -8,6 +8,10 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "rootDir": "../",
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "lib": ["ESNext", "dom"],
     "types": ["nightwatch"]
   },

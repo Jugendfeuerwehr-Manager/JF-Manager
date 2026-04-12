@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { membersApi, type MemberListParams, statusesApi, groupsApi, eventsApi, eventTypesApi } from '@/api/members'
 import type { Member, Status, Group, Event, EventType, MemberCreate } from '@/types/api'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useMembersStore = defineStore('members', () => {
   // State
@@ -54,8 +55,8 @@ export const useMembersStore = defineStore('members', () => {
         next: response.data.next,
         previous: response.data.previous
       }
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch members'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch members')
       throw err
     } finally {
       loading.value = false
@@ -70,8 +71,8 @@ export const useMembersStore = defineStore('members', () => {
       const response = await membersApi.get(id)
       currentMember.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch member'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch member')
       throw err
     } finally {
       loading.value = false
@@ -86,8 +87,8 @@ export const useMembersStore = defineStore('members', () => {
       const response = await membersApi.create(data)
       members.value.unshift(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to create member'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to create member')
       throw err
     } finally {
       loading.value = false
@@ -108,8 +109,8 @@ export const useMembersStore = defineStore('members', () => {
         currentMember.value = response.data
       }
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to update member'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to update member')
       throw err
     } finally {
       loading.value = false
@@ -123,8 +124,8 @@ export const useMembersStore = defineStore('members', () => {
     try {
       await membersApi.delete(id)
       members.value = members.value.filter((m) => m.id !== id)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to delete member'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to delete member')
       throw err
     } finally {
       loading.value = false
@@ -135,7 +136,7 @@ export const useMembersStore = defineStore('members', () => {
     try {
       const response = await statusesApi.list()
       statuses.value = response.data.results || []
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch statuses:', err)
       statuses.value = []
     }
@@ -145,7 +146,7 @@ export const useMembersStore = defineStore('members', () => {
     try {
       const response = await groupsApi.list()
       groups.value = response.data.results || []
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch groups:', err)
       groups.value = []
     }
@@ -155,7 +156,7 @@ export const useMembersStore = defineStore('members', () => {
     try {
       const response = await eventsApi.list(params)
       events.value = response.data.results || []
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch events:', err)
       events.value = []
     }
@@ -165,7 +166,7 @@ export const useMembersStore = defineStore('members', () => {
     try {
       const response = await eventTypesApi.list()
       eventTypes.value = response.data.results || []
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch event types:', err)
       eventTypes.value = []
     }
@@ -179,8 +180,8 @@ export const useMembersStore = defineStore('members', () => {
       const response = await eventsApi.create(data)
       events.value.unshift(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to create event'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to create event')
       throw err
     } finally {
       loading.value = false
@@ -209,8 +210,8 @@ export const useMembersStore = defineStore('members', () => {
       // Cleanup
       link.remove()
       window.URL.revokeObjectURL(url)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to export members'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to export members')
       throw err
     } finally {
       loading.value = false

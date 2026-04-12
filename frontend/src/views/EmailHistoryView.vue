@@ -336,7 +336,7 @@ const fetchEmails = async () => {
       status: (statusFilter.value as EmailMessage['status']) || undefined,
       ordering: '-created_at'
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -346,7 +346,7 @@ const fetchEmails = async () => {
   }
 }
 
-let searchTimeout: any
+let searchTimeout: ReturnType<typeof setTimeout> | undefined
 const handleSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
@@ -356,7 +356,7 @@ const handleSearch = () => {
   }, 500)
 }
 
-const onPage = (event: any) => {
+const onPage = (event: { page: number; rows: number }) => {
   currentPage.value = event.page + 1
   currentRows.value = event.rows
   syncToUrl({ search: searchQuery.value, status: statusFilter.value, page: currentPage.value, rows: currentRows.value }, EMAIL_URL_DEFAULTS)
@@ -375,7 +375,7 @@ const viewEmail = async (email: EmailMessage) => {
   try {
     emailDetails.value = await emailsStore.fetchEmailById(email.id)
     showDetailDialog.value = true
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -414,7 +414,7 @@ const resendEmail = async (email: EmailMessage) => {
 
         // Refresh list
         fetchEmails()
-      } catch (error) {
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',

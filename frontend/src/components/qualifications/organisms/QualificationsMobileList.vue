@@ -87,7 +87,7 @@ interface Props {
   totalRecords?: number
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   loading: false,
   rows: 10,
   totalRecords: 0

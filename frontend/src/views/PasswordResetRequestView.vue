@@ -118,6 +118,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const email = ref('')
 const loading = ref(false)
@@ -144,8 +145,8 @@ const handleSubmit = async () => {
   try {
     await authApi.requestPasswordReset(email.value)
     submitted.value = true
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Reset-E-Mail konnte nicht versendet werden. Bitte versuche es erneut.'
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'Reset-E-Mail konnte nicht versendet werden. Bitte versuche es erneut.')
   } finally {
     loading.value = false
   }

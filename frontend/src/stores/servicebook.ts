@@ -17,11 +17,10 @@ import type {
   AttendanceCreate,
   AttendanceListParams,
   BulkAttendanceUpdate,
-  BulkAttendanceUpdateResult,
-  MemberAttendanceParams,
-  MemberAttendanceResponse
+  MemberAttendanceParams
 } from '@/types/servicebook'
 import servicebookApi from '@/api/servicebook'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useServicebookStore = defineStore('servicebook', () => {
   // ============================================================================
@@ -80,8 +79,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
       services.value = response.data.results
       servicesTotalCount.value = response.data.count
       return services.value
-    } catch (error: any) {
-      servicesError.value = error.response?.data?.detail || 'Fehler beim Laden der Dienste'
+    } catch (error) {
+      servicesError.value = getApiErrorMessage(error, 'Fehler beim Laden der Dienste')
       throw error
     } finally {
       servicesLoading.value = false
@@ -99,8 +98,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
       const response = await servicebookApi.services.get(id)
       currentService.value = response.data
       return currentService.value
-    } catch (error: any) {
-      servicesError.value = error.response?.data?.detail || 'Fehler beim Laden des Dienstes'
+    } catch (error) {
+      servicesError.value = getApiErrorMessage(error, 'Fehler beim Laden des Dienstes')
       throw error
     } finally {
       servicesLoading.value = false
@@ -130,8 +129,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
       services.value.unshift(newService)
       servicesTotalCount.value++
       return response.data
-    } catch (error: any) {
-      servicesError.value = error.response?.data?.detail || 'Fehler beim Erstellen des Dienstes'
+    } catch (error) {
+      servicesError.value = getApiErrorMessage(error, 'Fehler beim Erstellen des Dienstes')
       throw error
     } finally {
       servicesLoading.value = false
@@ -169,9 +168,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
       }
       
       return response.data
-    } catch (error: any) {
+    } catch (error) {
       servicesError.value =
-        error.response?.data?.detail || 'Fehler beim Aktualisieren des Dienstes'
+        getApiErrorMessage(error, 'Fehler beim Aktualisieren des Dienstes')
       throw error
     } finally {
       servicesLoading.value = false
@@ -208,9 +207,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
       }
       
       return response.data
-    } catch (error: any) {
+    } catch (error) {
       servicesError.value =
-        error.response?.data?.detail || 'Fehler beim Aktualisieren des Dienstes'
+        getApiErrorMessage(error, 'Fehler beim Aktualisieren des Dienstes')
       throw error
     } finally {
       servicesLoading.value = false
@@ -234,8 +233,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
       if (currentService.value?.id === id) {
         currentService.value = null
       }
-    } catch (error: any) {
-      servicesError.value = error.response?.data?.detail || 'Fehler beim Löschen des Dienstes'
+    } catch (error) {
+      servicesError.value = getApiErrorMessage(error, 'Fehler beim Löschen des Dienstes')
       throw error
     } finally {
       servicesLoading.value = false
@@ -257,9 +256,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
       const response = await servicebookApi.services.getStatistics()
       statistics.value = response.data
       return statistics.value
-    } catch (error: any) {
+    } catch (error) {
       statisticsError.value =
-        error.response?.data?.detail || 'Fehler beim Laden der Statistiken'
+        getApiErrorMessage(error, 'Fehler beim Laden der Statistiken')
       throw error
     } finally {
       statisticsLoading.value = false
@@ -277,8 +276,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
       const response = await servicebookApi.services.getAttendanceChart()
       chartData.value = response.data
       return chartData.value
-    } catch (error: any) {
-      chartError.value = error.response?.data?.detail || 'Fehler beim Laden der Diagrammdaten'
+    } catch (error) {
+      chartError.value = getApiErrorMessage(error, 'Fehler beim Laden der Diagrammdaten')
       throw error
     } finally {
       chartLoading.value = false
@@ -301,9 +300,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
       attendances.value = response.data.results
       attendancesTotalCount.value = response.data.count
       return attendances.value
-    } catch (error: any) {
+    } catch (error) {
       attendancesError.value =
-        error.response?.data?.detail || 'Fehler beim Laden der Anwesenheiten'
+        getApiErrorMessage(error, 'Fehler beim Laden der Anwesenheiten')
       throw error
     } finally {
       attendancesLoading.value = false
@@ -327,9 +326,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
       }
       
       return response.data
-    } catch (error: any) {
+    } catch (error) {
       attendancesError.value =
-        error.response?.data?.detail || 'Fehler beim Erstellen der Anwesenheit'
+        getApiErrorMessage(error, 'Fehler beim Erstellen der Anwesenheit')
       throw error
     }
   }
@@ -371,10 +370,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
       
       console.log('Store: bulkUpdateAttendance complete')
       return response.data
-    } catch (error: any) {
-      console.error('Store: bulkUpdateAttendance error', error)
+    } catch (error) {
       attendancesError.value =
-        error.response?.data?.detail || 'Fehler beim Aktualisieren der Anwesenheiten'
+        getApiErrorMessage(error, 'Fehler beim Aktualisieren der Anwesenheiten')
       throw error
     }
   }
@@ -389,9 +387,9 @@ export const useServicebookStore = defineStore('servicebook', () => {
     try {
       const response = await servicebookApi.attendance.getByMember(params)
       return response.data
-    } catch (error: any) {
+    } catch (error) {
       attendancesError.value =
-        error.response?.data?.detail || 'Fehler beim Laden der Mitglieder-Anwesenheiten'
+        getApiErrorMessage(error, 'Fehler beim Laden der Mitglieder-Anwesenheiten')
       throw error
     } finally {
       attendancesLoading.value = false

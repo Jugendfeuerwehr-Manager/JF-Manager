@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQualificationsStore } from '@/stores/qualifications'
 import SpecialTaskForm from '@/components/qualifications/organisms/SpecialTaskForm.vue'

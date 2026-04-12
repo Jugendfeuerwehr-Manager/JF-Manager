@@ -119,6 +119,7 @@ import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 import { useOrdersStore } from '@/stores/orders'
 import { useSettingsStore } from '@/stores/settings'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   visible: boolean
@@ -158,8 +159,7 @@ onMounted(async () => {
   if (!settingsStore.settings) {
     try {
       await settingsStore.fetchSettings()
-    } catch (error) {
-      console.error('Failed to load settings:', error)
+    } catch {
     }
   }
 })
@@ -222,8 +222,8 @@ async function handleSend() {
       includeNotes.value = true
       groupByCategory.value = true
     }, 300)
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.detail || 'Fehler beim Versenden der Bestellübersicht'
+  } catch (error) {
+    const errorMessage = getApiErrorMessage(error, 'Fehler beim Versenden der Bestellübersicht')
     
     toast.add({
       severity: 'error',

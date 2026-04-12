@@ -15,6 +15,7 @@ import type {
   OrderStatistics,
   QuickOrderCreate
 } from '@/types/orders'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useOrdersStore = defineStore('orders', () => {
   // State
@@ -59,8 +60,8 @@ export const useOrdersStore = defineStore('orders', () => {
         previous: response.data.previous
       }
       return orders.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch orders'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch orders')
       throw err
     } finally {
       loading.value = false
@@ -78,8 +79,8 @@ export const useOrdersStore = defineStore('orders', () => {
       
       currentOrder.value = response.data
       return currentOrder.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch order'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch order')
       throw err
     } finally {
       loading.value = false
@@ -96,8 +97,8 @@ export const useOrdersStore = defineStore('orders', () => {
       currentOrder.value = response.data
       pagination.value.count++
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to create order'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to create order')
       throw err
     } finally {
       loading.value = false
@@ -114,8 +115,8 @@ export const useOrdersStore = defineStore('orders', () => {
       currentOrder.value = response.data
       pagination.value.count++
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to create quick order'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to create quick order')
       throw err
     } finally {
       loading.value = false
@@ -141,8 +142,8 @@ export const useOrdersStore = defineStore('orders', () => {
       }
       
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to update order'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to update order')
       throw err
     } finally {
       loading.value = false
@@ -165,8 +166,8 @@ export const useOrdersStore = defineStore('orders', () => {
       }
       
       pagination.value.count--
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to delete order'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to delete order')
       throw err
     } finally {
       loading.value = false
@@ -181,8 +182,8 @@ export const useOrdersStore = defineStore('orders', () => {
       const response = await ordersApi.getStatistics(params)
       statistics.value = response.data
       return statistics.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch statistics'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch statistics')
       throw err
     } finally {
       loading.value = false
@@ -196,8 +197,8 @@ export const useOrdersStore = defineStore('orders', () => {
     try {
       const response = await ordersApi.getRecent(limit)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch recent orders'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch recent orders')
       throw err
     } finally {
       loading.value = false
@@ -211,8 +212,8 @@ export const useOrdersStore = defineStore('orders', () => {
     try {
       const response = await ordersApi.getPending()
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch pending orders'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch pending orders')
       throw err
     } finally {
       loading.value = false
@@ -226,8 +227,8 @@ export const useOrdersStore = defineStore('orders', () => {
     try {
       const response = await ordersApi.getByMember(memberId)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch member orders'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch member orders')
       throw err
     } finally {
       loading.value = false
@@ -249,8 +250,8 @@ export const useOrdersStore = defineStore('orders', () => {
       link.download = `orders_${new Date().toISOString().split('T')[0]}.csv`
       link.click()
       window.URL.revokeObjectURL(url)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to export orders'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to export orders')
       throw err
     } finally {
       loading.value = false
@@ -271,8 +272,8 @@ export const useOrdersStore = defineStore('orders', () => {
       // Note: The backend updates order statuses from NEW to ORDERED
       // The calling component should refresh the orders list to reflect changes
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to send order summary'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to send order summary')
       throw err
     } finally {
       loading.value = false

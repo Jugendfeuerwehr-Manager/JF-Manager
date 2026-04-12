@@ -75,7 +75,7 @@ interface Emits {
   (e: 'page-change', page: number, pageSize: number): void
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   loading: false,
   error: null,
   totalRecords: 0,

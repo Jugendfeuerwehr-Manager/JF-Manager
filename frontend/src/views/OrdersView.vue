@@ -69,8 +69,6 @@ const filters = ref<OrderListParams>({})
 const orders = computed(() => ordersStore.orders)
 const ordersCount = computed(() => ordersStore.ordersCount)
 const loading = computed(() => ordersStore.loading)
-const statistics = computed(() => ordersStore.statistics)
-
 // Calculate NEW orders count
 const newOrdersCount = computed(() => {
   return orders.value.filter(order => order.common_status?.code === 'NEW').length
@@ -80,7 +78,7 @@ const newOrdersCount = computed(() => {
 const loadOrders = async () => {
   try {
     await ordersStore.fetchOrders(filters.value)
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -93,16 +91,14 @@ const loadOrders = async () => {
 const loadStatistics = async () => {
   try {
     await ordersStore.fetchStatistics()
-  } catch (error) {
-    console.error('Failed to load statistics:', error)
+  } catch {
   }
 }
 
 const loadStatuses = async () => {
   try {
     await statusStore.fetchActiveStatuses()
-  } catch (error) {
-    console.error('Failed to load statuses:', error)
+  } catch {
   }
 }
 
@@ -133,7 +129,7 @@ const handleDelete = async (id: number) => {
       life: 3000
     })
     await loadOrders()
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -148,27 +144,27 @@ const handleSendSuccess = async () => {
   await loadOrders()
 }
 
-const handleSendError = (error: any) => {
-  console.error('Error sending summary:', error)
+const handleSendError = (_error: unknown) => {
 }
 
 const handleWorkflowUpdate = async () => {
   await loadOrders()
 }
 
-const handleFilter = (newFilters: any) => {
+const handleFilter = (newFilters: import('primevue/datatable').DataTableFilterEvent) => {
   // Extract filter values from PrimeVue filter object
-  const filterParams: any = {}
+  const filterParams: Partial<OrderListParams> = {}
+  const filters_ = newFilters.filters as Record<string, { value: string | null }>
   
-  if (newFilters.member_name?.value) {
-    filterParams.search = newFilters.member_name.value
+  if (filters_.member_name?.value) {
+    filterParams.search = filters_.member_name.value
   }
   
   filters.value = { ...filters.value, ...filterParams, offset: 0 }
   loadOrders()
 }
 
-const handlePage = (event: any) => {
+const handlePage = (event: { first: number; rows: number }) => {
   filters.value = {
     ...filters.value,
     offset: event.first,
@@ -177,12 +173,12 @@ const handlePage = (event: any) => {
   loadOrders()
 }
 
-const handleSort = (event: any) => {
+const handleSort = (event: import('primevue/datatable').DataTableSortEvent) => {
   // Map PrimeVue sort to Django ordering
   let ordering = ''
-  
-  if (event.sortField) {
-    ordering = event.sortOrder === -1 ? `-${event.sortField}` : event.sortField
+  const sf = event.sortField
+  if (sf && typeof sf === 'string') {
+    ordering = event.sortOrder === -1 ? `-${sf}` : sf
   }
   
   filters.value = { ...filters.value, ordering }

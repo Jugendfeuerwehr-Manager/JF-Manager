@@ -267,8 +267,7 @@ async function handleSave() {
     
     originalData.value = { ...formData.value }
     handleBack()
-  } catch (error) {
-    console.error('Failed to save template:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -294,8 +293,7 @@ function handleDeleteConfirm(id: number) {
           detail: 'Vorlage wurde gelöscht',
           life: 3000
         })
-      } catch (error) {
-        console.error('Failed to delete template:', error)
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
@@ -361,8 +359,7 @@ async function updateLivePreview() {
     
     // Only update local state, not store state - prevents re-rendering
     livePreviewData.value = result
-  } catch (error) {
-    console.error('Failed to update preview:', error)
+  } catch {
   } finally {
     localPreviewing.value = false
   }
@@ -396,8 +393,7 @@ async function handleTypeChange(templateType: string) {
           formData.value.html_template = response.html_template
           formData.value.text_template = response.text_template
         }
-      } catch (error) {
-        console.error('Failed to load default template content:', error)
+      } catch {
         toast.add({
           severity: 'warn',
           summary: 'Warnung',
@@ -415,8 +411,7 @@ async function handleTypeChange(templateType: string) {
 async function loadVariablesForType(templateType: string) {
   try {
     currentVariables.value = await store.fetchVariablesForType(templateType)
-  } catch (error: any) {
-    console.error('Failed to load variables:', error)
+  } catch {
     currentVariables.value = null
   }
 }

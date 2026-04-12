@@ -172,6 +172,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -222,8 +223,8 @@ const handleLogin = async () => {
     setTimeout(() => {
       router.push('/')
     }, 2000)
-  } catch (err: any) {
-    error.value = err.response?.data?.detail || 'Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.'
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.')
   } finally {
     loading.value = false
   }

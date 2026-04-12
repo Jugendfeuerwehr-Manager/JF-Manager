@@ -138,6 +138,7 @@ import InputText from 'primevue/inputtext'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const qualificationsStore = useQualificationsStore()
@@ -195,11 +196,11 @@ const handleDelete = (type: QualificationType) => {
           life: 3000
         })
         await qualificationsStore.fetchQualificationTypes(true)
-      } catch (error: any) {
+      } catch (error) {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error.message || 'Fehler beim Löschen',
+          detail: getApiErrorMessage(error, 'Fehler beim Löschen'),
           life: 3000
         })
       }

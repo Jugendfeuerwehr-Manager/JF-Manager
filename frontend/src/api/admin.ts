@@ -6,7 +6,6 @@ import type {
   AuthGroup,
   AuthGroupDetail,
   AuthGroupWrite,
-  Permission,
   PaginatedAdminUsers,
   PaginatedAuthGroups,
   PaginatedPermissions,

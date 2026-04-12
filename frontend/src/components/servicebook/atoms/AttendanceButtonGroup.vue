@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import Button from 'primevue/button'
-import { AttendanceState, AttendanceStateLabels, AttendanceStateColors } from '@/types/servicebook'
+import { AttendanceState, AttendanceStateColors } from '@/types/servicebook'
 
 interface Props {
   currentState: AttendanceState | null

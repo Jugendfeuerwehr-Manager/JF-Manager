@@ -79,6 +79,7 @@ export interface OrderItem {
     color: string
   }
   status_name: string
+  status_code: string
   status_color: string
   received_date: string | null
   delivered_date: string | null
@@ -260,7 +261,7 @@ export interface BulkStatusUpdateResponse {
   updated_ids: number[]
   errors: {
     item_id: number
-    errors: any
+    errors: unknown
   }[]
 }
 

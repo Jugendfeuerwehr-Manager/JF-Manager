@@ -11,6 +11,7 @@ import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,9 +53,8 @@ async function loadQualification() {
 
   try {
     await qualificationsStore.fetchQualification(qualificationId.value)
-  } catch (error: any) {
-    console.error('Failed to load qualification:', error)
-    loadError.value = error?.message || 'Die Qualifikation konnte nicht geladen werden.'
+  } catch (error) {
+    loadError.value = getApiErrorMessage(error, 'Die Qualifikation konnte nicht geladen werden.')
   }
 }
 
@@ -88,12 +88,11 @@ function handleDelete() {
           life: 3000
         })
         navigateBack()
-      } catch (error: any) {
-        console.error('Failed to delete qualification:', error)
+      } catch (error) {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error?.message || 'Qualifikation konnte nicht gelöscht werden.',
+          detail: getApiErrorMessage(error, 'Qualifikation konnte nicht gelöscht werden.'),
           life: 4000
         })
       }

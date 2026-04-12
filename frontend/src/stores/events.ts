@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { eventsApi, eventTypesApi } from '@/api/members'
 import type { Event, EventType, EventCreate } from '@/types/api'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useEventsStore = defineStore('events', () => {
   // State
@@ -36,8 +37,8 @@ export const useEventsStore = defineStore('events', () => {
       const response = await eventTypesApi.list()
       eventTypes.value = response.data.results || []
       return eventTypes.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der Ereignistypen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Ereignistypen')
       throw err
     }
   }
@@ -59,8 +60,8 @@ export const useEventsStore = defineStore('events', () => {
       ]
       
       return memberEvents
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der Einträge'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Einträge')
       throw err
     } finally {
       loading.value = false
@@ -81,8 +82,8 @@ export const useEventsStore = defineStore('events', () => {
       const response = await eventsApi.create(apiData)
       events.value.unshift(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Erstellen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Erstellen')
       throw err
     } finally {
       loading.value = false
@@ -106,8 +107,8 @@ export const useEventsStore = defineStore('events', () => {
         events.value[index] = response.data
       }
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Aktualisieren'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Aktualisieren')
       throw err
     } finally {
       loading.value = false
@@ -120,8 +121,8 @@ export const useEventsStore = defineStore('events', () => {
     try {
       await eventsApi.delete(id)
       events.value = events.value.filter(e => e.id !== id)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Löschen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Löschen')
       throw err
     } finally {
       loading.value = false

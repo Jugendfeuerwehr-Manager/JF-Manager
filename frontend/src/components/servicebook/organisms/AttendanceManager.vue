@@ -51,13 +51,13 @@ import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import AttendanceButtonGroup from '../atoms/AttendanceButtonGroup.vue'
 import type { AttendanceState } from '@/types/servicebook'
 import { useMembersStore } from '@/stores/members'
 import { useServicebookStore } from '@/stores/servicebook'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   serviceId: number
@@ -169,8 +169,7 @@ const handleAttendanceUpdate = async (memberId: number, state: AttendanceState) 
     }
     
     console.log('AttendanceManager: Attendance updated successfully')
-  } catch (error: any) {
-    console.error('AttendanceManager: Update error', error)
+  } catch (error) {
     
     // Revert local state on error
     if (currentState === null || currentState === undefined) {
@@ -182,7 +181,7 @@ const handleAttendanceUpdate = async (memberId: number, state: AttendanceState) 
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: error.message || 'Fehler beim Speichern der Anwesenheit',
+      detail: getApiErrorMessage(error, 'Fehler beim Speichern der Anwesenheit'),
       life: 5000
     })
   } finally {

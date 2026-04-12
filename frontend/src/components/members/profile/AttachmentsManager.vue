@@ -223,6 +223,7 @@ import FileUpload from 'primevue/fileupload'
 import Card from 'primevue/card'
 import Image from 'primevue/image'
 import ProgressSpinner from 'primevue/progressspinner'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   memberId: number
@@ -260,7 +261,7 @@ onMounted(() => {
 const loadAttachments = async () => {
   try {
     await attachmentsStore.fetchAttachmentsForMember(props.memberId)
-  } catch (error: any) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -270,7 +271,7 @@ const loadAttachments = async () => {
   }
 }
 
-const onFileSelect = (event: any) => {
+const onFileSelect = (event: { files: File[] }) => {
   const file = event.files[0]
   if (file) {
     selectedFile.value = file
@@ -340,11 +341,11 @@ const uploadAttachment = async () => {
     })
 
     closeUploadDialog()
-  } catch (error: any) {
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: error.response?.data?.detail || 'Fehler beim Hochladen',
+      detail: getApiErrorMessage(error, 'Fehler beim Hochladen'),
       life: 3000
     })
   } finally {
@@ -388,7 +389,7 @@ const downloadAttachment = async (attachment: Attachment) => {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -419,7 +420,7 @@ const deleteAttachment = async (id: number) => {
       detail: 'Anhang wurde gelöscht',
       life: 3000
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

@@ -14,6 +14,7 @@ import type {
   EmailListParams,
   EmailRecipientCountRequest
 } from '@/types/emails'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useEmailsStore = defineStore('emails', () => {
   // State
@@ -45,8 +46,8 @@ export const useEmailsStore = defineStore('emails', () => {
         previous: response.data.previous
       }
       return emails.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der E-Mails'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der E-Mails')
       throw err
     } finally {
       loading.value = false
@@ -61,8 +62,8 @@ export const useEmailsStore = defineStore('emails', () => {
       const response = await emailsApi.get(id)
       currentEmail.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Fehler beim Laden der E-Mail'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der E-Mail')
       throw err
     } finally {
       loading.value = false
@@ -77,8 +78,8 @@ export const useEmailsStore = defineStore('emails', () => {
       const response = await emailsApi.send(data)
       emails.value.unshift(response.data.email)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.error || 'Fehler beim Senden der E-Mail'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Senden der E-Mail')
       throw err
     } finally {
       loading.value = false
@@ -104,8 +105,8 @@ export const useEmailsStore = defineStore('emails', () => {
       }
       
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.error || 'Fehler beim erneuten Senden'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim erneuten Senden')
       throw err
     } finally {
       loading.value = false
@@ -119,8 +120,8 @@ export const useEmailsStore = defineStore('emails', () => {
     try {
       const response = await emailsApi.preview(data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.error || 'Fehler bei der Vorschau'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler bei der Vorschau')
       throw err
     } finally {
       loading.value = false
@@ -139,8 +140,8 @@ export const useEmailsStore = defineStore('emails', () => {
       const response = await emailsApi.getTemplateVariables()
       templateVariables.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.error || 'Fehler beim Laden der Variablen'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden der Variablen')
       throw err
     } finally {
       loading.value = false
@@ -154,8 +155,8 @@ export const useEmailsStore = defineStore('emails', () => {
     try {
       const response = await emailsApi.getRecipientCount(data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.error || 'Fehler beim Berechnen der Empfänger'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Berechnen der Empfänger')
       throw err
     } finally {
       loading.value = false

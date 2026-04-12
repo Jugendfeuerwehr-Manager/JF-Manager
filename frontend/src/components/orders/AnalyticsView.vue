@@ -149,7 +149,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { useOrdersStore } from '@/stores/orders'
 
-const emit = defineEmits<{
+defineEmits<{
   viewOrder: [orderId: number]
 }>()
 

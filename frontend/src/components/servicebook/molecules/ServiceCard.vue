@@ -71,7 +71,7 @@ const props = withDefaults(defineProps<Props>(), {
   showActions: true
 })
 
-const emit = defineEmits<Emits>()
+defineEmits<Emits>()
 
 const operationsManagerNames = computed(() => {
   return props.service.operations_manager.map((m) => m.full_name).join(', ')

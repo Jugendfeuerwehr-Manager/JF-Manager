@@ -198,7 +198,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import type { Order } from '@/types/orders'
+import type { Order, OrderItem } from '@/types/orders'
 import type { DataTablePageEvent, DataTableSortEvent, DataTableFilterEvent } from 'primevue/datatable'
 import type { DataViewPageEvent } from 'primevue/dataview'
 import { Toolbar } from 'primevue'
@@ -207,7 +207,6 @@ import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import SendSummaryAction from '../molecules/SendSummaryAction.vue'
 import OrderWorkflowQuickActions from '../molecules/OrderWorkflowQuickActions.vue'
 import OrderCard from '../molecules/OrderCard.vue'
-import OrderStatusBadge from '../atoms/OrderStatusBadge.vue'
 
 const FilterMatchMode = {
   CONTAINS: 'contains'
@@ -222,7 +221,7 @@ interface Props {
   pageSize?: number
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   newOrdersCount: 0,
   loading: false,
   showPagination: true,
@@ -236,7 +235,7 @@ const emit = defineEmits<{
   view: [id: number]
   edit: [id: number]
   delete: [id: number]
-  filter: [filters: any]
+  filter: [filters: DataTableFilterEvent]
   page: [event: DataTablePageEvent | DataViewPageEvent]
   sort: [event: DataTableSortEvent]
   workflowUpdate: [orderId: number]
@@ -269,7 +268,7 @@ function formatDate(dateString: string): string {
   })
 }
 
-function formatItemsSummary(items: any[]): string {
+function formatItemsSummary(items: OrderItem[]): string {
   if (!items || items.length === 0) return 'Keine Artikel'
   
   const summary = items.map(item => {

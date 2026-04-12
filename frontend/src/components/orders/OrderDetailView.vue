@@ -193,6 +193,7 @@ import UpdateItemStatusDialog from './molecules/UpdateItemStatusDialog.vue'
 import type { OrderItem } from '@/types/orders'
 import { Toolbar } from 'primevue'
 import OrderWorkflowQuickActions from './molecules/OrderWorkflowQuickActions.vue'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   orderId: number
@@ -221,12 +222,8 @@ const selectedItem = ref<OrderItem | null>(null)
 const quickStatusId = ref<number | null>(null)
 
 // Send summary dialog
-const showSendSummaryDialog = ref(false)
-const sendSummaryEmail = ref('')
-const sendingSummary = ref(false)
-
 const totalQuantity = computed(() => {
-  return order.value?.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0
+  return order.value?.items?.reduce((sum: number, item: OrderItem) => sum + item.quantity, 0) || 0
 })
 
 function formatDate(dateString: string): string {
@@ -242,8 +239,8 @@ async function loadOrder() {
       ordersStore.fetchOrder(props.orderId, true),
       statusStore.fetchActiveStatuses()
     ])
-  } catch (e: any) {
-    error.value = e.message || 'Fehler beim Laden'
+  } catch (e) {
+    error.value = getApiErrorMessage(e, 'Fehler beim Laden')
   } finally {
     loading.value = false
   }
@@ -271,9 +268,9 @@ const allowedNextStatuses = computed(() => {
     return []
   }
   
-  // Get all unique current statuses
+  // Get all unique current statuses (filter undefined values)
   const currentStatusCodes = new Set(
-    order.value.items.map((item: any) => item.status_code)
+    order.value.items.map((item: OrderItem) => item.status_code).filter((c): c is string => c !== undefined)
   )
   
   // Define workflow transitions
@@ -314,7 +311,7 @@ async function handleQuickStatusChange() {
     rejectLabel: 'Nein',
     accept: async () => {
       try {
-        const itemIds = order.value!.items.map((item: any) => item.id)
+        const itemIds = order.value!.items.map((item: OrderItem) => item.id)
         
         await orderItemsApi.bulkUpdateStatus({
           item_ids: itemIds,
@@ -332,11 +329,11 @@ async function handleQuickStatusChange() {
         // Reload order
         await loadOrder()
         quickStatusId.value = null
-      } catch (e: any) {
+      } catch (e) {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: e.message || 'Status konnte nicht aktualisiert werden',
+          detail: getApiErrorMessage(e, 'Status konnte nicht aktualisiert werden'),
           life: 3000
         })
       }
@@ -345,48 +342,6 @@ async function handleQuickStatusChange() {
       quickStatusId.value = null
     }
   })
-}
-
-async function handleSendSummary() {
-  if (!sendSummaryEmail.value || !order.value) return
-  
-  sendingSummary.value = true
-  
-  try {
-    const { ordersApi } = await import('@/api/orders')
-    
-    // Get all unique status IDs from order items
-    const statusIds = [...new Set(order.value.items.map((item: any) => item.status))]
-    
-    await ordersApi.sendSummary({
-      recipient_email: sendSummaryEmail.value,
-      status_filter: statusIds,
-      include_notes: true,
-      group_by_category: true
-    })
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Erfolg',
-      detail: `Bestellübersicht wurde an ${sendSummaryEmail.value} gesendet`,
-      life: 5000
-    })
-    
-    showSendSummaryDialog.value = false
-    sendSummaryEmail.value = ''
-    
-    // Reload order (status might have changed from NEW to ORDERED)
-    await loadOrder()
-  } catch (e: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Fehler',
-      detail: e.message || 'Fehler beim Versenden der E-Mail',
-      life: 5000
-    })
-  } finally {
-    sendingSummary.value = false
-  }
 }
 
 function confirmDelete() {
@@ -406,11 +361,11 @@ function confirmDelete() {
           life: 3000
         })
         emit('deleted')
-      } catch (e: any) {
+      } catch (e) {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: e.message,
+          detail: getApiErrorMessage(e, ''),
           life: 3000
         })
       }

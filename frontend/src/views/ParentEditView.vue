@@ -186,6 +186,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import MultiSelect from 'primevue/multiselect'
 import ProgressSpinner from 'primevue/progressspinner'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -241,7 +242,7 @@ onMounted(async () => {
         notes: parent.notes,
         children: parent.children || []
       })
-    } catch (error) {
+    } catch {
       toast.add({
         severity: 'error',
         summary: 'Fehler',
@@ -314,11 +315,11 @@ async function handleSubmit() {
     }
 
     router.push('/parents')
-  } catch (error: any) {
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: error.response?.data?.detail || 'Ein Fehler ist aufgetreten',
+      detail: getApiErrorMessage(error, 'Ein Fehler ist aufgetreten'),
       life: 3000
     })
   } finally {

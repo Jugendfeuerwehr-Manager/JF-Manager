@@ -250,6 +250,7 @@ import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import RecipientsList from '@/components/emails/molecules/RecipientsList.vue'
+import type { EmailPreviewResponse, EmailTemplateVariable } from '@/types/emails'
 
 const router = useRouter()
 const toast = useToast()
@@ -261,10 +262,10 @@ const groupsStore = useGroupsStore()
 
 const isMobile = ref(window.innerWidth < 768)
 const showPreviewDialog = ref(false)
-const previewData = ref<any>(null)
+const previewData = ref<EmailPreviewResponse | null>(null)
 const recipientCount = ref<number | null>(null)
-const templateVariables = ref<any[]>([])
-const recipients = ref<any[]>([])
+const templateVariables = ref<EmailTemplateVariable[]>([])
+const recipients = ref<Array<{ name: string; email: string; source: string }>>([])
 const loadingRecipients = ref(false)
 const includeSignature = ref(true)
 const userSignature = computed(() => authStore.user?.email_signature || '')
@@ -350,13 +351,13 @@ const updateRecipientCount = async () => {
       }
       
       // Calculate total unique recipients for all selected members
-      let allRecipients: any[] = []
+      let allRecipients: Array<{ name: string; email: string; source: string }> = []
       for (const memberId of form.value.recipient_members) {
         const response = await emailsStore.getRecipientCount({
           recipient_type: 'individual',
           recipient_member: memberId
         })
-        allRecipients = [...allRecipients, ...response.recipients]
+        allRecipients = [...allRecipients, ...response.recipients.map(r => ({ name: r.name, email: r.email, source: 'Mitglied' }))]
       }
       
       // Deduplicate by email
@@ -372,8 +373,8 @@ const updateRecipientCount = async () => {
       return
     }
     
-    const params: any = {
-      recipient_type: form.value.recipient_type
+    const params: { recipient_type: 'all' | 'group' | 'individual'; recipient_group?: number; recipient_member?: number } = {
+      recipient_type: form.value.recipient_type as 'all' | 'group' | 'individual'
     }
     
     if (form.value.recipient_type === 'group' && form.value.recipient_group) {
@@ -384,9 +385,8 @@ const updateRecipientCount = async () => {
     
     const response = await emailsStore.getRecipientCount(params)
     recipientCount.value = response.count
-    recipients.value = response.recipients || []
-  } catch (error) {
-    console.error('Error getting recipient count:', error)
+    recipients.value = (response.recipients || []).map(r => ({ name: r.name, email: r.email, source: 'Mitglied' }))
+  } catch {
     recipientCount.value = null
     recipients.value = []
   } finally {
@@ -420,7 +420,7 @@ const showPreview = async () => {
     
     previewData.value = response
     showPreviewDialog.value = true
-  } catch (error: any) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -511,7 +511,7 @@ const sendEmail = async () => {
         setTimeout(() => {
           router.push('/emails/history')
         }, 1000)
-      } catch (error: any) {
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',

@@ -2,11 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQualificationsStore } from '@/stores/qualifications'
 import type { SpecialTaskTypeCreate, SpecialTaskTypeUpdate, SpecialTaskType } from '@/types/qualifications'
-import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   typeId?: number
@@ -77,8 +77,8 @@ const handleSubmit = async () => {
       const newType = await qualificationsStore.createSpecialTaskType(formData.value)
       emit('success', newType.id)
     }
-  } catch (err: any) {
-    error.value = err.message || 'Fehler beim Speichern des Aufgabentyps'
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'Fehler beim Speichern des Aufgabentyps')
   } finally {
     loading.value = false
   }

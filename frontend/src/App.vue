@@ -8,7 +8,7 @@ import { useAppSettings } from '@/composables/useAppSettings'
 const { websiteTitle, setDocumentTitle } = useAppSettings()
 
 // Update document title when website title changes
-watch(websiteTitle, (newTitle) => {
+watch(websiteTitle, () => {
   setDocumentTitle()
 }, { immediate: true })
 </script>

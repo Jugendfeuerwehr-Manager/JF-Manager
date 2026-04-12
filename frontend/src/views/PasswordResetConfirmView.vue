@@ -131,16 +131,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { authApi } from '@/api/auth'
 import Card from 'primevue/card'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
-const router = useRouter()
-
 const newPassword = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
@@ -198,8 +197,8 @@ const handleSubmit = async () => {
       new_password_confirm: confirmPassword.value
     })
     resetSuccess.value = true
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Passwort konnte nicht zurückgesetzt werden. Der Link ist möglicherweise abgelaufen.'
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'Passwort konnte nicht zurückgesetzt werden. Der Link ist möglicherweise abgelaufen.')
   } finally {
     loading.value = false
   }

@@ -3,9 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQualificationsStore } from '@/stores/qualifications'
 import QualificationForm from '@/components/qualifications/organisms/QualificationForm.vue'
-import Card from 'primevue/card'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
 
 const router = useRouter()

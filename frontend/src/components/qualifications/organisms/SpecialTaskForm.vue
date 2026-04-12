@@ -12,6 +12,7 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import Textarea from 'primevue/textarea'
 import SelectButton from 'primevue/selectbutton'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   taskId?: number
@@ -215,10 +216,12 @@ const handleSubmit = async () => {
       const newTask = await qualificationsStore.createSpecialTask(createData)
       emit('success', newTask.id)
     }
-  } catch (err: any) {
+  } catch (err) {
     // Handle field-specific validation errors from backend
-    if (err.response?.data) {
-      const errorData = err.response.data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyErr = err as any
+    if (anyErr.response?.data) {
+      const errorData = anyErr.response.data
       // Check for field-specific errors (e.g., {"task": ["Invalid pk"]})
       if (typeof errorData === 'object' && !errorData.detail) {
         const fieldErrors = Object.entries(errorData)
@@ -235,10 +238,10 @@ const handleSubmit = async () => {
           .join('\n')
         error.value = fieldErrors
       } else {
-        error.value = errorData.detail || err.message || 'Fehler beim Speichern der Sonderaufgabe'
+        error.value = getApiErrorMessage(err, 'Fehler beim Speichern der Sonderaufgabe')
       }
     } else {
-      error.value = err.message || 'Fehler beim Speichern der Sonderaufgabe'
+      error.value = getApiErrorMessage(err, 'Fehler beim Speichern der Sonderaufgabe')
     }
   } finally {
     loading.value = false

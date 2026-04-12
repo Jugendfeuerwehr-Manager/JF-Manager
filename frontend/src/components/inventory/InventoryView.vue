@@ -212,7 +212,7 @@ function onTransactionSuccess() {
 onMounted(async () => {
   try {
     await inventoryStore.loadEssentialData()
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

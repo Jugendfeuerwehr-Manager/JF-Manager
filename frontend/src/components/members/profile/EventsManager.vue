@@ -161,6 +161,7 @@ import Textarea from 'primevue/textarea'
 import DataView from 'primevue/dataview'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   memberId: number
@@ -196,7 +197,7 @@ onMounted(() => {
 const loadEvents = async () => {
   try {
     await eventsStore.fetchEventsForMember(props.memberId)
-  } catch (error: any) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -209,7 +210,7 @@ const loadEvents = async () => {
 const loadEventTypes = async () => {
   try {
     await eventsStore.fetchEventTypes()
-  } catch (error: any) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -304,11 +305,11 @@ const saveEvent = async () => {
     }
 
     closeDialog()
-  } catch (error: any) {
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: error.response?.data?.detail || 'Fehler beim Speichern',
+      detail: getApiErrorMessage(error, 'Fehler beim Speichern'),
       life: 3000
     })
   } finally {
@@ -337,7 +338,7 @@ const deleteEvent = async (id: number) => {
       detail: 'Eintrag wurde gelöscht',
       life: 3000
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

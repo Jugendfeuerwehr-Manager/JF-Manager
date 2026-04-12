@@ -262,6 +262,7 @@ import SelectButton from 'primevue/selectbutton'
 import FileUpload from 'primevue/fileupload'
 import Image from 'primevue/image'
 import ProgressSpinner from 'primevue/progressspinner'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -341,7 +342,7 @@ onMounted(async () => {
         storage_location: member.storage_location,
         avatar_url: member.avatar_url
       })
-    } catch (error) {
+    } catch {
       toast.add({
         severity: 'error',
         summary: 'Fehler',
@@ -355,7 +356,7 @@ onMounted(async () => {
   }
 })
 
-function onFileSelect(event: any) {
+function onFileSelect(event: { files: File[] }) {
   const file = event.files[0]
   if (file) {
     avatarFile.value = file
@@ -461,11 +462,11 @@ async function handleSubmit() {
     }
 
     router.push('/members')
-  } catch (error: any) {
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: error.response?.data?.detail || 'Ein Fehler ist aufgetreten',
+      detail: getApiErrorMessage(error, 'Ein Fehler ist aufgetreten'),
       life: 3000
     })
   } finally {

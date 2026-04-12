@@ -162,8 +162,7 @@ onMounted(async () => {
       totalQualifications: qualificationsStore.statistics?.total_qualifications || 0,
       expiringQualifications: qualificationsStore.statistics?.expiring_qualifications || 0
     }
-  } catch (error) {
-    console.error('Failed to load dashboard data:', error)
+  } catch {
   }
 })
 </script>

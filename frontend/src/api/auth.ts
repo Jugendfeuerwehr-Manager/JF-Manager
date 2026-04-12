@@ -1,5 +1,5 @@
 import apiClient from './index'
-import type { LoginRequest, LoginResponse, TokenRefreshRequest, TokenRefreshResponse } from '@/types/api'
+import type { LoginRequest, LoginResponse, TokenRefreshResponse } from '@/types/api'
 
 export interface PasswordResetRequest {
   email: string

@@ -138,8 +138,7 @@ onMounted(async () => {
     if (settingsStore.canViewAnySettings) {
       await settingsStore.fetchAllSettings()
     }
-  } catch (error) {
-    console.error('Error loading settings:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -162,8 +161,7 @@ async function handleSaveGeneral(data: Partial<GeneralSettings>) {
       detail: 'Allgemeine Einstellungen gespeichert',
       life: 3000
     })
-  } catch (error) {
-    console.error('Error saving general settings:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -182,8 +180,7 @@ async function handleSaveEmail(data: Partial<EmailSettings>) {
       detail: 'E-Mail Einstellungen gespeichert',
       life: 3000
     })
-  } catch (error) {
-    console.error('Error saving email settings:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -202,8 +199,7 @@ async function handleSaveMember(data: Partial<MemberSettings>) {
       detail: 'Mitglieder Einstellungen gespeichert',
       life: 3000
     })
-  } catch (error) {
-    console.error('Error saving member settings:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -222,8 +218,7 @@ async function handleSaveService(data: Partial<ServiceSettings>) {
       detail: 'Dienst Einstellungen gespeichert',
       life: 3000
     })
-  } catch (error) {
-    console.error('Error saving service settings:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -242,8 +237,7 @@ async function handleSaveOrder(data: Partial<OrderSettings>) {
       detail: 'Bestellungs Einstellungen gespeichert',
       life: 3000
     })
-  } catch (error) {
-    console.error('Error saving order settings:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',

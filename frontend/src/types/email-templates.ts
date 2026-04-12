@@ -27,7 +27,7 @@ export interface TemplateType {
  */
 export interface TemplateVariables {
   variables: TemplateVariable[]
-  sample_data: Record<string, any>
+  sample_data: Record<string, unknown>
   warning?: string  // Warning message for legacy/unknown template types
 }
 
@@ -80,7 +80,7 @@ export interface TemplatePreviewRequest {
   subject_template: string
   html_template: string
   text_template?: string
-  sample_data?: Record<string, any>
+  sample_data?: Record<string, unknown>
 }
 
 /**

@@ -54,7 +54,7 @@ export const orderItemsApi = {
   /**
    * Update status of single order item
    */
-  updateStatus(id: number, statusId: number, data?: any) {
+  updateStatus(id: number, statusId: number, data?: Record<string, unknown>) {
     return apiClient.post<OrderItem>(`/order-items/${id}/update_status/`, {
       status: statusId,
       ...data

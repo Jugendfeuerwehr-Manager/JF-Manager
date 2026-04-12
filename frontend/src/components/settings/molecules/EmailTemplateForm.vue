@@ -113,7 +113,7 @@ function handleTypeChange(value: string) {
   emit('typeChange', value)
 }
 
-function updateField(field: keyof EmailTemplateCreateUpdate, value: any) {
+function updateField(field: keyof EmailTemplateCreateUpdate, value: EmailTemplateCreateUpdate[keyof EmailTemplateCreateUpdate]) {
   emit('update:formData', { ...props.formData, [field]: value })
 }
 </script>

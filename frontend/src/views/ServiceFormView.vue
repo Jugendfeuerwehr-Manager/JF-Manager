@@ -54,6 +54,7 @@ import ServiceForm from '@/components/servicebook/organisms/ServiceForm.vue'
 import AttendanceManager from '@/components/servicebook/organisms/AttendanceManager.vue'
 import { useServicebookStore } from '@/stores/servicebook'
 import type { ServiceFormData } from '@/types/servicebook'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const route = useRoute()
@@ -76,8 +77,8 @@ onMounted(async () => {
     loading.value = true
     try {
       await servicebookStore.fetchService(serviceId.value)
-    } catch (err: any) {
-      error.value = err.message || 'Fehler beim Laden des Dienstes'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Fehler beim Laden des Dienstes')
     } finally {
       loading.value = false
     }
@@ -109,11 +110,11 @@ const handleSubmit = async (data: ServiceFormData) => {
       await servicebookStore.fetchService(created.id)
       return
     }
-  } catch (err: any) {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: err.message || 'Fehler beim Speichern des Dienstes',
+      detail: getApiErrorMessage(err, 'Fehler beim Speichern des Dienstes'),
       life: 5000
     })
   } finally {

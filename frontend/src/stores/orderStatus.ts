@@ -8,6 +8,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { orderStatusApi } from '@/api/orderStatus'
 import type { OrderStatus } from '@/types/orders'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useOrderStatusStore = defineStore('orderStatus', () => {
   // State
@@ -51,8 +52,8 @@ export const useOrderStatusStore = defineStore('orderStatus', () => {
       // Extract results from paginated response
       statuses.value = response.data.results
       return statuses.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch statuses'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch statuses')
       throw err
     } finally {
       loading.value = false
@@ -68,8 +69,8 @@ export const useOrderStatusStore = defineStore('orderStatus', () => {
       // Extract results from paginated response
       statuses.value = response.data.results
       return statuses.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch active statuses'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch active statuses')
       throw err
     } finally {
       loading.value = false
@@ -84,8 +85,8 @@ export const useOrderStatusStore = defineStore('orderStatus', () => {
       const response = await orderStatusApi.getNextStatuses(statusId)
       // Extract results from paginated response
       return response.data.results
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch next statuses'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch next statuses')
       throw err
     } finally {
       loading.value = false
@@ -100,8 +101,8 @@ export const useOrderStatusStore = defineStore('orderStatus', () => {
       const response = await orderStatusApi.getWorkflow()
       // Workflow endpoint returns data directly (not paginated)
       return response.data.results
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch workflow'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch workflow')
       throw err
     } finally {
       loading.value = false

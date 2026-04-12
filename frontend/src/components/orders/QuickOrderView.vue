@@ -125,6 +125,7 @@ import { useOrdersStore } from '@/stores/orders'
 import { useOrderableItemsStore } from '@/stores/orderableItems'
 import type { QuickOrderCreate, QuickOrderItem } from '@/types/orders'
 import { membersApi, type Member } from '@/api/members'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const emit = defineEmits<{
   success: [orderId: number]
@@ -232,11 +233,11 @@ async function handleSubmit() {
     
     emit('success', response.id)
     reset()
-  } catch (e: any) {
+  } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: e.message || 'Fehler beim Erstellen der Bestellung',
+      detail: getApiErrorMessage(e, 'Fehler beim Erstellen der Bestellung'),
       life: 3000
     })
   } finally {
@@ -248,7 +249,7 @@ async function loadMembers() {
   try {
     const response = await membersApi.list()
     members.value = response.data.results || []
-  } catch (e: any) {
+  } catch (e) {
     console.error('Failed to load members:', e)
     toast.add({
       severity: 'error',

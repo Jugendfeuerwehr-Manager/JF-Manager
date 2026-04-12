@@ -10,6 +10,7 @@ import Message from 'primevue/message'
 import Skeleton from 'primevue/skeleton'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,9 +48,8 @@ async function loadSpecialTask() {
 
   try {
     await qualificationsStore.fetchSpecialTask(taskId.value)
-  } catch (error: any) {
-    console.error('Failed to load special task:', error)
-    loadError.value = error?.message || 'Die Sonderaufgabe konnte nicht geladen werden.'
+  } catch (error) {
+    loadError.value = getApiErrorMessage(error, 'Die Sonderaufgabe konnte nicht geladen werden.')
   }
 }
 
@@ -83,12 +83,11 @@ function handleEndTask() {
           detail: 'Die Sonderaufgabe wurde erfolgreich beendet.',
           life: 3000
         })
-      } catch (error: any) {
-        console.error('Failed to end special task:', error)
+      } catch (error) {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error?.message || 'Sonderaufgabe konnte nicht beendet werden.',
+          detail: getApiErrorMessage(error, 'Sonderaufgabe konnte nicht beendet werden.'),
           life: 4000
         })
       }
@@ -116,12 +115,11 @@ function handleDeleteTask() {
           life: 3000
         })
         navigateBack()
-      } catch (error: any) {
-        console.error('Failed to delete special task:', error)
+      } catch (error) {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
-          detail: error?.message || 'Sonderaufgabe konnte nicht gelöscht werden.',
+          detail: getApiErrorMessage(error, 'Sonderaufgabe konnte nicht gelöscht werden.'),
           life: 4000
         })
       }

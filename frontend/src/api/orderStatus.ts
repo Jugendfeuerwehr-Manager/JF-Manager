@@ -38,7 +38,7 @@ export const orderStatusApi = {
    * Get complete workflow information
    */
   getWorkflow() {
-    return apiClient.get<any>('/order-statuses/workflow/')
+    return apiClient.get<Record<string, unknown>>('/order-statuses/workflow/')
   },
 
   /**

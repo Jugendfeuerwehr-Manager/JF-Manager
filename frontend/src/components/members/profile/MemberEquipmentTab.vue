@@ -163,7 +163,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { locationsApi } from '@/api/inventory'
 import { useInventoryStore } from '@/stores/inventory'
-import type { Stock, Transaction, MemberEquipmentResponse } from '@/types/inventory'
+import type { Stock, Transaction } from '@/types/inventory'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -212,8 +212,7 @@ const loadEquipment = async () => {
     equipment.value = response.data.equipment
     recentTransactions.value = response.data.recent_transactions
     memberLocationId.value = response.data.location_id
-  } catch (error) {
-    console.error('Error loading equipment:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -225,7 +224,7 @@ const loadEquipment = async () => {
   }
 }
 
-const initiateReturn = (stock: Stock) => {
+const initiateReturn = (_stock: Stock) => {
   // Pre-select the item in the return dialog
   showReturnDialog.value = true
 }

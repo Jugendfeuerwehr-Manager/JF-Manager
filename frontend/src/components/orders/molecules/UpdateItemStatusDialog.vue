@@ -168,12 +168,13 @@ import Tag from 'primevue/tag'
 import Badge from 'primevue/badge'
 import Divider from 'primevue/divider'
 import { orderItemsApi } from '@/api/orderItems'
-import type { OrderItem } from '@/types/orders'
+import type { OrderItem, OrderStatus } from '@/types/orders'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   visible: boolean
   item: OrderItem | null
-  statusOptions: any[]
+  statusOptions: OrderStatus[]
 }
 
 interface Emits {
@@ -263,7 +264,7 @@ async function handleSubmit() {
   loading.value = true
   
   try {
-    const updateData: any = {
+    const updateData: { status: number | null; notes: string; received_date?: string; delivered_date?: string } = {
       status: formData.value.status,
       notes: formData.value.notes
     }
@@ -287,12 +288,11 @@ async function handleSubmit() {
     
     emit('success')
     handleClose()
-  } catch (error: any) {
-    console.error('Failed to update status:', error)
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: error.message || 'Status konnte nicht aktualisiert werden',
+      detail: getApiErrorMessage(error, 'Status konnte nicht aktualisiert werden'),
       life: 3000
     })
   } finally {

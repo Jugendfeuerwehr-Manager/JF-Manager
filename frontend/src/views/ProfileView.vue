@@ -131,8 +131,7 @@ const saveSignature = async () => {
       detail: 'Signatur erfolgreich gespeichert',
       life: 3000
     })
-  } catch (error) {
-    console.error('Error saving signature:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -151,8 +150,7 @@ onMounted(async () => {
       await authStore.fetchUser()
       user.value = authStore.user
       signature.value = user.value?.email_signature || ''
-    } catch (error) {
-      console.error('Error loading user:', error)
+    } catch {
     } finally {
       loading.value = false
     }

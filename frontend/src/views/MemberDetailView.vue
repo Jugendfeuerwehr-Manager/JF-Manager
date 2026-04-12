@@ -211,7 +211,6 @@ import Tag from 'primevue/tag'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
-import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 import EventsManager from '@/components/members/profile/EventsManager.vue'
@@ -259,8 +258,7 @@ const loadMember = async () => {
     
     // Load related data
     await loadParents()
-  } catch (error) {
-    console.error('Error loading member:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -278,8 +276,7 @@ const loadParents = async () => {
     loadingParents.value = true
     const response = await membersApi.getParents(memberId)
     parents.value = response.data
-  } catch (error) {
-    console.error('Error loading parents:', error)
+  } catch {
   } finally {
     loadingParents.value = false
   }
@@ -308,7 +305,7 @@ const navigateToEdit = () => {
   router.push(`/members/${memberId}/edit`)
 }
 
-const toggleMenu = (event: any) => {
+const toggleMenu = (event: Event) => {
   menu.value.toggle(event)
 }
 
@@ -370,7 +367,7 @@ const confirmDelete = () => {
         } else {
           router.push('/members')
         }
-      } catch (error) {
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
@@ -382,19 +379,7 @@ const confirmDelete = () => {
   })
 }
 
-// Contact functions
-const openWhatsApp = (phone: string) => {
-  const cleanPhone = phone.replace(/\s/g, '')
-  window.open(`https://wa.me/${cleanPhone}`, '_blank')
-}
 
-const openPhone = (phone: string) => {
-  window.location.href = `tel:${phone}`
-}
-
-const openEmail = (email: string) => {
-  window.location.href = `mailto:${email}`
-}
 </script>
 
 <style scoped>

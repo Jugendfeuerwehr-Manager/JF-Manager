@@ -12,6 +12,7 @@ import type {
   OrderableItemCreate,
   OrderableItemListParams
 } from '@/types/orders'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useOrderableItemsStore = defineStore('orderableItems', () => {
   // State
@@ -55,8 +56,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
       const response = await orderableItemsApi.list(params)
       items.value = response.data.results
       return items.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch items'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch items')
       throw err
     } finally {
       loading.value = false
@@ -70,8 +71,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
     try {
       const response = await orderableItemsApi.get(id)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch item'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch item')
       throw err
     } finally {
       loading.value = false
@@ -86,8 +87,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
       const response = await orderableItemsApi.create(data)
       items.value.push(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to create item'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to create item')
       throw err
     } finally {
       loading.value = false
@@ -105,8 +106,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
         items.value[index] = response.data
       }
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to update item'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to update item')
       throw err
     } finally {
       loading.value = false
@@ -120,8 +121,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
     try {
       await orderableItemsApi.delete(id)
       items.value = items.value.filter(item => item.id !== id)
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to delete item'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to delete item')
       throw err
     } finally {
       loading.value = false
@@ -136,8 +137,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
       const response = await orderableItemsApi.getCategories()
       categories.value = response.data
       return categories.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch categories'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch categories')
       throw err
     } finally {
       loading.value = false
@@ -151,8 +152,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
     try {
       const response = await orderableItemsApi.getSizes(id)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch sizes'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch sizes')
       throw err
     } finally {
       loading.value = false
@@ -167,8 +168,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
       const response = await orderableItemsApi.getPopular()
       popularItems.value = response.data
       return popularItems.value
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch popular items'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch popular items')
       throw err
     } finally {
       loading.value = false
@@ -182,8 +183,8 @@ export const useOrderableItemsStore = defineStore('orderableItems', () => {
     try {
       const response = await orderableItemsApi.getByCategory(category)
       return response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to fetch items by category'
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Failed to fetch items by category')
       throw err
     } finally {
       loading.value = false

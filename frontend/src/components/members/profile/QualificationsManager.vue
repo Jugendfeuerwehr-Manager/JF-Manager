@@ -159,7 +159,6 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useQualificationsStore } from '@/stores/qualifications'
 import type { Qualification } from '@/types/qualifications'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -195,8 +194,7 @@ const loadQualifications = async () => {
   try {
     loading.value = true
     await qualificationsStore.fetchQualifications({ member: props.memberId })
-  } catch (error) {
-    console.error('Error loading qualifications:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -212,8 +210,7 @@ const onRowExpand = async (event: { data: Qualification }) => {
   // Load full details when row expands
   try {
     await qualificationsStore.fetchQualification(event.data.id)
-  } catch (error) {
-    console.error('Error loading qualification detail:', error)
+  } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -250,7 +247,7 @@ const confirmDelete = (qualification: Qualification) => {
           detail: 'Qualifikation wurde gelöscht',
           life: 3000
         })
-      } catch (error) {
+      } catch {
         toast.add({
           severity: 'error',
           summary: 'Fehler',
