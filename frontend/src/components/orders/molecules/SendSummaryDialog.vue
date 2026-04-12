@@ -156,9 +156,9 @@ const canSend = computed(() => {
 
 // Lifecycle - Load settings on mount
 onMounted(async () => {
-  if (!settingsStore.settings) {
+  if (!settingsStore.order) {
     try {
-      await settingsStore.fetchSettings()
+      await settingsStore.fetchAllSettings()
     } catch {
     }
   }

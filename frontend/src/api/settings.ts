@@ -123,6 +123,7 @@ export const settingsApi = {
       case 'general':
         return this.getGeneral()
       case 'email':
+      case 'email-templates':
         return this.getEmail()
       case 'member':
         return this.getMember()
@@ -130,6 +131,8 @@ export const settingsApi = {
         return this.getService()
       case 'order':
         return this.getOrder()
+      default:
+        return this.getGeneral()
     }
   },
 
@@ -141,6 +144,7 @@ export const settingsApi = {
       case 'general':
         return this.updateGeneral(data as Partial<GeneralSettings>)
       case 'email':
+      case 'email-templates':
         return this.updateEmail(data as Partial<EmailSettings>)
       case 'member':
         return this.updateMember(data as Partial<MemberSettings>)
@@ -148,6 +152,8 @@ export const settingsApi = {
         return this.updateService(data as Partial<ServiceSettings>)
       case 'order':
         return this.updateOrder(data as Partial<OrderSettings>)
+      default:
+        return this.updateGeneral(data as Partial<GeneralSettings>)
     }
   }
 }

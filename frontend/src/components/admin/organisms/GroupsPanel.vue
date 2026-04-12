@@ -207,7 +207,7 @@ function confirmDelete() {
     icon: 'pi pi-trash',
     rejectLabel: 'Abbrechen',
     acceptLabel: 'Löschen',
-    acceptSeverity: 'danger',
+    acceptProps: { severity: 'danger' },
     accept: async () => {
       try {
         await adminStore.deleteGroup(selectedGroupId.value!)

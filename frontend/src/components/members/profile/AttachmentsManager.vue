@@ -277,7 +277,7 @@ const onFileSelect = (event: { files: File[] }) => {
     selectedFile.value = file
     newAttachment.value.file = file
     if (!newAttachment.value.name) {
-      newAttachment.value.name = file.name.split('.')[0]
+      newAttachment.value.name = file.name.split('.')[0] ?? ''
     }
     errors.value.file = ''
   }

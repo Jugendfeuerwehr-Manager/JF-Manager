@@ -288,7 +288,7 @@ function handleSort(event: DataTableSortEvent) {
 }
 
 function handleFilter(event: DataTableFilterEvent) {
-  emit('filter', event.filters)
+  emit('filter', event)
 }
 
 function handleWorkflowUpdate(orderId: number) {

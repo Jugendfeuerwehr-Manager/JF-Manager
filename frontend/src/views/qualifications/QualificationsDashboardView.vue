@@ -39,7 +39,7 @@
 
     <section v-if="isMobile" class="mobile-qualifications-section">
       <TabView v-model:activeIndex="mobileTabIndex" class="mobile-tabview">
-        <TabPanel header="Qualifikationen">
+        <TabPanel header="Qualifikationen" value="0">
           <div class="mobile-tab-content">
             <Card class="mobile-filter-card">
               <template #content>
@@ -90,7 +90,7 @@
           </div>
         </TabPanel>
 
-        <TabPanel header="Sonderaufgaben">
+        <TabPanel header="Sonderaufgaben" value="1">
           <div class="mobile-tab-content">
             <Card class="mobile-filter-card">
               <template #content>

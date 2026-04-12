@@ -246,7 +246,7 @@ router.beforeEach(async (to, from, next) => {
       try {
         await settingsStore.fetchPermissions()
         if (settingsStore.canViewCategory('general')) {
-          await settingsStore.fetchGeneral()
+          await settingsStore.fetchCategorySettings('general')
         }
       } catch (error) {
         // Silently fail - settings are optional

@@ -19,6 +19,7 @@
           dateFormat="dd.mm.yy"
           showIcon
           :showButtonBar="true"
+          updateModelType="date"
           @update:modelValue="emitFilters"
         />
       </div>
@@ -31,6 +32,7 @@
           dateFormat="dd.mm.yy"
           showIcon
           :showButtonBar="true"
+          updateModelType="date"
           @update:modelValue="emitFilters"
         />
       </div>

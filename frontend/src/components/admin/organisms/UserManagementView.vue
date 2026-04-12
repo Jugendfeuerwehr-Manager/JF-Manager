@@ -6,7 +6,7 @@
     </div>
 
     <TabView lazy>
-      <TabPanel>
+      <TabPanel value="0">
         <template #header>
           <i class="pi pi-users mr-2" />
           <span>Benutzer</span>
@@ -14,7 +14,7 @@
         <UsersPanel />
       </TabPanel>
 
-      <TabPanel>
+      <TabPanel value="1">
         <template #header>
           <i class="pi pi-lock mr-2" />
           <span>Gruppen &amp; Berechtigungen</span>

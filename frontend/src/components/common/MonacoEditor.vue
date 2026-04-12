@@ -42,7 +42,7 @@ onMounted(async () => {
 
   try {
     // Load Monaco
-    monaco = await loader.init()
+    monaco = await loader.init() as typeof Monaco
     
     if (!monaco) return
 

@@ -61,6 +61,7 @@ export interface SettingsPermissions {
     member: CategoryPermissions
     service: CategoryPermissions
     order: CategoryPermissions
+    [key: string]: CategoryPermissions
   }
 }
 

@@ -3,11 +3,11 @@
     <div class="grid">
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="first_name">Vorname *</label>
+          <label for="name">Vorname *</label>
           <InputText
-            id="first_name"
-            v-model="formData.first_name"
-            :invalid="submitted && !formData.first_name"
+            id="name"
+            v-model="formData.name"
+            :invalid="submitted && !formData.name"
             class="w-full"
           />
         </div>
@@ -15,24 +15,11 @@
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="last_name">Nachname *</label>
+          <label for="lastname">Nachname *</label>
           <InputText
-            id="last_name"
-            v-model="formData.last_name"
-            :invalid="submitted && !formData.last_name"
-            class="w-full"
-          />
-        </div>
-      </div>
-
-      <div class="col-12 md:col-6">
-        <div class="field">
-          <label for="relation">Beziehung</label>
-          <Dropdown
-            id="relation"
-            v-model="formData.relation"
-            :options="relationOptions"
-            placeholder="Beziehung wählen"
+            id="lastname"
+            v-model="formData.lastname"
+            :invalid="submitted && !formData.lastname"
             class="w-full"
           />
         </div>
@@ -61,15 +48,15 @@
 
       <div class="col-12">
         <div class="field">
-          <label for="address">Straße</label>
-          <InputText id="address" v-model="formData.address" class="w-full" />
+          <label for="street">Straße</label>
+          <InputText id="street" v-model="formData.street" class="w-full" />
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="field">
-          <label for="postal_code">PLZ</label>
-          <InputText id="postal_code" v-model="formData.postal_code" class="w-full" />
+          <label for="zip_code">PLZ</label>
+          <InputText id="zip_code" v-model="formData.zip_code" class="w-full" />
         </div>
       </div>
 
@@ -92,7 +79,6 @@
 import { ref, onMounted } from 'vue'
 import type { Parent } from '@/api/members'
 import InputText from 'primevue/inputtext'
-import Dropdown from 'primevue/dropdown'
 import Button from 'primevue/button'
 
 interface Props {
@@ -107,18 +93,15 @@ const emit = defineEmits<{
 }>()
 
 const formData = ref<Partial<Parent>>({
-  first_name: '',
-  last_name: '',
-  relation: '',
+  name: '',
+  lastname: '',
   email: '',
   phone: '',
   mobile: '',
-  address: '',
-  postal_code: '',
+  street: '',
+  zip_code: '',
   city: ''
 })
-
-const relationOptions = ['Mutter', 'Vater', 'Erziehungsberechtigter', 'Sonstige']
 
 const submitted = ref(false)
 const loading = ref(false)
@@ -132,7 +115,7 @@ onMounted(() => {
 const handleSubmit = () => {
   submitted.value = true
 
-  if (!formData.value.first_name || !formData.value.last_name) {
+  if (!formData.value.name || !formData.value.lastname) {
     return
   }
 

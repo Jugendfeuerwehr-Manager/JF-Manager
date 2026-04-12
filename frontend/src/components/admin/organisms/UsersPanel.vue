@@ -261,7 +261,7 @@ function confirmDeactivate() {
     icon: 'pi pi-ban',
     rejectLabel: 'Abbrechen',
     acceptLabel: 'Deaktivieren',
-    acceptSeverity: 'warning',
+    acceptProps: { severity: 'warn' },
     accept: async () => {
       try {
         await adminStore.updateUser(selectedUserId.value!, { is_active: false })
@@ -293,7 +293,7 @@ function confirmDelete() {
     icon: 'pi pi-trash',
     rejectLabel: 'Abbrechen',
     acceptLabel: 'Endgültig löschen',
-    acceptSeverity: 'danger',
+    acceptProps: { severity: 'danger' },
     accept: async () => {
       try {
         await adminStore.deleteUser(selectedUserId.value!)

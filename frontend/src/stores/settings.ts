@@ -61,6 +61,8 @@ export const useSettingsStore = defineStore('settings', () => {
       permissions.value.categories[category]?.can_change || false
   })
 
+  const equipmentManagerEmail = computed(() => order.value?.equipment_manager_email || '')
+
   const availableTabs = computed(() => {
     if (!permissions.value) return []
     
@@ -336,6 +338,7 @@ export const useSettingsStore = defineStore('settings', () => {
     canViewCategory,
     canChangeCategory,
     availableTabs,
+    equipmentManagerEmail,
     
     // Actions
     fetchPermissions,

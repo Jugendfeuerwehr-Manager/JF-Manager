@@ -63,6 +63,7 @@
             class="w-full"
             placeholder="Datum auswählen"
             :showIcon="true"
+            updateModelType="date"
           />
           <small class="text-500">Wird automatisch gesetzt bei Status "Eingegangen"</small>
         </div>
@@ -79,6 +80,7 @@
             class="w-full"
             placeholder="Datum auswählen"
             :showIcon="true"
+            updateModelType="date"
           />
           <small class="text-500">Wird automatisch gesetzt bei Status "Ausgegeben"</small>
         </div>
