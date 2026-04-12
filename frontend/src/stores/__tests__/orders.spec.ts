@@ -3,7 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useOrdersStore } from '../orders'
 import { ordersApi } from '@/api/orders'
 import type { Order, OrderCreate } from '@/types/orders'
-import type { AxiosResponse } from 'axios'
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 
 // Mock API module
 vi.mock('@/api/orders')
@@ -15,7 +15,7 @@ function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
     status: 200,
     statusText: 'OK',
     headers: {},
-    config: {} as any
+    config: { headers: {} } as InternalAxiosRequestConfig
   }
 }
 
@@ -214,7 +214,7 @@ describe('Orders Store', () => {
         
         const store = useOrdersStore()
         
-        await expect(store.createOrder(newOrderData)).rejects.toThrow()
+        await expect(store.createOrder(newOrderData)).rejects.toThrow('Validation error')
         expect(store.error).toBeTruthy()
       })
     })

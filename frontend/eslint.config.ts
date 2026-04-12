@@ -33,6 +33,9 @@ export default defineConfigWithVueTs(
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
+    rules: {
+      'vitest/prefer-called-exactly-once-with': 'off',
+    },
   },
   skipFormatting,
 )

@@ -3,9 +3,8 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '../auth'
 import { authApi } from '@/api/auth'
 import { userApi } from '@/api/user'
-import router from '@/router'
-import type { LoginRequest, UserInfo } from '@/types/api'
-import type { AxiosResponse } from 'axios'
+import type { UserInfo } from '@/types/api'
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 
 // Mock API modules
 vi.mock('@/api/auth')
@@ -23,7 +22,7 @@ function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
     status: 200,
     statusText: 'OK',
     headers: {},
-    config: {} as any
+    config: { headers: {} } as InternalAxiosRequestConfig
   }
 }
 

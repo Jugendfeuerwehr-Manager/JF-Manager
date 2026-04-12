@@ -5,12 +5,10 @@ import { settingsApi } from '@/api/settings'
 import type {
   GeneralSettings,
   EmailSettings,
-  MemberSettings,
-  ServiceSettings,
   OrderSettings,
   SettingsPermissions
 } from '@/types/settings'
-import type { AxiosResponse } from 'axios'
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 
 // Mock API module
 vi.mock('@/api/settings')
@@ -22,7 +20,7 @@ function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
     status: 200,
     statusText: 'OK',
     headers: {},
-    config: {} as any
+    config: { headers: {} } as InternalAxiosRequestConfig
   }
 }
 
