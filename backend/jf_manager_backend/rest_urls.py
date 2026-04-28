@@ -1,6 +1,6 @@
 from rest_framework import routers
 
-from inventory.api.viewsets import (
+from inventory.api import (
     CategoryViewSet,
     ItemVariantViewSet,
     ItemViewSet,
@@ -8,9 +8,9 @@ from inventory.api.viewsets import (
     StorageLocationViewSet,
     TransactionViewSet,
 )
-from members.api.viewsets.email_viewsets import EmailMessageViewSet
-from members.api_views import (
+from members.api.viewsets import (
     AttachmentViewSet,
+    EmailMessageViewSet,
     EventTypeViewSet,
     EventViewSet,
     GroupViewSet,

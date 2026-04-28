@@ -264,40 +264,17 @@ async function handleStatusUpdated() {
 
 // Get allowed next statuses based on current item statuses
 const allowedNextStatuses = computed(() => {
-  if (!order.value || !order.value.items || order.value.items.length === 0) {
-    return []
-  }
-  
-  // Get all unique current statuses (filter undefined values)
-  const currentStatusCodes = new Set(
-    order.value.items.map((item: OrderItem) => item.status_code).filter((c): c is string => c !== undefined)
-  )
-  
-  // Define workflow transitions
-  const transitions: Record<string, string[]> = {
-    'NEW': ['ORDERED', 'CANCELLED'],
-    'ORDERED': ['RECEIVED', 'CANCELLED'],
-    'RECEIVED': ['DELIVERED', 'CANCELLED'],
-    'DELIVERED': [],
-    'CANCELLED': []
-  }
-  
-  // Find common next statuses across all current statuses
-  let commonNextStatuses: string[] | null = null
-  
-  for (const code of currentStatusCodes) {
-    const nextStatuses = transitions[code] || []
-    if (commonNextStatuses === null) {
-      commonNextStatuses = [...nextStatuses]
-    } else {
-      // Keep only statuses that are common
-      commonNextStatuses = commonNextStatuses.filter(s => nextStatuses.includes(s))
-    }
-  }
-  
-  // Filter statusOptions to only allowed statuses
-  const allowedCodes = commonNextStatuses || []
-  return statusOptions.value.filter(status => allowedCodes.includes(status.code))
+  if (!order.value?.items?.length) return []
+
+  const currentStatusCodes = [
+    ...new Set(
+      order.value.items
+        .map((item: OrderItem) => item.status_code)
+        .filter((c): c is string => c !== undefined)
+    )
+  ]
+
+  return statusStore.getCommonNextStatuses(currentStatusCodes)
 })
 
 async function handleQuickStatusChange() {

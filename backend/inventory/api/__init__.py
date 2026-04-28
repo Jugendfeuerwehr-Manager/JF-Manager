@@ -1,10 +1,21 @@
-"""Inventory DRF API package.
+"""Inventory DRF API package — public surface.
 
-Provides structured serializers & viewsets replacing ad-hoc JSON views in
-`inventory.api_views` and legacy viewsets in `inventory.views`.
+ViewSets are split by domain into focused modules:
+- item_viewsets.py       → CategoryViewSet, ItemViewSet, ItemVariantViewSet
+- location_viewsets.py   → StorageLocationViewSet
+- stock_transaction_viewsets.py → StockViewSet, TransactionViewSet
 
-Migration strategy:
-1. Introduce parallel DRF endpoints (stable, typed, discoverable).
-2. Keep old AJAX endpoints temporarily (marked deprecated) to avoid breaking UI.
-3. Gradually migrate frontend JS to new `/api/v1/inventory/...` endpoints.
+All are re-exported here so rest_urls.py has a single import point.
 """
+from inventory.api.item_viewsets import CategoryViewSet, ItemVariantViewSet, ItemViewSet
+from inventory.api.location_viewsets import StorageLocationViewSet
+from inventory.api.stock_transaction_viewsets import StockViewSet, TransactionViewSet
+
+__all__ = [
+    'CategoryViewSet',
+    'ItemVariantViewSet',
+    'ItemViewSet',
+    'StockViewSet',
+    'StorageLocationViewSet',
+    'TransactionViewSet',
+]

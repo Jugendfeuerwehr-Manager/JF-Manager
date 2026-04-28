@@ -117,6 +117,41 @@ export const useOrderStatusStore = defineStore('orderStatus', () => {
     return statusByCode.value[code]
   }
 
+  /**
+   * Workflow transition map — defines which status codes can follow a given code.
+   * Single source of truth; extracted from OrderDetailView where it was hardcoded.
+   * Update here when the backend workflow changes.
+   */
+  const workflowTransitions: Record<string, string[]> = {
+    NEW: ['ORDERED', 'CANCELLED'],
+    ORDERED: ['RECEIVED', 'CANCELLED'],
+    RECEIVED: ['DELIVERED', 'CANCELLED'],
+    DELIVERED: [],
+    CANCELLED: [],
+  }
+
+  /**
+   * Given a set of current status codes (e.g. from order items), return the
+   * OrderStatus objects that are valid next statuses for ALL of them.
+   * Returns empty array if the codes have no common allowed transitions.
+   */
+  function getCommonNextStatuses(currentCodes: string[]): OrderStatus[] {
+    if (currentCodes.length === 0) return []
+
+    let common: string[] | null = null
+    for (const code of currentCodes) {
+      const allowed = workflowTransitions[code] ?? []
+      if (common === null) {
+        common = [...allowed]
+      } else {
+        common = common.filter(c => allowed.includes(c))
+      }
+    }
+
+    const allowedCodes = common ?? []
+    return statuses.value.filter(s => allowedCodes.includes(s.code))
+  }
+
   function clearError() {
     error.value = null
   }
@@ -146,6 +181,7 @@ export const useOrderStatusStore = defineStore('orderStatus', () => {
     fetchWorkflow,
     getStatusById,
     getStatusByCode,
+    getCommonNextStatuses,
     clearError,
     reset
   }

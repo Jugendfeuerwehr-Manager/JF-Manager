@@ -328,16 +328,17 @@ async function updateLivePreview() {
     if (formData.value.template_type.includes('order') || 
         variables.variables.some(v => v.name === 'order')) {
       try {
-        const response = await fetch('/api/v1/orders/?limit=1')
-        if (response.ok) {
-          const data = await response.json()
+        const { ordersApi } = await import('@/api/orders')
+        const orderResponse = await ordersApi.list({ limit: 1 } as any)
+        if (orderResponse.status === 200) {
+          const data = orderResponse.data
           if (data.results && data.results.length > 0) {
-            const order = data.results[0]
+            const order = data.results[0]!
             previewData = {
               ...variables.sample_data,
               order: order,
-              member: order.member || variables.sample_data.member,
-              order_url: `${window.location.origin}/orders/${order.id}`,
+              member: (order as any).member || variables.sample_data.member,
+              order_url: `${window.location.origin}/orders/${(order as any).id}`,
               domain: window.location.hostname,
               protocol: window.location.protocol.replace(':', ''),
               timestamp: new Date().toISOString()
