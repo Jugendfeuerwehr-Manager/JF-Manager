@@ -149,18 +149,21 @@ const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
 })
 
 const mainNavItems: MenuItem[] = [
+  createNavItem('Dashboard', 'pi pi-home', '/'),
   createNavItem('Mitglieder', 'pi pi-users', '/members'),
+  createNavItem('Gruppen', 'pi pi-sitemap', '/groups'),
+  createNavItem('Listen', 'pi pi-list-check', '/lists'),
   createNavItem('Eltern', 'pi pi-user', '/parents'),
   createNavItem('Dienstbuch', 'pi pi-book', '/servicebook')
 ]
 
 const secondaryNavItems: MenuItem[] = [
-  createNavItem('Dashboard', 'pi pi-home', '/'),
-  createNavItem('Protokoll', 'pi pi-list', '/log'),
+  createNavItem('Einträge', 'pi pi-list', '/log'),
   createNavItem('Inventar', 'pi pi-box', '/inventory'),
   createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'),
   createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'),
   createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'),
+  createNavItem('Ausbildung', 'pi pi-calendar', '/training'),
   createNavItem('Einstellungen', 'pi pi-cog', '/settings'),
   createNavItem('Benutzerverwaltung', 'pi pi-shield', '/users'),
 ]

@@ -79,7 +79,7 @@ import Menubar from 'primevue/menubar'
 import type { MenuItem } from 'primevue/menuitem'
 
 const emit = defineEmits<{
-  menuClick: []
+  menuClick : []
 }>()
 
 const router = useRouter()

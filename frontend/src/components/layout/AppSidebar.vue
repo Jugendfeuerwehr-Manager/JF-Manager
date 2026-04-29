@@ -111,6 +111,8 @@ const menuItems: MenuItem[] = [
   { separator: true },
   { label: 'Dienstbuch', icon: 'pi pi-book', route: '/servicebook' },
   { label: 'Qualifikationen', icon: 'pi pi-check-circle', route: '/qualifications' },
+  { label: 'Ausbildung', icon: 'pi pi-calendar', route: '/training' },
+  { label: 'Bibliothek', icon: 'pi pi-book', route: '/training/library' },
   { separator: true },
   { label: 'Einstellungen', icon: 'pi pi-cog', route: '/settings' },
 ];

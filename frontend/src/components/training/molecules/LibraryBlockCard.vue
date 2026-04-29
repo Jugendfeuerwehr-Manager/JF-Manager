@@ -8,6 +8,14 @@
     <div class="card-meta">
       <LibraryBlockCategoryBadge v-if="categoryObj" :category="categoryObj" />
       <BlockDurationBadge v-if="block.default_duration_minutes" :minutes="block.default_duration_minutes" />
+      <Tag
+        v-if="block.usage_count !== undefined"
+        :value="`${block.usage_count}×`"
+        :severity="block.usage_count > 0 ? 'info' : 'secondary'"
+        class="usage-tag"
+        v-tooltip.top="block.usage_count > 0 ? 'Verwendungen anzeigen' : 'Noch nicht verwendet'"
+        @click.stop="block.usage_count > 0 && emit('show-usages', block)"
+      />
     </div>
 
     <p v-if="block.description" class="card-description">{{ block.description }}</p>
@@ -26,7 +34,10 @@ import BlockDurationBadge from '../atoms/BlockDurationBadge.vue'
 import type { LibraryBlockList, LibraryBlockCategory } from '@/types/training'
 
 const props = defineProps<{ block: LibraryBlockList }>()
-const emit = defineEmits<{ click: [block: LibraryBlockList] }>()
+const emit = defineEmits<{
+  click: [block: LibraryBlockList]
+  'show-usages': [block: LibraryBlockList]
+}>()
 
 /** Construct a category object from the flat list fields */
 const categoryObj = computed<LibraryBlockCategory | null>(() => {
@@ -84,5 +95,9 @@ const categoryObj = computed<LibraryBlockCategory | null>(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+.usage-tag {
+  cursor: pointer;
+  font-size: 0.75rem;
 }
 </style>

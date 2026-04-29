@@ -14,6 +14,7 @@ from members.api.viewsets import (
     EventTypeViewSet,
     EventViewSet,
     GroupViewSet,
+    MemberListViewSet,
     MemberViewSet,
     ParentViewSet,
     StatusViewSet,
@@ -27,6 +28,13 @@ from qualifications.api.viewsets import (
 )
 from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
 from settings_manager.api import EmailTemplateViewSet, SettingsViewSet
+from training.api.viewsets import (
+    LibraryBlockCategoryViewSet,
+    LibraryBlockTagViewSet,
+    LibraryBlockViewSet,
+    TrainingBlockViewSet,
+    TrainingSessionViewSet,
+)
 from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
 from users.api_views import UserViewSet
 
@@ -39,6 +47,7 @@ api.register(r'members', MemberViewSet)
 api.register(r'parents', ParentViewSet)
 api.register(r'statuses', StatusViewSet)
 api.register(r'groups', GroupViewSet)
+api.register(r'member-lists', MemberListViewSet)
 api.register(r'events', EventViewSet)
 api.register(r'event-types', EventTypeViewSet)
 api.register(r'attachments', AttachmentViewSet)
@@ -72,3 +81,10 @@ api.register(r'qualifications', QualificationViewSet, basename='qualifications')
 # Settings endpoints
 api.register(r'settings', SettingsViewSet, basename='settings')
 api.register(r'settings/email-templates', EmailTemplateViewSet, basename='email-templates')
+
+# Training endpoints - most specific routes FIRST
+api.register(r'training/library/categories', LibraryBlockCategoryViewSet, basename='training-library-categories')
+api.register(r'training/library/tags', LibraryBlockTagViewSet, basename='training-library-tags')
+api.register(r'training/library', LibraryBlockViewSet, basename='training-library')
+api.register(r'training/sessions', TrainingSessionViewSet, basename='training-sessions')
+api.register(r'training/blocks', TrainingBlockViewSet, basename='training-blocks')

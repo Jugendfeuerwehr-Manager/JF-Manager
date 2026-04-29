@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     'servicebook.apps.ServicebookConfig',
     'orders.apps.OrdersConfig',
     'qualifications.apps.QualificationsConfig',
+    'training.apps.TrainingConfig',
     'settings_manager.apps.SettingsManagerConfig',
     'health',
 ]

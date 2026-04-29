@@ -6,6 +6,10 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import nightwatchPlugin from 'vite-plugin-nightwatch'
 
 // https://vite.dev/config/
+const BACKEND = process.env.VITE_API_BASE_URL
+  ? new URL(process.env.VITE_API_BASE_URL).origin  // e.g. http://localhost:8000
+  : 'http://localhost:8000'
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -15,6 +19,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
+    },
+  },
+  server: {
+    proxy: {
+      // Proxy /uploads/ so media files work even with relative URLs
+      '/uploads': { target: BACKEND, changeOrigin: true },
     },
   },
 })

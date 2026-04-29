@@ -40,6 +40,22 @@ const router = createRouter({
           component: () => import('@/views/MembersView.vue')
         },
         {
+          path: 'groups',
+          name: 'group-management',
+          component: () => import('@/views/GroupManagementView.vue')
+        },
+        // Lists
+        {
+          path: 'lists',
+          name: 'lists',
+          component: () => import('@/views/ListsView.vue')
+        },
+        {
+          path: 'lists/:id',
+          name: 'list-detail',
+          component: () => import('@/views/ListDetailView.vue')
+        },
+        {
           path: 'members/create',
           name: 'members-create',
           component: () => import('@/views/MemberEditView.vue')
@@ -224,6 +240,29 @@ const router = createRouter({
           path: 'profile',
           name: 'profile',
           component: () => import('@/views/ProfileView.vue')
+        },
+        // Training / Ausbildungsplanung
+        {
+          path: 'training',
+          name: 'training',
+          component: () => import('@/views/training/TrainingCalendarView.vue')
+        },
+        {
+          path: 'training/library',
+          name: 'training-library',
+          component: () => import('@/views/training/LibraryView.vue')
+        },
+        {
+          path: 'training/sessions/:id/plan',
+          name: 'training-planner',
+          component: () => import('@/views/training/TrainingPlannerView.vue'),
+          props: (route) => ({ sessionId: Number(route.params.id) })
+        },
+        {
+          path: 'training/sessions/:id/handout',
+          name: 'training-handout',
+          component: () => import('@/views/training/TrainingHandoutView.vue'),
+          props: (route) => ({ sessionId: Number(route.params.id) })
         }
       ]
     }
