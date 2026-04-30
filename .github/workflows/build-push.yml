@@ -49,6 +49,7 @@ jobs:
     outputs:
       image: ${{ steps.meta.outputs.tags }}
       digest: ${{ steps.build.outputs.digest }}
+      full-ref: ${{ steps.full-ref.outputs.ref }}
 
     steps:
       - name: Checkout repository
@@ -93,6 +94,10 @@ jobs:
           provenance: true
           sbom: true
 
+      - name: Set full image reference
+        id: full-ref
+        run: echo "ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
   build-frontend:
     name: Build Frontend Image
     needs: check-ci
@@ -105,6 +110,7 @@ jobs:
     outputs:
       image: ${{ steps.meta.outputs.tags }}
       digest: ${{ steps.build.outputs.digest }}
+      full-ref: ${{ steps.full-ref.outputs.ref }}
 
     steps:
       - name: Checkout repository
@@ -150,6 +156,10 @@ jobs:
           provenance: true
           sbom: true
 
+      - name: Set full image reference
+        id: full-ref
+        run: echo "ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
   security-scan:
     name: Security Scan
     needs: [build-backend, build-frontend]
@@ -163,9 +173,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image-ref: ${{ needs.build-backend.outputs.digest }}
+          - image-ref: ${{ needs.build-backend.outputs.full-ref }}
             artifact: trivy-backend-sarif
-          - image-ref: ${{ needs.build-frontend.outputs.digest }}
+          - image-ref: ${{ needs.build-frontend.outputs.full-ref }}
             artifact: trivy-frontend-sarif
 
     steps:
@@ -187,8 +197,8 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: trivy-results.sarif
 
