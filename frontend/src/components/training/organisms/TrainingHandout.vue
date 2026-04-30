@@ -76,20 +76,25 @@
       </div>
     </section>
 
-    <!-- Per-block details -->
-    <section
-      v-for="block in handout.blocks"
-      :key="`detail-${block.id}`"
-      class="block-detail"
-    >
-      <div class="block-detail-header">
-        <div class="block-detail-color" :style="{ background: block.color ?? 'var(--primary-color)' }" />
-        <h3 class="block-detail-title">{{ block.title }}</h3>
-        <span class="block-detail-duration text-color-secondary text-sm">{{ block.duration_minutes }} Min.</span>
+    <!-- Per-block details grouped by swimlane -->
+    <template v-for="lane in swimlaneLanes" :key="`lane-${lane.key}`">
+      <div class="lane-section-header">
+        <h2>{{ lane.label }}</h2>
       </div>
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-if="block.content" class="block-detail-content prose" v-html="block.content" />
-    </section>
+      <section
+        v-for="block in lane.blocks"
+        :key="`detail-${block.id}`"
+        class="block-detail"
+      >
+        <div class="block-detail-header">
+          <div class="block-detail-color" :style="{ background: block.color ?? 'var(--primary-color)' }" />
+          <h3 class="block-detail-title">{{ block.title }}</h3>
+          <span class="block-detail-duration text-color-secondary text-sm">{{ block.duration_minutes }} Min.</span>
+        </div>
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div v-if="block.content" class="block-detail-content prose" v-html="block.content" />
+      </section>
+    </template>
 
     <!-- Notes -->
     <section v-if="handout.notes" class="notes-section">
@@ -167,7 +172,7 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
 
 <style scoped>
 .training-handout {
-  max-width: 860px;
+  max-width: 1000px;
   margin: 0 auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #1a1a1a;
@@ -294,7 +299,7 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
 
 .sl-lane {
   flex: 1;
-  min-width: 120px;
+  min-width: 180px;
   border-right: 1px solid #e2e8f0;
 }
 .sl-lane:last-child { border-right: none; }
@@ -342,8 +347,23 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
   font-size: 0.65rem;
 }
 
+.lane-section-header {
+  margin: 2rem 0 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #eff6ff;
+  border-left: 4px solid #1d4ed8;
+  border-radius: 0 4px 4px 0;
+}
+.lane-section-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1d4ed8;
+}
+
 @media print {
   .training-handout { max-width: 100%; margin: 0; }
   .no-print-break { page-break-inside: avoid; }
+  .lane-section-header { page-break-after: avoid; }
 }
 </style>

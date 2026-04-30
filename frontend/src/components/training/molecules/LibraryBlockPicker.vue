@@ -114,6 +114,7 @@ function onDragStart(event: DragEvent, block: LibraryBlockList) {
     'application/x-library-block-duration',
     String(block.default_duration_minutes ?? 15)
   )
+  event.dataTransfer?.setData('application/x-library-block-color', block.color ?? '')
 }
 
 function formatLastUsed(date: string): string {

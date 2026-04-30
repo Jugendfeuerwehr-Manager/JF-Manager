@@ -1,6 +1,5 @@
 """Serializers for LibraryBlock, LibraryBlockCategory, LibraryBlockTag."""
 
-import uuid
 
 from rest_framework import serializers
 

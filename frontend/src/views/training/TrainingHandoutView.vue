@@ -75,7 +75,8 @@ async function downloadPdf() {
               offsetToTime(b.start_offset_minutes, h.start_time),
               b.title,
               `${b.duration_minutes} Min.`,
-              b.groups?.length ? b.groups.map((g) => g.name).join(', ') : 'Alle',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (b as any).groups?.length ? (b as any).groups.map((g: { name: string }) => g.name).join(', ') : 'Alle',
             ]),
           ],
         },
@@ -83,12 +84,34 @@ async function downloadPdf() {
       },
     ]
 
+    // ── Group blocks by swimlane ───────────────────────────────────────────
+    type LaneGroup = { key: string; label: string; blocks: typeof h.blocks }
+    const laneMap = new Map<string, LaneGroup>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allGroupBlocks = h.blocks.filter((b) => !(b as any).groups?.length)
+    if (allGroupBlocks.length) laneMap.set('all', { key: 'all', label: 'Alle Gruppen', blocks: allGroupBlocks })
     for (const block of h.blocks) {
-      content.push({ text: block.title, style: 'h3' } as Content)
-      if (block.content) {
-        // Strip HTML tags for PDF (simple fallback)
-        const plain = block.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-        content.push({ text: plain, style: 'body' })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const g of (block as any).groups ?? []) {
+        if (!laneMap.has(String(g.id))) {
+          laneMap.set(String(g.id), { key: String(g.id), label: g.name as string, blocks: [] })
+        }
+        laneMap.get(String(g.id))!.blocks.push(block)
+      }
+    }
+    const laneGroups = [...laneMap.values()]
+    const hasMultipleLanes = laneGroups.length > 1
+
+    for (const lane of laneGroups) {
+      if (hasMultipleLanes) {
+        content.push({ text: lane.label, style: 'h2' } as Content)
+      }
+      for (const block of lane.blocks) {
+        content.push({ text: block.title, style: 'h3' } as Content)
+        if (block.content) {
+          const plain = block.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+          content.push({ text: plain, style: 'body' })
+        }
       }
     }
 

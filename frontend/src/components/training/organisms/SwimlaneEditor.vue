@@ -319,17 +319,17 @@ function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | n
 
   const laneEl = event.currentTarget as HTMLElement
   const laneRect = laneEl.getBoundingClientRect()
-  const scrollEl = plannerScroll.value
-  const scrollTop = scrollEl?.scrollTop ?? 0
-  // px within lane content = clientY relative to lane top + scroll offset
-  const clientPx = event.clientY - laneRect.top + scrollTop
+  // getBoundingClientRect().top already incorporates the scroll offset
+  const clientPx = event.clientY - laneRect.top
 
   creating.value = { laneKey, groupId, startPx: clientPx, currentPx: clientPx + 15 * MINUTE_PX, laneRect }
 
   const onMove = (e: MouseEvent) => {
     if (!creating.value) return
-    const scrollNow = plannerScroll.value?.scrollTop ?? 0
-    const newPx = e.clientY - creating.value.laneRect.top + scrollNow
+    // Refresh rect each frame to remain accurate even if user scrolls during drag
+    const laneEl = document.querySelector<HTMLElement>(`.lane-col[data-group-id="${creating.value.laneKey}"]`)
+    const freshTop = laneEl ? laneEl.getBoundingClientRect().top : creating.value.laneRect.top
+    const newPx = e.clientY - freshTop
     creating.value = { ...creating.value, currentPx: Math.max(creating.value.startPx + 5 * MINUTE_PX, newPx) }
   }
 
@@ -377,9 +377,10 @@ async function onLaneDrop(event: DragEvent, groupId: number | null) {
   const colorStr = event.dataTransfer?.getData('application/x-library-block-color') ?? ''
 
   const laneEl = event.currentTarget as HTMLElement
-  const scrollTop = plannerScroll.value?.scrollTop ?? 0
-  const offsetPx = event.clientY - laneEl.getBoundingClientRect().top + scrollTop
-  const startOffset = Math.round(offsetPx / MINUTE_PX / 5) * 5
+  // getBoundingClientRect().top is viewport-relative and already accounts for the
+  // scroll offset of .planner-scroll; adding scrollTop again would double-count it.
+  const offsetPx = event.clientY - laneEl.getBoundingClientRect().top
+  const startOffset = Math.min(DISPLAY_MIN - 5, Math.max(0, Math.round(offsetPx / MINUTE_PX / 5) * 5))
 
   await plannerStore.addBlock({
     title,
@@ -447,7 +448,7 @@ function formatDate(dateStr: string) {
 
 /** Returns the data-group-id value of the lane column at the given clientX. */
 function getLaneKeyAtClientX(clientX: number): string | null {
-  const laneEls = document.querySelectorAll<HTMLElement>('.lane-col[data-group-id]')
+  const laneEls = Array.from(document.querySelectorAll<HTMLElement>('.lane-col[data-group-id]'))
   for (const el of laneEls) {
     const rect = el.getBoundingClientRect()
     if (clientX >= rect.left && clientX <= rect.right) {

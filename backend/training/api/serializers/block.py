@@ -5,7 +5,7 @@ from rest_framework import serializers
 from members.models import Group
 from training.models import TrainingBlock, TrainingMedia
 
-from .library_block import LibraryBlockListSerializer, TrainingMediaSerializer
+from .library_block import TrainingMediaSerializer
 
 
 class GroupMiniSerializer(serializers.ModelSerializer):

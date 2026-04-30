@@ -342,5 +342,10 @@ General Instructiosn:
   - create Tests where applicable to ensure code quality and reliability. (e2e, unit, integration)
   - ensure that generated API endpoints follow RESTful principles and integrate seamlessly with the existing backend structure. Use Django REST Framework best practices. All Endpoints must be added to the appropriate ViewSets in the `api/viewsets/` directory of the relevant Django app. They need to be authenticated using JWT and must return data in the established paginated format where applicable. Permissions should be enforced using the existing permission classes defined in `permissions.py`.
   - Test the permissions and authentication of new API endpoints to ensure they align with the project's security requirements.
+  - **MANDATORY before completing any code changes — run all checks locally and fix every error:**
+    - Frontend TypeScript: `cd frontend && npm run type-check`
+    - Frontend lint: `cd frontend && npm run lint`
+    - Backend lint/format: `cd backend && pipenv run ruff check . && pipenv run ruff format --check .`
+    - If any check fails, fix all issues before finishing. Never skip this step.
 
 **Reference Implementation**: `backend/orders/api/` + `frontend/src/components/orders/`

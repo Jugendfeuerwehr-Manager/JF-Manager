@@ -9,7 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -231,8 +231,8 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'delete'], url_path='media')
     def media(self, request, pk=None):
         """
-        GET  /api/v1/training/library/{id}/media/  – list uploaded images for this block
-        DELETE /api/v1/training/library/{id}/media/?media_id=X  – remove a single image
+        GET  /api/v1/training/library/{id}/media/  - list uploaded images for this block
+        DELETE /api/v1/training/library/{id}/media/?media_id=X  - remove a single image
         """
         block = self.get_object()
         ct = ContentType.objects.get_for_model(block)

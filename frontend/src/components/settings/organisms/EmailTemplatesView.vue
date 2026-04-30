@@ -329,7 +329,7 @@ async function updateLivePreview() {
         variables.variables.some(v => v.name === 'order')) {
       try {
         const { ordersApi } = await import('@/api/orders')
-        const orderResponse = await ordersApi.list({ limit: 1 } as any)
+        const orderResponse = await ordersApi.list({ limit: 1 })
         if (orderResponse.status === 200) {
           const data = orderResponse.data
           if (data.results && data.results.length > 0) {
@@ -337,8 +337,8 @@ async function updateLivePreview() {
             previewData = {
               ...variables.sample_data,
               order: order,
-              member: (order as any).member || variables.sample_data.member,
-              order_url: `${window.location.origin}/orders/${(order as any).id}`,
+              member: order.member || variables.sample_data.member,
+              order_url: `${window.location.origin}/orders/${order.id}`,
               domain: window.location.hostname,
               protocol: window.location.protocol.replace(':', ''),
               timestamp: new Date().toISOString()

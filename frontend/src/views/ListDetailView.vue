@@ -104,6 +104,7 @@
               :pt="{ input: { class: 'w-full' } }"
               @complete="searchMembers"
               @option-select="onMemberSelect"
+              @keydown.enter="onAutoCompleteEnter"
             />
             <div class="add-buttons">
               <Button
@@ -208,15 +209,16 @@
               </div>
 
               <!-- Notes inline input -->
-              <InputText
-                :value="entry.notes"
-                placeholder="Notiz…"
-                class="notes-input"
-                size="small"
-                @click.stop
-                @click="$event.stopPropagation()"
-                @change="updateNotes(entry, ($event.target as HTMLInputElement).value)"
-              />
+              <div @click.stop @keydown.stop>
+                <InputText
+                  v-model="localNotes[entry.member.id]"
+                  placeholder="Notiz…"
+                  class="notes-input"
+                  size="small"
+                  @blur="saveNotes(entry.member.id)"
+                  @keydown.enter="saveNotes(entry.member.id)"
+                />
+              </div>
 
               <!-- Remove button -->
               <Button
@@ -283,7 +285,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import AutoComplete from 'primevue/autocomplete'
@@ -302,7 +304,6 @@ import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useGroupsStore } from '@/stores/groups'
 import { useListPdf } from '@/composables/useListPdf'
-import type { MemberListEntry } from '@/types/lists'
 import type { Member } from '@/types/members'
 
 // ── Route & stores ────────────────────────────────────────────────────────
@@ -354,6 +355,7 @@ const filteredEntries = computed(() => {
 // ── Add members autocomplete ──────────────────────────────────────────────
 const memberSearchText = ref('')
 const memberSuggestions = ref<Member[]>([])
+const addingMember = ref(false)
 
 function searchMembers(event: { query: string }) {
   const q = event.query.toLowerCase()
@@ -364,11 +366,23 @@ function searchMembers(event: { query: string }) {
 }
 
 async function onMemberSelect(event: { value: Member }) {
+  if (addingMember.value) return
+  addingMember.value = true
   memberSearchText.value = ''
+  memberSuggestions.value = []
   try {
     await store.addMember(listId.value, event.value.id)
   } catch {
     toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht hinzugefügt werden.', life: 3000 })
+  } finally {
+    addingMember.value = false
+  }
+}
+
+async function onAutoCompleteEnter() {
+  const single = memberSuggestions.value[0]
+  if (memberSuggestions.value.length === 1 && single) {
+    await onMemberSelect({ value: single })
   }
 }
 
@@ -405,9 +419,23 @@ async function removeMember(memberId: number) {
   }
 }
 
-// ── Notes ─────────────────────────────────────────────────────────────────
-async function updateNotes(entry: MemberListEntry, value: string) {
-  await store.updateEntryNotes(listId.value, entry.member.id, value)
+// ── Notes local state (prevents value reset on re-render) ───────────────
+const localNotes = reactive<Record<number, string>>({})
+
+watch(
+  () => store.currentList?.entries,
+  (entries) => {
+    entries?.forEach((e) => {
+      if (localNotes[e.member.id] === undefined) {
+        localNotes[e.member.id] = e.notes ?? ''
+      }
+    })
+  },
+  { immediate: true, deep: false },
+)
+
+async function saveNotes(memberId: number) {
+  await store.updateEntryNotes(listId.value, memberId, localNotes[memberId] ?? '')
 }
 
 // ── Check all / uncheck all ───────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { memberListsApi } from '@/api/lists'
 import { getApiErrorMessage } from '@/utils/apiError'
-import type { MemberList, MemberListCreate, MemberListDetail, MemberListEntry, MemberListUpdate } from '@/types/lists'
+import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate } from '@/types/lists'
 
 export const useMemberListsStore = defineStore('memberLists', () => {
   // ── State ────────────────────────────────────────────────────────────────
@@ -162,15 +162,17 @@ export const useMemberListsStore = defineStore('memberLists', () => {
   // ── Helpers ──────────────────────────────────────────────────────────────
   function syncCheckedCount(listId: number) {
     const idx = lists.value.findIndex((l) => l.id === listId)
-    if (idx !== -1 && currentList.value?.id === listId) {
-      lists.value[idx].checked_count = currentList.value.entries.filter((e) => e.checked).length
+    const list = lists.value[idx]
+    if (list && currentList.value?.id === listId) {
+      list.checked_count = currentList.value.entries.filter((e) => e.checked).length
     }
   }
 
   function syncOverviewCount(listId: number) {
     const idx = lists.value.findIndex((l) => l.id === listId)
-    if (idx !== -1 && currentList.value?.id === listId) {
-      lists.value[idx].member_count = currentList.value.entries.length
+    const list = lists.value[idx]
+    if (list && currentList.value?.id === listId) {
+      list.member_count = currentList.value.entries.length
     }
   }
 

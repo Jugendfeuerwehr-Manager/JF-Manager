@@ -219,7 +219,7 @@ function confirmDelete(block: LibraryBlockList) {
   })
 }
 
-function onFormSuccess(blockId: number) {
+function onFormSuccess(_blockId: number) {
   showForm.value = false
   fetchBlocks()
   toast.add({ severity: 'success', summary: 'Gespeichert', life: 3000 })

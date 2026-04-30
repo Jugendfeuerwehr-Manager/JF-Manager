@@ -307,7 +307,7 @@ function goToPlanner(sessionId: number) {
   router.push(`/training/sessions/${sessionId}/plan`)
 }
 
-function onSessionCreated(sessionId: number) {
+function onSessionCreated(_sessionId: number) {
   showCreate.value = false
   loadSessions()
 }

@@ -3,7 +3,7 @@ ViewSets for Stock (read-only) and Transaction (full CRUD + discard statistics).
 """
 from datetime import timedelta
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action

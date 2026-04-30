@@ -34,4 +34,4 @@ export interface MemberListCreate {
   color?: string
 }
 
-export interface MemberListUpdate extends Partial<MemberListCreate> {}
+export type MemberListUpdate = Partial<MemberListCreate>

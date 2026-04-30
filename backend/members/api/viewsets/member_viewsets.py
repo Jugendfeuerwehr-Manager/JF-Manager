@@ -14,12 +14,10 @@ from rest_framework.response import Response
 from members.api_serializers import (
     AttachmentSerializer,
     EventSerializer,
-    GroupSerializer,
     MemberCreateUpdateSerializer,
     MemberDetailSerializer,
     MemberListSerializer,
     ParentSerializer,
-    StatusSerializer,
 )
 from members.models import Attachment, Event, Group, Member, Status
 from members.resources import MemberResource

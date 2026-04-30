@@ -33,15 +33,22 @@ export function useListPdf() {
     const tableBody: object[][] = [
       // Header row
       [
+        { text: '', style: 'tableHeader', alignment: 'center' },
         { text: '#', style: 'tableHeader', alignment: 'center' },
         { text: 'Name', style: 'tableHeader' },
         { text: 'Gruppe', style: 'tableHeader' },
         { text: 'Status', style: 'tableHeader' },
-        { text: 'Anwesend', style: 'tableHeader', alignment: 'center' },
         { text: 'Notiz', style: 'tableHeader' },
       ],
       // Data rows
       ...entries.map((entry, idx) => [
+        {
+          // Checkbox: ✓ if checked, □ if not
+          text: entry.checked ? '✓' : '□',
+          alignment: 'center',
+          fontSize: 13,
+          color: entry.checked ? '#16a34a' : '#94a3b8',
+        },
         { text: String(idx + 1), alignment: 'center', color: '#666' },
         {
           text: entry.member.full_name,
@@ -53,13 +60,6 @@ export function useListPdf() {
           text: entry.member.status?.name ?? '–',
           color: entry.member.status?.color ?? '#64748b',
           fontSize: 9,
-        },
-        {
-          // Checkbox: filled ■ if checked, empty □ if not
-          text: entry.checked ? '■' : '□',
-          alignment: 'center',
-          fontSize: 14,
-          color: entry.checked ? '#16a34a' : '#94a3b8',
         },
         { text: entry.notes ?? '', fontSize: 9, color: '#64748b' },
       ]),
@@ -102,6 +102,7 @@ export function useListPdf() {
             },
           ],
           margin: [0, 10, 0, 0],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any
       },
       content: [
@@ -145,7 +146,7 @@ export function useListPdf() {
         {
           table: {
             headerRows: 1,
-            widths: ['auto', '*', 80, 70, 55, 90],
+            widths: [18, 'auto', '*', 80, 70, 90],
             body: tableBody,
           },
           layout: {
@@ -176,7 +177,7 @@ export function useListPdf() {
           bold: true,
           color: '#64748b',
           fillColor: '#f8fafc',
-          textTransform: 'uppercase' as 'uppercase',
+          textTransform: 'uppercase' as const,
         },
       },
       defaultStyle: {
@@ -187,7 +188,7 @@ export function useListPdf() {
     }
 
     const safeFileName = list.name.replace(/[^a-z0-9äöüÄÖÜß\s_-]/gi, '').trim() || 'Liste'
-    pdfMake.createPdf(docDefinition as Parameters<typeof pdfMake.createPdf>[0]).download(
+    pdfMake.createPdf((docDefinition as unknown) as Parameters<typeof pdfMake.createPdf>[0]).download(
       `${safeFileName}_${now.replace(/\./g, '-')}.pdf`,
     )
   }

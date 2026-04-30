@@ -237,7 +237,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useAuthStore } from '@/stores/auth'
@@ -260,7 +260,6 @@ import type { EmailPreviewResponse, EmailTemplateVariable } from '@/types/emails
 import type { Member } from '@/types/members'
 
 const router = useRouter()
-const route = useRoute()
 const toast = useToast()
 const confirm = useConfirm()
 const authStore = useAuthStore()
