@@ -363,12 +363,12 @@ onMounted(() => {
 .list-card {
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.15s;
-  border: 1px solid var(--p-surface-200);
+  border: 1px solid var(--p-content-border-color);
   overflow: hidden;
 }
 
 .list-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--p-surface-950) 10%, transparent);
   transform: translateY(-2px);
 }
 
@@ -450,7 +450,7 @@ onMounted(() => {
 .progress-bar-wrap {
   flex: 1;
   height: 6px;
-  background: var(--p-surface-200);
+  background: var(--p-content-border-color);
   border-radius: 99px;
   overflow: hidden;
 }

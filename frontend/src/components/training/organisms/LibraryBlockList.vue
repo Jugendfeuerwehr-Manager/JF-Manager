@@ -277,7 +277,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   text-align: center;
   gap: 0.5rem;
 }
@@ -289,16 +289,16 @@ onMounted(async () => {
 }
 
 :deep(.block-selected) {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--p-primary-500);
   outline-offset: 2px;
-  border-radius: var(--border-radius);
+  border-radius: 0.5rem;
 }
 
 /* Usages dialog */
 .usages-loading, .usages-empty {
   padding: 1.5rem;
   text-align: center;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   display: flex;
   justify-content: center;
 }
@@ -314,8 +314,8 @@ onMounted(async () => {
   align-items: center;
   gap: 1rem;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--border-radius);
-  background: var(--surface-ground);
+  border-radius: 0.5rem;
+  background: var(--p-content-hover-background);
   font-size: 0.9rem;
 }
 .usage-date {

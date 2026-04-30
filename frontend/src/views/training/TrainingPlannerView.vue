@@ -23,7 +23,7 @@ const sessionId = computed(() => Number(route.params.id))
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background: var(--surface-ground);
+  background: var(--p-content-background);
   z-index: 1;
 }
 </style>

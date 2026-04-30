@@ -6,7 +6,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -25,32 +24,31 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
     """
     CRUD for training sessions + handout + generate_series actions.
     """
+
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageTraining]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = TrainingSessionFilter
-    ordering_fields = ['date', 'start_time', 'title']
-    ordering = ['date', 'start_time']
+    ordering_fields = ["date", "start_time", "title"]
+    ordering = ["date", "start_time"]
 
     def get_queryset(self):
-        return TrainingSession.objects.select_related(
-            'created_by', 'series_parent'
-        ).prefetch_related(
-            'groups',
-            'blocks__groups',
-            'blocks__library_block',
+        return TrainingSession.objects.select_related("created_by", "series_parent").prefetch_related(
+            "groups",
+            "blocks__groups",
+            "blocks__library_block",
         )
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == "list":
             return TrainingSessionListSerializer
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ["create", "update", "partial_update"]:
             return TrainingSessionCreateSerializer
-        if self.action == 'handout':
+        if self.action == "handout":
             return TrainingSessionHandoutSerializer
         return TrainingSessionDetailSerializer
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     def handout(self, request, pk=None):
         """
         GET /api/v1/training/sessions/{id}/handout/
@@ -60,7 +58,7 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def generate_series(self, request, pk=None):
         """
         POST /api/v1/training/sessions/{id}/generate_series/
@@ -70,16 +68,16 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
         parent = self.get_object()
         if not parent.recurrence_rule:
             return Response(
-                {'detail': 'Diese Einheit hat keine Wiederholungsregel.'},
+                {"detail": "Diese Einheit hat keine Wiederholungsregel."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         rule = parent.recurrence_rule
-        frequency = rule.get('frequency', 'WEEKLY')
-        end_date_str = rule.get('end_date')
+        frequency = rule.get("frequency", "WEEKLY")
+        end_date_str = rule.get("end_date")
         if not end_date_str:
             return Response(
-                {'detail': 'recurrence_rule benötigt ein end_date.'},
+                {"detail": "recurrence_rule benötigt ein end_date."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -87,14 +85,14 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
             end_date = datetime.date.fromisoformat(end_date_str)
         except ValueError:
             return Response(
-                {'detail': 'Ungültiges end_date Format (erwartet YYYY-MM-DD).'},
+                {"detail": "Ungültiges end_date Format (erwartet YYYY-MM-DD)."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         delta_map = {
-            'WEEKLY': datetime.timedelta(weeks=1),
-            'BIWEEKLY': datetime.timedelta(weeks=2),
-            'MONTHLY': None,  # handled separately
+            "WEEKLY": datetime.timedelta(weeks=1),
+            "BIWEEKLY": datetime.timedelta(weeks=2),
+            "MONTHLY": None,  # handled separately
         }
         delta = delta_map.get(frequency)
 
@@ -106,7 +104,7 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
 
         while True:
             # Advance to next occurrence
-            if frequency == 'MONTHLY':
+            if frequency == "MONTHLY":
                 month = current_date.month + 1
                 year = current_date.year + (month - 1) // 12
                 month = ((month - 1) % 12) + 1
@@ -114,6 +112,7 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
                     current_date = current_date.replace(year=year, month=month)
                 except ValueError:
                     import calendar
+
                     last_day = calendar.monthrange(year, month)[1]
                     current_date = current_date.replace(year=year, month=month, day=last_day)
             else:
@@ -137,6 +136,6 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
             created.append(child.pk)
 
         return Response(
-            {'created': len(created), 'session_ids': created},
+            {"created": len(created), "session_ids": created},
             status=status.HTTP_201_CREATED,
         )

@@ -122,8 +122,8 @@ function toggleMoveMenu(event: MouseEvent) {
   gap: 0.5rem;
   padding: 0.5rem 0.625rem;
   border-radius: 8px;
-  background: var(--p-surface-0);
-  border: 1px solid var(--p-surface-200);
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
   cursor: grab;
   user-select: none;
   transition:
@@ -133,7 +133,7 @@ function toggleMoveMenu(event: MouseEvent) {
 }
 
 .member-group-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--p-surface-950) 12%, transparent);
   border-color: var(--p-primary-300);
 }
 

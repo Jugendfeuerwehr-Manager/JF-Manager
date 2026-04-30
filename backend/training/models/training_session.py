@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db import models
 
 
@@ -11,12 +10,12 @@ class TrainingSession(models.Model):
     class Meta:
         verbose_name = "Trainingseinheit"
         verbose_name_plural = "Trainingseinheiten"
-        ordering = ['-date', 'start_time']
+        ordering = ["-date", "start_time"]
 
     class RecurrenceFrequency(models.TextChoices):
-        WEEKLY = 'WEEKLY', 'Wöchentlich'
-        BIWEEKLY = 'BIWEEKLY', 'Zweiwöchentlich'
-        MONTHLY = 'MONTHLY', 'Monatlich'
+        WEEKLY = "WEEKLY", "Wöchentlich"
+        BIWEEKLY = "BIWEEKLY", "Zweiwöchentlich"
+        MONTHLY = "MONTHLY", "Monatlich"
 
     title = models.CharField(max_length=300, verbose_name="Titel")
     description = models.TextField(blank=True, verbose_name="Beschreibung")
@@ -28,20 +27,20 @@ class TrainingSession(models.Model):
     notes = models.TextField(blank=True, verbose_name="Notizen")
 
     groups = models.ManyToManyField(
-        'members.Group',
+        "members.Group",
         blank=True,
-        related_name='training_sessions',
+        related_name="training_sessions",
         verbose_name="Gruppen",
         help_text="Leerlassen = Alle Gruppen",
     )
 
     # Recurrence support
     series_parent = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='series_children',
+        related_name="series_children",
         verbose_name="Serienvorlage",
     )
     recurrence_rule = models.JSONField(
@@ -52,11 +51,11 @@ class TrainingSession(models.Model):
     )
 
     created_by = models.ForeignKey(
-        'users.CustomUser',
+        "users.CustomUser",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='created_training_sessions',
+        related_name="created_training_sessions",
         verbose_name="Erstellt von",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -68,7 +67,8 @@ class TrainingSession(models.Model):
     @property
     def duration_minutes(self):
         """Total session duration in minutes."""
-        from datetime import datetime, date
+        from datetime import date, datetime
+
         start = datetime.combine(date.today(), self.start_time)
         end = datetime.combine(date.today(), self.end_time)
         return int((end - start).total_seconds() / 60)

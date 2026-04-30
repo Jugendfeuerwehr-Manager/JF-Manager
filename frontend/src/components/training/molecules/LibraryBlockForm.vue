@@ -223,11 +223,11 @@ async function submit() {
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .field-checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
-.field label { font-size: 0.875rem; font-weight: 500; color: var(--text-color-secondary); }
+.field label { font-size: 0.875rem; font-weight: 500; color: var(--p-text-muted-color); }
 
 .color-picker-row { display: flex; align-items: center; gap: 0.5rem; }
 .color-input { width: 2.5rem; height: 2rem; border: none; background: none; cursor: pointer; }
-.color-hint { font-size: 0.875rem; color: var(--text-color-secondary); }
+.color-hint { font-size: 0.875rem; color: var(--p-text-muted-color); }
 
 .editor-wrapper { min-height: 0; }
 
@@ -236,7 +236,7 @@ async function submit() {
   justify-content: flex-end;
   gap: 0.75rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--p-content-border-color);
   margin-top: 1rem;
 }
 </style>

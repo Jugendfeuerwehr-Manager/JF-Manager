@@ -400,16 +400,16 @@ onMounted(async () => {
   gap: 0;
   height: calc(100vh - 200px);
   min-height: 500px;
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.5rem;
   overflow: hidden;
-  background: var(--surface-card);
+  background: var(--p-content-background);
 }
 
 .master-panel {
-  border-right: 1px solid var(--surface-border);
+  border-right: 1px solid var(--p-content-border-color);
   overflow-y: auto;
-  background: var(--surface-ground);
+  background: var(--p-content-hover-background);
   padding: 1rem;
 }
 
@@ -471,7 +471,7 @@ onMounted(async () => {
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--p-content-border-color);
 }
 
 .text-muted {

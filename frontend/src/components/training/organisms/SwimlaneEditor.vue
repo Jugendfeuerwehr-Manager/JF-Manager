@@ -74,7 +74,7 @@
 
         <!-- Loading state -->
         <div v-if="plannerStore.loading" class="loading-overlay">
-          <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: var(--primary-color)"></i>
+          <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: var(--p-primary-color)"></i>
           <span>Lade Trainingsplan...</span>
         </div>
 
@@ -601,7 +601,7 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--surface-ground);
+  background: var(--p-content-background);
   overflow: hidden;
 }
 
@@ -611,15 +611,15 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   align-items: center;
   justify-content: space-between;
   padding: 0.6rem 1rem;
-  background: var(--surface-card);
-  border-bottom: 1px solid var(--surface-border);
+  background: var(--p-content-background);
+  border-bottom: 1px solid var(--p-content-border-color);
   flex-shrink: 0;
   gap: 1rem;
   min-height: 52px;
 }
 .session-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .session-title { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.session-meta { font-size: 0.8rem; color: var(--text-color-secondary); }
+.session-meta { font-size: 0.8rem; color: var(--p-text-muted-color); }
 .topbar-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
 
 /* ── Planner container ────────────────────────────────────────────────── */
@@ -643,8 +643,8 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   top: 0;
   z-index: 10;
   display: flex;
-  background: var(--surface-card);
-  border-bottom: 2px solid var(--primary-color);
+  background: var(--p-content-background);
+  border-bottom: 2px solid var(--p-primary-color);
   height: 40px;
 }
 
@@ -658,11 +658,11 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-color-secondary);
-  border-right: 1px solid var(--surface-border);
+  color: var(--p-text-muted-color);
+  border-right: 1px solid var(--p-content-border-color);
   position: sticky;
   left: 0;
-  background: var(--surface-card);
+  background: var(--p-content-background);
   z-index: 11;
 }
 
@@ -674,9 +674,9 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   padding: 0 0.75rem;
   font-size: 0.85rem;
   font-weight: 600;
-  border-right: 1px solid var(--surface-border);
-  color: var(--text-color);
-  background: var(--surface-card);
+  border-right: 1px solid var(--p-content-border-color);
+  color: var(--p-text-color);
+  background: var(--p-content-background);
 }
 .lane-header-cell:last-child { border-right: none; }
 
@@ -688,7 +688,7 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   justify-content: center;
   gap: 0.75rem;
   height: 300px;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   font-size: 0.9rem;
 }
 
@@ -705,8 +705,8 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   position: sticky;
   left: 0;
   z-index: 5;
-  background: var(--surface-50);
-  border-right: 2px solid var(--surface-200);
+  background: color-mix(in srgb, var(--p-content-border-color) 15%, var(--p-content-background));
+  border-right: 2px solid var(--p-content-border-color);
 }
 
 .ruler-label {
@@ -715,7 +715,7 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   transform: translateY(-50%);
   font-size: 0.68rem;
   font-weight: 600;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;
@@ -726,10 +726,10 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--surface-200);
+  background: var(--p-content-border-color);
 }
-.ruler-hline--hour { background: var(--surface-400); height: 2px; }
-.ruler-hline--quarter { background: var(--surface-300); }
+.ruler-hline--hour { background: var(--p-text-muted-color); height: 2px; }
+.ruler-hline--quarter { background: color-mix(in srgb, var(--p-content-border-color) 70%, transparent); }
 
 /* ── Lane columns ─────────────────────────────────────────────────────── */
 .lanes-wrap {
@@ -741,9 +741,9 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   flex: 1;
   min-width: 200px;
   position: relative;
-  border-right: 1px solid var(--surface-border);
+  border-right: 1px solid var(--p-content-border-color);
   cursor: crosshair;
-  background: var(--surface-ground);
+  background: var(--p-content-background);
 }
 .lane-col:last-child { border-right: none; }
 
@@ -755,16 +755,16 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   height: 1px;
   pointer-events: none;
 }
-.grid-line--quarter { background: var(--surface-100); }
-.grid-line--hour { background: var(--surface-200); height: 2px; }
+.grid-line--quarter { background: color-mix(in srgb, var(--p-content-border-color) 40%, transparent); }
+.grid-line--hour { background: var(--p-content-border-color); height: 2px; }
 
 /* ── Drag-to-create preview ───────────────────────────────────────────── */
 .create-preview {
   position: absolute;
   left: 4px;
   right: 4px;
-  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  border: 2px dashed var(--primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+  border: 2px dashed var(--p-primary-color);
   border-radius: 6px;
   pointer-events: none;
   display: flex;
@@ -775,7 +775,7 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
 .create-preview__label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--primary-color);
+  color: var(--p-primary-color);
   text-align: center;
   padding: 0 0.25rem;
 }
@@ -785,8 +785,8 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   width: 280px;
   flex-shrink: 0;
   overflow: hidden;
-  border-left: 1px solid var(--surface-border);
-  background: var(--surface-card);
+  border-left: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
 }
 
 /* ── Slide transition ─────────────────────────────────────────────────── */

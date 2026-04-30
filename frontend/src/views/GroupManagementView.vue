@@ -507,8 +507,8 @@ onMounted(async () => {
   flex: 0 0 270px;
   display: flex;
   flex-direction: column;
-  background: var(--p-surface-50);
-  border: 1.5px solid var(--p-surface-200);
+  background: var(--p-content-hover-background);
+  border: 1.5px solid var(--p-content-border-color);
   border-radius: 14px;
   max-height: calc(100vh - 200px);
   scroll-snap-align: start;
@@ -517,8 +517,8 @@ onMounted(async () => {
 
 .group-column.drop-target {
   border-color: var(--p-primary-400);
-  box-shadow: 0 0 0 3px var(--p-primary-100);
-  background: var(--p-primary-50);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-500) 25%, transparent);
+  background: color-mix(in srgb, var(--p-primary-500) 10%, var(--p-content-background));
 }
 
 .unassigned-column {
@@ -537,7 +537,7 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem 0.75rem 0.5rem;
-  border-bottom: 1px solid var(--p-surface-200);
+  border-bottom: 1px solid var(--p-content-border-color);
   flex-shrink: 0;
 }
 
@@ -640,7 +640,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 2px dashed var(--p-surface-300);
+  border: 2px dashed var(--p-content-border-color);
   border-radius: 14px;
   color: var(--p-text-muted-color);
   font-size: 0.875rem;
@@ -653,8 +653,8 @@ onMounted(async () => {
 
 .add-group-tile:hover {
   border-color: var(--p-primary-400);
-  color: var(--p-primary-600);
-  background: var(--p-primary-50);
+  color: var(--p-primary-400);
+  background: color-mix(in srgb, var(--p-primary-500) 10%, var(--p-content-background));
 }
 
 .add-icon {
