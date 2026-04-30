@@ -161,10 +161,12 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function normalizeToPlannerBlock(b: TrainingBlock): PlannerBlock {
+    const groups = b.groups ?? []
     return {
       ...b,
-      groupIds: b.groups.map((g) => g.id),
-      allGroups: b.groups.length === 0,
+      groups,
+      groupIds: groups.map((g) => g.id),
+      allGroups: groups.length === 0,
     }
   }
 

@@ -115,6 +115,28 @@ function onDragStart(event: DragEvent, block: LibraryBlockList) {
     String(block.default_duration_minutes ?? 15)
   )
   event.dataTransfer?.setData('application/x-library-block-color', block.color ?? '')
+
+  // Create a styled ghost element for the drag preview
+  const ghost = document.createElement('div')
+  ghost.style.cssText = `
+    position: fixed;
+    top: -1000px;
+    left: -1000px;
+    padding: 6px 10px;
+    background: var(--p-primary-color, #3b82f6);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    pointer-events: none;
+  `
+  ghost.textContent = block.title
+  document.body.appendChild(ghost)
+  event.dataTransfer?.setDragImage(ghost, 0, 0)
+  // Clean up after drag
+  setTimeout(() => document.body.removeChild(ghost), 0)
 }
 
 function formatLastUsed(date: string): string {
@@ -131,9 +153,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--surface-card);
-  border-left: 1px solid var(--surface-border);
+  background: var(--p-content-background);
   padding: 0.75rem;
+  overflow: hidden;
 }
 
 .picker-header {
@@ -155,17 +177,21 @@ onMounted(async () => {
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   border-radius: 50%;
   transition: background 0.15s, color 0.15s;
   text-decoration: none;
 }
-.manage-link:hover { background: var(--surface-100); color: var(--primary-color); }
+.manage-link:hover {
+  background: var(--p-content-hover-background);
+  color: var(--p-primary-color);
+}
 
 .picker-title {
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
+  color: var(--p-text-color);
 }
 
 .loading {
@@ -183,16 +209,22 @@ onMounted(async () => {
 }
 
 .picker-item {
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--p-border-radius, 6px);
   padding: 0.5rem 0.625rem;
   cursor: grab;
   transition: background 0.1s, box-shadow 0.1s;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  background: var(--p-content-background);
+  user-select: none;
 }
-.picker-item:hover { background: var(--surface-hover); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.picker-item:hover {
+  background: var(--p-content-hover-background);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.picker-item:active { cursor: grabbing; }
 
 .picker-item-header {
   display: flex;
@@ -208,11 +240,12 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  color: var(--p-text-color);
 }
 
 .empty-hint {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   text-align: center;
   padding: 1rem;
 }
@@ -226,7 +259,7 @@ onMounted(async () => {
 
 .picker-last-used {
   font-size: 0.72rem;
-  color: var(--p-text-muted-color, var(--text-color-secondary));
+  color: var(--p-text-muted-color);
 }
 
 .picker-last-used.never {

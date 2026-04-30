@@ -123,6 +123,20 @@
                 :style="{ top: tick.px + 'px' }"
               />
 
+              <!-- "All Groups" ghost hatching: shown in every group-specific lane -->
+              <template v-if="lane.groupId !== null">
+                <div
+                  v-for="allBlock in allGroupsBlocks"
+                  :key="`ghost-${allBlock.id}`"
+                  class="all-groups-ghost"
+                  :style="{
+                    top: `${(allBlock.start_offset_minutes ?? 0) * MINUTE_PX}px`,
+                    height: `${allBlock.duration_minutes * MINUTE_PX}px`,
+                  }"
+                  v-tooltip.left="`'${allBlock.title}' (Alle Gruppen)`"
+                />
+              </template>
+
               <!-- Drag-to-create preview -->
               <div
                 v-if="creating && creating.laneKey === lane.key"
@@ -290,6 +304,9 @@ const visibleLanes = computed(() => {
   return result
 })
 
+/** Blocks that belong to the "All Groups" lane — used to render ghost hatching. */
+const allGroupsBlocks = computed(() => blocks.value.filter((b) => b.allGroups))
+
 // ── Drag-to-create helpers ─────────────────────────────────────────────────
 function snapPx(px: number): number {
   return Math.round(px / (5 * MINUTE_PX)) * 5 * MINUTE_PX
@@ -318,24 +335,40 @@ function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | n
   event.preventDefault()
 
   const laneEl = event.currentTarget as HTMLElement
-  const laneRect = laneEl.getBoundingClientRect()
-  // getBoundingClientRect().top already incorporates the scroll offset
-  const clientPx = event.clientY - laneRect.top
-
-  creating.value = { laneKey, groupId, startPx: clientPx, currentPx: clientPx + 15 * MINUTE_PX, laneRect }
+  const initialLaneTop = laneEl.getBoundingClientRect().top
+  const startClientY = event.clientY
+  // Drag is only "real" after the pointer moves at least 5 px
+  let hasDragged = false
 
   const onMove = (e: MouseEvent) => {
-    if (!creating.value) return
-    // Refresh rect each frame to remain accurate even if user scrolls during drag
-    const laneEl = document.querySelector<HTMLElement>(`.lane-col[data-group-id="${creating.value.laneKey}"]`)
-    const freshTop = laneEl ? laneEl.getBoundingClientRect().top : creating.value.laneRect.top
-    const newPx = e.clientY - freshTop
-    creating.value = { ...creating.value, currentPx: Math.max(creating.value.startPx + 5 * MINUTE_PX, newPx) }
+    if (!hasDragged) {
+      if (Math.abs(e.clientY - startClientY) < 5) return
+      hasDragged = true
+    }
+    // Re-fetch the lane top so the preview stays correct even when the user scrolls
+    const currentLaneEl = document.querySelector<HTMLElement>(`.lane-col[data-group-id="${laneKey}"]`)
+    const freshLaneTop = currentLaneEl
+      ? currentLaneEl.getBoundingClientRect().top
+      : initialLaneTop
+    // Re-derive startPx relative to the fresh lane top so both coordinates share
+    // the same origin (prevents drift when the user scrolls mid-drag).
+    const freshStartPx = startClientY - freshLaneTop
+    const freshCurrentPx = e.clientY - freshLaneTop
+    creating.value = {
+      laneKey,
+      groupId,
+      startPx: freshStartPx,
+      currentPx: Math.max(freshStartPx + 5 * MINUTE_PX, freshCurrentPx),
+      laneRect: currentLaneEl?.getBoundingClientRect() ?? laneEl.getBoundingClientRect(),
+    }
   }
 
   const onUp = async () => {
     document.removeEventListener('mousemove', onMove)
-    if (!creating.value) return
+    if (!hasDragged || !creating.value) {
+      creating.value = null
+      return
+    }
     const startOffset = Math.round(createTopPx.value / MINUTE_PX / 5) * 5
     const duration = createDuration.value
     const gId = creating.value.groupId
@@ -778,6 +811,24 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   color: var(--p-primary-color);
   text-align: center;
   padding: 0 0.25rem;
+}
+
+/* ── "All Groups" ghost hatching ──────────────────────────────────────── */
+.all-groups-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--p-text-muted-color) 18%, transparent) 0px,
+    color-mix(in srgb, var(--p-text-muted-color) 18%, transparent) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+  border-top: 1px solid color-mix(in srgb, var(--p-text-muted-color) 30%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--p-text-muted-color) 30%, transparent);
 }
 
 /* ── Library panel ────────────────────────────────────────────────────── */
