@@ -16,4 +16,10 @@ import TrainingCalendar from '@/components/training/organisms/TrainingCalendar.v
 .page-container { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
 .page-header { margin-bottom: 1.5rem; }
 .page-header h1 { margin: 0 0 0.25rem; }
+
+@media (max-width: 640px) {
+  .page-container { padding: 0.75rem; }
+  .page-header { margin-bottom: 0.75rem; }
+  .page-header h1 { font-size: 1.25rem; }
+}
 </style>

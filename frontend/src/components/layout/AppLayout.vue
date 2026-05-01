@@ -444,4 +444,23 @@ onUnmounted(() => {
     display: none;
   }
 }
+
+/* ── Print: hide all navigation chrome ────────────────────────────────────── */
+@media print {
+  .mobile-toolbar,
+  .mobile-bottom-nav,
+  .menu-sidebar {
+    display: none !important;
+  }
+
+  .layout-main {
+    margin-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .layout-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}
 </style>

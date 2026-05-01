@@ -58,6 +58,7 @@
                     v-model="selectedMemberObjects"
                     :suggestions="filteredMembers"
                     @complete="onMemberSearch"
+                    @keydown.enter="onRecipientEnter"
                     :optionLabel="(m: any) => m.full_name || `${m.name} ${m.lastname}`"
                     multiple
                     :forceSelection="true"
@@ -331,6 +332,18 @@ const onMemberSearch = (event: { query: string }) => {
     const name = (m.full_name || `${m.name} ${m.lastname}`).toLowerCase()
     return name.includes(query)
   })
+}
+
+/** When exactly one suggestion is visible, pressing Enter selects it. */
+function onRecipientEnter() {
+  if (filteredMembers.value.length === 1) {
+    const member = filteredMembers.value[0]!
+    const alreadySelected = selectedMemberObjects.value.some((m) => m.id === member.id)
+    if (!alreadySelected) {
+      selectedMemberObjects.value = [...selectedMemberObjects.value, member]
+    }
+    filteredMembers.value = []
+  }
 }
 
 watch(selectedMemberObjects, (members) => {

@@ -12,6 +12,18 @@
       <Button label="Neue Liste" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
+    <!-- Search -->
+    <div v-if="store.lists.length > 0" class="search-bar">
+      <span class="p-input-icon-left search-input-wrap">
+        <i class="pi pi-search" />
+        <InputText
+          v-model="searchQuery"
+          placeholder="Listen durchsuchen…"
+          class="search-input"
+        />
+      </span>
+    </div>
+
     <!-- Loading -->
     <div v-if="store.loading" class="loading-state">
       <ProgressSpinner style="width: 48px; height: 48px" />
@@ -26,10 +38,17 @@
       <Button label="Erste Liste erstellen" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
+    <!-- No search results -->
+    <div v-else-if="filteredLists.length === 0 && searchQuery" class="empty-hero">
+      <i class="pi pi-search empty-big-icon"></i>
+      <h2>Keine Listen gefunden</h2>
+      <p>Kein Ergebnis für „{{ searchQuery }}"</p>
+    </div>
+
     <!-- Cards grid -->
     <TransitionGroup v-else name="card-grid" tag="div" class="lists-grid">
       <Card
-        v-for="list in store.lists"
+        v-for="list in filteredLists"
         :key="list.id"
         class="list-card"
         :style="{ '--list-color': list.color }"
@@ -161,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -188,6 +207,18 @@ const colorPresets = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
   '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16',
 ]
+
+// ── Search ────────────────────────────────────────────────────────────────
+const searchQuery = ref('')
+const filteredLists = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return store.lists
+  return store.lists.filter(
+    (l) =>
+      l.name.toLowerCase().includes(q) ||
+      (l.description ?? '').toLowerCase().includes(q),
+  )
+})
 
 // ── Navigation ────────────────────────────────────────────────────────────
 function openList(id: number) {
@@ -310,6 +341,20 @@ onMounted(() => {
 
 .title-icon {
   color: var(--p-primary-500);
+}
+
+/* ─── Search ─────────────────────────────────────────────────────────────── */
+.search-bar {
+  padding: 0 1.5rem 0.75rem;
+}
+
+.search-input-wrap {
+  display: block;
+  max-width: 360px;
+}
+
+.search-input {
+  width: 100%;
 }
 
 /* ─── Loading / Empty ────────────────────────────────────────────────────── */

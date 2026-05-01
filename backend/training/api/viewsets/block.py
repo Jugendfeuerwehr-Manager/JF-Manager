@@ -1,9 +1,11 @@
 """ViewSet for TrainingBlock."""
 
+import io
 import os
 
 from django.contrib.contenttypes.models import ContentType
 from django_filters.rest_framework import DjangoFilterBackend
+from PIL import Image as PilImage
 from rest_framework import filters, status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
@@ -21,6 +23,42 @@ from training.api.serializers import (
     TrainingMediaSerializer,
 )
 from training.models import TrainingBlock, TrainingMedia
+
+# ── Image processing helper ───────────────────────────────────────────────────
+
+_MAX_IMAGE_WIDTH = 1200
+_JPEG_QUALITY = 85
+
+
+def _resize_and_optimise(original_file, filename: str):
+    """
+    Open an uploaded image, downscale to at most _MAX_IMAGE_WIDTH wide while
+    keeping the aspect ratio, and return a BytesIO object with the processed
+    bytes plus the sanitised file name.
+    """
+    img = PilImage.open(original_file)
+    # Convert palette/P-mode or RGBA to RGB for JPEG compatibility
+    if img.mode in ("P", "RGBA", "LA", "L"):
+        img = img.convert("RGBA" if img.mode in ("RGBA", "LA") else "RGB")
+
+    if img.width > _MAX_IMAGE_WIDTH:
+        ratio = _MAX_IMAGE_WIDTH / img.width
+        new_size = (int(img.width * ratio), int(img.height * ratio))
+        img = img.resize(new_size, PilImage.LANCZOS)
+
+    buf = io.BytesIO()
+    save_format = "JPEG"
+    save_kwargs = {"quality": _JPEG_QUALITY, "optimize": True}
+    if img.mode == "RGBA":
+        save_format = "PNG"
+        save_kwargs = {"optimize": True}
+
+    img.save(buf, format=save_format, **save_kwargs)
+    buf.seek(0)
+    ext = ".jpg" if save_format == "JPEG" else ".png"
+    base = os.path.splitext(filename)[0]
+    new_name = f"{base}{ext}"
+    return buf, new_name
 
 
 class TrainingBlockViewSet(viewsets.ModelViewSet):
@@ -78,12 +116,23 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         if image_file.size > 20 * 1024 * 1024:
             return Response({"detail": "Bild zu groß (max 20 MB)."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # ── Resize / optimise before saving ──────────────────────────────────
+        original_name = image_file.name
+        try:
+            buf, new_name = _resize_and_optimise(image_file, original_name)
+            from django.core.files.uploadedfile import InMemoryUploadedFile
+
+            content_type = "image/jpeg" if new_name.endswith(".jpg") else "image/png"
+            image_file = InMemoryUploadedFile(buf, "file", new_name, content_type, buf.getbuffer().nbytes, None)
+        except Exception:
+            image_file.seek(0)  # fall back to original
+
         ct = ContentType.objects.get_for_model(block)
         media = TrainingMedia.objects.create(
             content_type=ct,
             object_id=block.pk,
             file=image_file,
-            original_filename=image_file.name,
+            original_filename=original_name,
             uploaded_by=request.user if request.user.is_authenticated else None,
         )
         serializer = TrainingMediaSerializer(media, context={"request": request})

@@ -77,8 +77,8 @@
     </section>
 
     <!-- Per-block details grouped by swimlane -->
-    <template v-for="lane in swimlaneLanes" :key="`lane-${lane.key}`">
-      <div class="lane-section-header">
+    <template v-for="(lane, laneIndex) in swimlaneLanes" :key="`lane-${lane.key}`">
+      <div class="lane-section-header" :class="{ 'lane-break': laneIndex > 0 }">
         <h2>{{ lane.label }}</h2>
       </div>
       <section
@@ -365,5 +365,12 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
   .training-handout { max-width: 100%; margin: 0; }
   .no-print-break { page-break-inside: avoid; }
   .lane-section-header { page-break-after: avoid; }
+  .lane-break { page-break-before: always; }
+
+  /* Preserve block colors and background colors in print */
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
 </style>

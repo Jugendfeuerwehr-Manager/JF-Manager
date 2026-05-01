@@ -243,4 +243,10 @@ const toggleUserMenu = (event: Event) => {
 :deep(.user-menu) {
   margin-top: 0.5rem;
 }
+
+@media print {
+  .app-topbar {
+    display: none !important;
+  }
+}
 </style>

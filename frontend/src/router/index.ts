@@ -265,6 +265,13 @@ const router = createRouter({
           props: (route) => ({ sessionId: Number(route.params.id) })
         }
       ]
+    },
+    // Mobile training planner — full-screen, no shell chrome
+    {
+      path: '/training/sessions/:id/mobile',
+      name: 'training-mobile',
+      component: () => import('@/views/training/TrainingMobilePlannerView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

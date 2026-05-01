@@ -451,9 +451,10 @@ async function handleUncheckAll() {
 const pdfLoading = ref(false)
 
 async function handlePdf() {
-  if (!store.currentList) return
   pdfLoading.value = true
   try {
+    await store.fetchList(listId.value)
+    if (!store.currentList) return
     await generateChecklist(store.currentList)
   } finally {
     pdfLoading.value = false

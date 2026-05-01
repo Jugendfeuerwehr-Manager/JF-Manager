@@ -2,21 +2,27 @@
   <div class="training-calendar">
     <!-- Calendar nav bar -->
     <div class="cal-nav">
-      <Button icon="pi pi-chevron-left" text @click="prevMonth" />
-      <h2 class="cal-title">{{ monthLabel }}</h2>
-      <Button icon="pi pi-chevron-right" text @click="nextMonth" />
-      <div class="spacer" />
-      <Button
-        :icon="showListView ? 'pi pi-calendar' : 'pi pi-list'"
-        :label="showListView ? 'Kalender' : 'Liste'"
-        size="small"
-        severity="secondary"
-        outlined
-        @click="toggleListView"
-      />
-      <Button icon="pi pi-book" label="Bibliothek" size="small" severity="secondary" outlined @click="router.push('/training/library')" />
-      <Button label="Heute" size="small" outlined @click="goToday" />
-      <Button icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
+      <!-- Row 1: month navigation -->
+      <div class="cal-nav-row cal-nav-month">
+        <Button icon="pi pi-chevron-left" text @click="prevMonth" />
+        <h2 class="cal-title">{{ monthLabel }}</h2>
+        <Button icon="pi pi-chevron-right" text @click="nextMonth" />
+      </div>
+
+      <!-- Row 2: action buttons (wrap on mobile) -->
+      <div class="cal-nav-row cal-nav-actions">
+        <Button
+          :icon="showListView ? 'pi pi-calendar' : 'pi pi-list'"
+          :label="showListView ? 'Kalender' : 'Liste'"
+          size="small"
+          severity="secondary"
+          outlined
+          @click="toggleListView"
+        />
+        <Button icon="pi pi-book" label="Bibliothek" size="small" severity="secondary" outlined @click="router.push('/training/library')" />
+        <Button label="Heute" size="small" outlined @click="goToday" />
+        <Button icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
+      </div>
     </div>
 
     <!-- List view -->
@@ -321,11 +327,31 @@ onMounted(loadSessions)
 
 .cal-nav {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cal-nav-row {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.cal-title { font-size: 1.25rem; font-weight: 600; margin: 0; min-width: 180px; text-align: center; }
+
+.cal-nav-month {
+  /* Month row: chevrons + title, centered */
+}
+
+.cal-nav-actions {
+  flex-wrap: wrap;
+}
+
+.cal-title { font-size: 1.25rem; font-weight: 600; margin: 0; min-width: 160px; text-align: center; }
 .spacer { flex: 1; }
+
+/* Compact icon-only buttons on very small screens */
+@media (max-width: 480px) {
+  .cal-title { font-size: 1rem; min-width: 130px; }
+}
 
 .cal-grid {
   display: grid;
@@ -352,6 +378,10 @@ onMounted(loadSessions)
   padding: 0.375rem;
   cursor: pointer;
   transition: background 0.1s;
+}
+@media (max-width: 640px) {
+  .cal-cell { min-height: 60px; padding: 0.25rem; }
+  .session-pill { font-size: 0.65rem; padding: 1px 3px; }
 }
 .cal-cell:hover { background: var(--surface-hover); }
 .cal-cell.other-month { background: var(--surface-50); opacity: 0.6; cursor: default; }

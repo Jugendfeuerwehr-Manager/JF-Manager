@@ -337,6 +337,16 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+@media (max-width: 640px) {
+  .page-header {
+    padding: 0.75rem 0.75rem 0.5rem;
+  }
+
+  .page-title {
+    font-size: 1.15rem !important;
+  }
+}
+
 .header-left {
   display: flex;
   align-items: center;
@@ -377,6 +387,27 @@ onMounted(async () => {
   padding: 0 1.5rem 1.5rem;
 }
 
+@media (max-width: 768px) {
+  .library-tabs-wrap {
+    padding: 0 0.75rem 1rem;
+    overflow: visible;
+  }
+
+  .library-view {
+    height: auto;
+    overflow: visible;
+  }
+
+  :deep(.tabs-panels) {
+    overflow: visible;
+  }
+
+  :deep(.p-tabpanel) {
+    height: auto;
+    overflow: visible;
+  }
+}
+
 .library-tabs {
   display: flex;
   flex-direction: column;
@@ -404,6 +435,29 @@ onMounted(async () => {
   border-radius: 0.5rem;
   overflow: hidden;
   background: var(--p-content-background);
+}
+
+/* On mobile: stack master above detail */
+@media (max-width: 768px) {
+  .master-detail {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+    min-height: unset;
+    overflow: visible;
+  }
+
+  .master-panel {
+    border-right: none !important;
+    border-bottom: 1px solid var(--p-content-border-color);
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .detail-panel {
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 .master-panel {
