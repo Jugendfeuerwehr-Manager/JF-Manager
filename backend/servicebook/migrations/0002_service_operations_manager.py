@@ -5,16 +5,15 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('servicebook', '0001_initial'),
+        ("servicebook", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='service',
-            name='operations_manager',
-            field=models.ManyToManyField(blank=True, to=settings.AUTH_USER_MODEL, verbose_name='Übungsleitung'),
+            model_name="service",
+            name="operations_manager",
+            field=models.ManyToManyField(blank=True, to=settings.AUTH_USER_MODEL, verbose_name="Übungsleitung"),
         ),
     ]

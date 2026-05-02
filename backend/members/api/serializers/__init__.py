@@ -2,6 +2,7 @@
 Serializers for the members API.
 Re-exports from the canonical api_serializers module.
 """
+
 from members.api_serializers import (
     AttachmentSerializer,
     EventSerializer,
@@ -15,13 +16,13 @@ from members.api_serializers import (
 )
 
 __all__ = [
-    'AttachmentSerializer',
-    'EventSerializer',
-    'EventTypeSerializer',
-    'GroupSerializer',
-    'MemberCreateUpdateSerializer',
-    'MemberDetailSerializer',
-    'MemberListSerializer',
-    'ParentSerializer',
-    'StatusSerializer',
+    "AttachmentSerializer",
+    "EventSerializer",
+    "EventTypeSerializer",
+    "GroupSerializer",
+    "MemberCreateUpdateSerializer",
+    "MemberDetailSerializer",
+    "MemberListSerializer",
+    "ParentSerializer",
+    "StatusSerializer",
 ]

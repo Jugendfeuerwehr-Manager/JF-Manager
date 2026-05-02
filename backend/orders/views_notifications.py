@@ -22,27 +22,31 @@ def notification_preferences(request):
     prefs, created = NotificationPreference.objects.get_or_create(
         user=request.user,
         defaults={
-            'email_new_orders': True,
-            'email_status_updates': True,
-            'email_bulk_updates': False,
-            'email_pending_reminders': False,
-        }
+            "email_new_orders": True,
+            "email_status_updates": True,
+            "email_bulk_updates": False,
+            "email_pending_reminders": False,
+        },
     )
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = NotificationPreferenceForm(request.POST, instance=prefs, user=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Ihre Benachrichtigungseinstellungen wurden erfolgreich gespeichert.')
-            return redirect('orders:notification_preferences')
+            messages.success(request, "Ihre Benachrichtigungseinstellungen wurden erfolgreich gespeichert.")
+            return redirect("orders:notification_preferences")
     else:
         form = NotificationPreferenceForm(instance=prefs, user=request.user)
 
-    return render(request, 'orders/notification_preferences.html', {
-        'form': form,
-        'preferences': prefs,
-        'created': created,
-    })
+    return render(
+        request,
+        "orders/notification_preferences.html",
+        {
+            "form": form,
+            "preferences": prefs,
+            "created": created,
+        },
+    )
 
 
 @login_required
@@ -55,24 +59,24 @@ def admin_notification_dashboard(request):
     queryset = NotificationLog.objects.all()
 
     if filter_form.is_valid():
-        if filter_form.cleaned_data.get('notification_type'):
-            queryset = queryset.filter(notification_type=filter_form.cleaned_data['notification_type'])
+        if filter_form.cleaned_data.get("notification_type"):
+            queryset = queryset.filter(notification_type=filter_form.cleaned_data["notification_type"])
 
-        if filter_form.cleaned_data.get('status'):
-            queryset = queryset.filter(status=filter_form.cleaned_data['status'])
+        if filter_form.cleaned_data.get("status"):
+            queryset = queryset.filter(status=filter_form.cleaned_data["status"])
 
-        if filter_form.cleaned_data.get('date_from'):
-            queryset = queryset.filter(created_at__date__gte=filter_form.cleaned_data['date_from'])
+        if filter_form.cleaned_data.get("date_from"):
+            queryset = queryset.filter(created_at__date__gte=filter_form.cleaned_data["date_from"])
 
-        if filter_form.cleaned_data.get('date_to'):
-            queryset = queryset.filter(created_at__date__lte=filter_form.cleaned_data['date_to'])
+        if filter_form.cleaned_data.get("date_to"):
+            queryset = queryset.filter(created_at__date__lte=filter_form.cleaned_data["date_to"])
 
-        if filter_form.cleaned_data.get('recipient_email'):
-            queryset = queryset.filter(recipient_email__icontains=filter_form.cleaned_data['recipient_email'])
+        if filter_form.cleaned_data.get("recipient_email"):
+            queryset = queryset.filter(recipient_email__icontains=filter_form.cleaned_data["recipient_email"])
 
     # Pagination
-    paginator = Paginator(queryset.order_by('-created_at'), 25)
-    page_number = request.GET.get('page')
+    paginator = Paginator(queryset.order_by("-created_at"), 25)
+    page_number = request.GET.get("page")
     notifications = paginator.get_page(page_number)
 
     # Statistics
@@ -82,34 +86,33 @@ def admin_notification_dashboard(request):
     month_ago = now - timedelta(days=30)
 
     stats = {
-        'total_notifications': NotificationLog.objects.count(),
-        'sent_today': NotificationLog.objects.filter(sent_at__date=today).count(),
-        'failed_today': NotificationLog.objects.filter(status='failed', created_at__date=today).count(),
-        'pending_count': NotificationLog.objects.filter(status='pending').count(),
-        'week_stats': NotificationLog.objects.filter(created_at__gte=week_ago).aggregate(
-            total=Count('id'),
-            sent=Count('id', filter=Q(status='sent')),
-            failed=Count('id', filter=Q(status='failed'))
+        "total_notifications": NotificationLog.objects.count(),
+        "sent_today": NotificationLog.objects.filter(sent_at__date=today).count(),
+        "failed_today": NotificationLog.objects.filter(status="failed", created_at__date=today).count(),
+        "pending_count": NotificationLog.objects.filter(status="pending").count(),
+        "week_stats": NotificationLog.objects.filter(created_at__gte=week_ago).aggregate(
+            total=Count("id"), sent=Count("id", filter=Q(status="sent")), failed=Count("id", filter=Q(status="failed"))
         ),
-        'month_stats': NotificationLog.objects.filter(created_at__gte=month_ago).aggregate(
-            total=Count('id'),
-            sent=Count('id', filter=Q(status='sent')),
-            failed=Count('id', filter=Q(status='failed'))
-        )
+        "month_stats": NotificationLog.objects.filter(created_at__gte=month_ago).aggregate(
+            total=Count("id"), sent=Count("id", filter=Q(status="sent")), failed=Count("id", filter=Q(status="failed"))
+        ),
     }
 
     # Recent failed notifications
-    recent_failed = NotificationLog.objects.filter(
-        status='failed',
-        created_at__gte=week_ago
-    ).order_by('-created_at')[:10]
+    recent_failed = NotificationLog.objects.filter(status="failed", created_at__gte=week_ago).order_by("-created_at")[
+        :10
+    ]
 
-    return render(request, 'orders/admin_notification_dashboard.html', {
-        'filter_form': filter_form,
-        'notifications': notifications,
-        'stats': stats,
-        'recent_failed': recent_failed,
-    })
+    return render(
+        request,
+        "orders/admin_notification_dashboard.html",
+        {
+            "filter_form": filter_form,
+            "notifications": notifications,
+            "stats": stats,
+            "recent_failed": recent_failed,
+        },
+    )
 
 
 @login_required
@@ -118,37 +121,41 @@ def notification_detail(request, log_id):
     """Detailed view of a specific notification"""
     notification = get_object_or_404(NotificationLog, id=log_id)
 
-    return render(request, 'orders/notification_detail.html', {
-        'notification': notification,
-    })
+    return render(
+        request,
+        "orders/notification_detail.html",
+        {
+            "notification": notification,
+        },
+    )
 
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def retry_failed_notification(request, log_id):
     """Retry sending a failed notification"""
-    if request.method == 'POST':
-        notification = get_object_or_404(NotificationLog, id=log_id, status='failed')
+    if request.method == "POST":
+        notification = get_object_or_404(NotificationLog, id=log_id, status="failed")
 
         # Here you would implement logic to retry sending the notification
         # For now, we'll just mark it as pending
-        notification.status = 'pending'
-        notification.error_message = ''
+        notification.status = "pending"
+        notification.error_message = ""
         notification.save()
 
-        messages.success(request, f'Benachrichtigung #{notification.id} wurde zum erneuten Versand markiert.')
+        messages.success(request, f"Benachrichtigung #{notification.id} wurde zum erneuten Versand markiert.")
 
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': True})
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"success": True})
 
-    return redirect('orders:admin_notification_dashboard')
+    return redirect("orders:admin_notification_dashboard")
 
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def email_template_list(request):
     """List and manage email templates"""
-    templates = EmailTemplate.objects.all().order_by('template_type')
+    templates = EmailTemplate.objects.all().order_by("template_type")
 
     # Group templates by type for easier management
     template_groups = {}
@@ -157,17 +164,21 @@ def email_template_list(request):
             template_groups[template.template_type] = []
         template_groups[template.template_type].append(template)
 
-    return render(request, 'orders/email_template_list.html', {
-        'templates': templates,
-        'template_groups': template_groups,
-    })
+    return render(
+        request,
+        "orders/email_template_list.html",
+        {
+            "templates": templates,
+            "template_groups": template_groups,
+        },
+    )
 
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def notification_stats_api(request):
     """API endpoint for notification statistics (for charts/dashboard)"""
-    days = int(request.GET.get('days', 7))
+    days = int(request.GET.get("days", 7))
     now = timezone.now()
     start_date = now - timedelta(days=days)
 
@@ -176,64 +187,64 @@ def notification_stats_api(request):
     for i in range(days):
         date = (start_date + timedelta(days=i)).date()
         day_stats = NotificationLog.objects.filter(created_at__date=date).aggregate(
-            total=Count('id'),
-            sent=Count('id', filter=Q(status='sent')),
-            failed=Count('id', filter=Q(status='failed')),
-            pending=Count('id', filter=Q(status='pending'))
+            total=Count("id"),
+            sent=Count("id", filter=Q(status="sent")),
+            failed=Count("id", filter=Q(status="failed")),
+            pending=Count("id", filter=Q(status="pending")),
         )
-        daily_stats.append({
-            'date': date.isoformat(),
-            'total': day_stats['total'],
-            'sent': day_stats['sent'],
-            'failed': day_stats['failed'],
-            'pending': day_stats['pending']
-        })
+        daily_stats.append(
+            {
+                "date": date.isoformat(),
+                "total": day_stats["total"],
+                "sent": day_stats["sent"],
+                "failed": day_stats["failed"],
+                "pending": day_stats["pending"],
+            }
+        )
 
     # Type breakdown
-    type_stats = list(NotificationLog.objects.filter(
-        created_at__gte=start_date
-    ).values('notification_type').annotate(
-        count=Count('id')
-    ).order_by('-count'))
+    type_stats = list(
+        NotificationLog.objects.filter(created_at__gte=start_date)
+        .values("notification_type")
+        .annotate(count=Count("id"))
+        .order_by("-count")
+    )
 
-    return JsonResponse({
-        'daily_stats': daily_stats,
-        'type_stats': type_stats,
-        'period': f'{days} Tage'
-    })
+    return JsonResponse({"daily_stats": daily_stats, "type_stats": type_stats, "period": f"{days} Tage"})
 
 
-@method_decorator(login_required, name='dispatch')
-@method_decorator(user_passes_test(lambda u: u.is_staff), name='dispatch')
+@method_decorator(login_required, name="dispatch")
+@method_decorator(user_passes_test(lambda u: u.is_staff), name="dispatch")
 class OrderSummaryView(FormView):
     """View for sending order summaries to external personnel"""
-    template_name = 'orders/order_summary.html'
+
+    template_name = "orders/order_summary.html"
     form_class = OrderSummaryForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         # Get preview data for display
-        orders = Order.objects.all().order_by('-order_date')[:10]  # Last 10 orders for preview
-        context['preview_orders'] = orders
-        context['total_orders'] = Order.objects.count()
+        orders = Order.objects.all().order_by("-order_date")[:10]  # Last 10 orders for preview
+        context["preview_orders"] = orders
+        context["total_orders"] = Order.objects.count()
 
         # Status statistics
         status_stats = OrderStatus.objects.filter(is_active=True).annotate(
-            order_count=Count('orderitem__order', distinct=True)
+            order_count=Count("orderitem__order", distinct=True)
         )
-        context['status_stats'] = status_stats
+        context["status_stats"] = status_stats
 
         return context
 
     def form_valid(self, form):
-        recipient_email = form.cleaned_data['recipient_email']
-        status_filter = form.cleaned_data['status_filter']
-        date_from = form.cleaned_data['date_from']
-        date_to = form.cleaned_data['date_to']
-        include_notes = form.cleaned_data['include_notes']
-        group_by_category = form.cleaned_data['group_by_category']
-        additional_notes = form.cleaned_data['additional_notes']
+        recipient_email = form.cleaned_data["recipient_email"]
+        status_filter = form.cleaned_data["status_filter"]
+        date_from = form.cleaned_data["date_from"]
+        date_to = form.cleaned_data["date_to"]
+        include_notes = form.cleaned_data["include_notes"]
+        group_by_category = form.cleaned_data["group_by_category"]
+        additional_notes = form.cleaned_data["additional_notes"]
 
         # Build queryset based on filters
         orders_queryset = Order.objects.all()
@@ -248,25 +259,22 @@ class OrderSummaryView(FormView):
         if status_filter:
             orders_queryset = orders_queryset.filter(items__status__in=status_filter).distinct()
 
-        orders_queryset = orders_queryset.order_by('-order_date')
+        orders_queryset = orders_queryset.order_by("-order_date")
 
         # Prepare filter context for email template
         filters = {
-            'date_from': date_from,
-            'date_to': date_to,
-            'status_filter': status_filter,
-            'include_notes': include_notes,
-            'group_by_category': group_by_category,
-            'additional_notes': additional_notes,
+            "date_from": date_from,
+            "date_to": date_to,
+            "status_filter": status_filter,
+            "include_notes": include_notes,
+            "group_by_category": group_by_category,
+            "additional_notes": additional_notes,
         }
 
         try:
             # Send the order summary email
             success = OrderNotificationService.send_order_summary_notification(
-                recipient_email=recipient_email,
-                orders=orders_queryset,
-                filters=filters,
-                request=self.request
+                recipient_email=recipient_email, orders=orders_queryset, filters=filters, request=self.request
             )
 
             if success:
@@ -277,68 +285,60 @@ class OrderSummaryView(FormView):
 
                 with transaction.atomic():
                     try:
-                        new_status = OrderStatus.objects.get(code='NEW')
-                        ordered_status = OrderStatus.objects.get(code='ORDERED')
+                        new_status = OrderStatus.objects.get(code="NEW")
+                        ordered_status = OrderStatus.objects.get(code="ORDERED")
 
                         # Get all items with NEW status in the sent orders
-                        new_items = OrderItem.objects.filter(
-                            order__in=orders_queryset,
-                            status=new_status
-                        )
+                        new_items = OrderItem.objects.filter(order__in=orders_queryset, status=new_status)
 
                         updated_count = 0
                         for item in new_items:
                             item.status = ordered_status
-                            item.save(changed_by=self.request.user,
-                                    status_change_notes=f"Status automatisch aktualisiert nach Versendung der Bestellübersicht an {recipient_email}")
+                            item.save(
+                                changed_by=self.request.user,
+                                status_change_notes=f"Status automatisch aktualisiert nach Versendung der Bestellübersicht an {recipient_email}",
+                            )
                             updated_count += 1
 
                         if updated_count > 0:
                             messages.success(
                                 self.request,
-                                f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
-                                f'({orders_queryset.count()} Bestellungen, {updated_count} Artikel auf "Bestellt bei Gerätewart" gesetzt)'
+                                f"Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. "
+                                f'({orders_queryset.count()} Bestellungen, {updated_count} Artikel auf "Bestellt bei Gerätewart" gesetzt)',
                             )
                         else:
                             messages.success(
                                 self.request,
-                                f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
-                                f'({orders_queryset.count()} Bestellungen)'
+                                f"Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. "
+                                f"({orders_queryset.count()} Bestellungen)",
                             )
 
                     except OrderStatus.DoesNotExist:
                         # If status doesn't exist, still show success but note the issue
                         messages.success(
                             self.request,
-                            f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
-                            f'({orders_queryset.count()} Bestellungen)'
+                            f"Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. "
+                            f"({orders_queryset.count()} Bestellungen)",
                         )
                         messages.warning(
                             self.request,
-                            'Status konnte nicht automatisch aktualisiert werden. Bitte prüfen Sie die Bestellstatus manuell.'
+                            "Status konnte nicht automatisch aktualisiert werden. Bitte prüfen Sie die Bestellstatus manuell.",
                         )
                     except Exception as status_update_error:
                         # Email was sent successfully, but status update failed
                         messages.success(
                             self.request,
-                            f'Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. '
-                            f'({orders_queryset.count()} Bestellungen)'
+                            f"Bestellübersicht wurde erfolgreich an {recipient_email} gesendet. "
+                            f"({orders_queryset.count()} Bestellungen)",
                         )
-                        messages.warning(
-                            self.request,
-                            f'Status-Update fehlgeschlagen: {status_update_error!s}'
-                        )
+                        messages.warning(self.request, f"Status-Update fehlgeschlagen: {status_update_error!s}")
             else:
                 messages.error(
-                    self.request,
-                    'Fehler beim Versenden der Bestellübersicht. Bitte versuchen Sie es erneut.'
+                    self.request, "Fehler beim Versenden der Bestellübersicht. Bitte versuchen Sie es erneut."
                 )
 
         except Exception as e:
-            messages.error(
-                self.request,
-                f'Fehler beim Versenden der E-Mail: {e!s}'
-            )
+            messages.error(self.request, f"Fehler beim Versenden der E-Mail: {e!s}")
 
         return super().form_valid(form)
 

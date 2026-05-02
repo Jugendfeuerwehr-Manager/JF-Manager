@@ -7,7 +7,7 @@ from .models import Attendance, Service
 
 def invalidate_attendance_cache():
     """Invalidate the attendance over time data cache"""
-    cache_key = 'attendance_over_time_data'
+    cache_key = "attendance_over_time_data"
     cache.delete(cache_key)
 
 

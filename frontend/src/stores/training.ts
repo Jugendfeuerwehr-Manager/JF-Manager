@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { trainingSessionsApi } from '@/api/training'
+import { useDepartmentsStore } from '@/stores/departments'
 import type {
   TrainingSessionCreate,
   TrainingSessionDetail,
@@ -10,6 +11,7 @@ import type {
 } from '@/types/training'
 
 export const useTrainingStore = defineStore('training', () => {
+  const departmentsStore = useDepartmentsStore()
   // ── State ────────────────────────────────────────────────────────────────
   const sessions = ref<TrainingSessionList[]>([])
   const currentSession = ref<TrainingSessionDetail | null>(null)
@@ -75,7 +77,12 @@ export const useTrainingStore = defineStore('training', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await trainingSessionsApi.create(data)
+      const payload: TrainingSessionCreate & { department?: number | null } = { ...data }
+      if (payload.department === undefined && departmentsStore.activeDepartmentId !== null) {
+        payload.department = departmentsStore.activeDepartmentId
+      }
+
+      const response = await trainingSessionsApi.create(payload)
       // Add to list
       const listItem: TrainingSessionList = {
         id: response.data.id,
@@ -87,6 +94,9 @@ export const useTrainingStore = defineStore('training', () => {
         group_count: response.data.groups.length,
         groups: response.data.groups,
         block_count: 0,
+        department: response.data.department,
+        linked_service_id: response.data.linked_service_id,
+        linked_service_start: response.data.linked_service_start,
         series_parent: response.data.series_parent,
         recurrence_rule: response.data.recurrence_rule,
       }
@@ -104,7 +114,12 @@ export const useTrainingStore = defineStore('training', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await trainingSessionsApi.update(id, data)
+      const payload: TrainingSessionUpdate & { department?: number | null } = { ...data }
+      if (payload.department === undefined && departmentsStore.activeDepartmentId !== null) {
+        payload.department = departmentsStore.activeDepartmentId
+      }
+
+      const response = await trainingSessionsApi.update(id, payload)
       const idx = sessions.value.findIndex((s) => s.id === id)
       if (idx !== -1) {
         const existing = sessions.value[idx] as TrainingSessionList
@@ -117,6 +132,9 @@ export const useTrainingStore = defineStore('training', () => {
           location: response.data.location,
           groups: response.data.groups,
           group_count: response.data.groups.length,
+          department: response.data.department,
+          linked_service_id: response.data.linked_service_id,
+          linked_service_start: response.data.linked_service_start,
         }
       }
       if (currentSession.value?.id === id) {
@@ -131,11 +149,13 @@ export const useTrainingStore = defineStore('training', () => {
     }
   }
 
-  async function deleteSession(id: number) {
+  async function deleteSession(id: number, options?: { deleteLinkedService?: boolean }) {
     loading.value = true
     error.value = null
     try {
-      await trainingSessionsApi.delete(id)
+      await trainingSessionsApi.delete(id, {
+        delete_linked_service: options?.deleteLinkedService,
+      })
       sessions.value = sessions.value.filter((s) => s.id !== id)
       if (currentSession.value?.id === id) currentSession.value = null
     } catch (e: unknown) {

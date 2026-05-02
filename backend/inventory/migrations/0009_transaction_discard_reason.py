@@ -4,15 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0008_alter_category_id_alter_item_id_alter_itemvariant_id_and_more'),
+        ("inventory", "0008_alter_category_id_alter_item_id_alter_itemvariant_id_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='transaction',
-            name='discard_reason',
-            field=models.CharField(blank=True, choices=[('LOST', 'Verloren'), ('DAMAGED', 'Beschädigt'), ('WORN_OUT', 'Verschlissen'), ('STOLEN', 'Gestohlen'), ('OTHER', 'Sonstiges')], help_text='Grund für die Aussortierung (nur bei DISCARD-Transaktionen)', max_length=20, null=True, verbose_name='Aussortierungsgrund'),
+            model_name="transaction",
+            name="discard_reason",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("LOST", "Verloren"),
+                    ("DAMAGED", "Beschädigt"),
+                    ("WORN_OUT", "Verschlissen"),
+                    ("STOLEN", "Gestohlen"),
+                    ("OTHER", "Sonstiges"),
+                ],
+                help_text="Grund für die Aussortierung (nur bei DISCARD-Transaktionen)",
+                max_length=20,
+                null=True,
+                verbose_name="Aussortierungsgrund",
+            ),
         ),
     ]

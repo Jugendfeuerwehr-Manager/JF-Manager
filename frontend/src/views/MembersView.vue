@@ -268,6 +268,21 @@
               />
             </template>
           </Column>
+
+          <Column
+            v-if="departmentsStore.isAllDepartments && departmentsStore.departments.length > 1"
+            header="Abteilung"
+          >
+            <template #body="{ data }">
+              <div class="dept-badges">
+                <DepartmentBadge
+                  v-for="deptId in data.department_ids"
+                  :key="deptId"
+                  :department="departmentsStore.departments.find((d) => d.id === deptId) ?? null"
+                />
+              </div>
+            </template>
+          </Column>
           
           <Column header="Aktionen" :style="{ width: '12rem' }">
             <template #body="{ data }">
@@ -397,6 +412,7 @@ import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
+import { useDepartmentsStore } from '@/stores/departments'
 import { membersApi, parentsApi } from '@/api/members'
 import type { Member } from '@/types/api'
 import { useQueryTableState } from '@/composables/useQueryTableState'
@@ -412,9 +428,11 @@ import Tag from 'primevue/tag'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
+import DepartmentBadge from '@/components/departments/atoms/DepartmentBadge.vue'
 
 const router = useRouter()
 const membersStore = useMembersStore()
+const departmentsStore = useDepartmentsStore()
 const confirm = useConfirm()
 const toast = useToast()
 const { getInt, getString, syncToUrl } = useQueryTableState()
@@ -684,6 +702,12 @@ const handleExportExcel = async () => {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+.dept-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .alert-icon {

@@ -20,23 +20,23 @@ from .order_status import OrderStatusMinimalSerializer, OrderStatusSerializer
 from .orderable_item import OrderableItemCreateUpdateSerializer, OrderableItemMinimalSerializer, OrderableItemSerializer
 
 __all__ = [
-    'OrderCreateSerializer',
-    'OrderDetailSerializer',
-    'OrderItemCreateSerializer',
-    'OrderItemMinimalSerializer',
+    "OrderCreateSerializer",
+    "OrderDetailSerializer",
+    "OrderItemCreateSerializer",
+    "OrderItemMinimalSerializer",
     # Order Items
-    'OrderItemSerializer',
-    'OrderItemStatusHistorySerializer',
-    'OrderItemUpdateSerializer',
-    'OrderListSerializer',
+    "OrderItemSerializer",
+    "OrderItemStatusHistorySerializer",
+    "OrderItemUpdateSerializer",
+    "OrderListSerializer",
     # Orders
-    'OrderSerializer',
-    'OrderStatusMinimalSerializer',
+    "OrderSerializer",
+    "OrderStatusMinimalSerializer",
     # Order Status
-    'OrderStatusSerializer',
-    'OrderUpdateSerializer',
-    'OrderableItemCreateUpdateSerializer',
-    'OrderableItemMinimalSerializer',
+    "OrderStatusSerializer",
+    "OrderUpdateSerializer",
+    "OrderableItemCreateUpdateSerializer",
+    "OrderableItemMinimalSerializer",
     # Orderable Items
-    'OrderableItemSerializer',
+    "OrderableItemSerializer",
 ]

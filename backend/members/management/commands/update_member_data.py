@@ -7,10 +7,10 @@ from members.models import Group, Member, Status
 
 
 class Command(BaseCommand):
-    help = 'Update member data and create test data for improved UI'
+    help = "Update member data and create test data for improved UI"
 
     def handle(self, *args, **options):
-        self.stdout.write('Updating member data and creating test data...')
+        self.stdout.write("Updating member data and creating test data...")
 
         # Create or update test members with proper dates
         group, _ = Group.objects.get_or_create(name="Jugendfeuerwehr")
@@ -36,19 +36,14 @@ class Command(BaseCommand):
                 member.status = status
                 member.save()
 
-        self.stdout.write(f'Updated {members_updated} members with missing joined dates')
+        self.stdout.write(f"Updated {members_updated} members with missing joined dates")
 
         # Create test storage locations if they don't exist
         if not StorageLocation.objects.exists():
-            hauptlager = StorageLocation.objects.create(
-                name="Hauptlager",
-                description="Zentrales Lager der Feuerwehr"
-            )
+            hauptlager = StorageLocation.objects.create(name="Hauptlager", description="Zentrales Lager der Feuerwehr")
 
             personal_bereich = StorageLocation.objects.create(
-                name="Persönliche Bereiche",
-                description="Persönliche Lagerplätze der Mitglieder",
-                parent=hauptlager
+                name="Persönliche Bereiche", description="Persönliche Lagerplätze der Mitglieder", parent=hauptlager
             )
 
             # Create personal storage for first 3 members
@@ -56,68 +51,52 @@ class Command(BaseCommand):
                 personal_storage = StorageLocation.objects.create(
                     name=f"Lagerplatz {member.get_full_name()}",
                     description=f"Persönlicher Lagerplatz für {member.get_full_name()}",
-                    parent=personal_bereich
+                    parent=personal_bereich,
                 )
                 member.storage_location = personal_storage
                 member.save()
 
-                self.stdout.write(f'Created personal storage for {member.get_full_name()}')
+                self.stdout.write(f"Created personal storage for {member.get_full_name()}")
 
         # Create test categories and items if they don't exist
         if not Category.objects.exists():
             schutzausruestung = Category.objects.create(
-                name="Schutzausrüstung",
-                description="Persönliche Schutzausrüstung"
+                name="Schutzausrüstung", description="Persönliche Schutzausrüstung"
             )
 
-            werkzeuge = Category.objects.create(
-                name="Werkzeuge",
-                description="Technische Werkzeuge und Geräte"
-            )
+            werkzeuge = Category.objects.create(name="Werkzeuge", description="Technische Werkzeuge und Geräte")
 
             # Create test items
             Item.objects.get_or_create(
                 name="Feuerwehrhelm",
                 category=schutzausruestung,
-                defaults={
-                    'description': 'Standardhelm für Feuerwehreinsätze',
-                    'is_variant_parent': False
-                }
+                defaults={"description": "Standardhelm für Feuerwehreinsätze", "is_variant_parent": False},
             )
 
             Item.objects.get_or_create(
                 name="Atemschutzmaske",
                 category=schutzausruestung,
-                defaults={
-                    'description': 'Vollmaske für Atemschutz',
-                    'is_variant_parent': False
-                }
+                defaults={"description": "Vollmaske für Atemschutz", "is_variant_parent": False},
             )
 
             Item.objects.get_or_create(
                 name="Halligan Tool",
                 category=werkzeuge,
                 defaults={
-                    'description': 'Multifunktionswerkzeug für technische Hilfeleistung',
-                    'is_variant_parent': False
-                }
+                    "description": "Multifunktionswerkzeug für technische Hilfeleistung",
+                    "is_variant_parent": False,
+                },
             )
 
-            self.stdout.write('Created test categories and items')
+            self.stdout.write("Created test categories and items")
 
         # Create some test stock
         if not Stock.objects.exists():
             hauptlager = StorageLocation.objects.filter(name="Hauptlager").first()
             if hauptlager:
                 for item in Item.objects.all()[:3]:
-                    Stock.objects.get_or_create(
-                        item=item,
-                        location=hauptlager,
-                        defaults={'quantity': 10}
-                    )
+                    Stock.objects.get_or_create(item=item, location=hauptlager, defaults={"quantity": 10})
 
-                self.stdout.write('Created test stock entries')
+                self.stdout.write("Created test stock entries")
 
-        self.stdout.write(
-            self.style.SUCCESS('Successfully updated member data and created test data')
-        )
+        self.stdout.write(self.style.SUCCESS("Successfully updated member data and created test data"))

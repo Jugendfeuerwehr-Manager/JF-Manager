@@ -42,6 +42,25 @@
     </div>
     <p v-else class="no-media-hint">Noch keine Bilder hochgeladen</p>
 
+    <!-- Documents section -->
+    <Divider />
+    <div class="panel-header">
+      <span class="panel-title">Dokumente</span>
+      <Button icon="pi pi-upload" text size="small" label="Dokument hochladen" @click="triggerDocUpload" :loading="uploadingDoc" />
+      <input ref="docFileInput" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.odt,.odp,.ods,.txt" class="hidden" @change="onDocSelected" />
+    </div>
+    <div v-if="attachmentItems.length" class="doc-list">
+      <div v-for="att in attachmentItems" :key="att.id" class="doc-item">
+        <i :class="docIcon(att.mime_type)" class="doc-icon" />
+        <div class="doc-info">
+          <a :href="att.file_url ?? '#'" target="_blank" rel="noopener" class="doc-name">{{ att.name }}</a>
+          <span class="doc-size">{{ formatSize(att.file_size) }}</span>
+        </div>
+        <Button icon="pi pi-trash" severity="danger" text size="small" @click="removeAttachment(att.id)" />
+      </div>
+    </div>
+    <p v-else class="no-media-hint">Noch keine Dokumente hochgeladen</p>
+
     <!-- Nextcloud integration hint -->
     <Divider />
     <div class="nextcloud-hint">
@@ -59,7 +78,7 @@ import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import { useBlockMediaUpload } from '@/composables/useBlockMediaUpload'
 import { trainingBlocksApi, libraryApi } from '@/api/training'
-import type { TrainingMedia } from '@/types/training'
+import type { BlockAttachment, TrainingMedia } from '@/types/training'
 
 interface Props {
   blockType: 'library' | 'training'
@@ -69,9 +88,12 @@ interface Props {
 const props = defineProps<Props>()
 
 const fileInput = ref<HTMLInputElement | null>(null)
+const docFileInput = ref<HTMLInputElement | null>(null)
 const dragging = ref(false)
 const uploading = ref(false)
+const uploadingDoc = ref(false)
 const mediaItems = ref<TrainingMedia[]>([])
+const attachmentItems = ref<BlockAttachment[]>([])
 
 const blockIdRef = ref(props.blockId)
 watch(() => props.blockId, (v) => { blockIdRef.value = v; if (v) loadMedia() })
@@ -81,14 +103,22 @@ const { uploadImage } = useBlockMediaUpload(props.blockType, blockIdRef)
 async function loadMedia() {
   if (!props.blockId) return
   const api = props.blockType === 'library' ? libraryApi : trainingBlocksApi
-  const response = await api.listMedia(props.blockId)
-  mediaItems.value = response.data
+  const [mediaRes, attachRes] = await Promise.all([
+    api.listMedia(props.blockId),
+    api.getAttachments(props.blockId),
+  ])
+  mediaItems.value = mediaRes.data
+  attachmentItems.value = attachRes.data
 }
 
 watch(() => props.blockId, (id) => { if (id) loadMedia() }, { immediate: true })
 
 function triggerUpload() {
   fileInput.value?.click()
+}
+
+function triggerDocUpload() {
+  docFileInput.value?.click()
 }
 
 async function onFileSelected(event: Event) {
@@ -123,6 +153,45 @@ async function removeMedia(mediaId: number) {
 
 function onMediaDragStart(event: DragEvent, item: TrainingMedia) {
   event.dataTransfer?.setData('text/plain', `<img src="${item.url}" alt="${item.original_filename}" />`)
+}
+
+async function onDocSelected(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file || !props.blockId) return
+  uploadingDoc.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('name', file.name)
+    const api = props.blockType === 'library' ? libraryApi : trainingBlocksApi
+    const res = await api.addAttachment(props.blockId, formData)
+    attachmentItems.value.push(res.data)
+  } finally {
+    uploadingDoc.value = false
+    if (docFileInput.value) docFileInput.value.value = ''
+  }
+}
+
+async function removeAttachment(attachmentId: number) {
+  const api = props.blockType === 'library' ? libraryApi : trainingBlocksApi
+  await api.deleteAttachment(props.blockId!, attachmentId)
+  attachmentItems.value = attachmentItems.value.filter((a) => a.id !== attachmentId)
+}
+
+function docIcon(mimeType: string | null): string {
+  if (!mimeType) return 'pi pi-file'
+  if (mimeType === 'application/pdf') return 'pi pi-file-pdf'
+  if (mimeType.includes('word') || mimeType.includes('document')) return 'pi pi-file-word'
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'pi pi-file-excel'
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'pi pi-chart-bar'
+  return 'pi pi-file'
+}
+
+function formatSize(bytes: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 </script>
 
@@ -213,6 +282,53 @@ function onMediaDragStart(event: DragEvent, item: TrainingMedia) {
   color: var(--text-color-secondary);
   text-align: center;
   margin: 0;
+}
+
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  overflow-y: auto;
+  max-height: 240px;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+}
+
+.doc-icon {
+  font-size: 1.25rem;
+  color: var(--text-color-secondary);
+  flex-shrink: 0;
+}
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.doc-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+.doc-name:hover { text-decoration: underline; }
+
+.doc-size {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
 }
 
 .nextcloud-hint {

@@ -11,7 +11,7 @@ class TrainingBlock(models.Model):
     class Meta:
         verbose_name = "Trainingsblock"
         verbose_name_plural = "Trainingsblöcke"
-        ordering = ['session', 'start_offset_minutes', 'position_order']
+        ordering = ["session", "start_offset_minutes", "position_order"]
 
     title = models.CharField(max_length=300, verbose_name="Titel")
 
@@ -19,26 +19,26 @@ class TrainingBlock(models.Model):
     content = models.TextField(blank=True, verbose_name="Inhalt (HTML)")
 
     session = models.ForeignKey(
-        'training.TrainingSession',
+        "training.TrainingSession",
         on_delete=models.CASCADE,
-        related_name='blocks',
+        related_name="blocks",
         verbose_name="Trainingseinheit",
     )
     groups = models.ManyToManyField(
-        'members.Group',
+        "members.Group",
         blank=True,
-        related_name='training_blocks',
+        related_name="training_blocks",
         verbose_name="Gruppen",
         help_text="Leerlassen = Block gilt für alle Gruppen (Full-Width Swimlane)",
     )
 
     # Optional link to source library block (keeps reference for re-use)
     library_block = models.ForeignKey(
-        'training.LibraryBlock',
+        "training.LibraryBlock",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='session_blocks',
+        related_name="session_blocks",
         verbose_name="Bibliotheksblock (Vorlage)",
     )
 

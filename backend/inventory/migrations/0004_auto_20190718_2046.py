@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0003_auto_20190718_2043'),
+        ("inventory", "0003_auto_20190718_2043"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='item',
-            options={'permissions': (('can_rent', 'can rent items to members'),)},
+            name="item",
+            options={"permissions": (("can_rent", "can rent items to members"),)},
         ),
     ]

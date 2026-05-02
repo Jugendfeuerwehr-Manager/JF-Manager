@@ -58,7 +58,14 @@
           breakpoint="960px"
           stripedRows
         >
-          <Column field="name" header="Name" sortable />
+          <Column field="name" header="Name" sortable>
+            <template #body="{ data }">
+              <div class="name-with-tag">
+                <span>{{ data.name }}</span>
+                <Tag value="G" icon="pi pi-globe" severity="contrast" />
+              </div>
+            </template>
+          </Column>
           <Column field="description" header="Beschreibung">
             <template #body="{ data }">
               {{ data.description || '-' }}
@@ -130,6 +137,7 @@ import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import InputText from 'primevue/inputtext'
+import Tag from 'primevue/tag'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -234,6 +242,12 @@ const handleFormCancel = () => {
   gap: 1rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
+}
+
+.name-with-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .toolbar-card {

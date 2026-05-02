@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0002_auto_20190304_1521'),
+        ("inventory", "0002_auto_20190304_1521"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='item',
-            options={'permissions': (('can_rent', 'Darf Invetargegenstände an Mitglieder ausgeben / zurücknehmen'),)},
+            name="item",
+            options={"permissions": (("can_rent", "Darf Invetargegenstände an Mitglieder ausgeben / zurücknehmen"),)},
         ),
     ]

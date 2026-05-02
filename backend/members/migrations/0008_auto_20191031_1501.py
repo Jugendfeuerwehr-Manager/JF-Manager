@@ -5,19 +5,18 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0007_auto_20191031_1454'),
+        ("members", "0007_auto_20191031_1454"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='event',
-            name='members',
+            model_name="event",
+            name="members",
         ),
         migrations.AddField(
-            model_name='event',
-            name='member',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='members.Member'),
+            model_name="event",
+            name="member",
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to="members.Member"),
         ),
     ]

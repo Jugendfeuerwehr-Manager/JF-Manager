@@ -19,7 +19,7 @@ class CanViewSettings(permissions.BasePermission):
             return True
 
         # Check for global view permission
-        return request.user.has_perm('settings_manager.view_all_settings')
+        return request.user.has_perm("settings_manager.view_all_settings")
 
 
 class CanChangeSettings(permissions.BasePermission):
@@ -39,7 +39,7 @@ class CanChangeSettings(permissions.BasePermission):
         if request.user.is_superuser:
             return True
 
-        return request.user.has_perm('settings_manager.change_all_settings')
+        return request.user.has_perm("settings_manager.change_all_settings")
 
 
 class CanViewCategorySettings(permissions.BasePermission):
@@ -58,22 +58,19 @@ class CanViewCategorySettings(permissions.BasePermission):
 
         # Get category from view action or query params
         category = None
-        if hasattr(view, 'action') and view.action in ['general', 'email', 'member', 'service', 'order']:
-                category = view.action
+        if hasattr(view, "action") and view.action in ["general", "email", "member", "service", "order"]:
+            category = view.action
 
         if not category:
-            category = request.query_params.get('category')
+            category = request.query_params.get("category")
 
         if not category:
             # If no specific category, check global permission
-            return request.user.has_perm('settings_manager.view_all_settings')
+            return request.user.has_perm("settings_manager.view_all_settings")
 
         # Check category-specific permission
-        permission = f'settings_manager.view_{category}_settings'
-        return (
-            request.user.has_perm(permission) or
-            request.user.has_perm('settings_manager.view_all_settings')
-        )
+        permission = f"settings_manager.view_{category}_settings"
+        return request.user.has_perm(permission) or request.user.has_perm("settings_manager.view_all_settings")
 
 
 class CanChangeCategorySettings(permissions.BasePermission):
@@ -95,19 +92,16 @@ class CanChangeCategorySettings(permissions.BasePermission):
 
         # Get category from view action or request data
         category = None
-        if hasattr(view, 'action') and view.action in ['general', 'email', 'member', 'service', 'order']:
+        if hasattr(view, "action") and view.action in ["general", "email", "member", "service", "order"]:
             category = view.action
 
-        if not category and request.method in ['POST', 'PUT', 'PATCH']:
-            category = request.data.get('category')
+        if not category and request.method in ["POST", "PUT", "PATCH"]:
+            category = request.data.get("category")
 
         if not category:
             # If no specific category, check global permission
-            return request.user.has_perm('settings_manager.change_all_settings')
+            return request.user.has_perm("settings_manager.change_all_settings")
 
         # Check category-specific permission
-        permission = f'settings_manager.change_{category}_settings'
-        return (
-            request.user.has_perm(permission) or
-            request.user.has_perm('settings_manager.change_all_settings')
-        )
+        permission = f"settings_manager.change_{category}_settings"
+        return request.user.has_perm(permission) or request.user.has_perm("settings_manager.change_all_settings")

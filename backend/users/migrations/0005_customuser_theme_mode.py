@@ -4,15 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0004_customuser_email_signature'),
+        ("users", "0004_customuser_email_signature"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customuser',
-            name='theme_mode',
-            field=models.CharField(choices=[('light', 'Light'), ('dark', 'Dark'), ('system', 'System')], default='system', help_text='Bevorzugter Farbmodus (Hell, Dunkel, System)', max_length=10, verbose_name='Theme-Modus'),
+            model_name="customuser",
+            name="theme_mode",
+            field=models.CharField(
+                choices=[("light", "Light"), ("dark", "Dark"), ("system", "System")],
+                default="system",
+                help_text="Bevorzugter Farbmodus (Hell, Dunkel, System)",
+                max_length=10,
+                verbose_name="Theme-Modus",
+            ),
         ),
     ]

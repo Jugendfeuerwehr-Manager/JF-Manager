@@ -7,32 +7,60 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
-        ('members', '0015_alter_event_id_alter_eventtype_id_alter_group_id_and_more'),
+        ("contenttypes", "0002_remove_content_type_name"),
+        ("members", "0015_alter_event_id_alter_eventtype_id_alter_group_id_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Attachment',
+            name="Attachment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('object_id', models.PositiveIntegerField()),
-                ('file', models.FileField(help_text='Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF', upload_to=members.models.utils.get_attachment_file_path, verbose_name='Datei')),
-                ('name', models.CharField(help_text='Beschreibender Name für den Anhang', max_length=255, verbose_name='Name')),
-                ('description', models.TextField(blank=True, help_text='Optionale Beschreibung des Anhangs', verbose_name='Beschreibung')),
-                ('uploaded_at', models.DateTimeField(auto_now_add=True, verbose_name='Hochgeladen am')),
-                ('file_size', models.PositiveIntegerField(blank=True, null=True, verbose_name='Dateigröße (Bytes)')),
-                ('mime_type', models.CharField(blank=True, max_length=100, verbose_name='MIME-Typ')),
-                ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
-                ('uploaded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='Hochgeladen von')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("object_id", models.PositiveIntegerField()),
+                (
+                    "file",
+                    models.FileField(
+                        help_text="Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF",
+                        upload_to=members.models.utils.get_attachment_file_path,
+                        verbose_name="Datei",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Beschreibender Name für den Anhang", max_length=255, verbose_name="Name"
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Optionale Beschreibung des Anhangs", verbose_name="Beschreibung"
+                    ),
+                ),
+                ("uploaded_at", models.DateTimeField(auto_now_add=True, verbose_name="Hochgeladen am")),
+                ("file_size", models.PositiveIntegerField(blank=True, null=True, verbose_name="Dateigröße (Bytes)")),
+                ("mime_type", models.CharField(blank=True, max_length=100, verbose_name="MIME-Typ")),
+                (
+                    "content_type",
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="contenttypes.contenttype"),
+                ),
+                (
+                    "uploaded_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Hochgeladen von",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Anhang',
-                'verbose_name_plural': 'Anhänge',
-                'ordering': ['-uploaded_at'],
+                "verbose_name": "Anhang",
+                "verbose_name_plural": "Anhänge",
+                "ordering": ["-uploaded_at"],
             },
         ),
     ]

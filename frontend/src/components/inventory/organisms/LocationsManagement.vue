@@ -46,6 +46,7 @@
                   <div class="location-header">
                     <i class="pi pi-box location-icon"></i>
                     <span class="location-name">{{ location.name }}</span>
+                    <Tag v-if="location.department === null" value="G" icon="pi pi-globe" severity="contrast" />
                   </div>
                   <span v-if="location.parent_name" class="location-path">
                     {{ location.full_path }}

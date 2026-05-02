@@ -15,6 +15,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from jf_manager_backend.permissions import OrgWideWritePermission
 from members.models import Attachment
 from training.api.filters import LibraryBlockFilter
 from training.api.permissions import CanManageLibrary
@@ -62,7 +63,7 @@ def _resize_and_optimise(original_file, filename: str):
 
 class LibraryBlockCategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
-    permission_classes = [CanManageLibrary]
+    permission_classes = [CanManageLibrary, OrgWideWritePermission]
     queryset = LibraryBlockCategory.objects.all()
     serializer_class = LibraryBlockCategorySerializer
     filter_backends = [filters.SearchFilter]
@@ -71,7 +72,7 @@ class LibraryBlockCategoryViewSet(viewsets.ModelViewSet):
 
 class LibraryBlockTagViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
-    permission_classes = [CanManageLibrary]
+    permission_classes = [CanManageLibrary, OrgWideWritePermission]
     queryset = LibraryBlockTag.objects.all()
     serializer_class = LibraryBlockTagSerializer
     filter_backends = [filters.SearchFilter]

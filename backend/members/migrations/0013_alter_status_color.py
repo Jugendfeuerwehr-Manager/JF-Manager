@@ -5,15 +5,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0012_auto_20220923_0800'),
+        ("members", "0012_auto_20220923_0800"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='status',
-            name='color',
-            field=colorfield.fields.ColorField(default='#FF0000', image_field=None, max_length=25, samples=None),
+            model_name="status",
+            name="color",
+            field=colorfield.fields.ColorField(default="#FF0000", image_field=None, max_length=25, samples=None),
         ),
     ]

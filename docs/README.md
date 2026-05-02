@@ -7,6 +7,7 @@
 ## Architecture
 
 - [Architecture Overview](architecture/overview.md) – Docker architecture, network flow, security layers, build process
+- [Departments And Permissions](architecture/departments-and-permissions.md) – Department scoping, active department context, backend enforcement, shared data rules
 - [Vue.js Integration](architecture/vue-integration.md) – Vue 3 + Pinia integration patterns, API service layer, stores
 
 ## API

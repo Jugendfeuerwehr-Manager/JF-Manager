@@ -86,7 +86,14 @@
                     <div class="color-swatch" :style="{ background: data.color || '#94a3b8' }" />
                   </template>
                 </Column>
-                <Column field="name" header="Name" />
+                <Column field="name" header="Name">
+                  <template #body="{ data }">
+                    <div class="global-name-cell">
+                      <span>{{ data.name }}</span>
+                      <Tag value="G" icon="pi pi-globe" severity="contrast" />
+                    </div>
+                  </template>
+                </Column>
                 <Column header="Icon" style="width: 80px">
                   <template #body="{ data }">
                     <i v-if="data.icon" :class="`pi ${data.icon}`" />
@@ -139,6 +146,7 @@
                   <Tag v-for="tag in tags" :key="tag.id" class="tag-chip">
                     <template #default>
                       {{ tag.name }}
+                      <span class="tag-global-marker">G</span>
                       <button class="tag-remove" @click="deleteTag(tag)">×</button>
                     </template>
                   </Tag>
@@ -582,6 +590,25 @@ onMounted(async () => {
 
 .tag-chip {
   cursor: default;
+}
+
+.global-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tag-global-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  margin-left: 0.35rem;
+  background: var(--p-surface-300);
+  color: var(--p-surface-900);
 }
 
 .tag-remove {

@@ -1,31 +1,49 @@
 """
 ViewSets for StorageLocation — including member equipment lookups.
 """
+
 from django.db.models import Q, Sum
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from departments.mixins import DepartmentScopeViewSetMixin
 from inventory.models import Stock, StorageLocation, Transaction
 from jf_manager_backend.mixins import BasePermissionedViewSet
 
+from .access import get_user_department_ids, is_org_wide_user
 from .serializers import StockSerializer, StorageLocationSerializer, TransactionSerializer
 
 
-class StorageLocationViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
-    queryset = StorageLocation.objects.select_related("parent", "member")
+class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets.ModelViewSet):
+    queryset = StorageLocation.objects.select_related("parent", "member", "department")
     serializer_class = StorageLocationSerializer
+    include_central_records = True
     search_fields = ["name", "parent__name", "member__name", "member__lastname"]
     filterset_fields = ["parent", "is_member", "member"]
+
+    def _assert_member_access(self, member):
+        user = self.request.user
+        if is_org_wide_user(user):
+            return
+
+        allowed_department_ids = get_user_department_ids(user)
+        member_department_ids = set(member.departments.values_list("id", flat=True))
+        if not member_department_ids.intersection(allowed_department_ids):
+            raise PermissionDenied("Kein Zugriff auf dieses Mitglied.")
 
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):
         location = self.get_object()
         qs = location.stock_set.select_related(
-            "item", "item_variant", "item_variant__parent_item", "location",
+            "item",
+            "item_variant",
+            "item_variant__parent_item",
+            "location",
         )
         serializer = StockSerializer(qs, many=True)
-        total = qs.aggregate(total=Sum("quantity"))['total'] or 0
+        total = qs.aggregate(total=Sum("quantity"))["total"] or 0
         return Response({"total": total, "rows": serializer.data})
 
     @action(detail=False, methods=["get", "post"], url_path="for-member/(?P<member_id>[^/.]+)")
@@ -39,10 +57,9 @@ class StorageLocationViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
         try:
             member = Member.objects.get(pk=member_id)
         except Member.DoesNotExist:
-            return Response(
-                {"detail": f"Member with ID {member_id} not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": f"Member with ID {member_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        self._assert_member_access(member)
 
         try:
             location = member.personal_storage_location
@@ -51,11 +68,20 @@ class StorageLocationViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
         except StorageLocation.DoesNotExist:
             pass
 
+        default_department = member.departments.first()
+        if default_department is None and not is_org_wide_user(request.user):
+            allowed_department_id = next(iter(get_user_department_ids(request.user)), None)
+            if allowed_department_id is not None:
+                from departments.models import Department
+
+                default_department = Department.objects.filter(pk=allowed_department_id).first()
+
         location = StorageLocation.objects.create(
             name=f"{member.name} {member.lastname}",
             is_member=True,
             member=member,
             parent=None,
+            department=default_department,
         )
         serializer = self.get_serializer(location)
         return_status = status.HTTP_201_CREATED if request.method == "POST" else status.HTTP_200_OK
@@ -69,39 +95,42 @@ class StorageLocationViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
         try:
             member = Member.objects.get(pk=member_id)
         except Member.DoesNotExist:
-            return Response(
-                {"detail": f"Member with ID {member_id} not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": f"Member with ID {member_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        self._assert_member_access(member)
 
         try:
             location = member.personal_storage_location
         except StorageLocation.DoesNotExist:
-            return Response({
-                "member_id": int(member_id),
-                "member_name": f"{member.name} {member.lastname}",
-                "location_id": None,
-                "equipment": [],
-                "total_items": 0,
-                "recent_transactions": [],
-            })
+            return Response(
+                {
+                    "member_id": int(member_id),
+                    "member_name": f"{member.name} {member.lastname}",
+                    "location_id": None,
+                    "equipment": [],
+                    "total_items": 0,
+                    "recent_transactions": [],
+                }
+            )
 
-        stock_qs = Stock.objects.filter(
-            location=location, quantity__gt=0
-        ).select_related("item", "item_variant", "item_variant__parent_item", "location")
+        stock_qs = Stock.objects.filter(location=location, quantity__gt=0).select_related(
+            "item", "item_variant", "item_variant__parent_item", "location"
+        )
         total_items = sum(s.quantity for s in stock_qs)
 
-        transactions_qs = Transaction.objects.filter(
-            Q(source=location) | Q(target=location)
-        ).select_related(
-            "item", "item_variant", "item_variant__parent_item", "source", "target", "user"
-        ).order_by("-date")[:20]
+        transactions_qs = (
+            Transaction.objects.filter(Q(source=location) | Q(target=location))
+            .select_related("item", "item_variant", "item_variant__parent_item", "source", "target", "user")
+            .order_by("-date")[:20]
+        )
 
-        return Response({
-            "member_id": int(member_id),
-            "member_name": f"{member.name} {member.lastname}",
-            "location_id": location.id,
-            "equipment": StockSerializer(stock_qs, many=True).data,
-            "total_items": total_items,
-            "recent_transactions": TransactionSerializer(transactions_qs, many=True).data,
-        })
+        return Response(
+            {
+                "member_id": int(member_id),
+                "member_name": f"{member.name} {member.lastname}",
+                "location_id": location.id,
+                "equipment": StockSerializer(stock_qs, many=True).data,
+                "total_items": total_items,
+                "recent_transactions": TransactionSerializer(transactions_qs, many=True).data,
+            }
+        )

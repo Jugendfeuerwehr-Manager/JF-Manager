@@ -12,6 +12,7 @@ export interface Status {
 export interface Group {
   id: number
   name: string
+  department?: number | null
 }
 
 export interface Member {
@@ -39,6 +40,7 @@ export interface Member {
   avatar_url: string | null
   parents?: import('@/types/parents').Parent[]
   has_alert: boolean
+  department_ids: number[]
 }
 
 export interface MemberCreate {

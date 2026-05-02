@@ -5,7 +5,8 @@ from users.models import CustomUser
 
 class NotificationPreference(models.Model):
     """User preferences for order notifications"""
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='notification_preferences')
+
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="notification_preferences")
 
     # Email notification settings
     email_new_orders = models.BooleanField(default=True, verbose_name="Neue Bestellungen")

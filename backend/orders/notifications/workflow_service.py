@@ -23,29 +23,28 @@ class OrderWorkflowService(BaseNotificationService):
 
     # Define workflow transitions as a class constant for easy maintenance
     WORKFLOW_TRANSITIONS = {
-        'NEW': ['ORDERED', 'CANCELLED'],  # New orders can be ordered or cancelled
-        'pending': ['ORDERED', 'CANCELLED'],
-        'ORDERED': ['RECEIVED', 'CANCELLED'],
-        'received': ['ready', 'defective'],
-        'ready': ['delivered'],
-        'delivered': [],  # Final state - no transitions allowed
-        'cancelled': [],  # Final state - no transitions allowed
-        'defective': ['ORDERED', 'CANCELLED'],  # Can reorder or cancel defective items
-
+        "NEW": ["ORDERED", "CANCELLED"],  # New orders can be ordered or cancelled
+        "pending": ["ORDERED", "CANCELLED"],
+        "ORDERED": ["RECEIVED", "CANCELLED"],
+        "received": ["ready", "defective"],
+        "ready": ["delivered"],
+        "delivered": [],  # Final state - no transitions allowed
+        "cancelled": [],  # Final state - no transitions allowed
+        "defective": ["ORDERED", "CANCELLED"],  # Can reorder or cancel defective items
         # Legacy statuses (for backward compatibility)
-        'ordered': ['RECEIVED', 'CANCELLED'],
-        'RECEIVED': ['DELIVERED', 'CANCELLED'],
-        'DELIVERED': [],
-        'CANCELLED': []
+        "ordered": ["RECEIVED", "CANCELLED"],
+        "RECEIVED": ["DELIVERED", "CANCELLED"],
+        "DELIVERED": [],
+        "CANCELLED": [],
     }
 
     # Define status categories for grouping and filtering
     STATUS_CATEGORIES = {
-        'active': ['NEW', 'pending', 'ORDERED', 'ordered', 'RECEIVED', 'received', 'ready'],
-        'completed': ['DELIVERED', 'delivered'],
-        'terminated': ['CANCELLED', 'cancelled', 'defective'],
-        'actionable': ['NEW', 'pending', 'ORDERED', 'ordered', 'defective'],  # Statuses that require action
-        'final': ['DELIVERED', 'delivered', 'CANCELLED', 'cancelled'],  # Statuses that end the workflow
+        "active": ["NEW", "pending", "ORDERED", "ordered", "RECEIVED", "received", "ready"],
+        "completed": ["DELIVERED", "delivered"],
+        "terminated": ["CANCELLED", "cancelled", "defective"],
+        "actionable": ["NEW", "pending", "ORDERED", "ordered", "defective"],  # Statuses that require action
+        "final": ["DELIVERED", "delivered", "CANCELLED", "cancelled"],  # Statuses that end the workflow
     }
 
     @classmethod
@@ -59,7 +58,7 @@ class OrderWorkflowService(BaseNotificationService):
         Returns:
             List of available status codes for transition
         """
-        if hasattr(current_status, 'code'):
+        if hasattr(current_status, "code"):
             status_code = current_status.code
         else:
             status_code = str(current_status)
@@ -80,7 +79,7 @@ class OrderWorkflowService(BaseNotificationService):
         """
         available_transitions = cls.get_available_transitions(current_status)
 
-        if hasattr(target_status, 'code'):
+        if hasattr(target_status, "code"):
             target_code = target_status.code
         else:
             target_code = str(target_status)
@@ -102,10 +101,7 @@ class OrderWorkflowService(BaseNotificationService):
 
         try:
             return list(
-                OrderStatus.objects.filter(
-                    code__in=available_codes,
-                    is_active=True
-                ).order_by('display_order', 'name')
+                OrderStatus.objects.filter(code__in=available_codes, is_active=True).order_by("display_order", "name")
             )
         except Exception as e:
             logger.error(f"Failed to get next statuses: {e}")
@@ -135,7 +131,7 @@ class OrderWorkflowService(BaseNotificationService):
         Returns:
             True if status is final, False otherwise
         """
-        if hasattr(status, 'code'):
+        if hasattr(status, "code"):
             status_code = status.code
         else:
             status_code = str(status)
@@ -153,12 +149,12 @@ class OrderWorkflowService(BaseNotificationService):
         Returns:
             True if status requires action, False otherwise
         """
-        if hasattr(status, 'code'):
+        if hasattr(status, "code"):
             status_code = status.code.lower()
         else:
             status_code = str(status).lower()
 
-        return status_code in cls.get_statuses_by_category('actionable')
+        return status_code in cls.get_statuses_by_category("actionable")
 
     @classmethod
     def validate_bulk_transition(cls, order_items, target_status) -> dict[str, any]:
@@ -178,7 +174,7 @@ class OrderWorkflowService(BaseNotificationService):
                 'errors': [list of error messages]
             }
         """
-        if hasattr(target_status, 'code'):
+        if hasattr(target_status, "code"):
             target_code = target_status.code
         else:
             target_code = str(target_status)
@@ -194,18 +190,17 @@ class OrderWorkflowService(BaseNotificationService):
                 else:
                     blocked_items.append(item)
                     errors.append(
-                        f"Item '{item.item.name}' cannot transition from "
-                        f"'{item.status.name}' to '{target_code}'"
+                        f"Item '{item.item.name}' cannot transition from '{item.status.name}' to '{target_code}'"
                     )
             except Exception as e:
                 blocked_items.append(item)
                 errors.append(f"Error validating item '{item.item.name}': {e}")
 
         return {
-            'valid': len(blocked_items) == 0,
-            'allowed_items': allowed_items,
-            'blocked_items': blocked_items,
-            'errors': errors
+            "valid": len(blocked_items) == 0,
+            "allowed_items": allowed_items,
+            "blocked_items": blocked_items,
+            "errors": errors,
         }
 
     @classmethod
@@ -238,13 +233,15 @@ class OrderWorkflowService(BaseNotificationService):
         # Create nodes
         nodes = []
         for status in sorted(all_statuses):
-            category = 'final' if cls.is_status_final(status) else 'active'
-            nodes.append({
-                'id': status,
-                'label': status.title(),
-                'category': category,
-                'actionable': cls.is_status_actionable(status)
-            })
+            category = "final" if cls.is_status_final(status) else "active"
+            nodes.append(
+                {
+                    "id": status,
+                    "label": status.title(),
+                    "category": category,
+                    "actionable": cls.is_status_actionable(status),
+                }
+            )
 
         # Create edges
         edges = []
@@ -252,17 +249,9 @@ class OrderWorkflowService(BaseNotificationService):
             if from_status.isupper():  # Skip legacy uppercase versions
                 continue
             for to_status in to_statuses:
-                edges.append({
-                    'from': from_status,
-                    'to': to_status,
-                    'label': f"{from_status} → {to_status}"
-                })
+                edges.append({"from": from_status, "to": to_status, "label": f"{from_status} → {to_status}"})
 
-        return {
-            'nodes': nodes,
-            'edges': edges,
-            'categories': cls.STATUS_CATEGORIES
-        }
+        return {"nodes": nodes, "edges": edges, "categories": cls.STATUS_CATEGORIES}
 
     @classmethod
     def get_status_statistics(cls, order_items_queryset) -> dict[str, any]:
@@ -286,27 +275,19 @@ class OrderWorkflowService(BaseNotificationService):
             # Categorize statuses
             categorized_counts = {}
             for category, statuses in cls.STATUS_CATEGORIES.items():
-                categorized_counts[category] = sum(
-                    status_counts.get(status, 0) for status in statuses
-                )
+                categorized_counts[category] = sum(status_counts.get(status, 0) for status in statuses)
 
             total_items = sum(status_counts.values())
 
             return {
-                'total_items': total_items,
-                'status_counts': dict(status_counts),
-                'category_counts': categorized_counts,
-                'completion_rate': (
-                    categorized_counts.get('completed', 0) / total_items * 100
-                    if total_items > 0 else 0
-                )
+                "total_items": total_items,
+                "status_counts": dict(status_counts),
+                "category_counts": categorized_counts,
+                "completion_rate": (
+                    categorized_counts.get("completed", 0) / total_items * 100 if total_items > 0 else 0
+                ),
             }
 
         except Exception as e:
             logger.error(f"Failed to calculate status statistics: {e}")
-            return {
-                'total_items': 0,
-                'status_counts': {},
-                'category_counts': {},
-                'completion_rate': 0
-            }
+            return {"total_items": 0, "status_counts": {}, "category_counts": {}, "completion_rate": 0}

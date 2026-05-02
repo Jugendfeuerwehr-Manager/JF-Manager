@@ -4,15 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0019_email_attachment'),
+        ("members", "0019_email_attachment"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='member',
-            name='gender',
-            field=models.CharField(blank=True, choices=[('male', 'Männlich'), ('female', 'Weiblich'), ('diverse', 'Divers')], default='', max_length=10, verbose_name='Geschlecht'),
+            model_name="member",
+            name="gender",
+            field=models.CharField(
+                blank=True,
+                choices=[("male", "Männlich"), ("female", "Weiblich"), ("diverse", "Divers")],
+                default="",
+                max_length=10,
+                verbose_name="Geschlecht",
+            ),
         ),
     ]

@@ -3,6 +3,7 @@
  *
  * Includes: auth types, pagination wrapper, user profile, app settings.
  */
+import type { UserDepartmentRoleMini } from './departments'
 
 // ── Pagination ──────────────────────────────────────────────────────────────
 
@@ -66,6 +67,9 @@ export interface UserInfo {
   theme_mode?: 'light' | 'dark' | 'system'
   groups: UserGroup[]
   permissions: string[]
+  department_roles: UserDepartmentRoleMini[]
+  has_org_wide_access: boolean
+  favorite_department: number | null
 }
 
 // ── App settings ─────────────────────────────────────────────────────────────

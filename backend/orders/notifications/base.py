@@ -36,11 +36,11 @@ class BaseNotificationService(ABC):  # noqa: B024
         """
         if request:
             domain = request.get_host()
-            protocol = 'https' if request.is_secure() else 'http'
+            protocol = "https" if request.is_secure() else "http"
         else:
             # Default for development/testing
-            domain = getattr(settings, 'DEFAULT_DOMAIN', 'localhost:8000')
-            protocol = getattr(settings, 'DEFAULT_PROTOCOL', 'http')
+            domain = getattr(settings, "DEFAULT_DOMAIN", "localhost:8000")
+            protocol = getattr(settings, "DEFAULT_PROTOCOL", "http")
 
         return domain, protocol
 
@@ -97,35 +97,41 @@ class NotificationContext:
         self.request = request
         self.domain, self.protocol = BaseNotificationService.get_domain_info(request)
         self._context = {
-            'domain': self.domain,
-            'protocol': self.protocol,
-            'timestamp': timezone.now(),
+            "domain": self.domain,
+            "protocol": self.protocol,
+            "timestamp": timezone.now(),
         }
 
     def add_order_context(self, order):
         """Add order-related context."""
-        self._context.update({
-            'order': order,
-            'member': order.member,
-            'order_url': self._build_order_url(order),
-        })
+        self._context.update(
+            {
+                "order": order,
+                "member": order.member,
+                "order_url": self._build_order_url(order),
+            }
+        )
         return self
 
     def add_order_item_context(self, order_item):
         """Add order item-related context."""
-        self._context.update({
-            'order_item': order_item,
-            'item': order_item.item,
-        })
+        self._context.update(
+            {
+                "order_item": order_item,
+                "item": order_item.item,
+            }
+        )
         return self
 
     def add_status_context(self, old_status=None, new_status=None, updated_by=None):
         """Add status change context."""
-        self._context.update({
-            'old_status': old_status,
-            'new_status': new_status,
-            'updated_by': updated_by,
-        })
+        self._context.update(
+            {
+                "old_status": old_status,
+                "new_status": new_status,
+                "updated_by": updated_by,
+            }
+        )
         return self
 
     def add_custom(self, **kwargs):
@@ -139,20 +145,23 @@ class NotificationContext:
 
     def _build_order_url(self, order):
         """Build absolute URL for order detail page."""
-        path = reverse('orders:detail', kwargs={'pk': order.pk})
+        path = reverse("orders:detail", kwargs={"pk": order.pk})
         return f"{self.protocol}://{self.domain}{path}"
 
 
 class NotificationError(Exception):
     """Custom exception for notification-related errors."""
+
     pass
 
 
 class TemplateNotFoundError(NotificationError):
     """Exception raised when a required template is not found."""
+
     pass
 
 
 class RecipientError(NotificationError):
     """Exception raised when there are issues with email recipients."""
+
     pass

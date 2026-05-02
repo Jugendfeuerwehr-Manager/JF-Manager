@@ -4,8 +4,5 @@ from .models import Member
 
 
 class MemberResource(resources.ModelResource):
-
-
     class Meta:
         model = Member
-

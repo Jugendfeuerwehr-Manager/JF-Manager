@@ -3,19 +3,20 @@ from django.db import models
 
 class EmailTemplate(models.Model):
     """Customizable email templates"""
+
     TEMPLATE_TYPES = [
         # Current template types (used by new system)
-        ('order_created', 'Bestellung erstellt'),
-        ('status_update', 'Status geändert'),
-        ('bulk_update', 'Massenänderung'),
-        ('pending_reminder', 'Erinnerung'),
-        ('daily_summary', 'Tägliche Zusammenfassung'),
-        ('weekly_report', 'Wöchentlicher Bericht'),
+        ("order_created", "Bestellung erstellt"),
+        ("status_update", "Status geändert"),
+        ("bulk_update", "Massenänderung"),
+        ("pending_reminder", "Erinnerung"),
+        ("daily_summary", "Tägliche Zusammenfassung"),
+        ("weekly_report", "Wöchentlicher Bericht"),
         # Legacy template types (for backward compatibility)
-        ('order_confirmed', 'Bestellung bestätigt (Legacy)'),
-        ('order_shipped', 'Bestellung versandt (Legacy)'),
-        ('order_cancelled', 'Bestellung storniert (Legacy)'),
-        ('order_summary', 'Bestellübersicht (Legacy)'),
+        ("order_confirmed", "Bestellung bestätigt (Legacy)"),
+        ("order_shipped", "Bestellung versandt (Legacy)"),
+        ("order_cancelled", "Bestellung storniert (Legacy)"),
+        ("order_summary", "Bestellübersicht (Legacy)"),
     ]
 
     name = models.CharField(max_length=100, verbose_name="Name")

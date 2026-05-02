@@ -1,4 +1,5 @@
 """Servicebook API serializers."""
+
 from .attendance_serializers import (
     AttendanceBulkUpdateSerializer,
     AttendanceCreateSerializer,
@@ -12,11 +13,11 @@ from .service_serializers import (
 )
 
 __all__ = [
-    'AttendanceBulkUpdateSerializer',
-    'AttendanceCreateSerializer',
-    'AttendanceSerializer',
-    'ServiceCreateSerializer',
-    'ServiceDetailSerializer',
-    'ServiceListSerializer',
-    'ServiceUpdateSerializer',
+    "AttendanceBulkUpdateSerializer",
+    "AttendanceCreateSerializer",
+    "AttendanceSerializer",
+    "ServiceCreateSerializer",
+    "ServiceDetailSerializer",
+    "ServiceListSerializer",
+    "ServiceUpdateSerializer",
 ]

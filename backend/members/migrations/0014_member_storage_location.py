@@ -5,16 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0005_alter_category_options_alter_item_options_and_more'),
-        ('members', '0013_alter_status_color'),
+        ("inventory", "0005_alter_category_options_alter_item_options_and_more"),
+        ("members", "0013_alter_status_color"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='member',
-            name='storage_location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_members', to='inventory.storagelocation', verbose_name='Lagerplatz'),
+            model_name="member",
+            name="storage_location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="assigned_members",
+                to="inventory.storagelocation",
+                verbose_name="Lagerplatz",
+            ),
         ),
     ]

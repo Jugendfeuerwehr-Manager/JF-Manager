@@ -19,10 +19,10 @@ class InventoryAPITest(APITestCase):
         url = "/api/v1/inventory/items/"
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertGreaterEqual(len(resp.data['results']), 1)
+        self.assertGreaterEqual(len(resp.data["results"]), 1)
 
     def test_item_stock_action(self):
         url = f"/api/v1/inventory/items/{self.item.id}/stock/"
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.data['total'], 5)
+        self.assertEqual(resp.data["total"], 5)

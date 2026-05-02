@@ -17,33 +17,39 @@ class CustomUser(AbstractUser):
 
     phone = PhoneNumberField(blank=True)
     mobile_phone = PhoneNumberField(blank=True)
-    street = models.CharField(max_length=200, blank=True, default='')
-    zip_code = models.CharField(max_length=200, blank=True, default='')
-    city = models.CharField(max_length=200, blank=True, default='')
-
+    street = models.CharField(max_length=200, blank=True, default="")
+    zip_code = models.CharField(max_length=200, blank=True, default="")
+    city = models.CharField(max_length=200, blank=True, default="")
 
     # TODO: Add pre_delete hook to make sure to remove the file, not just the DB Recoard.
     avatar = models.ImageField(blank=True)
 
     # Email signature for bulk emails
     email_signature = models.TextField(
-        blank=True,
-        default='',
-        verbose_name='E-Mail-Signatur',
-        help_text='Ihre persönliche Signatur für E-Mails'
+        blank=True, default="", verbose_name="E-Mail-Signatur", help_text="Ihre persönliche Signatur für E-Mails"
     )
 
     THEME_MODE_CHOICES = [
-        ('light', 'Light'),
-        ('dark', 'Dark'),
-        ('system', 'System'),
+        ("light", "Light"),
+        ("dark", "Dark"),
+        ("system", "System"),
     ]
     theme_mode = models.CharField(
         max_length=10,
         choices=THEME_MODE_CHOICES,
-        default='system',
-        verbose_name='Theme-Modus',
-        help_text='Bevorzugter Farbmodus (Hell, Dunkel, System)'
+        default="system",
+        verbose_name="Theme-Modus",
+        help_text="Bevorzugter Farbmodus (Hell, Dunkel, System)",
+    )
+
+    favorite_department = models.ForeignKey(
+        "departments.Department",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="favorite_users",
+        verbose_name="Bevorzugte Abteilung",
+        help_text="Wird beim Login als Standard-Abteilung gewählt",
     )
 
     def __str__(self):
@@ -53,23 +59,25 @@ class CustomUser(AbstractUser):
             return self.username
 
     def get_absolute_url(self):
-        return reverse('users:profile', kwargs={'pk': self.pk})
+        return reverse("users:profile", kwargs={"pk": self.pk})
 
     """
     As we do not want users to save their 10MB DSLR Picutres on our Disk, we compress them on save.
     """
+
     def save(self, *args, **kwargs):
         if self.avatar:
             img = Img.open(io.StringIO.StringIO(self.avatar.read()))
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+            if img.mode != "RGB":
+                img = img.convert("RGB")
 
             new_width = 500
             img.thumbnail((new_width, new_width * self.image.height / self.image.width), Img.ANTIALIAS)
 
             output = io.StringIO.StringIO()
-            img.save(output, format='JPEG', quality=70)
+            img.save(output, format="JPEG", quality=70)
             output.seek(0)
-            self.image = InMemoryUploadedFile(output, 'ImageField', "{}.jpg".format(self.image.name.split('.')[0]),
-                                              'image/jpeg', output.len, None)
+            self.image = InMemoryUploadedFile(
+                output, "ImageField", "{}.jpg".format(self.image.name.split(".")[0]), "image/jpeg", output.len, None
+            )
         super().save(*args, **kwargs)

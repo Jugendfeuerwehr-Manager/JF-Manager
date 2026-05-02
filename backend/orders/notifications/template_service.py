@@ -28,26 +28,26 @@ class TemplateRenderer(BaseNotificationService):
 
     CACHE_TIMEOUT = 3600  # 1 hour
     DEFAULT_TEMPLATES = {
-        'order_created': {
-            'subject': 'Neue Bestellung #{order.pk} für {member_name}',
-            'template': 'orders/emails/order_created.html'
+        "order_created": {
+            "subject": "Neue Bestellung #{order.pk} für {member_name}",
+            "template": "orders/emails/order_created.html",
         },
-        'status_update': {
-            'subject': 'Status-Update: {item_name} für {member_name}',
-            'template': 'orders/emails/status_update.html'
+        "status_update": {
+            "subject": "Status-Update: {item_name} für {member_name}",
+            "template": "orders/emails/status_update.html",
         },
-        'bulk_update': {
-            'subject': 'Bulk Status-Update für Bestellung #{order.pk}',
-            'template': 'orders/emails/bulk_status_update.html'
+        "bulk_update": {
+            "subject": "Bulk Status-Update für Bestellung #{order.pk}",
+            "template": "orders/emails/bulk_status_update.html",
         },
-        'pending_reminder': {
-            'subject': 'Erinnerung: Offene Bestellartikel in Bestellung #{order.pk}',
-            'template': 'orders/emails/pending_reminder.html'
+        "pending_reminder": {
+            "subject": "Erinnerung: Offene Bestellartikel in Bestellung #{order.pk}",
+            "template": "orders/emails/pending_reminder.html",
         },
-        'order_summary': {
-            'subject': 'Bestellübersicht JF-Manager - {order_count} Bestellungen ({total_items} Artikel)',
-            'template': 'orders/emails/order_summary.html'
-        }
+        "order_summary": {
+            "subject": "Bestellübersicht JF-Manager - {order_count} Bestellungen ({total_items} Artikel)",
+            "template": "orders/emails/order_summary.html",
+        },
     }
 
     @classmethod
@@ -66,10 +66,7 @@ class TemplateRenderer(BaseNotificationService):
 
         if template is None:
             try:
-                template = EmailTemplate.objects.get(
-                    template_type=template_type,
-                    is_active=True
-                )
+                template = EmailTemplate.objects.get(template_type=template_type, is_active=True)
                 cache.set(cache_key, template, cls.CACHE_TIMEOUT)
             except EmailTemplate.DoesNotExist:
                 # Cache the fact that no template exists
@@ -101,11 +98,7 @@ class TemplateRenderer(BaseNotificationService):
             raise TemplateNotFoundError(f"Failed to render template: {e}") from e
 
     @classmethod
-    def render_email_content(
-        cls,
-        template_type: str,
-        context: dict[str, Any]
-    ) -> tuple[str, str, str]:
+    def render_email_content(cls, template_type: str, context: dict[str, Any]) -> tuple[str, str, str]:
         """
         Render complete email content (subject, HTML, plain text).
 
@@ -128,11 +121,7 @@ class TemplateRenderer(BaseNotificationService):
             return cls._render_default_template(template_type, context)
 
     @classmethod
-    def _render_custom_template(
-        cls,
-        email_template: EmailTemplate,
-        context: dict[str, Any]
-    ) -> tuple[str, str, str]:
+    def _render_custom_template(cls, email_template: EmailTemplate, context: dict[str, Any]) -> tuple[str, str, str]:
         """
         Render custom email template from database.
 
@@ -160,11 +149,7 @@ class TemplateRenderer(BaseNotificationService):
             raise TemplateNotFoundError(f"Failed to render custom template: {e}") from e
 
     @classmethod
-    def _render_default_template(
-        cls,
-        template_type: str,
-        context: dict[str, Any]
-    ) -> tuple[str, str, str]:
+    def _render_default_template(cls, template_type: str, context: dict[str, Any]) -> tuple[str, str, str]:
         """
         Render default email template from files.
 
@@ -185,11 +170,11 @@ class TemplateRenderer(BaseNotificationService):
 
         try:
             # Render subject with context substitution
-            subject_template = default_config['subject']
+            subject_template = default_config["subject"]
             subject = cls._render_subject_template(subject_template, context)
 
             # Render HTML template
-            html_message = render_to_string(default_config['template'], context)
+            html_message = render_to_string(default_config["template"], context)
             plain_message = strip_tags(html_message)
 
             return subject, html_message, plain_message
@@ -213,27 +198,29 @@ class TemplateRenderer(BaseNotificationService):
         # Extract commonly used variables for subject templates
         replacements = {}
 
-        if 'order' in context:
-            replacements['order.pk'] = str(context['order'].pk)
+        if "order" in context:
+            replacements["order.pk"] = str(context["order"].pk)
 
-        if 'member' in context:
-            member = context['member']
-            replacements['member_name'] = member.get_full_name() if hasattr(member, 'get_full_name') else str(member)
+        if "member" in context:
+            member = context["member"]
+            replacements["member_name"] = member.get_full_name() if hasattr(member, "get_full_name") else str(member)
 
-        if 'order_item' in context:
-            item = context['order_item']
-            replacements['item_name'] = item.item.name if hasattr(item, 'item') else str(item)
+        if "order_item" in context:
+            item = context["order_item"]
+            replacements["item_name"] = item.item.name if hasattr(item, "item") else str(item)
 
-        if 'orders' in context:
-            replacements['order_count'] = str(context['orders'].count() if hasattr(context['orders'], 'count') else len(context['orders']))
+        if "orders" in context:
+            replacements["order_count"] = str(
+                context["orders"].count() if hasattr(context["orders"], "count") else len(context["orders"])
+            )
 
-        if 'total_items' in context:
-            replacements['total_items'] = str(context['total_items'])
+        if "total_items" in context:
+            replacements["total_items"] = str(context["total_items"])
 
         # Simple template variable replacement
         result = subject_template
         for key, value in replacements.items():
-            result = result.replace(f'{{{key}}}', value)
+            result = result.replace(f"{{{key}}}", value)
 
         return result
 

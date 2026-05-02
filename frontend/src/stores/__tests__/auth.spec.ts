@@ -14,6 +14,13 @@ vi.mock('@/router', () => ({
     push: vi.fn()
   }
 }))
+vi.mock('@/stores/departments', () => ({
+  useDepartmentsStore: () => ({
+    fetchDepartments: vi.fn().mockResolvedValue(undefined),
+    clearDepartments: vi.fn(),
+    departments: [],
+  })
+}))
 
 // Helper to create mock Axios response
 function createMockAxiosResponse<T>(data: T): AxiosResponse<T> {
@@ -51,6 +58,9 @@ function createMockUser(overrides: Partial<UserInfo> = {}): UserInfo {
     dsgvo_external: false,
     groups: [],
     permissions: [],
+    department_roles: [],
+    has_org_wide_access: false,
+    favorite_department: null,
     ...overrides
   }
 }

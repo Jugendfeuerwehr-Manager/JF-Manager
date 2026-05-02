@@ -7,37 +7,27 @@ from .order_status import OrderStatus
 
 class OrderItemStatusHistory(models.Model):
     """History of status changes for order items"""
+
     order_item = models.ForeignKey(
-        'OrderItem',
-        on_delete=models.CASCADE,
-        related_name='status_history',
-        verbose_name="Bestellartikel"
+        "OrderItem", on_delete=models.CASCADE, related_name="status_history", verbose_name="Bestellartikel"
     )
     from_status = models.ForeignKey(
         OrderStatus,
         on_delete=models.PROTECT,
-        related_name='status_history_from',
+        related_name="status_history_from",
         null=True,
         blank=True,
-        verbose_name="Von Status"
+        verbose_name="Von Status",
     )
     to_status = models.ForeignKey(
-        OrderStatus,
-        on_delete=models.PROTECT,
-        related_name='status_history_to',
-        verbose_name="Zu Status"
+        OrderStatus, on_delete=models.PROTECT, related_name="status_history_to", verbose_name="Zu Status"
     )
-    changed_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        verbose_name="Geändert von"
-    )
+    changed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name="Geändert von")
     changed_at = models.DateTimeField(auto_now_add=True, verbose_name="Geändert am")
     notes = models.TextField(blank=True, verbose_name="Bemerkungen")
 
     class Meta:
-        ordering = ['-changed_at']
+        ordering = ["-changed_at"]
         verbose_name = "Status-Änderung"
         verbose_name_plural = "Status-Änderungen"
 

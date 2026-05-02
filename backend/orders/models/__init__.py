@@ -10,12 +10,12 @@ from .orderable_item import OrderableItem
 
 # Make all models available at the package level
 __all__ = [
-    'EmailTemplate',
-    'NotificationLog',
-    'NotificationPreference',
-    'Order',
-    'OrderItem',
-    'OrderItemStatusHistory',
-    'OrderStatus',
-    'OrderableItem',
+    "EmailTemplate",
+    "NotificationLog",
+    "NotificationPreference",
+    "Order",
+    "OrderItem",
+    "OrderItemStatusHistory",
+    "OrderStatus",
+    "OrderableItem",
 ]

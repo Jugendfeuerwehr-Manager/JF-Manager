@@ -82,9 +82,18 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "username", "email", "first_name", "last_name", "full_name",
-            "is_staff", "is_active", "is_superuser",
-            "date_joined", "last_login", "groups",
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "is_staff",
+            "is_active",
+            "is_superuser",
+            "date_joined",
+            "last_login",
+            "groups",
         ]
 
 
@@ -98,13 +107,28 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "username", "email", "first_name", "last_name", "full_name",
-            "phone", "mobile_phone", "street", "zip_code", "city",
-            "is_staff", "is_active", "is_superuser",
-            "dsgvo_internal", "dsgvo_external",
-            "email_signature", "theme_mode",
-            "date_joined", "last_login",
-            "groups", "permissions",
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "phone",
+            "mobile_phone",
+            "street",
+            "zip_code",
+            "city",
+            "is_staff",
+            "is_active",
+            "is_superuser",
+            "dsgvo_internal",
+            "dsgvo_external",
+            "email_signature",
+            "theme_mode",
+            "date_joined",
+            "last_login",
+            "groups",
+            "permissions",
         ]
         read_only_fields = ["id", "date_joined", "last_login"]
 
@@ -130,12 +154,25 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "username", "email", "first_name", "last_name",
-            "phone", "mobile_phone", "street", "zip_code", "city",
-            "is_staff", "is_active", "is_superuser",
-            "dsgvo_internal", "dsgvo_external",
-            "email_signature", "theme_mode",
-            "password", "group_ids",
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "mobile_phone",
+            "street",
+            "zip_code",
+            "city",
+            "is_staff",
+            "is_active",
+            "is_superuser",
+            "dsgvo_internal",
+            "dsgvo_external",
+            "email_signature",
+            "theme_mode",
+            "password",
+            "group_ids",
         ]
 
     def validate_password(self, value):
@@ -149,12 +186,14 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         request = self.context.get("request")
-        if request and self.instance and (request.user == self.instance
-                and request.user.is_superuser
-                and data.get("is_superuser") is False):
-            raise serializers.ValidationError({
-                "is_superuser": "Sie koennen Ihre eigene Superuser-Berechtigung nicht entfernen."
-            })
+        if (
+            request
+            and self.instance
+            and (request.user == self.instance and request.user.is_superuser and data.get("is_superuser") is False)
+        ):
+            raise serializers.ValidationError(
+                {"is_superuser": "Sie koennen Ihre eigene Superuser-Berechtigung nicht entfernen."}
+            )
         return data
 
     def create(self, validated_data):

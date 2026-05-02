@@ -177,6 +177,20 @@
               </div>
 
               <div class="field col-12">
+                <label for="departments">Abteilungen</label>
+                <MultiSelect
+                  id="departments"
+                  v-model="formData.departments"
+                  :options="departmentOptions"
+                  option-label="label"
+                  option-value="value"
+                  placeholder="Abteilungen auswählen"
+                  display="chip"
+                  :loading="departmentsStore.loading"
+                />
+              </div>
+
+              <div class="field col-12">
                 <label for="notes">Notizen</label>
                 <Textarea 
                   id="notes" 
@@ -250,12 +264,14 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
+import { useDepartmentsStore } from '@/stores/departments'
 import Card from 'primevue/card'
 import Panel from 'primevue/panel'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
+import MultiSelect from 'primevue/multiselect'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
 import SelectButton from 'primevue/selectbutton'
@@ -268,6 +284,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const membersStore = useMembersStore()
+const departmentsStore = useDepartmentsStore()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -299,7 +316,8 @@ const formData = reactive({
   status: null as number | null,
   group: null as number | null,
   storage_location: null as number | null,
-  avatar_url: null as string | null
+  avatar_url: null as string | null,
+  departments: [] as number[],
 })
 
 const errors = reactive({
@@ -309,12 +327,16 @@ const errors = reactive({
 
 const statusOptions = computed(() => membersStore.statusOptions)
 const groupOptions = computed(() => membersStore.groupOptions)
+const departmentOptions = computed(() =>
+  departmentsStore.departments.map((d) => ({ label: `${d.name} (${d.code})`, value: d.id })),
+)
 
 onMounted(async () => {
-  // Load statuses and groups
+  // Load statuses, groups and departments
   await Promise.all([
     membersStore.fetchStatuses(),
-    membersStore.fetchGroups()
+    membersStore.fetchGroups(),
+    departmentsStore.departments.length === 0 ? departmentsStore.fetchDepartments() : Promise.resolve(),
   ])
 
   // If editing, load member data
@@ -340,8 +362,15 @@ onMounted(async () => {
         status: member.status?.id || null,
         group: member.group?.id || null,
         storage_location: member.storage_location,
-        avatar_url: member.avatar_url
+        avatar_url: member.avatar_url,
+        departments: member.department_ids ?? [],
       })
+
+      const groupStillAvailable =
+        formData.group === null || membersStore.groups.some((group) => group.id === formData.group)
+      if (!groupStillAvailable) {
+        formData.group = null
+      }
     } catch {
       toast.add({
         severity: 'error',
@@ -438,7 +467,12 @@ async function handleSubmit() {
     if (formData.status !== null) formDataToSend.append('status', String(formData.status))
     if (formData.group !== null) formDataToSend.append('group', String(formData.group))
     if (formData.storage_location !== null) formDataToSend.append('storage_location', String(formData.storage_location))
-    
+
+    // M2M departments — append each ID as a separate entry
+    for (const deptId of formData.departments) {
+      formDataToSend.append('departments', String(deptId))
+    }
+
     if (avatarFile.value) {
       formDataToSend.append('avatar', avatarFile.value)
     }

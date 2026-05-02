@@ -297,6 +297,36 @@ async function downloadPdf() {
           const blockContent = await htmlToPdfContent(block.content)
           content.push(...blockContent)
         }
+
+        // ── Attached printable documents ──────────────────────────────────
+        if (block.attachments && block.attachments.length) {
+          const printableExts = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.odp', '.ods']
+          const printableDocs = block.attachments.filter((att) => {
+            if (!att.file_url) return false
+            const lower = att.name.toLowerCase()
+            return printableExts.some((ext) => lower.endsWith(ext))
+          })
+          if (printableDocs.length) {
+            content.push({
+              text: 'Anhänge:',
+              fontSize: 9,
+              bold: true,
+              color: '#64748b',
+              margin: [0, 4, 0, 2],
+            } as unknown as Content)
+            content.push({
+              ul: printableDocs.map((att) => ({
+                text: att.name,
+                color: '#2563eb',
+                decoration: 'underline',
+                fontSize: 9,
+                // link only works for absolute URLs in pdfmake
+                link: att.file_url ?? undefined,
+              })),
+              margin: [8, 0, 0, 8],
+            } as unknown as Content)
+          }
+        }
       }
     }
 

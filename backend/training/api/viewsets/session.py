@@ -2,6 +2,7 @@
 
 import datetime
 
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -9,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from departments.mixins import DepartmentScopeViewSetMixin
 from training.api.filters import TrainingSessionFilter
 from training.api.permissions import CanManageTraining
 from training.api.serializers import (
@@ -20,7 +22,7 @@ from training.api.serializers import (
 from training.models import TrainingSession
 
 
-class TrainingSessionViewSet(viewsets.ModelViewSet):
+class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     """
     CRUD for training sessions + handout + generate_series actions.
     """
@@ -31,13 +33,91 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
     filterset_class = TrainingSessionFilter
     ordering_fields = ["date", "start_time", "title"]
     ordering = ["date", "start_time"]
+    queryset = TrainingSession.objects.all()  # required by mixin; overridden in get_queryset
 
     def get_queryset(self):
-        return TrainingSession.objects.select_related("created_by", "series_parent").prefetch_related(
+        qs = TrainingSession.objects.select_related(
+            "created_by",
+            "series_parent",
+            "department",
+            "servicebook_entry",
+        ).prefetch_related(
             "groups",
             "blocks__groups",
             "blocks__library_block",
         )
+        self.queryset = qs
+        return super().get_queryset()
+
+    def _to_aware_datetime(self, date_value, time_value):
+        dt = datetime.datetime.combine(date_value, time_value)
+        if timezone.is_naive(dt):
+            return timezone.make_aware(dt, timezone.get_current_timezone())
+        return dt
+
+    def _sync_linked_servicebook_entry(self, session):
+        from servicebook.models import Service
+
+        start = self._to_aware_datetime(session.date, session.start_time)
+        end = self._to_aware_datetime(session.date, session.end_time)
+
+        service, _ = Service.objects.get_or_create(
+            training_session=session,
+            defaults={
+                "start": start,
+                "end": end,
+                "topic": session.title,
+                "place": session.location,
+                "description": session.description,
+                "department": session.department,
+            },
+        )
+        service.start = start
+        service.end = end
+        service.topic = session.title
+        service.place = session.location
+        service.description = session.description
+        service.department = session.department
+        service.save(
+            update_fields=[
+                "start",
+                "end",
+                "topic",
+                "place",
+                "description",
+                "department",
+            ]
+        )
+
+    def perform_create(self, serializer):
+        session = serializer.save()
+        self._sync_linked_servicebook_entry(session)
+
+    def perform_update(self, serializer):
+        session = serializer.save()
+        self._sync_linked_servicebook_entry(session)
+
+    def destroy(self, request, *args, **kwargs):
+        from servicebook.models import Service
+
+        session = self.get_object()
+        linked_service = Service.objects.filter(training_session=session).first()
+
+        if linked_service is not None:
+            should_delete_linked_service = request.query_params.get("delete_linked_service", "").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
+            is_future_service = linked_service.start >= timezone.now()
+
+            if is_future_service and should_delete_linked_service:
+                linked_service.delete()
+            else:
+                linked_service.training_session = None
+                linked_service.save(update_fields=["training_session"])
+
+        return super().destroy(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -130,9 +210,11 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
                 location=parent.location,
                 notes=parent.notes,
                 series_parent=parent,
+                department=parent.department,
                 created_by=request.user if request.user.is_authenticated else None,
             )
             child.groups.set(parent.groups.all())
+            self._sync_linked_servicebook_entry(child)
             created.append(child.pk)
 
         return Response(

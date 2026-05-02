@@ -16,7 +16,7 @@ class CanManageOrders(permissions.BasePermission):
             return request.user and request.user.is_authenticated
 
         # Write permissions require specific permission
-        return request.user and request.user.has_perm('orders.can_manage_orders')
+        return request.user and request.user.has_perm("orders.can_manage_orders")
 
 
 class CanChangeOrderStatus(permissions.BasePermission):
@@ -27,8 +27,8 @@ class CanChangeOrderStatus(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.user and request.user.is_authenticated:
             # Check if action is related to status change
-            if view.action in ['update_status', 'bulk_update_status']:
-                return request.user.has_perm('orders.can_change_order_status')
+            if view.action in ["update_status", "bulk_update_status"]:
+                return request.user.has_perm("orders.can_change_order_status")
             return True
         return False
 
@@ -46,10 +46,7 @@ class IsOrderOwnerOrStaff(permissions.BasePermission):
         # Order owner can read
         if request.method in permissions.SAFE_METHODS:
             # Check if user is the one who ordered or is related to the member
-            return (
-                obj.ordered_by == request.user or
-                obj.member.user == request.user
-            )
+            return obj.ordered_by == request.user or obj.member.user == request.user
 
         # Write operations require staff or manage_orders permission
-        return request.user and request.user.has_perm('orders.can_manage_orders')
+        return request.user and request.user.has_perm("orders.can_manage_orders")

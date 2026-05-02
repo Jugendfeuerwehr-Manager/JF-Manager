@@ -12,4 +12,4 @@ For new development, import directly from the notifications package:
 from .notifications import OrderNotificationService, OrderWorkflowService
 
 # Maintain the same interface for existing code
-__all__ = ['OrderNotificationService', 'OrderWorkflowService']
+__all__ = ["OrderNotificationService", "OrderWorkflowService"]

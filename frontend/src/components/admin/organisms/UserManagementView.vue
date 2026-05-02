@@ -21,6 +21,14 @@
         </template>
         <GroupsPanel />
       </TabPanel>
+
+      <TabPanel value="2">
+        <template #header>
+          <i class="pi pi-building mr-2" />
+          <span>Abteilungen</span>
+        </template>
+        <DepartmentsPanel />
+      </TabPanel>
     </TabView>
 
   </div>
@@ -31,6 +39,7 @@ import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import UsersPanel from '@/components/admin/organisms/UsersPanel.vue'
 import GroupsPanel from '@/components/admin/organisms/GroupsPanel.vue'
+import DepartmentsPanel from '@/components/admin/organisms/DepartmentsPanel.vue'
 </script>
 
 <style scoped>

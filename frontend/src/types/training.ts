@@ -12,6 +12,16 @@ export interface TrainingMedia {
   created_at: string
 }
 
+export interface BlockAttachment {
+  id: number
+  name: string
+  description: string
+  file_url: string | null
+  mime_type: string | null
+  file_size: number | null
+  uploaded_at: string
+}
+
 // ─── Library Block Category & Tag ────────────────────────────────────────────
 
 export interface LibraryBlockCategory {
@@ -137,6 +147,7 @@ export interface TrainingBlock {
   created_at: string
   updated_at: string
   media: TrainingMedia[]
+  attachments: BlockAttachment[]
 }
 
 export interface TrainingBlockCreate {
@@ -178,6 +189,9 @@ export interface TrainingSessionList {
   group_count: number
   groups: GroupMini[]
   block_count: number
+  department: number | null
+  linked_service_id: number | null
+  linked_service_start: string | null
   series_parent: number | null
   recurrence_rule: RecurrenceRule | null
 }
@@ -194,6 +208,9 @@ export interface TrainingSessionDetail {
   groups: GroupMini[]
   group_ids?: number[]
   blocks: TrainingBlock[]
+  department: number | null
+  linked_service_id: number | null
+  linked_service_start: string | null
   series_parent: number | null
   recurrence_rule: RecurrenceRule | null
   created_by: number | null
@@ -211,6 +228,7 @@ export interface TrainingSessionCreate {
   location?: string
   notes?: string
   group_ids?: number[]
+  department?: number | null
   recurrence_rule?: RecurrenceRule | null
 }
 

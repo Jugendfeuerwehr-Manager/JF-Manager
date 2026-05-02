@@ -37,19 +37,28 @@
       <div v-else class="session-list-items">
         <div
           v-for="session in filteredListSessions"
-          :key="session.id"
+          :key="session.occurrence_key"
           class="list-session-item"
           @click="openSession(session)"
         >
           <div class="list-item-date">
-            <span class="list-date-day">{{ formatShortDate(session.date) }}</span>
+            <span class="list-date-day">{{ formatShortDate(session.occurrence_date) }}</span>
             <span class="list-date-time">{{ session.start_time ?? '' }}</span>
           </div>
           <div class="list-item-info">
-            <strong>{{ session.title }}</strong>
+            <strong class="session-title-with-icon">
+              <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" title="Terminserie" />
+              {{ session.title }}
+            </strong>
+            <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
+              {{ departmentMeta(session.id).label }}
+            </span>
             <span v-if="session.location" class="text-color-secondary text-sm">{{ session.location }}</span>
           </div>
-          <Button icon="pi pi-arrow-right" text size="small" @click.stop="openSession(session)" />
+          <div class="list-item-actions">
+            <Button icon="pi pi-trash" text size="small" severity="danger" @click.stop="confirmDeleteSession(session)" />
+            <Button icon="pi pi-arrow-right" text size="small" @click.stop="openSession(session)" />
+          </div>
         </div>
       </div>
     </div>
@@ -75,11 +84,13 @@
         <div class="cell-sessions">
           <div
             v-for="session in cell.sessions.slice(0, 3)"
-            :key="session.id"
+            :key="session.occurrence_key"
             class="session-pill"
+            :style="departmentPillStyle(session.id)"
             :title="session.title"
             @click.stop="openSession(session)"
           >
+            <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" />
             {{ session.title }}
           </div>
           <div v-if="cell.sessions.length > 3" class="more-pill">
@@ -113,17 +124,24 @@
       <div class="day-sessions">
         <div
           v-for="session in selectedDaySessions"
-          :key="session.id"
+          :key="session.occurrence_key"
           class="day-session-item"
           @click="openSession(session)"
         >
           <div class="session-time">{{ session.start_time ?? '' }}</div>
           <div class="session-info">
-            <strong>{{ session.title }}</strong>
+            <strong class="session-title-with-icon">
+              <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" title="Terminserie" />
+              {{ session.title }}
+            </strong>
+            <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
+              {{ departmentMeta(session.id).label }}
+            </span>
             <span v-if="session.location" class="text-color-secondary text-sm">{{ session.location }}</span>
           </div>
           <div class="session-actions">
             <Button icon="pi pi-calendar" text size="small" title="Planer" @click.stop="goToPlanner(session.id)" />
+            <Button icon="pi pi-trash" text size="small" severity="danger" title="Löschen" @click.stop="confirmDeleteSession(session)" />
           </div>
         </div>
       </div>
@@ -137,16 +155,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingStore } from '@/stores/training'
-import type { TrainingSessionList } from '@/types/training'
+import { useDepartmentsStore } from '@/stores/departments'
+import {
+  expandTrainingSessionsForRange,
+  type TrainingCalendarSession,
+} from '../utils/recurrence'
 
 const router = useRouter()
+const confirm = useConfirm()
 const trainingStore = useTrainingStore()
+const departmentsStore = useDepartmentsStore()
 
 const today = new Date()
 const currentYear = ref(today.getFullYear())
@@ -163,9 +188,8 @@ const listSearch = ref('')
 
 const filteredListSessions = computed(() => {
   const q = listSearch.value.toLowerCase().trim()
-  const sorted = [...sessions.value].sort((a, b) => a.date.localeCompare(b.date))
-  if (!q) return sorted
-  return sorted.filter(
+  if (!q) return displaySessions.value
+  return displaySessions.value.filter(
     (s) => s.title.toLowerCase().includes(q) || s.location?.toLowerCase().includes(q),
   )
 })
@@ -193,11 +217,30 @@ interface CalendarCell {
   dateStr: string
   inMonth: boolean
   isToday: boolean
-  sessions: TrainingSessionList[]
+  sessions: TrainingCalendarSession[]
 }
 
 const loading = computed(() => trainingStore.loading)
 const sessions = computed(() => trainingStore.sessions)
+
+const visibleDateRange = computed(() => {
+  const from = new Date(currentYear.value, currentMonth.value - 1, 1)
+  const to = new Date(currentYear.value, currentMonth.value + 2, 0)
+  return {
+    from,
+    to,
+    fromIso: toIsoDate(from),
+    toIso: toIsoDate(to),
+  }
+})
+
+const displaySessions = computed(() =>
+  expandTrainingSessionsForRange(
+    sessions.value,
+    visibleDateRange.value.fromIso,
+    visibleDateRange.value.toIso,
+  ),
+)
 
 const monthLabel = computed(() => {
   return new Date(currentYear.value, currentMonth.value, 1).toLocaleDateString('de-DE', {
@@ -246,13 +289,13 @@ const calendarCells = computed<CalendarCell[]>(() => {
 })
 
 function makeCell(date: Date, inMonth: boolean): CalendarCell {
-  const dateStr = date.toISOString().split('T')[0] ?? ''
+  const dateStr = toIsoDate(date)
   const isToday =
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate()
 
-  const cellSessions = sessions.value.filter((s) => s.date === dateStr)
+  const cellSessions = displaySessions.value.filter((s) => s.occurrence_date === dateStr)
 
   return {
     key: dateStr,
@@ -266,13 +309,20 @@ function makeCell(date: Date, inMonth: boolean): CalendarCell {
 }
 
 async function loadSessions() {
-  const from = new Date(currentYear.value, currentMonth.value - 1, 1)
-  const to = new Date(currentYear.value, currentMonth.value + 2, 0)
+  const from = visibleDateRange.value.fromIso
+  const to = visibleDateRange.value.toIso
   await trainingStore.fetchSessions({
-    date_from: from.toISOString().split('T')[0] ?? '',
-    date_to: to.toISOString().split('T')[0] ?? '',
+    date_from: from,
+    date_to: to,
     limit: 200,
   })
+}
+
+function toIsoDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function prevMonth() {
@@ -304,8 +354,53 @@ function openDayDetail(cell: CalendarCell) {
   showDayDetail.value = true
 }
 
-function openSession(session: TrainingSessionList) {
+function openSession(session: TrainingCalendarSession) {
   router.push(`/training/sessions/${session.id}/plan`)
+}
+
+function hasFutureLinkedService(session: TrainingCalendarSession): boolean {
+  if (!session.linked_service_id || !session.linked_service_start) {
+    return false
+  }
+  return new Date(session.linked_service_start) >= new Date()
+}
+
+async function runDeleteSession(
+  session: TrainingCalendarSession,
+  deleteLinkedService: boolean,
+) {
+  await trainingStore.deleteSession(session.id, { deleteLinkedService })
+  if (selectedCell.value) {
+    selectedCell.value = calendarCells.value.find((c) => c.key === selectedCell.value?.key) ?? null
+  }
+  await loadSessions()
+}
+
+function confirmDeleteSession(session: TrainingCalendarSession) {
+  if (hasFutureLinkedService(session)) {
+    confirm.require({
+      header: 'Verknüpften Dienst löschen?',
+      message:
+        'Dieser zukünftige Termin ist mit einem Dienstbuch-Eintrag verknüpft. Mit "Mit Dienstbuch löschen" werden beide Einträge gelöscht. Mit "Nur Übung löschen" bleibt der Dienstbuch-Eintrag erhalten und wird nur entkoppelt.',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Mit Dienstbuch löschen',
+      rejectLabel: 'Nur Übung löschen',
+      acceptClass: 'p-button-danger',
+      accept: () => runDeleteSession(session, true),
+      reject: () => runDeleteSession(session, false),
+    })
+    return
+  }
+
+  confirm.require({
+    header: 'Übung löschen?',
+    message: 'Soll diese Übung wirklich gelöscht werden?',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Löschen',
+    rejectLabel: 'Abbrechen',
+    acceptClass: 'p-button-danger',
+    accept: () => runDeleteSession(session, false),
+  })
 }
 
 function goToPlanner(sessionId: number) {
@@ -318,12 +413,53 @@ function onSessionCreated(_sessionId: number) {
   loadSessions()
 }
 
+function departmentMeta(sessionId: number): { label: string | null; color: string | null } {
+  const source = sessions.value.find((s) => s.id === sessionId)
+  if (!source || source.department === null) {
+    return { label: null, color: null }
+  }
+
+  const dept = departmentsStore.departments.find((d) => d.id === source.department)
+  if (!dept) {
+    return { label: 'Abteilung', color: '#64748B' }
+  }
+
+  return { label: dept.code || dept.name, color: dept.color || '#64748B' }
+}
+
+function departmentPillStyle(sessionId: number): Record<string, string> {
+  const meta = departmentMeta(sessionId)
+  if (!meta.color) return {}
+  return { borderLeft: `4px solid ${meta.color}` }
+}
+
+function departmentChipStyle(sessionId: number): Record<string, string> {
+  const meta = departmentMeta(sessionId)
+  const color = meta.color || '#64748B'
+  return {
+    borderColor: color,
+    color,
+    backgroundColor: `${color}1A`,
+  }
+}
+
 watch([currentYear, currentMonth], loadSessions)
 onMounted(loadSessions)
 </script>
 
 <style scoped>
 .training-calendar { display: flex; flex-direction: column; gap: 1rem; }
+
+.dept-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+}
 
 .cal-nav {
   display: flex;
@@ -422,6 +558,17 @@ onMounted(loadSessions)
 }
 .session-pill:hover { background: var(--primary-200, #bfdbfe); }
 
+.session-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.recurrence-icon {
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
 .more-pill {
   font-size: 0.7rem;
   color: var(--text-color-secondary);
@@ -480,5 +627,6 @@ onMounted(loadSessions)
 .list-date-day { font-size: 0.875rem; font-weight: 600; }
 .list-date-time { font-size: 0.8rem; color: var(--text-color-secondary); }
 .list-item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.list-item-actions { display: flex; align-items: center; gap: 0.25rem; }
 .empty-state { text-align: center; color: var(--text-color-secondary); padding: 2rem; }
 </style>

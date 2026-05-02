@@ -99,7 +99,7 @@ onMounted(async () => {
 // Computed properties for dropdowns
 const specialTaskTypeOptions = computed(() => 
   qualificationsStore.specialTaskTypes.map(type => ({
-    label: type.name,
+    label: `${type.name} [G]`,
     value: type.id
   }))
 )

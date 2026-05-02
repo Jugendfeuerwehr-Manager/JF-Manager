@@ -12,20 +12,18 @@ class Select2Widget(forms.Select):
 
     def build_attrs(self, base_attrs, extra_attrs=None):
         attrs = super().build_attrs(base_attrs, extra_attrs)
-        attrs.setdefault('class', '')
-        attrs['class'] += ' select2-widget'
-        attrs['data-placeholder'] = self.placeholder
+        attrs.setdefault("class", "")
+        attrs["class"] += " select2-widget"
+        attrs["data-placeholder"] = self.placeholder
         if self.url:
-            attrs['data-ajax-url'] = self.url
+            attrs["data-ajax-url"] = self.url
         return attrs
 
     class Media:
-        css = {
-            'all': ('https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',)
-        }
+        css = {"all": ("https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css",)}
         js = (
-            'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
-            'js/select2-init.js',
+            "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js",
+            "js/select2-init.js",
         )
 
 
@@ -36,8 +34,8 @@ class UserSelect2Widget(Select2Widget):
         super().__init__(
             attrs=attrs,
             choices=choices,
-            url=reverse_lazy('qualifications:user_autocomplete'),
-            placeholder="Benutzer auswählen..."
+            url=reverse_lazy("qualifications:user_autocomplete"),
+            placeholder="Benutzer auswählen...",
         )
 
 
@@ -48,6 +46,6 @@ class MemberSelect2Widget(Select2Widget):
         super().__init__(
             attrs=attrs,
             choices=choices,
-            url=reverse_lazy('qualifications:member_autocomplete'),
-            placeholder="Mitglied auswählen..."
+            url=reverse_lazy("qualifications:member_autocomplete"),
+            placeholder="Mitglied auswählen...",
         )

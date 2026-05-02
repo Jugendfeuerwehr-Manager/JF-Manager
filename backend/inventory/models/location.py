@@ -6,35 +6,42 @@ from members.models.member import Member
 
 class StorageLocation(models.Model):
     """Lagerort mit hierarchischer Struktur"""
-    name = models.CharField(max_length=200, verbose_name='Name')
+
+    name = models.CharField(max_length=200, verbose_name="Name")
     parent = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='children',
-        verbose_name='Übergeordneter Lagerort',
-        help_text='Übergeordneter Lagerort für hierarchische Struktur'
+        related_name="children",
+        verbose_name="Übergeordneter Lagerort",
+        help_text="Übergeordneter Lagerort für hierarchische Struktur",
     )
     is_member = models.BooleanField(
-        default=False,
-        verbose_name='Ist Mitglied',
-        help_text='Markiert diesen Ort als Mitglied-Lagerort'
+        default=False, verbose_name="Ist Mitglied", help_text="Markiert diesen Ort als Mitglied-Lagerort"
     )
     member = models.OneToOneField(
         Member,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='personal_storage_location',
-        verbose_name='Mitglied',
-        help_text='Verknüpftes Mitglied, falls is_member=True'
+        related_name="personal_storage_location",
+        verbose_name="Mitglied",
+        help_text="Verknüpftes Mitglied, falls is_member=True",
+    )
+    department = models.ForeignKey(
+        "departments.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Abteilung",
+        related_name="storage_locations",
     )
 
     class Meta:
-        verbose_name = 'Lagerort'
-        verbose_name_plural = 'Lagerorte'
-        ordering = ['name']
+        verbose_name = "Lagerort"
+        verbose_name_plural = "Lagerorte"
+        ordering = ["name"]
 
     def __str__(self):
         if self.is_member and self.member:
@@ -66,5 +73,5 @@ class StorageLocation(models.Model):
             current = self.parent
             while current:
                 if current == self:
-                    raise ValidationError('Ein Lagerort kann nicht sein eigener Übergeordneter sein.')
+                    raise ValidationError("Ein Lagerort kann nicht sein eigener Übergeordneter sein.")
                 current = current.parent

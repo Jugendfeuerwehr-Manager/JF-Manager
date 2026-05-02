@@ -23,4 +23,4 @@ class CanSendEmails(permissions.BasePermission):
             return True
 
         # Check for specific permission
-        return request.user.has_perm('members.can_send_member_emails')
+        return request.user.has_perm("members.can_send_member_emails")

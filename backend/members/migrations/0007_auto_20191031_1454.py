@@ -5,31 +5,30 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0006_auto_20191030_1250'),
+        ("members", "0006_auto_20191030_1250"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Event',
+            name="Event",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('notes', models.TextField(blank=True, default='', verbose_name='Bemerkungen')),
-                ('datetime', models.DateTimeField(verbose_name='Datum')),
-                ('members', models.ManyToManyField(blank=True, to='members.Member')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("notes", models.TextField(blank=True, default="", verbose_name="Bemerkungen")),
+                ("datetime", models.DateTimeField(verbose_name="Datum")),
+                ("members", models.ManyToManyField(blank=True, to="members.Member")),
             ],
         ),
         migrations.CreateModel(
-            name='EventType',
+            name="EventType",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(default='', max_length=200, verbose_name='Ereignistyp')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(default="", max_length=200, verbose_name="Ereignistyp")),
             ],
         ),
         migrations.AddField(
-            model_name='event',
-            name='type',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='members.EventType'),
+            model_name="event",
+            name="type",
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to="members.EventType"),
         ),
     ]

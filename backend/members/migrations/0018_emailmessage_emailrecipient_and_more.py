@@ -6,77 +6,155 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0017_alter_attachment_file'),
+        ("members", "0017_alter_attachment_file"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='EmailMessage',
+            name="EmailMessage",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Erstellt am')),
-                ('sent_at', models.DateTimeField(blank=True, null=True, verbose_name='Gesendet am')),
-                ('subject', models.CharField(max_length=500, verbose_name='Betreff')),
-                ('body_html', models.TextField(verbose_name='Nachricht (HTML)')),
-                ('body_text', models.TextField(blank=True, verbose_name='Nachricht (Text)')),
-                ('recipient_type', models.CharField(choices=[('all', 'Alle Mitglieder'), ('group', 'Gruppe'), ('individual', 'Einzelnes Mitglied')], max_length=20, verbose_name='Empfängertyp')),
-                ('status', models.CharField(choices=[('draft', 'Entwurf'), ('sending', 'Wird gesendet'), ('sent', 'Gesendet'), ('failed', 'Fehlgeschlagen'), ('partial', 'Teilweise gesendet')], default='draft', max_length=20, verbose_name='Status')),
-                ('total_recipients', models.IntegerField(default=0, verbose_name='Anzahl Empfänger')),
-                ('successful_sends', models.IntegerField(default=0, verbose_name='Erfolgreich gesendet')),
-                ('failed_sends', models.IntegerField(default=0, verbose_name='Fehlgeschlagen')),
-                ('error_message', models.TextField(blank=True, verbose_name='Fehlermeldung')),
-                ('recipient_group', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='members.group', verbose_name='Empfängergruppe')),
-                ('recipient_member', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='members.member', verbose_name='Empfängermitglied')),
-                ('sender', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sent_emails', to=settings.AUTH_USER_MODEL, verbose_name='Absender')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")),
+                ("sent_at", models.DateTimeField(blank=True, null=True, verbose_name="Gesendet am")),
+                ("subject", models.CharField(max_length=500, verbose_name="Betreff")),
+                ("body_html", models.TextField(verbose_name="Nachricht (HTML)")),
+                ("body_text", models.TextField(blank=True, verbose_name="Nachricht (Text)")),
+                (
+                    "recipient_type",
+                    models.CharField(
+                        choices=[("all", "Alle Mitglieder"), ("group", "Gruppe"), ("individual", "Einzelnes Mitglied")],
+                        max_length=20,
+                        verbose_name="Empfängertyp",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("draft", "Entwurf"),
+                            ("sending", "Wird gesendet"),
+                            ("sent", "Gesendet"),
+                            ("failed", "Fehlgeschlagen"),
+                            ("partial", "Teilweise gesendet"),
+                        ],
+                        default="draft",
+                        max_length=20,
+                        verbose_name="Status",
+                    ),
+                ),
+                ("total_recipients", models.IntegerField(default=0, verbose_name="Anzahl Empfänger")),
+                ("successful_sends", models.IntegerField(default=0, verbose_name="Erfolgreich gesendet")),
+                ("failed_sends", models.IntegerField(default=0, verbose_name="Fehlgeschlagen")),
+                ("error_message", models.TextField(blank=True, verbose_name="Fehlermeldung")),
+                (
+                    "recipient_group",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="members.group",
+                        verbose_name="Empfängergruppe",
+                    ),
+                ),
+                (
+                    "recipient_member",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="members.member",
+                        verbose_name="Empfängermitglied",
+                    ),
+                ),
+                (
+                    "sender",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="sent_emails",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Absender",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'E-Mail-Nachricht',
-                'verbose_name_plural': 'E-Mail-Nachrichten',
-                'ordering': ['-created_at'],
-                'permissions': [('can_send_member_emails', 'Can send emails to members')],
+                "verbose_name": "E-Mail-Nachricht",
+                "verbose_name_plural": "E-Mail-Nachrichten",
+                "ordering": ["-created_at"],
+                "permissions": [("can_send_member_emails", "Can send emails to members")],
             },
         ),
         migrations.CreateModel(
-            name='EmailRecipient',
+            name="EmailRecipient",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('email_address', models.EmailField(max_length=254, verbose_name='E-Mail-Adresse')),
-                ('recipient_name', models.CharField(max_length=400, verbose_name='Empfängername')),
-                ('personalized_body_html', models.TextField(blank=True, verbose_name='Personalisierte Nachricht (HTML)')),
-                ('personalized_body_text', models.TextField(blank=True, verbose_name='Personalisierte Nachricht (Text)')),
-                ('status', models.CharField(choices=[('pending', 'Ausstehend'), ('sent', 'Gesendet'), ('failed', 'Fehlgeschlagen')], default='pending', max_length=20, verbose_name='Status')),
-                ('sent_at', models.DateTimeField(blank=True, null=True, verbose_name='Gesendet am')),
-                ('error_message', models.TextField(blank=True, verbose_name='Fehlermeldung')),
-                ('email_message', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='recipients', to='members.emailmessage', verbose_name='E-Mail-Nachricht')),
-                ('member', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='members.member', verbose_name='Mitglied')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("email_address", models.EmailField(max_length=254, verbose_name="E-Mail-Adresse")),
+                ("recipient_name", models.CharField(max_length=400, verbose_name="Empfängername")),
+                (
+                    "personalized_body_html",
+                    models.TextField(blank=True, verbose_name="Personalisierte Nachricht (HTML)"),
+                ),
+                (
+                    "personalized_body_text",
+                    models.TextField(blank=True, verbose_name="Personalisierte Nachricht (Text)"),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("pending", "Ausstehend"), ("sent", "Gesendet"), ("failed", "Fehlgeschlagen")],
+                        default="pending",
+                        max_length=20,
+                        verbose_name="Status",
+                    ),
+                ),
+                ("sent_at", models.DateTimeField(blank=True, null=True, verbose_name="Gesendet am")),
+                ("error_message", models.TextField(blank=True, verbose_name="Fehlermeldung")),
+                (
+                    "email_message",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="recipients",
+                        to="members.emailmessage",
+                        verbose_name="E-Mail-Nachricht",
+                    ),
+                ),
+                (
+                    "member",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="members.member",
+                        verbose_name="Mitglied",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'E-Mail-Empfänger',
-                'verbose_name_plural': 'E-Mail-Empfänger',
-                'ordering': ['email_address'],
+                "verbose_name": "E-Mail-Empfänger",
+                "verbose_name_plural": "E-Mail-Empfänger",
+                "ordering": ["email_address"],
             },
         ),
         migrations.AddIndex(
-            model_name='emailmessage',
-            index=models.Index(fields=['-created_at'], name='members_ema_created_0956a9_idx'),
+            model_name="emailmessage",
+            index=models.Index(fields=["-created_at"], name="members_ema_created_0956a9_idx"),
         ),
         migrations.AddIndex(
-            model_name='emailmessage',
-            index=models.Index(fields=['sender', '-created_at'], name='members_ema_sender__b5f6f4_idx'),
+            model_name="emailmessage",
+            index=models.Index(fields=["sender", "-created_at"], name="members_ema_sender__b5f6f4_idx"),
         ),
         migrations.AddIndex(
-            model_name='emailmessage',
-            index=models.Index(fields=['status'], name='members_ema_status_495a75_idx'),
+            model_name="emailmessage",
+            index=models.Index(fields=["status"], name="members_ema_status_495a75_idx"),
         ),
         migrations.AddIndex(
-            model_name='emailrecipient',
-            index=models.Index(fields=['email_message', 'status'], name='members_ema_email_m_ae75ee_idx'),
+            model_name="emailrecipient",
+            index=models.Index(fields=["email_message", "status"], name="members_ema_email_m_ae75ee_idx"),
         ),
         migrations.AddIndex(
-            model_name='emailrecipient',
-            index=models.Index(fields=['member'], name='members_ema_member__d6299e_idx'),
+            model_name="emailrecipient",
+            index=models.Index(fields=["member"], name="members_ema_member__d6299e_idx"),
         ),
     ]

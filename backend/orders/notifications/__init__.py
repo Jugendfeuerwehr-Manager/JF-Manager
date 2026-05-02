@@ -32,11 +32,6 @@ from .logging_service import NotificationLogger
 from .template_service import TemplateRenderer
 from .workflow_service import OrderWorkflowService
 
-__all__ = [
-    'NotificationLogger',
-    'OrderNotificationService',
-    'OrderWorkflowService',
-    'TemplateRenderer'
-]
+__all__ = ["NotificationLogger", "OrderNotificationService", "OrderWorkflowService", "TemplateRenderer"]
 
-__version__ = '1.0.0'
+__version__ = "1.0.0"

@@ -8,13 +8,14 @@ export const useEventsStore = defineStore('events', () => {
   // State
   const events = ref<Event[]>([])
   const eventTypes = ref<EventType[]>([])
+  const eventTypesDepartmentContext = ref<number | null | undefined>(undefined)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   // Getters
   const eventTypeOptions = computed(() =>
     eventTypes.value.map(t => ({
-      label: t.name,
+      label: t.department === null ? `${t.name} (Global)` : t.name,
       value: t.id
     }))
   )
@@ -31,11 +32,17 @@ export const useEventsStore = defineStore('events', () => {
 
   // Actions
   async function fetchEventTypes() {
-    if (eventTypes.value.length > 0) return eventTypes.value
-    
+    const activeDepartmentRaw = localStorage.getItem('activeDepartmentId')
+    const activeDepartmentId = activeDepartmentRaw ? Number(activeDepartmentRaw) : null
+
+    if (eventTypes.value.length > 0 && eventTypesDepartmentContext.value === activeDepartmentId) {
+      return eventTypes.value
+    }
+
     try {
       const response = await eventTypesApi.list()
       eventTypes.value = response.data.results || []
+      eventTypesDepartmentContext.value = activeDepartmentId
       return eventTypes.value
     } catch (err) {
       error.value = getApiErrorMessage(err, 'Fehler beim Laden der Ereignistypen')
@@ -131,6 +138,8 @@ export const useEventsStore = defineStore('events', () => {
 
   function clearEvents() {
     events.value = []
+    eventTypes.value = []
+    eventTypesDepartmentContext.value = undefined
     error.value = null
   }
 

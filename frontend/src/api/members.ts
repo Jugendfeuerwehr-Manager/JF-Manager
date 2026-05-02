@@ -7,6 +7,7 @@ import type {
   Status,
   Group,
   Event,
+  EventTypeCreate,
   EventType,
   PaginatedResponse
 } from '@/types/api'
@@ -189,11 +190,11 @@ export const eventTypesApi = {
     return apiClient.get<EventType>(`/event-types/${id}/`)
   },
 
-  create(data: Omit<EventType, 'id'>) {
+  create(data: EventTypeCreate) {
     return apiClient.post<EventType>('/event-types/', data)
   },
 
-  update(id: number, data: Partial<Omit<EventType, 'id'>>) {
+  update(id: number, data: Partial<EventTypeCreate>) {
     return apiClient.patch<EventType>(`/event-types/${id}/`, data)
   },
 

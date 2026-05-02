@@ -5,15 +5,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0016_attachment'),
+        ("members", "0016_attachment"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='attachment',
-            name='file',
-            field=models.FileField(blank=True, help_text='Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF', null=True, upload_to=members.models.utils.get_attachment_file_path, verbose_name='Datei'),
+            model_name="attachment",
+            name="file",
+            field=models.FileField(
+                blank=True,
+                help_text="Zulässige Dateiformate: PDF, DOC, DOCX, JPG, PNG, GIF",
+                null=True,
+                upload_to=members.models.utils.get_attachment_file_path,
+                verbose_name="Datei",
+            ),
         ),
     ]

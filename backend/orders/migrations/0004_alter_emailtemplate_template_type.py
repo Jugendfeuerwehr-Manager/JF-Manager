@@ -4,15 +4,30 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('orders', '0003_add_neu_status'),
+        ("orders", "0003_add_neu_status"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='emailtemplate',
-            name='template_type',
-            field=models.CharField(choices=[('order_created', 'Bestellung erstellt'), ('status_update', 'Status geändert'), ('bulk_update', 'Massenänderung'), ('pending_reminder', 'Erinnerung'), ('daily_summary', 'Tägliche Zusammenfassung'), ('weekly_report', 'Wöchentlicher Bericht'), ('order_confirmed', 'Bestellung bestätigt (Legacy)'), ('order_shipped', 'Bestellung versandt (Legacy)'), ('order_cancelled', 'Bestellung storniert (Legacy)'), ('order_summary', 'Bestellübersicht (Legacy)')], max_length=20, unique=True, verbose_name='Typ'),
+            model_name="emailtemplate",
+            name="template_type",
+            field=models.CharField(
+                choices=[
+                    ("order_created", "Bestellung erstellt"),
+                    ("status_update", "Status geändert"),
+                    ("bulk_update", "Massenänderung"),
+                    ("pending_reminder", "Erinnerung"),
+                    ("daily_summary", "Tägliche Zusammenfassung"),
+                    ("weekly_report", "Wöchentlicher Bericht"),
+                    ("order_confirmed", "Bestellung bestätigt (Legacy)"),
+                    ("order_shipped", "Bestellung versandt (Legacy)"),
+                    ("order_cancelled", "Bestellung storniert (Legacy)"),
+                    ("order_summary", "Bestellübersicht (Legacy)"),
+                ],
+                max_length=20,
+                unique=True,
+                verbose_name="Typ",
+            ),
         ),
     ]

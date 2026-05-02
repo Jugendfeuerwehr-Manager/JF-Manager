@@ -1,5 +1,13 @@
 <template>
   <form @submit.prevent="handleSubmit" class="service-form">
+    <!-- Server time divergence warning -->
+    <Message v-if="serverTimeDivergent" severity="warn" :closable="false" class="mb-3">
+      <span>
+        <strong>Zeitabweichung erkannt:</strong> Die Serverzeit weicht um
+        {{ serverTimeDiffMinutes !== null ? Math.abs(serverTimeDiffMinutes) : '' }} Minuten von deiner
+        lokalen Zeit ab. Die Standardzeiten beziehen sich auf deine lokale Uhrzeit.
+      </span>
+    </Message>
     <!-- Quick Action Button -->
     <div class="form-actions-top mb-3">
       <Button
@@ -129,11 +137,13 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
+import Message from 'primevue/message'
 import UserChipSelector from '@/components/servicebook/atoms/UserChipSelector.vue'
 import type { ServiceFormData, ServiceDetail } from '@/types/servicebook'
 import { useUsersStore } from '@/stores/users'
-import { settingsApi } from '@/api/user'
-import type { AppSettings, UserInfo } from '@/types/api'
+import { settingsApi } from '@/api/settings'
+import type { UserInfo } from '@/types/api'
+import type { ServiceSettings } from '@/types/settings'
 
 interface Props {
   initialData?: ServiceDetail | null
@@ -176,7 +186,12 @@ const formData = ref<{
 
 const errors = ref<Record<string, string>>({})
 const usersLoading = ref(false)
-const appSettings = ref<AppSettings | null>(null)
+const appSettings = ref<ServiceSettings | null>(null)
+const serverTimeDiffMinutes = ref<number | null>(null)
+
+const serverTimeDivergent = computed(() => {
+  return serverTimeDiffMinutes.value !== null && Math.abs(serverTimeDiffMinutes.value) >= 5
+})
 
 const usersOptions = computed(() => {
   return usersStore.users.map((user: UserInfo) => ({
@@ -192,7 +207,7 @@ const setTodayWithDefaultTime = async () => {
   try {
     // Load settings if not already loaded
     if (!appSettings.value) {
-      const response = await settingsApi.get()
+      const response = await settingsApi.getService()
       appSettings.value = response.data
     }
 
@@ -233,8 +248,16 @@ onMounted(async () => {
   try {
     await Promise.all([
       usersStore.fetchUsers({ limit: 1000 }),
-      settingsApi.get().then(response => {
+      settingsApi.getService().then(response => {
         appSettings.value = response.data
+        // Detect server/client time divergence via Date response header
+        const dateHeader = response.headers['date']
+        if (dateHeader) {
+          const serverTime = new Date(dateHeader)
+          const clientTime = new Date()
+          const diffMs = serverTime.getTime() - clientTime.getTime()
+          serverTimeDiffMinutes.value = Math.round(diffMs / 60000)
+        }
       })
     ])
   } catch {
