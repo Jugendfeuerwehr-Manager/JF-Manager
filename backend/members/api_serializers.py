@@ -264,7 +264,17 @@ class AttachmentSerializer(serializers.ModelSerializer):
             "mime_type",
             "file_size",
         ]
-        read_only_fields = ["id", "uploaded_at", "file_url", "mime_type", "file_size"]
+        # Generic relation is resolved by the target endpoint (e.g. /training/blocks/{id}/attachments/)
+        # and must not be required from API clients.
+        read_only_fields = [
+            "id",
+            "uploaded_at",
+            "file_url",
+            "mime_type",
+            "file_size",
+            "content_type",
+            "object_id",
+        ]
 
     def get_file_url(self, obj):
         if obj.file:

@@ -49,6 +49,16 @@
       <Button icon="pi pi-upload" text size="small" label="Dokument hochladen" @click="triggerDocUpload" :loading="uploadingDoc" />
       <input ref="docFileInput" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.odt,.odp,.ods,.txt" class="hidden" @change="onDocSelected" />
     </div>
+    <div
+      class="drop-zone doc-drop-zone"
+      :class="{ 'drag-active': draggingDoc }"
+      @dragover.prevent="draggingDoc = true"
+      @dragleave="draggingDoc = false"
+      @drop.prevent="onDocDrop"
+    >
+      <i class="pi pi-file text-2xl"></i>
+      <span>Dokument hier ablegen</span>
+    </div>
     <div v-if="attachmentItems.length" class="doc-list">
       <div v-for="att in attachmentItems" :key="att.id" class="doc-item">
         <i :class="docIcon(att.mime_type)" class="doc-icon" />
@@ -90,6 +100,7 @@ const props = defineProps<Props>()
 const fileInput = ref<HTMLInputElement | null>(null)
 const docFileInput = ref<HTMLInputElement | null>(null)
 const dragging = ref(false)
+const draggingDoc = ref(false)
 const uploading = ref(false)
 const uploadingDoc = ref(false)
 const mediaItems = ref<TrainingMedia[]>([])
@@ -157,7 +168,20 @@ function onMediaDragStart(event: DragEvent, item: TrainingMedia) {
 
 async function onDocSelected(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file || !props.blockId) return
+  if (!file) return
+  await doDocUpload(file)
+  if (docFileInput.value) docFileInput.value.value = ''
+}
+
+async function onDocDrop(event: DragEvent) {
+  draggingDoc.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (!file || file.type.startsWith('image/')) return
+  await doDocUpload(file)
+}
+
+async function doDocUpload(file: File) {
+  if (!props.blockId) return
   uploadingDoc.value = true
   try {
     const formData = new FormData()
@@ -168,7 +192,6 @@ async function onDocSelected(event: Event) {
     attachmentItems.value.push(res.data)
   } finally {
     uploadingDoc.value = false
-    if (docFileInput.value) docFileInput.value.value = ''
   }
 }
 
@@ -233,6 +256,10 @@ function formatSize(bytes: number | null): string {
   border-color: var(--primary-color);
   background: var(--primary-50, #eff6ff);
   color: var(--primary-color);
+}
+
+.doc-drop-zone {
+  padding: 0.85rem;
 }
 
 .media-list {
