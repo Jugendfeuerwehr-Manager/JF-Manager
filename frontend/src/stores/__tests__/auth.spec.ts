@@ -6,6 +6,10 @@ import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 
+const mockFetchDepartments = vi.fn().mockResolvedValue(undefined)
+const mockInitializeActiveDepartment = vi.fn()
+const mockClearDepartments = vi.fn()
+
 // Mock API modules
 vi.mock('@/api/auth')
 vi.mock('@/api/user')
@@ -16,9 +20,11 @@ vi.mock('@/router', () => ({
 }))
 vi.mock('@/stores/departments', () => ({
   useDepartmentsStore: () => ({
-    fetchDepartments: vi.fn().mockResolvedValue(undefined),
-    clearDepartments: vi.fn(),
+    fetchDepartments: mockFetchDepartments,
+    initializeActiveDepartment: mockInitializeActiveDepartment,
+    clearDepartments: mockClearDepartments,
     departments: [],
+    activeDepartmentId: null,
   })
 }))
 
@@ -75,6 +81,7 @@ describe('Auth Store', () => {
     
     // Reset all mocks
     vi.clearAllMocks()
+    mockFetchDepartments.mockResolvedValue(undefined)
   })
 
   describe('State', () => {
@@ -178,6 +185,8 @@ describe('Auth Store', () => {
         expect(store.user).toEqual(mockUserResponse.data)
         expect(localStorage.getItem('accessToken')).toBe('new-access-token')
         expect(localStorage.getItem('refreshToken')).toBe('new-refresh-token')
+        expect(mockFetchDepartments).toHaveBeenCalledTimes(1)
+        expect(mockInitializeActiveDepartment).toHaveBeenCalledWith(mockUserResponse.data)
       })
 
       it('handles login failure', async () => {
