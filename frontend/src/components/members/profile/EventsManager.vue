@@ -106,7 +106,7 @@
                 <span>{{ formatDate(event.datetime) }}</span>
               </div>
               <Tag 
-                :value="event.event_type?.name || 'Unbekannt'" 
+                :value="formatEventTypeLabel(event.event_type)" 
                 class="event-type-tag"
               />
             </div>
@@ -152,7 +152,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useEventsStore } from '@/stores/events'
-import type { Event } from '@/types/api'
+import type { Event, EventType } from '@/types/api'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Calendar from 'primevue/calendar'
@@ -354,6 +354,11 @@ const formatDate = (dateString: string): string => {
     month: '2-digit',
     day: '2-digit'
   })
+}
+
+const formatEventTypeLabel = (eventType: EventType | null): string => {
+  if (!eventType) return 'Unbekannt'
+  return eventType.department === null ? `${eventType.name} (Global)` : eventType.name
 }
 </script>
 

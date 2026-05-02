@@ -6,6 +6,12 @@
 export interface EventType {
   id: number
   name: string
+  department: number | null
+}
+
+export interface EventTypeCreate {
+  name: string
+  department?: number | null
 }
 
 export interface Event {

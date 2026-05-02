@@ -282,8 +282,16 @@ const matchesSearch = (member: Member) => {
 // ─── Derived lists ────────────────────────────────────────────────────────────
 const totalMemberCount = computed(() => store.members.length)
 
+const groupExistsInBoard = (groupId: number | null | undefined) => {
+  if (!groupId) return false
+  return store.groups.some((group) => group.id === groupId)
+}
+
 const filteredUnassigned = computed(() =>
-  store.members.filter((m) => !m.group && matchesSearch(m)),
+  store.members.filter((member) => {
+    const hasUnknownGroup = member.group && !groupExistsInBoard(member.group.id)
+    return (!member.group || hasUnknownGroup) && matchesSearch(member)
+  }),
 )
 
 const filteredGroupMembers = (groupId: number) =>

@@ -11,58 +11,58 @@ from .utils import get_file_path
 
 class Member(models.Model):
     class Gender(models.TextChoices):
-        MALE = 'male', 'Männlich'
-        FEMALE = 'female', 'Weiblich'
-        DIVERSE = 'diverse', 'Divers'
+        MALE = "male", "Männlich"
+        FEMALE = "female", "Weiblich"
+        DIVERSE = "diverse", "Divers"
 
-    name = models.CharField(max_length=200, default='', verbose_name="Name")
-    lastname = models.CharField(max_length=200, default='', verbose_name="Nachname")
-    gender = models.CharField(
-        max_length=10,
-        choices=Gender.choices,
+    name = models.CharField(max_length=200, default="", verbose_name="Name")
+    lastname = models.CharField(max_length=200, default="", verbose_name="Nachname")
+    gender = models.CharField(max_length=10, choices=Gender.choices, blank=True, default="", verbose_name="Geschlecht")
+    avatar = models.FileField(upload_to=get_file_path, null=True, blank=True, verbose_name="Ausweisbild")
+    birthday = models.DateField("Geburtstag", null=True, blank=True)
+    email = models.CharField(max_length=200, blank=True, default="", verbose_name="E-Mail")
+    street = models.CharField(max_length=200, blank=True, default="", verbose_name="Straße")
+    zip_code = models.CharField(max_length=200, blank=True, default="", verbose_name="PLZ")
+    city = models.CharField(max_length=200, blank=True, default="", verbose_name="Stadt / Ort")
+    phone = models.CharField(max_length=200, blank=True, default="", verbose_name="Telefon")
+    mobile = models.CharField(max_length=200, blank=True, default="", verbose_name="Mobil")
+    notes = models.TextField(blank=True, default="", verbose_name="Bemerkungen")
+    joined = models.DateField(
+        "Eingetreten",
+        null=True,
         blank=True,
-        default='',
-        verbose_name='Geschlecht'
     )
-    avatar = models.FileField(upload_to=get_file_path,
-                        null=True,
-                        blank=True,
-                        verbose_name='Ausweisbild')
-    birthday = models.DateField('Geburtstag', null=True, blank=True)
-    email = models.CharField(max_length=200, blank=True, default='', verbose_name='E-Mail')
-    street = models.CharField(max_length=200, blank=True, default='', verbose_name='Straße')
-    zip_code = models.CharField(max_length=200, blank=True, default='', verbose_name='PLZ')
-    city = models.CharField(max_length=200, blank=True, default='', verbose_name='Stadt / Ort')
-    phone = models.CharField(max_length=200, blank=True, default='', verbose_name='Telefon')
-    mobile = models.CharField(max_length=200, blank=True, default='', verbose_name='Mobil')
-    notes = models.TextField(blank=True, default='', verbose_name='Bemerkungen')
-    joined = models.DateField('Eingetreten', null=True, blank=True,)
-    identityCardNumber = models.CharField(max_length=50, blank=True, default='', verbose_name='Ausweis Nr.')
-    canSwimm = models.BooleanField(default=False, verbose_name='Kann schwimmen')
+    identityCardNumber = models.CharField(max_length=50, blank=True, default="", verbose_name="Ausweis Nr.")
+    canSwimm = models.BooleanField(default=False, verbose_name="Kann schwimmen")
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.ForeignKey(Status, on_delete=models.SET_NULL, null=True, blank=True)
 
     # Lagerplatz - Referenz zu einem Lagerort aus dem Inventory
     storage_location = models.ForeignKey(
-        'inventory.StorageLocation',
+        "inventory.StorageLocation",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name='Lagerplatz',
-        related_name='assigned_members'
+        verbose_name="Lagerplatz",
+        related_name="assigned_members",
+    )
+
+    # Department assignment (M2M: a member can belong to multiple departments)
+    departments = models.ManyToManyField(
+        "departments.Department",
+        blank=True,
+        verbose_name="Abteilungen",
+        related_name="members",
     )
 
     # Generic relation to attachments
-    attachments = GenericRelation(
-        'Attachment',
-        related_query_name='member'
-    )
+    attachments = GenericRelation("Attachment", related_query_name="member")
 
     def get_absolute_url(self):
         """
         Returns the URL to access a particular member instance.
         """
-        return reverse('members:detail', kwargs={'pk': self.pk})
+        return reverse("members:detail", kwargs={"pk": self.pk})
 
     def get_age(self):
         """

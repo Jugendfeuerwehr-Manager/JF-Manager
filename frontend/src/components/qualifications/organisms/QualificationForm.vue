@@ -159,7 +159,7 @@ onMounted(async () => {
 // Computed properties for dropdowns
 const qualificationTypeOptions = computed(() => 
   qualificationsStore.qualificationTypes.map(type => ({
-    label: type.name,
+    label: `${type.name} [G]`,
     value: type.id
   }))
 )

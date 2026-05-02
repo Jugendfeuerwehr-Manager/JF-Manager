@@ -19,141 +19,140 @@ import environ
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 if not DEBUG and not SECRET_KEY:
     raise Exception("DJANGO_SECRET_KEY must be set in production (DEBUG=False)")
 
-ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-    if h.strip()
-]
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # CSRF Trusted Origins - required for POST requests from frontend
 # Must include full URL scheme (https:// or http://)
-CSRF_TRUSTED_ORIGINS_ENV = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',') if origin.strip()]
+CSRF_TRUSTED_ORIGINS_ENV = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(",") if origin.strip()]
 
 # Frontend URL for password reset emails
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 # CORS settings for Vue.js frontend
-CORS_ALLOWED_ORIGINS_ENV = os.environ.get('CORS_ALLOWED_ORIGINS', '')
-CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in CORS_ALLOWED_ORIGINS_ENV.split(',') if o.strip()
-] if CORS_ALLOWED_ORIGINS_ENV else [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOWED_ORIGINS = (
+    [o.strip() for o in CORS_ALLOWED_ORIGINS_ENV.split(",") if o.strip()]
+    if CORS_ALLOWED_ORIGINS_ENV
+    else [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+)
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 env = environ.Env(
-    REDIS_URL=(str, 'none'),
+    REDIS_URL=(str, "none"),
 )
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.admin',
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.admin",
     # Third party apps
-    'corsheaders',
-    'dynamic_preferences',
-    'guardian',
-    'mptt',
-    'rest_framework',
-    'rest_framework.authtoken',
-    'rest_framework_simplejwt',
-    'drf_spectacular',
-    'django_filters',
-    'import_export',
-    'django_cleanup.apps.CleanupConfig',
-    'phonenumber_field',
-    'colorfield',
+    "corsheaders",
+    "dynamic_preferences",
+    "guardian",
+    "mptt",
+    "rest_framework",
+    "rest_framework.authtoken",
+    "rest_framework_simplejwt",
+    "drf_spectacular",
+    "django_filters",
+    "import_export",
+    "django_cleanup.apps.CleanupConfig",
+    "phonenumber_field",
+    "colorfield",
     # Project apps
-    'users.apps.UsersConfig',
-    'inventory.apps.InventoryConfig',
-    'members.apps.MembersConfig',
-    'servicebook.apps.ServicebookConfig',
-    'orders.apps.OrdersConfig',
-    'qualifications.apps.QualificationsConfig',
-    'training.apps.TrainingConfig',
-    'settings_manager.apps.SettingsManagerConfig',
-    'health',
+    "departments.apps.DepartmentsConfig",
+    "users.apps.UsersConfig",
+    "inventory.apps.InventoryConfig",
+    "members.apps.MembersConfig",
+    "servicebook.apps.ServicebookConfig",
+    "orders.apps.OrdersConfig",
+    "qualifications.apps.QualificationsConfig",
+    "training.apps.TrainingConfig",
+    "settings_manager.apps.SettingsManagerConfig",
+    "health",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'jf_manager_backend.email_middleware.EmailConfigMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "jf_manager_backend.email_middleware.EmailConfigMiddleware",
 ]
 
-ROOT_URLCONF = 'jf_manager_backend.urls'
+ROOT_URLCONF = "jf_manager_backend.urls"
 
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 # Media files configuration
-MEDIA_URL = '/uploads/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
+MEDIA_URL = "/uploads/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
 
 # Upload folder configuration (can be overridden via environment variables)
-MEMBER_UPLOAD_FOLDER = os.environ.get('MEMBER_UPLOAD_FOLDER', 'members/avatars')
-ATTACHMENT_UPLOAD_FOLDER = os.environ.get('ATTACHMENT_UPLOAD_FOLDER', 'attachments')
+MEMBER_UPLOAD_FOLDER = os.environ.get("MEMBER_UPLOAD_FOLDER", "members/avatars")
+ATTACHMENT_UPLOAD_FOLDER = os.environ.get("ATTACHMENT_UPLOAD_FOLDER", "attachments")
 
 SITE_ID = 1
 
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'dynamic_preferences.processors.global_preferences',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "dynamic_preferences.processors.global_preferences",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
-LOGIN_REDIRECT_URL = '/admin/'
-LOGOUT_REDIRECT_URL = '/admin/login/'
-AUTH_USER_MODEL = 'users.CustomUser'
-LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = "/admin/"
+LOGOUT_REDIRECT_URL = "/admin/login/"
+AUTH_USER_MODEL = "users.CustomUser"
+LOGIN_URL = "/admin/login/"
 
-WSGI_APPLICATION = 'jf_manager_backend.wsgi.application'
+WSGI_APPLICATION = "jf_manager_backend.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
     }
 }
 
@@ -163,97 +162,94 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
 # Verwende BigAutoField als Standard um W042 Warnungen zu beseitigen
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Session Serializer auf JSON setzen (robuster, verhindert Pickle Probleme)
-SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
+SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-    'guardian.backends.ObjectPermissionBackend'
-)
+AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend", "guardian.backends.ObjectPermissionBackend")
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'jf_manager_backend.permissions.CustomDefaultPermissions',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "jf_manager_backend.permissions.CustomDefaultPermissions",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 100,
-    'DEFAULT_FILTER_BACKENDS': [
-        'rest_framework.filters.SearchFilter',
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.OrderingFilter',
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 100,
+    "DEFAULT_FILTER_BACKENDS": [
+        "rest_framework.filters.SearchFilter",
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
     ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # JWT Settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
 # drf-spectacular settings for API documentation
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'JF-Manager API',
-    'DESCRIPTION': 'API documentation for the Jugendfeuerwehr Manager',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    'SCHEMA_PATH_PREFIX': '/api/v1/',
-    'COMPONENT_SPLIT_REQUEST': True,
-    'SERVE_AUTHENTICATION': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+    "TITLE": "JF-Manager API",
+    "DESCRIPTION": "API documentation for the Jugendfeuerwehr Manager",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SERVE_AUTHENTICATION": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    'SWAGGER_UI_SETTINGS': {
-        'deepLinking': True,
-        'persistAuthorization': True,
-        'displayOperationId': True,
-        'filter': True,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+        "filter": True,
     },
-    'SWAGGER_UI_DIST': 'SIDECAR',
-    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
-    'REDOC_DIST': 'SIDECAR',
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
 
-LANGUAGE_CODE = 'de-de'
+LANGUAGE_CODE = "de-de"
 
-TIME_ZONE = os.environ.get('TIME_ZONE', 'Europe/Berlin')
+TIME_ZONE = os.environ.get("TIME_ZONE", "Europe/Berlin")
 
 USE_I18N = True
 
@@ -264,67 +260,65 @@ USE_TZ = True
 
 # Cache configuration
 # Default to local memory cache for development
-REDIS_URL = env('REDIS_URL', default='none')
+REDIS_URL = env("REDIS_URL", default="none")
 if REDIS_URL != "none":
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient"
-            },
-            "KEY_PREFIX": "jf_manager_backend"
+            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+            "KEY_PREFIX": "jf_manager_backend",
         }
     }
 else:
     CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
 # Default email settings (can be overridden by dynamic preferences)
-EMAIL_HOST = ''
+EMAIL_HOST = ""
 EMAIL_PORT = 587
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
-DEFAULT_FROM_EMAIL = 'webmaster@localhost'
+DEFAULT_FROM_EMAIL = "webmaster@localhost"
 
 # For development - use console backend to see emails in terminal
-#EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 
 # Logging
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO' if not DEBUG else 'DEBUG',
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO" if not DEBUG else "DEBUG",
     },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'WARNING' if not DEBUG else 'INFO',
-            'propagate': False,
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING" if not DEBUG else "INFO",
+            "propagate": False,
         },
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'ERROR',
-            'propagate': False,
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
         },
     },
 }

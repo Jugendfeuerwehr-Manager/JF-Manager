@@ -9,7 +9,7 @@ class LibraryBlockCategory(models.Model):
     class Meta:
         verbose_name = "Bibliotheksblock-Kategorie"
         verbose_name_plural = "Bibliotheksblock-Kategorien"
-        ordering = ['name']
+        ordering = ["name"]
 
     name = models.CharField(max_length=200, verbose_name="Name")
     color = models.CharField(
@@ -35,7 +35,7 @@ class LibraryBlockTag(models.Model):
     class Meta:
         verbose_name = "Tag"
         verbose_name_plural = "Tags"
-        ordering = ['name']
+        ordering = ["name"]
 
     name = models.CharField(max_length=100, unique=True, verbose_name="Name")
 
@@ -52,7 +52,7 @@ class LibraryBlock(models.Model):
     class Meta:
         verbose_name = "Bibliotheksblock"
         verbose_name_plural = "Bibliotheksblöcke"
-        ordering = ['title']
+        ordering = ["title"]
 
     # Federation identity — survives export/import
     export_uuid = models.UUIDField(
@@ -78,13 +78,13 @@ class LibraryBlock(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='blocks',
+        related_name="blocks",
         verbose_name="Kategorie",
     )
     tags = models.ManyToManyField(
         LibraryBlockTag,
         blank=True,
-        related_name='blocks',
+        related_name="blocks",
         verbose_name="Tags",
     )
 
@@ -106,11 +106,11 @@ class LibraryBlock(models.Model):
     )
 
     created_by = models.ForeignKey(
-        'users.CustomUser',
+        "users.CustomUser",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='created_library_blocks',
+        related_name="created_library_blocks",
         verbose_name="Erstellt von",
     )
     created_at = models.DateTimeField(auto_now_add=True)

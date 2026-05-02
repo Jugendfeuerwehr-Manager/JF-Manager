@@ -110,7 +110,7 @@
             <template #body="{ data }">
               <Tag
                 v-if="data.event_type"
-                :value="data.event_type.name"
+                :value="formatEventTypeLabel(data.event_type)"
                 severity="info"
               />
               <span v-else class="text-color-secondary">—</span>
@@ -154,7 +154,7 @@
               <span v-else class="font-semibold">{{ event.member_name }}</span>
               <Tag
                 v-if="event.event_type"
-                :value="event.event_type.name"
+                :value="formatEventTypeLabel(event.event_type)"
                 severity="info"
                 class="ml-auto"
               />
@@ -200,7 +200,7 @@ import { RouterLink } from 'vue-router'
 import { useEventsStore } from '@/stores/events'
 import { useMembersStore } from '@/stores/members'
 import { eventsApi } from '@/api/members'
-import type { Event } from '@/types/api'
+import type { Event, EventType } from '@/types/api'
 import { useQueryTableState } from '@/composables/useQueryTableState'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -247,6 +247,11 @@ function formatDate(dateStr: string) {
     month: '2-digit',
     year: 'numeric'
   })
+}
+
+function formatEventTypeLabel(eventType: EventType | null) {
+  if (!eventType) return '—'
+  return eventType.department === null ? `${eventType.name} (Global)` : eventType.name
 }
 
 async function loadEvents() {

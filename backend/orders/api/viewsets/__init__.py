@@ -8,8 +8,8 @@ from .order_status import OrderStatusViewSet
 from .orderable_item import OrderableItemViewSet
 
 __all__ = [
-    'OrderItemViewSet',
-    'OrderStatusViewSet',
-    'OrderViewSet',
-    'OrderableItemViewSet',
+    "OrderItemViewSet",
+    "OrderStatusViewSet",
+    "OrderViewSet",
+    "OrderableItemViewSet",
 ]

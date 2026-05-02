@@ -76,7 +76,7 @@ const typeOptions = computed(() => {
   return [
     { label: 'Alle Typen', value: null },
     ...qualificationsStore.qualificationTypes.map(type => ({
-      label: type.name,
+      label: `${type.name} [G]`,
       value: type.id
     }))
   ]

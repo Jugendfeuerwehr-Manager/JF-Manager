@@ -9,7 +9,7 @@ class CanManageTraining(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return request.user and request.user.is_authenticated
-        return request.user and request.user.has_perm('training.can_manage_training')
+        return request.user and request.user.has_perm("training.can_manage_training")
 
 
 class CanManageLibrary(permissions.BasePermission):
@@ -18,4 +18,4 @@ class CanManageLibrary(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return request.user and request.user.is_authenticated
-        return request.user and request.user.has_perm('training.can_manage_library')
+        return request.user and request.user.has_perm("training.can_manage_library")

@@ -285,7 +285,7 @@ const mainItemOptions = computed(() => {
       }, 0)
       options.push({
         value: item.id,
-        label: item.name,
+        label: `${item.name}${item.department === null ? ' [G]' : ''}`,
         category: item.category_name || undefined,
         hasVariants: true,
         available: totalAvailable
@@ -295,7 +295,7 @@ const mainItemOptions = computed(() => {
       const stockInfo = getAvailableStockForType('item', item.id)
       options.push({
         value: item.id,
-        label: item.name,
+        label: `${item.name}${item.department === null ? ' [G]' : ''}`,
         category: item.category_name || undefined,
         hasVariants: false,
         available: stockInfo.quantity
@@ -409,7 +409,7 @@ const sourceOptions = computed(() => {
   if (form.value.transaction_type === 'LOAN') {
     return inventoryStore.storageLocations.map((l) => ({
       value: l.id,
-      label: l.full_path || l.name,
+      label: `${l.full_path || l.name}${l.department === null ? ' [G]' : ''}`,
       is_member: false
     }))
   }
@@ -417,7 +417,7 @@ const sourceOptions = computed(() => {
   if (form.value.transaction_type === 'RETURN') {
     return inventoryStore.memberLocations.map((l) => ({
       value: l.id,
-      label: l.full_path || l.name,
+      label: `${l.full_path || l.name}${l.department === null ? ' [G]' : ''}`,
       is_member: true
     }))
   }
@@ -429,7 +429,7 @@ const targetOptions = computed(() => {
   if (form.value.transaction_type === 'LOAN') {
     return inventoryStore.memberLocations.map((l) => ({
       value: l.id,
-      label: l.full_path || l.name,
+      label: `${l.full_path || l.name}${l.department === null ? ' [G]' : ''}`,
       is_member: true
     }))
   }
@@ -437,7 +437,7 @@ const targetOptions = computed(() => {
   if (form.value.transaction_type === 'RETURN') {
     return inventoryStore.storageLocations.map((l) => ({
       value: l.id,
-      label: l.full_path || l.name,
+      label: `${l.full_path || l.name}${l.department === null ? ' [G]' : ''}`,
       is_member: false
     }))
   }

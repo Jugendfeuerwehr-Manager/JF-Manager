@@ -10,6 +10,8 @@
 
       <template #end>
         <div class="topbar-end">
+          <!-- Department switcher -->
+          <DepartmentSwitcher />
           <!-- Dark/Light/System mode toggle -->
           <div class="theme-toggle" role="group" aria-label="Theme wählen">
             <Button
@@ -77,6 +79,7 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Menubar from 'primevue/menubar'
 import type { MenuItem } from 'primevue/menuitem'
+import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
 
 const emit = defineEmits<{
   menuClick : []
@@ -95,16 +98,33 @@ const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
   command: () => router.push(to)
 })
 
-const menuItems: MenuItem[] = [
-  createNavItem('Mitglieder', 'pi pi-users', '/members'),
-  createNavItem('Eltern', 'pi pi-user', '/parents'),
-  createNavItem('Dienstbuch', 'pi pi-book', '/servicebook'),
-  {
-    label: 'Mehr',
-    icon: 'pi pi-ellipsis-h',
-    command: () => emit('menuClick')
-  }
+/** All possible top-bar quick-nav items with their required view permission. */
+interface PermissionedNavItem extends MenuItem {
+  viewPerm?: string   // bare codename, e.g. 'view_member'
+  staffOnly?: boolean
+}
+
+const allTopbarItems: PermissionedNavItem[] = [
+  { ...createNavItem('Mitglieder', 'pi pi-users', '/members'), viewPerm: 'view_member' },
+  { ...createNavItem('Eltern', 'pi pi-user', '/parents'), viewPerm: 'view_parent' },
+  { ...createNavItem('Dienstbuch', 'pi pi-book', '/servicebook'), viewPerm: 'view_service' },
 ]
+
+const menuItems = computed<MenuItem[]>(() => {
+  const visible = allTopbarItems.filter(item => {
+    if (authStore.isOrgWide) return true
+    if (item.viewPerm) return authStore.hasPerm(item.viewPerm)
+    return true
+  })
+  return [
+    ...visible,
+    {
+      label: 'Mehr',
+      icon: 'pi pi-ellipsis-h',
+      command: () => emit('menuClick')
+    }
+  ]
+})
 
 const userInitials = computed(() => {
   if (!authStore.user) return 'U'
@@ -113,17 +133,17 @@ const userInitials = computed(() => {
   return `${first}${last}`.toUpperCase()
 })
 
-const userMenuItems: MenuItem[] = [
+const userMenuItems = computed<MenuItem[]>(() => [
   {
     label: 'Profil',
     icon: 'pi pi-user',
     command: () => router.push('/profile')
   },
-  {
+  ...(authStore.isStaff ? [{
     label: 'Einstellungen',
     icon: 'pi pi-cog',
     command: () => router.push('/settings')
-  },
+  }] : []),
   {
     separator: true
   },
@@ -132,7 +152,7 @@ const userMenuItems: MenuItem[] = [
     icon: 'pi pi-sign-out',
     command: () => authStore.logout()
   }
-]
+])
 
 const toggleUserMenu = (event: Event) => {
   userMenu.value.toggle(event)

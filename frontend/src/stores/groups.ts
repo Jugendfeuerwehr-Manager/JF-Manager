@@ -43,7 +43,16 @@ export const useGroupsStore = defineStore('groups', () => {
   async function createGroup(name: string): Promise<Group> {
     saving.value = true
     try {
-      const response = await groupsApi.create({ name })
+      const activeDepartmentRaw = localStorage.getItem('activeDepartmentId')
+      const activeDepartmentId = activeDepartmentRaw ? Number(activeDepartmentRaw) : null
+      const payload: Omit<Group, 'id'> = {
+        name,
+        ...(Number.isInteger(activeDepartmentId) && activeDepartmentId !== null
+          ? { department: activeDepartmentId }
+          : {}),
+      }
+
+      const response = await groupsApi.create(payload)
       groups.value = [...groups.value, response.data].sort((a, b) => a.name.localeCompare(b.name))
       return response.data
     } finally {

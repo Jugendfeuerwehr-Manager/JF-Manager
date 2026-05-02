@@ -1,4 +1,5 @@
 """Attendance viewsets for managing attendance records."""
+
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -28,29 +29,30 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     - Search by person name
     - Bulk update endpoint for efficient attendance marking
     """
+
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     queryset = Attendance.objects.all()  # Base queryset for router registration
     serializer_class = AttendanceSerializer  # Default serializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['person', 'service', 'state']
-    search_fields = ['person__name', 'person__lastname']
-    ordering_fields = ['state', 'id', 'service__start']
-    ordering = ['-service__start']
+    filterset_fields = ["person", "service", "state"]
+    search_fields = ["person__name", "person__lastname"]
+    ordering_fields = ["state", "id", "service__start"]
+    ordering = ["-service__start"]
 
     def get_queryset(self):
         """Get attendance list with optimized queries."""
-        return get_attandance_list().select_related('person', 'service')
+        return get_attandance_list().select_related("person", "service")
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""
-        if self.action == 'create':
+        if self.action == "create":
             return AttendanceCreateSerializer
-        elif self.action == 'bulk_update':
+        elif self.action == "bulk_update":
             return AttendanceBulkUpdateSerializer
         return AttendanceSerializer
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def bulk_update(self, request):
         """
         Bulk update or create attendance records for a service.
@@ -77,11 +79,11 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         result = serializer.save()
 
         # Clear attendance cache
-        cache.delete('attendance_over_time_data')
+        cache.delete("attendance_over_time_data")
 
         return Response(result, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def by_member(self, request):
         """
         Get attendance records for a specific member.
@@ -90,47 +92,46 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         - member_id: ID of the member
         - limit: Number of records to return (default: 50)
         """
-        member_id = request.query_params.get('member_id')
+        member_id = request.query_params.get("member_id")
         if not member_id:
-            return Response(
-                {'error': 'member_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "member_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        limit = int(request.query_params.get('limit', 50))
+        limit = int(request.query_params.get("limit", 50))
 
-        attendances = self.get_queryset().filter(person_id=member_id).order_by('-service__start')[:limit]
+        attendances = self.get_queryset().filter(person_id=member_id).order_by("-service__start")[:limit]
         serializer = self.get_serializer(attendances, many=True)
 
         # Calculate summary statistics
         total = attendances.count()
-        present = attendances.filter(state='A').count()
-        excused = attendances.filter(state='E').count()
-        absent = attendances.filter(state='F').count()
+        present = attendances.filter(state="A").count()
+        excused = attendances.filter(state="E").count()
+        absent = attendances.filter(state="F").count()
 
-        return Response({
-            'attendances': serializer.data,
-            'summary': {
-                'total': total,
-                'present': present,
-                'excused': excused,
-                'absent': absent,
+        return Response(
+            {
+                "attendances": serializer.data,
+                "summary": {
+                    "total": total,
+                    "present": present,
+                    "excused": excused,
+                    "absent": absent,
+                },
             }
-        })
+        )
 
     def perform_create(self, serializer):
         """Handle attendance creation and clear cache."""
         attendance = serializer.save()
-        cache.delete('attendance_over_time_data')
+        cache.delete("attendance_over_time_data")
         return attendance
 
     def perform_update(self, serializer):
         """Handle attendance update and clear cache."""
         attendance = serializer.save()
-        cache.delete('attendance_over_time_data')
+        cache.delete("attendance_over_time_data")
         return attendance
 
     def perform_destroy(self, instance):
         """Handle attendance deletion and clear cache."""
         instance.delete()
-        cache.delete('attendance_over_time_data')
+        cache.delete("attendance_over_time_data")

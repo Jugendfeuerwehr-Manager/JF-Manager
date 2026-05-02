@@ -5,6 +5,7 @@ import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import router from '@/router'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { useDepartmentsStore } from '@/stores/departments'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -17,9 +18,72 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
   const userFullName = computed(() => user.value?.full_name || '')
-  const permissions = computed(() => user.value?.permissions || [])
+
+  /**
+   * Effective permissions for the currently active department context.
+   * - If the user is org-wide (staff/superuser) or "All Departments" is active,
+   *   returns the full union of permissions from the server.
+   * - If a specific department is active, returns only the permissions the user
+   *   has through their groups in that department.
+   */
+  const permissions = computed((): string[] => {
+    if (!user.value) return []
+    // org-wide users always get all their permissions regardless of active dept
+    if (user.value.has_org_wide_access || user.value.is_superuser) {
+      return user.value.permissions
+    }
+    const deptStore = useDepartmentsStore()
+    const activeDeptId = deptStore.activeDepartmentId
+    if (activeDeptId === null) {
+      // No specific dept selected → union of all dept permissions
+      return user.value.permissions
+    }
+    // A concrete department narrows the effective permission set to the role
+    // groups assigned for that department only. UI guards and button states
+    // intentionally follow this context-sensitive permission view.
+    const role = user.value.department_roles.find((r) => r.department_id === activeDeptId)
+    return role?.permissions ?? []
+  })
+
+  /** True for staff / superuser / users with can_access_all_departments permission */
+  const isOrgWide = computed(() => user.value?.has_org_wide_access ?? false)
+
+  /** True for users that are staff or superuser (full admin access) */
+  const isStaff = computed(() => (user.value?.is_staff || user.value?.is_superuser) ?? false)
+
+  /** True when the user is assigned to at least one department */
+  const hasDeptRole = computed(() => (user.value?.department_roles?.length ?? 0) > 0)
+
+  /**
+   * Check a single Django permission codename (without app_label prefix).
+   * Superusers always pass. Regular users must have the permission in their set.
+   * Example: hasPermission('view_member'), hasPermission('add_order')
+   */
   const hasPermission = (permission: string) => {
-    return user.value?.is_superuser || permissions.value.includes(permission)
+    if (!user.value) return false
+    if (user.value.is_superuser || permissions.value.includes('superuser')) return true
+    return permissions.value.includes(permission)
+  }
+
+  /**
+   * Check app-label-qualified permission, e.g. 'members.view_member'.
+   * Also strips the app label and checks the bare codename.
+   */
+  const hasPerm = (appPerm: string): boolean => {
+    if (!user.value) return false
+    if (user.value.is_superuser || permissions.value.includes('superuser')) return true
+    const codename = appPerm.includes('.') ? (appPerm.split('.')[1] ?? appPerm) : appPerm
+    return permissions.value.includes(appPerm) || permissions.value.includes(codename)
+  }
+
+  /**
+   * Returns true if the user can access the given module.
+   * Staff/org-wide users can access everything.
+   * Other users need at least view permission for the relevant model.
+   */
+  const canAccessModule = (viewPerm: string): boolean => {
+    if (isOrgWide.value) return true
+    return hasPerm(viewPerm)
   }
 
   // Actions
@@ -53,6 +117,10 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userApi.me()
       user.value = response.data
+      // Load departments and set the default active department
+      const departmentsStore = useDepartmentsStore()
+      await departmentsStore.fetchDepartments()
+      departmentsStore.initializeActiveDepartment(response.data)
     } catch (err) {
       error.value = 'Failed to fetch user data'
       throw err
@@ -95,6 +163,9 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null
     user.value = null
 
+    const departmentsStore = useDepartmentsStore()
+    departmentsStore.clearDepartments()
+
     authApi.logout()
     router.push('/login')
   }
@@ -122,7 +193,12 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userFullName,
     permissions,
+    isOrgWide,
+    isStaff,
+    hasDeptRole,
     hasPermission,
+    hasPerm,
+    canAccessModule,
     // Actions
     login,
     fetchUser,

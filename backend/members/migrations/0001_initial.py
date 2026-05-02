@@ -5,28 +5,31 @@ import members.models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Member',
+            name="Member",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(default='', max_length=200, verbose_name='Name')),
-                ('lastname', models.CharField(default='', max_length=200, verbose_name='Nachname')),
-                ('avatar', models.FileField(blank=True, null=True, upload_to=members.models.get_file_path, verbose_name='Ausweisbild')),
-                ('birthday', models.DateField(blank=True, null=True, verbose_name='birthday')),
-                ('email', models.CharField(blank=True, default='', max_length=200, verbose_name='E-Mail')),
-                ('street', models.CharField(blank=True, default='', max_length=200, verbose_name='Straße')),
-                ('zip_code', models.CharField(blank=True, default='', max_length=200, verbose_name='PLZ')),
-                ('city', models.CharField(blank=True, default='', max_length=200, verbose_name='Stadt / Ort')),
-                ('phone', models.CharField(blank=True, default='', max_length=200, verbose_name='Telefon')),
-                ('mobile', models.EmailField(blank=True, default='', max_length=200, verbose_name='Mobil')),
-                ('notes', models.TextField(blank=True, default='', verbose_name='Bemerkungen')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(default="", max_length=200, verbose_name="Name")),
+                ("lastname", models.CharField(default="", max_length=200, verbose_name="Nachname")),
+                (
+                    "avatar",
+                    models.FileField(
+                        blank=True, null=True, upload_to=members.models.get_file_path, verbose_name="Ausweisbild"
+                    ),
+                ),
+                ("birthday", models.DateField(blank=True, null=True, verbose_name="birthday")),
+                ("email", models.CharField(blank=True, default="", max_length=200, verbose_name="E-Mail")),
+                ("street", models.CharField(blank=True, default="", max_length=200, verbose_name="Straße")),
+                ("zip_code", models.CharField(blank=True, default="", max_length=200, verbose_name="PLZ")),
+                ("city", models.CharField(blank=True, default="", max_length=200, verbose_name="Stadt / Ort")),
+                ("phone", models.CharField(blank=True, default="", max_length=200, verbose_name="Telefon")),
+                ("mobile", models.EmailField(blank=True, default="", max_length=200, verbose_name="Mobil")),
+                ("notes", models.TextField(blank=True, default="", verbose_name="Bemerkungen")),
             ],
         ),
     ]

@@ -3,6 +3,7 @@ Qualifications API serializers — public surface.
 
 Re-exports from focused per-model serializer modules.
 """
+
 from qualifications.api.serializers.qualification_serializers import (
     QualificationCreateSerializer,
     QualificationDetailSerializer,
@@ -22,15 +23,15 @@ from qualifications.api.serializers.special_task_serializers import (
 )
 
 __all__ = [
-    'QualificationCreateSerializer',
-    'QualificationDetailSerializer',
-    'QualificationListSerializer',
-    'QualificationTypeListSerializer',
-    'QualificationTypeSerializer',
-    'QualificationUpdateSerializer',
-    'SpecialTaskCreateSerializer',
-    'SpecialTaskDetailSerializer',
-    'SpecialTaskListSerializer',
-    'SpecialTaskTypeSerializer',
-    'SpecialTaskUpdateSerializer',
+    "QualificationCreateSerializer",
+    "QualificationDetailSerializer",
+    "QualificationListSerializer",
+    "QualificationTypeListSerializer",
+    "QualificationTypeSerializer",
+    "QualificationUpdateSerializer",
+    "SpecialTaskCreateSerializer",
+    "SpecialTaskDetailSerializer",
+    "SpecialTaskListSerializer",
+    "SpecialTaskTypeSerializer",
+    "SpecialTaskUpdateSerializer",
 ]

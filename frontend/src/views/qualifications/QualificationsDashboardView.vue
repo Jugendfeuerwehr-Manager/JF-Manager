@@ -440,14 +440,14 @@ const mobileTotalRecords = computed(() => qualificationsStore.qualificationsTota
 const qualificationTypeOptions = computed(() => [
   { label: 'Alle Typen', value: null },
   ...qualificationsStore.qualificationTypes.map((type) => ({
-    label: type.name,
+    label: `${type.name} [G]`,
     value: type.id
   }))
 ])
 const specialTaskTypeOptions = computed(() => [
   { label: 'Alle Aufgaben', value: null },
   ...qualificationsStore.specialTaskTypes.map((type) => ({
-    label: type.name,
+    label: `${type.name} [G]`,
     value: type.id
   }))
 ])

@@ -58,6 +58,14 @@ class TrainingSession(models.Model):
         related_name="created_training_sessions",
         verbose_name="Erstellt von",
     )
+    department = models.ForeignKey(
+        "departments.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Abteilung",
+        related_name="training_sessions",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

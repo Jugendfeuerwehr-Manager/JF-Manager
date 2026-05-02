@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class UsersConfig(AppConfig):
-    name = 'users'
+    name = "users"
 
     def ready(self):
         # Configure TokenAdmin fields after apps are loaded to avoid
@@ -10,7 +10,8 @@ class UsersConfig(AppConfig):
         # trigger app-loading errors when INSTALLED_APPS isn't ready.
         try:
             from rest_framework.authtoken.admin import TokenAdmin
-            TokenAdmin.raw_id_fields = ['user']
+
+            TokenAdmin.raw_id_fields = ["user"]
         except Exception:
             # If authtoken isn't available in the environment yet, skip
             # the customization — Django will still function and the

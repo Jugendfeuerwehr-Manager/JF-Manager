@@ -6,31 +6,35 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0011_auto_20220915_1100'),
+        ("members", "0011_auto_20220915_1100"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Status',
+            name="Status",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(default='', max_length=200, verbose_name='Mitgliedschaftsstatus')),
-                ('color', colorfield.fields.ColorField(default='#FF0000', image_field=None, max_length=18, samples=None)),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(default="", max_length=200, verbose_name="Mitgliedschaftsstatus")),
+                (
+                    "color",
+                    colorfield.fields.ColorField(default="#FF0000", image_field=None, max_length=18, samples=None),
+                ),
             ],
             options={
-                'verbose_name': 'Status',
-                'verbose_name_plural': 'Status',
+                "verbose_name": "Status",
+                "verbose_name_plural": "Status",
             },
         ),
         migrations.AlterModelOptions(
-            name='group',
-            options={'verbose_name': 'Gruppe', 'verbose_name_plural': 'Gruppen'},
+            name="group",
+            options={"verbose_name": "Gruppe", "verbose_name_plural": "Gruppen"},
         ),
         migrations.AddField(
-            model_name='member',
-            name='status',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='members.status'),
+            model_name="member",
+            name="status",
+            field=models.ForeignKey(
+                blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to="members.status"
+            ),
         ),
     ]

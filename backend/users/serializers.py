@@ -10,28 +10,28 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'phone',
-            'mobile_phone',
-            'street',
-            'zip_code',
-            'city',
-            'avatar',
-            'date_joined',
-            'last_login',
-            'is_active',
-            'is_staff',
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "mobile_phone",
+            "street",
+            "zip_code",
+            "city",
+            "avatar",
+            "date_joined",
+            "last_login",
+            "is_active",
+            "is_staff",
         ]
         read_only_fields = [
-            'id',
-            'username',
-            'date_joined',
-            'last_login',
-            'is_staff',
+            "id",
+            "username",
+            "date_joined",
+            "last_login",
+            "is_staff",
         ]
 
 
@@ -41,15 +41,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'email',
-            'first_name',
-            'last_name',
-            'phone',
-            'mobile_phone',
-            'street',
-            'zip_code',
-            'city',
-            'avatar',
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "mobile_phone",
+            "street",
+            "zip_code",
+            "city",
+            "avatar",
         ]
 
 
@@ -61,12 +61,12 @@ class ChangePasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        if attrs['new_password'] != attrs['confirm_password']:
+        if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError("Die neuen Passwörter stimmen nicht überein.")
         return attrs
 
     def validate_old_password(self, value):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if not user.check_password(value):
             raise serializers.ValidationError("Das alte Passwort ist inkorrekt.")
         return value

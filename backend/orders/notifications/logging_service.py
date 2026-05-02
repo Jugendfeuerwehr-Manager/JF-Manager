@@ -1,4 +1,3 @@
-
 """
 Notification logging service for tracking email activities.
 
@@ -26,11 +25,11 @@ class NotificationLogger(BaseNotificationService):
     """
 
     NOTIFICATION_TYPES = {
-        'order_created': 'Order Created',
-        'status_update': 'Status Update',
-        'bulk_update': 'Bulk Status Update',
-        'pending_reminder': 'Pending Reminder',
-        'order_summary': 'Order Summary'
+        "order_created": "Order Created",
+        "status_update": "Status Update",
+        "bulk_update": "Bulk Status Update",
+        "pending_reminder": "Pending Reminder",
+        "order_summary": "Order Summary",
     }
 
     @classmethod
@@ -40,7 +39,7 @@ class NotificationLogger(BaseNotificationService):
         recipient_email: str,
         subject: str,
         order: Order | None = None,
-        order_item: OrderItem | None = None
+        order_item: OrderItem | None = None,
     ) -> NotificationLog:
         """
         Create a new notification log entry.
@@ -62,13 +61,10 @@ class NotificationLogger(BaseNotificationService):
                 subject=subject,
                 order=order,
                 order_item=order_item,
-                status='pending'
+                status="pending",
             )
 
-            logger.info(
-                f"Created notification log entry {log_entry.id} for {notification_type} "
-                f"to {recipient_email}"
-            )
+            logger.info(f"Created notification log entry {log_entry.id} for {notification_type} to {recipient_email}")
 
             return log_entry
 
@@ -86,10 +82,10 @@ class NotificationLogger(BaseNotificationService):
             delivery_info: Optional delivery information
         """
         try:
-            log_entry.status = 'sent'
+            log_entry.status = "sent"
             log_entry.sent_at = timezone.now()
             # Use update_fields to avoid foreign key constraint issues
-            log_entry.save(update_fields=['status', 'sent_at'])
+            log_entry.save(update_fields=["status", "sent_at"])
 
             logger.info(f"Marked notification log entry {log_entry.id} as sent")
 
@@ -106,14 +102,12 @@ class NotificationLogger(BaseNotificationService):
             error_message: Error description
         """
         try:
-            log_entry.status = 'failed'
+            log_entry.status = "failed"
             log_entry.error_message = error_message
             log_entry.failed_at = timezone.now()
             log_entry.save()
 
-            logger.error(
-                f"Marked notification log entry {log_entry.id} as failed: {error_message}"
-            )
+            logger.error(f"Marked notification log entry {log_entry.id} as failed: {error_message}")
 
         except Exception as e:
             logger.error(f"Failed to mark notification as failed: {e}")
@@ -125,7 +119,7 @@ class NotificationLogger(BaseNotificationService):
         recipient_email: str | None = None,
         notification_type: str | None = None,
         status: str | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[NotificationLog]:
         """
         Get notification history with optional filtering.
@@ -154,7 +148,7 @@ class NotificationLogger(BaseNotificationService):
         if status:
             queryset = queryset.filter(status=status)
 
-        return list(queryset.order_by('-created_at')[:limit])
+        return list(queryset.order_by("-created_at")[:limit])
 
     @classmethod
     def get_failed_notifications(cls, hours: int = 24) -> list[NotificationLog]:
@@ -170,10 +164,7 @@ class NotificationLogger(BaseNotificationService):
         cutoff_time = timezone.now() - timezone.timedelta(hours=hours)
 
         return list(
-            NotificationLog.objects.filter(
-                status='failed',
-                created_at__gte=cutoff_time
-            ).order_by('-created_at')
+            NotificationLog.objects.filter(status="failed", created_at__gte=cutoff_time).order_by("-created_at")
         )
 
     @classmethod
@@ -192,29 +183,26 @@ class NotificationLogger(BaseNotificationService):
         queryset = NotificationLog.objects.filter(created_at__gte=cutoff_date)
 
         total_notifications = queryset.count()
-        sent_notifications = queryset.filter(status='sent').count()
-        failed_notifications = queryset.filter(status='failed').count()
-        pending_notifications = queryset.filter(status='pending').count()
+        sent_notifications = queryset.filter(status="sent").count()
+        failed_notifications = queryset.filter(status="failed").count()
+        pending_notifications = queryset.filter(status="pending").count()
 
         # Get stats by notification type
         type_stats = {}
         for notification_type, display_name in cls.NOTIFICATION_TYPES.items():
             type_count = queryset.filter(notification_type=notification_type).count()
-            type_stats[notification_type] = {
-                'display_name': display_name,
-                'count': type_count
-            }
+            type_stats[notification_type] = {"display_name": display_name, "count": type_count}
 
         success_rate = (sent_notifications / total_notifications * 100) if total_notifications > 0 else 0
 
         return {
-            'period_days': days,
-            'total_notifications': total_notifications,
-            'sent_notifications': sent_notifications,
-            'failed_notifications': failed_notifications,
-            'pending_notifications': pending_notifications,
-            'success_rate': round(success_rate, 2),
-            'type_breakdown': type_stats
+            "period_days": days,
+            "total_notifications": total_notifications,
+            "sent_notifications": sent_notifications,
+            "failed_notifications": failed_notifications,
+            "pending_notifications": pending_notifications,
+            "success_rate": round(success_rate, 2),
+            "type_breakdown": type_stats,
         }
 
     @classmethod
@@ -228,14 +216,14 @@ class NotificationLogger(BaseNotificationService):
         Returns:
             True if retry was initiated successfully
         """
-        if log_entry.status != 'failed':
+        if log_entry.status != "failed":
             logger.warning(f"Cannot retry notification {log_entry.id} - status is not 'failed'")
             return False
 
         try:
             # Reset status to pending for retry
-            log_entry.status = 'pending'
-            log_entry.error_message = ''
+            log_entry.status = "pending"
+            log_entry.error_message = ""
             log_entry.failed_at = None
             log_entry.save()
 
@@ -260,9 +248,7 @@ class NotificationLogger(BaseNotificationService):
         cutoff_date = timezone.now() - timezone.timedelta(days=days)
 
         try:
-            deleted_count, _ = NotificationLog.objects.filter(
-                created_at__lt=cutoff_date
-            ).delete()
+            deleted_count, _ = NotificationLog.objects.filter(created_at__lt=cutoff_date).delete()
 
             logger.info(f"Cleaned up {deleted_count} old notification logs")
             return deleted_count

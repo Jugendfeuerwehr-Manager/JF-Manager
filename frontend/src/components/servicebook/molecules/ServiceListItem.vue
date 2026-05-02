@@ -46,6 +46,14 @@
       <!-- Actions Column -->
       <div v-if="showActions" class="col-actions">
         <Button
+          v-if="service.training_session"
+          label="Zur Übung"
+          icon="pi pi-calendar"
+          text
+          size="small"
+          @click="$emit('open-training', service.training_session)"
+        />
+        <Button
           label="Bearbeiten"
           icon="pi pi-pencil"
           outlined
@@ -73,6 +81,7 @@ interface Props {
 interface Emits {
   (e: 'view', id: number): void
   (e: 'edit', id: number): void
+  (e: 'open-training', trainingId: number): void
 }
 
 const props = withDefaults(defineProps<Props>(), {

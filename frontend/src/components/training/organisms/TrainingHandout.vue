@@ -93,6 +93,20 @@
         </div>
         <!-- eslint-disable-next-line vue/no-v-html -->
         <div v-if="block.content" class="block-detail-content prose" v-html="block.content" />
+        <!-- Attached documents -->
+        <div v-if="block.attachments && block.attachments.length" class="block-attachments">
+          <p class="attachments-label">Anhänge:</p>
+          <ul class="attachments-list">
+            <li v-for="att in block.attachments" :key="att.id">
+              <a :href="att.file_url ?? '#'" target="_blank" rel="noopener" class="attachment-link">
+                <i class="pi pi-file-pdf" v-if="att.mime_type === 'application/pdf'" />
+                <i class="pi pi-file" v-else />
+                {{ att.name }}
+                <span v-if="att.file_size" class="att-size">({{ formatAttSize(att.file_size) }})</span>
+              </a>
+            </li>
+          </ul>
+        </div>
       </section>
     </template>
 
@@ -113,6 +127,12 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+function formatAttSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 
 const SCALE = 2 // px per minute
 
@@ -245,6 +265,44 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
 .block-detail-content :deep(h3) { font-weight: 700; margin-top: 1rem; }
 .block-detail-content :deep(ul),
 .block-detail-content :deep(ol) { padding-left: 1.5rem; }
+
+.block-attachments {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+.attachments-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0 0 0.25rem;
+}
+.attachments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+.attachment-link:hover { text-decoration: underline; }
+.att-size {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+@media print {
+  .block-attachments { border-top: 1px solid #ccc; }
+  .attachment-link { color: #1e40af; }
+}
 
 .notes-section {
   border: 1px dashed #cbd5e1;

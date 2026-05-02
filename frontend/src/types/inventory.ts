@@ -75,6 +75,7 @@ export interface Item {
   identifier1: string
   identifier2: string
   rented_by: number | null
+  department: number | null
   total_stock: number
   variants: ItemVariant[]
 }
@@ -112,6 +113,7 @@ export interface StorageLocation {
   parent_name: string | null
   is_member: boolean
   member: number | null
+  department: number | null
   full_path: string
 }
 

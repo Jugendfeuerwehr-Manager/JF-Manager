@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0003_alter_customuser_id'),
+        ("users", "0003_alter_customuser_id"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customuser',
-            name='email_signature',
-            field=models.TextField(blank=True, default='', help_text='Ihre persönliche Signatur für E-Mails', verbose_name='E-Mail-Signatur'),
+            model_name="customuser",
+            name="email_signature",
+            field=models.TextField(
+                blank=True,
+                default="",
+                help_text="Ihre persönliche Signatur für E-Mails",
+                verbose_name="E-Mail-Signatur",
+            ),
         ),
     ]

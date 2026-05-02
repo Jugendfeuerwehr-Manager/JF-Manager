@@ -1,5 +1,6 @@
 import apiClient from './index'
 import type {
+  BlockAttachment,
   GenerateSeriesResult,
   LibraryBlockCategory,
   LibraryBlockCreate,
@@ -37,8 +38,8 @@ export const trainingSessionsApi = {
   update(id: number, data: TrainingSessionUpdate) {
     return apiClient.patch<TrainingSessionDetail>(`/training/sessions/${id}/`, data)
   },
-  delete(id: number) {
-    return apiClient.delete(`/training/sessions/${id}/`)
+  delete(id: number, params?: { delete_linked_service?: boolean }) {
+    return apiClient.delete(`/training/sessions/${id}/`, { params })
   },
   handout(id: number) {
     return apiClient.get<TrainingSessionHandout>(`/training/sessions/${id}/handout/`)
@@ -83,10 +84,10 @@ export const trainingBlocksApi = {
     return apiClient.delete(`/training/blocks/${id}/media/`, { params: { media_id: mediaId } })
   },
   getAttachments(id: number) {
-    return apiClient.get(`/training/blocks/${id}/attachments/`)
+    return apiClient.get<BlockAttachment[]>(`/training/blocks/${id}/attachments/`)
   },
   addAttachment(id: number, data: FormData) {
-    return apiClient.post(`/training/blocks/${id}/attachments/`, data, {
+    return apiClient.post<BlockAttachment>(`/training/blocks/${id}/attachments/`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
@@ -138,10 +139,10 @@ export const libraryApi = {
     return apiClient.get<LibraryBlockUsageSession[]>(`/training/library/${id}/usages/`)
   },
   getAttachments(id: number) {
-    return apiClient.get(`/training/library/${id}/attachments/`)
+    return apiClient.get<BlockAttachment[]>(`/training/library/${id}/attachments/`)
   },
   addAttachment(id: number, data: FormData) {
-    return apiClient.post(`/training/library/${id}/attachments/`, data, {
+    return apiClient.post<BlockAttachment>(`/training/library/${id}/attachments/`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },

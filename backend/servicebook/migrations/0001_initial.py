@@ -5,38 +5,45 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('members', '0004_auto_20190301_1115'),
+        ("members", "0004_auto_20190301_1115"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Attendance',
+            name="Attendance",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('state', models.CharField(choices=[('A', 'Anwesend'), ('E', 'Entschuldigt'), ('F', 'Fehlend')], max_length=1, null=True)),
-                ('person', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='members.Member')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "state",
+                    models.CharField(
+                        choices=[("A", "Anwesend"), ("E", "Entschuldigt"), ("F", "Fehlend")], max_length=1, null=True
+                    ),
+                ),
+                (
+                    "person",
+                    models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to="members.Member"),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Service',
+            name="Service",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('start', models.DateTimeField(verbose_name='Start')),
-                ('end', models.DateTimeField(verbose_name='Ende')),
-                ('place', models.CharField(blank=True, max_length=255, null=True, verbose_name='Ort')),
-                ('topic', models.CharField(blank=True, max_length=255, null=True, verbose_name='Thema')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Beschreibung')),
-                ('events', models.TextField(blank=True, null=True, verbose_name='Besondere Vorkommnisse')),
-                ('attendees', models.ManyToManyField(through='servicebook.Attendance', to='members.Member')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("start", models.DateTimeField(verbose_name="Start")),
+                ("end", models.DateTimeField(verbose_name="Ende")),
+                ("place", models.CharField(blank=True, max_length=255, null=True, verbose_name="Ort")),
+                ("topic", models.CharField(blank=True, max_length=255, null=True, verbose_name="Thema")),
+                ("description", models.TextField(blank=True, null=True, verbose_name="Beschreibung")),
+                ("events", models.TextField(blank=True, null=True, verbose_name="Besondere Vorkommnisse")),
+                ("attendees", models.ManyToManyField(through="servicebook.Attendance", to="members.Member")),
             ],
         ),
         migrations.AddField(
-            model_name='attendance',
-            name='service',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='servicebook.Service'),
+            model_name="attendance",
+            name="service",
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to="servicebook.Service"),
         ),
     ]

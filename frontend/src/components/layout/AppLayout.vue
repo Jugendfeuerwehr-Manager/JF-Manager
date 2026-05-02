@@ -21,6 +21,7 @@
       </template>
       <template #end>
         <div class="mobile-toolbar-end">
+          <DepartmentSwitcher compact />
           <Button
             :icon="themeIcon"
             text
@@ -44,7 +45,7 @@
     <!-- Main Content -->
     <div class="layout-main" :class="{ 'has-bottom-nav': isMobile }">
       <div class="layout-content">
-        <router-view v-slot="{ Component }">
+        <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" />
           </transition>
@@ -119,6 +120,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useDepartmentsStore } from '@/stores/departments'
 import { useAppSettings } from '@/composables/useAppSettings'
 import { useTheme } from '@/composables/useTheme'
 import AppTopbar from './AppTopbar.vue'
@@ -130,10 +132,12 @@ import Menu from 'primevue/menu'
 import Toolbar from 'primevue/toolbar'
 import TabMenu from 'primevue/tabmenu'
 import type { MenuItem } from 'primevue/menuitem'
+import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const departmentsStore = useDepartmentsStore()
 const { websiteTitle } = useAppSettings()
 const { themeMode, setMode } = useTheme()
 const userMenu = ref()
@@ -148,37 +152,60 @@ const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
   command: () => router.push(to)
 })
 
-const mainNavItems: MenuItem[] = [
+interface PermissionedItem extends MenuItem {
+  viewPerm?: string   // bare Django codename, e.g. 'view_member'
+  staffOnly?: boolean
+}
+
+const allMainNavItems: PermissionedItem[] = [
   createNavItem('Dashboard', 'pi pi-home', '/'),
-  createNavItem('Mitglieder', 'pi pi-users', '/members'),
-  createNavItem('Gruppen', 'pi pi-sitemap', '/groups'),
-  createNavItem('Listen', 'pi pi-list-check', '/lists'),
-  createNavItem('Eltern', 'pi pi-user', '/parents'),
-  createNavItem('Dienstbuch', 'pi pi-book', '/servicebook')
+  { ...createNavItem('Mitglieder', 'pi pi-users', '/members'), viewPerm: 'view_member' },
+  { ...createNavItem('Gruppen', 'pi pi-sitemap', '/groups'), viewPerm: 'view_group' },
+  { ...createNavItem('Listen', 'pi pi-list-check', '/lists'), viewPerm: 'view_memberlist' },
+  { ...createNavItem('Eltern', 'pi pi-user', '/parents'), viewPerm: 'view_parent' },
+  { ...createNavItem('Dienstbuch', 'pi pi-book', '/servicebook'), viewPerm: 'view_service' },
 ]
 
-const secondaryNavItems: MenuItem[] = [
-  createNavItem('Einträge', 'pi pi-list', '/log'),
-  createNavItem('Inventar', 'pi pi-box', '/inventory'),
-  createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'),
-  createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'),
-  createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'),
-  createNavItem('Ausbildung', 'pi pi-calendar', '/training'),
-  createNavItem('Einstellungen', 'pi pi-cog', '/settings'),
-  createNavItem('Benutzerverwaltung', 'pi pi-shield', '/users'),
+const allSecondaryNavItems: PermissionedItem[] = [
+  { ...createNavItem('Einträge', 'pi pi-list', '/log'), staffOnly: true },
+  { ...createNavItem('Inventar', 'pi pi-box', '/inventory'), viewPerm: 'view_item' },
+  { ...createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'), viewPerm: 'view_order' },
+  { ...createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'), viewPerm: 'view_emailmessage' },
+  { ...createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'), viewPerm: 'view_qualification' },
+  { ...createNavItem('Ausbildung', 'pi pi-calendar', '/training'), viewPerm: 'view_trainingsession' },
+  { ...createNavItem('Einstellungen', 'pi pi-cog', '/settings'), staffOnly: true },
+  { ...createNavItem('Benutzerverwaltung', 'pi pi-shield', '/users'), staffOnly: true },
 ]
 
-const membersNavItem = mainNavItems.find(item => item.to === '/members')
-const servicebookNavItem = mainNavItems.find(item => item.to === '/servicebook')
-const ordersNavItem = secondaryNavItems.find(item => item.to === '/orders')
+function filterNavItems(items: PermissionedItem[]): MenuItem[] {
+  return items.filter(item => {
+    if (authStore.isOrgWide) return true
+    if (item.staffOnly) return false
+    if (item.viewPerm) return authStore.hasPerm(item.viewPerm)
+    return true
+  })
+}
+
+const mainNavItems = computed(() => filterNavItems(allMainNavItems))
+const secondaryNavItems = computed(() => filterNavItems(allSecondaryNavItems))
 
 const sidebarSections = computed(() => [
-  { label: 'Hauptmodule', items: mainNavItems },
-  { label: 'Weitere Bereiche', items: secondaryNavItems }
+  { label: 'Hauptmodule', items: mainNavItems.value },
+  { label: 'Weitere Bereiche', items: secondaryNavItems.value }
 ])
 
 const mobileNavItems = computed<MenuItem[]>(() => {
-  return [membersNavItem, servicebookNavItem, ordersNavItem].filter(Boolean) as MenuItem[]
+  const candidates: PermissionedItem[] = [
+    allMainNavItems.find(item => item.to === '/members')!,
+    allMainNavItems.find(item => item.to === '/servicebook')!,
+    allSecondaryNavItems.find(item => item.to === '/orders')!,
+  ]
+  return candidates.filter(item => {
+    if (!item) return false
+    if (authStore.isOrgWide) return true
+    if (item.viewPerm) return authStore.hasPerm(item.viewPerm)
+    return true
+  }) as MenuItem[]
 })
 
 const mobileActiveIndex = computed(() => {
@@ -197,17 +224,17 @@ const userInitials = computed(() => {
   return `${first}${last}`.toUpperCase()
 })
 
-const userMenuItems: MenuItem[] = [
+const userMenuItems = computed<MenuItem[]>(() => [
   {
     label: 'Profil',
     icon: 'pi pi-user',
     command: () => router.push('/profile')
   },
-  {
+  ...(authStore.isStaff ? [{
     label: 'Einstellungen',
     icon: 'pi pi-cog',
     command: () => router.push('/settings')
-  },
+  }] : []),
   {
     separator: true
   },
@@ -216,7 +243,7 @@ const userMenuItems: MenuItem[] = [
     icon: 'pi pi-sign-out',
     command: () => authStore.logout()
   }
-]
+])
 
 const toggleNavigation = () => {
   navigationVisible.value = !navigationVisible.value
@@ -346,7 +373,7 @@ onUnmounted(() => {
 .mobile-toolbar-end {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.4rem;
 }
 
 .mobile-bottom-nav {

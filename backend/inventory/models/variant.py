@@ -6,28 +6,26 @@ from .item import Item
 
 class ItemVariant(models.Model):
     """Artikel-Variante (z.B. Hose Gr. 164, Hose Gr. 176)"""
+
     parent_item = models.ForeignKey(
-        Item,
-        on_delete=models.CASCADE,
-        related_name='variants',
-        verbose_name='Hauptartikel'
+        Item, on_delete=models.CASCADE, related_name="variants", verbose_name="Hauptartikel"
     )
     variant_attributes = models.JSONField(
-        verbose_name='Varianten-Attribute',
-        help_text='Spezifische Attribute dieser Variante (z.B. {"größe": "164", "farbe": "blau"})'
+        verbose_name="Varianten-Attribute",
+        help_text='Spezifische Attribute dieser Variante (z.B. {"größe": "164", "farbe": "blau"})',
     )
     sku = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name='SKU/Artikelnummer',
-        help_text='Eindeutige Artikelnummer für diese Variante'
+        verbose_name="SKU/Artikelnummer",
+        help_text="Eindeutige Artikelnummer für diese Variante",
     )
 
     class Meta:
-        verbose_name = 'Artikel-Variante'
-        verbose_name_plural = 'Artikel-Varianten'
-        unique_together = ['parent_item', 'variant_attributes']
-        ordering = ['parent_item__name', 'sku']
+        verbose_name = "Artikel-Variante"
+        verbose_name_plural = "Artikel-Varianten"
+        unique_together = ["parent_item", "variant_attributes"]
+        ordering = ["parent_item__name", "sku"]
 
     def __str__(self):
         variant_parts = []
@@ -48,10 +46,10 @@ class ItemVariant(models.Model):
 
     @property
     def total_stock(self):
-        return self.stock_set.aggregate(total=models.Sum('quantity'))['total'] or 0
+        return self.stock_set.aggregate(total=models.Sum("quantity"))["total"] or 0
 
     def get_absolute_url(self):
-        return reverse('inventory:variant_detail', kwargs={'pk': self.pk})
+        return reverse("inventory:variant_detail", kwargs={"pk": self.pk})
 
     def get_combined_attributes(self):
         combined = {}

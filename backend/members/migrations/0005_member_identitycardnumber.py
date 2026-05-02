@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0004_auto_20190301_1115'),
+        ("members", "0004_auto_20190301_1115"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='member',
-            name='identityCardNumber',
-            field=models.TextField(blank=True, default='', verbose_name='Ausweis Nr.'),
+            model_name="member",
+            name="identityCardNumber",
+            field=models.TextField(blank=True, default="", verbose_name="Ausweis Nr."),
         ),
     ]

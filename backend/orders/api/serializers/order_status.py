@@ -18,16 +18,8 @@ class OrderStatusSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderStatus
-        fields = [
-            'id',
-            'name',
-            'code',
-            'description',
-            'color',
-            'is_active',
-            'sort_order'
-        ]
-        read_only_fields = ['id']
+        fields = ["id", "name", "code", "description", "color", "is_active", "sort_order"]
+        read_only_fields = ["id"]
 
 
 class OrderStatusMinimalSerializer(serializers.ModelSerializer):
@@ -35,4 +27,4 @@ class OrderStatusMinimalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderStatus
-        fields = ['id', 'name', 'code', 'color']
+        fields = ["id", "name", "code", "color"]

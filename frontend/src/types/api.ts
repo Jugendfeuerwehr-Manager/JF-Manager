@@ -15,7 +15,7 @@
 
 export type { Member, MemberCreate, Status, Group } from '@/types/members'
 export type { Parent, ParentCreate } from '@/types/parents'
-export type { Event, EventCreate, EventType } from '@/types/events'
+export type { Event, EventCreate, EventType, EventTypeCreate } from '@/types/events'
 export type {
   UserInfo,
   UserGroup,

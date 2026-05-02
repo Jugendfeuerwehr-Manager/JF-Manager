@@ -81,14 +81,14 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   const categoryOptions = computed(() =>
     categories.value.map((c) => ({
-      label: c.name,
+      label: `${c.name} [G]`,
       value: c.id
     }))
   )
 
   const locationOptions = computed(() =>
     locations.value.map((l) => ({
-      label: l.full_path || l.name,
+      label: `${l.full_path || l.name}${l.department === null ? ' [G]' : ''}`,
       value: l.id,
       is_member: l.is_member
     }))
@@ -104,7 +104,7 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   const itemOptions = computed(() =>
     items.value.map((i) => ({
-      label: i.name,
+      label: `${i.name}${i.department === null ? ' [G]' : ''}`,
       value: i.id,
       category: i.category_name,
       has_variants: i.is_variant_parent

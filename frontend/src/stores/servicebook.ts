@@ -122,6 +122,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
         end: response.data.end,
         place: response.data.place,
         topic: response.data.topic,
+        department: response.data.department,
+        training_session: response.data.training_session,
         operations_manager: response.data.operations_manager,
         attendance_summary: response.data.attendance_summary,
         has_events: response.data.has_events
@@ -156,6 +158,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
           end: response.data.end,
           place: response.data.place,
           topic: response.data.topic,
+          department: response.data.department,
+          training_session: response.data.training_session,
           operations_manager: response.data.operations_manager,
           attendance_summary: response.data.attendance_summary,
           has_events: response.data.has_events
@@ -196,6 +200,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
           end: response.data.end,
           place: response.data.place,
           topic: response.data.topic,
+          department: response.data.department,
+          training_session: response.data.training_session,
           operations_manager: response.data.operations_manager,
           attendance_summary: response.data.attendance_summary,
           has_events: response.data.has_events
@@ -362,6 +368,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
           end: updatedService.data.end,
           place: updatedService.data.place,
           topic: updatedService.data.topic,
+          department: updatedService.data.department,
+          training_session: updatedService.data.training_session,
           operations_manager: updatedService.data.operations_manager,
           attendance_summary: updatedService.data.attendance_summary,
           has_events: updatedService.data.has_events

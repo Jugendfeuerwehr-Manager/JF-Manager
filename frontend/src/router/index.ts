@@ -37,23 +37,27 @@ const router = createRouter({
         {
           path: 'members',
           name: 'members',
-          component: () => import('@/views/MembersView.vue')
+          component: () => import('@/views/MembersView.vue'),
+          meta: { requiresPerm: 'view_member' }
         },
         {
           path: 'groups',
           name: 'group-management',
-          component: () => import('@/views/GroupManagementView.vue')
+          component: () => import('@/views/GroupManagementView.vue'),
+          meta: { requiresPerm: 'view_group' }
         },
         // Lists
         {
           path: 'lists',
           name: 'lists',
-          component: () => import('@/views/ListsView.vue')
+          component: () => import('@/views/ListsView.vue'),
+          meta: { requiresPerm: 'view_memberlist' }
         },
         {
           path: 'lists/:id',
           name: 'list-detail',
-          component: () => import('@/views/ListDetailView.vue')
+          component: () => import('@/views/ListDetailView.vue'),
+          meta: { requiresPerm: 'view_memberlist' }
         },
         {
           path: 'members/create',
@@ -224,17 +228,24 @@ const router = createRouter({
         {
           path: 'settings',
           name: 'settings',
-          component: () => import('@/views/SettingsView.vue')
+          component: () => import('@/views/SettingsView.vue'),
+          meta: { requiresStaff: true }
         },
         {
           path: 'users',
           name: 'admin-users',
-          component: () => import('@/components/admin/organisms/UserManagementView.vue')
+          component: () => import('@/components/admin/organisms/UserManagementView.vue'),
+          meta: { requiresStaff: true }
+        },
+        {
+          path: 'departments',
+          redirect: '/users'
         },
         {
           path: 'log',
           name: 'log',
-          component: () => import('@/views/LogView.vue')
+          component: () => import('@/views/LogView.vue'),
+          meta: { requiresStaff: true }
         },
         {
           path: 'profile',
@@ -285,6 +296,12 @@ router.beforeEach(async (to, from, next) => {
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.path === '/login' && authStore.isAuthenticated) {
+    next('/')
+  } else if (to.meta.requiresStaff && authStore.isAuthenticated && !authStore.isOrgWide) {
+    // Non-staff user trying to access a staff-only route → redirect to dashboard
+    next('/')
+  } else if (to.meta.requiresPerm && authStore.isAuthenticated && !authStore.hasPerm(to.meta.requiresPerm)) {
+    // Missing permission for this route → redirect to dashboard
     next('/')
   } else {
     // Load settings if authenticated and not already loaded

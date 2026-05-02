@@ -6,29 +6,24 @@ from django.db.models import Count
 
 def cleanup_duplicate_attendances(apps, schema_editor):
     """Remove duplicate attendance records, keeping the most recent one."""
-    Attendance = apps.get_model('servicebook', 'Attendance')
-    
+    Attendance = apps.get_model("servicebook", "Attendance")
+
     # Find all duplicate combinations of (person, service)
-    duplicates = (
-        Attendance.objects.values('person', 'service')
-        .annotate(count=Count('id'))
-        .filter(count__gt=1)
-    )
-    
+    duplicates = Attendance.objects.values("person", "service").annotate(count=Count("id")).filter(count__gt=1)
+
     deleted_count = 0
     for dup in duplicates:
         # Get all attendance records for this person/service combination
-        records = Attendance.objects.filter(
-            person_id=dup['person'],
-            service_id=dup['service']
-        ).order_by('-id')  # Most recent first
-        
+        records = Attendance.objects.filter(person_id=dup["person"], service_id=dup["service"]).order_by(
+            "-id"
+        )  # Most recent first
+
         # Keep the first (most recent) record, delete the rest
         records_to_delete = list(records[1:])
         for record in records_to_delete:
             record.delete()
             deleted_count += 1
-    
+
     if deleted_count > 0:
         print(f"Cleaned up {deleted_count} duplicate attendance record(s)")
 
@@ -39,10 +34,9 @@ def reverse_cleanup(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0018_emailmessage_emailrecipient_and_more'),
-        ('servicebook', '0004_alter_attendance_id_alter_service_id'),
+        ("members", "0018_emailmessage_emailrecipient_and_more"),
+        ("servicebook", "0004_alter_attendance_id_alter_service_id"),
     ]
 
     operations = [
@@ -50,11 +44,11 @@ class Migration(migrations.Migration):
         migrations.RunPython(cleanup_duplicate_attendances, reverse_cleanup),
         # Then add the unique constraint
         migrations.AlterUniqueTogether(
-            name='attendance',
-            unique_together={('person', 'service')},
+            name="attendance",
+            unique_together={("person", "service")},
         ),
         migrations.AddIndex(
-            model_name='attendance',
-            index=models.Index(fields=['person', 'service'], name='servicebook_person__e116b2_idx'),
+            model_name="attendance",
+            index=models.Index(fields=["person", "service"], name="servicebook_person__e116b2_idx"),
         ),
     ]

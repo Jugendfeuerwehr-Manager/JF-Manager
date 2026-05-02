@@ -60,6 +60,7 @@
       @view="handleView"
       @edit="handleEdit"
       @create="handleCreate"
+      @open-training="handleOpenTraining"
       @page-change="handlePageChange"
     />
   </div>
@@ -198,6 +199,10 @@ const handleEdit = (id: number) => {
 
 const handleCreate = () => {
   router.push({ name: 'service-create' })
+}
+
+const handleOpenTraining = (trainingId: number) => {
+  router.push({ name: 'training-planner', params: { id: trainingId } })
 }
 </script>
 

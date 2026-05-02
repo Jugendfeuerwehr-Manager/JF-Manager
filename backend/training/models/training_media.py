@@ -21,12 +21,12 @@ class TrainingMedia(models.Model):
     class Meta:
         verbose_name = "Trainings-Mediendatei"
         verbose_name_plural = "Trainings-Mediendateien"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     # Generic FK — can point to LibraryBlock or TrainingBlock
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey("content_type", "object_id")
 
     file = models.ImageField(
         upload_to=training_media_upload_path,
@@ -38,7 +38,7 @@ class TrainingMedia(models.Model):
         verbose_name="Originaldateiname",
     )
     uploaded_by = models.ForeignKey(
-        'users.CustomUser',
+        "users.CustomUser",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -53,4 +53,4 @@ class TrainingMedia(models.Model):
     def url(self):
         if self.file:
             return self.file.url
-        return ''
+        return ""

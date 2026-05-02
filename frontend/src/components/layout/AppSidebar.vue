@@ -115,6 +115,7 @@ const menuItems: MenuItem[] = [
   { label: 'Bibliothek', icon: 'pi pi-book', route: '/training/library' },
   { separator: true },
   { label: 'Einstellungen', icon: 'pi pi-cog', route: '/settings' },
+  { label: 'Abteilungen', icon: 'pi pi-building', route: '/departments' },
 ];
 
 const toggleCollapsed = () => {

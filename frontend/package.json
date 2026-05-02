@@ -36,6 +36,7 @@
     "date-fns": "^4.1.0",
     "interactjs": "^1.10.27",
     "monaco-editor": "^0.55.1",
+    "pdf-lib": "^1.17.1",
     "pdfmake": "^0.3.7",
     "pinia": "^3.0.3",
     "primeicons": "^7.0.0",

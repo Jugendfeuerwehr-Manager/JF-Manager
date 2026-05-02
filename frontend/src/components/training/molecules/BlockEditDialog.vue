@@ -29,6 +29,11 @@
           </div>
         </div>
 
+        <div class="field mb-3">
+          <label>Nextcloud-Ordner-URL</label>
+          <InputText v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
+        </div>
+
         <div class="field">
           <label>Inhalt</label>
           <BlockEditor
@@ -125,6 +130,7 @@ const form = ref({
   duration_minutes: 15,
   start_offset_minutes: 0,
   color: '',
+  nextcloud_folder_url: '',
 })
 
 watch(() => props.block, (b) => {
@@ -135,6 +141,7 @@ watch(() => props.block, (b) => {
       duration_minutes: b.duration_minutes,
       start_offset_minutes: b.start_offset_minutes ?? 0,
       color: b.color ?? '',
+      nextcloud_folder_url: b.nextcloud_folder_url ?? '',
     }
   }
 }, { immediate: true })
@@ -160,6 +167,7 @@ async function saveToLibrary() {
       content: form.value.content || undefined,
       default_duration_minutes: form.value.duration_minutes,
       color: form.value.color || undefined,
+      nextcloud_folder_url: form.value.nextcloud_folder_url || undefined,
     })
     toast.add({ severity: 'success', summary: 'In Bibliothek gespeichert', detail: `"${form.value.title}" wurde zur Bibliothek hinzugefügt.`, life: 3500 })
   } catch {
@@ -178,6 +186,7 @@ async function updateLibraryBlock() {
       content: form.value.content || undefined,
       default_duration_minutes: form.value.duration_minutes,
       color: form.value.color || undefined,
+      nextcloud_folder_url: form.value.nextcloud_folder_url || undefined,
     })
     toast.add({ severity: 'success', summary: 'Vorlage aktualisiert', detail: `"${form.value.title}" wurde in der Bibliothek aktualisiert.`, life: 3500 })
   } catch {

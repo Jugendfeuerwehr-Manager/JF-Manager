@@ -50,7 +50,10 @@
           <Column field="name" header="Name" sortable>
             <template #body="{ data }">
               <div class="item-cell">
-                <span class="item-name">{{ data.name }}</span>
+                <div class="item-name-row">
+                  <span class="item-name">{{ data.name }}</span>
+                  <Tag v-if="data.department === null" value="G" icon="pi pi-globe" severity="contrast" />
+                </div>
                 <span v-if="data.is_variant_parent" class="variant-info">
                   <i class="pi pi-sitemap"></i>
                   {{ data.variants?.length || 0 }} Varianten
@@ -278,6 +281,12 @@ function onItemSaved() {
 
 .item-name {
   font-weight: 500;
+}
+
+.item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .variant-info {

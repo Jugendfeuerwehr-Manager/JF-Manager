@@ -58,7 +58,10 @@
           <Column field="item_name" header="Artikel" sortable>
             <template #body="{ data }">
               <div class="item-cell">
-                <span class="item-name">{{ data.display_name || 'Unbekannt' }}</span>
+                <div class="item-name-row">
+                  <span class="item-name">{{ data.display_name || 'Unbekannt' }}</span>
+                  <Tag v-if="isGlobalItem(data)" value="G" icon="pi pi-globe" severity="contrast" size="small" />
+                </div>
                 <Tag v-if="data.category_name" :value="data.category_name" severity="secondary" size="small" />
               </div>
             </template>
@@ -69,6 +72,7 @@
               <div class="location-cell">
                 <i :class="isLocationMember(data.location) ? 'pi pi-user' : 'pi pi-box'"></i>
                 <span>{{ data.location_name }}</span>
+                <Tag v-if="isGlobalLocation(data.location)" value="G" icon="pi pi-globe" severity="contrast" size="small" />
               </div>
             </template>
           </Column>
@@ -222,6 +226,27 @@ function isLocationMember(locationId: number): boolean {
   return location?.is_member || false
 }
 
+function isGlobalLocation(locationId: number): boolean {
+  const location = inventoryStore.locations.find((l) => l.id === locationId)
+  return location?.department === null
+}
+
+function isGlobalItem(stock: Stock): boolean {
+  if (stock.item) {
+    const item = inventoryStore.items.find((i) => i.id === stock.item)
+    return item?.department === null
+  }
+
+  if (stock.item_variant) {
+    const parentItem = inventoryStore.items.find((i) =>
+      (i.variants || []).some((v) => v.id === stock.item_variant),
+    )
+    return parentItem?.department === null
+  }
+
+  return false
+}
+
 function onFilterChange() {
   // Filters are reactive, no need to do anything
 }
@@ -296,6 +321,12 @@ function onTransactionSuccess() {
 
 .item-name {
   font-weight: 500;
+}
+
+.item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .location-cell {

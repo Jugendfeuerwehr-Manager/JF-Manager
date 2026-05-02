@@ -68,6 +68,8 @@ export interface Service {
   end: string    // ISO datetime
   place: string | null
   topic: string | null
+  department?: number | null
+  training_session?: number | null
   operations_manager: OperationsManager[]
   attendance_summary: AttendanceSummary
   has_events: boolean
@@ -96,6 +98,8 @@ export interface ServiceDetail {
   topic: string | null
   description: string | null
   events: string | null  // Special occurrences
+  department?: number | null
+  training_session?: number | null
   operations_manager: OperationsManager[]
   attendance_summary: AttendanceSummary
   attendees_with_status: AttendeeWithStatus[]

@@ -17,6 +17,7 @@ const APP_LABEL_MAP: Record<string, { label: string; icon: string }> = {
   members: { label: 'Mitglieder', icon: 'pi pi-users' },
   orders: { label: 'Bestellungen', icon: 'pi pi-shopping-cart' },
   inventory: { label: 'Inventar', icon: 'pi pi-box' },
+  training: { label: 'Training', icon: 'pi pi-calendar' },
   servicebook: { label: 'Dienstbuch', icon: 'pi pi-book' },
   qualifications: { label: 'Qualifikationen', icon: 'pi pi-crown' },
   users: { label: 'Benutzer', icon: 'pi pi-user' },

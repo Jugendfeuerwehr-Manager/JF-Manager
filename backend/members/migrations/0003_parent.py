@@ -4,27 +4,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0002_auto_20190227_1508'),
+        ("members", "0002_auto_20190227_1508"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Parent',
+            name="Parent",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(default='', max_length=200, verbose_name='Name')),
-                ('lastname', models.CharField(default='', max_length=200, verbose_name='Nachname')),
-                ('email', models.CharField(blank=True, default='', max_length=200, verbose_name='E-Mail')),
-                ('email2', models.CharField(blank=True, default='', max_length=200, verbose_name='E-Mail')),
-                ('street', models.CharField(blank=True, default='', max_length=200, verbose_name='Straße')),
-                ('zip_code', models.CharField(blank=True, default='', max_length=200, verbose_name='PLZ')),
-                ('city', models.CharField(blank=True, default='', max_length=200, verbose_name='Stadt / Ort')),
-                ('phone', models.CharField(blank=True, default='', max_length=200, verbose_name='Telefon')),
-                ('mobile', models.EmailField(blank=True, default='', max_length=200, verbose_name='Mobil')),
-                ('notes', models.TextField(blank=True, default='', verbose_name='Bemerkungen')),
-                ('children', models.ManyToManyField(blank=True, to='members.Member')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(default="", max_length=200, verbose_name="Name")),
+                ("lastname", models.CharField(default="", max_length=200, verbose_name="Nachname")),
+                ("email", models.CharField(blank=True, default="", max_length=200, verbose_name="E-Mail")),
+                ("email2", models.CharField(blank=True, default="", max_length=200, verbose_name="E-Mail")),
+                ("street", models.CharField(blank=True, default="", max_length=200, verbose_name="Straße")),
+                ("zip_code", models.CharField(blank=True, default="", max_length=200, verbose_name="PLZ")),
+                ("city", models.CharField(blank=True, default="", max_length=200, verbose_name="Stadt / Ort")),
+                ("phone", models.CharField(blank=True, default="", max_length=200, verbose_name="Telefon")),
+                ("mobile", models.EmailField(blank=True, default="", max_length=200, verbose_name="Mobil")),
+                ("notes", models.TextField(blank=True, default="", verbose_name="Bemerkungen")),
+                ("children", models.ManyToManyField(blank=True, to="members.Member")),
             ],
         ),
     ]

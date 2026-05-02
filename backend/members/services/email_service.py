@@ -42,36 +42,42 @@ class EmailRecipientCollector:
             if parent.email and parent.email.strip():
                 email_lower = parent.email.lower().strip()
                 if email_lower not in seen_emails:
-                    emails.append({
-                        'email': parent.email.strip(),
-                        'name': parent.get_full_name(),
-                        'member_id': member.id,
-                        'member_name': member.get_full_name()
-                    })
+                    emails.append(
+                        {
+                            "email": parent.email.strip(),
+                            "name": parent.get_full_name(),
+                            "member_id": member.id,
+                            "member_name": member.get_full_name(),
+                        }
+                    )
                     seen_emails.add(email_lower)
 
             # Add secondary email
             if parent.email2 and parent.email2.strip():
                 email_lower = parent.email2.lower().strip()
                 if email_lower not in seen_emails:
-                    emails.append({
-                        'email': parent.email2.strip(),
-                        'name': parent.get_full_name(),
-                        'member_id': member.id,
-                        'member_name': member.get_full_name()
-                    })
+                    emails.append(
+                        {
+                            "email": parent.email2.strip(),
+                            "name": parent.get_full_name(),
+                            "member_id": member.id,
+                            "member_name": member.get_full_name(),
+                        }
+                    )
                     seen_emails.add(email_lower)
 
         # Add member's own email if exists and not duplicate
         if member.email and member.email.strip():
             email_lower = member.email.lower().strip()
             if email_lower not in seen_emails:
-                emails.append({
-                    'email': member.email.strip(),
-                    'name': member.get_full_name(),
-                    'member_id': member.id,
-                    'member_name': member.get_full_name()
-                })
+                emails.append(
+                    {
+                        "email": member.email.strip(),
+                        "name": member.get_full_name(),
+                        "member_id": member.id,
+                        "member_name": member.get_full_name(),
+                    }
+                )
                 seen_emails.add(email_lower)
 
         return emails
@@ -117,13 +123,13 @@ class EmailTemplateRenderer:
         Each dict contains 'variable' and 'description'.
         """
         return [
-            {'variable': '{{vorname}}', 'description': 'Vorname des Mitglieds'},
-            {'variable': '{{nachname}}', 'description': 'Nachname des Mitglieds'},
-            {'variable': '{{vollername}}', 'description': 'Vollständiger Name des Mitglieds'},
+            {"variable": "{{vorname}}", "description": "Vorname des Mitglieds"},
+            {"variable": "{{nachname}}", "description": "Nachname des Mitglieds"},
+            {"variable": "{{vollername}}", "description": "Vollständiger Name des Mitglieds"},
         ]
 
     @staticmethod
-    def render_for_member(template_html: str, template_text: str, member: Member, signature: str = '') -> tuple:
+    def render_for_member(template_html: str, template_text: str, member: Member, signature: str = "") -> tuple:
         """
         Render template with member-specific data.
 
@@ -137,9 +143,9 @@ class EmailTemplateRenderer:
             Tuple of (rendered_html, rendered_text)
         """
         context_data = {
-            'vorname': member.name,
-            'nachname': member.lastname,
-            'vollername': member.get_full_name(),
+            "vorname": member.name,
+            "nachname": member.lastname,
+            "vollername": member.get_full_name(),
         }
 
         # Simple string replacement for variables
@@ -147,15 +153,15 @@ class EmailTemplateRenderer:
         rendered_text = template_text
 
         for key, value in context_data.items():
-            rendered_html = rendered_html.replace(f'{{{{{key}}}}}', value or '')
-            rendered_text = rendered_text.replace(f'{{{{{key}}}}}', value or '')
+            rendered_html = rendered_html.replace(f"{{{{{key}}}}}", value or "")
+            rendered_text = rendered_text.replace(f"{{{{{key}}}}}", value or "")
 
         # Add signature if provided
         if signature:
-            rendered_html += f'<br><br>{signature}'
+            rendered_html += f"<br><br>{signature}"
             # Strip HTML from signature for text version
             text_signature = strip_tags(signature)
-            rendered_text += f'\n\n{text_signature}'
+            rendered_text += f"\n\n{text_signature}"
 
         return rendered_html, rendered_text
 
@@ -199,7 +205,7 @@ class MemberEmailService:
             recipient_type=recipient_type,
             recipient_group=recipient_group,
             recipient_member=recipient_member,
-            status='draft'
+            status="draft",
         )
 
         return email_message
@@ -215,11 +221,11 @@ class MemberEmailService:
             Number of recipients prepared
         """
         # Collect recipients based on type
-        if email_message.recipient_type == 'all':
+        if email_message.recipient_type == "all":
             recipients = EmailRecipientCollector.get_recipients_for_all_members()
-        elif email_message.recipient_type == 'group':
+        elif email_message.recipient_type == "group":
             recipients = EmailRecipientCollector.get_recipients_for_group(email_message.recipient_group)
-        elif email_message.recipient_type == 'individual':
+        elif email_message.recipient_type == "individual":
             recipients = EmailRecipientCollector.get_recipients_for_member(email_message.recipient_member)
         else:
             raise ValueError(f"Invalid recipient type: {email_message.recipient_type}")
@@ -227,36 +233,34 @@ class MemberEmailService:
         # Deduplicate by email address
         unique_recipients = {}
         for recipient in recipients:
-            email = recipient['email'].lower()
+            email = recipient["email"].lower()
             if email not in unique_recipients:
                 unique_recipients[email] = recipient
 
         # Create EmailRecipient records
         # Note: Signature is already included in body_html by the frontend
         for _email, recipient_data in unique_recipients.items():
-            member = Member.objects.filter(id=recipient_data['member_id']).first()
+            member = Member.objects.filter(id=recipient_data["member_id"]).first()
 
             # Personalize content for this member
             personalized_html, personalized_text = EmailTemplateRenderer.render_for_member(
-                email_message.body_html,
-                email_message.body_text,
-                member
+                email_message.body_html, email_message.body_text, member
             )
 
             EmailRecipient.objects.create(
                 email_message=email_message,
                 member=member,
-                email_address=recipient_data['email'],
-                recipient_name=recipient_data['name'],
+                email_address=recipient_data["email"],
+                recipient_name=recipient_data["name"],
                 personalized_body_html=personalized_html,
                 personalized_body_text=personalized_text,
-                status='pending'
+                status="pending",
             )
 
         # Update email message with recipient count
         total_recipients = len(unique_recipients)
         email_message.total_recipients = total_recipients
-        email_message.save(update_fields=['total_recipients'])
+        email_message.save(update_fields=["total_recipients"])
 
         return total_recipients
 
@@ -269,8 +273,8 @@ class MemberEmailService:
         Returns:
             Dict with 'successful' and 'failed' counts
         """
-        email_message.status = 'sending'
-        email_message.save(update_fields=['status'])
+        email_message.status = "sending"
+        email_message.save(update_fields=["status"])
 
         successful = 0
         failed = 0
@@ -278,7 +282,7 @@ class MemberEmailService:
         # Pre-load attachments
         attachments = list(email_message.attachments.all())
 
-        pending_recipients = email_message.recipients.filter(status='pending')
+        pending_recipients = email_message.recipients.filter(status="pending")
 
         for recipient in pending_recipients:
             try:
@@ -300,7 +304,7 @@ class MemberEmailService:
                         email.attach(
                             attachment.original_filename,
                             attachment.file.read(),
-                            attachment.content_type or 'application/octet-stream',
+                            attachment.content_type or "application/octet-stream",
                         )
                     except Exception as attach_err:
                         logger.warning(f"Could not attach file {attachment.original_filename}: {attach_err}")
@@ -309,18 +313,18 @@ class MemberEmailService:
                 email.send(fail_silently=False)
 
                 # Mark as sent
-                recipient.status = 'sent'
+                recipient.status = "sent"
                 recipient.sent_at = timezone.now()
-                recipient.save(update_fields=['status', 'sent_at'])
+                recipient.save(update_fields=["status", "sent_at"])
 
                 successful += 1
 
             except Exception as e:
                 logger.error(f"Failed to send email to {recipient.email_address}: {e!s}")
 
-                recipient.status = 'failed'
+                recipient.status = "failed"
                 recipient.error_message = str(e)[:1000]  # Limit error message length
-                recipient.save(update_fields=['status', 'error_message'])
+                recipient.save(update_fields=["status", "error_message"])
 
                 failed += 1
 
@@ -330,17 +334,14 @@ class MemberEmailService:
         email_message.sent_at = timezone.now()
 
         if failed == 0:
-            email_message.status = 'sent'
+            email_message.status = "sent"
         elif successful == 0:
-            email_message.status = 'failed'
-            email_message.error_message = 'Alle E-Mails konnten nicht zugestellt werden'
+            email_message.status = "failed"
+            email_message.error_message = "Alle E-Mails konnten nicht zugestellt werden"
         else:
-            email_message.status = 'partial'
-            email_message.error_message = f'{failed} von {successful + failed} E-Mails konnten nicht zugestellt werden'
+            email_message.status = "partial"
+            email_message.error_message = f"{failed} von {successful + failed} E-Mails konnten nicht zugestellt werden"
 
         email_message.save()
 
-        return {
-            'successful': successful,
-            'failed': failed
-        }
+        return {"successful": successful, "failed": failed}

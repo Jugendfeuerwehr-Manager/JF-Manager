@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0001_initial'),
+        ("members", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='member',
-            name='joined',
-            field=models.DateField(blank=True, null=True, verbose_name='Eingetreten'),
+            model_name="member",
+            name="joined",
+            field=models.DateField(blank=True, null=True, verbose_name="Eingetreten"),
         ),
         migrations.AlterField(
-            model_name='member',
-            name='birthday',
-            field=models.DateField(blank=True, null=True, verbose_name='Geburtstag'),
+            model_name="member",
+            name="birthday",
+            field=models.DateField(blank=True, null=True, verbose_name="Geburtstag"),
         ),
     ]

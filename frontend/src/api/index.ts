@@ -8,7 +8,12 @@ const apiClient = axios.create({
   }
 })
 
-// Request interceptor - Add auth token
+// Request interceptor - Add auth token and active department filter.
+//
+// The active department is intentionally attached to most GET requests so the
+// backend can resolve department-scoped permissions and default context.
+// Endpoints that expose central/shared records must therefore treat this query
+// parameter as an active-context hint, not as a hard exclusion of department=NULL.
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Get token from localStorage directly to avoid Pinia initialization issues
@@ -16,6 +21,21 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // Inject active department as query param for scoped list endpoints.
+    // Only inject on GET requests to avoid interfering with write operations.
+    // Skip the /departments/ endpoint itself and /admin/ routes.
+    const activeDeptId = localStorage.getItem('activeDepartmentId')
+    if (
+      activeDeptId &&
+      config.method?.toLowerCase() === 'get' &&
+      config.url &&
+      !config.url.startsWith('/departments') &&
+      !config.url.startsWith('/admin/')
+    ) {
+      config.params = { ...config.params, department: activeDeptId }
+    }
+
     return config
   },
   (error: AxiosError) => Promise.reject(error)

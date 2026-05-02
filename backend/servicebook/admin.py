@@ -4,6 +4,7 @@ from .models import Attendance, Service
 
 # Register your models here.
 
+
 class AttendanceInline(admin.TabularInline):
     model = Attendance
     extra = 1
@@ -11,6 +12,9 @@ class AttendanceInline(admin.TabularInline):
 
 @admin.register(Service)
 class DepartmentAdmin(admin.ModelAdmin):
-    inlines = (AttendanceInline, )
-    list_display = ('start','topic',)
-    list_filter = ('start','topic')
+    inlines = (AttendanceInline,)
+    list_display = (
+        "start",
+        "topic",
+    )
+    list_filter = ("start", "topic")

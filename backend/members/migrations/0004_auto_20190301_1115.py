@@ -4,30 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0003_parent'),
+        ("members", "0003_parent"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='member',
-            name='mobile',
-            field=models.CharField(blank=True, default='', max_length=200, verbose_name='Mobil'),
+            model_name="member",
+            name="mobile",
+            field=models.CharField(blank=True, default="", max_length=200, verbose_name="Mobil"),
         ),
         migrations.AlterField(
-            model_name='parent',
-            name='email',
-            field=models.CharField(blank=True, default='', max_length=200, verbose_name='E-Mail 1'),
+            model_name="parent",
+            name="email",
+            field=models.CharField(blank=True, default="", max_length=200, verbose_name="E-Mail 1"),
         ),
         migrations.AlterField(
-            model_name='parent',
-            name='email2',
-            field=models.CharField(blank=True, default='', max_length=200, verbose_name='E-Mail 2'),
+            model_name="parent",
+            name="email2",
+            field=models.CharField(blank=True, default="", max_length=200, verbose_name="E-Mail 2"),
         ),
         migrations.AlterField(
-            model_name='parent',
-            name='mobile',
-            field=models.CharField(blank=True, default='', max_length=200, verbose_name='Mobil'),
+            model_name="parent",
+            name="mobile",
+            field=models.CharField(blank=True, default="", max_length=200, verbose_name="Mobil"),
         ),
     ]

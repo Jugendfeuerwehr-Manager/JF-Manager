@@ -20,7 +20,10 @@
         <template #content>
           <div class="category-content">
             <div class="category-info">
-              <span class="category-name">{{ category.name }}</span>
+              <div class="category-name-row">
+                <span class="category-name">{{ category.name }}</span>
+                <Tag value="G" icon="pi pi-globe" severity="contrast" />
+              </div>
               <Tag :value="`${category.item_count || 0} Artikel`" severity="secondary" />
             </div>
             <div class="category-actions">
@@ -188,6 +191,12 @@ function onCategorySaved() {
 .category-info {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+}
+
+.category-name-row {
+  display: inline-flex;
+  align-items: center;
   gap: 0.5rem;
 }
 

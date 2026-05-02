@@ -9,6 +9,12 @@ from inventory.models import (
     Transaction,
 )
 
+from .access import (
+    can_manage_department,
+    is_location_allowed_for_item_department,
+    is_org_wide_user,
+)
+
 
 class CategorySerializer(serializers.ModelSerializer):
     item_count = serializers.IntegerField(read_only=True)
@@ -58,9 +64,28 @@ class ItemSerializer(serializers.ModelSerializer):
             "identifier1",
             "identifier2",
             "rented_by",
+            "department",
             "total_stock",
             "variants",
         ]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or getattr(request, "method", "GET") in ("GET", "HEAD", "OPTIONS"):
+            return attrs
+
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        department_id = getattr(department, "id", None)
+
+        if not can_manage_department(user, department_id):
+            raise serializers.ValidationError(
+                {"department": "Artikel dürfen nur in der eigenen Abteilung verwaltet werden."}
+            )
+
+        return attrs
 
 
 class StorageLocationSerializer(serializers.ModelSerializer):
@@ -76,11 +101,30 @@ class StorageLocationSerializer(serializers.ModelSerializer):
             "parent_name",
             "is_member",
             "member",
+            "department",
             "full_path",
         ]
 
     def get_full_path(self, obj):  # pragma: no cover - simple helper
         return obj.get_full_path()
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or getattr(request, "method", "GET") in ("GET", "HEAD", "OPTIONS"):
+            return attrs
+
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        department_id = getattr(department, "id", None)
+
+        if not can_manage_department(user, department_id):
+            raise serializers.ValidationError(
+                {"department": "Lagerorte dürfen nur in der eigenen Abteilung verwaltet werden."}
+            )
+
+        return attrs
 
 
 class StockSerializer(serializers.ModelSerializer):
@@ -156,19 +200,45 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Custom validation for transaction data"""
-        transaction_type = attrs.get('transaction_type')
-        discard_reason = attrs.get('discard_reason')
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+
+        transaction_type = attrs.get("transaction_type")
+        discard_reason = attrs.get("discard_reason")
 
         # Validate discard_reason for DISCARD transactions
-        if transaction_type == 'DISCARD' and not discard_reason:
-            raise serializers.ValidationError({
-                'discard_reason': 'Aussortierungsgrund ist erforderlich für DISCARD-Transaktionen.'
-            })
+        if transaction_type == "DISCARD" and not discard_reason:
+            raise serializers.ValidationError(
+                {"discard_reason": "Aussortierungsgrund ist erforderlich für DISCARD-Transaktionen."}
+            )
 
-        if transaction_type != 'DISCARD' and discard_reason:
-            raise serializers.ValidationError({
-                'discard_reason': 'Aussortierungsgrund kann nur bei DISCARD-Transaktionen angegeben werden.'
-            })
+        if transaction_type != "DISCARD" and discard_reason:
+            raise serializers.ValidationError(
+                {"discard_reason": "Aussortierungsgrund kann nur bei DISCARD-Transaktionen angegeben werden."}
+            )
+
+        item = attrs.get("item", getattr(self.instance, "item", None))
+        item_variant = attrs.get("item_variant", getattr(self.instance, "item_variant", None))
+        source = attrs.get("source", getattr(self.instance, "source", None))
+        target = attrs.get("target", getattr(self.instance, "target", None))
+
+        item_department_id = None
+        if item is not None:
+            item_department_id = item.department_id
+        elif item_variant is not None:
+            item_department_id = item_variant.parent_item.department_id
+
+        if user and not is_org_wide_user(user):
+            if not can_manage_department(user, item_department_id):
+                raise serializers.ValidationError(
+                    {"item": "Transaktionen sind nur für Artikel der eigenen Abteilung erlaubt."}
+                )
+
+            for field_name, location in (("source", source), ("target", target)):
+                if location is None:
+                    continue
+                if not is_location_allowed_for_item_department(location, item_department_id):
+                    raise serializers.ValidationError({field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."})
 
         return attrs
 
