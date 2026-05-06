@@ -60,6 +60,7 @@
             :saving="settingsStore.loading"
             @save="handleSaveMember"
           />
+          <MemberSyncJobsCard :can-edit="settingsStore.canChangeCategory('member')" />
           <StatusesManager :can-edit="settingsStore.canChangeCategory('member')" />
           <EventTypesManager :can-edit="settingsStore.canChangeCategory('member')" />
         </div>
@@ -82,6 +83,15 @@
           @save="handleSaveOrder"
         />
 
+        <!-- LDAP Settings -->
+        <LdapSettingsForm
+          v-else-if="tab.id === 'ldap'"
+          :settings="settingsStore.ldap"
+          :can-edit="settingsStore.canChangeCategory('ldap')"
+          :saving="settingsStore.loading"
+          @save="handleSaveLdap"
+        />
+
         <!-- Email Templates -->
         <EmailTemplatesView
           v-else-if="tab.id === 'email-templates'"
@@ -102,8 +112,10 @@ import { useSettingsStore } from '@/stores/settings'
 import GeneralSettingsForm from '../molecules/GeneralSettingsForm.vue'
 import EmailSettingsForm from '../molecules/EmailSettingsForm.vue'
 import MemberSettingsForm from '../molecules/MemberSettingsForm.vue'
+import MemberSyncJobsCard from '../molecules/MemberSyncJobsCard.vue'
 import ServiceSettingsForm from '../molecules/ServiceSettingsForm.vue'
 import OrderSettingsForm from '../molecules/OrderSettingsForm.vue'
+import LdapSettingsForm from '../molecules/LdapSettingsForm.vue'
 import StatusesManager from '../molecules/StatusesManager.vue'
 import EventTypesManager from '../molecules/EventTypesManager.vue'
 import EmailTemplatesView from './EmailTemplatesView.vue'
@@ -112,7 +124,8 @@ import type {
   EmailSettings,
   MemberSettings,
   ServiceSettings,
-  OrderSettings
+  OrderSettings,
+  LdapSettings
 } from '@/types/settings'
 
 const settingsStore = useSettingsStore()
@@ -125,7 +138,8 @@ const hasAnySettings = computed(() => {
     settingsStore.email ||
     settingsStore.member ||
     settingsStore.service ||
-    settingsStore.order
+    settingsStore.order ||
+    settingsStore.ldap
   )
 })
 
@@ -246,6 +260,27 @@ async function handleSaveOrder(data: Partial<OrderSettings>) {
     })
   }
 }
+
+async function handleSaveLdap(data: Partial<LdapSettings>) {
+  try {
+    await settingsStore.updateLdap(data)
+    toast.add({
+      severity: 'success',
+      summary: 'Erfolgreich',
+      detail: 'LDAP Einstellungen gespeichert',
+      life: 3000
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: 'Fehler beim Speichern der LDAP Einstellungen',
+      life: 5000
+    })
+  }
+}
+
+
 </script>
 
 <style scoped>

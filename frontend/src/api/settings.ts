@@ -11,6 +11,11 @@ import type {
   MemberSettings,
   ServiceSettings,
   OrderSettings,
+  LdapSettings,
+  LdapBrowseRequest,
+  LdapBrowseResult,
+  LdapDepartmentRoleMapping,
+  LdapDepartmentRoleMappingCreate,
   SettingsPermissions,
   SettingsCategory
 } from '@/types/settings'
@@ -108,6 +113,62 @@ export const settingsApi = {
   },
 
   /**
+   * Get LDAP settings
+   * GET /api/v1/settings/ldap/
+   */
+  getLdap() {
+    return apiClient.get<LdapSettings>('/settings/ldap/')
+  },
+
+  /**
+   * Update LDAP settings
+   * PATCH /api/v1/settings/ldap/
+   */
+  updateLdap(data: Partial<LdapSettings>) {
+    return apiClient.patch<LdapSettings>('/settings/ldap/', data)
+  },
+
+  /**
+   * Test LDAP connection
+   * POST /api/v1/settings/ldap/test-connection/
+   */
+  testLdapConnection() {
+    return apiClient.post<{ ok: boolean; detail: string }>('/settings/ldap/test-connection/')
+  },
+
+  /**
+   * Browse LDAP directory at a given DN
+   * POST /api/v1/settings/ldap/browse/
+   */
+  browseLdap(data: LdapBrowseRequest) {
+    return apiClient.post<LdapBrowseResult>('/settings/ldap/browse/', data)
+  },
+
+  /**
+   * List LDAP → Department role mappings
+   * GET /api/v1/ldap-department-mappings/
+   */
+  listDepartmentMappings() {
+    return apiClient.get<LdapDepartmentRoleMapping[]>('/ldap-department-mappings/')
+  },
+
+  /**
+   * Create a new LDAP → Department role mapping
+   * POST /api/v1/ldap-department-mappings/
+   */
+  createDepartmentMapping(data: LdapDepartmentRoleMappingCreate) {
+    return apiClient.post<LdapDepartmentRoleMapping>('/ldap-department-mappings/', data)
+  },
+
+  /**
+   * Delete a LDAP → Department role mapping
+   * DELETE /api/v1/ldap-department-mappings/{id}/
+   */
+  deleteDepartmentMapping(id: number) {
+    return apiClient.delete(`/ldap-department-mappings/${id}/`)
+  },
+
+  /**
    * Get user permissions for settings
    * GET /api/v1/settings/permissions/
    */
@@ -131,6 +192,8 @@ export const settingsApi = {
         return this.getService()
       case 'order':
         return this.getOrder()
+      case 'ldap':
+        return this.getLdap()
       default:
         return this.getGeneral()
     }
@@ -152,6 +215,8 @@ export const settingsApi = {
         return this.updateService(data as Partial<ServiceSettings>)
       case 'order':
         return this.updateOrder(data as Partial<OrderSettings>)
+      case 'ldap':
+        return this.updateLdap(data as Partial<LdapSettings>)
       default:
         return this.updateGeneral(data as Partial<GeneralSettings>)
     }

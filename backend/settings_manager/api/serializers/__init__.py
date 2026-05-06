@@ -2,7 +2,10 @@
 Serializers for Settings API
 """
 
+from django.contrib.auth.models import Group as AuthGroup
 from rest_framework import serializers
+
+from settings_manager.models import LDAPDepartmentRoleMapping
 
 from .email_template import (
     EmailTemplateCreateUpdateSerializer,
@@ -86,6 +89,80 @@ class OrderSettingsSerializer(serializers.Serializer):
     )
 
 
+class LDAPSettingsSerializer(serializers.Serializer):
+    """Serializer for LDAP authentication settings"""
+
+    enabled = serializers.BooleanField(required=False)
+    server_uri = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    start_tls = serializers.BooleanField(required=False)
+    bind_dn = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    bind_password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    has_bind_password = serializers.BooleanField(required=False, read_only=True)
+    user_search_base_dn = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    user_search_filter = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    group_search_base_dn = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    group_search_filter = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    group_type = serializers.ChoiceField(
+        required=False,
+        choices=["group_of_names", "active_directory"],
+    )
+    mirror_groups = serializers.BooleanField(required=False)
+    require_group = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+
+class LDAPConnectionTestSerializer(serializers.Serializer):
+    """Serializer for LDAP connection test results"""
+
+    ok = serializers.BooleanField()
+    detail = serializers.CharField()
+
+
+class AuthGroupMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuthGroup
+        fields = ["id", "name"]
+
+
+class LDAPDepartmentRoleMappingSerializer(serializers.ModelSerializer):
+    """Serializer for LDAP group → Department role mappings"""
+
+    department_name = serializers.CharField(source="department.name", read_only=True)
+    auth_groups = AuthGroupMiniSerializer(many=True, read_only=True)
+    auth_group_ids = serializers.PrimaryKeyRelatedField(
+        source="auth_groups",
+        queryset=AuthGroup.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = LDAPDepartmentRoleMapping
+        fields = [
+            "id",
+            "ldap_group_dn",
+            "department",
+            "department_name",
+            "auth_groups",
+            "auth_group_ids",
+            "revoke_on_mismatch",
+        ]
+        read_only_fields = ["id", "department_name", "auth_groups"]
+
+    def create(self, validated_data):
+        auth_groups = validated_data.pop("auth_groups", [])
+        instance = super().create(validated_data)
+        instance.auth_groups.set(auth_groups)
+        return instance
+
+    def update(self, instance, validated_data):
+        auth_groups = validated_data.pop("auth_groups", None)
+        instance = super().update(instance, validated_data)
+        if auth_groups is not None:
+            instance.auth_groups.set(auth_groups)
+        return instance
+
+
 class AllSettingsSerializer(serializers.Serializer):
     """
     Combined serializer for all settings
@@ -97,6 +174,7 @@ class AllSettingsSerializer(serializers.Serializer):
     member = MemberSettingsSerializer(required=False)
     service = ServiceSettingsSerializer(required=False)
     order = OrderSettingsSerializer(required=False)
+    ldap = LDAPSettingsSerializer(required=False)
 
 
 class CategorySettingsUpdateSerializer(serializers.Serializer):
@@ -106,7 +184,7 @@ class CategorySettingsUpdateSerializer(serializers.Serializer):
     """
 
     category = serializers.ChoiceField(
-        choices=["general", "email", "member", "service", "order"],
+        choices=["general", "email", "member", "service", "order", "ldap"],
         required=True,
         help_text="Settings category to update",
     )
@@ -126,6 +204,7 @@ class UserPermissionsSerializer(serializers.Serializer):
 
 __all__ = [
     "AllSettingsSerializer",
+    "AuthGroupMiniSerializer",
     "CategorySettingsUpdateSerializer",
     "EmailSettingsSerializer",
     "EmailTemplateCreateUpdateSerializer",
@@ -134,6 +213,9 @@ __all__ = [
     "EmailTemplatePreviewResponseSerializer",
     "EmailTemplatePreviewSerializer",
     "GeneralSettingsSerializer",
+    "LDAPConnectionTestSerializer",
+    "LDAPDepartmentRoleMappingSerializer",
+    "LDAPSettingsSerializer",
     "MemberSettingsSerializer",
     "OrderSettingsSerializer",
     "ServiceSettingsSerializer",

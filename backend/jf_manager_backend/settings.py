@@ -21,6 +21,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
+# Encryption key for encrypted model fields (Fernet-compatible key)
+FIELD_ENCRYPTION_KEY = os.environ.get(
+    "FIELD_ENCRYPTION_KEY",
+    "6nezABVCRB5Yn3ztsae1jkqg3THUUul-OWww-ZHqYc8=",
+)
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
@@ -89,7 +95,9 @@ INSTALLED_APPS = [
     "orders.apps.OrdersConfig",
     "qualifications.apps.QualificationsConfig",
     "training.apps.TrainingConfig",
+    "external_sync.apps.ExternalSyncConfig",
     "settings_manager.apps.SettingsManagerConfig",
+    "django_rq",
     "health",
 ]
 
@@ -181,7 +189,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Session Serializer auf JSON setzen (robuster, verhindert Pickle Probleme)
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
-AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend", "guardian.backends.ObjectPermissionBackend")
+AUTHENTICATION_BACKENDS = (
+    "users.ldap_backend.ConfigurableLDAPBackend",
+    "django.contrib.auth.backends.ModelBackend",
+    "guardian.backends.ObjectPermissionBackend",
+)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -276,6 +288,16 @@ else:
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
+
+if REDIS_URL != "none":
+    RQ_QUEUES = {
+        "default": {
+            "URL": REDIS_URL,
+            "DEFAULT_TIMEOUT": 3600,
+        }
+    }
+else:
+    RQ_QUEUES = {}
 # Default email settings (can be overridden by dynamic preferences)
 EMAIL_HOST = ""
 EMAIL_PORT = 587

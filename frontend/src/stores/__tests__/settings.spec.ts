@@ -55,7 +55,8 @@ describe('Settings Store', () => {
       email: { can_view: true, can_change: true },
       member: { can_view: true, can_change: false },
       service: { can_view: false, can_change: false },
-      order: { can_view: true, can_change: true }
+      order: { can_view: true, can_change: true },
+      ldap: { can_view: false, can_change: false }
     }
   }
 

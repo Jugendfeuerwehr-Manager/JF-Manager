@@ -64,6 +64,12 @@ if REDIS_URL != "none":
             "KEY_PREFIX": "jf_manager_backend",
         }
     }
+    RQ_QUEUES = {
+        "default": {
+            "URL": REDIS_URL,
+            "DEFAULT_TIMEOUT": 3600,
+        }
+    }
 
 if DATABASE_URL != "none":
     DATABASES["default"] = dj_database_url.parse(DATABASE_URL, conn_max_age=600)  # noqa: F405

@@ -58,7 +58,7 @@ class CanViewCategorySettings(permissions.BasePermission):
 
         # Get category from view action or query params
         category = None
-        if hasattr(view, "action") and view.action in ["general", "email", "member", "service", "order"]:
+        if hasattr(view, "action") and view.action in ["general", "email", "member", "service", "order", "ldap"]:
             category = view.action
 
         if not category:
@@ -92,7 +92,7 @@ class CanChangeCategorySettings(permissions.BasePermission):
 
         # Get category from view action or request data
         category = None
-        if hasattr(view, "action") and view.action in ["general", "email", "member", "service", "order"]:
+        if hasattr(view, "action") and view.action in ["general", "email", "member", "service", "order", "ldap"]:
             category = view.action
 
         if not category and request.method in ["POST", "PUT", "PATCH"]:
