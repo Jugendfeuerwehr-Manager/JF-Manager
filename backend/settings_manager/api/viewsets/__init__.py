@@ -127,7 +127,10 @@ class SettingsViewSet(viewsets.ViewSet):
 
     def _check_category_permission(self, user, category, permission_type="view"):
         """Check if user has permission for a specific category"""
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
+            return True
+
+        if user.is_staff and category != "ldap":
             return True
 
         # Check specific permission
