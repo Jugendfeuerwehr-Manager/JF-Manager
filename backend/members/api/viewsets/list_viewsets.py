@@ -2,10 +2,12 @@
 ViewSet for MemberList and MemberListEntry management.
 """
 
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -15,7 +17,8 @@ from members.api.serializers.list_serializers import (
     MemberListDetailSerializer,
     MemberListSerializer,
 )
-from members.models import Member, MemberList, MemberListEntry
+from members.api_serializers import AttachmentSerializer
+from members.models import Attachment, Member, MemberList, MemberListEntry
 
 
 @extend_schema_view(
@@ -36,6 +39,53 @@ class MemberListViewSet(viewsets.ModelViewSet):
         if self.action == "retrieve":
             return MemberListDetailSerializer
         return MemberListSerializer
+
+    @action(detail=True, methods=["get", "post"], url_path="attachments", parser_classes=[MultiPartParser, FormParser])
+    def attachments(self, request, pk=None):
+        """
+        GET: List attachments for a member list
+        POST: Upload an attachment for a member list
+        """
+        member_list = self.get_object()
+
+        if request.method == "GET":
+            attachments = member_list.attachments.all().order_by("-uploaded_at")
+            serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
+            return Response(serializer.data)
+
+        if not request.user.has_perm("members.change_memberlist"):
+            return Response({"detail": "Keine Berechtigung zum Bearbeiten."}, status=status.HTTP_403_FORBIDDEN)
+
+        file_obj = request.FILES.get("file")
+        name = request.data.get("name") or (file_obj.name if file_obj else None)
+        description = request.data.get("description", "")
+
+        if not file_obj or not name:
+            return Response({"detail": "Datei und Name sind erforderlich."}, status=status.HTTP_400_BAD_REQUEST)
+
+        attachment = Attachment.objects.create(
+            content_object=member_list,
+            file=file_obj,
+            name=name,
+            description=description,
+            uploaded_by=request.user,
+        )
+
+        serializer = AttachmentSerializer(attachment, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["delete"], url_path="attachments/(?P<attachment_id>[^/.]+)")
+    def delete_attachment(self, request, pk=None, attachment_id=None):
+        """Delete an attachment from a member list."""
+        member_list = self.get_object()
+
+        if not request.user.has_perm("members.change_memberlist"):
+            return Response({"detail": "Keine Berechtigung zum Löschen."}, status=status.HTTP_403_FORBIDDEN)
+
+        attachment = get_object_or_404(member_list.attachments, pk=attachment_id)
+        attachment.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     # ── Membership management ──────────────────────────────────────────────
 

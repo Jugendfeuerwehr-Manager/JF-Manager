@@ -1,6 +1,7 @@
 import apiClient from './index'
 import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate } from '@/types/lists'
 import type { PaginatedResponse } from '@/types/api'
+import type { Attachment } from '@/types/qualifications'
 
 export const memberListsApi = {
   list() {
@@ -71,5 +72,19 @@ export const memberListsApi = {
       `/member-lists/${listId}/update_entry_notes/`,
       { member_id: memberId, notes },
     )
+  },
+
+  attachments: {
+    list(listId: number) {
+      return apiClient.get<Attachment[]>(`/member-lists/${listId}/attachments/`)
+    },
+    upload(listId: number, data: FormData) {
+      return apiClient.post<Attachment>(`/member-lists/${listId}/attachments/`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    delete(listId: number, attachmentId: number) {
+      return apiClient.delete(`/member-lists/${listId}/attachments/${attachmentId}/`)
+    },
   },
 }
