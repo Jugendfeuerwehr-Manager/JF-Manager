@@ -12,6 +12,11 @@ import type {
   MemberSettings,
   ServiceSettings,
   OrderSettings,
+  LdapSettings,
+  LdapBrowseRequest,
+  LdapBrowseResult,
+  LdapDepartmentRoleMapping,
+  LdapDepartmentRoleMappingCreate,
   SettingsPermissions,
   SettingsCategory
 } from '@/types/settings'
@@ -26,7 +31,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const member = ref<MemberSettings | null>(null)
   const service = ref<ServiceSettings | null>(null)
   const order = ref<OrderSettings | null>(null)
+  const ldap = ref<LdapSettings | null>(null)
   const permissions = ref<SettingsPermissions | null>(null)
+  const departmentMappings = ref<LdapDepartmentRoleMapping[]>([])
   
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -112,6 +119,15 @@ export const useSettingsStore = defineStore('settings', () => {
         description: 'Bestellungs-Benachrichtigungen'
       })
     }
+
+    if (canViewCategory.value('ldap')) {
+      tabs.push({
+        id: 'ldap',
+        title: 'LDAP',
+        icon: 'pi pi-shield',
+        description: 'LDAP Anmeldung und Gruppen-Synchronisation'
+      })
+    }
     
     // Email templates tab - check if user can change settings (editing templates)
     if (canChangeCategory.value('email')) {
@@ -168,6 +184,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (data.member) member.value = data.member
       if (data.service) service.value = data.service
       if (data.order) order.value = data.order
+      if (data.ldap) ldap.value = data.ldap
       
       return data
     } catch (err: unknown) {
@@ -206,6 +223,9 @@ export const useSettingsStore = defineStore('settings', () => {
           break
         case 'order':
           order.value = response.data as OrderSettings
+          break
+        case 'ldap':
+          ldap.value = response.data as LdapSettings
           break
       }
       
@@ -246,6 +266,9 @@ export const useSettingsStore = defineStore('settings', () => {
           break
         case 'order':
           order.value = response.data as OrderSettings
+          break
+        case 'ldap':
+          ldap.value = response.data as LdapSettings
           break
       }
       
@@ -296,6 +319,70 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * Update LDAP settings
+   */
+  async function updateLdap(data: Partial<LdapSettings>) {
+    return updateCategorySettings('ldap', data as Record<string, unknown>)
+  }
+
+  /**
+   * Test LDAP connection
+   */
+  async function testLdapConnection() {
+    try {
+      loading.value = true
+      error.value = null
+      const response = await settingsApi.testLdapConnection()
+      return response.data
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to test LDAP connection'
+      error.value = errorMessage
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Browse LDAP directory at a given DN
+   */
+  async function browseLdapDn(params: LdapBrowseRequest): Promise<LdapBrowseResult> {
+    const response = await settingsApi.browseLdap(params)
+    return response.data
+  }
+
+  /**
+   * Fetch LDAP → Department role mappings
+   */
+  async function fetchDepartmentMappings() {
+    try {
+      const response = await settingsApi.listDepartmentMappings()
+      departmentMappings.value = response.data
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch department mappings'
+      error.value = errorMessage
+      throw err
+    }
+  }
+
+  /**
+   * Create a new LDAP → Department role mapping
+   */
+  async function createDepartmentMapping(data: LdapDepartmentRoleMappingCreate) {
+    const response = await settingsApi.createDepartmentMapping(data)
+    departmentMappings.value.push(response.data)
+    return response.data
+  }
+
+  /**
+   * Delete a LDAP → Department role mapping
+   */
+  async function deleteDepartmentMapping(id: number) {
+    await settingsApi.deleteDepartmentMapping(id)
+    departmentMappings.value = departmentMappings.value.filter((m) => m.id !== id)
+  }
+
+  /**
    * Clear error state
    */
   function clearError() {
@@ -311,7 +398,9 @@ export const useSettingsStore = defineStore('settings', () => {
     member.value = null
     service.value = null
     order.value = null
+    ldap.value = null
     permissions.value = null
+    departmentMappings.value = []
     loading.value = false
     error.value = null
   }
@@ -327,7 +416,9 @@ export const useSettingsStore = defineStore('settings', () => {
     member,
     service,
     order,
+    ldap,
     permissions,
+    departmentMappings,
     loading,
     error,
     
@@ -350,6 +441,12 @@ export const useSettingsStore = defineStore('settings', () => {
     updateMember,
     updateService,
     updateOrder,
+    updateLdap,
+    testLdapConnection,
+    browseLdapDn,
+    fetchDepartmentMappings,
+    createDepartmentMapping,
+    deleteDepartmentMapping,
     clearError,
     $reset
   }

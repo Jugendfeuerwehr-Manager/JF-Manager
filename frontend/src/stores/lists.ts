@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { memberListsApi } from '@/api/lists'
 import { getApiErrorMessage } from '@/utils/apiError'
 import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate } from '@/types/lists'
+import type { Attachment } from '@/types/qualifications'
 
 export const useMemberListsStore = defineStore('memberLists', () => {
   // ── State ────────────────────────────────────────────────────────────────
@@ -10,7 +11,9 @@ export const useMemberListsStore = defineStore('memberLists', () => {
   const currentList = ref<MemberListDetail | null>(null)
   const loading = ref(false)
   const saving = ref(false)
+  const loadingAttachments = ref(false)
   const error = ref<string | null>(null)
+  const listAttachments = ref<Record<number, Attachment[]>>({})
 
   // ── Lists CRUD ───────────────────────────────────────────────────────────
   async function fetchLists() {
@@ -159,6 +162,41 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     }
   }
 
+  // ── Attachments ──────────────────────────────────────────────────────────
+  async function fetchListAttachments(listId: number): Promise<Attachment[]> {
+    loadingAttachments.value = true
+    try {
+      const response = await memberListsApi.attachments.list(listId)
+      listAttachments.value[listId] = response.data
+      return response.data
+    } finally {
+      loadingAttachments.value = false
+    }
+  }
+
+  async function uploadListAttachment(listId: number, data: FormData): Promise<Attachment> {
+    loadingAttachments.value = true
+    try {
+      const response = await memberListsApi.attachments.upload(listId, data)
+      const existing = listAttachments.value[listId] ?? []
+      listAttachments.value[listId] = [response.data, ...existing]
+      return response.data
+    } finally {
+      loadingAttachments.value = false
+    }
+  }
+
+  async function deleteListAttachment(listId: number, attachmentId: number): Promise<void> {
+    loadingAttachments.value = true
+    try {
+      await memberListsApi.attachments.delete(listId, attachmentId)
+      const existing = listAttachments.value[listId] ?? []
+      listAttachments.value[listId] = existing.filter((a) => a.id !== attachmentId)
+    } finally {
+      loadingAttachments.value = false
+    }
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────
   function syncCheckedCount(listId: number) {
     const idx = lists.value.findIndex((l) => l.id === listId)
@@ -181,7 +219,9 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     currentList,
     loading,
     saving,
+    loadingAttachments,
     error,
+    listAttachments,
     fetchLists,
     fetchList,
     createList,
@@ -194,5 +234,8 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     checkAll,
     uncheckAll,
     updateEntryNotes,
+    fetchListAttachments,
+    uploadListAttachment,
+    deleteListAttachment,
   }
 })

@@ -35,6 +35,65 @@
                     "NODE_ENV": "development"
                 }
             }
+        },
+        {
+            "label": "redis: start locally",
+            "type": "shell",
+            "command": "redis-server --port 6379 --loglevel notice",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "redis",
+                "pattern": { "regexp": "^$" },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*Ready to accept connections.*$",
+                    "endsPattern": "^.*$"
+                }
+            },
+            "options": {
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "silent",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "rq: worker - backend",
+            "type": "shell",
+            "command": "pipenv run python manage.py rqworker default",
+            "isBackground": true,
+            "dependsOn": ["redis: start locally"],
+            "problemMatcher": {
+                "owner": "rq",
+                "pattern": { "regexp": "^$" },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*$",
+                    "endsPattern": "^.*Listening on.*$"
+                }
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                },
+                "env": {
+                    "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
+                    "DJANGO_SECRET_KEY": "ABCdefGheiasdjkn13njkasndk1n3kjnkjansd",
+                    "REDIS_URL": "redis://localhost:6379"
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "silent",
+                "panel": "dedicated"
+            }
         }
     ]
 }

@@ -234,6 +234,13 @@
             </div>
           </TransitionGroup>
         </div>
+
+        <AttachmentsSection
+          :source-id="store.currentList.id"
+          source-type="memberList"
+          title="Anhänge"
+          :allow-manage="true"
+        />
       </div>
     </template>
 
@@ -300,6 +307,7 @@ import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Toast from 'primevue/toast'
+import AttachmentsSection from '@/components/qualifications/organisms/AttachmentsSection.vue'
 import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useGroupsStore } from '@/stores/groups'

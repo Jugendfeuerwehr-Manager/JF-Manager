@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     default-libmysqlclient-dev \
     libpq-dev \
+    libldap2-dev \
+    libsasl2-dev \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -61,6 +64,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-mysql-client \
     libpq5 \
     default-libmysqlclient-dev \
+    libldap-2.5-0 \
+    libsasl2-2 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

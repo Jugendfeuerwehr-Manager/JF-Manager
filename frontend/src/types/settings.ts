@@ -35,12 +35,78 @@ export interface OrderSettings {
   equipment_manager_email: string
 }
 
+export interface LdapSettings {
+  enabled: boolean
+  server_uri: string
+  start_tls: boolean
+  bind_dn: string
+  bind_password?: string
+  has_bind_password: boolean
+  user_search_base_dn: string
+  user_search_filter: string
+  group_search_base_dn: string
+  group_search_filter: string
+  group_type: 'group_of_names' | 'active_directory'
+  mirror_groups: boolean
+  require_group: string
+}
+
 export interface AllSettings {
   general?: GeneralSettings
   email?: EmailSettings
   member?: MemberSettings
   service?: ServiceSettings
   order?: OrderSettings
+  ldap?: LdapSettings
+}
+
+// ============================================================================
+// LDAP Department Role Mapping Types
+// ============================================================================
+
+export interface AuthGroupMini {
+  id: number
+  name: string
+}
+
+export interface LdapDepartmentRoleMapping {
+  id: number
+  ldap_group_dn: string
+  department: number
+  department_name: string
+  auth_groups: AuthGroupMini[]
+  auth_group_ids: number[]
+  revoke_on_mismatch: boolean
+}
+
+export interface LdapDepartmentRoleMappingCreate {
+  ldap_group_dn: string
+  department: number
+  auth_group_ids?: number[]
+  revoke_on_mismatch?: boolean
+}
+
+export interface LdapBrowseRequest {
+  base_dn: string
+  filter?: string
+  scope?: 'one' | 'subtree'
+  attributes?: string[]
+}
+
+export interface LdapBrowseEntry {
+  dn: string
+  cn?: string | string[]
+  ou?: string | string[]
+  description?: string | string[]
+  objectClass?: string | string[]
+  [key: string]: string | string[] | undefined
+}
+
+export interface LdapBrowseResult {
+  ok: boolean
+  entries: LdapBrowseEntry[]
+  total: number
+  detail?: string
 }
 
 // ============================================================================
@@ -61,6 +127,7 @@ export interface SettingsPermissions {
     member: CategoryPermissions
     service: CategoryPermissions
     order: CategoryPermissions
+    ldap: CategoryPermissions
     [key: string]: CategoryPermissions
   }
 }
@@ -69,7 +136,7 @@ export interface SettingsPermissions {
 // API Request/Response Types
 // ============================================================================
 
-export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order'
+export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap'
 
 export interface CategorySettingsUpdate {
   category: SettingsCategory
@@ -97,6 +164,7 @@ export interface SettingsState {
   member: MemberSettings | null
   service: ServiceSettings | null
   order: OrderSettings | null
+  ldap: LdapSettings | null
   permissions: SettingsPermissions | null
   loading: boolean
   error: string | null

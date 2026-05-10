@@ -53,6 +53,11 @@ jobs:
       - name: Install pipenv
         run: pip install pipenv==2026.5.2
 
+      - name: Install LDAP build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libldap2-dev libsasl2-dev libssl-dev
+
       - name: Install dependencies
         working-directory: backend
         run: pipenv install --deploy --system

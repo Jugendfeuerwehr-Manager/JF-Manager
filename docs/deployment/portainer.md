@@ -10,6 +10,17 @@
 
 ## Quick Start (5 Minutes)
 
+## Update Existing Stacks (RQ Requirement)
+
+If your stack was created before RQ worker support, update the stack compose file and redeploy:
+
+- Add a dedicated `worker` service using the same backend image.
+- Set worker command to `python manage.py rqworker default`.
+- Ensure `REDIS_URL=redis://redis:6379` is present for `backend` and `worker`.
+- Keep `worker` in the same Docker network and depend on healthy `redis` and `db` services.
+
+Without a running worker, queued sync/background jobs stay pending and are not executed.
+
 ### Step 1: Create Stack
 
 1. Open Portainer → Select your Docker environment

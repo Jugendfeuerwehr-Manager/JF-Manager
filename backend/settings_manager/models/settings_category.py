@@ -24,6 +24,8 @@ class SettingsCategory(models.Model):
             ("change_service_settings", "Kann Dienst Einstellungen ändern"),
             ("view_order_settings", "Kann Bestell Einstellungen einsehen"),
             ("change_order_settings", "Kann Bestell Einstellungen ändern"),
+            ("view_ldap_settings", "Kann LDAP Einstellungen einsehen"),
+            ("change_ldap_settings", "Kann LDAP Einstellungen ändern"),
             ("view_all_settings", "Kann alle Einstellungen einsehen"),
             ("change_all_settings", "Kann alle Einstellungen ändern"),
         ]

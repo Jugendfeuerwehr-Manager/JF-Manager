@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import { useQualificationsStore } from '@/stores/qualifications'
+import { useMemberListsStore } from '@/stores/lists'
 import type { Attachment } from '@/types/qualifications'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -16,7 +17,7 @@ import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   sourceId: number
-  sourceType: 'qualification' | 'specialTask'
+  sourceType: 'qualification' | 'specialTask' | 'memberList'
   title?: string
   allowManage?: boolean
   initialAttachments?: Attachment[] | null
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 const toast = useToast()
 const confirm = useConfirm()
 const qualificationsStore = useQualificationsStore()
+const memberListsStore = useMemberListsStore()
 
 const showUploadDialog = ref(false)
 const showPreviewDialog = ref(false)
@@ -44,23 +46,33 @@ const selectedFile = ref<File | null>(null)
 const formError = ref<string | null>(null)
 
 const isQualification = computed(() => props.sourceType === 'qualification')
+const isMemberList = computed(() => props.sourceType === 'memberList')
 
 const attachments = computed<Attachment[]>(() => {
   const map = isQualification.value
     ? qualificationsStore.qualificationAttachments
-    : qualificationsStore.specialTaskAttachments
+    : isMemberList.value
+      ? memberListsStore.listAttachments
+      : qualificationsStore.specialTaskAttachments
 
   const fromStore = map[props.sourceId]
   return fromStore ?? props.initialAttachments ?? []
 })
 
-const loadingAttachments = computed(() => qualificationsStore.loadingAttachments)
+const loadingAttachments = computed(() => {
+  if (isMemberList.value) {
+    return memberListsStore.loadingAttachments
+  }
+  return qualificationsStore.loadingAttachments
+})
 
 async function ensureAttachmentsLoaded() {
   try {
     if (attachments.value.length === 0) {
       if (isQualification.value) {
         await qualificationsStore.fetchQualificationAttachments(props.sourceId)
+      } else if (isMemberList.value) {
+        await memberListsStore.fetchListAttachments(props.sourceId)
       } else {
         await qualificationsStore.fetchSpecialTaskAttachments(props.sourceId)
       }
@@ -151,6 +163,8 @@ async function submitUpload() {
   try {
     if (isQualification.value) {
       await qualificationsStore.uploadQualificationAttachment(props.sourceId, formData)
+    } else if (isMemberList.value) {
+      await memberListsStore.uploadListAttachment(props.sourceId, formData)
     } else {
       await qualificationsStore.uploadSpecialTaskAttachment(props.sourceId, formData)
     }
@@ -195,6 +209,8 @@ function handleDelete(attachment: Attachment) {
       try {
         if (isQualification.value) {
           await qualificationsStore.deleteQualificationAttachment(props.sourceId, attachment.id)
+        } else if (isMemberList.value) {
+          await memberListsStore.deleteListAttachment(props.sourceId, attachment.id)
         } else {
           await qualificationsStore.deleteSpecialTaskAttachment(props.sourceId, attachment.id)
         }

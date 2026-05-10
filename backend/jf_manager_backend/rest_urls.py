@@ -2,6 +2,7 @@ from rest_framework import routers
 
 from departments.api.viewsets.departments import DepartmentViewSet
 from departments.api.viewsets.user_department_roles import UserDepartmentRoleViewSet
+from external_sync.api import SyncJobViewSet, SyncRunViewSet
 from inventory.api import (
     CategoryViewSet,
     ItemVariantViewSet,
@@ -29,7 +30,7 @@ from qualifications.api.viewsets import (
     SpecialTaskViewSet,
 )
 from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
-from settings_manager.api import EmailTemplateViewSet, SettingsViewSet
+from settings_manager.api import EmailTemplateViewSet, LDAPDepartmentMappingViewSet, SettingsViewSet
 from training.api.viewsets import (
     LibraryBlockCategoryViewSet,
     LibraryBlockTagViewSet,
@@ -49,6 +50,8 @@ api.register(r"admin/permissions", PermissionViewSet, basename="admin-permission
 # Department management
 api.register(r"departments", DepartmentViewSet, basename="departments")
 api.register(r"admin/department-roles", UserDepartmentRoleViewSet, basename="department-roles")
+api.register(r"sync-jobs", SyncJobViewSet, basename="sync-jobs")
+api.register(r"sync-runs", SyncRunViewSet, basename="sync-runs")
 api.register(r"members", MemberViewSet)
 api.register(r"parents", ParentViewSet)
 api.register(r"statuses", StatusViewSet)
@@ -87,6 +90,7 @@ api.register(r"qualifications", QualificationViewSet, basename="qualifications")
 # Settings endpoints
 api.register(r"settings", SettingsViewSet, basename="settings")
 api.register(r"settings/email-templates", EmailTemplateViewSet, basename="email-templates")
+api.register(r"ldap-department-mappings", LDAPDepartmentMappingViewSet, basename="ldap-department-mappings")
 
 # Training endpoints - most specific routes FIRST
 api.register(r"training/library/categories", LibraryBlockCategoryViewSet, basename="training-library-categories")

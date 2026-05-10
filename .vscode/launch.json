@@ -15,11 +15,13 @@
             ],
             "django": true,
             "justMyCode": true,
+            "preLaunchTask": "rq: worker - backend",
             "env": {
                 "PYTHONUNBUFFERED": "1",
                 "DJANGO_DEBUG": "True",
                 "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
-                "DJANGO_SECRET_KEY":"ABCdefGheiasdjkn13njkasndk1n3kjnkjansd"
+                "DJANGO_SECRET_KEY": "ABCdefGheiasdjkn13njkasndk1n3kjnkjansd",
+                "REDIS_URL": "redis://localhost:6379"
             }
         },
         {

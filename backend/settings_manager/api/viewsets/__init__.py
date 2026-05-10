@@ -2,19 +2,22 @@
 ViewSets for Settings API
 """
 
-from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
+from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..permissions import CanChangeCategorySettings, CanChangeSettings, CanViewCategorySettings, CanViewSettings
+from settings_manager.models import LDAPConfig
+
 from ..serializers import (
     AllSettingsSerializer,
     CategorySettingsUpdateSerializer,
     EmailSettingsSerializer,
     GeneralSettingsSerializer,
+    LDAPConnectionTestSerializer,
+    LDAPSettingsSerializer,
     MemberSettingsSerializer,
     OrderSettingsSerializer,
     ServiceSettingsSerializer,
@@ -23,8 +26,9 @@ from ..serializers import (
 
 # Import email template viewset
 from .email_template import EmailTemplateViewSet
+from .ldap_mappings import LDAPDepartmentMappingViewSet
 
-__all__ = ["EmailTemplateViewSet", "SettingsViewSet"]
+__all__ = ["EmailTemplateViewSet", "LDAPDepartmentMappingViewSet", "SettingsViewSet"]
 
 
 class SettingsViewSet(viewsets.ViewSet):
@@ -58,7 +62,22 @@ class SettingsViewSet(viewsets.ViewSet):
         "member": {"prefix": "members", "fields": ["alert_threshold", "alert_threshold_last_entries"]},
         "service": {"prefix": "service", "fields": ["service_start_time", "service_end_time"]},
         "order": {"prefix": "orders", "fields": ["equipment_manager_email"]},
+        "ldap": {"prefix": "ldap", "fields": []},
     }
+
+    LDAP_FIELDS = [
+        "enabled",
+        "server_uri",
+        "start_tls",
+        "bind_dn",
+        "user_search_base_dn",
+        "user_search_filter",
+        "group_search_base_dn",
+        "group_search_filter",
+        "group_type",
+        "mirror_groups",
+        "require_group",
+    ]
 
     def _get_category_settings(self, category):
         """Helper to retrieve settings for a specific category"""
@@ -108,7 +127,10 @@ class SettingsViewSet(viewsets.ViewSet):
 
     def _check_category_permission(self, user, category, permission_type="view"):
         """Check if user has permission for a specific category"""
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
+            return True
+
+        if user.is_staff and category != "ldap":
             return True
 
         # Check specific permission
@@ -119,6 +141,24 @@ class SettingsViewSet(viewsets.ViewSet):
         # Check global permission
         global_permission = f"settings_manager.{permission_type}_all_settings"
         return bool(user.has_perm(global_permission))
+
+    def _get_ldap_settings(self):
+        config = LDAPConfig.get_or_create_default()
+        settings = {field: getattr(config, field) for field in self.LDAP_FIELDS}
+        settings["has_bind_password"] = bool(config.bind_password)
+        return settings
+
+    def _save_ldap_settings(self, data):
+        config = LDAPConfig.get_or_create_default()
+        for field in self.LDAP_FIELDS:
+            if field in data:
+                setattr(config, field, data[field])
+
+        if "bind_password" in data:
+            config.bind_password = data["bind_password"]
+
+        config.save()
+        return config
 
     @extend_schema(
         summary="List all settings",
@@ -142,7 +182,10 @@ class SettingsViewSet(viewsets.ViewSet):
         # Get settings for each category the user can access
         for category in self.CATEGORY_MAPPINGS:
             if self._check_category_permission(request.user, category, "view"):
-                category_settings = self._get_category_settings(category)
+                if category == "ldap":
+                    category_settings = self._get_ldap_settings()
+                else:
+                    category_settings = self._get_category_settings(category)
                 if category_settings is not None:
                     all_settings[category] = category_settings
 
@@ -301,6 +344,170 @@ class SettingsViewSet(viewsets.ViewSet):
                 self._save_category_settings("order", serializer.validated_data)
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Get LDAP settings",
+        description="Get LDAP authentication and group sync configuration",
+        responses={200: LDAPSettingsSerializer},
+    )
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    def ldap(self, request):
+        """GET/PATCH /api/v1/settings/ldap/"""
+        if request.method == "GET":
+            if not self._check_category_permission(request.user, "ldap", "view"):
+                return Response(
+                    {"detail": "You do not have permission to view LDAP settings."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            serializer = LDAPSettingsSerializer(self._get_ldap_settings())
+            return Response(serializer.data)
+
+        if not self._check_category_permission(request.user, "ldap", "change"):
+            return Response(
+                {"detail": "You do not have permission to change LDAP settings."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = LDAPSettingsSerializer(data=request.data, partial=True)
+        if serializer.is_valid():
+            self._save_ldap_settings(serializer.validated_data)
+            response_serializer = LDAPSettingsSerializer(self._get_ldap_settings())
+            return Response(response_serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Test LDAP connection",
+        description="Test LDAP server bind and configured user/group search bases",
+        responses={200: LDAPConnectionTestSerializer, 400: LDAPConnectionTestSerializer},
+    )
+    @action(detail=False, methods=["post"], url_path="ldap/test-connection", permission_classes=[IsAuthenticated])
+    def ldap_test_connection(self, request):
+        """POST /api/v1/settings/ldap/test-connection/"""
+        if not self._check_category_permission(request.user, "ldap", "change"):
+            return Response(
+                {"detail": "You do not have permission to test LDAP settings."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        config = LDAPConfig.get_or_create_default()
+        if not config.server_uri:
+            return Response(
+                {"ok": False, "detail": "LDAP server URI is not configured."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            import ldap
+
+            connection = ldap.initialize(config.server_uri)
+            connection.set_option(ldap.OPT_NETWORK_TIMEOUT, 5)
+
+            if config.start_tls:
+                connection.start_tls_s()
+
+            if config.bind_dn:
+                connection.simple_bind_s(config.bind_dn, config.bind_password or "")
+            else:
+                connection.simple_bind_s()
+
+            if config.user_search_base_dn and config.user_search_filter:
+                connection.search_s(config.user_search_base_dn, ldap.SCOPE_SUBTREE, config.user_search_filter)
+
+            if config.group_search_base_dn and config.group_search_filter:
+                connection.search_s(config.group_search_base_dn, ldap.SCOPE_SUBTREE, config.group_search_filter)
+
+            connection.unbind_s()
+            return Response({"ok": True, "detail": "LDAP connection test succeeded."})
+        except Exception as exc:
+            return Response(
+                {"ok": False, "detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @extend_schema(
+        summary="Browse LDAP directory",
+        description=(
+            "Browse the LDAP directory at a given base DN using the saved server credentials. "
+            "Returns up to 200 entries with their DN and requested attributes."
+        ),
+    )
+    @action(detail=False, methods=["post"], url_path="ldap/browse", permission_classes=[IsAuthenticated])
+    def ldap_browse(self, request):
+        """POST /api/v1/settings/ldap/browse/"""
+        if not request.user.is_superuser:
+            return Response(
+                {"detail": "Keine Berechtigung für LDAP-Einstellungen."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        config = LDAPConfig.get_or_create_default()
+        if not config.server_uri:
+            return Response(
+                {"ok": False, "detail": "LDAP Server URI ist nicht konfiguriert.", "entries": []},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        base_dn = request.data.get("base_dn", "")
+        filter_str = request.data.get("filter", "(objectClass=*)")
+        scope_str = request.data.get("scope", "one")
+        requested_attrs = request.data.get("attributes", ["cn", "ou", "description", "objectClass"])
+
+        # Restrict scope to known safe values
+        if scope_str not in ("one", "sub"):
+            scope_str = "one"
+
+        # Guard against LDAP filter injection: cap length and allow only safe characters
+        import re
+
+        if len(filter_str) > 512 or not re.fullmatch(r"[\w\s=*()\-.,@:/\\+<>\"'#;!%&|~]+", filter_str):
+            return Response(
+                {"ok": False, "detail": "Ungültiger LDAP-Filter.", "entries": []},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            import ldap
+
+            conn = ldap.initialize(config.server_uri)
+            conn.set_option(ldap.OPT_NETWORK_TIMEOUT, 5)
+
+            if config.start_tls:
+                conn.start_tls_s()
+
+            if config.bind_dn:
+                conn.simple_bind_s(config.bind_dn, config.bind_password or "")
+            else:
+                conn.simple_bind_s()
+
+            scope = ldap.SCOPE_ONELEVEL if scope_str == "one" else ldap.SCOPE_SUBTREE
+            raw_results = conn.search_s(base_dn, scope, filter_str, requested_attrs)
+            conn.unbind_s()
+
+            entries = []
+            for dn, attrs_dict in raw_results:
+                if dn is None:
+                    continue
+                entry: dict = {"dn": dn}
+                for attr_name, values in attrs_dict.items():
+                    decoded = []
+                    for v in values if isinstance(values, list) else [values]:
+                        if isinstance(v, bytes):
+                            try:
+                                decoded.append(v.decode("utf-8"))
+                            except Exception:
+                                decoded.append(v.hex())
+                        else:
+                            decoded.append(str(v))
+                    entry[attr_name] = decoded[0] if len(decoded) == 1 else decoded
+                entries.append(entry)
+
+            return Response({"ok": True, "entries": entries, "total": len(entries)})
+        except Exception as exc:
+            return Response(
+                {"ok": False, "detail": str(exc), "entries": []},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @extend_schema(
         summary="Get user permissions",

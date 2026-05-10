@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.utils import timezone
 
@@ -11,6 +12,7 @@ class MemberList(models.Model):
     name = models.CharField(max_length=200, verbose_name="Listenname")
     description = models.TextField(blank=True, default="", verbose_name="Beschreibung")
     color = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbe")
+    attachments = GenericRelation("Attachment", related_query_name="memberlist")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
