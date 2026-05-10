@@ -2,6 +2,8 @@ import apiClient from './index'
 import type {
   GarbageCollectionPreview,
   GarbageCollectionResult,
+  SpondGroupsLookupRequest,
+  SpondTopLevelGroupResponse,
   SyncJob,
   SyncJobCreate,
   SyncJobListResponse,
@@ -24,6 +26,10 @@ export const externalSyncApi = {
 
   testConnection(id: number) {
     return apiClient.post(`/sync-jobs/${id}/test_connection/`, {})
+  },
+
+  listSpondTopLevelGroups(data: SpondGroupsLookupRequest) {
+    return apiClient.post<SpondTopLevelGroupResponse>('/sync-jobs/spond-top-level-groups/', data)
   },
 
   runNow(id: number) {

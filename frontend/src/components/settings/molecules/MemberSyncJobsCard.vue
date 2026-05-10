@@ -104,6 +104,33 @@
               input-class="w-full"
             />
           </div>
+          <div class="field">
+            <label for="sync-spond-group">Spond Top-Level-Gruppe</label>
+            <Dropdown
+              id="sync-spond-group"
+              v-model="form.config.group_id"
+              :options="spondTopLevelGroupOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="Top-Level-Gruppe auswählen"
+              :disabled="!canEdit || syncStore.spondTopLevelGroups.length === 0"
+            />
+          </div>
+          <div class="field field-action">
+            <Button
+              label="Spond-Gruppen laden"
+              icon="pi pi-download"
+              type="button"
+              outlined
+              @click="handleLoadSpondGroups"
+              :disabled="!canEdit || !canLoadSpondGroups"
+              :loading="syncStore.loading"
+            />
+          </div>
+          <div class="field field-checkbox">
+            <Checkbox id="sync-spond-groups-enabled" v-model="form.config.sync_groups" :binary="true" :disabled="!canEdit" />
+            <label for="sync-spond-groups-enabled">Gruppen synchronisieren</label>
+          </div>
         </div>
 
         <div class="flex justify-content-end mt-3">
@@ -233,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
@@ -270,7 +297,12 @@ const toast = useToast()
 const syncStore = useExternalSyncStore()
 const departmentsStore = useDepartmentsStore()
 
-const form = reactive<SyncJobCreate & { credentials: { username: string; password: string } }>({
+const form = reactive<
+  SyncJobCreate & {
+    credentials: { username: string; password: string }
+    config: { group_id: string | null; sync_groups: boolean }
+  }
+>({
   name: '',
   provider: 'spond',
   scope: 'organization',
@@ -280,6 +312,7 @@ const form = reactive<SyncJobCreate & { credentials: { username: string; passwor
   deletion_mode: 'review',
   enabled: true,
   credentials: { username: '', password: '' },
+  config: { group_id: null, sync_groups: true },
 })
 
 const providerOptions: Array<{ label: string; value: SyncProvider }> = [
@@ -306,6 +339,17 @@ const departmentOptions = computed(() =>
   departmentsStore.departments.map((department) => ({ label: department.name, value: department.id })),
 )
 
+const spondTopLevelGroupOptions = computed(() =>
+  syncStore.spondTopLevelGroups.map((group) => ({ label: group.name, value: group.id })),
+)
+
+const canLoadSpondGroups = computed(
+  () =>
+    form.provider === 'spond' &&
+    form.credentials.username.trim().length > 0 &&
+    form.credentials.password.trim().length > 0,
+)
+
 const canCreateJob = computed(() => {
   if (!form.name.trim()) {
     return false
@@ -319,8 +363,29 @@ const canCreateJob = computed(() => {
   if (form.provider === 'spond' && (!form.credentials.username.trim() || !form.credentials.password.trim())) {
     return false
   }
+  if (form.provider === 'spond' && !form.config.group_id) {
+    return false
+  }
   return true
 })
+
+watch(
+  () => form.provider,
+  (provider) => {
+    if (provider !== 'spond') {
+      form.config.group_id = null
+      syncStore.clearSpondTopLevelGroups()
+    }
+  },
+)
+
+watch(
+  [() => form.credentials.username, () => form.credentials.password],
+  () => {
+    form.config.group_id = null
+    syncStore.clearSpondTopLevelGroups()
+  },
+)
 
 onMounted(async () => {
   try {
@@ -337,12 +402,31 @@ async function refreshData() {
   await Promise.all([syncStore.fetchJobs(), syncStore.fetchRuns()])
 }
 
+async function handleLoadSpondGroups() {
+  try {
+    await syncStore.fetchSpondTopLevelGroups({
+      username: form.credentials.username.trim(),
+      password: form.credentials.password,
+    })
+    toast.add({ severity: 'success', summary: 'Spond', detail: 'Top-Level-Gruppen geladen', life: 3000 })
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Spond', detail: getApiErrorMessage(err, 'Spond-Gruppen konnten nicht geladen werden'), life: 5000 })
+  }
+}
+
 async function handleCreateJob() {
   try {
     await syncStore.createJob({
       ...form,
       interval_minutes: form.run_mode === 'interval' ? form.interval_minutes : null,
       department: form.scope === 'department' ? form.department : null,
+      config:
+        form.provider === 'spond'
+          ? {
+              group_id: form.config.group_id,
+              sync_groups: form.config.sync_groups,
+            }
+          : undefined,
       credentials: form.provider === 'spond' ? { username: form.credentials.username, password: form.credentials.password } : undefined,
     })
     toast.add({ severity: 'success', summary: 'Erfolgreich', detail: 'Sync-Job angelegt', life: 3000 })
@@ -407,6 +491,8 @@ function resetForm() {
   form.deletion_mode = 'review'
   form.enabled = true
   form.credentials = { username: '', password: '' }
+  form.config = { group_id: null, sync_groups: true }
+  syncStore.clearSpondTopLevelGroups()
 }
 
 function providerLabel(provider: SyncProvider) {
@@ -474,6 +560,10 @@ function formatDateTime(value: string | null) {
   flex-direction: row;
   align-items: center;
   margin-top: 1.75rem;
+}
+
+.field-action {
+  justify-content: flex-end;
 }
 
 .credentials-grid {

@@ -69,6 +69,16 @@ class SyncJobDetailSerializer(SyncJobListSerializer):
 
         scope = attrs.get("scope", getattr(self.instance, "scope", SyncJob.Scope.ORGANIZATION))
         department = attrs.get("department", getattr(self.instance, "department", None))
+        provider = attrs.get("provider", getattr(self.instance, "provider", None))
+        config = attrs.get("config")
+        if config is None and self.instance is not None:
+            config = self.instance.config or {}
+        config = config or {}
+
+        if provider == SyncJob.Provider.SPOND and not config.get("group_id"):
+            raise serializers.ValidationError(
+                {"config": "Für Spond muss eine Top-Level-Gruppe ausgewählt werden (config.group_id)."}
+            )
 
         if not user or not user.is_authenticated:
             return attrs
@@ -94,6 +104,16 @@ class SyncJobDetailSerializer(SyncJobListSerializer):
 
 class SyncJobActionSerializer(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True, max_length=500)
+
+
+class SpondGroupsLookupSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=255)
+    password = serializers.CharField(max_length=255)
+
+
+class SpondTopLevelGroupSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
 
 
 class SyncRunSerializer(serializers.ModelSerializer):

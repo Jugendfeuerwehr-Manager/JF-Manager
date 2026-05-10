@@ -9,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from external_sync.api.serializers import (
+    SpondGroupsLookupSerializer,
+    SpondTopLevelGroupSerializer,
     SyncBindingSerializer,
     SyncJobActionSerializer,
     SyncJobDetailSerializer,
@@ -30,6 +32,7 @@ class ExternalSyncScopeMixin:
 
 class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
     queryset = SyncJob.objects.select_related("department", "created_by").prefetch_related("runs")
+    lookup_value_regex = r"\d+"
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["provider", "scope", "department", "run_mode", "enabled", "deletion_mode"]
@@ -53,6 +56,8 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in {"list"}:
             return SyncJobListSerializer
+        if self.action in {"spond_top_level_groups"}:
+            return SpondGroupsLookupSerializer
         if self.action in {"run_now", "test_connection", "garbage_collection_preview", "garbage_collect"}:
             return SyncJobActionSerializer
         return SyncJobDetailSerializer
@@ -136,6 +141,18 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
             run = self._record_failed_run(job, request.user, "manual", str(exc))
             return Response(SyncRunSerializer(run).data, status=status.HTTP_501_NOT_IMPLEMENTED)
 
+    @action(detail=False, methods=["post"], url_path="spond-top-level-groups")
+    def spond_top_level_groups(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            provider = get_provider("spond")
+            groups = provider.list_top_level_groups(credentials=serializer.validated_data)
+            return Response({"results": SpondTopLevelGroupSerializer(groups, many=True).data})
+        except ProviderNotImplementedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_501_NOT_IMPLEMENTED)
+
     @action(detail=True, methods=["get"], url_path="garbage-collection-preview")
     def garbage_collection_preview(self, request, pk=None):
         job = self.get_object()
@@ -161,6 +178,7 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
 
 class SyncRunViewSet(ExternalSyncScopeMixin, viewsets.ReadOnlyModelViewSet):
     queryset = SyncRun.objects.select_related("job", "job__department", "triggered_by")
+    lookup_value_regex = r"\d+"
     serializer_class = SyncRunSerializer
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]

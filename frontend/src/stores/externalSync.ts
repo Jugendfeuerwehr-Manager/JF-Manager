@@ -5,6 +5,7 @@ import { externalSyncApi } from '@/api/externalSync'
 import type {
   GarbageCollectionPreview,
   GarbageCollectionResult,
+  SpondTopLevelGroup,
   SyncJob,
   SyncJobCreate,
   SyncRun,
@@ -14,6 +15,7 @@ import { getApiErrorMessage } from '@/utils/apiError'
 export const useExternalSyncStore = defineStore('externalSync', () => {
   const jobs = ref<SyncJob[]>([])
   const runs = ref<SyncRun[]>([])
+  const spondTopLevelGroups = ref<SpondTopLevelGroup[]>([])
   const garbageCollectionPreview = ref<GarbageCollectionPreview | null>(null)
   const loading = ref(false)
   const actionJobId = ref<number | null>(null)
@@ -47,6 +49,25 @@ export const useExternalSyncStore = defineStore('externalSync', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function fetchSpondTopLevelGroups(credentials: { username: string; password: string }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await externalSyncApi.listSpondTopLevelGroups(credentials)
+      spondTopLevelGroups.value = response.data.results
+      return spondTopLevelGroups.value
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Spond-Gruppen konnten nicht geladen werden')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function clearSpondTopLevelGroups() {
+    spondTopLevelGroups.value = []
   }
 
   async function createJob(data: SyncJobCreate) {
@@ -145,12 +166,15 @@ export const useExternalSyncStore = defineStore('externalSync', () => {
   return {
     jobs,
     runs,
+    spondTopLevelGroups,
     garbageCollectionPreview,
     loading,
     actionJobId,
     error,
     fetchJobs,
     fetchRuns,
+    fetchSpondTopLevelGroups,
+    clearSpondTopLevelGroups,
     createJob,
     deleteJob,
     testConnection,

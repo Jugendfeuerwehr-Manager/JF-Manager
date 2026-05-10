@@ -56,7 +56,7 @@ class ExternalSyncApiTests(APITestCase):
                 "run_mode": SyncJob.RunMode.MANUAL,
                 "deletion_mode": SyncJob.DeletionMode.REVIEW,
                 "enabled": True,
-                "config": {"members": True, "groups": True},
+                "config": {"members": True, "groups": True, "group_id": "top-1"},
                 "credentials": {"token": "secret-token"},
             },
             format="json",
@@ -81,6 +81,7 @@ class ExternalSyncApiTests(APITestCase):
                 "interval_minutes": 60,
                 "deletion_mode": SyncJob.DeletionMode.REVIEW,
                 "enabled": True,
+                "config": {"group_id": "top-1"},
             },
             format="json",
         )
@@ -179,3 +180,20 @@ class ExternalSyncApiTests(APITestCase):
         self.assertEqual(run.status, SyncRun.Status.SUCCEEDED)
         self.assertIsInstance(run.summary.get("started_at"), str)
         self.assertIsInstance(run.summary.get("finished_at"), str)
+
+    def test_spond_top_level_groups_endpoint_accepts_post(self):
+        class DummyProvider:
+            def list_top_level_groups(self, credentials):
+                return [{"id": "top-1", "name": "Top Level"}]
+
+        self.client.force_authenticate(user=self.staff_user)
+
+        with patch("external_sync.api.viewsets.get_provider", return_value=DummyProvider()):
+            response = self.client.post(
+                "/api/v1/sync-jobs/spond-top-level-groups/",
+                {"username": "user@example.com", "password": "secret"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"], [{"id": "top-1", "name": "Top Level"}])

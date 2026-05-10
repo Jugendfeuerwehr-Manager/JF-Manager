@@ -43,6 +43,20 @@ export interface SyncJobCreate {
   credentials?: Record<string, unknown>
 }
 
+export interface SpondGroupsLookupRequest {
+  username: string
+  password: string
+}
+
+export interface SpondTopLevelGroup {
+  id: string
+  name: string
+}
+
+export interface SpondTopLevelGroupResponse {
+  results: SpondTopLevelGroup[]
+}
+
 export interface SyncRun {
   id: number
   job: number
