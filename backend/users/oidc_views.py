@@ -25,7 +25,7 @@ import json
 import logging
 import secrets
 import uuid
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 
 import requests
 from django.conf import settings
@@ -57,12 +57,37 @@ def _get_oidc_config():
     return OIDCConfig.get_or_create_default()
 
 
+def _validate_oidc_url(url: str, label: str = "URL", *, allowed_host: str | None = None) -> str:
+    """
+    Validate that a URL used for outbound OIDC requests is safe:
+      - Must be https:// (no http, file, ftp, …)
+      - Must have a non-empty netloc (no bare paths or localhost tricks)
+      - If allowed_host is provided, the URL's hostname must match it exactly
+        (prevents the discovery document from redirecting JWKS to a different server).
+
+    Returns the validated URL unchanged.
+    Raises ValueError with a descriptive message on failure.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError(f"OIDC {label} muss ein HTTPS-URL sein (erhalten: {parsed.scheme!r}).")
+    if not parsed.netloc:
+        raise ValueError(f"OIDC {label} hat keinen gültigen Host.")
+    if allowed_host is not None and parsed.hostname != allowed_host:
+        raise ValueError(
+            f"OIDC {label} zeigt auf einen anderen Host ({parsed.hostname!r}) als der"
+            f" konfigurierte Issuer ({allowed_host!r}). Anfrage abgelehnt."
+        )
+    return url
+
+
 def _fetch_discovery_document(issuer_url: str) -> dict:
     """
     Fetch the OIDC Discovery Document from {issuer_url}/.well-known/openid-configuration.
     Returns the parsed JSON dict.
     Raises requests.RequestException on network errors or non-200 responses.
     """
+    _validate_oidc_url(issuer_url, "Issuer-URL")
     discovery_url = issuer_url.rstrip("/") + "/.well-known/openid-configuration"
     logger.debug("Fetching OIDC discovery document from %s", discovery_url)
     response = requests.get(discovery_url, timeout=10)
@@ -82,6 +107,12 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
     jwks_uri = discovery.get("jwks_uri", "")
     if not jwks_uri:
         raise ValueError("OIDC Provider hat keine jwks_uri im Discovery-Dokument.")
+
+    # Validate jwks_uri: must be HTTPS and on the same host as the issuer to
+    # prevent a malicious discovery document from redirecting key-fetches to an
+    # attacker-controlled server (SSRF / key-confusion).
+    issuer_host = urlparse(config.issuer_url).hostname
+    _validate_oidc_url(jwks_uri, "JWKS-URI", allowed_host=issuer_host)
 
     jwks_response = requests.get(jwks_uri, timeout=10)
     jwks_response.raise_for_status()
