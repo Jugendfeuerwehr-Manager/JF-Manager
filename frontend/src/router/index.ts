@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/auth/oidc/callback',
+      name: 'oidc-callback',
+      component: () => import('@/views/OIDCCallbackView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/PasswordResetRequestView.vue'),

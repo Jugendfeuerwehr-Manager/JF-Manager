@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { settingsApi } from '@/api/settings'
+import { oidcApi } from '@/api/oidc'
 import type {
   GeneralSettings,
   EmailSettings,
@@ -20,6 +21,7 @@ import type {
   SettingsPermissions,
   SettingsCategory
 } from '@/types/settings'
+import type { OIDCSettings } from '@/types/oidc'
 
 export const useSettingsStore = defineStore('settings', () => {
   // ============================================================================
@@ -32,6 +34,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const service = ref<ServiceSettings | null>(null)
   const order = ref<OrderSettings | null>(null)
   const ldap = ref<LdapSettings | null>(null)
+  const oidc = ref<OIDCSettings | null>(null)
   const permissions = ref<SettingsPermissions | null>(null)
   const departmentMappings = ref<LdapDepartmentRoleMapping[]>([])
   
@@ -128,6 +131,15 @@ export const useSettingsStore = defineStore('settings', () => {
         description: 'LDAP Anmeldung und Gruppen-Synchronisation'
       })
     }
+
+    if (canViewCategory.value('oidc')) {
+      tabs.push({
+        id: 'oidc',
+        title: 'OIDC / SSO',
+        icon: 'pi pi-sign-in',
+        description: 'Single Sign-On via OpenID Connect'
+      })
+    }
     
     // Email templates tab - check if user can change settings (editing templates)
     if (canChangeCategory.value('email')) {
@@ -185,6 +197,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (data.service) service.value = data.service
       if (data.order) order.value = data.order
       if (data.ldap) ldap.value = data.ldap
+      if (data.oidc) oidc.value = data.oidc as unknown as OIDCSettings
       
       return data
     } catch (err: unknown) {
@@ -227,6 +240,11 @@ export const useSettingsStore = defineStore('settings', () => {
         case 'ldap':
           ldap.value = response.data as LdapSettings
           break
+        case 'oidc': {
+          const resp = await oidcApi.getSettings()
+          oidc.value = resp.data
+          return resp.data
+        }
       }
       
       return response.data
@@ -270,6 +288,11 @@ export const useSettingsStore = defineStore('settings', () => {
         case 'ldap':
           ldap.value = response.data as LdapSettings
           break
+        case 'oidc': {
+          const resp = await oidcApi.updateSettings(data as Partial<OIDCSettings>)
+          oidc.value = resp.data
+          return resp.data
+        }
       }
       
       return response.data
@@ -323,6 +346,10 @@ export const useSettingsStore = defineStore('settings', () => {
    */
   async function updateLdap(data: Partial<LdapSettings>) {
     return updateCategorySettings('ldap', data as Record<string, unknown>)
+  }
+
+  async function updateOidc(data: Partial<OIDCSettings>) {
+    return updateCategorySettings('oidc', data as Record<string, unknown>)
   }
 
   /**
@@ -399,6 +426,7 @@ export const useSettingsStore = defineStore('settings', () => {
     service.value = null
     order.value = null
     ldap.value = null
+    oidc.value = null
     permissions.value = null
     departmentMappings.value = []
     loading.value = false
@@ -417,6 +445,7 @@ export const useSettingsStore = defineStore('settings', () => {
     service,
     order,
     ldap,
+    oidc,
     permissions,
     departmentMappings,
     loading,
@@ -442,6 +471,7 @@ export const useSettingsStore = defineStore('settings', () => {
     updateService,
     updateOrder,
     updateLdap,
+    updateOidc,
     testLdapConnection,
     browseLdapDn,
     fetchDepartmentMappings,

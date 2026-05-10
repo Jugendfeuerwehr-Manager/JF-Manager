@@ -236,13 +236,13 @@ const handleOpenTraining = (trainingId: number) => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  background: var(--surface-50);
+  background: var(--p-content-background);
   border-radius: var(--border-radius);
 }
 
 .list-item .rank {
   font-weight: 700;
-  color: var(--primary-color);
+  color: var(--p-primary-500);
   min-width: 1.5rem;
 }
 
@@ -254,7 +254,7 @@ const handleOpenTraining = (trainingId: number) => {
 .empty-list {
   text-align: center;
   padding: 2rem;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
 }
 
 @media (max-width: 768px) {

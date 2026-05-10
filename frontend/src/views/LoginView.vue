@@ -42,6 +42,34 @@
 
         <template #content>
           <form @submit.prevent="handleLogin" class="login-form">
+
+            <!-- SSO / OIDC Login Button -->
+            <template v-if="oidcConfig?.enabled">
+              <Button
+                type="button"
+                :label="`Mit ${oidcConfig.provider_name} anmelden`"
+                icon="pi pi-sign-in"
+                :loading="oidcLoading"
+                class="login-button sso-button"
+                @click="handleOIDCLogin"
+              />
+
+              <div v-if="oidcConfig.hide_local_login && !showLocalLogin" class="local-login-toggle">
+                <a href="#" class="forgot-link" @click.prevent="showLocalLogin = true">
+                  <i class="pi pi-user"></i>
+                  Lokalen Account verwenden
+                </a>
+              </div>
+
+              <div v-if="!oidcConfig.hide_local_login || showLocalLogin" class="divider-row">
+                <div class="footer-line"></div>
+                <span class="divider-text">oder</span>
+                <div class="footer-line"></div>
+              </div>
+            </template>
+
+            <!-- Local login form -->
+            <template v-if="!oidcConfig?.hide_local_login || showLocalLogin || !oidcConfig?.enabled">
             <!-- Username Field -->
             <div class="input-group" :class="{ 'has-error': !!error, 'is-focused': usernameFocused }">
               <label for="username" class="input-label">
@@ -123,6 +151,8 @@
               <p class="footer-text">Sicherer Zugang</p>
               <div class="footer-line"></div>
             </div>
+            </template><!-- end local login template -->
+
           </form>
         </template>
       </Card>
@@ -164,9 +194,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { oidcApi } from '@/api/oidc'
+import type { OIDCPublicConfig } from '@/types/oidc'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -185,12 +217,38 @@ const usernameFocused = ref(false)
 const passwordFocused = ref(false)
 const loginSuccess = ref(false)
 
+// OIDC state
+const oidcConfig = ref<OIDCPublicConfig | null>(null)
+const oidcLoading = ref(false)
+const showLocalLogin = ref(false)
+
 const particleStyle = (index: number) => ({
   '--delay': `${index * 0.3}s`,
   '--x': `${Math.random() * 100}%`,
   '--y': `${Math.random() * 100}%`,
   '--duration': `${15 + Math.random() * 10}s`
 })
+
+// Fetch OIDC public config on mount (silent failure — local login always works)
+onMounted(async () => {
+  try {
+    const response = await oidcApi.getPublicConfig()
+    oidcConfig.value = response.data
+  } catch {
+    // OIDC not configured or backend unreachable — show local login only
+    oidcConfig.value = null
+  }
+})
+
+const handleOIDCLogin = async () => {
+  oidcLoading.value = true
+  try {
+    await authStore.loginWithOidc(router.currentRoute.value.query.next as string || '/')
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'SSO-Anmeldung fehlgeschlagen.')
+    oidcLoading.value = false
+  }
+}
 
 const celebrationStyle = (index: number) => {
   const angle = (index / 30) * 360
@@ -820,6 +878,29 @@ const handleLogin = async () => {
   font-weight: 500;
   letter-spacing: 0.8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== SSO / OIDC ==================== */
+.sso-button {
+  margin-bottom: 0.5rem;
+}
+
+.divider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.25rem 0;
+}
+
+.divider-text {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.local-login-toggle {
+  text-align: center;
+  margin-top: 0.5rem;
 }
 
 /* ==================== Responsive Design ==================== */

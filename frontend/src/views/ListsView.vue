@@ -413,7 +413,7 @@ onMounted(() => {
 }
 
 .list-card:hover {
-  box-shadow: 0 4px 20px color-mix(in srgb, var(--p-surface-950) 10%, transparent);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--p-text-color) 14%, transparent);
   transform: translateY(-2px);
 }
 

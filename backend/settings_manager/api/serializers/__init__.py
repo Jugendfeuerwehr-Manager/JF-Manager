@@ -5,7 +5,7 @@ Serializers for Settings API
 from django.contrib.auth.models import Group as AuthGroup
 from rest_framework import serializers
 
-from settings_manager.models import LDAPDepartmentRoleMapping
+from settings_manager.models import LDAPDepartmentRoleMapping, OIDCGroupMapping
 
 from .email_template import (
     EmailTemplateCreateUpdateSerializer,
@@ -163,6 +163,78 @@ class LDAPDepartmentRoleMappingSerializer(serializers.ModelSerializer):
         return instance
 
 
+class OIDCSettingsSerializer(serializers.Serializer):
+    """Serializer for OIDC authentication settings"""
+
+    enabled = serializers.BooleanField(required=False)
+    provider_name = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    issuer_url = serializers.CharField(required=False, allow_blank=True, max_length=500)
+    client_id = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    client_secret = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    has_client_secret = serializers.BooleanField(required=False, read_only=True)
+    callback_url = serializers.CharField(required=False, read_only=True)
+    scope = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    groups_claim = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    staff_group = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    admin_group = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    require_group_mapping = serializers.BooleanField(required=False)
+    hide_local_login = serializers.BooleanField(required=False)
+
+
+class OIDCDiscoveryResultSerializer(serializers.Serializer):
+    """Serializer for OIDC discovery test results"""
+
+    ok = serializers.BooleanField()
+    detail = serializers.CharField(required=False, allow_blank=True)
+    issuer = serializers.CharField(required=False, allow_blank=True)
+    authorization_endpoint = serializers.CharField(required=False, allow_blank=True)
+    token_endpoint = serializers.CharField(required=False, allow_blank=True)
+    userinfo_endpoint = serializers.CharField(required=False, allow_blank=True)
+    jwks_uri = serializers.CharField(required=False, allow_blank=True)
+    scopes_supported = serializers.ListField(child=serializers.CharField(), required=False)
+    claims_supported = serializers.ListField(child=serializers.CharField(), required=False)
+
+
+class OIDCGroupMappingSerializer(serializers.ModelSerializer):
+    """Serializer for OIDC group → Department role mappings"""
+
+    department_name = serializers.CharField(source="department.name", read_only=True)
+    auth_groups = AuthGroupMiniSerializer(many=True, read_only=True)
+    auth_group_ids = serializers.PrimaryKeyRelatedField(
+        source="auth_groups",
+        queryset=AuthGroup.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = OIDCGroupMapping
+        fields = [
+            "id",
+            "group_claim_value",
+            "department",
+            "department_name",
+            "auth_groups",
+            "auth_group_ids",
+            "revoke_on_mismatch",
+        ]
+        read_only_fields = ["id", "department_name", "auth_groups"]
+
+    def create(self, validated_data):
+        auth_groups = validated_data.pop("auth_groups", [])
+        instance = super().create(validated_data)
+        instance.auth_groups.set(auth_groups)
+        return instance
+
+    def update(self, instance, validated_data):
+        auth_groups = validated_data.pop("auth_groups", None)
+        instance = super().update(instance, validated_data)
+        if auth_groups is not None:
+            instance.auth_groups.set(auth_groups)
+        return instance
+
+
 class AllSettingsSerializer(serializers.Serializer):
     """
     Combined serializer for all settings
@@ -175,6 +247,7 @@ class AllSettingsSerializer(serializers.Serializer):
     service = ServiceSettingsSerializer(required=False)
     order = OrderSettingsSerializer(required=False)
     ldap = LDAPSettingsSerializer(required=False)
+    oidc = OIDCSettingsSerializer(required=False)
 
 
 class CategorySettingsUpdateSerializer(serializers.Serializer):

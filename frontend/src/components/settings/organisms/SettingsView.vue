@@ -92,6 +92,15 @@
           @save="handleSaveLdap"
         />
 
+        <!-- OIDC / SSO Settings -->
+        <OidcSettingsForm
+          v-else-if="tab.id === 'oidc'"
+          :settings="settingsStore.oidc"
+          :can-edit="settingsStore.canChangeCategory('oidc')"
+          :saving="settingsStore.loading"
+          @save="handleSaveOidc"
+        />
+
         <!-- Email Templates -->
         <EmailTemplatesView
           v-else-if="tab.id === 'email-templates'"
@@ -116,6 +125,7 @@ import MemberSyncJobsCard from '../molecules/MemberSyncJobsCard.vue'
 import ServiceSettingsForm from '../molecules/ServiceSettingsForm.vue'
 import OrderSettingsForm from '../molecules/OrderSettingsForm.vue'
 import LdapSettingsForm from '../molecules/LdapSettingsForm.vue'
+import OidcSettingsForm from '../molecules/OidcSettingsForm.vue'
 import StatusesManager from '../molecules/StatusesManager.vue'
 import EventTypesManager from '../molecules/EventTypesManager.vue'
 import EmailTemplatesView from './EmailTemplatesView.vue'
@@ -127,6 +137,7 @@ import type {
   OrderSettings,
   LdapSettings
 } from '@/types/settings'
+import type { OIDCSettings } from '@/types/oidc'
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
@@ -139,7 +150,8 @@ const hasAnySettings = computed(() => {
     settingsStore.member ||
     settingsStore.service ||
     settingsStore.order ||
-    settingsStore.ldap
+    settingsStore.ldap ||
+    settingsStore.oidc
   )
 })
 
@@ -275,6 +287,25 @@ async function handleSaveLdap(data: Partial<LdapSettings>) {
       severity: 'error',
       summary: 'Fehler',
       detail: 'Fehler beim Speichern der LDAP Einstellungen',
+      life: 5000
+    })
+  }
+}
+
+async function handleSaveOidc(data: Partial<OIDCSettings>) {
+  try {
+    await settingsStore.updateOidc(data)
+    toast.add({
+      severity: 'success',
+      summary: 'Erfolgreich',
+      detail: 'OIDC Einstellungen gespeichert',
+      life: 3000
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: 'Fehler beim Speichern der OIDC Einstellungen',
       life: 5000
     })
   }

@@ -17,6 +17,14 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+# OIDC auth views
+from users.oidc_views import (
+    OIDCCallbackView,
+    OIDCLoginView,
+    OIDCPublicConfigView,
+    OIDCTokenExchangeView,
+)
+
 # Import custom email admin
 from .api_views import AppSettingsView
 from .rest_urls import api
@@ -29,6 +37,11 @@ api_patterns = [
     path("api/v1/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/v1/auth/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # OIDC Authentication endpoints
+    path("api/v1/auth/oidc/public-config/", OIDCPublicConfigView.as_view(), name="oidc-public-config"),
+    path("api/v1/auth/oidc/login/", OIDCLoginView.as_view(), name="oidc-login"),
+    path("api/v1/auth/oidc/callback/", OIDCCallbackView.as_view(), name="oidc-callback"),
+    path("api/v1/auth/oidc/exchange/", OIDCTokenExchangeView.as_view(), name="oidc-exchange"),
     # User info
     path("api/v1/userinfo/", AppSettingsView.as_view(), name="userinfo"),
     # App settings

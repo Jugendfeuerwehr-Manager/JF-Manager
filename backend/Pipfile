@@ -35,6 +35,7 @@ spond = "*"
 django-rq = "*"
 django-auth-ldap = "*"
 django-encrypted-model-fields = "*"
+mozilla-django-oidc = "*"
 
 [requires]
 python_version = "3.10"
