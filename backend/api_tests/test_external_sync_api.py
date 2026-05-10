@@ -111,8 +111,8 @@ class ExternalSyncApiTests(APITestCase):
 
     def test_run_now_records_failed_run_for_unimplemented_provider(self):
         job = SyncJob.objects.create(
-            name="Spond Org Import",
-            provider=SyncJob.Provider.SPOND,
+            name="Hi Org Import",
+            provider=SyncJob.Provider.HI_ORG,
             scope=SyncJob.Scope.ORGANIZATION,
             run_mode=SyncJob.RunMode.MANUAL,
             deletion_mode=SyncJob.DeletionMode.REVIEW,
