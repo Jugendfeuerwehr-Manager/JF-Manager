@@ -23,6 +23,14 @@ export interface TemplateType {
 }
 
 /**
+ * Layout choice
+ */
+export interface LayoutChoice {
+  value: 'none' | 'general' | 'important' | 'events'
+  label: string
+}
+
+/**
  * Template variables metadata for a template type
  */
 export interface TemplateVariables {
@@ -46,6 +54,8 @@ export interface EmailTemplateList {
   name: string
   template_type: string
   template_type_display: string
+  layout: 'none' | 'general' | 'important' | 'events'
+  layout_display: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -70,6 +80,7 @@ export interface EmailTemplateCreateUpdate {
   subject_template: string
   html_template: string
   text_template?: string
+  layout?: 'none' | 'general' | 'important' | 'events'
   is_active?: boolean
 }
 

@@ -60,6 +60,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "dsgvo_external",
             "email_signature",
             "theme_mode",
+            "auth_source",
             "groups",
             "permissions",
             "department_roles",
@@ -77,6 +78,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "permissions",
             "department_roles",
             "has_org_wide_access",
+            "auth_source",
         ]
 
     def get_has_org_wide_access(self, obj):

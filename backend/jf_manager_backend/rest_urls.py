@@ -31,6 +31,7 @@ from qualifications.api.viewsets import (
 )
 from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
 from settings_manager.api import (
+    EmailLayoutTemplateViewSet,
     EmailTemplateViewSet,
     LDAPDepartmentMappingViewSet,
     OIDCGroupMappingViewSet,
@@ -95,6 +96,7 @@ api.register(r"qualifications", QualificationViewSet, basename="qualifications")
 # Settings endpoints
 api.register(r"settings", SettingsViewSet, basename="settings")
 api.register(r"settings/email-templates", EmailTemplateViewSet, basename="email-templates")
+api.register(r"settings/email-layout-templates", EmailLayoutTemplateViewSet, basename="email-layout-templates")
 api.register(r"ldap-department-mappings", LDAPDepartmentMappingViewSet, basename="ldap-department-mappings")
 api.register(r"oidc-group-mappings", OIDCGroupMappingViewSet, basename="oidc-group-mappings")
 

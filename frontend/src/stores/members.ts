@@ -188,12 +188,12 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function exportExcel() {
+  async function exportExcel(columns?: string[]) {
     loading.value = true
     error.value = null
 
     try {
-      const response = await membersApi.exportExcel()
+      const response = await membersApi.exportExcel(columns)
       
       // Create a download link and trigger download
       const url = window.URL.createObjectURL(new Blob([response.data]))

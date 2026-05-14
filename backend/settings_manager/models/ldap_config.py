@@ -12,6 +12,24 @@ class LDAPConfig(models.Model):
 
     server_uri = models.CharField(max_length=255, blank=True, default="", verbose_name="LDAP Server URI")
     start_tls = models.BooleanField(default=False, verbose_name="STARTTLS verwenden")
+    ca_cert_file = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        verbose_name="CA Zertifikat (Dateipfad)",
+        help_text="Optional: Dateipfad zu einer CA-Zertifikatsdatei für LDAP TLS.",
+    )
+    ca_cert_content = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="CA Zertifikat (Inhalt)",
+        help_text="Optional: PEM-Inhalt eines CA-Zertifikats für LDAP TLS.",
+    )
+    disable_cert_validation = models.BooleanField(
+        default=False,
+        verbose_name="TLS Zertifikatsprüfung deaktivieren",
+        help_text="Nicht empfohlen: Deaktiviert die TLS Zertifikatsprüfung für LDAP Verbindungen.",
+    )
 
     bind_dn = models.CharField(max_length=255, blank=True, default="", verbose_name="Bind DN")
     bind_password = EncryptedCharField(max_length=255, blank=True, default="", verbose_name="Bind Passwort")
@@ -84,6 +102,14 @@ class LDAPConfig(models.Model):
         if self.group_search_base_dn and not self.group_search_filter:
             raise ValidationError(
                 {"group_search_filter": "Gruppen Such-Filter ist erforderlich wenn Gruppen-Suche gesetzt ist."}
+            )
+
+        if self.ca_cert_file and self.ca_cert_content:
+            raise ValidationError(
+                {
+                    "ca_cert_file": "Bitte entweder Dateipfad oder Zertifikatsinhalt verwenden, nicht beides.",
+                    "ca_cert_content": "Bitte entweder Dateipfad oder Zertifikatsinhalt verwenden, nicht beides.",
+                }
             )
 
     def save(self, *args, **kwargs):

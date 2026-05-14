@@ -31,7 +31,9 @@ describe('Settings Store', () => {
   })
 
   const mockGeneralSettings: GeneralSettings = {
-    title: 'JF-Manager Test'
+    title: 'JF-Manager Test',
+    slug: '',
+    logo_url: ''
   }
 
   const mockEmailSettings: EmailSettings = {

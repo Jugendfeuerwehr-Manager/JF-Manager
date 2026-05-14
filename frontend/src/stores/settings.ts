@@ -154,6 +154,26 @@ export const useSettingsStore = defineStore('settings', () => {
     return tabs
   })
 
+  const navGroups = computed(() => {
+    const tabMap = new Map(availableTabs.value.map((t) => [t.id, t]))
+
+    const groupDefs: Array<{ label: string; icon: string; ids: SettingsCategory[] }> = [
+      { label: 'Organisation', icon: 'pi pi-building', ids: ['general'] },
+      { label: 'Kommunikation', icon: 'pi pi-envelope', ids: ['email', 'email-templates'] },
+      { label: 'Mitglieder', icon: 'pi pi-users', ids: ['member'] },
+      { label: 'Betrieb', icon: 'pi pi-briefcase', ids: ['service', 'order'] },
+      { label: 'Sicherheit', icon: 'pi pi-shield', ids: ['ldap', 'oidc'] },
+    ]
+
+    return groupDefs
+      .map((g) => ({
+        label: g.label,
+        icon: g.icon,
+        items: g.ids.flatMap((id) => (tabMap.has(id) ? [tabMap.get(id)!] : [])),
+      }))
+      .filter((g) => g.items.length > 0)
+  })
+
   // ============================================================================
   // Actions
   // ============================================================================
@@ -458,6 +478,7 @@ export const useSettingsStore = defineStore('settings', () => {
     canViewCategory,
     canChangeCategory,
     availableTabs,
+    navGroups,
     equipmentManagerEmail,
     
     // Actions

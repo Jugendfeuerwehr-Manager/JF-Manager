@@ -20,7 +20,19 @@ class GeneralSettingsSerializer(serializers.Serializer):
     """Serializer for general settings"""
 
     title = serializers.CharField(
-        max_length=200, required=False, allow_blank=True, help_text="Website title displayed in browser tab"
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        help_text="Website title displayed in browser tab and login page",
+    )
+    slug = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+        help_text="Short organisation identifier shown on the login page",
+    )
+    logo_url = serializers.URLField(
+        required=False, allow_blank=True, help_text="Publicly accessible URL to the organisation logo"
     )
 
 
@@ -95,6 +107,9 @@ class LDAPSettingsSerializer(serializers.Serializer):
     enabled = serializers.BooleanField(required=False)
     server_uri = serializers.CharField(required=False, allow_blank=True, max_length=255)
     start_tls = serializers.BooleanField(required=False)
+    ca_cert_file = serializers.CharField(required=False, allow_blank=True, max_length=512)
+    ca_cert_content = serializers.CharField(required=False, allow_blank=True)
+    disable_cert_validation = serializers.BooleanField(required=False)
     bind_dn = serializers.CharField(required=False, allow_blank=True, max_length=255)
     bind_password = serializers.CharField(required=False, allow_blank=True, write_only=True)
     has_bind_password = serializers.BooleanField(required=False, read_only=True)
@@ -108,6 +123,16 @@ class LDAPSettingsSerializer(serializers.Serializer):
     )
     mirror_groups = serializers.BooleanField(required=False)
     require_group = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+    def validate(self, attrs):
+        if attrs.get("ca_cert_file") and attrs.get("ca_cert_content"):
+            raise serializers.ValidationError(
+                {
+                    "ca_cert_file": "Bitte entweder Dateipfad oder Zertifikatsinhalt verwenden, nicht beides.",
+                    "ca_cert_content": "Bitte entweder Dateipfad oder Zertifikatsinhalt verwenden, nicht beides.",
+                }
+            )
+        return attrs
 
 
 class LDAPConnectionTestSerializer(serializers.Serializer):

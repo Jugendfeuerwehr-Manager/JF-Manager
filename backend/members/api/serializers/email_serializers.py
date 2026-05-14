@@ -149,6 +149,7 @@ class EmailMessageCreateSerializer(serializers.ModelSerializer):
             "subject",
             "body_html",
             "body_text",
+            "layout",
             "recipient_type",
             "recipient_group",
             "recipient_member",
@@ -191,6 +192,7 @@ class EmailPreviewRequestSerializer(serializers.Serializer):
     body_html = serializers.CharField()
     body_text = serializers.CharField(required=False, allow_blank=True)
     member_id = serializers.IntegerField()
+    layout = serializers.CharField(required=False, allow_blank=True, default="none")
 
     def validate_member_id(self, value):
         """Validate that member exists."""

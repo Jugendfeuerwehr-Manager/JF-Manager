@@ -220,27 +220,6 @@ body {
   }
 }
 
-/* Width utilities */
-.md\\:w-\\[800px\\] {
-  width: 800px;
-}
-
-.md\\:w-\\[700px\\] {
-  width: 700px;
-}
-
-.md\\:w-\\[600px\\] {
-  width: 600px;
-}
-
-@media screen and (max-width: 768px) {
-  .md\\:w-\\[800px\\],
-  .md\\:w-\\[700px\\],
-  .md\\:w-\\[600px\\] {
-    width: 100%;
-  }
-}
-
 /* PrimeVue overrides */
 .p-button {
   font-weight: 600;
@@ -336,4 +315,28 @@ body {
     flex: 0 0 auto;
     min-width: auto;
   }
+}
+
+/* ─── Settings Section ─────────────────────────────── */
+
+.settings-section__header {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section__back {
+  margin-bottom: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+.settings-section__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: var(--text-color);
+}
+
+.settings-section__description {
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  margin: 0;
 }

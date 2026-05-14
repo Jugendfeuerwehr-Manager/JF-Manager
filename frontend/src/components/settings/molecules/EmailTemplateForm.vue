@@ -40,6 +40,21 @@
       </div>
     </div>
 
+    <!-- Layout Selection -->
+    <div class="field">
+      <label for="layout">Layout</label>
+      <Select
+        id="layout"
+        :modelValue="formData.layout ?? 'none'"
+        @update:modelValue="updateField('layout', $event)"
+        :options="LAYOUT_OPTIONS"
+        optionLabel="label"
+        optionValue="value"
+        class="w-full"
+      />
+      <small class="layout-hint">Das Layout wird nur bei eigenen Vorlagen angewendet, nicht bei Standard-Vorlagen.</small>
+    </div>
+
     <!-- Subject Template -->
     <div class="field">
       <label for="subject">Betreff-Vorlage *</label>
@@ -93,6 +108,13 @@ import Message from 'primevue/message'
 import MonacoEditor from '@/components/common/MonacoEditor.vue'
 import type { EmailTemplateCreateUpdate, TemplateType } from '@/types/email-templates'
 
+const LAYOUT_OPTIONS = [
+  { value: 'none', label: 'Kein Layout (reines HTML)' },
+  { value: 'general', label: 'Allgemeine Information' },
+  { value: 'important', label: 'Wichtige Mitteilung' },
+  { value: 'events', label: 'Veranstaltung / Termin' },
+]
+
 interface Props {
   formData: EmailTemplateCreateUpdate
   availableTypes: TemplateType[]
@@ -135,5 +157,12 @@ function updateField(field: keyof EmailTemplateCreateUpdate, value: EmailTemplat
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.layout-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--p-text-muted-color, #6b7280);
+  font-size: 0.8rem;
 }
 </style>

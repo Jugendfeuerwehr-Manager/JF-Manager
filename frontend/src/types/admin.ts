@@ -48,6 +48,7 @@ export interface AdminUser {
   dsgvo_external: boolean
   email_signature: string
   theme_mode: string
+  auth_source: 'local' | 'ldap' | 'oidc'
   date_joined: string
   last_login: string | null
   groups: AuthGroup[]

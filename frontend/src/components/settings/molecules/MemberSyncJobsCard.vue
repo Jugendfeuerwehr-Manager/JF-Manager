@@ -28,7 +28,19 @@
             />
           </div>
 
-          <div class="field">
+          <div class="field" v-if="form.provider === 'spond'">
+            <label for="sync-operation-mode">Betriebsmodus</label>
+            <Dropdown
+              id="sync-operation-mode"
+              v-model="form.config.operation_mode"
+              :options="operationModeOptions"
+              option-label="label"
+              option-value="value"
+              :disabled="!canEdit"
+            />
+          </div>
+
+          <div class="field" v-if="form.provider !== 'spond' || form.config.operation_mode !== 'groups_to_departments'">
             <label for="sync-scope">Geltung</label>
             <Dropdown
               id="sync-scope"
@@ -40,7 +52,7 @@
             />
           </div>
 
-          <div class="field" v-if="form.scope === 'department'">
+          <div class="field" v-if="form.scope === 'department' && form.config.operation_mode !== 'groups_to_departments'">
             <label for="sync-department">Abteilung</label>
             <Dropdown
               id="sync-department"
@@ -127,9 +139,8 @@
               :loading="syncStore.loading"
             />
           </div>
-          <div class="field field-checkbox">
-            <Checkbox id="sync-spond-groups-enabled" v-model="form.config.sync_groups" :binary="true" :disabled="!canEdit" />
-            <label for="sync-spond-groups-enabled">Gruppen synchronisieren</label>
+          <div class="field field-note">
+            <small class="text-color-secondary">{{ operationModeDescription }}</small>
           </div>
         </div>
 
@@ -154,7 +165,7 @@
               <div>
                 <h5 class="m-0">{{ job.name }}</h5>
                 <p class="m-0 text-color-secondary text-sm">
-                  {{ providerLabel(job.provider) }} · {{ scopeLabel(job) }} · {{ runModeLabel(job) }}
+                  {{ providerLabel(job.provider) }} · {{ operationModeLabel(job) }} · {{ scopeLabel(job) }} · {{ runModeLabel(job) }}
                 </p>
               </div>
               <div class="flex gap-2 align-items-center">
@@ -228,7 +239,7 @@
 
         <ul class="preview-list">
           <li v-for="item in syncStore.garbageCollectionPreview.items" :key="item.id">
-            {{ item.object_type === 'member' ? 'Mitglied' : 'Gruppe' }} · {{ item.external_name || item.external_id }}
+            {{ previewObjectTypeLabel(item.object_type) }} · {{ item.external_name || item.external_id }}
           </li>
         </ul>
       </div>
@@ -276,6 +287,7 @@ import Tag from 'primevue/tag'
 import { useDepartmentsStore } from '@/stores/departments'
 import { useExternalSyncStore } from '@/stores/externalSync'
 import type {
+  SpondOperationMode,
   SyncDeletionMode,
   SyncJob,
   SyncJobCreate,
@@ -284,6 +296,7 @@ import type {
   SyncRunStatus,
   SyncScope,
 } from '@/types/externalSync'
+import { getSpondOperationMode } from '@/types/externalSync'
 import { getApiErrorMessage } from '@/utils/apiError'
 
 import SettingsCategoryCard from '../atoms/SettingsCategoryCard.vue'
@@ -300,7 +313,7 @@ const departmentsStore = useDepartmentsStore()
 const form = reactive<
   SyncJobCreate & {
     credentials: { username: string; password: string }
-    config: { group_id: string | null; sync_groups: boolean }
+    config: { group_id: string | null; operation_mode: SpondOperationMode }
   }
 >({
   name: '',
@@ -312,7 +325,7 @@ const form = reactive<
   deletion_mode: 'review',
   enabled: true,
   credentials: { username: '', password: '' },
-  config: { group_id: null, sync_groups: true },
+  config: { group_id: null, operation_mode: 'groups_to_groups' },
 })
 
 const providerOptions: Array<{ label: string; value: SyncProvider }> = [
@@ -323,6 +336,12 @@ const providerOptions: Array<{ label: string; value: SyncProvider }> = [
 const scopeOptions: Array<{ label: string; value: SyncScope }> = [
   { label: 'Organisation', value: 'organization' },
   { label: 'Abteilung', value: 'department' },
+]
+
+const operationModeOptions: Array<{ label: string; value: SpondOperationMode }> = [
+  { label: 'Spond-Gruppen zu Gruppen', value: 'groups_to_groups' },
+  { label: 'Spond-Gruppen zu Abteilungen', value: 'groups_to_departments' },
+  { label: 'Nur Mitglieder', value: 'members_only' },
 ]
 
 const runModeOptions: Array<{ label: string; value: SyncRunMode }> = [
@@ -354,7 +373,7 @@ const canCreateJob = computed(() => {
   if (!form.name.trim()) {
     return false
   }
-  if (form.scope === 'department' && !form.department) {
+  if (form.scope === 'department' && form.config.operation_mode !== 'groups_to_departments' && !form.department) {
     return false
   }
   if (form.run_mode === 'interval' && !form.interval_minutes) {
@@ -369,12 +388,34 @@ const canCreateJob = computed(() => {
   return true
 })
 
+const operationModeDescription = computed(() => {
+  switch (form.config.operation_mode) {
+    case 'groups_to_departments':
+      return 'Spond-Untergruppen werden als Abteilungen zugeordnet oder neu angelegt. Mitglieder werden nur den passenden Abteilungen zugewiesen.'
+    case 'members_only':
+      return 'Es werden nur Mitgliederdaten synchronisiert. Es werden keine Gruppen oder Abteilungen aus Spond erstellt.'
+    default:
+      return 'Spond-Untergruppen werden als JF-Gruppen synchronisiert und Mitglieder der ermittelten Gruppe zugewiesen.'
+  }
+})
+
 watch(
   () => form.provider,
   (provider) => {
     if (provider !== 'spond') {
       form.config.group_id = null
       syncStore.clearSpondTopLevelGroups()
+      form.scope = 'organization'
+    }
+  },
+)
+
+watch(
+  () => form.config.operation_mode,
+  (operationMode) => {
+    if (operationMode === 'groups_to_departments') {
+      form.scope = 'organization'
+      form.department = null
     }
   },
 )
@@ -424,7 +465,7 @@ async function handleCreateJob() {
         form.provider === 'spond'
           ? {
               group_id: form.config.group_id,
-              sync_groups: form.config.sync_groups,
+              operation_mode: form.config.operation_mode,
             }
           : undefined,
       credentials: form.provider === 'spond' ? { username: form.credentials.username, password: form.credentials.password } : undefined,
@@ -491,7 +532,7 @@ function resetForm() {
   form.deletion_mode = 'review'
   form.enabled = true
   form.credentials = { username: '', password: '' }
-  form.config = { group_id: null, sync_groups: true }
+  form.config = { group_id: null, operation_mode: 'groups_to_groups' }
   syncStore.clearSpondTopLevelGroups()
 }
 
@@ -500,7 +541,25 @@ function providerLabel(provider: SyncProvider) {
 }
 
 function scopeLabel(job: SyncJob) {
+  if (job.provider === 'spond' && getSpondOperationMode(job.config) === 'groups_to_departments') {
+    return 'Abteilungs-Sync (organisationsweit)'
+  }
   return job.scope === 'organization' ? 'Organisation' : job.department_name || 'Abteilung'
+}
+
+function operationModeLabel(job: SyncJob) {
+  if (job.provider !== 'spond') {
+    return 'Standard'
+  }
+
+  switch (getSpondOperationMode(job.config)) {
+    case 'groups_to_departments':
+      return 'Gruppen -> Abteilungen'
+    case 'members_only':
+      return 'Nur Mitglieder'
+    default:
+      return 'Gruppen -> Gruppen'
+  }
 }
 
 function runModeLabel(job: SyncJob) {
@@ -535,6 +594,16 @@ function formatDateTime(value: string | null) {
     timeStyle: 'short',
   }).format(new Date(value))
 }
+
+function previewObjectTypeLabel(objectType: 'member' | 'group' | 'department') {
+  if (objectType === 'member') {
+    return 'Mitglied'
+  }
+  if (objectType === 'department') {
+    return 'Abteilung'
+  }
+  return 'Gruppe'
+}
 </script>
 
 <style scoped>
@@ -564,6 +633,10 @@ function formatDateTime(value: string | null) {
 
 .field-action {
   justify-content: flex-end;
+}
+
+.field-note {
+  justify-content: center;
 }
 
 .credentials-grid {

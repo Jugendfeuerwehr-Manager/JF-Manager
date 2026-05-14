@@ -46,6 +46,9 @@ class LDAPSettingsAPITests(APITestCase):
         payload = {
             "enabled": False,
             "server_uri": "ldap://ldap.example.org",
+            "ca_cert_file": "/etc/ssl/certs/internal-ca.pem",
+            "ca_cert_content": "",
+            "disable_cert_validation": False,
             "bind_dn": "cn=admin,dc=example,dc=org",
             "bind_password": "top-secret",
             "user_search_base_dn": "ou=users,dc=example,dc=org",
@@ -62,14 +65,35 @@ class LDAPSettingsAPITests(APITestCase):
         self.assertTrue(response.data["has_bind_password"])
         config = LDAPConfig.get_or_create_default()
         self.assertEqual(config.server_uri, payload["server_uri"])
+        self.assertEqual(config.ca_cert_file, payload["ca_cert_file"])
+        self.assertFalse(config.disable_cert_validation)
 
+    def test_superuser_cannot_set_ca_file_and_content_together(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.patch(
+            "/api/v1/settings/ldap/",
+            {
+                "ca_cert_file": "/etc/ssl/certs/internal-ca.pem",
+                "ca_cert_content": "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ca_cert_file", response.data)
+
+    @patch("users.ldap_tls.os.path.isfile", return_value=True)
     @patch("ldap.initialize")
-    def test_test_connection_endpoint_success(self, ldap_initialize):
+    @patch("ldap.set_option")
+    def test_test_connection_endpoint_success(self, ldap_set_option, ldap_initialize, _isfile):
         self.client.force_authenticate(user=self.admin_user)
 
         LDAPConfig.get_or_create_default()
         config = LDAPConfig.objects.first()
         config.server_uri = "ldap://ldap.example.org"
+        config.ca_cert_file = "/etc/ssl/certs/internal-ca.pem"
+        config.disable_cert_validation = False
         config.user_search_base_dn = "ou=users,dc=example,dc=org"
         config.user_search_filter = "(uid=%(user)s)"
         config.enabled = True
@@ -82,6 +106,7 @@ class LDAPSettingsAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data["ok"])
+        self.assertTrue(ldap_set_option.called)
 
     # ------------------------------------------------------------------
     # Unauthenticated access tests

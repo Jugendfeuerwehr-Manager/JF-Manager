@@ -29,5 +29,8 @@ coverage
 
 *.tsbuildinfo
 
+# Volar (Vue Language Tools) type-check artifacts
+*.vue.js
+
 logs/
 tests_output/

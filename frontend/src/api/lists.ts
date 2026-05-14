@@ -87,4 +87,15 @@ export const memberListsApi = {
       return apiClient.delete(`/member-lists/${listId}/attachments/${attachmentId}/`)
     },
   },
+
+  exportExcel(listId: number, columns?: string[]) {
+    const params: Record<string, string> = {}
+    if (columns && columns.length > 0) {
+      params.columns = columns.join(',')
+    }
+    return apiClient.get(`/member-lists/${listId}/export-excel/`, {
+      params,
+      responseType: 'blob',
+    })
+  },
 }

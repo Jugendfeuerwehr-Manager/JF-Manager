@@ -44,7 +44,7 @@
 
     <!-- Main Content -->
     <div class="layout-main" :class="{ 'has-bottom-nav': isMobile }">
-      <div class="layout-content">
+      <div class="layout-content" :class="{ 'layout-content--full-width': isFullWidthRoute }">
         <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" />
@@ -144,6 +144,12 @@ const userMenu = ref()
 
 const isMobile = ref(window.innerWidth < 768)
 const navigationVisible = ref(false)
+
+/** Routes that should fill the full available width without a max-width cap */
+const isFullWidthRoute = computed(() => {
+  const path = route.path
+  return path.startsWith('/settings')
+})
 
 const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
   label,
@@ -329,6 +335,11 @@ onUnmounted(() => {
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
+}
+
+.layout-content--full-width {
+  max-width: none;
+  padding: 0 !important;
 }
 
 /* Desktop: Add top padding */

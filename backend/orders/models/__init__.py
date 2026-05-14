@@ -1,4 +1,5 @@
 # Import all models to make them available when importing from orders.models
+from .email_layout_template import EmailLayoutTemplate
 from .email_template import EmailTemplate
 from .notification_log import NotificationLog
 from .notification_preference import NotificationPreference

@@ -144,6 +144,8 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
         username = username[:150]
 
         user = self.UserModel.objects.create_user(username=username, email=email)
+        user.auth_source = "oidc"
+        user.save(update_fields=["auth_source"])
         self._apply_claims(user, claims, groups, config)
 
         logger.info(
@@ -160,6 +162,10 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
 
         self._check_require_group_mapping(groups, config)
         self._apply_claims(user, claims, groups, config)
+
+        if user.auth_source != "oidc":
+            user.auth_source = "oidc"
+            user.save(update_fields=["auth_source"])
 
         logger.debug(
             "OIDC: updated user '%s' from claims (provider '%s')",

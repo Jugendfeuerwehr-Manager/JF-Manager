@@ -65,6 +65,7 @@ export interface UserInfo {
   dsgvo_external: boolean
   email_signature?: string
   theme_mode?: 'light' | 'dark' | 'system'
+  auth_source: 'local' | 'ldap' | 'oidc'
   groups: UserGroup[]
   permissions: string[]
   department_roles: UserDepartmentRoleMini[]

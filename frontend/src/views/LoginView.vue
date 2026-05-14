@@ -17,19 +17,24 @@
       <Card class="login-card glass-card">
         <template #header>
           <div class="login-header">
-            <!-- Animated Shield Icon -->
+            <!-- Logo or animated Shield Icon -->
             <div class="icon-container">
-              <div class="icon-glow"></div>
-              <i class="pi pi-shield shield-icon"></i>
-              <div class="icon-ring ring-1"></div>
-              <div class="icon-ring ring-2"></div>
-              <div class="icon-ring ring-3"></div>
+              <template v-if="branding?.logo_url">
+                <img :src="branding.logo_url" alt="Logo" class="org-logo" />
+              </template>
+              <template v-else>
+                <div class="icon-glow"></div>
+                <i class="pi pi-shield shield-icon"></i>
+                <div class="icon-ring ring-1"></div>
+                <div class="icon-ring ring-2"></div>
+                <div class="icon-ring ring-3"></div>
+              </template>
             </div>
             
             <h1 class="brand-title">
-              <span class="title-fire">JF</span>-<span class="title-manager">Manager</span>
+              {{ branding?.title || 'JF-Manager' }}
             </h1>
-            <p class="brand-subtitle">Jugendfeuerwehr Verwaltungssystem</p>
+            <p v-if="branding?.slug" class="brand-slug">{{ branding.slug }}</p>
             
             <!-- Decorative Line -->
             <div class="decorative-line">
@@ -198,7 +203,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { oidcApi } from '@/api/oidc'
+import { brandingApi } from '@/api/branding'
 import type { OIDCPublicConfig } from '@/types/oidc'
+import type { PublicBranding } from '@/types/settings'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -222,6 +229,9 @@ const oidcConfig = ref<OIDCPublicConfig | null>(null)
 const oidcLoading = ref(false)
 const showLocalLogin = ref(false)
 
+// Branding state
+const branding = ref<PublicBranding | null>(null)
+
 const particleStyle = (index: number) => ({
   '--delay': `${index * 0.3}s`,
   '--x': `${Math.random() * 100}%`,
@@ -237,6 +247,16 @@ onMounted(async () => {
   } catch {
     // OIDC not configured or backend unreachable — show local login only
     oidcConfig.value = null
+  }
+
+  try {
+    const response = await brandingApi.getPublicBranding()
+    branding.value = response.data
+    if (response.data.title) {
+      document.title = response.data.title
+    }
+  } catch {
+    // branding not available — use defaults
   }
 })
 
@@ -509,8 +529,26 @@ const handleLogin = async () => {
   font-weight: 800;
   margin: 0 0 0.4rem;
   letter-spacing: 1.5px;
+  color: white;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   animation: titleReveal 0.8s ease-out 0.3s backwards;
+}
+
+.org-logo {
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
+  border-radius: 8px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.brand-slug {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 0.25rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
 @keyframes titleReveal {

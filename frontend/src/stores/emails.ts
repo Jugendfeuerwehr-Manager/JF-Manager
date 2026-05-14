@@ -12,7 +12,7 @@ import type {
   EmailTemplateVariable,
   EmailPreviewRequest,
   EmailListParams,
-  EmailRecipientCountRequest
+  EmailRecipientCountRequest,
 } from '@/types/emails'
 import { getApiErrorMessage } from '@/utils/apiError'
 

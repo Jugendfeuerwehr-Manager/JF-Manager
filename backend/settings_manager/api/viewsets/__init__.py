@@ -2,6 +2,7 @@
 ViewSets for Settings API
 """
 
+from django.core.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
 from rest_framework import status, viewsets
@@ -10,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from settings_manager.models import LDAPConfig, OIDCConfig
+from users.ldap_tls import apply_ldap_tls_options
 
 from ..serializers import (
     AllSettingsSerializer,
@@ -27,11 +29,18 @@ from ..serializers import (
 )
 
 # Import email template viewset
+from .email_layout_template import EmailLayoutTemplateViewSet
 from .email_template import EmailTemplateViewSet
 from .ldap_mappings import LDAPDepartmentMappingViewSet
 from .oidc_mappings import OIDCGroupMappingViewSet
 
-__all__ = ["EmailTemplateViewSet", "LDAPDepartmentMappingViewSet", "OIDCGroupMappingViewSet", "SettingsViewSet"]
+__all__ = [
+    "EmailLayoutTemplateViewSet",
+    "EmailTemplateViewSet",
+    "LDAPDepartmentMappingViewSet",
+    "OIDCGroupMappingViewSet",
+    "SettingsViewSet",
+]
 
 
 class SettingsViewSet(viewsets.ViewSet):
@@ -49,7 +58,7 @@ class SettingsViewSet(viewsets.ViewSet):
 
     # Mapping of category to preference prefix
     CATEGORY_MAPPINGS = {
-        "general": {"prefix": "general", "fields": ["title"]},
+        "general": {"prefix": "general", "fields": ["title", "slug", "logo_url"]},
         "email": {
             "prefix": "email",
             "fields": [
@@ -73,6 +82,9 @@ class SettingsViewSet(viewsets.ViewSet):
         "enabled",
         "server_uri",
         "start_tls",
+        "ca_cert_file",
+        "ca_cert_content",
+        "disable_cert_validation",
         "bind_dn",
         "user_search_base_dn",
         "user_search_filter",
@@ -410,7 +422,12 @@ class SettingsViewSet(viewsets.ViewSet):
 
         serializer = LDAPSettingsSerializer(data=request.data, partial=True)
         if serializer.is_valid():
-            self._save_ldap_settings(serializer.validated_data)
+            try:
+                self._save_ldap_settings(serializer.validated_data)
+            except ValidationError as exc:
+                if hasattr(exc, "message_dict"):
+                    return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
             response_serializer = LDAPSettingsSerializer(self._get_ldap_settings())
             return Response(response_serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -439,6 +456,7 @@ class SettingsViewSet(viewsets.ViewSet):
         try:
             import ldap
 
+            apply_ldap_tls_options(config)
             connection = ldap.initialize(config.server_uri)
             connection.set_option(ldap.OPT_NETWORK_TIMEOUT, 5)
 
@@ -508,6 +526,7 @@ class SettingsViewSet(viewsets.ViewSet):
         try:
             import ldap
 
+            apply_ldap_tls_options(config)
             conn = ldap.initialize(config.server_uri)
             conn.set_option(ldap.OPT_NETWORK_TIMEOUT, 5)
 

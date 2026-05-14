@@ -1,9 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
-from django.utils.html import strip_tags
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -11,6 +9,8 @@ from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+
+from orders.notifications.template_service import TemplateRenderer
 
 from .api_serializers import (
     PasswordChangeSerializer,
@@ -22,6 +22,51 @@ from .api_serializers import (
 from .tokens import password_reset_token
 
 User = get_user_model()
+
+
+def _send_external_auth_password_info(user):
+    """Send an explanatory email when an externally-managed user attempts a password action."""
+    if not user.email:
+        return
+
+    auth_source = getattr(user, "auth_source", "local")
+
+    auth_source_label = {"ldap": "LDAP / Active Directory", "oidc": "OIDC / Single Sign-On"}.get(
+        auth_source, auth_source.upper()
+    )
+
+    provider_name = ""
+    issuer_url = ""
+
+    if auth_source == "oidc":
+        try:
+            from settings_manager.models import OIDCConfig
+
+            config = OIDCConfig.get_or_create_default()
+            if config:
+                provider_name = config.provider_name or ""
+                issuer_url = config.issuer_url or ""
+        except Exception:
+            pass
+
+    context = {
+        "user": user,
+        "site_name": "JF-Manager",
+        "auth_source_label": auth_source_label,
+        "provider_name": provider_name,
+        "issuer_url": issuer_url,
+    }
+
+    subject, html_message, plain_message = TemplateRenderer.render_email_content("ext_auth_pw_info", context)
+
+    send_mail(
+        subject,
+        plain_message,
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        html_message=html_message,
+        fail_silently=True,
+    )
 
 
 @extend_schema_view(
@@ -90,28 +135,31 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             user = User.objects.get(email=email, is_active=True)
 
-            # Generate token and uid
-            token = password_reset_token.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            # External users cannot reset their password in JF-Manager
+            if getattr(user, "auth_source", "local") != "local":
+                _send_external_auth_password_info(user)
+                # Return generic success so the source is not leaked
+            else:
+                # Generate token and uid
+                token = password_reset_token.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-            # Build reset URL (frontend URL)
-            reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+                # Build reset URL (frontend URL)
+                reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
 
-            # Send email
-            context = {"user": user, "reset_url": reset_url, "site_name": "JF-Manager"}
+                # Send email
+                context = {"user": user, "reset_url": reset_url, "site_name": "JF-Manager"}
 
-            subject = "Password Reset Request - JF-Manager"
-            html_message = render_to_string("users/password_reset_email.html", context)
-            plain_message = strip_tags(html_message)
+                subject, html_message, plain_message = TemplateRenderer.render_email_content("password_reset", context)
 
-            send_mail(
-                subject,
-                plain_message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
+                send_mail(
+                    subject,
+                    plain_message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
         except User.DoesNotExist:
             # Don't reveal that user doesn't exist
             pass
@@ -142,6 +190,15 @@ class UserViewSet(viewsets.ModelViewSet):
             uid = force_str(urlsafe_base64_decode(serializer.validated_data["uid"]))
             user = User.objects.get(pk=uid)
 
+            # External users cannot reset their password in JF-Manager
+            if getattr(user, "auth_source", "local") != "local":
+                return Response(
+                    {
+                        "error": "Dieses Konto wird extern verwaltet. Das Passwort kann nicht über JF-Manager zurückgesetzt werden."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Verify token
             if not password_reset_token.check_token(user, serializer.validated_data["token"]):
                 return Response({"error": "Invalid or expired reset token."}, status=status.HTTP_400_BAD_REQUEST)
@@ -167,6 +224,12 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
     def change_password(self, request):
         """Change password for logged in user"""
+        # External users cannot change their password in JF-Manager.
+        # Fail silently and send an explanatory email.
+        if getattr(request.user, "auth_source", "local") != "local":
+            _send_external_auth_password_info(request.user)
+            return Response({"message": "Password has been changed successfully."}, status=status.HTTP_200_OK)
+
         serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 

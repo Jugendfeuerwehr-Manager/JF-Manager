@@ -236,6 +236,66 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
                 "timestamp": "2025-11-23 14:30:00",
             },
         },
+        "ext_auth_pw_info": {
+            "variables": [
+                {
+                    "name": "user",
+                    "type": "User",
+                    "description": "Benutzer",
+                    "properties": ["first_name", "last_name", "username", "email"],
+                },
+                {"name": "site_name", "type": "string", "description": "Name der Anwendung"},
+                {
+                    "name": "auth_source_label",
+                    "type": "string",
+                    "description": "Bezeichnung des Authentifizierungssystems (z.B. LDAP / Active Directory)",
+                },
+                {
+                    "name": "provider_name",
+                    "type": "string",
+                    "description": "Name des Identitätsanbieters (optional)",
+                },
+                {
+                    "name": "issuer_url",
+                    "type": "string",
+                    "description": "URL des Identitätsanbieters (optional)",
+                },
+            ],
+            "sample_data": {
+                "user": {
+                    "first_name": "Max",
+                    "last_name": "Mustermann",
+                    "username": "max.mustermann",
+                    "email": "max@example.com",
+                },
+                "site_name": "JF-Manager",
+                "auth_source_label": "LDAP / Active Directory",
+                "provider_name": "Firmen-LDAP",
+                "issuer_url": "https://ldap.example.com",
+            },
+        },
+        "password_reset": {
+            "variables": [
+                {
+                    "name": "user",
+                    "type": "User",
+                    "description": "Benutzer",
+                    "properties": ["first_name", "last_name", "username", "email"],
+                },
+                {"name": "reset_url", "type": "string", "description": "Passwort-Reset-Link"},
+                {"name": "site_name", "type": "string", "description": "Name der Anwendung"},
+            ],
+            "sample_data": {
+                "user": {
+                    "first_name": "Max",
+                    "last_name": "Mustermann",
+                    "username": "max.mustermann",
+                    "email": "max@example.com",
+                },
+                "reset_url": "https://jf-manager.example.com/reset-password/abc123/token456/",
+                "site_name": "JF-Manager",
+            },
+        },
         # Legacy template types (for backward compatibility)
         "order_confirmed": {
             "variables": [
@@ -470,6 +530,8 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
             "status_update": "orders/emails/status_update.html",
             "bulk_update": "orders/emails/bulk_status_update.html",
             "pending_reminder": "orders/emails/pending_reminder.html",
+            "ext_auth_pw_info": "users/external_auth_password_info.html",
+            "password_reset": "users/password_reset_email.html",
         }
 
         if template_type not in template_files:
@@ -517,3 +579,9 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
         TemplateRenderer.clear_template_cache(instance.template_type)
         return instance
+
+    @extend_schema(summary="Get available layouts", description="Get list of available email layout choices")
+    @action(detail=False, methods=["get"])
+    def layouts(self, request):
+        """GET /api/v1/settings/email-templates/layouts/"""
+        return Response([{"value": choice[0], "label": choice[1]} for choice in EmailTemplate.LAYOUT_CHOICES])

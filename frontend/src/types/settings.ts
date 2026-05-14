@@ -9,6 +9,14 @@
 
 export interface GeneralSettings {
   title: string
+  slug: string
+  logo_url: string
+}
+
+export interface PublicBranding {
+  title: string
+  slug: string
+  logo_url: string
 }
 
 export interface EmailSettings {
@@ -39,6 +47,9 @@ export interface LdapSettings {
   enabled: boolean
   server_uri: string
   start_tls: boolean
+  ca_cert_file: string
+  ca_cert_content: string
+  disable_cert_validation: boolean
   bind_dn: string
   bind_password?: string
   has_bind_password: boolean

@@ -26,7 +26,7 @@ from users.oidc_views import (
 )
 
 # Import custom email admin
-from .api_views import AppSettingsView
+from .api_views import AppSettingsView, PublicBrandingView
 from .rest_urls import api
 
 api_patterns = [
@@ -46,6 +46,8 @@ api_patterns = [
     path("api/v1/userinfo/", AppSettingsView.as_view(), name="userinfo"),
     # App settings
     path("api/v1/settings/", AppSettingsView.as_view(), name="app-settings"),
+    # Public branding info (no auth required)
+    path("api/v1/app/branding/", PublicBrandingView.as_view(), name="public-branding"),
     # API Documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

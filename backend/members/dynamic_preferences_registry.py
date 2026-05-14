@@ -20,6 +20,26 @@ class SiteTitle(StringPreference):
 
 
 @global_preferences_registry.register
+class SiteSlug(StringPreference):
+    section = general
+    name = "slug"
+    verbose_name = "Organisations-Kürzel"
+    help_text = "Kurzbezeichnung der Organisation (z.B. 'JF Berlin'). Wird auf der Loginseite angezeigt."
+    default = ""
+    required = False
+
+
+@global_preferences_registry.register
+class SiteLogoUrl(StringPreference):
+    section = general
+    name = "logo_url"
+    verbose_name = "Logo URL"
+    help_text = "Öffentlich erreichbare URL zum Logo der Organisation. Wird auf der Loginseite angezeigt."
+    default = ""
+    required = False
+
+
+@global_preferences_registry.register
 class MemberAlertThreshold(IntegerPreference):
     section = members
     name = "alert_threshold"
