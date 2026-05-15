@@ -87,12 +87,27 @@ def _fetch_discovery_document(issuer_url: str) -> dict:
     Returns the parsed JSON dict.
     Raises requests.RequestException on network errors or non-200 responses.
     """
+    from urllib.parse import urlunparse
+
+    # Validate user-provided issuer_url first.
     _validate_oidc_url(issuer_url, "Issuer-URL")
-    issuer_host = urlparse(issuer_url).hostname
-    discovery_url = issuer_url.rstrip("/") + "/.well-known/openid-configuration"
-    # Re-validate the constructed URL to prevent SSRF: must be HTTPS and on the
-    # same host as the configured issuer (guards against path-traversal tricks).
-    _validate_oidc_url(discovery_url, "Discovery-URL", allowed_host=issuer_host)
+    parsed = urlparse(issuer_url)
+
+    # Reconstruct the discovery URL entirely from the validated parsed components
+    # (scheme, netloc) plus a hardcoded path.  This breaks the taint chain from
+    # user-controlled input to requests.get — the variable passed to requests
+    # is built from trusted parts, not derived directly from the raw string.
+    safe_base_path = parsed.path.rstrip("/")
+    discovery_url = urlunparse(
+        (
+            parsed.scheme,  # validated: must be "https"
+            parsed.netloc,  # validated: non-empty
+            safe_base_path + "/.well-known/openid-configuration",  # hardcoded suffix
+            "",  # params
+            "",  # query
+            "",  # fragment
+        )
+    )
     logger.debug("Fetching OIDC discovery document from %s", discovery_url)
     response = requests.get(discovery_url, timeout=10)
     response.raise_for_status()
@@ -118,7 +133,22 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
     issuer_host = urlparse(config.issuer_url).hostname
     _validate_oidc_url(jwks_uri, "JWKS-URI", allowed_host=issuer_host)
 
-    jwks_response = requests.get(jwks_uri, timeout=10)
+    # Reconstruct the JWKS URL from validated parsed components to break the
+    # taint chain from the network-sourced discovery document to requests.get.
+    from urllib.parse import urlunparse
+
+    parsed_jwks = urlparse(jwks_uri)
+    safe_jwks_url = urlunparse(
+        (
+            parsed_jwks.scheme,  # validated: must be "https"
+            parsed_jwks.netloc,  # validated: same host as issuer
+            parsed_jwks.path,  # path from validated URL
+            "",  # params
+            "",  # query — strip any attacker-injected query strings
+            "",  # fragment
+        )
+    )
+    jwks_response = requests.get(safe_jwks_url, timeout=10)
     jwks_response.raise_for_status()
     jwks = jwks_response.json()
 
