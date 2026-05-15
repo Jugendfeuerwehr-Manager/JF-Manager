@@ -7,8 +7,11 @@
 ## Architecture
 
 - [Architecture Overview](architecture/overview.md) – Docker architecture, network flow, security layers, build process
+- [Backend Structure](architecture/backend-structure.md) – Django app/module layout, ViewSet conventions, API registration pattern
+- [Frontend Structure](architecture/frontend-structure.md) – Vue 3 layers, Pinia pattern, atomic design implementation
 - [Departments And Permissions](architecture/departments-and-permissions.md) – Department scoping, active department context, backend enforcement, shared data rules
 - [Vue.js Integration](architecture/vue-integration.md) – Vue 3 + Pinia integration patterns, API service layer, stores
+- [Training Module Architecture](architecture/training-module.md) – Training models, API viewsets, permission model, frontend integration
 
 ## API
 
@@ -31,8 +34,10 @@
 - [Settings, LDAP, SSO](domains/settings-ldap-sso.md) – Runtime settings API, LDAP config, OIDC flow and mappings
 - [Departments (Operational Guide)](domains/departments.md) – Department-level operation model and integrations
 - [External Sync With Spond](domains/external-sync-spond.md) – Sync jobs, Spond modes, provider extension guide
+- [Training Module](domains/training-module.md) – Calendar/planner workflow, library usage, handout and mobile mode
 
 ## Development
 
 - [API Testing](development/testing.md) – Test structure, running tests, adding new tests
+- [Build Pipeline](development/build-pipeline.md) – CI, GHCR image build/push, manual deployment workflow
 - [Systemd Services](development/systemd.md) – Systemd service files for production servers

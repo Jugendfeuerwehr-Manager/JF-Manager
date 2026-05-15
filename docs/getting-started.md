@@ -77,23 +77,23 @@ The frontend runs on http://localhost:5173.
 
 ## Docker Installation
 
-For a quick Docker-based setup:
+For a quick Docker Compose based setup:
 
 ```bash
-docker pull ghcr.io/jugendfeuerwehr-manager/jf-manager-server:latest
-
-docker run -d \
-  -e SECRET_KEY=your-secret-key \
-  -v jf_manager_data:/data \
-  -p 8000:8000 \
-  ghcr.io/jugendfeuerwehr-manager/jf-manager-server:latest
+cp backend/example.env .env
+# adjust required values in .env (especially DJANGO_SECRET_KEY and DB credentials)
+docker compose -f docker-compose.yml up -d --build
 ```
 
 Then create an admin user:
 
 ```bash
-docker exec -it CONTAINER_ID python manage.py migrate
-docker exec -it CONTAINER_ID python manage.py createsuperuser
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
 ```
 
-For full production Docker setup, see [Docker Deployment](deployment/docker.md).
+For production and Portainer/Synology variants, see:
+
+- [Docker Deployment](deployment/docker.md)
+- [Portainer Deployment](deployment/portainer.md)
+- [Synology NAS](deployment/synology.md)

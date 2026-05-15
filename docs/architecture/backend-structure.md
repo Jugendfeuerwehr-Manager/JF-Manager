@@ -53,27 +53,56 @@ All ViewSets are registered in a **single router** at `jf_manager_backend/rest_u
 
 ```
 /api/v1/
-  orders/              → OrderViewSet
-  order-items/         → OrderItemViewSet
-  orderable-items/     → OrderableItemViewSet
-  order-statuses/      → OrderStatusViewSet
-  members/             → MemberViewSet
-  parents/             → ParentViewSet
-  member-statuses/     → StatusViewSet
-  member-groups/       → GroupViewSet
-  events/              → EventViewSet
-  event-types/         → EventTypeViewSet
-  attachments/         → AttachmentViewSet
-  inventory/items/     → ItemViewSet
-  inventory/categories/→ CategoryViewSet
-  inventory/variants/  → ItemVariantViewSet
-  inventory/locations/ → StorageLocationViewSet
-  inventory/stock/     → StockViewSet
-  inventory/transactions/ → TransactionViewSet
-  qualifications/      → QualificationViewSet
-  qualification-types/ → QualificationTypeViewSet
-  special-tasks/       → SpecialTaskViewSet
-  users/me/            → UserViewSet
+    users/                          → UserViewSet
+    admin/users/                    → AdminUserViewSet
+    admin/groups/                   → AuthGroupViewSet
+    admin/permissions/              → PermissionViewSet
+    admin/department-roles/         → UserDepartmentRoleViewSet
+
+    departments/                    → DepartmentViewSet
+    sync-jobs/                      → SyncJobViewSet
+    sync-runs/                      → SyncRunViewSet
+
+    members/                        → MemberViewSet
+    parents/                        → ParentViewSet
+    statuses/                       → StatusViewSet
+    groups/                         → GroupViewSet
+    member-lists/                   → MemberListViewSet
+    events/                         → EventViewSet
+    event-types/                    → EventTypeViewSet
+    attachments/                    → AttachmentViewSet
+
+    inventory/items/                → ItemViewSet
+    inventory/categories/           → CategoryViewSet
+    inventory/variants/             → ItemVariantViewSet
+    inventory/locations/            → StorageLocationViewSet
+    inventory/stocks/               → StockViewSet
+    inventory/transactions/         → TransactionViewSet
+
+    servicebook/services/           → ServiceViewSet
+    servicebook/attendances/        → AttendanceViewSet
+
+    orders/                         → OrderViewSet
+    order-items/                    → OrderItemViewSet
+    orderable-items/                → OrderableItemViewSet
+    order-statuses/                 → OrderStatusViewSet
+
+    qualifications/types/           → QualificationTypeViewSet
+    qualifications/specialtask-types/ → SpecialTaskTypeViewSet
+    qualifications/specialtasks/    → SpecialTaskViewSet
+    qualifications/                 → QualificationViewSet
+
+    settings/                       → SettingsViewSet
+    settings/email-templates/       → EmailTemplateViewSet
+    settings/email-layout-templates/→ EmailLayoutTemplateViewSet
+    ldap-department-mappings/       → LDAPDepartmentMappingViewSet
+    oidc-group-mappings/            → OIDCGroupMappingViewSet
+
+    training/library/categories/    → LibraryBlockCategoryViewSet
+    training/library/tags/          → LibraryBlockTagViewSet
+    training/library/               → LibraryBlockViewSet
+    training/sessions/              → TrainingSessionViewSet
+    training/blocks/                → TrainingBlockViewSet
 ```
 
 ## Authentication & Permissions
@@ -150,7 +179,7 @@ ViewSet `@action` decorators create extra endpoints automatically:
 ```python
 @action(detail=True, methods=['get'])
 def export_excel(self, request, pk=None):
-    # Creates: GET /api/v1/members/{id}/export_excel/
+    # Creates: GET /api/v1/members/{id}/export-excel/
     ...
 
 @action(detail=False, methods=['post'])
@@ -173,3 +202,25 @@ All list endpoints return paginated data. The default page size is defined in `s
 ```
 
 Always use `.results` when consuming lists in the frontend.
+
+## Background Jobs (RQ Worker)
+
+Some backend features use asynchronous jobs (for example external sync runs).
+
+- Queue backend: Redis
+- Worker process: `rqworker default`
+- Typical deployment: separate worker container/service next to web backend
+
+Flow:
+
+```text
+API request -> Django enqueues job in Redis -> worker executes job -> SyncRun/DB status updates
+```
+
+If the worker is not running, queued jobs remain pending and sync/status actions will not complete.
+
+## Related Docs
+
+- [API Reference](../api/reference.md)
+- [Frontend Structure](frontend-structure.md)
+- [Departments And Permissions](departments-and-permissions.md)

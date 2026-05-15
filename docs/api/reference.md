@@ -266,6 +266,56 @@ PATCH  /api/v1/qualifications/specialtasks/{id}/
 DELETE /api/v1/qualifications/specialtasks/{id}/
 ```
 
+### Training
+
+```
+GET    /api/v1/training/sessions/
+POST   /api/v1/training/sessions/
+GET    /api/v1/training/sessions/{id}/
+PATCH  /api/v1/training/sessions/{id}/
+DELETE /api/v1/training/sessions/{id}/
+GET    /api/v1/training/sessions/{id}/handout/
+POST   /api/v1/training/sessions/{id}/generate_series/
+
+GET    /api/v1/training/blocks/
+POST   /api/v1/training/blocks/
+GET    /api/v1/training/blocks/{id}/
+PATCH  /api/v1/training/blocks/{id}/
+DELETE /api/v1/training/blocks/{id}/
+PATCH  /api/v1/training/blocks/{id}/move/
+POST   /api/v1/training/blocks/{id}/upload_image/
+GET    /api/v1/training/blocks/{id}/media/
+DELETE /api/v1/training/blocks/{id}/media/?media_id={id}
+GET    /api/v1/training/blocks/{id}/attachments/
+POST   /api/v1/training/blocks/{id}/attachments/
+DELETE /api/v1/training/blocks/{id}/attachments/
+
+GET    /api/v1/training/library/
+POST   /api/v1/training/library/
+GET    /api/v1/training/library/{id}/
+PATCH  /api/v1/training/library/{id}/
+DELETE /api/v1/training/library/{id}/
+GET    /api/v1/training/library/{id}/usages/
+POST   /api/v1/training/library/{id}/upload_image/
+GET    /api/v1/training/library/{id}/media/
+DELETE /api/v1/training/library/{id}/media/?media_id={id}
+GET    /api/v1/training/library/{id}/attachments/
+POST   /api/v1/training/library/{id}/attachments/
+DELETE /api/v1/training/library/{id}/attachments/
+
+POST   /api/v1/training/library/export_blocks/
+POST   /api/v1/training/library/import_blocks/
+
+GET    /api/v1/training/library/categories/
+POST   /api/v1/training/library/categories/
+PATCH  /api/v1/training/library/categories/{id}/
+DELETE /api/v1/training/library/categories/{id}/
+
+GET    /api/v1/training/library/tags/
+POST   /api/v1/training/library/tags/
+DELETE /api/v1/training/library/tags/{id}/
+```
+
 ## Query Parameters
 
 Common patterns:

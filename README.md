@@ -204,10 +204,13 @@ Die vollständige Dokumentation befindet sich im [docs/](docs/) Verzeichnis:
 - [API Referenz](docs/api/reference.md) – REST API Endpunkte, Authentifizierung
 - [Deployment](docs/deployment/docker.md) – Docker Compose, SSL, Backup
 - [Portainer](docs/deployment/portainer.md) – Deployment via Portainer
+- [Build Pipeline](docs/development/build-pipeline.md) – CI, GHCR image build/push, deployment workflow
 - [Mitglieder, Listen, Gruppen, Excel-Export](docs/domains/members-lists-groups-exports.md) – Neue Listen-/Gruppen- und Exportfunktionen
 - [Settings, LDAP, SSO](docs/domains/settings-ldap-sso.md) – Einstellungen und externe Authentifizierung
 - [Abteilungen (Operational Guide)](docs/domains/departments.md) – Praxisleitfaden für Abteilungsbetrieb
 - [External Sync mit Spond](docs/domains/external-sync-spond.md) – Sync-Jobs und Provider-Erweiterung
+- [Training Modul](docs/domains/training-module.md) – Kalender, Planer, Bibliothek, Handout und Mobile-Planer
+- [Training Modul Architektur](docs/architecture/training-module.md) – Datenmodell, API-Architektur und Frontend-Integration
 
 ## 🤝 Beitragen
 
@@ -215,4 +218,4 @@ Wir freuen uns über Beiträge zur Verbesserung des JF-Managers! Bitte lies dir 
 
 ## 📄 Lizenz
 
-[GNU AFFERO GENERAL PUBLIC LICENSE](./LICENSE)
+[GNU AFFERO GENERAL PUBLIC LICENSE](backend/LICENSE)
