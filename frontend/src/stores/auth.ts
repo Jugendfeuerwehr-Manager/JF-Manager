@@ -170,6 +170,31 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/login')
   }
 
+  /**
+   * Initiate an OIDC login by redirecting the browser to the IdP.
+   * Saves the intended destination URL in sessionStorage so the callback
+   * view can restore it after a successful login.
+   */
+  async function loginWithOidc(next?: string) {
+    const { oidcApi } = await import('@/api/oidc')
+    const targetNext = next || router.currentRoute.value.fullPath || '/'
+    sessionStorage.setItem('oidc_return_url', targetNext)
+    const response = await oidcApi.getLoginUrl(targetNext)
+    window.location.href = response.data.authorization_url
+  }
+
+  /**
+   * Store OIDC-issued JWT tokens (called from OIDCCallbackView after exchange).
+   * Triggers the same user-fetch flow as a normal login.
+   */
+  async function setOIDCTokens(access: string, refresh: string) {
+    accessToken.value = access
+    refreshToken.value = refresh
+    localStorage.setItem('accessToken', access)
+    localStorage.setItem('refreshToken', refresh)
+    await fetchUser()
+  }
+
   // Initialize - Check if tokens exist and fetch user
   async function initialize() {
     if (accessToken.value) {
@@ -205,6 +230,8 @@ export const useAuthStore = defineStore('auth', () => {
     refreshAccessToken,
     updateProfile,
     logout,
-    initialize
+    initialize,
+    loginWithOidc,
+    setOIDCTokens,
   }
 })

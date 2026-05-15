@@ -58,6 +58,28 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         return queryset
 
+    def _get_accessible_member_queryset(self):
+        """
+        Return a Member queryset filtered to the departments accessible
+        to the current user, mirroring MemberViewSet.get_queryset() logic.
+        """
+        user = self.request.user
+        base_qs = Member.objects.prefetch_related("departments")
+
+        if self._user_is_org_wide(user):
+            requested_dept = self._resolve_requested_department(user)
+            if requested_dept is not None:
+                return base_qs.filter(departments__id=requested_dept).distinct()
+            return base_qs
+
+        allowed_ids = self._user_department_ids(user)
+        requested_dept = self._resolve_requested_department(user)
+
+        if requested_dept is not None:
+            return base_qs.filter(departments__id=requested_dept).distinct()
+
+        return base_qs.filter(departments__id__in=allowed_ids).distinct()
+
     @action(detail=False, methods=["post"])
     def send(self, request):
         """
@@ -114,8 +136,9 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             )
 
         try:
-            # Prepare recipients
-            recipient_count = MemberEmailService.prepare_recipients(email_message)
+            # Prepare recipients (department-scoped)
+            member_qs = self._get_accessible_member_queryset()
+            recipient_count = MemberEmailService.prepare_recipients(email_message, member_qs=member_qs)
 
             if recipient_count == 0:
                 return Response({"error": "Keine Empfänger gefunden"}, status=status.HTTP_400_BAD_REQUEST)
@@ -176,13 +199,19 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         request_serializer = EmailPreviewRequestSerializer(data=request.data)
         request_serializer.is_valid(raise_exception=True)
 
-        member = Member.objects.get(id=request_serializer.validated_data["member_id"])
+        # Validate the requested member is accessible to the current user
+        member_qs = self._get_accessible_member_queryset()
+        member = member_qs.filter(id=request_serializer.validated_data["member_id"]).first()
+        if not member:
+            return Response({"error": "Mitglied nicht gefunden oder kein Zugriff"}, status=status.HTTP_404_NOT_FOUND)
 
         # Render template (signature is already included in body_html by the frontend)
+        layout = request_serializer.validated_data.get("layout") or "none"
         rendered_html, rendered_text = EmailTemplateRenderer.render_for_member(
             request_serializer.validated_data["body_html"],
             request_serializer.validated_data.get("body_text", ""),
             member,
+            layout=layout,
         )
 
         # Get recipient count for this member
@@ -224,9 +253,10 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         }
         """
         recipient_type = request.data.get("recipient_type")
+        member_qs = self._get_accessible_member_queryset()
 
         if recipient_type == "all":
-            recipients = EmailRecipientCollector.get_recipients_for_all_members()
+            recipients = EmailRecipientCollector.get_recipients_for_all_members(member_qs=member_qs)
         elif recipient_type == "group":
             from members.models import Group
 
@@ -234,12 +264,16 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             if not group_id:
                 return Response({"error": "recipient_group erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
             group = Group.objects.get(id=group_id)
-            recipients = EmailRecipientCollector.get_recipients_for_group(group)
+            recipients = EmailRecipientCollector.get_recipients_for_group(group, member_qs=member_qs)
         elif recipient_type == "individual":
             member_id = request.data.get("recipient_member")
             if not member_id:
                 return Response({"error": "recipient_member erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
-            member = Member.objects.get(id=member_id)
+            member = member_qs.filter(id=member_id).first()
+            if not member:
+                return Response(
+                    {"error": "Mitglied nicht gefunden oder kein Zugriff"}, status=status.HTTP_404_NOT_FOUND
+                )
             recipients = EmailRecipientCollector.get_recipients_for_member(member)
         else:
             return Response({"error": "Ungültiger recipient_type"}, status=status.HTTP_400_BAD_REQUEST)

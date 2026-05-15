@@ -9,7 +9,21 @@
         v-model="formData.title"
         label="Website Titel"
         field-id="title"
-        help-text="Der Titel der Website, der im Browser-Tab angezeigt wird"
+        help-text="Der Titel der Website, der im Browser-Tab und auf der Loginseite angezeigt wird"
+        :disabled="!canEdit"
+      />
+      <SettingsTextField
+        v-model="formData.slug"
+        label="Organisations-Kürzel"
+        field-id="slug"
+        help-text="Kurzbezeichnung der Organisation (z.B. 'JF Berlin'). Wird auf der Loginseite angezeigt."
+        :disabled="!canEdit"
+      />
+      <SettingsTextField
+        v-model="formData.logo_url"
+        label="Logo URL"
+        field-id="logo_url"
+        help-text="Öffentlich erreichbare URL zum Logo der Organisation. Wird auf der Loginseite angezeigt."
         :disabled="!canEdit"
       />
       
@@ -59,7 +73,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const formData = reactive<GeneralSettings>({
-  title: ''
+  title: '',
+  slug: '',
+  logo_url: ''
 })
 
 const originalData = ref<GeneralSettings | null>(null)
@@ -69,13 +85,19 @@ const successMessage = ref('')
 watch(() => props.settings, (newSettings) => {
   if (newSettings) {
     formData.title = newSettings.title || ''
+    formData.slug = newSettings.slug || ''
+    formData.logo_url = newSettings.logo_url || ''
     originalData.value = { ...newSettings }
   }
 }, { immediate: true })
 
 const hasChanges = computed(() => {
   if (!originalData.value) return false
-  return formData.title !== originalData.value.title
+  return (
+    formData.title !== originalData.value.title ||
+    formData.slug !== originalData.value.slug ||
+    formData.logo_url !== originalData.value.logo_url
+  )
 })
 
 function handleSubmit() {
@@ -83,6 +105,12 @@ function handleSubmit() {
   
   if (formData.title !== originalData.value?.title) {
     changes.title = formData.title
+  }
+  if (formData.slug !== originalData.value?.slug) {
+    changes.slug = formData.slug
+  }
+  if (formData.logo_url !== originalData.value?.logo_url) {
+    changes.logo_url = formData.logo_url
   }
   
   if (Object.keys(changes).length > 0) {
@@ -97,6 +125,8 @@ function handleSubmit() {
 function handleCancel() {
   if (originalData.value) {
     formData.title = originalData.value.title || ''
+    formData.slug = originalData.value.slug || ''
+    formData.logo_url = originalData.value.logo_url || ''
   }
 }
 </script>

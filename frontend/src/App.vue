@@ -28,8 +28,8 @@ watch(websiteTitle, () => {
 
 body {
   font-family: var(--font-family);
-  background: var(--surface-ground);
-  color: var(--text-color);
+  background: var(--p-surface-ground);
+  color: var(--p-text-color);
 }
 
 #app {

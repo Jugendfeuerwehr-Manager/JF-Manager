@@ -14,8 +14,8 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  background: var(--surface-ground);
-  color: var(--text-color);
+  background: var(--p-surface-ground);
+  color: var(--p-text-color);
   line-height: 1.6;
 }
 
@@ -166,19 +166,19 @@ body {
 }
 
 .text-surface-500 {
-  color: var(--surface-500);
+  color: var(--p-surface-500);
 }
 
 .text-surface-600 {
-  color: var(--surface-600);
+  color: var(--p-surface-600);
 }
 
 .text-surface-900 {
-  color: var(--surface-900);
+  color: var(--p-surface-900);
 }
 
 .text-primary {
-  color: var(--primary-color);
+  color: var(--p-primary-500);
 }
 
 .text-green-500 {
@@ -220,34 +220,13 @@ body {
   }
 }
 
-/* Width utilities */
-.md\\:w-\\[800px\\] {
-  width: 800px;
-}
-
-.md\\:w-\\[700px\\] {
-  width: 700px;
-}
-
-.md\\:w-\\[600px\\] {
-  width: 600px;
-}
-
-@media screen and (max-width: 768px) {
-  .md\\:w-\\[800px\\],
-  .md\\:w-\\[700px\\],
-  .md\\:w-\\[600px\\] {
-    width: 100%;
-  }
-}
-
 /* PrimeVue overrides */
 .p-button {
   font-weight: 600;
 }
 
 .p-datatable .p-datatable-thead > tr > th {
-  background: var(--surface-50);
+  background: var(--p-content-background);
   font-weight: 600;
 }
 
@@ -261,9 +240,9 @@ body {
 
 /* Mobile responsive list helpers */
 .mobile-entity-card {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--p-content-border-color);
   border-radius: var(--border-radius);
-  background: var(--surface-card);
+  background: var(--p-content-background);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 1rem;
   display: flex;
@@ -276,7 +255,7 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--p-content-border-color);
   padding-bottom: 0.75rem;
 }
 
@@ -284,12 +263,12 @@ body {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
-  color: var(--text-color);
+  color: var(--p-text-color);
 }
 
 .mobile-entity-card__meta {
   font-size: 0.85rem;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   margin-top: 0.25rem;
 }
 
@@ -311,12 +290,12 @@ body {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: var(--text-color-secondary);
+  color: var(--p-text-muted-color);
   font-weight: 500;
 }
 
 .mobile-entity-card__value {
-  color: var(--text-color);
+  color: var(--p-text-color);
   font-weight: 500;
 }
 
@@ -336,4 +315,28 @@ body {
     flex: 0 0 auto;
     min-width: auto;
   }
+}
+
+/* ─── Settings Section ─────────────────────────────── */
+
+.settings-section__header {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section__back {
+  margin-bottom: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+.settings-section__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: var(--text-color);
+}
+
+.settings-section__description {
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  margin: 0;
 }

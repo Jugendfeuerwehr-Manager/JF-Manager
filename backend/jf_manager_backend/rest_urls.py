@@ -30,7 +30,13 @@ from qualifications.api.viewsets import (
     SpecialTaskViewSet,
 )
 from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
-from settings_manager.api import EmailTemplateViewSet, LDAPDepartmentMappingViewSet, SettingsViewSet
+from settings_manager.api import (
+    EmailLayoutTemplateViewSet,
+    EmailTemplateViewSet,
+    LDAPDepartmentMappingViewSet,
+    OIDCGroupMappingViewSet,
+    SettingsViewSet,
+)
 from training.api.viewsets import (
     LibraryBlockCategoryViewSet,
     LibraryBlockTagViewSet,
@@ -90,7 +96,9 @@ api.register(r"qualifications", QualificationViewSet, basename="qualifications")
 # Settings endpoints
 api.register(r"settings", SettingsViewSet, basename="settings")
 api.register(r"settings/email-templates", EmailTemplateViewSet, basename="email-templates")
+api.register(r"settings/email-layout-templates", EmailLayoutTemplateViewSet, basename="email-layout-templates")
 api.register(r"ldap-department-mappings", LDAPDepartmentMappingViewSet, basename="ldap-department-mappings")
+api.register(r"oidc-group-mappings", OIDCGroupMappingViewSet, basename="oidc-group-mappings")
 
 # Training endpoints - most specific routes FIRST
 api.register(r"training/library/categories", LibraryBlockCategoryViewSet, basename="training-library-categories")

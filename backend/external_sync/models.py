@@ -22,6 +22,11 @@ class SyncJob(models.Model):
         REVIEW = "review", "Zur Prüfung markieren"
         AUTO_DELETE = "auto_delete", "Automatisch löschen"
 
+    class SpondOperationMode(models.TextChoices):
+        GROUPS_TO_GROUPS = "groups_to_groups", "Spond-Gruppen zu Gruppen"
+        GROUPS_TO_DEPARTMENTS = "groups_to_departments", "Spond-Gruppen zu Abteilungen"
+        MEMBERS_ONLY = "members_only", "Nur Mitglieder"
+
     name = models.CharField(max_length=200, verbose_name="Name")
     provider = models.CharField(max_length=30, choices=Provider.choices, verbose_name="Quelle")
     scope = models.CharField(max_length=20, choices=Scope.choices, default=Scope.ORGANIZATION, verbose_name="Geltung")
@@ -148,6 +153,7 @@ class SyncBinding(models.Model):
     class ObjectType(models.TextChoices):
         MEMBER = "member", "Mitglied"
         GROUP = "group", "Gruppe"
+        DEPARTMENT = "department", "Abteilung"
 
     job = models.ForeignKey(SyncJob, on_delete=models.CASCADE, related_name="bindings", verbose_name="Job")
     object_type = models.CharField(max_length=20, choices=ObjectType.choices, verbose_name="Objekttyp")

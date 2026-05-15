@@ -18,7 +18,7 @@ from external_sync.api.serializers import (
     SyncRunSerializer,
 )
 from external_sync.models import SyncJob, SyncRun
-from external_sync.services import ProviderNotImplementedError, get_provider
+from external_sync.services import ProviderNotImplementedError, ProviderRuntimeError, get_provider
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 
 
@@ -101,6 +101,11 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
             job.last_error = "" if job.last_test_status else result.get("message", "")
             job.save(update_fields=["last_tested_at", "last_test_status", "last_error", "updated_at"])
             return Response(result)
+        except ProviderRuntimeError as exc:
+            job.last_test_status = False
+            job.last_error = str(exc)
+            job.save(update_fields=["last_tested_at", "last_test_status", "last_error", "updated_at"])
+            return Response({"ok": False, "detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         except ProviderNotImplementedError as exc:
             job.last_test_status = False
             job.last_error = str(exc)
@@ -140,6 +145,9 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
         except ProviderNotImplementedError as exc:
             run = self._record_failed_run(job, request.user, "manual", str(exc))
             return Response(SyncRunSerializer(run).data, status=status.HTTP_501_NOT_IMPLEMENTED)
+        except ProviderRuntimeError as exc:
+            run = self._record_failed_run(job, request.user, "manual", str(exc))
+            return Response(SyncRunSerializer(run).data, status=status.HTTP_502_BAD_GATEWAY)
 
     @action(detail=False, methods=["post"], url_path="spond-top-level-groups")
     def spond_top_level_groups(self, request):
@@ -150,6 +158,8 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
             provider = get_provider("spond")
             groups = provider.list_top_level_groups(credentials=serializer.validated_data)
             return Response({"results": SpondTopLevelGroupSerializer(groups, many=True).data})
+        except ProviderRuntimeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         except ProviderNotImplementedError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_501_NOT_IMPLEMENTED)
 

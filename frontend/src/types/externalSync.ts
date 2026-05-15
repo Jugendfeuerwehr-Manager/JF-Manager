@@ -5,6 +5,7 @@ export type SyncScope = 'organization' | 'department'
 export type SyncRunMode = 'manual' | 'interval'
 export type SyncDeletionMode = 'review' | 'auto_delete'
 export type SyncRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+export type SpondOperationMode = 'groups_to_groups' | 'groups_to_departments' | 'members_only'
 
 export interface SyncJob {
   id: number
@@ -82,7 +83,7 @@ export interface SyncBindingPreview {
   id: number
   job: number
   job_name: string
-  object_type: 'member' | 'group'
+  object_type: 'member' | 'group' | 'department'
   external_id: string
   external_name: string
   is_deleted_in_source: boolean
@@ -92,6 +93,14 @@ export interface SyncBindingPreview {
   last_seen_at: string | null
   created_at: string
   updated_at: string
+}
+
+export function getSpondOperationMode(config?: Record<string, unknown>): SpondOperationMode {
+  const operationMode = config?.operation_mode
+  if (operationMode === 'groups_to_groups' || operationMode === 'groups_to_departments' || operationMode === 'members_only') {
+    return operationMode
+  }
+  return config?.sync_groups === false ? 'members_only' : 'groups_to_groups'
 }
 
 export interface GarbageCollectionPreview {

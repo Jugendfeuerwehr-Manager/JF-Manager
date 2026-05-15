@@ -58,6 +58,38 @@
         </div>
       </div>
 
+      <SettingsCheckbox
+        v-model="formData.disable_cert_validation"
+        label="TLS Zertifikatsprüfung deaktivieren (unsicher)"
+        field-id="ldap_disable_cert_validation"
+        help-text="Nur für Testumgebungen empfohlen. In Produktion sollte die Zertifikatsprüfung aktiv bleiben."
+        :disabled="!canEdit"
+      />
+
+      <SettingsTextField
+        v-model="formData.ca_cert_file"
+        label="CA Zertifikat Datei (optional)"
+        field-id="ldap_ca_cert_file"
+        placeholder="/etc/ssl/certs/internal-ldap-ca.pem"
+        :disabled="!canEdit || formData.disable_cert_validation"
+      />
+
+      <div class="field">
+        <label for="ldap_ca_cert_content" class="block mb-2">CA Zertifikat Inhalt (PEM, optional)</label>
+        <Textarea
+          id="ldap_ca_cert_content"
+          v-model="formData.ca_cert_content"
+          class="w-full"
+          rows="6"
+          autoResize
+          placeholder="-----BEGIN CERTIFICATE-----"
+          :disabled="!canEdit || formData.disable_cert_validation"
+        />
+        <small class="text-color-secondary">
+          Verwende entweder Dateipfad oder PEM-Inhalt. Ohne Angabe wird der System-Truststore genutzt.
+        </small>
+      </div>
+
       <div class="grid">
         <div class="col-12 md:col-6">
           <SettingsTextField
@@ -444,6 +476,7 @@ import MultiSelect from 'primevue/multiselect'
 import Panel from 'primevue/panel'
 import Password from 'primevue/password'
 import Tag from 'primevue/tag'
+import Textarea from 'primevue/textarea'
 import { useConfirm } from 'primevue/useconfirm'
 import SettingsCategoryCard from '../atoms/SettingsCategoryCard.vue'
 import SettingsTextField from '../atoms/SettingsTextField.vue'
@@ -485,6 +518,9 @@ const formData = reactive<LdapSettings>({
   enabled: false,
   server_uri: '',
   start_tls: false,
+  ca_cert_file: '',
+  ca_cert_content: '',
+  disable_cert_validation: false,
   bind_dn: '',
   bind_password: '',
   has_bind_password: false,
@@ -506,6 +542,9 @@ watch(
     formData.enabled = s.enabled
     formData.server_uri = s.server_uri || ''
     formData.start_tls = s.start_tls ?? false
+    formData.ca_cert_file = s.ca_cert_file || ''
+    formData.ca_cert_content = s.ca_cert_content || ''
+    formData.disable_cert_validation = s.disable_cert_validation ?? false
     formData.bind_dn = s.bind_dn || ''
     formData.bind_password = ''
     formData.has_bind_password = s.has_bind_password ?? false
@@ -528,6 +567,9 @@ const hasChanges = computed(() => {
     formData.enabled !== o.enabled ||
     formData.server_uri !== o.server_uri ||
     formData.start_tls !== o.start_tls ||
+    formData.ca_cert_file !== o.ca_cert_file ||
+    formData.ca_cert_content !== o.ca_cert_content ||
+    formData.disable_cert_validation !== o.disable_cert_validation ||
     formData.bind_dn !== o.bind_dn ||
     formData.user_search_base_dn !== o.user_search_base_dn ||
     formData.user_search_filter !== o.user_search_filter ||
@@ -551,11 +593,22 @@ function handleSubmit() {
       return
     }
   }
+
+  if (formData.ca_cert_file && formData.ca_cert_content) {
+    errorMessage.value = 'Bitte entweder CA Zertifikat Datei oder CA Zertifikat Inhalt verwenden.'
+    return
+  }
+
   const o = originalData.value
   const payload: Partial<LdapSettings> = {}
   if (formData.enabled !== o?.enabled) payload.enabled = formData.enabled
   if (formData.server_uri !== o?.server_uri) payload.server_uri = formData.server_uri
   if (formData.start_tls !== o?.start_tls) payload.start_tls = formData.start_tls
+  if (formData.ca_cert_file !== o?.ca_cert_file) payload.ca_cert_file = formData.ca_cert_file
+  if (formData.ca_cert_content !== o?.ca_cert_content) payload.ca_cert_content = formData.ca_cert_content
+  if (formData.disable_cert_validation !== o?.disable_cert_validation) {
+    payload.disable_cert_validation = formData.disable_cert_validation
+  }
   if (formData.bind_dn !== o?.bind_dn) payload.bind_dn = formData.bind_dn
   if (formData.user_search_base_dn !== o?.user_search_base_dn)
     payload.user_search_base_dn = formData.user_search_base_dn
@@ -583,6 +636,9 @@ function handleCancel() {
   formData.enabled = o.enabled
   formData.server_uri = o.server_uri
   formData.start_tls = o.start_tls
+  formData.ca_cert_file = o.ca_cert_file
+  formData.ca_cert_content = o.ca_cert_content
+  formData.disable_cert_validation = o.disable_cert_validation
   formData.bind_dn = o.bind_dn
   formData.bind_password = ''
   formData.has_bind_password = o.has_bind_password

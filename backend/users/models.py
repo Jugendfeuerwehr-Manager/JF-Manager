@@ -12,6 +12,19 @@ from PIL import Image as Img
 class CustomUser(AbstractUser):
     # add additional fields in here
 
+    class AuthSource(models.TextChoices):
+        LOCAL = "local", "Lokal"
+        LDAP = "ldap", "LDAP"
+        OIDC = "oidc", "OIDC"
+
+    auth_source = models.CharField(
+        max_length=10,
+        choices=AuthSource.choices,
+        default=AuthSource.LOCAL,
+        verbose_name="Authentifizierungsquelle",
+        help_text="Gibt an, ob der Benutzer lokal oder über ein externes System (LDAP/OIDC) verwaltet wird.",
+    )
+
     dsgvo_internal = models.BooleanField(default=False)
     dsgvo_external = models.BooleanField(default=False)
 

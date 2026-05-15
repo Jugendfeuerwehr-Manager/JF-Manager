@@ -2,13 +2,21 @@
 ViewSet for MemberList and MemberListEntry management.
 """
 
+from datetime import date
+from io import BytesIO
+
+import openpyxl
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
@@ -17,8 +25,29 @@ from members.api.serializers.list_serializers import (
     MemberListDetailSerializer,
     MemberListSerializer,
 )
+from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_EXPORT_DEFAULT_COLUMNS
 from members.api_serializers import AttachmentSerializer
 from members.models import Attachment, Member, MemberList, MemberListEntry
+
+
+class PassthroughRenderer(BaseRenderer):
+    """Return data as-is for binary responses."""
+
+    media_type = "*/*"
+    format = "binary"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
+
+
+LIST_EXTRA_COLUMNS = {
+    "list_checked": "Anwesend",
+    "list_checked_at": "Anwesend seit",
+    "list_notes": "Notiz (Liste)",
+}
+LIST_EXTRA_DEFAULT_COLUMNS = ["list_checked", "list_notes"]
+
+ALL_LIST_EXPORT_COLUMNS = {**MEMBER_EXPORT_COLUMNS, **LIST_EXTRA_COLUMNS}
 
 
 @extend_schema_view(
@@ -195,3 +224,176 @@ class MemberListViewSet(viewsets.ModelViewSet):
         if not updated:
             return Response({"error": "Eintrag nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
         return Response({"notes": notes})
+
+    @extend_schema(
+        summary="Export member list entries to Excel with column selection",
+        parameters=[
+            OpenApiParameter(
+                "columns",
+                OpenApiTypes.STR,
+                description=(
+                    "Comma-separated list of column keys to include. "
+                    f"Available: {', '.join(ALL_LIST_EXPORT_COLUMNS.keys())}. "
+                    "Defaults to basic member fields + checked/notes when omitted."
+                ),
+            ),
+        ],
+    )
+    @action(detail=True, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
+    def export_excel(self, request, pk=None):
+        if not request.user.has_perm("members.view_memberlist"):
+            return Response({"error": "Keine Berechtigung für Listen-Export"}, status=403)
+
+        member_list = self.get_object()
+
+        # Determine which columns to export
+        columns_param = request.query_params.get("columns", "")
+        if columns_param:
+            requested = [c.strip() for c in columns_param.split(",") if c.strip()]
+            selected_columns = [c for c in requested if c in ALL_LIST_EXPORT_COLUMNS]
+        else:
+            selected_columns = [*MEMBER_EXPORT_DEFAULT_COLUMNS, *LIST_EXTRA_DEFAULT_COLUMNS]
+        if not selected_columns:
+            selected_columns = [*MEMBER_EXPORT_DEFAULT_COLUMNS, *LIST_EXTRA_DEFAULT_COLUMNS]
+
+        entries = (
+            MemberListEntry.objects.filter(member_list=member_list)
+            .select_related("member", "member__status", "member__group")
+            .prefetch_related("member__parent_set", "member__departments")
+            .order_by("member__lastname", "member__name")
+        )
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = member_list.name[:31]  # Excel sheet name limit
+
+        header_fill = PatternFill(start_color="CC0000", end_color="CC0000", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+
+        for col_idx, col_key in enumerate(selected_columns, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=ALL_LIST_EXPORT_COLUMNS[col_key])
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center")
+
+        today = date.today()
+
+        for row_idx, entry in enumerate(entries, start=2):
+            member = entry.member
+            parents = list(member.parent_set.all()[:2])
+            p1 = parents[0] if len(parents) > 0 else None
+            p2 = parents[1] if len(parents) > 1 else None
+
+            for col_idx, col_key in enumerate(selected_columns, start=1):
+                value: str | int = ""
+                if col_key == "list_checked":
+                    value = "Ja" if entry.checked else "Nein"
+                elif col_key == "list_checked_at":
+                    value = entry.checked_at.astimezone().strftime("%d.%m.%Y %H:%M") if entry.checked_at else ""
+                elif col_key == "list_notes":
+                    value = entry.notes or ""
+                elif col_key == "name":
+                    value = member.name
+                elif col_key == "lastname":
+                    value = member.lastname
+                elif col_key == "gender":
+                    value = {"male": "Männlich", "female": "Weiblich", "diverse": "Divers"}.get(member.gender, "")
+                elif col_key == "birthday":
+                    value = member.birthday.strftime("%d.%m.%Y") if member.birthday else ""
+                elif col_key == "age":
+                    if member.birthday:
+                        value = (
+                            today.year
+                            - member.birthday.year
+                            - ((today.month, today.day) < (member.birthday.month, member.birthday.day))
+                        )
+                elif col_key == "email":
+                    value = member.email
+                elif col_key == "phone":
+                    value = member.phone
+                elif col_key == "mobile":
+                    value = member.mobile
+                elif col_key == "street":
+                    value = member.street
+                elif col_key == "zip_code":
+                    value = member.zip_code
+                elif col_key == "city":
+                    value = member.city
+                elif col_key == "joined":
+                    value = member.joined.strftime("%d.%m.%Y") if member.joined else ""
+                elif col_key == "status":
+                    value = member.status.name if member.status else ""
+                elif col_key == "group":
+                    value = member.group.name if member.group else ""
+                elif col_key == "identityCardNumber":
+                    value = member.identityCardNumber
+                elif col_key == "canSwimm":
+                    value = "Ja" if member.canSwimm else "Nein"
+                elif col_key == "notes":
+                    value = member.notes
+                elif col_key == "departments":
+                    value = ", ".join(d.name for d in member.departments.all())
+                elif col_key == "parent1_name":
+                    value = p1.name if p1 else ""
+                elif col_key == "parent1_lastname":
+                    value = p1.lastname if p1 else ""
+                elif col_key == "parent1_email":
+                    value = p1.email if p1 else ""
+                elif col_key == "parent1_email2":
+                    value = p1.email2 if p1 else ""
+                elif col_key == "parent1_phone":
+                    value = p1.phone if p1 else ""
+                elif col_key == "parent1_mobile":
+                    value = p1.mobile if p1 else ""
+                elif col_key == "parent1_street":
+                    value = p1.street if p1 else ""
+                elif col_key == "parent1_zip_code":
+                    value = p1.zip_code if p1 else ""
+                elif col_key == "parent1_city":
+                    value = p1.city if p1 else ""
+                elif col_key == "parent2_name":
+                    value = p2.name if p2 else ""
+                elif col_key == "parent2_lastname":
+                    value = p2.lastname if p2 else ""
+                elif col_key == "parent2_email":
+                    value = p2.email if p2 else ""
+                elif col_key == "parent2_email2":
+                    value = p2.email2 if p2 else ""
+                elif col_key == "parent2_phone":
+                    value = p2.phone if p2 else ""
+                elif col_key == "parent2_mobile":
+                    value = p2.mobile if p2 else ""
+                elif col_key == "parent2_street":
+                    value = p2.street if p2 else ""
+                elif col_key == "parent2_zip_code":
+                    value = p2.zip_code if p2 else ""
+                elif col_key == "parent2_city":
+                    value = p2.city if p2 else ""
+
+                ws.cell(row=row_idx, column=col_idx, value=value)
+
+        # Auto-fit column widths (capped at 50)
+        for col in ws.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    cell_len = len(str(cell.value)) if cell.value is not None else 0
+                    if cell_len > max_length:
+                        max_length = cell_len
+                except Exception:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        date_str = today.strftime("%Y-%m-%d")
+        safe_name = member_list.name.replace("/", "-").replace("\\", "-")[:40]
+        response = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{safe_name}_{date_str}.xlsx"'
+        return response

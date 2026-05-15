@@ -112,6 +112,10 @@
           :previewData="livePreviewData"
           :loading="previewing"
         />
+        <div v-if="livePreviewError && !previewing" class="preview-error">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Vorschau nicht verfügbar: {{ livePreviewError }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -145,10 +149,12 @@ const formData = ref<EmailTemplateCreateUpdate>({
   subject_template: '',
   html_template: '',
   text_template: '',
+  layout: 'none',
   is_active: true
 })
 const originalData = ref<EmailTemplateCreateUpdate | null>(null)
 const livePreviewData = ref<TemplatePreviewResponse | null>(null)
+const livePreviewError = ref<string | null>(null)
 const currentVariables = ref<TemplateVariables | null>(null)
 const localPreviewing = ref(false)
 let previewTimeout: ReturnType<typeof setTimeout> | null = null
@@ -201,6 +207,7 @@ async function handleEdit(id: number) {
       subject_template: currentTemplate.value.subject_template,
       html_template: currentTemplate.value.html_template,
       text_template: currentTemplate.value.text_template || '',
+      layout: currentTemplate.value.layout ?? 'none',
       is_active: currentTemplate.value.is_active
     }
     originalData.value = { ...formData.value }
@@ -220,6 +227,7 @@ function handleCreate() {
     subject_template: '',
     html_template: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <title>E-Mail</title>\n</head>\n<body>\n  <h1>Hallo {{ member.first_name }},</h1>\n  <p></p>\n</body>\n</html>',
     text_template: '',
+    layout: 'none',
     is_active: true
   }
   originalData.value = { ...formData.value }
@@ -237,6 +245,7 @@ function handleBack() {
     subject_template: '',
     html_template: '',
     text_template: '',
+    layout: 'none',
     is_active: true
   }
   originalData.value = null
@@ -360,7 +369,11 @@ async function updateLivePreview() {
     
     // Only update local state, not store state - prevents re-rendering
     livePreviewData.value = result
-  } catch {
+    livePreviewError.value = null
+  } catch (err) {
+    console.error('Live preview failed:', err)
+    livePreviewData.value = null
+    livePreviewError.value = err instanceof Error ? err.message : 'Vorschau konnte nicht geladen werden'
   } finally {
     localPreviewing.value = false
   }
@@ -526,5 +539,17 @@ onMounted(() => {
     top: 0;
     max-height: none;
   }
+}
+
+.preview-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  background: var(--red-50, #fff5f5);
+  border: 1px solid var(--red-200, #fed7d7);
+  color: var(--red-700, #c53030);
+  font-size: 0.875rem;
 }
 </style>

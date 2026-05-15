@@ -35,6 +35,13 @@ class EmailMessage(models.Model):
         ("individual", "Einzelnes Mitglied"),
     ]
 
+    LAYOUT_CHOICES = [
+        ("none", "Kein Layout"),
+        ("general", "Allgemein (lila)"),
+        ("important", "Wichtig (orange)"),
+        ("events", "Veranstaltung (grün)"),
+    ]
+
     # Metadata
     sender = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -50,6 +57,12 @@ class EmailMessage(models.Model):
     subject = models.CharField(max_length=500, verbose_name="Betreff")
     body_html = models.TextField(verbose_name="Nachricht (HTML)")
     body_text = models.TextField(blank=True, verbose_name="Nachricht (Text)")
+    layout = models.CharField(
+        max_length=20,
+        choices=LAYOUT_CHOICES,
+        default="none",
+        verbose_name="E-Mail-Layout",
+    )
 
     # Recipient selection
     recipient_type = models.CharField(max_length=20, choices=RECIPIENT_TYPE_CHOICES, verbose_name="Empfängertyp")

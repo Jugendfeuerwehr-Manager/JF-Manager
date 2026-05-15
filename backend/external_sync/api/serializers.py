@@ -3,6 +3,17 @@ from rest_framework import serializers
 from external_sync.models import SyncBinding, SyncJob, SyncRun
 
 
+def _normalized_spond_operation_mode(config: dict) -> str:
+    operation_mode = config.get("operation_mode")
+    if operation_mode:
+        return str(operation_mode)
+
+    # Backward compatibility for older jobs/payloads.
+    if config.get("sync_groups") is False:
+        return SyncJob.SpondOperationMode.MEMBERS_ONLY
+    return SyncJob.SpondOperationMode.GROUPS_TO_GROUPS
+
+
 class SyncJobListSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="department.name", read_only=True)
     has_credentials = serializers.SerializerMethodField()
@@ -75,10 +86,40 @@ class SyncJobDetailSerializer(SyncJobListSerializer):
             config = self.instance.config or {}
         config = config or {}
 
-        if provider == SyncJob.Provider.SPOND and not config.get("group_id"):
-            raise serializers.ValidationError(
-                {"config": "Für Spond muss eine Top-Level-Gruppe ausgewählt werden (config.group_id)."}
-            )
+        if provider == SyncJob.Provider.SPOND:
+            if not config.get("group_id"):
+                raise serializers.ValidationError(
+                    {"config": "Für Spond muss eine Top-Level-Gruppe ausgewählt werden (config.group_id)."}
+                )
+
+            operation_mode = _normalized_spond_operation_mode(config)
+            allowed_modes = {choice[0] for choice in SyncJob.SpondOperationMode.choices}
+            if operation_mode not in allowed_modes:
+                raise serializers.ValidationError(
+                    {
+                        "config": (
+                            "Ungültiger operation_mode für Spond. Erlaubte Werte: "
+                            "groups_to_groups, groups_to_departments, members_only."
+                        )
+                    }
+                )
+
+            # Persist normalized mode to avoid repeatedly relying on legacy sync_groups.
+            config["operation_mode"] = operation_mode
+            attrs["config"] = config
+
+            if (
+                operation_mode == SyncJob.SpondOperationMode.GROUPS_TO_DEPARTMENTS
+                and scope != SyncJob.Scope.ORGANIZATION
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "scope": (
+                            "Der Modus 'groups_to_departments' ist nur organisationsweit zulässig. "
+                            "Bitte scope=organization verwenden."
+                        )
+                    }
+                )
 
         if not user or not user.is_authenticated:
             return attrs

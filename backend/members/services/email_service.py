@@ -83,10 +83,10 @@ class EmailRecipientCollector:
         return emails
 
     @classmethod
-    def get_recipients_for_all_members(cls) -> list[dict[str, str]]:
+    def get_recipients_for_all_members(cls, member_qs=None) -> list[dict[str, str]]:
         """Get all recipients for all active members."""
         recipients = []
-        members = Member.objects.all()
+        members = member_qs if member_qs is not None else Member.objects.all()
 
         for member in members:
             recipients.extend(cls.get_member_emails(member))
@@ -94,10 +94,11 @@ class EmailRecipientCollector:
         return recipients
 
     @classmethod
-    def get_recipients_for_group(cls, group: Group) -> list[dict[str, str]]:
+    def get_recipients_for_group(cls, group: Group, member_qs=None) -> list[dict[str, str]]:
         """Get all recipients for members in a specific group."""
         recipients = []
-        members = Member.objects.filter(group=group)
+        base_qs = member_qs if member_qs is not None else Member.objects.all()
+        members = base_qs.filter(group=group)
 
         for member in members:
             recipients.extend(cls.get_member_emails(member))
@@ -129,7 +130,9 @@ class EmailTemplateRenderer:
         ]
 
     @staticmethod
-    def render_for_member(template_html: str, template_text: str, member: Member, signature: str = "") -> tuple:
+    def render_for_member(
+        template_html: str, template_text: str, member: Member, signature: str = "", layout: str = "none"
+    ) -> tuple:
         """
         Render template with member-specific data.
 
@@ -138,6 +141,7 @@ class EmailTemplateRenderer:
             template_text: Plain text template string
             member: Member instance
             signature: User's email signature
+            layout: Visual layout name (none / general / important / events)
 
         Returns:
             Tuple of (rendered_html, rendered_text)
@@ -162,6 +166,29 @@ class EmailTemplateRenderer:
             # Strip HTML from signature for text version
             text_signature = strip_tags(signature)
             rendered_text += f"\n\n{text_signature}"
+
+        # Wrap in layout template if requested
+        if layout and layout != "none":
+            from django.template import Context, Template
+            from django.template.loader import render_to_string
+            from django.utils.safestring import mark_safe
+
+            from orders.models import EmailLayoutTemplate
+
+            layout_context = {
+                "content": mark_safe(rendered_html),
+                "site_name": "JF-Manager",
+                "preview_text": "",
+            }
+            try:
+                db_layout = EmailLayoutTemplate.objects.filter(layout_type=layout).first()
+                if db_layout:
+                    tpl = Template(db_layout.html_content)
+                    rendered_html = tpl.render(Context(layout_context))
+                else:
+                    rendered_html = render_to_string(f"email_layouts/{layout}.html", layout_context)
+            except Exception:
+                logger.warning("Layout template '%s' not found; sending without layout.", layout)
 
         return rendered_html, rendered_text
 
@@ -212,19 +239,25 @@ class MemberEmailService:
 
     @staticmethod
     @transaction.atomic
-    def prepare_recipients(email_message: EmailMessage) -> int:
+    def prepare_recipients(email_message: EmailMessage, member_qs=None) -> int:
         """
         Prepare recipient list for an email message.
         Creates EmailRecipient records for each recipient.
+
+        Args:
+            email_message: The EmailMessage to prepare recipients for
+            member_qs: Optional queryset to restrict member scope (department filtering)
 
         Returns:
             Number of recipients prepared
         """
         # Collect recipients based on type
         if email_message.recipient_type == "all":
-            recipients = EmailRecipientCollector.get_recipients_for_all_members()
+            recipients = EmailRecipientCollector.get_recipients_for_all_members(member_qs=member_qs)
         elif email_message.recipient_type == "group":
-            recipients = EmailRecipientCollector.get_recipients_for_group(email_message.recipient_group)
+            recipients = EmailRecipientCollector.get_recipients_for_group(
+                email_message.recipient_group, member_qs=member_qs
+            )
         elif email_message.recipient_type == "individual":
             recipients = EmailRecipientCollector.get_recipients_for_member(email_message.recipient_member)
         else:
@@ -244,7 +277,10 @@ class MemberEmailService:
 
             # Personalize content for this member
             personalized_html, personalized_text = EmailTemplateRenderer.render_for_member(
-                email_message.body_html, email_message.body_text, member
+                email_message.body_html,
+                email_message.body_text,
+                member,
+                layout=getattr(email_message, "layout", "none") or "none",
             )
 
             EmailRecipient.objects.create(

@@ -1,8 +1,33 @@
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+
+class PublicBrandingView(APIView):
+    """
+    Public API endpoint to retrieve branding/app identity info.
+    No authentication required — used by the login page.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        summary="Get public branding information",
+        description="Returns the app title, slug, and logo URL. No authentication required.",
+    )
+    def get(self, request):
+        global_preferences = global_preferences_registry.manager()
+
+        branding = {
+            "title": global_preferences.get("general__title") or "JF Manager",
+            "slug": global_preferences.get("general__slug") or "",
+            "logo_url": global_preferences.get("general__logo_url") or "",
+        }
+
+        return Response(branding)
 
 
 class AppSettingsView(APIView):

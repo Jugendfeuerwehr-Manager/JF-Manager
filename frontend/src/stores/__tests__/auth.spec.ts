@@ -67,8 +67,9 @@ function createMockUser(overrides: Partial<UserInfo> = {}): UserInfo {
     department_roles: [],
     has_org_wide_access: false,
     favorite_department: null,
+    auth_source: 'local',
     ...overrides
-  }
+  } as UserInfo
 }
 
 describe('Auth Store', () => {

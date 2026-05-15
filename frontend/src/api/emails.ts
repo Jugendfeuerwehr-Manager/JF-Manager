@@ -39,6 +39,9 @@ export const emailsApi = {
   send(data: EmailMessageCreate) {
     const { attachments, ...fields } = data
 
+    const activeDeptId = localStorage.getItem('activeDepartmentId')
+    const deptParams = activeDeptId ? { department: activeDeptId } : undefined
+
     if (attachments && attachments.length > 0) {
       const formData = new FormData()
       Object.entries(fields).forEach(([key, value]) => {
@@ -50,11 +53,12 @@ export const emailsApi = {
         formData.append('attachments', file)
       })
       return apiClient.post<EmailSendResponse>('/emails/send/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: deptParams
       })
     }
 
-    return apiClient.post<EmailSendResponse>('/emails/send/', fields)
+    return apiClient.post<EmailSendResponse>('/emails/send/', fields, { params: deptParams })
   },
 
   /**
@@ -82,6 +86,8 @@ export const emailsApi = {
    * Get recipient count for selection criteria
    */
   getRecipientCount(data: EmailRecipientCountRequest) {
-    return apiClient.post<EmailRecipientCountResponse>('/emails/recipient_count/', data)
+    const activeDeptId = localStorage.getItem('activeDepartmentId')
+    const deptParams = activeDeptId ? { department: activeDeptId } : undefined
+    return apiClient.post<EmailRecipientCountResponse>('/emails/recipient_count/', data, { params: deptParams })
   }
 }

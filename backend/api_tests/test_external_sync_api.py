@@ -8,6 +8,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from departments.models import Department, UserDepartmentRole
 from external_sync.models import SyncJob, SyncRun
+from external_sync.services import ProviderRuntimeError
 
 User = get_user_model()
 
@@ -197,3 +198,82 @@ class ExternalSyncApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"], [{"id": "top-1", "name": "Top Level"}])
+
+    def test_spond_top_level_groups_returns_502_on_provider_runtime_failure(self):
+        class DummyProvider:
+            def list_top_level_groups(self, credentials):
+                raise ProviderRuntimeError("Spond-Daten konnten nicht geladen werden.")
+
+        self.client.force_authenticate(user=self.staff_user)
+
+        with patch("external_sync.api.viewsets.get_provider", return_value=DummyProvider()):
+            response = self.client.post(
+                "/api/v1/sync-jobs/spond-top-level-groups/",
+                {"username": "user@example.com", "password": "secret"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertIn("detail", response.data)
+
+    def test_create_job_rejects_invalid_spond_operation_mode(self):
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.post(
+            "/api/v1/sync-jobs/",
+            {
+                "name": "Spond Invalid Mode",
+                "provider": SyncJob.Provider.SPOND,
+                "scope": SyncJob.Scope.ORGANIZATION,
+                "run_mode": SyncJob.RunMode.MANUAL,
+                "deletion_mode": SyncJob.DeletionMode.REVIEW,
+                "enabled": True,
+                "config": {"group_id": "top-1", "operation_mode": "invalid"},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("config", response.data)
+
+    def test_create_job_normalizes_legacy_sync_groups_false_to_members_only(self):
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.post(
+            "/api/v1/sync-jobs/",
+            {
+                "name": "Spond Legacy Members Only",
+                "provider": SyncJob.Provider.SPOND,
+                "scope": SyncJob.Scope.ORGANIZATION,
+                "run_mode": SyncJob.RunMode.MANUAL,
+                "deletion_mode": SyncJob.DeletionMode.REVIEW,
+                "enabled": True,
+                "config": {"group_id": "top-1", "sync_groups": False},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        job = SyncJob.objects.get(id=response.data["id"])
+        self.assertEqual(job.config.get("operation_mode"), "members_only")
+
+    def test_groups_to_departments_requires_organization_scope(self):
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.post(
+            "/api/v1/sync-jobs/",
+            {
+                "name": "Spond Departments Wrong Scope",
+                "provider": SyncJob.Provider.SPOND,
+                "scope": SyncJob.Scope.DEPARTMENT,
+                "department": self.department.id,
+                "run_mode": SyncJob.RunMode.MANUAL,
+                "deletion_mode": SyncJob.DeletionMode.REVIEW,
+                "enabled": True,
+                "config": {"group_id": "top-1", "operation_mode": "groups_to_departments"},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("scope", response.data)

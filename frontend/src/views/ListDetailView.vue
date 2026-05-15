@@ -74,6 +74,14 @@
             @click="handlePdf"
           />
           <Button
+            icon="pi pi-file-excel"
+            label="Excel"
+            outlined
+            size="small"
+            severity="success"
+            @click="showExportDialog = true"
+          />
+          <Button
             icon="pi pi-envelope"
             label="E-Mail"
             outlined
@@ -288,6 +296,14 @@
     </Dialog>
 
     <Toast />
+
+    <MemberExportDialog
+      v-model="showExportDialog"
+      :exporting="store.loading"
+      :extra-column-groups="listExtraColumnGroups"
+      :extra-default-columns="['list_checked', 'list_notes']"
+      @export="handleExportExcel"
+    />
   </div>
 </template>
 
@@ -308,6 +324,7 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Toast from 'primevue/toast'
 import AttachmentsSection from '@/components/qualifications/organisms/AttachmentsSection.vue'
+import MemberExportDialog from '@/components/members/molecules/MemberExportDialog.vue'
 import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useGroupsStore } from '@/stores/groups'
@@ -322,6 +339,31 @@ const store = useMemberListsStore()
 const membersStore = useMembersStore()
 const groupsStore = useGroupsStore()
 const { generateChecklist } = useListPdf()
+
+// ── Export dialog ─────────────────────────────────────────────────────────
+const showExportDialog = ref(false)
+
+const listExtraColumnGroups = [
+  {
+    label: 'Listen-Daten',
+    columns: [
+      { key: 'list_checked', label: 'Anwesend' },
+      { key: 'list_checked_at', label: 'Anwesend seit' },
+      { key: 'list_notes', label: 'Notiz (Liste)' },
+    ],
+  },
+]
+
+async function handleExportExcel(columns: string[]) {
+  const listId = store.currentList?.id
+  if (!listId) return
+  try {
+    await store.exportExcel(listId, columns)
+    showExportDialog.value = false
+  } catch {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Export fehlgeschlagen.', life: 4000 })
+  }
+}
 
 const listId = computed(() => Number(route.params.id))
 
@@ -640,8 +682,8 @@ onMounted(async () => {
 
 /* ─── Add panel ───────────────────────────────────────────────────────────── */
 .add-panel {
-  background: var(--p-surface-50);
-  border: 1px solid var(--p-surface-200);
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
   border-radius: 12px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -739,28 +781,28 @@ onMounted(async () => {
   gap: 0.75rem;
   padding: 0.6rem 0.75rem;
   border-radius: 10px;
-  border: 1px solid var(--p-surface-200);
-  background: var(--p-surface-0);
+  border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   user-select: none;
 }
 
 .entry-row:hover {
-  background: var(--p-surface-50);
-  border-color: var(--p-surface-300);
+  background: var(--p-content-hover-background);
+  border-color: color-mix(in srgb, var(--p-content-border-color) 65%, var(--p-text-color) 35%);
 }
 
 .entry-row--checked {
-  background: color-mix(in srgb, var(--accent, #3B82F6) 6%, var(--p-surface-0));
-  border-color: color-mix(in srgb, var(--accent, #3B82F6) 25%, var(--p-surface-200));
+  background: color-mix(in srgb, var(--accent, #3B82F6) 10%, var(--p-content-background));
+  border-color: color-mix(in srgb, var(--accent, #3B82F6) 35%, var(--p-content-border-color));
 }
 
 .entry-check {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  border: 2px solid var(--p-surface-300);
+  border: 2px solid var(--p-content-border-color);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/auth/oidc/callback',
+      name: 'oidc-callback',
+      component: () => import('@/views/OIDCCallbackView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/PasswordResetRequestView.vue'),
@@ -227,9 +233,64 @@ const router = createRouter({
         },
         {
           path: 'settings',
-          name: 'settings',
           component: () => import('@/views/SettingsView.vue'),
-          meta: { requiresStaff: true }
+          meta: { requiresStaff: true },
+          children: [
+            {
+              path: '',
+              name: 'settings-index',
+              component: () =>
+                import('@/components/settings/organisms/SettingsOverview.vue'),
+            },
+            {
+              path: 'general',
+              name: 'settings-general',
+              component: () =>
+                import('@/components/settings/organisms/sections/GeneralSection.vue'),
+            },
+            {
+              path: 'email',
+              name: 'settings-email',
+              component: () =>
+                import('@/components/settings/organisms/sections/EmailSection.vue'),
+            },
+            {
+              path: 'email-templates',
+              name: 'settings-email-templates',
+              component: () =>
+                import('@/components/settings/organisms/sections/EmailTemplatesSection.vue'),
+            },
+            {
+              path: 'member',
+              name: 'settings-member',
+              component: () =>
+                import('@/components/settings/organisms/sections/MemberSection.vue'),
+            },
+            {
+              path: 'service',
+              name: 'settings-service',
+              component: () =>
+                import('@/components/settings/organisms/sections/ServiceSection.vue'),
+            },
+            {
+              path: 'order',
+              name: 'settings-order',
+              component: () =>
+                import('@/components/settings/organisms/sections/OrderSection.vue'),
+            },
+            {
+              path: 'ldap',
+              name: 'settings-ldap',
+              component: () =>
+                import('@/components/settings/organisms/sections/LdapSection.vue'),
+            },
+            {
+              path: 'oidc',
+              name: 'settings-oidc',
+              component: () =>
+                import('@/components/settings/organisms/sections/OidcSection.vue'),
+            },
+          ],
         },
         {
           path: 'users',

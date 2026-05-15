@@ -175,6 +175,20 @@
             <!-- Recipients preview -->
             <RecipientsList :recipients="recipients" :loading="loadingRecipients" />
 
+            <!-- Layout selector -->
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <span><i class="pi pi-palette"></i> E-Mail-Layout</span>
+              </div>
+              <Dropdown
+                v-model="layout"
+                :options="layoutOptions"
+                optionLabel="label"
+                optionValue="value"
+                class="w-full"
+              />
+            </div>
+
             <!-- Actions -->
             <div class="sidebar-actions">
               <Button
@@ -245,6 +259,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useEmailsStore } from '@/stores/emails'
 import { useMembersStore } from '@/stores/members'
 import { useGroupsStore } from '@/stores/groups'
+import { useDepartmentsStore } from '@/stores/departments'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -267,6 +282,7 @@ const authStore = useAuthStore()
 const emailsStore = useEmailsStore()
 const membersStore = useMembersStore()
 const groupsStore = useGroupsStore()
+const departmentsStore = useDepartmentsStore()
 
 const isMobile = ref(window.innerWidth < 768)
 const showPreviewDialog = ref(false)
@@ -281,6 +297,14 @@ const attachments = ref<File[]>([])
 const isDragging = ref(false)
 const attachmentSectionRef = ref<HTMLElement | null>(null)
 const attachmentFlash = ref(false)
+const layout = ref('none')
+
+const layoutOptions = [
+  { value: 'none', label: 'Kein Layout' },
+  { value: 'general', label: 'Allgemein (lila)' },
+  { value: 'important', label: 'Wichtig (orange)' },
+  { value: 'events', label: 'Veranstaltung (grün)' },
+]
 
 const form = ref({
   subject: '',
@@ -351,6 +375,14 @@ watch(selectedMemberObjects, (members) => {
   updateRecipientCount()
 }, { deep: true })
 
+// Re-fetch members and refresh recipient count when the active department changes
+watch(() => departmentsStore.activeDepartmentId, () => {
+  membersStore.fetchMembers({ limit: 1000 })
+  if (form.value.recipient_type !== 'multiple') {
+    updateRecipientCount()
+  }
+})
+
 const canSend = computed(() => {
   if (!form.value.subject || !form.value.body_html) return false
   if (form.value.recipient_type === 'group' && !form.value.recipient_group) return false
@@ -366,11 +398,11 @@ const previewMember = computed(() => {
 })
 
 onMounted(async () => {
-  // Load members and groups
+  // Load members, groups, and template variables
   await Promise.all([
     membersStore.fetchMembers({ limit: 1000 }),
     groupsStore.fetchGroups(),
-    emailsStore.fetchTemplateVariables()
+    emailsStore.fetchTemplateVariables(),
   ])
   
   templateVariables.value = emailsStore.templateVariables
@@ -482,7 +514,8 @@ const showPreview = async () => {
     const response = await emailsStore.previewEmail({
       subject: form.value.subject,
       body_html: emailBody,
-      member_id: previewMember.value.id
+      member_id: previewMember.value.id,
+      layout: layout.value
     })
     
     previewData.value = response
@@ -521,6 +554,7 @@ const sendEmail = async () => {
             const result = await emailsStore.sendEmail({
               subject: form.value.subject,
               body_html: emailBody,
+              layout: layout.value,
               recipient_type: 'individual',
               recipient_member: memberId,
               attachments: attachments.value.length > 0 ? attachments.value : undefined
@@ -549,6 +583,7 @@ const sendEmail = async () => {
           const result = await emailsStore.sendEmail({
             subject: form.value.subject,
             body_html: emailBody,
+            layout: layout.value,
             recipient_type: form.value.recipient_type,
             recipient_group: form.value.recipient_group || undefined,
             attachments: attachments.value.length > 0 ? attachments.value : undefined
@@ -628,6 +663,7 @@ const resetForm = () => {
     recipient_group: null,
     recipient_members: []
   }
+  layout.value = 'none'
   selectedMemberObjects.value = []
   recipientCount.value = null
   recipients.value = []
@@ -1016,6 +1052,70 @@ watch(() => form.value.recipient_type, updateRecipientCount)
 .preview-body :deep(h2),
 .preview-body :deep(h3) {
   margin: 1rem 0 0.5rem 0;
+}
+
+/* Compose template dialogs */
+.template-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--text-color-secondary);
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.template-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  background: var(--surface-50);
+}
+
+.template-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.template-item-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.template-item-subject {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.template-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.save-template-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 </style>
 

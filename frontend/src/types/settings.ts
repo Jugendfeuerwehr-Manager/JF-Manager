@@ -9,6 +9,14 @@
 
 export interface GeneralSettings {
   title: string
+  slug: string
+  logo_url: string
+}
+
+export interface PublicBranding {
+  title: string
+  slug: string
+  logo_url: string
 }
 
 export interface EmailSettings {
@@ -39,6 +47,9 @@ export interface LdapSettings {
   enabled: boolean
   server_uri: string
   start_tls: boolean
+  ca_cert_file: string
+  ca_cert_content: string
+  disable_cert_validation: boolean
   bind_dn: string
   bind_password?: string
   has_bind_password: boolean
@@ -58,6 +69,22 @@ export interface AllSettings {
   service?: ServiceSettings
   order?: OrderSettings
   ldap?: LdapSettings
+  oidc?: OidcSettingsSummary
+}
+
+/** Subset of OIDCSettings used in AllSettings (mirrors backend OIDCSettingsSerializer) */
+export interface OidcSettingsSummary {
+  enabled: boolean
+  provider_name: string
+  issuer_url: string
+  client_id: string
+  has_client_secret: boolean
+  scope: string
+  groups_claim: string
+  staff_group: string
+  admin_group: string
+  require_group_mapping: boolean
+  hide_local_login: boolean
 }
 
 // ============================================================================
@@ -128,6 +155,7 @@ export interface SettingsPermissions {
     service: CategoryPermissions
     order: CategoryPermissions
     ldap: CategoryPermissions
+    oidc: CategoryPermissions
     [key: string]: CategoryPermissions
   }
 }
@@ -136,7 +164,7 @@ export interface SettingsPermissions {
 // API Request/Response Types
 // ============================================================================
 
-export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap'
+export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap' | 'oidc'
 
 export interface CategorySettingsUpdate {
   category: SettingsCategory
