@@ -2,6 +2,7 @@
 ViewSets for Settings API
 """
 
+from django.core.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
 from rest_framework import status, viewsets
@@ -9,7 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from settings_manager.models import LDAPConfig
+from settings_manager.models import LDAPConfig, OIDCConfig
+from users.ldap_tls import apply_ldap_tls_options
 
 from ..serializers import (
     AllSettingsSerializer,
@@ -19,16 +21,26 @@ from ..serializers import (
     LDAPConnectionTestSerializer,
     LDAPSettingsSerializer,
     MemberSettingsSerializer,
+    OIDCDiscoveryResultSerializer,
+    OIDCSettingsSerializer,
     OrderSettingsSerializer,
     ServiceSettingsSerializer,
     UserPermissionsSerializer,
 )
 
 # Import email template viewset
+from .email_layout_template import EmailLayoutTemplateViewSet
 from .email_template import EmailTemplateViewSet
 from .ldap_mappings import LDAPDepartmentMappingViewSet
+from .oidc_mappings import OIDCGroupMappingViewSet
 
-__all__ = ["EmailTemplateViewSet", "LDAPDepartmentMappingViewSet", "SettingsViewSet"]
+__all__ = [
+    "EmailLayoutTemplateViewSet",
+    "EmailTemplateViewSet",
+    "LDAPDepartmentMappingViewSet",
+    "OIDCGroupMappingViewSet",
+    "SettingsViewSet",
+]
 
 
 class SettingsViewSet(viewsets.ViewSet):
@@ -46,7 +58,7 @@ class SettingsViewSet(viewsets.ViewSet):
 
     # Mapping of category to preference prefix
     CATEGORY_MAPPINGS = {
-        "general": {"prefix": "general", "fields": ["title"]},
+        "general": {"prefix": "general", "fields": ["title", "slug", "logo_url"]},
         "email": {
             "prefix": "email",
             "fields": [
@@ -63,12 +75,16 @@ class SettingsViewSet(viewsets.ViewSet):
         "service": {"prefix": "service", "fields": ["service_start_time", "service_end_time"]},
         "order": {"prefix": "orders", "fields": ["equipment_manager_email"]},
         "ldap": {"prefix": "ldap", "fields": []},
+        "oidc": {"prefix": "oidc", "fields": []},
     }
 
     LDAP_FIELDS = [
         "enabled",
         "server_uri",
         "start_tls",
+        "ca_cert_file",
+        "ca_cert_content",
+        "disable_cert_validation",
         "bind_dn",
         "user_search_base_dn",
         "user_search_filter",
@@ -77,6 +93,19 @@ class SettingsViewSet(viewsets.ViewSet):
         "group_type",
         "mirror_groups",
         "require_group",
+    ]
+
+    OIDC_FIELDS = [
+        "enabled",
+        "provider_name",
+        "issuer_url",
+        "client_id",
+        "scope",
+        "groups_claim",
+        "staff_group",
+        "admin_group",
+        "require_group_mapping",
+        "hide_local_login",
     ]
 
     def _get_category_settings(self, category):
@@ -130,7 +159,7 @@ class SettingsViewSet(viewsets.ViewSet):
         if user.is_superuser:
             return True
 
-        if user.is_staff and category != "ldap":
+        if user.is_staff and category not in ("ldap", "oidc"):
             return True
 
         # Check specific permission
@@ -160,6 +189,26 @@ class SettingsViewSet(viewsets.ViewSet):
         config.save()
         return config
 
+    def _get_oidc_settings(self, request=None):
+        config = OIDCConfig.get_or_create_default()
+        settings = {field: getattr(config, field) for field in self.OIDC_FIELDS}
+        settings["has_client_secret"] = bool(config.client_secret)
+        if request is not None:
+            settings["callback_url"] = request.build_absolute_uri("/api/v1/auth/oidc/callback/")
+        return settings
+
+    def _save_oidc_settings(self, data):
+        config = OIDCConfig.get_or_create_default()
+        for field in self.OIDC_FIELDS:
+            if field in data:
+                setattr(config, field, data[field])
+
+        if "client_secret" in data:
+            config.client_secret = data["client_secret"]
+
+        config.save()
+        return config
+
     @extend_schema(
         summary="List all settings",
         description="Get all application settings grouped by category. Only returns categories the user has permission to view.",
@@ -184,6 +233,8 @@ class SettingsViewSet(viewsets.ViewSet):
             if self._check_category_permission(request.user, category, "view"):
                 if category == "ldap":
                     category_settings = self._get_ldap_settings()
+                elif category == "oidc":
+                    category_settings = self._get_oidc_settings()
                 else:
                     category_settings = self._get_category_settings(category)
                 if category_settings is not None:
@@ -371,7 +422,12 @@ class SettingsViewSet(viewsets.ViewSet):
 
         serializer = LDAPSettingsSerializer(data=request.data, partial=True)
         if serializer.is_valid():
-            self._save_ldap_settings(serializer.validated_data)
+            try:
+                self._save_ldap_settings(serializer.validated_data)
+            except ValidationError as exc:
+                if hasattr(exc, "message_dict"):
+                    return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
             response_serializer = LDAPSettingsSerializer(self._get_ldap_settings())
             return Response(response_serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -400,6 +456,7 @@ class SettingsViewSet(viewsets.ViewSet):
         try:
             import ldap
 
+            apply_ldap_tls_options(config)
             connection = ldap.initialize(config.server_uri)
             connection.set_option(ldap.OPT_NETWORK_TIMEOUT, 5)
 
@@ -469,6 +526,7 @@ class SettingsViewSet(viewsets.ViewSet):
         try:
             import ldap
 
+            apply_ldap_tls_options(config)
             conn = ldap.initialize(config.server_uri)
             conn.set_option(ldap.OPT_NETWORK_TIMEOUT, 5)
 
@@ -508,6 +566,58 @@ class SettingsViewSet(viewsets.ViewSet):
                 {"ok": False, "detail": str(exc), "entries": []},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    @extend_schema(
+        summary="Get OIDC settings",
+        description="Get OpenID Connect authentication configuration",
+        responses={200: OIDCSettingsSerializer},
+    )
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    def oidc(self, request):
+        """GET/PATCH /api/v1/settings/oidc/"""
+        if request.method == "GET":
+            if not self._check_category_permission(request.user, "oidc", "view"):
+                return Response(
+                    {"detail": "You do not have permission to view OIDC settings."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            serializer = OIDCSettingsSerializer(self._get_oidc_settings(request))
+            return Response(serializer.data)
+
+        if not self._check_category_permission(request.user, "oidc", "change"):
+            return Response(
+                {"detail": "You do not have permission to change OIDC settings."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = OIDCSettingsSerializer(data=request.data, partial=True)
+        if serializer.is_valid():
+            self._save_oidc_settings(serializer.validated_data)
+            response_serializer = OIDCSettingsSerializer(self._get_oidc_settings(request))
+            return Response(response_serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Test OIDC discovery",
+        description="Test whether the OIDC Discovery Document can be fetched from the given issuer URL",
+        responses={200: OIDCDiscoveryResultSerializer},
+    )
+    @action(detail=False, methods=["post"], url_path="oidc/test-discovery", permission_classes=[IsAuthenticated])
+    def oidc_test_discovery(self, request):
+        """POST /api/v1/settings/oidc/test-discovery/"""
+        if not self._check_category_permission(request.user, "oidc", "change"):
+            return Response(
+                {"detail": "You do not have permission to test OIDC settings."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        from users.oidc_views import OIDCTestDiscoveryView
+
+        # Delegate to the reusable view logic
+        view = OIDCTestDiscoveryView()
+        view.request = request
+        return view.post(request)
 
     @extend_schema(
         summary="Get user permissions",

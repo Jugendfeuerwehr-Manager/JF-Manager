@@ -48,6 +48,14 @@ class TemplateRenderer(BaseNotificationService):
             "subject": "Bestellübersicht JF-Manager - {order_count} Bestellungen ({total_items} Artikel)",
             "template": "orders/emails/order_summary.html",
         },
+        "ext_auth_pw_info": {
+            "subject": "Hinweis zur Passwort-Verwaltung – JF-Manager",
+            "template": "users/external_auth_password_info.html",
+        },
+        "password_reset": {
+            "subject": "Passwort zurücksetzen – JF-Manager",
+            "template": "users/password_reset_email.html",
+        },
     }
 
     @classmethod
@@ -134,7 +142,14 @@ class TemplateRenderer(BaseNotificationService):
         """
         try:
             subject = cls.render_template_string(email_template.subject_template, context)
-            html_message = cls.render_template_string(email_template.html_template, context)
+            content_html = cls.render_template_string(email_template.html_template, context)
+
+            # Wrap content in layout template if one is selected
+            layout = getattr(email_template, "layout", "none") or "none"
+            if layout != "none":
+                html_message = cls._apply_layout(layout, content_html, context, subject)
+            else:
+                html_message = content_html
 
             # Use custom text template if available, otherwise strip HTML
             if email_template.text_template:
@@ -147,6 +162,44 @@ class TemplateRenderer(BaseNotificationService):
         except Exception as e:
             logger.error(f"Custom template rendering failed: {e}")
             raise TemplateNotFoundError(f"Failed to render custom template: {e}") from e
+
+    @classmethod
+    def _apply_layout(cls, layout: str, content_html: str, context: dict[str, Any], subject: str = "") -> str:
+        """
+        Wrap rendered content HTML in the chosen base layout template.
+
+        Args:
+            layout: Layout name (general / important / events)
+            content_html: Already-rendered inner content HTML
+            context: Original template context (used for site_name etc.)
+            subject: Rendered email subject (used as preview text in layout)
+
+        Returns:
+            Full HTML string with layout applied
+        """
+        from django.utils.safestring import mark_safe
+
+        layout_context = {
+            **context,
+            "content": mark_safe(content_html),
+            "site_name": context.get("site_name", "JF-Manager"),
+            "preview_text": subject,
+        }
+        try:
+            # Check DB for a custom override first
+            from django.template import Context, Template
+
+            from orders.models import EmailLayoutTemplate
+
+            db_layout = EmailLayoutTemplate.objects.filter(layout_type=layout).first()
+            if db_layout:
+                tpl = Template(db_layout.html_content)
+                return tpl.render(Context(layout_context))
+            return render_to_string(f"email_layouts/{layout}.html", layout_context)
+        except Exception as e:
+            logger.error(f"Layout template rendering failed for '{layout}': {e}")
+            # Fall back to unwrapped content so the email is still delivered
+            return content_html
 
     @classmethod
     def _render_default_template(cls, template_type: str, context: dict[str, Any]) -> tuple[str, str, str]:

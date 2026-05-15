@@ -18,6 +18,20 @@ export function useAppSettings() {
   })
 
   /**
+   * Get the organisation slug from settings
+   */
+  const orgSlug = computed(() => {
+    return settingsStore.general?.slug || ''
+  })
+
+  /**
+   * Get the organisation logo URL from settings
+   */
+  const logoUrl = computed(() => {
+    return settingsStore.general?.logo_url || ''
+  })
+
+  /**
    * Set the document title
    * Useful for page-specific titles
    */
@@ -31,6 +45,8 @@ export function useAppSettings() {
 
   return {
     websiteTitle,
+    orgSlug,
+    logoUrl,
     setDocumentTitle
   }
 }

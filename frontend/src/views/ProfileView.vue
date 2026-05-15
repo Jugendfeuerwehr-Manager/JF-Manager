@@ -31,7 +31,39 @@
                 <label>E-Mail</label>
                 <span>{{ user.email || 'Nicht angegeben' }}</span>
               </div>
+              <div class="info-item">
+                <label>Anmeldemethode</label>
+                <span>
+                  <Tag
+                    v-if="user.auth_source === 'ldap'"
+                    value="LDAP"
+                    severity="info"
+                    icon="pi pi-server"
+                  />
+                  <Tag
+                    v-else-if="user.auth_source === 'oidc'"
+                    value="Single Sign-On"
+                    severity="info"
+                    icon="pi pi-sign-in"
+                  />
+                  <Tag
+                    v-else
+                    value="Lokal"
+                    severity="secondary"
+                    icon="pi pi-lock"
+                  />
+                </span>
+              </div>
             </div>
+            <Message
+              v-if="user.auth_source && user.auth_source !== 'local'"
+              severity="info"
+              :closable="false"
+              class="auth-source-info"
+            >
+              Ihr Konto wird über ein externes System ({{ user.auth_source === 'oidc' ? 'Single Sign-On / OIDC' : 'LDAP / Active Directory' }}) verwaltet.
+              Passwortänderungen müssen direkt bei Ihrem Identitätsanbieter vorgenommen werden.
+            </Message>
           </div>
 
           <Divider />
@@ -131,6 +163,7 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import Tag from 'primevue/tag'
+import Message from 'primevue/message'
 import Select from 'primevue/select'
 import ProgressSpinner from 'primevue/progressspinner'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'

@@ -17,19 +17,24 @@
       <Card class="login-card glass-card">
         <template #header>
           <div class="login-header">
-            <!-- Animated Shield Icon -->
+            <!-- Logo or animated Shield Icon -->
             <div class="icon-container">
-              <div class="icon-glow"></div>
-              <i class="pi pi-shield shield-icon"></i>
-              <div class="icon-ring ring-1"></div>
-              <div class="icon-ring ring-2"></div>
-              <div class="icon-ring ring-3"></div>
+              <template v-if="branding?.logo_url">
+                <img :src="branding.logo_url" alt="Logo" class="org-logo" />
+              </template>
+              <template v-else>
+                <div class="icon-glow"></div>
+                <i class="pi pi-shield shield-icon"></i>
+                <div class="icon-ring ring-1"></div>
+                <div class="icon-ring ring-2"></div>
+                <div class="icon-ring ring-3"></div>
+              </template>
             </div>
             
             <h1 class="brand-title">
-              <span class="title-fire">JF</span>-<span class="title-manager">Manager</span>
+              {{ branding?.title || 'JF-Manager' }}
             </h1>
-            <p class="brand-subtitle">Jugendfeuerwehr Verwaltungssystem</p>
+            <p v-if="branding?.slug" class="brand-slug">{{ branding.slug }}</p>
             
             <!-- Decorative Line -->
             <div class="decorative-line">
@@ -42,6 +47,34 @@
 
         <template #content>
           <form @submit.prevent="handleLogin" class="login-form">
+
+            <!-- SSO / OIDC Login Button -->
+            <template v-if="oidcConfig?.enabled">
+              <Button
+                type="button"
+                :label="`Mit ${oidcConfig.provider_name} anmelden`"
+                icon="pi pi-sign-in"
+                :loading="oidcLoading"
+                class="login-button sso-button"
+                @click="handleOIDCLogin"
+              />
+
+              <div v-if="oidcConfig.hide_local_login && !showLocalLogin" class="local-login-toggle">
+                <a href="#" class="forgot-link" @click.prevent="showLocalLogin = true">
+                  <i class="pi pi-user"></i>
+                  Lokalen Account verwenden
+                </a>
+              </div>
+
+              <div v-if="!oidcConfig.hide_local_login || showLocalLogin" class="divider-row">
+                <div class="footer-line"></div>
+                <span class="divider-text">oder</span>
+                <div class="footer-line"></div>
+              </div>
+            </template>
+
+            <!-- Local login form -->
+            <template v-if="!oidcConfig?.hide_local_login || showLocalLogin || !oidcConfig?.enabled">
             <!-- Username Field -->
             <div class="input-group" :class="{ 'has-error': !!error, 'is-focused': usernameFocused }">
               <label for="username" class="input-label">
@@ -123,6 +156,8 @@
               <p class="footer-text">Sicherer Zugang</p>
               <div class="footer-line"></div>
             </div>
+            </template><!-- end local login template -->
+
           </form>
         </template>
       </Card>
@@ -164,9 +199,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { oidcApi } from '@/api/oidc'
+import { brandingApi } from '@/api/branding'
+import type { OIDCPublicConfig } from '@/types/oidc'
+import type { PublicBranding } from '@/types/settings'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -185,12 +224,51 @@ const usernameFocused = ref(false)
 const passwordFocused = ref(false)
 const loginSuccess = ref(false)
 
+// OIDC state
+const oidcConfig = ref<OIDCPublicConfig | null>(null)
+const oidcLoading = ref(false)
+const showLocalLogin = ref(false)
+
+// Branding state
+const branding = ref<PublicBranding | null>(null)
+
 const particleStyle = (index: number) => ({
   '--delay': `${index * 0.3}s`,
   '--x': `${Math.random() * 100}%`,
   '--y': `${Math.random() * 100}%`,
   '--duration': `${15 + Math.random() * 10}s`
 })
+
+// Fetch OIDC public config on mount (silent failure — local login always works)
+onMounted(async () => {
+  try {
+    const response = await oidcApi.getPublicConfig()
+    oidcConfig.value = response.data
+  } catch {
+    // OIDC not configured or backend unreachable — show local login only
+    oidcConfig.value = null
+  }
+
+  try {
+    const response = await brandingApi.getPublicBranding()
+    branding.value = response.data
+    if (response.data.title) {
+      document.title = response.data.title
+    }
+  } catch {
+    // branding not available — use defaults
+  }
+})
+
+const handleOIDCLogin = async () => {
+  oidcLoading.value = true
+  try {
+    await authStore.loginWithOidc(router.currentRoute.value.query.next as string || '/')
+  } catch (err) {
+    error.value = getApiErrorMessage(err, 'SSO-Anmeldung fehlgeschlagen.')
+    oidcLoading.value = false
+  }
+}
 
 const celebrationStyle = (index: number) => {
   const angle = (index / 30) * 360
@@ -451,8 +529,26 @@ const handleLogin = async () => {
   font-weight: 800;
   margin: 0 0 0.4rem;
   letter-spacing: 1.5px;
+  color: white;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   animation: titleReveal 0.8s ease-out 0.3s backwards;
+}
+
+.org-logo {
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
+  border-radius: 8px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.brand-slug {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 0.25rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
 @keyframes titleReveal {
@@ -820,6 +916,29 @@ const handleLogin = async () => {
   font-weight: 500;
   letter-spacing: 0.8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== SSO / OIDC ==================== */
+.sso-button {
+  margin-bottom: 0.5rem;
+}
+
+.divider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.25rem 0;
+}
+
+.divider-text {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.local-login-toggle {
+  text-align: center;
+  margin-top: 0.5rem;
 }
 
 /* ==================== Responsive Design ==================== */

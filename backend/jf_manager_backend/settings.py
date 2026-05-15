@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     "settings_manager.apps.SettingsManagerConfig",
     "django_rq",
     "health",
+    "mozilla_django_oidc",
 ]
 
 MIDDLEWARE = [
@@ -191,9 +192,27 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
 AUTHENTICATION_BACKENDS = (
     "users.ldap_backend.ConfigurableLDAPBackend",
+    "users.oidc_backend.JFManagerOIDCBackend",
     "django.contrib.auth.backends.ModelBackend",
     "guardian.backends.ObjectPermissionBackend",
 )
+
+# OIDC settings for mozilla-django-oidc
+# Endpoints are read from DB at runtime in JFManagerOIDCBackend.get_settings().
+# Static defaults required by the library:
+LOGIN_REDIRECT_URL_FAILURE = "/login/"
+OIDC_STORE_ACCESS_TOKEN = False
+OIDC_STORE_ID_TOKEN = False
+OIDC_AUTHENTICATION_CALLBACK_URL = "oidc-callback"
+# Allow RS256 (most providers) and HS256
+OIDC_RP_SIGN_ALGO = "RS256"
+# JWKS URI is fetched automatically from the discovery document at callback time
+OIDC_OP_JWKS_ENDPOINT = ""  # populated at runtime from discovery
+OIDC_OP_AUTHORIZATION_ENDPOINT = ""  # populated at runtime from discovery
+OIDC_OP_TOKEN_ENDPOINT = ""  # populated at runtime from discovery
+OIDC_OP_USER_ENDPOINT = ""  # populated at runtime from discovery
+OIDC_RP_CLIENT_ID = ""  # populated at runtime from DB
+OIDC_RP_CLIENT_SECRET = ""  # populated at runtime from DB
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

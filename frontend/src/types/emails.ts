@@ -44,6 +44,7 @@ export interface EmailMessageCreate {
   subject: string
   body_html: string
   body_text?: string
+  layout?: string
   recipient_type: 'all' | 'group' | 'individual'
   recipient_group?: number
   recipient_member?: number
@@ -68,6 +69,7 @@ export interface EmailPreviewRequest {
   body_html: string
   body_text?: string
   member_id: number
+  layout?: string
 }
 
 export interface EmailPreviewResponse {

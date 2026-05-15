@@ -1,7 +1,6 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "noEmit": true,
     "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.nightwatch.tsbuildinfo",
 
@@ -9,9 +8,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "rootDir": "../",
-    "baseUrl": "..",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["../src/*"]
     },
     "lib": ["ESNext", "dom"],
     "types": ["nightwatch"]

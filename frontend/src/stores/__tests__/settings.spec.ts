@@ -31,7 +31,9 @@ describe('Settings Store', () => {
   })
 
   const mockGeneralSettings: GeneralSettings = {
-    title: 'JF-Manager Test'
+    title: 'JF-Manager Test',
+    slug: '',
+    logo_url: ''
   }
 
   const mockEmailSettings: EmailSettings = {
@@ -56,7 +58,8 @@ describe('Settings Store', () => {
       member: { can_view: true, can_change: false },
       service: { can_view: false, can_change: false },
       order: { can_view: true, can_change: true },
-      ldap: { can_view: false, can_change: false }
+      ldap: { can_view: false, can_change: false },
+      oidc: { can_view: false, can_change: false }
     }
   }
 

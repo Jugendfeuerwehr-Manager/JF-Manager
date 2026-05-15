@@ -72,12 +72,13 @@ export const membersApi = {
     return apiClient.get<Event[]>(`/members/${id}/events/`)
   },
 
-  exportExcel() {
+  exportExcel(columns?: string[]) {
     return apiClient.get('/members/export-excel/', {
       responseType: 'blob',
       headers: {
         'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      }
+      },
+      params: columns && columns.length > 0 ? { columns: columns.join(',') } : undefined
     })
   }
 }

@@ -125,6 +125,33 @@ class SpondFieldMappingTests(TestCase):
         self.assertEqual(parent.zip_code, "54321")
         self.assertEqual(parent.city, "Bonn")
 
+    async def _fake_fetch_groups_list_address(self, job):
+        return [
+            {
+                "id": "g-1-list-address",
+                "name": "Jugend List Address",
+                "members": [
+                    {
+                        "id": "m-1-list-address",
+                        "firstName": "Lucy",
+                        "lastName": "Meyer",
+                        "email": "lucy@example.com",
+                        "address": ["Carl-Benz-Straße 3", "Laudenbach", "69514", None],
+                    }
+                ],
+            }
+        ]
+
+    def test_run_maps_address_when_spond_returns_list_shape(self):
+        self.provider._fetch_groups = self._fake_fetch_groups_list_address
+
+        self.provider.run(job=self.job, triggered_by=None)
+
+        member = Member.objects.get(name="Lucy", lastname="Meyer")
+        self.assertEqual(member.street, "Carl-Benz-Straße 3")
+        self.assertEqual(member.city, "Laudenbach")
+        self.assertEqual(member.zip_code, "69514")
+
     async def _fake_fetch_groups_invalid_birthday(self, job):
         return [
             {
@@ -424,3 +451,53 @@ class SpondFieldMappingTests(TestCase):
         self.assertFalse(Group.objects.filter(name="Department Top 20").exists())
         self.assertFalse(Group.objects.filter(name="Group 20").exists())
         self.assertFalse(SyncBinding.objects.filter(job=self.job, object_type=SyncBinding.ObjectType.GROUP).exists())
+
+    async def _fake_fetch_groups_for_department_mode(self, job):
+        return [
+            {
+                "id": "top-30",
+                "name": "Department Top 30",
+                "subGroups": [
+                    {
+                        "id": "sub-30-a",
+                        "name": "Jugend Mitte",
+                        "members": [
+                            {
+                                "id": "m-300",
+                                "firstName": "Mara",
+                                "lastName": "Dept",
+                                "email": "mara@example.com",
+                                "subGroups": ["sub-30-a", "sub-30-b"],
+                            }
+                        ],
+                    },
+                    {
+                        "id": "sub-30-b",
+                        "name": "Jugend Nord",
+                        "members": [],
+                    },
+                ],
+            }
+        ]
+
+    def test_run_groups_to_departments_creates_departments_and_assigns_members(self):
+        self.provider._fetch_groups = self._fake_fetch_groups_for_department_mode
+        self.job.scope = SyncJob.Scope.ORGANIZATION
+        self.job.department = None
+        self.job.config = {"group_id": "top-30", "operation_mode": "groups_to_departments"}
+        self.job.save(update_fields=["scope", "department", "config"])
+
+        result = self.provider.run(job=self.job, triggered_by=None)
+
+        mara = Member.objects.get(name="Mara", lastname="Dept")
+        self.assertIsNone(mara.group)
+        self.assertEqual(mara.departments.filter(name="Jugend Mitte").count(), 1)
+        self.assertEqual(mara.departments.filter(name="Jugend Nord").count(), 1)
+
+        self.assertTrue(Department.objects.filter(name="Jugend Mitte").exists())
+        self.assertTrue(Department.objects.filter(name="Jugend Nord").exists())
+        self.assertEqual(
+            SyncBinding.objects.filter(job=self.job, object_type=SyncBinding.ObjectType.DEPARTMENT).count(),
+            2,
+        )
+        self.assertEqual(result["imported_departments"], 2)

@@ -3,6 +3,7 @@ from django_auth_ldap.backend import LDAPBackend
 from django_auth_ldap.config import ActiveDirectoryGroupType, GroupOfNamesType, LDAPSearch
 
 from settings_manager.models import LDAPConfig
+from users.ldap_tls import apply_ldap_tls_options
 
 
 def _set_setting(name, value):
@@ -29,6 +30,11 @@ class ConfigurableLDAPBackend(LDAPBackend):
 
         try:
             import ldap
+        except Exception:
+            return False
+
+        try:
+            apply_ldap_tls_options(config)
         except Exception:
             return False
 
@@ -72,6 +78,10 @@ class ConfigurableLDAPBackend(LDAPBackend):
         if user is not None:
             with contextlib.suppress(Exception):
                 self._sync_department_roles(user)
+            with contextlib.suppress(Exception):
+                if user.auth_source != "ldap":
+                    user.auth_source = "ldap"
+                    user.save(update_fields=["auth_source"])
         return user
 
     def _sync_department_roles(self, user):

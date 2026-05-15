@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ site_name|default:"JF-Manager" }}</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings>
+    <o:PixelsPerInch>96</o:PixelsPerInch>
+  </o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; background-color: #ecfdf5; width: 100% !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    @media only screen and (max-width: 620px) {
+      .email-container { width: 100% !important; }
+      .email-content { padding: 24px 16px !important; }
+      .email-header { padding: 24px 16px !important; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .email-body-bg { background-color: #022c1c !important; }
+      .email-card { background-color: #03391f !important; }
+      .email-content-text { color: #d1fae5 !important; }
+    }
+  </style>
+</head>
+<body class="email-body-bg" style="margin:0; padding:0; background-color:#ecfdf5;">
+  {% if preview_text %}<span style="display:none; font-size:1px; color:#ecfdf5; max-height:0; max-width:0; opacity:0; overflow:hidden;">{{ preview_text }}</span>{% endif %}
+
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#ecfdf5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+
+        <table class="email-container" role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="max-width:600px; width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td class="email-header" style="background: linear-gradient(135deg, #059669 0%, #10B981 60%, #34D399 100%); padding: 28px 32px; border-radius: 12px 12px 0 0; text-align: center;">
+              <div style="font-size: 36px; margin-bottom: 8px;" aria-hidden="true">📅</div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; opacity: 0.9;">
+                Veranstaltung / Termin
+              </h1>
+              <p style="margin: 6px 0 0 0; color: #ffffff; font-size: 20px; font-weight: 700;">
+                {{ site_name|default:"JF-Manager" }}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Teal top border accent -->
+          <tr>
+            <td style="background-color: #10B981; height: 4px; line-height: 4px; font-size: 4px;">&nbsp;</td>
+          </tr>
+
+          <!-- Main content -->
+          <tr>
+            <td class="email-content email-card email-content-text"
+                style="background-color: #ffffff; padding: 36px 32px; color: #374151;
+                       font-size: 15px; line-height: 1.7; border-radius: 0 0 12px 12px;
+                       box-shadow: 0 4px 24px rgba(5,150,105,0.10);">
+              {{ content }}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 0; text-align: center;">
+              <p style="margin: 0; color: #9CA3AF; font-size: 12px; line-height: 1.6;">
+                Diese E-Mail wurde automatisch von <strong>{{ site_name|default:"JF-Manager" }}</strong> gesendet.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

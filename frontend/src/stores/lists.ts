@@ -198,8 +198,28 @@ export const useMemberListsStore = defineStore('memberLists', () => {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  function syncCheckedCount(listId: number) {
-    const idx = lists.value.findIndex((l) => l.id === listId)
+
+  async function exportExcel(listId: number, columns?: string[]) {
+    loading.value = true
+    try {
+      const response = await memberListsApi.exportExcel(listId, columns)
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const disposition = response.headers['content-disposition'] ?? ''
+      const match = disposition.match(/filename="([^"]+)"/)
+      link.download = match ? match[1] : `liste_${listId}.xlsx`
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function syncCheckedCount(listId: number) {    const idx = lists.value.findIndex((l) => l.id === listId)
     const list = lists.value[idx]
     if (list && currentList.value?.id === listId) {
       list.checked_count = currentList.value.entries.filter((e) => e.checked).length
@@ -237,5 +257,6 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     fetchListAttachments,
     uploadListAttachment,
     deleteListAttachment,
+    exportExcel,
   }
 })

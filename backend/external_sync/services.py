@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import re
 from dataclasses import dataclass
@@ -7,7 +8,9 @@ from datetime import date, datetime
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
+from departments.models import Department
 from external_sync.models import SyncBinding, SyncJob
 from members.models import Group, Member, Parent
 
@@ -16,6 +19,10 @@ logger = logging.getLogger(__name__)
 
 class ProviderNotImplementedError(NotImplementedError):
     """Raised when a sync provider exists conceptually but is not implemented yet."""
+
+
+class ProviderRuntimeError(RuntimeError):
+    """Raised when a provider is implemented but runtime interaction fails."""
 
 
 @dataclass
@@ -208,8 +215,62 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
                 yield subgroup_id, subgroup
 
     def _is_group_sync_enabled(self, job: SyncJob):
+        return self._operation_mode(job) == SyncJob.SpondOperationMode.GROUPS_TO_GROUPS
+
+    def _operation_mode(self, job: SyncJob):
         config = job.config or {}
-        return bool(config.get("sync_groups", True))
+        operation_mode = config.get("operation_mode")
+        if operation_mode:
+            return str(operation_mode)
+
+        # Backward compatibility for legacy jobs before operation_mode was introduced.
+        if config.get("sync_groups") is False:
+            return SyncJob.SpondOperationMode.MEMBERS_ONLY
+        return SyncJob.SpondOperationMode.GROUPS_TO_GROUPS
+
+    def _next_department_code(self, base_name: str):
+        base_code = slugify(base_name)[:50] or "department"
+        candidate = base_code
+        index = 2
+        while Department.objects.filter(code=candidate).exists():
+            suffix = f"-{index}"
+            candidate = f"{base_code[: 50 - len(suffix)]}{suffix}"
+            index += 1
+        return candidate
+
+    def _resolve_or_create_department(self, department_name: str):
+        existing = Department.objects.filter(name__iexact=department_name).first()
+        if existing:
+            return existing, False
+
+        code = self._next_department_code(department_name)
+        department = Department.objects.create(name=department_name, code=code, is_active=True)
+        return department, True
+
+    def _resolve_member_department_objects(
+        self,
+        *,
+        member_data: dict,
+        context_group_external_id: str,
+        department_map_by_external_id: dict,
+    ):
+        member_group_ids = self._extract_member_group_ids(member_data)
+        resolved = []
+        seen_ids = set()
+
+        for group_id in member_group_ids:
+            department = department_map_by_external_id.get(group_id)
+            if department is None or department.id in seen_ids:
+                continue
+            seen_ids.add(department.id)
+            resolved.append(department)
+
+        if not resolved:
+            context_department = department_map_by_external_id.get(context_group_external_id)
+            if context_department is not None:
+                resolved.append(context_department)
+
+        return resolved
 
     async def _fetch_all_groups(self, username: str, password: str):
         try:
@@ -219,10 +280,37 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
 
         client = spond_module.Spond(username=username, password=password)
         try:
-            groups = await client.get_groups()
+            try:
+                groups = await client.get_groups()
+            except Exception as exc:
+                message = (
+                    "Spond-Daten konnten nicht geladen werden. Bitte Zugangsdaten prüfen und später erneut versuchen."
+                )
+
+                with contextlib.suppress(Exception):
+                    from aiohttp.client_exceptions import ClientError, ClientResponseError, ContentTypeError
+
+                    if isinstance(exc, ContentTypeError):
+                        message = (
+                            "Spond-Antwort konnte nicht verarbeitet werden. "
+                            "Bitte Zugangsdaten prüfen oder Spond-API-Status kontrollieren."
+                        )
+                    elif isinstance(exc, ClientResponseError) and exc.status in {401, 403}:
+                        message = "Spond-Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort prüfen."
+                    elif isinstance(exc, ClientResponseError) and exc.status == 404:
+                        message = (
+                            "Spond-Login-Endpunkt nicht erreichbar (404). Bitte Spond-Integration/SDK-Version prüfen."
+                        )
+                    elif isinstance(exc, ClientError):
+                        message = (
+                            "Spond ist derzeit nicht erreichbar. Bitte Netzwerkverbindung und Spond-Status prüfen."
+                        )
+
+                raise ProviderRuntimeError(message) from exc
             return groups or []
         finally:
-            await client.clientsession.close()
+            with contextlib.suppress(Exception):
+                await client.clientsession.close()
 
     async def _fetch_groups(self, job: SyncJob):
         username, password = self._credentials(job)
@@ -266,14 +354,39 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
         client = spond_module.Spond(username=username, password=password)
         try:
             # Real API call from package; triggers auth and verifies account access.
-            profile = await client.get_profile()
+            try:
+                profile = await client.get_profile()
+            except Exception as exc:
+                message = "Spond-Verbindung fehlgeschlagen. Bitte Zugangsdaten prüfen und später erneut versuchen."
+
+                with contextlib.suppress(Exception):
+                    from aiohttp.client_exceptions import ClientError, ClientResponseError, ContentTypeError
+
+                    if isinstance(exc, ContentTypeError):
+                        message = (
+                            "Spond-Antwort konnte nicht verarbeitet werden. "
+                            "Bitte Zugangsdaten prüfen oder Spond-API-Status kontrollieren."
+                        )
+                    elif isinstance(exc, ClientResponseError) and exc.status in {401, 403}:
+                        message = "Spond-Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort prüfen."
+                    elif isinstance(exc, ClientResponseError) and exc.status == 404:
+                        message = (
+                            "Spond-Login-Endpunkt nicht erreichbar (404). Bitte Spond-Integration/SDK-Version prüfen."
+                        )
+                    elif isinstance(exc, ClientError):
+                        message = (
+                            "Spond ist derzeit nicht erreichbar. Bitte Netzwerkverbindung und Spond-Status prüfen."
+                        )
+
+                raise ProviderRuntimeError(message) from exc
             return {
                 "ok": True,
                 "message": "Spond-Verbindung erfolgreich getestet.",
                 "profile_id": profile.get("id"),
             }
         finally:
-            await client.clientsession.close()
+            with contextlib.suppress(Exception):
+                await client.clientsession.close()
 
     def test_connection(self, job: SyncJob):
         return asyncio.run(self._test_connection_async(job))
@@ -340,7 +453,11 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
             return None, False
 
     def _extract_address(self, payload):
-        address_payload = payload.get("address") if isinstance(payload.get("address"), dict) else {}
+        raw_address = payload.get("address")
+        address_payload = raw_address if isinstance(raw_address, dict) else {}
+        profile_payload = payload.get("profile") if isinstance(payload.get("profile"), dict) else {}
+        profile_raw_address = profile_payload.get("address")
+        profile_address_payload = profile_raw_address if isinstance(profile_raw_address, dict) else {}
 
         street = self._pick(payload, "street", "addressLine1", "address_line1") or self._pick(
             address_payload, "street", "addressLine1", "address_line1"
@@ -349,6 +466,35 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
             address_payload, "zipCode", "zip_code", "postalCode", "postal_code"
         )
         city = self._pick(payload, "city", "town") or self._pick(address_payload, "city", "town")
+
+        if not street:
+            street = self._pick(profile_payload, "street", "addressLine1", "address_line1") or self._pick(
+                profile_address_payload, "street", "addressLine1", "address_line1"
+            )
+        if not zip_code:
+            zip_code = self._pick(profile_payload, "zipCode", "zip_code", "postalCode", "postal_code") or self._pick(
+                profile_address_payload, "zipCode", "zip_code", "postalCode", "postal_code"
+            )
+        if not city:
+            city = self._pick(profile_payload, "city", "town") or self._pick(profile_address_payload, "city", "town")
+
+        def _pick_index(value, index):
+            if not isinstance(value, (list, tuple)):
+                return ""
+            if index >= len(value) or value[index] is None:
+                return ""
+            return str(value[index]).strip()
+
+        # Spond may send address as an ordered list: [street, city, zip_code, country].
+        if isinstance(raw_address, (list, tuple)):
+            street = street or _pick_index(raw_address, 0)
+            city = city or _pick_index(raw_address, 1)
+            zip_code = zip_code or _pick_index(raw_address, 2)
+
+        if isinstance(profile_raw_address, (list, tuple)):
+            street = street or _pick_index(profile_raw_address, 0)
+            city = city or _pick_index(profile_raw_address, 1)
+            zip_code = zip_code or _pick_index(profile_raw_address, 2)
 
         return {
             "street": street,
@@ -431,8 +577,13 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
     def run(self, job: SyncJob, triggered_by):
         started_at = timezone.now()
         fetched_groups_payload = asyncio.run(self._fetch_groups(job))
-        sync_groups = self._is_group_sync_enabled(job)
-        groups_payload = self._groups_for_member_sync(fetched_groups_payload) if sync_groups else []
+        operation_mode = self._operation_mode(job)
+
+        sync_groups = operation_mode == SyncJob.SpondOperationMode.GROUPS_TO_GROUPS
+        sync_departments = operation_mode == SyncJob.SpondOperationMode.GROUPS_TO_DEPARTMENTS
+        groups_payload = (
+            self._groups_for_member_sync(fetched_groups_payload) if (sync_groups or sync_departments) else []
+        )
 
         stats = {
             "started_at": started_at,
@@ -444,15 +595,21 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
             "flagged_for_review": 0,
             "deleted_objects": 0,
             "provider": "spond",
+            "operation_mode": operation_mode,
+            "imported_departments": 0,
+            "updated_departments": 0,
         }
 
         group_ct = ContentType.objects.get_for_model(Group)
+        department_ct = ContentType.objects.get_for_model(Department)
         member_ct = ContentType.objects.get_for_model(Member)
 
         seen_group_external_ids = set()
+        seen_department_external_ids = set()
         seen_member_external_ids = set()
         processed_member_external_ids = set()
         group_map_by_external_id = {}
+        department_map_by_external_id = {}
         subgroup_external_ids = {
             str(group.get("id", "")).strip() for group in groups_payload if self._extract_parent_group_id(group)
         }
@@ -491,6 +648,35 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
                         "pending_garbage_collection": False,
                         "last_seen_at": timezone.now(),
                         "managed_fields": ["name", "department"],
+                    },
+                )
+
+        if sync_departments:
+            for group_data in groups_payload:
+                group_external_id = str(group_data["id"])
+                department_name = group_data.get("name") or f"Spond-{group_external_id}"
+                seen_department_external_ids.add(group_external_id)
+
+                department_obj, department_created = self._resolve_or_create_department(department_name)
+                if department_created:
+                    stats["imported_departments"] += 1
+                else:
+                    stats["updated_departments"] += 1
+
+                department_map_by_external_id[group_external_id] = department_obj
+
+                self._upsert_binding(
+                    job=job,
+                    object_type=SyncBinding.ObjectType.DEPARTMENT,
+                    external_id=group_external_id,
+                    content_type=department_ct,
+                    object_id=department_obj.id,
+                    defaults={
+                        "external_name": department_name,
+                        "is_deleted_in_source": False,
+                        "pending_garbage_collection": False,
+                        "last_seen_at": timezone.now(),
+                        "managed_fields": ["name", "code", "is_active"],
                     },
                 )
 
@@ -578,6 +764,15 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
                             extracted_group_ids,
                         )
 
+                if sync_departments:
+                    target_departments = self._resolve_member_department_objects(
+                        member_data=member_data,
+                        context_group_external_id=context_group_external_id,
+                        department_map_by_external_id=department_map_by_external_id,
+                    )
+                    if target_departments:
+                        member_obj.departments.add(*[department.id for department in target_departments])
+
                 if birthday_day_fallback_used and self.SPOND_BIRTHDAY_FALLBACK_NOTE not in member_obj.notes:
                     member_obj.notes = (
                         f"{member_obj.notes}\n{self.SPOND_BIRTHDAY_FALLBACK_NOTE}".strip()
@@ -607,7 +802,8 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
                             "street",
                             "zip_code",
                             "city",
-                            "group",
+                            *(["group"] if sync_groups else []),
+                            *(["departments"] if sync_departments else []),
                         ],
                     },
                 )
@@ -646,10 +842,21 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
 
         # Flag missing groups/members for review.
         flagged_groups = 0
+        flagged_departments = 0
         if sync_groups:
             flagged_groups = (
                 job.bindings.filter(object_type=SyncBinding.ObjectType.GROUP)
                 .exclude(external_id__in=seen_group_external_ids)
+                .update(
+                    is_deleted_in_source=True,
+                    pending_garbage_collection=True,
+                    last_seen_at=timezone.now(),
+                )
+            )
+        if sync_departments:
+            flagged_departments = (
+                job.bindings.filter(object_type=SyncBinding.ObjectType.DEPARTMENT)
+                .exclude(external_id__in=seen_department_external_ids)
                 .update(
                     is_deleted_in_source=True,
                     pending_garbage_collection=True,
@@ -665,7 +872,7 @@ class SpondExternalSyncProvider(BaseExternalSyncProvider):
                 last_seen_at=timezone.now(),
             )
         )
-        stats["flagged_for_review"] = flagged_groups + flagged_members
+        stats["flagged_for_review"] = flagged_groups + flagged_departments + flagged_members
         stats["finished_at"] = timezone.now()
         return stats
 

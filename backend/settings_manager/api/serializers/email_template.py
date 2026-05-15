@@ -11,10 +11,21 @@ class EmailTemplateListSerializer(serializers.ModelSerializer):
     """Serializer for listing email templates"""
 
     template_type_display = serializers.CharField(source="get_template_type_display", read_only=True)
+    layout_display = serializers.CharField(source="get_layout_display", read_only=True)
 
     class Meta:
         model = EmailTemplate
-        fields = ["id", "name", "template_type", "template_type_display", "is_active", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "name",
+            "template_type",
+            "template_type_display",
+            "layout",
+            "layout_display",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["created_at", "updated_at"]
 
 
@@ -22,6 +33,7 @@ class EmailTemplateDetailSerializer(serializers.ModelSerializer):
     """Serializer for email template details"""
 
     template_type_display = serializers.CharField(source="get_template_type_display", read_only=True)
+    layout_display = serializers.CharField(source="get_layout_display", read_only=True)
     available_variables = serializers.SerializerMethodField()
 
     class Meta:
@@ -34,6 +46,8 @@ class EmailTemplateDetailSerializer(serializers.ModelSerializer):
             "subject_template",
             "html_template",
             "text_template",
+            "layout",
+            "layout_display",
             "is_active",
             "available_variables",
             "created_at",
@@ -53,7 +67,7 @@ class EmailTemplateCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailTemplate
-        fields = ["name", "template_type", "subject_template", "html_template", "text_template", "is_active"]
+        fields = ["name", "template_type", "subject_template", "html_template", "text_template", "layout", "is_active"]
 
     def validate_template_type(self, value):
         """Ensure template type is unique when creating"""

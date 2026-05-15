@@ -8,7 +8,7 @@
         <Button
           label="Excel-Export"
           icon="pi pi-file-excel"
-          @click="handleExportExcel"
+          @click="showExportDialog = true"
           severity="success"
           outlined
           :loading="membersStore.loading"
@@ -403,6 +403,12 @@
       </ResponsiveList>
     </div>
 
+    <MemberExportDialog
+      v-model="showExportDialog"
+      :exporting="membersStore.loading"
+      @export="handleExportExcel"
+    />
+
   </div>
 </template>
 
@@ -429,6 +435,7 @@ import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import DepartmentBadge from '@/components/departments/atoms/DepartmentBadge.vue'
+import MemberExportDialog from '@/components/members/molecules/MemberExportDialog.vue'
 
 const router = useRouter()
 const membersStore = useMembersStore()
@@ -436,6 +443,8 @@ const departmentsStore = useDepartmentsStore()
 const confirm = useConfirm()
 const toast = useToast()
 const { getInt, getString, syncToUrl } = useQueryTableState()
+
+const showExportDialog = ref(false)
 
 onUnmounted(() => {
   
@@ -656,9 +665,10 @@ const confirmDelete = (member: Member) => {
   })
 }
 
-const handleExportExcel = async () => {
+const handleExportExcel = async (columns: string[]) => {
   try {
-    await membersStore.exportExcel()
+    await membersStore.exportExcel(columns)
+    showExportDialog.value = false
     toast.add({
       severity: 'success',
       summary: 'Erfolg',
