@@ -9,7 +9,7 @@
     "moduleResolution": "bundler",
     "rootDir": "../",
     "paths": {
-      "@/*": ["/src/*"]
+      "@/*": ["../src/*"]
     },
     "lib": ["ESNext", "dom"],
     "types": ["nightwatch"]

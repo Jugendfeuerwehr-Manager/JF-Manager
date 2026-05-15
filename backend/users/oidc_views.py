@@ -88,7 +88,11 @@ def _fetch_discovery_document(issuer_url: str) -> dict:
     Raises requests.RequestException on network errors or non-200 responses.
     """
     _validate_oidc_url(issuer_url, "Issuer-URL")
+    issuer_host = urlparse(issuer_url).hostname
     discovery_url = issuer_url.rstrip("/") + "/.well-known/openid-configuration"
+    # Re-validate the constructed URL to prevent SSRF: must be HTTPS and on the
+    # same host as the configured issuer (guards against path-traversal tricks).
+    _validate_oidc_url(discovery_url, "Discovery-URL", allowed_host=issuer_host)
     logger.debug("Fetching OIDC discovery document from %s", discovery_url)
     response = requests.get(discovery_url, timeout=10)
     response.raise_for_status()
