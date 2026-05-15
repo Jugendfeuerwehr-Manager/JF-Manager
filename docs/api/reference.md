@@ -2,184 +2,287 @@
 
 ## Overview
 
-- **Base URL**: `http://localhost:8000/api/v1/` (dev) / `https://your-domain.com/api/v1/` (prod)
-- **Format**: JSON
-- **Date Format**: ISO 8601 (`2025-10-01T10:30:00Z`)
-- **Pagination**: All list endpoints return paginated responses
+- Base URL: `http://localhost:8000/api/v1/` (dev) / `https://your-domain.com/api/v1/` (prod)
+- Format: JSON
+- Date format: ISO 8601 (`2025-10-01T10:30:00Z`)
+- Authentication: JWT Bearer
+- Pagination: list endpoints return `count/next/previous/results`
 
 ## Interactive Documentation
 
 | Endpoint | Description |
 |----------|-------------|
-| `/api/docs/` | Swagger UI – browse, test, and authenticate against all endpoints |
-| `/api/redoc/` | ReDoc – clean three-panel layout |
-| `/api/schema/` | Raw OpenAPI 3.0 schema (JSON) for SDK generation and Postman import |
+| `/api/docs/` | Swagger UI |
+| `/api/redoc/` | ReDoc |
+| `/api/schema/` | OpenAPI schema |
 
 ## Authentication
 
-### JWT (Recommended for SPAs)
-
 ```bash
-# Login – get tokens
 POST /api/auth/login/
 {"username": "user", "password": "pass"}
-# → {"access": "...", "refresh": "..."}
+# -> {"access": "...", "refresh": "..."}
 
-# Use access token (valid 60 min)
-Authorization: Bearer <access_token>
-
-# Refresh (refresh token valid 7 days)
 POST /api/auth/refresh/
 {"refresh": "..."}
-# → {"access": "new_token"}
-
-# Verify
-POST /api/auth/verify/
-{"token": "..."}
+# -> {"access": "..."}
 ```
+
+OIDC (SSO) flow endpoints:
+
+- `GET /api/v1/auth/oidc/public-config/`
+- `GET /api/v1/auth/oidc/login/`
+- `GET /api/v1/auth/oidc/callback/`
+- `POST /api/v1/auth/oidc/exchange/`
 
 ## Pagination
 
-All list endpoints return:
+Example list response:
 
 ```json
 {
   "count": 42,
   "next": "http://localhost:8000/api/v1/members/?page=2",
   "previous": null,
-  "results": [...]
+  "results": []
 }
 ```
 
-Always extract `.results` from list responses:
+Frontend note:
 
 ```typescript
 const response = await api.list()
-items.value = response.data.results  // ✅ Correct
-items.value = response.data          // ❌ Wrong – gets the wrapper object
+items.value = response.data.results
 ```
 
-## Endpoint Reference
+## Endpoint Groups
 
-### Users
-
-```
-GET    /api/v1/users/me/              # Current user info
-PATCH  /api/v1/users/me/              # Update profile
-POST   /api/v1/users/change-password/ # Change password
-```
-
-### Members
+### Users And Admin
 
 ```
-GET    /api/v1/members/               # List all members
-GET    /api/v1/members/{id}/          # Get single member
-POST   /api/v1/members/               # Create member
-PATCH  /api/v1/members/{id}/          # Update member
-DELETE /api/v1/members/{id}/          # Delete member
-GET    /api/v1/parents/               # List parents
+GET    /api/v1/users/me/
+PATCH  /api/v1/users/me/
+POST   /api/v1/users/change-password/
+
+GET    /api/v1/admin/users/
+POST   /api/v1/admin/users/
+PATCH  /api/v1/admin/users/{id}/
+DELETE /api/v1/admin/users/{id}/
+
+GET    /api/v1/admin/groups/
+POST   /api/v1/admin/groups/
+PATCH  /api/v1/admin/groups/{id}/
+DELETE /api/v1/admin/groups/{id}/
+
+GET    /api/v1/admin/permissions/
+```
+
+### Members, Groups, Parents
+
+```
+GET    /api/v1/members/
+GET    /api/v1/members/{id}/
+POST   /api/v1/members/
+PATCH  /api/v1/members/{id}/
+DELETE /api/v1/members/{id}/
+GET    /api/v1/members/statistics/
+GET    /api/v1/members/export-excel/
+
+GET    /api/v1/groups/
+POST   /api/v1/groups/
+PATCH  /api/v1/groups/{id}/
+DELETE /api/v1/groups/{id}/
+
+GET    /api/v1/parents/
+POST   /api/v1/parents/
+PATCH  /api/v1/parents/{id}/
+DELETE /api/v1/parents/{id}/
+
+GET    /api/v1/statuses/
+GET    /api/v1/events/
+GET    /api/v1/event-types/
+```
+
+### Member Lists
+
+```
+GET    /api/v1/member-lists/
+GET    /api/v1/member-lists/{id}/
+POST   /api/v1/member-lists/
+PATCH  /api/v1/member-lists/{id}/
+DELETE /api/v1/member-lists/{id}/
+
+POST   /api/v1/member-lists/{id}/add_member/
+POST   /api/v1/member-lists/{id}/remove_member/
+POST   /api/v1/member-lists/{id}/bulk_add/
+
+POST   /api/v1/member-lists/{id}/toggle_check/
+POST   /api/v1/member-lists/{id}/set_check/
+POST   /api/v1/member-lists/{id}/check_all/
+POST   /api/v1/member-lists/{id}/uncheck_all/
+PATCH  /api/v1/member-lists/{id}/update_entry_notes/
+
+GET    /api/v1/member-lists/{id}/attachments/
+POST   /api/v1/member-lists/{id}/attachments/
+DELETE /api/v1/member-lists/{id}/attachments/{attachment_id}/
+
+GET    /api/v1/member-lists/{id}/export-excel/
+```
+
+### Departments
+
+```
+GET    /api/v1/departments/
+POST   /api/v1/departments/
+PATCH  /api/v1/departments/{id}/
+DELETE /api/v1/departments/{id}/
+
+GET    /api/v1/admin/department-roles/
+POST   /api/v1/admin/department-roles/
+PATCH  /api/v1/admin/department-roles/{id}/
+DELETE /api/v1/admin/department-roles/{id}/
+```
+
+### Settings, LDAP, OIDC
+
+```
+GET    /api/v1/settings/
+GET    /api/v1/settings/permissions/
+
+GET    /api/v1/settings/general/
+PATCH  /api/v1/settings/general/
+GET    /api/v1/settings/email/
+PATCH  /api/v1/settings/email/
+GET    /api/v1/settings/member/
+PATCH  /api/v1/settings/member/
+GET    /api/v1/settings/service/
+PATCH  /api/v1/settings/service/
+GET    /api/v1/settings/order/
+PATCH  /api/v1/settings/order/
+GET    /api/v1/settings/ldap/
+PATCH  /api/v1/settings/ldap/
+GET    /api/v1/settings/oidc/
+PATCH  /api/v1/settings/oidc/
+
+POST   /api/v1/settings/ldap/test-connection/
+POST   /api/v1/settings/ldap/browse/
+POST   /api/v1/settings/oidc/test-discovery/
+
+GET    /api/v1/ldap-department-mappings/
+POST   /api/v1/ldap-department-mappings/
+DELETE /api/v1/ldap-department-mappings/{id}/
+
+GET    /api/v1/oidc-group-mappings/
+POST   /api/v1/oidc-group-mappings/
+DELETE /api/v1/oidc-group-mappings/{id}/
+```
+
+### External Sync
+
+```
+GET    /api/v1/sync-jobs/
+POST   /api/v1/sync-jobs/
+PATCH  /api/v1/sync-jobs/{id}/
+DELETE /api/v1/sync-jobs/{id}/
+
+POST   /api/v1/sync-jobs/{id}/test_connection/
+POST   /api/v1/sync-jobs/{id}/run_now/
+GET    /api/v1/sync-jobs/{id}/garbage-collection-preview/
+POST   /api/v1/sync-jobs/{id}/garbage-collect/
+
+POST   /api/v1/sync-jobs/spond-top-level-groups/
+GET    /api/v1/sync-runs/
 ```
 
 ### Inventory
 
 ```
-# Items
-GET    /api/v1/inventory/items/                # List items
-GET    /api/v1/inventory/items/{id}/           # Get item
-GET    /api/v1/inventory/items/{id}/stock/     # Item stock levels
-GET    /api/v1/inventory/items/{id}/variants/  # Item variants
-GET    /api/v1/inventory/items/search/?q=term  # Quick search
-POST   /api/v1/inventory/items/                # Create item
-PATCH  /api/v1/inventory/items/{id}/           # Update item
-DELETE /api/v1/inventory/items/{id}/           # Delete item
+GET    /api/v1/inventory/items/
+GET    /api/v1/inventory/items/{id}/
+GET    /api/v1/inventory/items/{id}/stock/
+GET    /api/v1/inventory/items/{id}/variants/
+GET    /api/v1/inventory/items/search/?q=term
+POST   /api/v1/inventory/items/
+PATCH  /api/v1/inventory/items/{id}/
+DELETE /api/v1/inventory/items/{id}/
 
-# Categories
-GET    /api/v1/inventory/categories/              # List categories
-GET    /api/v1/inventory/categories/{id}/items/   # Category items
-POST   /api/v1/inventory/categories/              # Create category
+GET    /api/v1/inventory/categories/
+GET    /api/v1/inventory/categories/{id}/items/
+POST   /api/v1/inventory/categories/
 
-# Locations
-GET    /api/v1/inventory/locations/               # List locations
-GET    /api/v1/inventory/locations/{id}/stock/    # Location stock
+GET    /api/v1/inventory/locations/
+GET    /api/v1/inventory/locations/{id}/stock/
 
-# Transactions
-GET    /api/v1/inventory/transactions/            # Transaction history
-POST   /api/v1/inventory/transactions/            # Create transaction
-GET    /api/v1/inventory/transactions/discard-statistics/  # Discard stats
-```
-
-### Qualifications
-
-```
-GET    /api/v1/qualifications/types/   # List qualification types
-GET    /api/v1/qualifications/         # List qualifications
-POST   /api/v1/qualifications/         # Create qualification
-PATCH  /api/v1/qualifications/{id}/    # Update qualification
-DELETE /api/v1/qualifications/{id}/    # Delete qualification
-
-GET    /api/v1/specialtasks/types/     # List special task types
-GET    /api/v1/specialtasks/           # List special tasks
+GET    /api/v1/inventory/transactions/
+POST   /api/v1/inventory/transactions/
+GET    /api/v1/inventory/transactions/discard-statistics/
 ```
 
 ### Servicebook
 
 ```
-GET    /api/v1/servicebook/services/       # List services
-GET    /api/v1/servicebook/services/{id}/  # Get service
-POST   /api/v1/servicebook/services/       # Create service
-PATCH  /api/v1/servicebook/services/{id}/  # Update service
+GET    /api/v1/servicebook/services/
+GET    /api/v1/servicebook/services/{id}/
+POST   /api/v1/servicebook/services/
+PATCH  /api/v1/servicebook/services/{id}/
+DELETE /api/v1/servicebook/services/{id}/
 
-GET    /api/v1/servicebook/attandances/    # List attendances
-POST   /api/v1/servicebook/attandances/    # Create attendance
+GET    /api/v1/servicebook/attendances/
+POST   /api/v1/servicebook/attendances/
+PATCH  /api/v1/servicebook/attendances/{id}/
+DELETE /api/v1/servicebook/attendances/{id}/
 ```
 
 ### Orders
 
 ```
-GET    /api/v1/orders/                     # List orders
-GET    /api/v1/orders/{id}/                # Get order details
-POST   /api/v1/orders/                     # Create order
-PATCH  /api/v1/orders/{id}/                # Update order
+GET    /api/v1/orders/
+GET    /api/v1/orders/{id}/
+POST   /api/v1/orders/
+PATCH  /api/v1/orders/{id}/
+DELETE /api/v1/orders/{id}/
 
-GET    /api/v1/order-items/                # List order items
-PATCH  /api/v1/order-items/{id}/           # Update order item
+GET    /api/v1/order-items/
+PATCH  /api/v1/order-items/{id}/
 
-GET    /api/v1/orderable-items/            # Items that can be ordered
-GET    /api/v1/order-statuses/             # Available order statuses
-POST   /api/v1/orders/send_summary/        # Send order summary email
+GET    /api/v1/orderable-items/
+GET    /api/v1/order-statuses/
+POST   /api/v1/orders/send_summary/
+```
+
+### Qualifications
+
+```
+GET    /api/v1/qualifications/types/
+GET    /api/v1/qualifications/
+POST   /api/v1/qualifications/
+PATCH  /api/v1/qualifications/{id}/
+DELETE /api/v1/qualifications/{id}/
+
+GET    /api/v1/qualifications/specialtask-types/
+GET    /api/v1/qualifications/specialtasks/
+POST   /api/v1/qualifications/specialtasks/
+PATCH  /api/v1/qualifications/specialtasks/{id}/
+DELETE /api/v1/qualifications/specialtasks/{id}/
 ```
 
 ## Query Parameters
 
-### Filtering
+Common patterns:
 
-Most list endpoints support filtering:
+```bash
+# Filtering
+GET /api/v1/members/?status=1&group=2
 
-```
-GET /api/v1/members/?status=active
-GET /api/v1/inventory/items/?category=1
-GET /api/v1/orders/?status=pending
-```
-
-### Search
-
-```
+# Search
 GET /api/v1/members/?search=Max
-GET /api/v1/inventory/items/search/?q=Helm
-```
 
-### Ordering
-
-```
+# Ordering
 GET /api/v1/members/?ordering=-created_at
-GET /api/v1/orders/?ordering=status,-created_at
-```
 
-### Pagination
-
-```
+# Pagination
 GET /api/v1/members/?page=2&page_size=25
-GET /api/v1/members/?limit=1000  # Override page size
+GET /api/v1/members/?limit=1000
 ```
 
 ## Error Responses
@@ -215,23 +318,4 @@ GET /api/v1/members/?limit=1000  # Override page size
 {
   "detail": "Not found."
 }
-```
-
-## cURL Examples
-
-```bash
-# Login
-curl -X POST http://localhost:8000/api/auth/login/ \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "password"}'
-
-# List members
-curl http://localhost:8000/api/v1/members/ \
-  -H "Authorization: Bearer YOUR_TOKEN"
-
-# Create member
-curl -X POST http://localhost:8000/api/v1/members/ \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"first_name": "Max", "last_name": "Mustermann"}'
 ```

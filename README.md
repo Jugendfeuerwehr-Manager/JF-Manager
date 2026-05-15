@@ -15,8 +15,12 @@ Es wird stetig weiterentwickelt und um neue Funktionen ergänzt. Wie oben bereit
 ### 🎯 Hauptfunktionen
 
 - Verwaltung von Mitgliedern
-  - Export in Excel Listen
+  - Flexible Excel-Exporte mit auswählbaren Spalten
   - Erfassen von Ehrungen, Notizen, Auszeichnungen etc.
+- Listen (Anwesenheits- und Aktionslisten) mit Check-Workflow, Notizen und Export
+- Gruppen-Editor
+  - Fachliche Mitgliedsgruppen (`/groups`)
+  - Berechtigungsgruppen (Admin-Gruppenverwaltung unter `/users`)
 - Verwaltung von Eltern, inkl. E-Mail und Verknüpfung mit den Mitgliedern
 - Kleiderkammer
   - Barcode Scanner
@@ -29,6 +33,13 @@ Es wird stetig weiterentwickelt und um neue Funktionen ergänzt. Wie oben bereit
   - Bestellungen erstellen und verwalten
   - Status-Workflow mit E-Mail-Benachrichtigungen
 - Qualifikationen & Sonderaufgaben
+- Zentrales Einstellungsmodul (General, E-Mail, Mitglieder, Dienst, Bestellungen)
+- LDAP-Integration inkl. Verbindungs-Test und LDAP→Abteilungsrollen-Mapping
+- SSO via OIDC (z. B. Nextcloud/Keycloak) inkl. Gruppen-Mapping
+- Abteilungsfähige Mehrmandanten-Logik mit rollenbasierter Daten-Sicht
+- Externe Synchronisation von Mitgliedern/Gruppen über Spond
+  - inkl. Betriebsmodi und Bereinigungsvorschau
+  - erweiterbar für weitere Provider
 - REST API zur Anbindung von eigenen Apps und Diensten
 
 
@@ -189,9 +200,14 @@ Die vollständige Dokumentation befindet sich im [docs/](docs/) Verzeichnis:
 
 - [Erste Schritte](docs/getting-started.md) – Lokale Entwicklung, Umgebungsvariablen
 - [Architektur](docs/architecture/overview.md) – Docker-Architektur, Netzwerk, Sicherheit
+- [Abteilungen & Berechtigungen](docs/architecture/departments-and-permissions.md) – Scoping-Modell, aktive Abteilung, Berechtigungsdurchsetzung
 - [API Referenz](docs/api/reference.md) – REST API Endpunkte, Authentifizierung
 - [Deployment](docs/deployment/docker.md) – Docker Compose, SSL, Backup
 - [Portainer](docs/deployment/portainer.md) – Deployment via Portainer
+- [Mitglieder, Listen, Gruppen, Excel-Export](docs/domains/members-lists-groups-exports.md) – Neue Listen-/Gruppen- und Exportfunktionen
+- [Settings, LDAP, SSO](docs/domains/settings-ldap-sso.md) – Einstellungen und externe Authentifizierung
+- [Abteilungen (Operational Guide)](docs/domains/departments.md) – Praxisleitfaden für Abteilungsbetrieb
+- [External Sync mit Spond](docs/domains/external-sync-spond.md) – Sync-Jobs und Provider-Erweiterung
 
 ## 🤝 Beitragen
 

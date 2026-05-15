@@ -27,6 +27,10 @@
 - [Inventory System](domains/inventory.md) – Inventory models, transactions, permissions, discard tracking
 - [Order Notifications](domains/orders-notifications.md) – Notification system architecture, workflow, templates
 - [Qualifications](domains/qualifications.md) – Qualification and special task management
+- [Members, Lists, Group Editor, Excel Export](domains/members-lists-groups-exports.md) – Member lists, group management, export column selection
+- [Settings, LDAP, SSO](domains/settings-ldap-sso.md) – Runtime settings API, LDAP config, OIDC flow and mappings
+- [Departments (Operational Guide)](domains/departments.md) – Department-level operation model and integrations
+- [External Sync With Spond](domains/external-sync-spond.md) – Sync jobs, Spond modes, provider extension guide
 
 ## Development
 
