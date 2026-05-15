@@ -56,31 +56,36 @@ Es wird stetig weiterentwickelt und um neue Funktionen ergänzt. Wie oben bereit
 
 ## 🏗️ Projektstruktur
 
-```
-JF-Manager/
-├── backend/                 # Django REST API
-│   ├── api_tests/           # API-Tests
-│   ├── inventory/           # Kleiderkammer
-│   ├── members/             # Mitglieder & Eltern
-│   ├── orders/              # Bestellwesen (Referenz-Implementierung)
-│   │   └── api/             # Modulare API-Struktur (ViewSets, Serializers)
-│   ├── qualifications/      # Qualifikationen
-│   ├── servicebook/         # Dienstbuch
-│   ├── settings_manager/    # Einstellungen
-│   ├── users/               # Benutzerverwaltung
-│   └── jf_manager_backend/  # Django-Projekteinstellungen & REST-URL-Konfiguration
-├── frontend/                # Vue 3 SPA
-│   └── src/
-│       ├── api/             # HTTP-Client (Axios)
-│       ├── components/      # Vue-Komponenten (Atomic Design)
-│       ├── stores/          # Pinia Stores
-│       ├── types/           # TypeScript Interfaces
-│       ├── views/           # Seiten-Komponenten
-│       └── router/          # Vue Router
-├── docker-compose.yml       # Produktion (Backend + Frontend + DB + Redis)
-├── docker-compose.dev.yml   # Entwicklung
-├── nginx/                   # Nginx-Konfiguration (Reverse Proxy)
-└── docs/                    # Dokumentation
+```mermaid
+flowchart TD
+  ROOT[JF-Manager]
+
+  ROOT --> BACKEND[backend<br/>Django REST API]
+  ROOT --> FRONTEND[frontend<br/>Vue 3 SPA]
+  ROOT --> DC_PROD[docker-compose.yml<br/>Produktion: Backend + Frontend + DB + Redis]
+  ROOT --> DC_DEV[docker-compose.dev.yml<br/>Entwicklung]
+  ROOT --> NGINX[nginx<br/>Nginx-Konfiguration Reverse Proxy]
+  ROOT --> DOCS[docs<br/>Dokumentation]
+
+  BACKEND --> API_TESTS[api_tests<br/>API-Tests]
+  BACKEND --> INVENTORY[inventory<br/>Kleiderkammer]
+  BACKEND --> MEMBERS[members<br/>Mitglieder und Eltern]
+  BACKEND --> ORDERS[orders<br/>Bestellwesen Referenz-Implementierung]
+  BACKEND --> QUALIFICATIONS[qualifications<br/>Qualifikationen]
+  BACKEND --> SERVICEBOOK[servicebook<br/>Dienstbuch]
+  BACKEND --> SETTINGS[settings_manager<br/>Einstellungen]
+  BACKEND --> USERS[users<br/>Benutzerverwaltung]
+  BACKEND --> CORE[jf_manager_backend<br/>Django-Einstellungen und REST-URLs]
+
+  ORDERS --> ORDERS_API[orders/api<br/>Modulare API-Struktur: ViewSets + Serializers]
+
+  FRONTEND --> SRC[src]
+  SRC --> FE_API[api<br/>HTTP-Client Axios]
+  SRC --> COMPONENTS[components<br/>Vue-Komponenten Atomic Design]
+  SRC --> STORES[stores<br/>Pinia Stores]
+  SRC --> TYPES[types<br/>TypeScript Interfaces]
+  SRC --> VIEWS[views<br/>Seiten-Komponenten]
+  SRC --> ROUTER[router<br/>Vue Router]
 ```
 
 ## 🚀 Installation & Setup

@@ -2,26 +2,14 @@
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Internet Traffic                          │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Port 80/443
-┌────────────────────────▼────────────────────────────────────┐
-│                  Frontend Container (Nginx)                  │
-│  • Serves Vue.js SPA from /usr/share/nginx/html             │
-│  • Proxies /api/* → backend:8000                            │
-│  • Proxies /admin/* → backend:8000                          │
-│  • Serves /static/* and /uploads/* from volumes             │
-│  • Security headers, gzip, SSL/TLS termination              │
-└────────┬──────────────┬──────────────┬──────────────┬───────┘
-         │              │              │              │
-    ┌────▼──────┐  ┌───▼────┐  ┌─────▼─────┐  ┌────▼───┐
-    │  Backend  │  │   DB   │  │   Redis   │  │ Backup │
-    │  Django   │  │Postgres│  │  Cache    │  │ (cron) │
-    │  uWSGI    │  │  15    │  │  7        │  │        │
-    │ :8000     │  │ :5432  │  │ :6379     │  │        │
-    └───────────┘  └────────┘  └───────────┘  └────────┘
+```mermaid
+flowchart TD
+    internet[Internet traffic] -->|Port 80/443| nginx[Frontend container Nginx\nServes Vue.js SPA from /usr/share/nginx/html\nProxies /api/* and /admin/* to backend:8000\nServes /static/* and /uploads/* from volumes\nSecurity headers, gzip, SSL/TLS termination]
+
+    nginx --> backend[Backend\nDjango + uWSGI\n:8000]
+    nginx --> db[(DB\nPostgreSQL 15\n:5432)]
+    nginx --> redis[(Redis cache\n7\n:6379)]
+    nginx --> backup[Backup cron]
 ```
 
 All containers run as non-root users with read-only filesystems where possible.

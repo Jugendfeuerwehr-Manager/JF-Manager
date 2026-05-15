@@ -4,21 +4,25 @@
 
 Every Django app follows the same modular layout. The `orders` app is the **reference implementation**.
 
-```
-backend/{app}/
-├── api/
-│   ├── viewsets/          # DRF ViewSets (one file per domain concept)
-│   │   ├── __init__.py    # Re-exports all ViewSets
-│   │   └── *.py
-│   ├── serializers/       # DRF Serializers (one file per domain concept)
-│   │   ├── __init__.py    # Re-exports all Serializers
-│   │   └── *.py
-│   ├── filters.py         # django-filter FilterSets
-│   └── permissions.py     # Custom DRF permissions (if needed)
-├── models/                # Django ORM models
-├── migrations/            # Django migrations
-├── admin.py               # Django Admin registrations
-└── apps.py
+```mermaid
+flowchart TD
+    root[backend/{app}]
+    root --> api[api]
+    root --> models[models<br/>Django ORM models]
+    root --> migrations[migrations<br/>Django migrations]
+    root --> admin[admin.py<br/>Django Admin registrations]
+    root --> apps[apps.py]
+
+    api --> viewsets[viewsets<br/>DRF ViewSets one file per domain concept]
+    viewsets --> viewsetsInit[__init__.py<br/>Re-exports all ViewSets]
+    viewsets --> viewsetsFiles[*.py]
+
+    api --> serializers[serializers<br/>DRF Serializers one file per domain concept]
+    serializers --> serializersInit[__init__.py<br/>Re-exports all Serializers]
+    serializers --> serializersFiles[*.py]
+
+    api --> filters[filters.py<br/>django-filter FilterSets]
+    api --> permissions[permissions.py<br/>Custom DRF permissions if needed]
 ```
 
 > **Legacy pattern** (`views.py`, `api_views.py`, `serializers.py` at app root) — still present in some apps, being phased out. Do **not** add new code there.

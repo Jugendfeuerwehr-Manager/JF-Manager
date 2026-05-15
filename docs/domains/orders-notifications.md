@@ -6,14 +6,15 @@ The notification system provides modular email notification functionality for or
 
 ## Module Structure
 
-```
-orders/notifications/
-├── __init__.py              # Package exports
-├── base.py                  # Base classes, error handling
-├── email_service.py         # Main email notification service
-├── workflow_service.py      # Order status workflow management
-├── template_service.py      # Email template rendering/caching
-└── logging_service.py       # Notification logging/tracking
+```mermaid
+flowchart TD
+    root[orders/notifications]
+    root --> init[__init__.py<br/>Package exports]
+    root --> base[base.py<br/>Base classes and error handling]
+    root --> email[email_service.py<br/>Main email notification service]
+    root --> workflow[workflow_service.py<br/>Order status workflow management]
+    root --> template[template_service.py<br/>Email template rendering and caching]
+    root --> logging[logging_service.py<br/>Notification logging and tracking]
 ```
 
 ## Core Components

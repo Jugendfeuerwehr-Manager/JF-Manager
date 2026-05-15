@@ -4,27 +4,33 @@ Patterns for integrating the JF-Manager REST API with the Vue 3 + Pinia frontend
 
 ## Project Structure
 
-```
-frontend/src/
-├── api/
-│   ├── index.ts              # Axios instance with JWT auth
-│   ├── auth.ts               # Auth endpoints
-│   ├── members.ts            # Members endpoints
-│   ├── inventory.ts          # Inventory endpoints
-│   └── orders.ts             # Orders endpoints
-├── stores/
-│   ├── auth.ts               # Authentication store
-│   ├── members.ts            # Members store
-│   ├── inventory.ts          # Inventory store
-│   └── orders.ts             # Orders store
-├── types/
-│   └── orders.ts             # TypeScript interfaces
-├── components/
-│   └── orders/
-│       ├── atoms/            # Single-purpose components
-│       ├── molecules/        # Composed features
-│       └── organisms/        # Complex state-aware components
-└── router/
+```mermaid
+flowchart TD
+  root[frontend/src]
+
+  root --> api[api]
+  api --> apiIndex[index.ts<br/>Axios instance with JWT auth]
+  api --> apiAuth[auth.ts<br/>Auth endpoints]
+  api --> apiMembers[members.ts<br/>Members endpoints]
+  api --> apiInventory[inventory.ts<br/>Inventory endpoints]
+  api --> apiOrders[orders.ts<br/>Orders endpoints]
+
+  root --> stores[stores]
+  stores --> storeAuth[auth.ts<br/>Authentication store]
+  stores --> storeMembers[members.ts<br/>Members store]
+  stores --> storeInventory[inventory.ts<br/>Inventory store]
+  stores --> storeOrders[orders.ts<br/>Orders store]
+
+  root --> types[types]
+  types --> typesOrders[orders.ts<br/>TypeScript interfaces]
+
+  root --> components[components]
+  components --> orders[orders]
+  orders --> atoms[atoms<br/>Single-purpose components]
+  orders --> molecules[molecules<br/>Composed features]
+  orders --> organisms[organisms<br/>Complex state-aware components]
+
+  root --> router[router]
 ```
 
 ## API Client

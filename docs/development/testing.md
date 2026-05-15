@@ -28,12 +28,13 @@ coverage html
 
 ## Test Structure
 
-```
-api_tests/
-├── __init__.py
-├── test_api_comprehensive.py   # Main test suite
-├── test_admin_users.py         # Admin user tests
-└── README.md
+```mermaid
+flowchart TD
+    root[api_tests]
+    root --> init[__init__.py]
+    root --> comprehensive[test_api_comprehensive.py<br/>Main test suite]
+    root --> admin[test_admin_users.py<br/>Admin user tests]
+    root --> readme[README.md]
 ```
 
 ### Test Classes

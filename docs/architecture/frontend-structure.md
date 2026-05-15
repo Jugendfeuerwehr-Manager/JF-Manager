@@ -2,16 +2,17 @@
 
 ## Directory Structure
 
-```
-frontend/src/
-├── api/           # HTTP client functions (axios-based)
-├── types/         # TypeScript interfaces (domain-specific files)
-├── stores/        # Pinia state management (Composition API)
-└── components/
-    └── {domain}/
-        ├── atoms/       # Single-purpose, stateless presentational components
-        ├── molecules/   # Composed multi-atom components
-        └── organisms/   # Complex state-aware components (use stores)
+```mermaid
+flowchart TD
+  root[frontend/src]
+  root --> api[api<br/>HTTP client functions axios-based]
+  root --> types[types<br/>TypeScript interfaces domain-specific files]
+  root --> stores[stores<br/>Pinia state management Composition API]
+  root --> components[components]
+  components --> domain[{domain}]
+  domain --> atoms[atoms<br/>Single-purpose stateless presentational components]
+  domain --> molecules[molecules<br/>Composed multi-atom components]
+  domain --> organisms[organisms<br/>Complex state-aware components using stores]
 ```
 
 ## Data Flow

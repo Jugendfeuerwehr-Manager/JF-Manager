@@ -2,64 +2,67 @@
 
 ## Docker Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Internet / Client                            │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │ Port 80/443
-┌─────────────────────────────▼───────────────────────────────────────┐
-│                    Frontend Container (Nginx)                        │
-│  Routes:                                                             │
-│  • /                  → Vue.js SPA (from disk)                      │
-│  • /api/*            → Backend Container :8000                      │
-│  • /admin/*          → Backend Container :8000                      │
-│  • /static/*         → Static Volume (read-only)                   │
-│  • /uploads/*        → Uploads Volume (read-only)                  │
-│  • /health           → Health Check Response                       │
-│                                                                      │
-│  Security: Non-root (nginx), gzip, security headers, SSL/TLS       │
-└────────────┬──────────────────┬──────────────────┬──────────────────┬──────────────────┘
-                         │                  │                  │                  │
-        ┌────────▼────────┐  ┌─────▼──────┐  ┌───────▼────────┐  ┌───────▼────────┐
-    │   Backend       │  │ PostgreSQL │  │     Redis      │
-    │   Django REST   │  │    15      │  │    Cache       │
-    │   uWSGI         │  │  :5432     │  │   :6379        │
-    │   :8000         │  │            │  │   256MB        │
-    │  User: django   │  │ User: pg   │  │                │
-        │  UID: 1000      │  │            │  │                │  │  Worker (RQ)    │
-        │                 │  │            │  │                │  │  rqworker default│
-        └────────┬────────┘  └─────┬──────┘  └────────────────┘  │  consumes Redis  │
-                         │                 │                              └──────────────────┘
-        ┌────▼────┐      ┌────▼─────┐
-        │ Static  │      │ Database │
-        │ Volume  │      │  Volume  │
-        └─────────┘      └──────────┘
-        ┌─────────┐
-        │ Uploads │
-        │ Volume  │
-        └─────────┘
+```mermaid
+flowchart TD
+        client[Internet / Client]
+        nginx[Frontend Container Nginx\nRoutes:\n/ -> Vue.js SPA\n/api/* -> backend:8000\n/admin/* -> backend:8000\n/static/* -> Static volume read-only\n/uploads/* -> Uploads volume read-only\n/health -> Health check\nSecurity: non-root, gzip, security headers, SSL/TLS]
+        backend[Backend\nDjango REST + uWSGI\n:8000\nUser django UID 1000]
+        db[(PostgreSQL 15\n:5432\nUser pg)]
+        redis[(Redis Cache\n:6379\n256MB)]
+        worker[Worker RQ\nrqworker default\nconsumes Redis]
+        staticVol[(Static Volume)]
+        uploadsVol[(Uploads Volume)]
+        dbVol[(Database Volume)]
+
+        client -->|Port 80/443| nginx
+        nginx --> backend
+        nginx --> staticVol
+        nginx --> uploadsVol
+        backend --> db
+        backend --> redis
+        backend --> staticVol
+        backend --> uploadsVol
+        db --> dbVol
+        redis --> worker
 ```
 
 ## Request Flow
 
 ### SPA Request
-```
-Browser → http://localhost/ → Nginx serves Vue.js index.html → Vue Router handles routing
+```mermaid
+flowchart LR
+        browser[Browser] --> url[http://localhost/]
+        url --> nginx[Nginx serves Vue.js index.html]
+        nginx --> router[Vue Router handles routing]
 ```
 
 ### API Request
-```
-Browser → /api/v1/orders/ → Nginx proxy_pass → backend:8000 → Django REST → Database → JSON Response
+```mermaid
+flowchart LR
+        browser[Browser] --> api[/api/v1/orders/]
+        api --> nginx[Nginx proxy_pass]
+        nginx --> backend[backend:8000]
+        backend --> drf[Django REST]
+        drf --> db[(Database)]
+        db --> response[JSON response]
 ```
 
 ### Background Job Request
-```
-Frontend/API action → Django enqueues job (Redis) → Worker container (rqworker) processes job → DB updates + SyncRun status
+```mermaid
+flowchart LR
+        action[Frontend or API action] --> enqueue[Django enqueues job in Redis]
+        enqueue --> worker[Worker container rqworker processes job]
+        worker --> result[DB updates and SyncRun status]
 ```
 
 ### Admin Request
-```
-Browser → /admin/ → Nginx proxy_pass → backend:8000 → Django Admin → HTML + /static/ assets
+```mermaid
+flowchart LR
+        browser[Browser] --> admin[/admin/]
+        admin --> nginx[Nginx proxy_pass]
+        nginx --> backend[backend:8000]
+        backend --> django[Django Admin]
+        django --> html[HTML and /static/ assets]
 ```
 
 ## Security Layers
@@ -118,11 +121,14 @@ For details, see [Build Pipeline](../development/build-pipeline.md).
 
 Daily automated backup at 2 AM:
 
-```
-PostgreSQL → pg_dump → backup.sql.gz → ./backups/
-├── daily/    (keep 7)
-├── weekly/   (keep 4)
-└── monthly/  (keep 6)
+```mermaid
+flowchart TD
+        pg[(PostgreSQL)] --> dump[pg_dump]
+        dump --> archive[backup.sql.gz]
+        archive --> backups[./backups/]
+        backups --> daily[daily keep 7]
+        backups --> weekly[weekly keep 4]
+        backups --> monthly[monthly keep 6]
 ```
 
 ## Resource Allocation
