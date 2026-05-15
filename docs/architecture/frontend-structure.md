@@ -9,7 +9,7 @@ flowchart TD
   root --> types[types<br/>TypeScript interfaces domain-specific files]
   root --> stores[stores<br/>Pinia state management Composition API]
   root --> components[components]
-  components --> domain[{domain}]
+  components --> domain[domain folder]
   domain --> atoms[atoms<br/>Single-purpose stateless presentational components]
   domain --> molecules[molecules<br/>Composed multi-atom components]
   domain --> organisms[organisms<br/>Complex state-aware components using stores]

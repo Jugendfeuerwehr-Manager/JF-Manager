@@ -6,7 +6,7 @@ Every Django app follows the same modular layout. The `orders` app is the **refe
 
 ```mermaid
 flowchart TD
-    root[backend/{app}]
+    root[backend app]
     root --> api[api]
     root --> models[models<br/>Django ORM models]
     root --> migrations[migrations<br/>Django migrations]
