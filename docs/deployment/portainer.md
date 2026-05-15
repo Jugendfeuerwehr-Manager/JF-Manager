@@ -1,136 +1,210 @@
-# Portainer Deployment
+# Docker Stack (Docker Compose)
 
-## Prerequisites
+This guide is the single reference for running JF-Manager with Docker Compose.
 
-- Portainer CE or Business Edition installed
+If you deploy in Portainer, use the same compose file and environment variables from this guide.
+
+## 1. Prerequisites
+
 - Docker Engine 20.10+
-- At least 4GB RAM, 20GB+ disk space
+- Docker Compose v2
+- At least 4 GB RAM and 20 GB free disk
 
-> **Migrating from an old setup?** See [Portainer Migration](portainer-migration.md) to preserve your existing database and uploads.
+## 2. Choose Your Compose Stack
 
-## Quick Start (5 Minutes)
+Use exactly one base stack.
 
-## Update Existing Stacks (RQ Requirement)
+| Stack file | When to use |
+|---|---|
+| `docker-compose.yml` | Primary production compose for Docker hosts |
+| `portainer/docker-compose.portainer.yml` | Portainer stack using GHCR prebuilt images |
+| `portainer/docker-compose.portainer-synology.yml` | Portainer on Synology (bind mounts) |
 
-If your stack was created before RQ worker support, update the stack compose file and redeploy:
+Optional overrides:
 
-- Add a dedicated `worker` service using the same backend image.
-- Set worker command to `python manage.py rqworker default`.
-- Ensure `REDIS_URL=redis://redis:6379` is present for `backend` and `worker`.
-- Keep `worker` in the same Docker network and depend on healthy `redis` and `db` services.
+- `docker-compose.dev.yml`: development override (open extra ports, run Django dev server)
+- `docker-compose.prod.yml`: production restart/logging and PostgreSQL tuning
 
-Without a running worker, queued sync/background jobs stay pending and are not executed.
+Recommended simplification for long-term maintenance:
 
-### Step 1: Create Stack
+- Keep one production base compose (`docker-compose.yml`).
+- Keep one development override (`docker-compose.dev.yml`).
+- Keep one Synology/Portainer bind-mount variant.
+- Treat extra Portainer variants (`portainer-build`, `portainer-build-synology`, `portainer-local-images`) as optional legacy files unless still needed.
 
-1. Open Portainer → Select your Docker environment
-2. **Stacks** → **+ Add stack**
-3. Name: `jf-manager`
+## 3. GHCR Images (Recommended)
 
-### Step 2: Add Compose File
+You can run JF-Manager directly from GitHub Container Registry:
 
-**Option A: Git Repository (Recommended)**
-1. Select **Repository**
-2. Repository URL: `https://github.com/Jugendfeuerwehr-Manager/JF-Manager`
-3. Reference: `refs/heads/main`
-4. Compose path: `portainer/docker-compose.portainer.yml`
+- `ghcr.io/jugendfeuerwehr-manager/jf-manager/backend:latest`
+- `ghcr.io/jugendfeuerwehr-manager/jf-manager/frontend:latest`
 
-**Option B: Web Editor**
-1. Select **Web editor**
-2. Copy content from `portainer/docker-compose.portainer.yml`
+This is recommended for Portainer and Synology because it avoids in-place builds.
 
-### Step 3: Set Environment Variables
+For background jobs, include a dedicated `worker` service with the same backend image:
 
-Click **+ Add environment variable** for each:
-
-**Required (must change):**
-
-```
-POSTGRES_PASSWORD     = [openssl rand -base64 32]
-DJANGO_SECRET_KEY     = [openssl rand -base64 50]
-DJANGO_ADMIN_PASSWORD = [openssl rand -base64 16]
-DJANGO_ADMIN_EMAIL    = admin@yourdomain.com
-ALLOWED_HOSTS         = yourdomain.com,localhost
-CSRF_TRUSTED_ORIGINS  = https://yourdomain.com,http://localhost
+```yaml
+worker:
+	image: ghcr.io/jugendfeuerwehr-manager/jf-manager/backend:latest
+	command: python manage.py rqworker default
+	environment:
+		DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
+		REDIS_URL: redis://redis:6379
+		DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
 ```
 
-**Pre-filled defaults:**
+## 4. Create Environment File
 
-```
-POSTGRES_DB              = jf_manager_backend
-POSTGRES_USER            = jf_manager
-DJANGO_MANAGEPY_MIGRATE  = on
-DEBUG                    = False
-DEFAULT_FROM_EMAIL       = noreply@yourdomain.com
-```
+Create a `.env` file in repository root.
 
-**Optional:**
+Required values:
 
-```
-EMAIL_HOST          = smtp.gmail.com
-EMAIL_PORT          = 587
-EMAIL_HOST_USER     = your-email@gmail.com
-EMAIL_HOST_PASSWORD = your-app-password
-EMAIL_USE_TLS       = True
-HTTP_PORT           = 80
-HTTPS_PORT          = 443
+```env
+POSTGRES_DB=jf_manager_backend
+POSTGRES_USER=jf_manager
+POSTGRES_PASSWORD=CHANGE_ME
+
+DJANGO_SECRET_KEY=CHANGE_ME
+DJANGO_ADMIN_PASSWORD=CHANGE_ME
+DJANGO_ADMIN_EMAIL=admin@example.com
+
+ALLOWED_HOSTS=example.com,localhost
+CSRF_TRUSTED_ORIGINS=https://example.com,http://localhost
 ```
 
-### Step 4: Deploy
+Common optional values:
 
-1. Click **Deploy the stack**
-2. Wait 2-3 minutes for containers to start
-3. Verify all containers show "healthy" (green dot)
+```env
+DJANGO_MANAGEPY_MIGRATE=on
+DEBUG=False
+DEFAULT_FROM_EMAIL=noreply@example.com
 
-### Step 5: Access
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+EMAIL_USE_TLS=True
 
-- **Frontend**: `http://your-server/`
-- **Admin Panel**: `http://your-server/admin/`
-- **Health Check**: `http://your-server/health`
+HTTP_PORT=80
+VITE_API_BASE_URL=/api/v1
+```
 
-Login with username `admin` and your `DJANGO_ADMIN_PASSWORD`.
-
-## Deploy via Portainer API
+Generate secrets:
 
 ```bash
-PORTAINER_URL="http://your-portainer:9000"
-PORTAINER_TOKEN="your_api_token"
-ENDPOINT_ID="1"
-
-curl -X POST "${PORTAINER_URL}/api/stacks?type=2&method=repository&endpointId=${ENDPOINT_ID}" \
-  -H "X-API-Key: ${PORTAINER_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "jf-manager",
-    "repositoryURL": "https://github.com/Jugendfeuerwehr-Manager/JF-Manager",
-    "repositoryReferenceName": "refs/heads/main",
-    "composeFile": "portainer/docker-compose.portainer.yml",
-    "env": [
-      {"name": "POSTGRES_PASSWORD", "value": "your_password"},
-      {"name": "DJANGO_SECRET_KEY", "value": "your_secret"},
-      {"name": "DJANGO_ADMIN_PASSWORD", "value": "your_admin_password"},
-      {"name": "DJANGO_ADMIN_EMAIL", "value": "admin@yourdomain.com"},
-      {"name": "ALLOWED_HOSTS", "value": "yourdomain.com"},
-      {"name": "CSRF_TRUSTED_ORIGINS", "value": "https://yourdomain.com"}
-    ]
-  }'
+openssl rand -base64 32
+openssl rand -base64 50
+openssl rand -base64 16
 ```
 
-## Quick Operations
+## 5. Start The Stack With Docker Compose
 
-| Action | How |
-|--------|-----|
-| View Logs | Portainer → Containers → Click container → Logs |
-| Update | Portainer → Stacks → jf-manager → Pull and redeploy |
-| Backup DB | Portainer → Containers → db → Console → `pg_dump` |
-| Shell Access | Portainer → Containers → backend → Console |
+### Standard deployment (recommended)
 
-## Compose File Variants
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
 
-| File | Use Case |
-|------|----------|
-| `docker-compose.portainer.yml` | Standard Portainer deployment |
-| `docker-compose.portainer-synology.yml` | Synology NAS with bind mounts |
-| `docker-compose.portainer-build.yml` | Build from source |
-| `docker-compose.portainer-build-synology.yml` | Synology + build from source |
-| `docker-compose.portainer-local-images.yml` | Pre-built local images |
+### Development override
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+### Production override
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+### Portainer compose file from CLI (optional)
+
+```bash
+docker compose -f portainer/docker-compose.portainer.yml up -d
+```
+
+### Synology bind-mount stack from CLI (optional)
+
+```bash
+docker compose -f portainer/docker-compose.portainer-synology.yml up -d
+```
+
+## 6. Verify The Deployment
+
+```bash
+docker compose ps
+docker compose logs -f backend
+```
+
+Expected services:
+
+- frontend
+- backend
+- worker
+- db
+- redis
+
+Application URLs:
+
+- Frontend: `http://localhost/` (or `http://<server>:${HTTP_PORT}`)
+- Admin: `http://localhost/admin/`
+- Health: `http://localhost/health`
+
+## 7. Operations
+
+Start / stop:
+
+```bash
+docker compose up -d
+docker compose down
+```
+
+Update after pulling new code:
+
+```bash
+git pull
+docker compose build
+docker compose up -d
+```
+
+Run migrations manually:
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
+Open backend shell:
+
+```bash
+docker compose exec backend sh
+```
+
+Run one-off backup container (base stack):
+
+```bash
+docker compose --profile backup run --rm backup
+```
+
+## 8. Portainer Mapping
+
+In Portainer Stacks:
+
+1. Choose Repository or Web editor.
+2. Use one compose file from section 2 (Synology usually uses `portainer/docker-compose.portainer-synology.yml`).
+3. Provide the same `.env` values from section 4.
+4. Deploy stack.
+
+Use GHCR image tags (`ghcr.io/jugendfeuerwehr-manager/jf-manager/backend:latest` and `ghcr.io/jugendfeuerwehr-manager/jf-manager/frontend:latest`) for a stable pull-and-redeploy workflow.
+
+## 9. Troubleshooting Quick Checks
+
+```bash
+docker compose config
+docker compose logs --tail=200 backend
+docker compose logs --tail=200 db
+docker compose ps
+```
+
+- If frontend is up but API fails, verify `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`.
+- If backend fails on startup, check database credentials in `.env`.
+- If jobs are not processed, ensure Redis is healthy and worker is running.
