@@ -38,8 +38,9 @@ LABEL maintainer="info@lukas-bisdorf.de" \
       org.opencontainers.image.description="JF Manager Frontend - Production" \
       org.opencontainers.image.source="https://github.com/Jugendfeuerwehr-Manager/JF-Manager"
 
-# Remove default nginx configuration
-RUN rm /etc/nginx/conf.d/default.conf
+# Apply OS security patches and remove default nginx configuration
+RUN apk upgrade --no-cache && \
+    rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
