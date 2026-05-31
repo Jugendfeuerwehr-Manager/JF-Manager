@@ -183,13 +183,18 @@
           <EventsManager :member-id="memberId" />
         </TabPanel>
 
+        <!-- Attendance Tab -->
+        <TabPanel :value="3" header="Anwesenheit">
+          <AttendanceTab :member-id="memberId" />
+        </TabPanel>
+
         <!-- Inventory Tab -->
-        <TabPanel :value="3" header="Ausrüstung">
+        <TabPanel :value="4" header="Ausrüstung">
           <MemberEquipmentTab :member-id="memberId" />
         </TabPanel>
 
         <!-- Attachments Tab -->
-        <TabPanel :value="4" header="Anhänge">
+        <TabPanel :value="5" header="Anhänge">
           <AttachmentsManager :member-id="memberId" />
         </TabPanel>
      </TabView>
@@ -218,6 +223,7 @@ import AttachmentsManager from '@/components/members/profile/AttachmentsManager.
 import QualificationsManager from '@/components/members/profile/QualificationsManager.vue'
 import SpecialTasksManager from '@/components/members/profile/SpecialTasksManager.vue'
 import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.vue'
+import AttendanceTab from '@/components/members/profile/AttendanceTab.vue'
 
 const router = useRouter()
 const route = useRoute()

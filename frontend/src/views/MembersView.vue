@@ -25,46 +25,53 @@
     <Card class="filter-card">
       <template #content>
         <div class="filter-grid">
-          <IconField>
-            <InputIcon class="pi pi-search" />
-            <InputText
-              v-model="filters.search"
-              placeholder="Suchen..."
-              class="w-full"
-              @input="onFilterChange"
-            />
-          </IconField>
+          <div class="filter-search-wrap" :class="{ 'filter-search-wrap--active': isMobileSearchMode }">
+            <IconField class="filter-search-field">
+              <InputIcon class="pi pi-search" />
+              <InputText
+                v-model="filters.search"
+                placeholder="Suchen..."
+                class="w-full filter-control"
+                @focus="onSearchFocus"
+                @input="onFilterChange"
+                @keydown.esc="closeMobileSearch"
+              />
+            </IconField>
+          </div>
           
           <Dropdown
+            v-if="!isMobileSearchMode"
             v-model="filters.status"
             :options="membersStore.statuses || []"
             option-label="name"
             option-value="id"
             placeholder="Status filtern"
             show-clear
-            class="w-full"
+            class="w-full filter-control"
             @change="onFilterChange"
           />
           
           <Dropdown
+            v-if="!isMobileSearchMode"
             v-model="filters.group"
             :options="membersStore.groups || []"
             option-label="name"
             option-value="id"
             placeholder="Gruppe filtern"
             show-clear
-            class="w-full"
+            class="w-full filter-control"
             @change="onFilterChange"
           />
 
           <Dropdown
+            v-if="!isMobileSearchMode"
             v-model="filters.gender"
             :options="genderFilterOptions"
             option-label="label"
             option-value="value"
             placeholder="Geschlecht filtern"
             show-clear
-            class="w-full"
+            class="w-full filter-control"
             @change="onFilterChange"
           />
         </div>
@@ -72,7 +79,7 @@
     </Card>
 
     <!-- Statistics Panel (collapsible) -->
-    <div class="stats-panel">
+    <div v-if="!isMobileSearchMode" class="stats-panel">
       <div class="stats-panel__header" @click="toggleStats">
         <span class="stats-panel__title">
           <i class="pi pi-chart-bar"></i>
@@ -202,7 +209,7 @@
     </div>
 
     <!-- Desktop Table View -->
-    <Card class="table-card desktop-view">
+    <Card v-if="!isMobileSearchMode" class="table-card desktop-view">
       <template #content>
         <DataTable
           v-model:filters="lazyParams.filters"
@@ -321,7 +328,7 @@
     </Card>
 
     <!-- Mobile Card View -->
-    <div class="mobile-view">
+    <div v-if="!isMobileSearchMode" class="mobile-view">
       <ResponsiveList
         :items="membersStore.members"
         :loading="membersStore.loading"
@@ -352,18 +359,6 @@
                 />
               </div>
 
-              <div class="mobile-entity-card__section">
-                <div class="mobile-entity-card__row">
-                  <span class="mobile-entity-card__label">
-                    <i class="pi pi-calendar"></i>
-                    Geburtstag
-                  </span>
-                  <span class="mobile-entity-card__value">
-                    {{ formatDate(member.birthday) }} ({{ member.age }})
-                  </span>
-                </div>
-              </div>
-
               <ParentContacts :member="member" variant="compact" />
 
               <div class="mobile-entity-card__actions" @click.stop>
@@ -372,6 +367,8 @@
                   icon="pi pi-eye"
                   size="small"
                   outlined
+                  class="member-card-action"
+                  aria-label="Mitglied ansehen"
                   @click="navigateToView(member)"
                 />
                 <Button
@@ -380,6 +377,8 @@
                   size="small"
                   outlined
                   severity="secondary"
+                  class="member-card-action"
+                  aria-label="Mitglied bearbeiten"
                   @click="navigateToEdit(member)"
                 />
                 <Button
@@ -387,6 +386,8 @@
                   size="small"
                   outlined
                   severity="danger"
+                  class="member-card-action"
+                  aria-label="Mitglied löschen"
                   @click="confirmDelete(member)"
                 />
               </div>
@@ -409,11 +410,83 @@
       @export="handleExportExcel"
     />
 
+    <div v-if="isMobileSearchMode" class="members-search-overlay">
+      <div class="members-search-overlay__top">
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          rounded
+          aria-label="Suche schließen"
+          class="members-search-overlay__back"
+          @click="closeMobileSearch"
+        />
+
+        <IconField class="members-search-overlay__field">
+          <InputIcon class="pi pi-search" />
+          <InputText
+            ref="mobileSearchInputRef"
+            v-model="filters.search"
+            placeholder="Mitglied suchen..."
+            class="w-full"
+            @input="onFilterChange"
+            @keydown.esc="closeMobileSearch"
+          />
+        </IconField>
+      </div>
+
+      <div class="members-search-overlay__results">
+        <div v-if="!filters.search.trim()" class="mobile-search-state">
+          <i class="pi pi-search"></i>
+          <p>Tippe einen Namen, um Mitglieder zu finden.</p>
+        </div>
+
+        <div v-else-if="membersStore.loading" class="mobile-search-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <p>Suche läuft...</p>
+        </div>
+
+        <div v-else-if="membersStore.members.length" class="mobile-search-results">
+          <button
+            v-for="member in membersStore.members"
+            :key="member.id"
+            type="button"
+            class="mobile-search-row"
+            @click="navigateToView(member)"
+          >
+            <Avatar
+              v-if="member.avatar_url"
+              :image="member.avatar_url"
+              shape="circle"
+              class="mobile-search-row__avatar"
+            />
+            <Avatar
+              v-else
+              :label="memberInitials(member)"
+              shape="circle"
+              class="mobile-search-row__avatar"
+            />
+
+            <div class="mobile-search-row__content">
+              <span class="mobile-search-row__name">{{ member.full_name }}</span>
+              <span class="mobile-search-row__groups">{{ getMemberGroupsLabel(member) }}</span>
+            </div>
+
+            <i class="pi pi-chevron-right mobile-search-row__chevron"></i>
+          </button>
+        </div>
+
+        <div v-else class="mobile-search-state">
+          <i class="pi pi-users"></i>
+          <p>Keine Treffer gefunden.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
+import { ref, onMounted, onUnmounted, reactive, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -431,6 +504,7 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
+import Avatar from 'primevue/avatar'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import ParentContacts from '@/components/members/ParentContacts.vue'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
@@ -445,9 +519,28 @@ const toast = useToast()
 const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const showExportDialog = ref(false)
+const isMobile = ref(false)
+const mobileSearchActive = ref(false)
+const mobileSearchInputRef = ref<HTMLInputElement | null>(null)
+const originalBodyOverflow = ref<string | null>(null)
+
+const isMobileSearchMode = computed(() => isMobile.value && mobileSearchActive.value)
+
+const updateViewportState = () => {
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) {
+    mobileSearchActive.value = false
+  }
+}
 
 onUnmounted(() => {
-  
+  window.removeEventListener('resize', updateViewportState)
+  if (filterTimeout) {
+    clearTimeout(filterTimeout)
+  }
+  if (originalBodyOverflow.value !== null) {
+    document.body.style.overflow = originalBodyOverflow.value
+  }
 })
 
 const filters = reactive({
@@ -520,6 +613,9 @@ const MEMBERS_URL_DEFAULTS = { offset: 0, rows: 20, sortField: 'lastname', sortO
 let filterTimeout: ReturnType<typeof setTimeout> | null = null
 
 onMounted(async () => {
+  updateViewportState()
+  window.addEventListener('resize', updateViewportState)
+
   await Promise.all([
     membersStore.fetchStatuses(),
     membersStore.fetchGroups()
@@ -573,6 +669,70 @@ const onFilterChange = () => {
   }, 500)
 }
 
+const onSearchFocus = () => {
+  if (!isMobile.value) {
+    return
+  }
+  mobileSearchActive.value = true
+  nextTick(() => {
+    mobileSearchInputRef.value?.focus()
+  })
+}
+
+const closeMobileSearch = () => {
+  mobileSearchActive.value = false
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur()
+  }
+}
+
+watch(isMobileSearchMode, (enabled) => {
+  if (enabled) {
+    if (originalBodyOverflow.value === null) {
+      originalBodyOverflow.value = document.body.style.overflow
+    }
+    document.body.style.overflow = 'hidden'
+    nextTick(() => {
+      mobileSearchInputRef.value?.focus()
+    })
+    return
+  }
+
+  if (originalBodyOverflow.value !== null) {
+    document.body.style.overflow = originalBodyOverflow.value
+    originalBodyOverflow.value = null
+  }
+})
+
+const memberInitials = (member: Member) => {
+  const first = member.name?.[0] || ''
+  const last = member.lastname?.[0] || ''
+  const fallback = member.full_name?.[0] || ''
+  return `${first}${last}`.trim().toUpperCase() || fallback.toUpperCase()
+}
+
+const getMemberGroupsLabel = (member: Member) => {
+  const labels: string[] = []
+
+  if (member.group?.name) {
+    labels.push(member.group.name)
+  }
+
+  if (member.department_ids?.length) {
+    const departmentNames = member.department_ids
+      .map((deptId) => departmentsStore.departments.find((dept) => dept.id === deptId)?.name)
+      .filter((name): name is string => Boolean(name))
+
+    for (const name of departmentNames) {
+      if (!labels.includes(name)) {
+        labels.push(name)
+      }
+    }
+  }
+
+  return labels.join(' · ') || 'Keine Gruppe'
+}
+
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
@@ -584,14 +744,17 @@ const formatDate = (dateString: string | null) => {
 }
 
 const navigateToCreate = () => {
+  closeMobileSearch()
   router.push('/members/create')
 }
 
 const navigateToView = (member: Member) => {
+  closeMobileSearch()
   router.push(`/members/${member.id}`)
 }
 
 const navigateToEdit = (member: Member) => {
+  closeMobileSearch()
   router.push(`/members/${member.id}/edit`)
 }
 
@@ -704,6 +867,12 @@ const handleExportExcel = async (columns: string[]) => {
   gap: 1rem;
 }
 
+.filter-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .table-card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -752,6 +921,111 @@ const handleExportExcel = async (columns: string[]) => {
 .member-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.members-search-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background-color: var(--p-content-background, #ffffff);
+  flex-direction: column;
+}
+
+.members-search-overlay__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: calc(env(safe-area-inset-top) + 0.5rem) 0.9rem 0.6rem;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface-card);
+}
+
+.members-search-overlay__back {
+  flex-shrink: 0;
+}
+
+.members-search-overlay__field {
+  flex: 1;
+}
+
+.members-search-overlay__results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.65rem 0.75rem calc(env(safe-area-inset-bottom) + 0.8rem);
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mobile-search-row {
+  width: 100%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  border-radius: calc(var(--border-radius) - 2px);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+
+.mobile-search-row__avatar {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+}
+
+.mobile-search-row__content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-search-row__name {
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-search-row__groups {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-search-row__chevron {
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+}
+
+.mobile-search-state {
+  border: 1px dashed var(--surface-border);
+  background: var(--surface-ground);
+  border-radius: var(--border-radius);
+  color: var(--text-color-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+}
+
+.mobile-search-state p {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 /* Statistics panel */
@@ -960,8 +1234,77 @@ const handleExportExcel = async (columns: string[]) => {
     padding: 1rem;
   }
 
+  .filter-card {
+    margin-bottom: 1rem;
+  }
+
   .filter-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .filter-search-wrap {
+    grid-column: 1 / -1;
+  }
+
+  .filter-search-wrap--active {
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-search-field,
+  .filter-control {
+    width: 100%;
+  }
+
+  .filter-search-field {
+    flex: 1;
+  }
+
+  .filter-search-field :deep(.p-inputtext),
+  .filter-control :deep(.p-inputtext),
+  .filter-control :deep(.p-dropdown) {
+    min-height: 2.35rem;
+  }
+
+  .filter-search-field :deep(.p-iconfield .p-inputtext) {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .filter-control :deep(.p-dropdown-label) {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .member-card {
+    border-radius: calc(var(--border-radius) - 2px);
+  }
+
+  .member-card .mobile-entity-card__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .member-card .member-card-action :deep(.p-button-label) {
+    display: none;
+  }
+
+  .member-card .member-card-action :deep(.p-button-icon) {
+    margin-right: 0;
+  }
+
+  .member-card .member-card-action :deep(.p-button) {
+    justify-content: center;
+    min-height: 2.15rem;
+    padding: 0.35rem;
+  }
+
+  .member-card :deep(.parent-contacts--compact) {
+    margin-top: -0.15rem;
+  }
+
+  .members-search-overlay {
+    display: flex;
   }
 
   /* Hide desktop table on mobile */
@@ -972,6 +1315,12 @@ const handleExportExcel = async (columns: string[]) => {
   /* Show mobile cards on mobile */
   .mobile-view {
     display: block;
+  }
+}
+
+@media (max-width: 420px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

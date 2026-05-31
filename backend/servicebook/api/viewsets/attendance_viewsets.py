@@ -96,16 +96,24 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         if not member_id:
             return Response({"error": "member_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        limit = int(request.query_params.get("limit", 50))
+        try:
+            limit = int(request.query_params.get("limit", 50))
+        except (TypeError, ValueError):
+            return Response({"error": "limit must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
 
-        attendances = self.get_queryset().filter(person_id=member_id).order_by("-service__start")[:limit]
+        if limit < 1:
+            return Response({"error": "limit must be greater than 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+        member_attendances = self.get_queryset().filter(person_id=member_id).order_by("-service__start")
+
+        attendances = member_attendances[:limit]
         serializer = self.get_serializer(attendances, many=True)
 
         # Calculate summary statistics
-        total = attendances.count()
-        present = attendances.filter(state="A").count()
-        excused = attendances.filter(state="E").count()
-        absent = attendances.filter(state="F").count()
+        total = member_attendances.count()
+        present = member_attendances.filter(state="A").count()
+        excused = member_attendances.filter(state="E").count()
+        absent = member_attendances.filter(state="F").count()
 
         return Response(
             {
