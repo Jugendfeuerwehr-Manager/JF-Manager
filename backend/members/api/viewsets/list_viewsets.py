@@ -21,13 +21,14 @@ from rest_framework.response import Response
 
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from members.api.serializers.list_serializers import (
+    CreateFromEventTypeInputSerializer,
     MemberListCreateUpdateSerializer,
     MemberListDetailSerializer,
     MemberListSerializer,
 )
 from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_EXPORT_DEFAULT_COLUMNS
 from members.api_serializers import AttachmentSerializer
-from members.models import Attachment, Member, MemberList, MemberListEntry
+from members.models import Attachment, Event, Member, MemberList, MemberListEntry
 
 
 class PassthroughRenderer(BaseRenderer):
@@ -224,6 +225,82 @@ class MemberListViewSet(viewsets.ModelViewSet):
         if not updated:
             return Response({"error": "Eintrag nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
         return Response({"notes": notes})
+
+    @action(detail=False, methods=["post"], url_path="create_from_event_type")
+    def create_from_event_type(self, request):
+        """
+        POST /api/v1/member-lists/create_from_event_type/
+
+        Create a MemberList pre-populated by filtering members based on whether
+        they have (or don't have) a log entry of a given type, optionally within
+        a date range.
+        """
+        serializer = CreateFromEventTypeInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        name = data["name"]
+        description = data.get("description", "")
+        event_type_id = data.get("event_type_id")
+        invert = data.get("invert", False)
+        date_from = data.get("date_from")
+        date_to = data.get("date_to")
+
+        user = request.user
+        is_org_wide = user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+
+        # Determine member base set scoped to the user's accessible departments
+        dept_raw = request.query_params.get("department")
+        if is_org_wide:
+            if dept_raw:
+                try:
+                    dept_id = int(dept_raw)
+                    base_members = Member.objects.filter(departments__id=dept_id)
+                except (ValueError, TypeError):
+                    base_members = Member.objects.all()
+            else:
+                base_members = Member.objects.all()
+        else:
+            dept_ids = list(user.department_roles.values_list("department_id", flat=True))
+            if dept_raw:
+                try:
+                    dept_id = int(dept_raw)
+                    if dept_id not in dept_ids:
+                        return Response(
+                            {"detail": "Keine Berechtigung für diese Abteilung."},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+                    base_members = Member.objects.filter(departments__id=dept_id)
+                except (ValueError, TypeError):
+                    base_members = Member.objects.filter(departments__id__in=dept_ids)
+            else:
+                base_members = Member.objects.filter(departments__id__in=dept_ids)
+
+        base_members = base_members.distinct()
+
+        # Filter events matching the criteria
+        events_qs = Event.objects.filter(member__in=base_members)
+        if event_type_id is not None:
+            events_qs = events_qs.filter(type_id=event_type_id)
+        if date_from:
+            events_qs = events_qs.filter(datetime__gte=date_from)
+        if date_to:
+            events_qs = events_qs.filter(datetime__lte=date_to)
+
+        member_ids_with_events = set(events_qs.values_list("member_id", flat=True))
+
+        if invert:
+            selected_members = list(base_members.exclude(id__in=member_ids_with_events))
+        else:
+            selected_members = list(base_members.filter(id__in=member_ids_with_events))
+
+        member_list = MemberList.objects.create(name=name, description=description)
+        MemberListEntry.objects.bulk_create(
+            [MemberListEntry(member_list=member_list, member=m) for m in selected_members]
+        )
+
+        output_serializer = MemberListSerializer(member_list)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         summary="Export member list entries to Excel with column selection",

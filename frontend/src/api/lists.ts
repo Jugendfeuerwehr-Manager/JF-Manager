@@ -1,5 +1,5 @@
 import apiClient from './index'
-import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate } from '@/types/lists'
+import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate, CreateFromEventTypeParams } from '@/types/lists'
 import type { PaginatedResponse } from '@/types/api'
 import type { Attachment } from '@/types/qualifications'
 
@@ -97,5 +97,10 @@ export const memberListsApi = {
       params,
       responseType: 'blob',
     })
+  },
+
+  createFromEventType(params: CreateFromEventTypeParams, department?: number | null) {
+    const queryParams = department != null ? { department } : undefined
+    return apiClient.post<MemberList>('/member-lists/create_from_event_type/', params, { params: queryParams })
   },
 }

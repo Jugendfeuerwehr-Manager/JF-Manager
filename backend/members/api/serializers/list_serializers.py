@@ -63,3 +63,14 @@ class MemberListCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = MemberList
         fields = ["id", "name", "description", "color"]
+
+
+class CreateFromEventTypeInputSerializer(serializers.Serializer):
+    """Input serializer for the create_from_event_type action."""
+
+    name = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, default="", allow_blank=True)
+    event_type_id = serializers.IntegerField(required=False, allow_null=True)
+    invert = serializers.BooleanField(default=False)
+    date_from = serializers.DateField(required=False, allow_null=True)
+    date_to = serializers.DateField(required=False, allow_null=True)

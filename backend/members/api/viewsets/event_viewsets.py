@@ -2,7 +2,7 @@
 EventViewSet and EventTypeViewSet — member lifecycle event tracking.
 """
 
-from django.db.models import Q
+from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, viewsets
@@ -35,7 +35,7 @@ class EventTypeViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         user selects a concrete active department.
         """
         user = self.request.user
-        qs = EventType.objects.all()
+        qs = EventType.objects.annotate(event_count=Count("event"))
         requested_dept = self._resolve_requested_department(user)
 
         if self._user_is_org_wide(user):
