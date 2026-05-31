@@ -7,6 +7,7 @@ export interface EventType {
   id: number
   name: string
   department: number | null
+  event_count?: number
 }
 
 export interface EventTypeCreate {

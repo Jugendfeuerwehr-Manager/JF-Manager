@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { memberListsApi } from '@/api/lists'
 import { getApiErrorMessage } from '@/utils/apiError'
-import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate } from '@/types/lists'
+import { useDepartmentsStore } from '@/stores/departments'
+import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate, CreateFromEventTypeParams } from '@/types/lists'
 import type { Attachment } from '@/types/qualifications'
 
 export const useMemberListsStore = defineStore('memberLists', () => {
@@ -234,6 +235,19 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     }
   }
 
+  async function createFromEventType(params: CreateFromEventTypeParams): Promise<MemberList> {
+    saving.value = true
+    const departmentsStore = useDepartmentsStore()
+    const activeDeptId = departmentsStore.activeDepartmentId
+    try {
+      const response = await memberListsApi.createFromEventType(params, activeDeptId)
+      lists.value = [...lists.value, response.data].sort((a, b) => a.name.localeCompare(b.name))
+      return response.data
+    } finally {
+      saving.value = false
+    }
+  }
+
   return {
     lists,
     currentList,
@@ -258,5 +272,6 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     uploadListAttachment,
     deleteListAttachment,
     exportExcel,
+    createFromEventType,
   }
 })

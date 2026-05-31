@@ -35,3 +35,12 @@ export interface MemberListCreate {
 }
 
 export type MemberListUpdate = Partial<MemberListCreate>
+
+export interface CreateFromEventTypeParams {
+  name: string
+  description?: string
+  event_type_id?: number | null
+  invert: boolean
+  date_from?: string | null
+  date_to?: string | null
+}

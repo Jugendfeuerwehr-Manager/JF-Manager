@@ -210,9 +210,11 @@ class MemberCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class EventTypeSerializer(serializers.ModelSerializer):
+    event_count = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = EventType
-        fields = ["id", "name", "department"]
+        fields = ["id", "name", "department", "event_count"]
 
 
 class EventSerializer(serializers.ModelSerializer):

@@ -50,6 +50,10 @@ export const useEventsStore = defineStore('events', () => {
     }
   }
 
+  function invalidateEventTypesCache() {
+    eventTypesDepartmentContext.value = undefined
+  }
+
   async function fetchEventsForMember(memberId: number) {
     loading.value = true
     error.value = null
@@ -157,6 +161,7 @@ export const useEventsStore = defineStore('events', () => {
     
     // Actions
     fetchEventTypes,
+    invalidateEventTypesCache,
     fetchEventsForMember,
     createEvent,
     updateEvent,
