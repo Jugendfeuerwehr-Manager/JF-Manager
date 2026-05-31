@@ -385,6 +385,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .mobile-bottom-nav {

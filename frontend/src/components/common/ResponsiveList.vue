@@ -85,6 +85,12 @@ const resolveKey = (item: Record<string, unknown>) => {
   gap: 1rem;
 }
 
+@media (max-width: 768px) {
+  .mobile-list-grid {
+    gap: 0.75rem;
+  }
+}
+
 .mobile-list-empty {
   display: flex;
   flex-direction: column;

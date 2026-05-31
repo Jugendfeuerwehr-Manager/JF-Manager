@@ -119,7 +119,7 @@ function onSelect() {
 
 const compactLabel = computed(() => {
   const label = labelFor(selectedDeptId.value)
-  return label.length > 20 ? `${label.slice(0, 20)}...` : label
+  return label.length > 10 ? `${label.slice(0, 10)}…` : label
 })
 
 const compactMenuItems = computed<MenuItem[]>(() =>
@@ -169,7 +169,9 @@ function toggleCompactMenu(event: Event) {
 }
 
 .dept-compact-button {
-  max-width: 200px;
+  max-width: 120px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .dept-compact-button :deep(.p-button-label) {

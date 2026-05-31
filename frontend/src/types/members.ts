@@ -63,3 +63,44 @@ export interface MemberCreate {
   storage_location?: number | null
   avatar?: File | null
 }
+
+// ─── Members list view contracts ────────────────────────────────────────────
+
+export interface MemberFilters {
+  search: string
+  status: number | null
+  group: number | null
+  gender: string
+}
+
+export interface MemberLazyParams {
+  first: number
+  rows: number
+  sortField: string
+  sortOrder: 1 | -1
+}
+
+export interface MemberStatsBucket {
+  label: string
+  color?: string
+  count?: number
+}
+
+export interface MemberStats {
+  total: number
+  gender: {
+    male?: number
+    female?: number
+    diverse?: number
+    unknown?: number
+  }
+  age?: {
+    avg?: number | null
+    min?: number
+    max?: number
+    buckets?: MemberStatsBucket[]
+  } | null
+  by_status: { name: string; count: number; color: string }[]
+  can_swim: number
+  by_group: { name: string; count: number }[]
+}
