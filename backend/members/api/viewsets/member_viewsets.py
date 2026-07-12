@@ -14,7 +14,6 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
@@ -95,27 +94,6 @@ class PassthroughRenderer(BaseRenderer):
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
         return data
-
-
-class MemberProtectedConflict(APIException):
-    """Raised when a member cannot be deleted due to linked inventory transactions."""
-
-    status_code = 409
-    default_detail = "Member has linked transactions"
-    default_code = "protected"
-
-    def __init__(self, transaction_count: int, member_name: str) -> None:
-        super().__init__()
-        # Override detail directly to preserve integer type for transaction_count
-        self.detail = {
-            "error": "protected",
-            "detail": (
-                "Dieses Mitglied kann nicht gelöscht werden, da es mit Lagertransaktionen verknüpft ist. "
-                "Bitte wählen Sie eine Löschstrategie."
-            ),
-            "transaction_count": transaction_count,
-            "member_name": member_name,
-        }
 
 
 @extend_schema_view(
@@ -305,25 +283,60 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
         return Response(serializer.data)
 
-    def perform_destroy(self, instance):
-        """Delete member; raise MemberProtectedConflict (409) if transactions are linked."""
+    def destroy(self, request, *args, **kwargs):
+        """Delete member or return a 409 payload when inventory transactions are linked."""
+        instance = self.get_object()
+        transaction_count = self._get_member_transaction_count(instance)
+
+        # Avoid hitting model-level ProtectedError in the default delete flow.
+        if transaction_count:
+            return self._member_protected_response(instance, transaction_count)
+
         try:
-            instance.delete()
+            self.perform_destroy(instance)
         except ProtectedError:
+            # Race-condition fallback if a transaction is created concurrently.
             transaction_count = self._get_member_transaction_count(instance)
-            raise MemberProtectedConflict(
-                transaction_count=transaction_count,
-                member_name=f"{instance.name} {instance.lastname}",
-            ) from None
+            return self._member_protected_response(instance, transaction_count)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _get_member_transaction_count(self, member):
         """Returns total number of transactions linked to member's storage location."""
         from inventory.models import Transaction
 
-        storage = getattr(member, "personal_storage_location", None)
-        if not storage:
+        storage_ids = self._get_member_storage_location_ids(member)
+        if not storage_ids:
             return 0
-        return Transaction.objects.filter(Q(source=storage) | Q(target=storage)).count()
+        return Transaction.objects.filter(Q(source_id__in=storage_ids) | Q(target_id__in=storage_ids)).count()
+
+    def _get_member_storage_location_ids(self, member):
+        """Collect all storage location IDs that can reference the member."""
+        from inventory.models import StorageLocation
+
+        storage_ids = set()
+
+        if member.storage_location_id:
+            storage_ids.add(member.storage_location_id)
+
+        personal_ids = StorageLocation.objects.filter(member_id=member.id).values_list("id", flat=True)
+        storage_ids.update(personal_ids)
+
+        return list(storage_ids)
+
+    def _member_protected_response(self, member, transaction_count):
+        return Response(
+            {
+                "error": "protected",
+                "detail": (
+                    "Dieses Mitglied kann nicht gelöscht werden, da es mit Lagertransaktionen verknüpft ist. "
+                    "Bitte wählen Sie eine Löschstrategie."
+                ),
+                "transaction_count": transaction_count,
+                "member_name": f"{member.name} {member.lastname}".strip(),
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
 
     class _DeleteWithStrategySerializer(serializers.Serializer):
         STRATEGY_CHOICES = ["unlink", "anonymize", "delete_transactions"]
@@ -353,27 +366,24 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             member.delete()
         except ProtectedError:
             transaction_count = self._get_member_transaction_count(member)
-            raise MemberProtectedConflict(
-                transaction_count=transaction_count,
-                member_name=f"{member.name} {member.lastname}",
-            ) from None
+            return self._member_protected_response(member, transaction_count)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _apply_deletion_strategy(self, member, strategy):
         """Apply the chosen transaction strategy before deleting the member."""
         from inventory.models import Transaction
 
-        storage = getattr(member, "personal_storage_location", None)
-        if not storage:
+        storage_ids = self._get_member_storage_location_ids(member)
+        if not storage_ids:
             return
 
         if strategy == "delete_transactions":
-            Transaction.objects.filter(Q(source=storage) | Q(target=storage)).delete()
+            Transaction.objects.filter(Q(source_id__in=storage_ids) | Q(target_id__in=storage_ids)).delete()
         elif strategy in ("unlink", "anonymize"):
             former_name = f"{member.name} {member.lastname}" if strategy == "unlink" else "Ehemaliges Mitglied"
             # Use bulk update to bypass model-level clean() validation
-            Transaction.objects.filter(source=storage).update(source=None, former_member_name=former_name)
-            Transaction.objects.filter(target=storage).update(target=None, former_member_name=former_name)
+            Transaction.objects.filter(source_id__in=storage_ids).update(source=None, former_member_name=former_name)
+            Transaction.objects.filter(target_id__in=storage_ids).update(target=None, former_member_name=former_name)
 
     @extend_schema(
         summary="Export members to Excel with column selection",
