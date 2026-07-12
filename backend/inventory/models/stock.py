@@ -111,12 +111,21 @@ class Transaction(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, verbose_name="Benutzer"
     )
 
+    former_member_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Ehemaliges Mitglied",
+        help_text="Name des Mitglieds, das zum Zeitpunkt der Transaktion verknüpft war (wird gesetzt, wenn ein Mitglied gelöscht wird)",
+    )
+
     class Meta:
         verbose_name = "Transaktion"
         verbose_name_plural = "Transaktionen"
         ordering = ["-date"]
         permissions = [
             ("discard_items", "Can discard items"),
+            ("clear_former_member_names", "Can clear former member names from transactions"),
         ]
         constraints = [
             models.CheckConstraint(

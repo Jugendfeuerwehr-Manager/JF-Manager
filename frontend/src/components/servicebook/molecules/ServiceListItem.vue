@@ -1,5 +1,5 @@
 <template>
-  <div class="service-list-item">
+  <div class="service-list-item" >
     <!-- Header Row: Icon + Topic -->
     <div class="item-header">
       

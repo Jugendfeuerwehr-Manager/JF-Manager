@@ -6,7 +6,20 @@
         <i class="pi pi-history"></i>
         Transaktions-Verlauf
       </h3>
-      <Button label="Neue Transaktion" icon="pi pi-plus" @click="showTransactionDialog = true" />
+      <div class="header-actions">
+        <Button
+          v-if="canClearFormerMemberNames"
+          label="Ehemalige Mitgliedsnamen löschen (DSGVO)"
+          icon="pi pi-shield"
+          severity="warning"
+          outlined
+          size="small"
+          :loading="clearingNames"
+          v-tooltip.bottom="'Löscht alle gespeicherten Namen ehemaliger Mitglieder aus Transaktionen (DSGVO-Bereinigung)'"
+          @click="confirmClearFormerMemberNames"
+        />
+        <Button label="Neue Transaktion" icon="pi pi-plus" @click="showTransactionDialog = true" />
+      </div>
     </div>
 
     <!-- Filters -->
@@ -92,12 +105,12 @@
           <Column header="Von / Nach" style="width: 250px">
             <template #body="{ data }">
               <div class="location-flow">
-                <span v-if="data.source_name" class="source">
+                <span v-if="data.source_name" class="source" :class="{ 'former-member': !data.source && data.former_member_name }">
                   <i class="pi pi-sign-out"></i>
                   {{ data.source_name }}
                 </span>
                 <i v-if="data.source_name && data.target_name" class="pi pi-arrow-right flow-arrow"></i>
-                <span v-if="data.target_name" class="target">
+                <span v-if="data.target_name" class="target" :class="{ 'former-member': !data.target && data.former_member_name }">
                   <i class="pi pi-sign-in"></i>
                   {{ data.target_name }}
                 </span>
@@ -153,10 +166,17 @@ import Badge from 'primevue/badge'
 import TransactionTypeBadge from '../atoms/TransactionTypeBadge.vue'
 import TransactionDialog from '../molecules/TransactionDialog.vue'
 import { useInventoryStore } from '@/stores/inventory'
+import { useAuthStore } from '@/stores/auth'
+import { transactionsApi } from '@/api/inventory'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { TRANSACTION_TYPES } from '@/types/inventory'
 import type { TransactionType } from '@/types/inventory'
 
 const inventoryStore = useInventoryStore()
+const authStore = useAuthStore()
+const confirm = useConfirm()
+const toast = useToast()
 
 const filters = ref({
   search: '',
@@ -166,6 +186,11 @@ const filters = ref({
 })
 
 const showTransactionDialog = ref(false)
+const clearingNames = ref(false)
+
+const canClearFormerMemberNames = computed(() =>
+  authStore.hasPermission('inventory.clear_former_member_names')
+)
 
 const transactionTypeOptions = [
   { label: 'Alle Typen', value: null },
@@ -233,6 +258,34 @@ function onTransactionSuccess() {
   showTransactionDialog.value = false
 }
 
+function confirmClearFormerMemberNames() {
+  confirm.require({
+    message: 'Möchten Sie alle gespeicherten Namen ehemaliger Mitglieder aus Transaktionen löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.',
+    header: 'DSGVO-Bereinigung bestätigen',
+    icon: 'pi pi-shield',
+    acceptLabel: 'Ja, Namen löschen',
+    rejectLabel: 'Abbrechen',
+    acceptClass: 'p-button-warning',
+    accept: async () => {
+      clearingNames.value = true
+      try {
+        const response = await transactionsApi.clearFormerMemberNames()
+        toast.add({
+          severity: 'success',
+          summary: 'DSGVO-Bereinigung abgeschlossen',
+          detail: `${response.data.cleared_count} Transaktion${response.data.cleared_count !== 1 ? 'en' : ''} bereinigt.`,
+          life: 4000
+        })
+        await inventoryStore.fetchTransactions({ limit: 100 })
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Bereinigung fehlgeschlagen', life: 3000 })
+      } finally {
+        clearingNames.value = false
+      }
+    }
+  })
+}
+
 onMounted(() => {
   // Load transactions if not already loaded
   if (inventoryStore.transactions.length === 0) {
@@ -259,6 +312,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .filter-card {
@@ -299,6 +358,12 @@ onMounted(() => {
 
 .target {
   color: var(--green-500);
+}
+
+.source.former-member,
+.target.former-member {
+  color: var(--p-orange-600, #ea580c);
+  font-style: italic;
 }
 
 .flow-arrow {

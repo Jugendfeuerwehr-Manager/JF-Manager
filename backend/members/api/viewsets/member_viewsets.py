@@ -6,12 +6,13 @@ from datetime import date
 from io import BytesIO
 
 import openpyxl
+from django.db.models import ProtectedError, Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from openpyxl.styles import Alignment, Font, PatternFill
-from rest_framework import filters, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
@@ -274,6 +275,85 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         attachments = Attachment.objects.filter(content_type=content_type, object_id=member.id).order_by("-uploaded_at")
         serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
         return Response(serializer.data)
+
+    @extend_schema(
+        summary="Delete member",
+        description=(
+            "Deletes the member. Returns 409 if the member has linked inventory transactions "
+            "that must be handled first. Use the delete_with_strategy action in that case."
+        ),
+    )
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProtectedError:
+            transaction_count = self._get_member_transaction_count(instance)
+            return Response(
+                {
+                    "error": "protected",
+                    "detail": (
+                        "Dieses Mitglied kann nicht gelöscht werden, da es mit Lagertransaktionen verknüpft ist. "
+                        "Bitte wählen Sie eine Löschstrategie."
+                    ),
+                    "transaction_count": transaction_count,
+                    "member_name": f"{instance.name} {instance.lastname}",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+    def _get_member_transaction_count(self, member):
+        """Returns total number of transactions linked to member's storage location."""
+        from inventory.models import Transaction
+
+        storage = getattr(member, "personal_storage_location", None)
+        if not storage:
+            return 0
+        return Transaction.objects.filter(Q(source=storage) | Q(target=storage)).count()
+
+    class _DeleteWithStrategySerializer(serializers.Serializer):
+        STRATEGY_CHOICES = ["unlink", "anonymize", "delete_transactions"]
+        strategy = serializers.ChoiceField(choices=STRATEGY_CHOICES)
+
+    @extend_schema(
+        summary="Delete member with strategy for linked transactions",
+        description=(
+            "Deletes the member and handles linked inventory transactions according to the chosen strategy:\n"
+            "- **unlink**: Stores the member's full name as a string on each transaction, then removes the link.\n"
+            "- **anonymize**: Marks transactions as 'Ehemaliges Mitglied' (no name stored, DSGVO-compliant).\n"
+            "- **delete_transactions**: Permanently deletes all linked transactions (destructive, history lost)."
+        ),
+        request=_DeleteWithStrategySerializer,
+        responses={204: None, 400: None},
+    )
+    @action(detail=True, methods=["post"], url_path="delete-with-strategy")
+    def delete_with_strategy(self, request, pk=None):
+        member = self.get_object()
+        serializer = self._DeleteWithStrategySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        strategy = serializer.validated_data["strategy"]
+        self._apply_deletion_strategy(member, strategy)
+        member.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _apply_deletion_strategy(self, member, strategy):
+        """Apply the chosen transaction strategy before deleting the member."""
+        from inventory.models import Transaction
+
+        storage = getattr(member, "personal_storage_location", None)
+        if not storage:
+            return
+
+        if strategy == "delete_transactions":
+            Transaction.objects.filter(Q(source=storage) | Q(target=storage)).delete()
+        elif strategy in ("unlink", "anonymize"):
+            former_name = f"{member.name} {member.lastname}" if strategy == "unlink" else "Ehemaliges Mitglied"
+            # Use bulk update to bypass model-level clean() validation
+            Transaction.objects.filter(source=storage).update(source=None, former_member_name=former_name)
+            Transaction.objects.filter(target=storage).update(target=None, former_member_name=former_name)
 
     @extend_schema(
         summary="Export members to Excel with column selection",

@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from django.db.models import Count, Sum
 from django.utils import timezone
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -103,3 +103,18 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
                 "recent_discards": TransactionSerializer(recent_discards, many=True).data,
             }
         )
+
+    @action(detail=False, methods=["post"], url_path="clear-former-member-names")
+    def clear_former_member_names(self, request):
+        """Clear all former member names from transactions (DSGVO compliance).
+
+        Requires the ``inventory.clear_former_member_names`` permission.
+        Resets the ``former_member_name`` field on every transaction that has one.
+        """
+        if not request.user.has_perm("inventory.clear_former_member_names"):
+            return Response(
+                {"detail": "Keine Berechtigung zum Löschen ehemaliger Mitgliedsnamen."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        cleared_count = Transaction.objects.exclude(former_member_name="").update(former_member_name="")
+        return Response({"cleared_count": cleared_count})

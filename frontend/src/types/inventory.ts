@@ -192,6 +192,7 @@ export interface Transaction {
   user_username: string | null
   discard_reason: DiscardReason | null
   discard_reason_display: string | null
+  former_member_name: string
 }
 
 export interface TransactionCreate {
@@ -342,4 +343,19 @@ export interface InventoryStatistics {
   total_stock: number
   items_on_loan: number
   recent_transactions: Transaction[]
+}
+
+/**
+ * Deletion strategy options for members with linked inventory transactions
+ */
+export type MemberDeletionStrategy = 'unlink' | 'anonymize' | 'delete_transactions'
+
+/**
+ * Response returned when a member cannot be deleted directly due to linked transactions (HTTP 409)
+ */
+export interface MemberDeletionConflict {
+  error: 'protected'
+  detail: string
+  transaction_count: number
+  member_name: string
 }

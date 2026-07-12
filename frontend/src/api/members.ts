@@ -11,9 +11,11 @@ import type {
   EventType,
   PaginatedResponse
 } from '@/types/api'
+import type { MemberDeletionStrategy, MemberDeletionConflict } from '@/types/inventory'
 
 // Re-export commonly used types so other modules can import them from this file
 export type { Member, MemberCreate, Parent, ParentCreate, Status, Group, Event, EventType, PaginatedResponse }
+export type { MemberDeletionStrategy, MemberDeletionConflict }
 
 // Backwards-compatible alias for parameter type naming used in some stores
 export type MemberParams = MemberListParams
@@ -51,6 +53,10 @@ export const membersApi = {
 
   delete(id: number) {
     return apiClient.delete(`/members/${id}/`)
+  },
+
+  deleteWithStrategy(id: number, strategy: MemberDeletionStrategy) {
+    return apiClient.post(`/members/${id}/delete-with-strategy/`, { strategy })
   },
 
   getStatistics() {

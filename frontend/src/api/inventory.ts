@@ -301,6 +301,14 @@ export const transactionsApi = {
    */
   getDiscardStatistics() {
     return apiClient.get<DiscardStatistics>('/inventory/transactions/discard-statistics/')
+  },
+
+  /**
+   * Clear former member names from all transactions (DSGVO compliance).
+   * Requires the `inventory.clear_former_member_names` permission.
+   */
+  clearFormerMemberNames() {
+    return apiClient.post<{ cleared_count: number }>('/inventory/transactions/clear-former-member-names/')
   }
 }
 

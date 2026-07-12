@@ -200,6 +200,15 @@
      </TabView>
     </div>
   </div>
+
+  <MemberDeletionDialog
+    v-model="showDeletionDialog"
+    :member-name="deletionConflict.memberName"
+    :transaction-count="deletionConflict.transactionCount"
+    :loading="deletionLoading"
+    @confirm="handleDeletionStrategy"
+    @cancel="showDeletionDialog = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -209,6 +218,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { membersApi, parentsApi } from '@/api/members'
 import type { Member, Parent } from '@/types/api'
+import type { MemberDeletionStrategy } from '@/types/inventory'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
@@ -224,6 +234,7 @@ import QualificationsManager from '@/components/members/profile/QualificationsMa
 import SpecialTasksManager from '@/components/members/profile/SpecialTasksManager.vue'
 import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.vue'
 import AttendanceTab from '@/components/members/profile/AttendanceTab.vue'
+import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -236,6 +247,10 @@ const loading = ref(true)
 const loadingParents = ref(false)
 const menu = ref()
 const activeTab = ref(0) // track active tab to lazily mount tab panels
+
+const showDeletionDialog = ref(false)
+const deletionLoading = ref(false)
+const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 
 const memberId = Number(route.params.id)
 
@@ -337,7 +352,6 @@ const confirmDelete = () => {
           detail: 'Mitglied wurde gelöscht',
           life: 3000
         })
-
         if (orphanedParents.length > 0) {
           const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
           confirm.require({
@@ -373,16 +387,39 @@ const confirmDelete = () => {
         } else {
           router.push('/members')
         }
-      } catch {
-        toast.add({
-          severity: 'error',
-          summary: 'Fehler',
-          detail: 'Mitglied konnte nicht gelöscht werden',
-          life: 3000
-        })
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { status?: number; data?: { transaction_count?: number; member_name?: string } } }
+        if (axiosErr.response?.status === 409 && axiosErr.response.data?.transaction_count !== undefined) {
+          deletionConflict.value = {
+            memberName: axiosErr.response.data.member_name ?? member.value?.full_name ?? '',
+            transactionCount: axiosErr.response.data.transaction_count,
+          }
+          showDeletionDialog.value = true
+        } else {
+          toast.add({
+            severity: 'error',
+            summary: 'Fehler',
+            detail: 'Mitglied konnte nicht gelöscht werden',
+            life: 3000
+          })
+        }
       }
     }
   })
+}
+
+async function handleDeletionStrategy(strategy: MemberDeletionStrategy) {
+  deletionLoading.value = true
+  try {
+    await membersApi.deleteWithStrategy(memberId, strategy)
+    showDeletionDialog.value = false
+    toast.add({ severity: 'success', summary: 'Erfolg', detail: 'Mitglied wurde gelöscht', life: 3000 })
+    router.push('/members')
+  } catch {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Mitglied konnte nicht gelöscht werden', life: 3000 })
+  } finally {
+    deletionLoading.value = false
+  }
 }
 
 

@@ -171,14 +171,14 @@ class StockSerializer(serializers.ModelSerializer):
 
 class TransactionSerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source="get_item_name", read_only=True)
-    source_name = serializers.CharField(source="source.name", read_only=True)
-    target_name = serializers.CharField(source="target.name", read_only=True)
+    source_name = serializers.SerializerMethodField()
+    target_name = serializers.SerializerMethodField()
     user_username = serializers.CharField(source="user.username", read_only=True)
     discard_reason_display = serializers.CharField(source="get_discard_reason_display", read_only=True)
 
     class Meta:
         model = Transaction
-        read_only_fields = ["date", "user"]
+        read_only_fields = ["date", "user", "former_member_name"]
         fields = [
             "id",
             "transaction_type",
@@ -196,7 +196,22 @@ class TransactionSerializer(serializers.ModelSerializer):
             "user_username",
             "discard_reason",
             "discard_reason_display",
+            "former_member_name",
         ]
+
+    def get_source_name(self, obj):
+        if obj.source:
+            return obj.source.name
+        if obj.former_member_name:
+            return f"[{obj.former_member_name}]"
+        return None
+
+    def get_target_name(self, obj):
+        if obj.target:
+            return obj.target.name
+        if obj.former_member_name:
+            return f"[{obj.former_member_name}]"
+        return None
 
     def validate(self, attrs):
         """Custom validation for transaction data"""

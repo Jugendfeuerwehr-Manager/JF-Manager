@@ -74,6 +74,15 @@
       :exporting="membersStore.loading"
       @export="handleExportExcel"
     />
+
+    <MemberDeletionDialog
+      v-model="showDeletionDialog"
+      :member-name="deletionConflict.memberName"
+      :transaction-count="deletionConflict.transactionCount"
+      :loading="deletionLoading"
+      @confirm="handleDeletionStrategy"
+      @cancel="showDeletionDialog = false"
+    />
   </div>
 </template>
 
@@ -85,8 +94,10 @@ import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import { useMembersStore } from '@/stores/members'
 import { useDepartmentsStore } from '@/stores/departments'
-import { parentsApi } from '@/api/members'
+import { membersApi, parentsApi } from '@/api/members'
 import type { Member } from '@/types/members'
+import type { Parent } from '@/types/parents'
+import type { MemberDeletionStrategy } from '@/types/inventory'
 import { useMembersTableState } from '@/composables/useMembersTableState'
 import { useMembersMobileSearch } from '@/composables/useMembersMobileSearch'
 import { useMembersStats } from '@/composables/useMembersStats'
@@ -96,6 +107,7 @@ import MembersStatsPanel from '@/components/members/molecules/MembersStatsPanel.
 import MembersSearchOverlay from '@/components/members/molecules/MembersSearchOverlay.vue'
 import MembersList from '@/components/members/organisms/MembersList.vue'
 import MemberExportDialog from '@/components/members/molecules/MemberExportDialog.vue'
+import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
 
 const router = useRouter()
 const membersStore = useMembersStore()
@@ -104,6 +116,10 @@ const confirm = useConfirm()
 const toast = useToast()
 
 const showExportDialog = ref(false)
+const showDeletionDialog = ref(false)
+const deletionLoading = ref(false)
+const deletionConflict = ref({ memberName: '', transactionCount: 0 })
+let pendingDeleteMember: Member | null = null
 
 const { filters, lazyParams, loadData, onPage, onSort, onFilterChange } = useMembersTableState()
 const { isMobileSearchMode, onSearchFocus, closeMobileSearch } = useMembersMobileSearch()
@@ -133,25 +149,57 @@ const confirmDelete = (member: Member) => {
         loadData()
 
         if (orphanedParents.length > 0) {
-          const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
-          confirm.require({
-            message: `${orphanedParents.length === 1 ? 'Der folgende Elternteil hat' : 'Die folgenden Elternteile haben'} nun kein verknüpftes Mitglied mehr: ${parentNames}. Möchten Sie ${orphanedParents.length === 1 ? 'diesen' : 'diese'} ebenfalls löschen?`,
-            header: 'Eltern ohne Kind',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'Ja, löschen',
-            rejectLabel: 'Behalten',
-            accept: async () => {
-              try {
-                await Promise.all(orphanedParents.map((p) => parentsApi.delete(p.id)))
-                toast.add({ severity: 'success', summary: 'Eltern gelöscht', detail: `${orphanedParents.length === 1 ? 'Elternteil wurde' : 'Elternteile wurden'} gelöscht`, life: 3000 })
-              } catch {
-                toast.add({ severity: 'error', summary: 'Fehler', detail: 'Elternteile konnten nicht gelöscht werden', life: 3000 })
-              }
-            },
-          })
+          promptOrphanedParentsDeletion(orphanedParents)
         }
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { status?: number; data?: { transaction_count?: number; member_name?: string } } }
+        if (axiosErr.response?.status === 409 && axiosErr.response.data?.transaction_count !== undefined) {
+          deletionConflict.value = {
+            memberName: axiosErr.response.data.member_name ?? member.full_name,
+            transactionCount: axiosErr.response.data.transaction_count,
+          }
+          pendingDeleteMember = member
+          showDeletionDialog.value = true
+        } else {
+          toast.add({ severity: 'error', summary: 'Fehler', detail: 'Mitglied konnte nicht gelöscht werden', life: 3000 })
+        }
+      }
+    },
+  })
+}
+
+async function handleDeletionStrategy(strategy: MemberDeletionStrategy) {
+  if (!pendingDeleteMember) return
+  const member = pendingDeleteMember
+  deletionLoading.value = true
+  try {
+    await membersApi.deleteWithStrategy(member.id, strategy)
+    membersStore.members = membersStore.members.filter((m) => m.id !== member.id)
+    showDeletionDialog.value = false
+    pendingDeleteMember = null
+    toast.add({ severity: 'success', summary: 'Erfolg', detail: 'Mitglied wurde gelöscht', life: 3000 })
+    loadData()
+  } catch {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Mitglied konnte nicht gelöscht werden', life: 3000 })
+  } finally {
+    deletionLoading.value = false
+  }
+}
+
+function promptOrphanedParentsDeletion(orphanedParents: Parent[]) {
+  const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
+  confirm.require({
+    message: `${orphanedParents.length === 1 ? 'Der folgende Elternteil hat' : 'Die folgenden Elternteile haben'} nun kein verknüpftes Mitglied mehr: ${parentNames}. Möchten Sie ${orphanedParents.length === 1 ? 'diesen' : 'diese'} ebenfalls löschen?`,
+    header: 'Eltern ohne Kind',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Ja, löschen',
+    rejectLabel: 'Behalten',
+    accept: async () => {
+      try {
+        await Promise.all(orphanedParents.map((p) => parentsApi.delete(p.id)))
+        toast.add({ severity: 'success', summary: 'Eltern gelöscht', detail: `${orphanedParents.length === 1 ? 'Elternteil wurde' : 'Elternteile wurden'} gelöscht`, life: 3000 })
       } catch {
-        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Mitglied konnte nicht gelöscht werden', life: 3000 })
+        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Elternteile konnten nicht gelöscht werden', life: 3000 })
       }
     },
   })
