@@ -14,6 +14,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
@@ -96,6 +97,27 @@ class PassthroughRenderer(BaseRenderer):
         return data
 
 
+class MemberProtectedConflict(APIException):
+    """Raised when a member cannot be deleted due to linked inventory transactions."""
+
+    status_code = 409
+    default_detail = "Member has linked transactions"
+    default_code = "protected"
+
+    def __init__(self, transaction_count: int, member_name: str) -> None:
+        super().__init__()
+        # Override detail directly to preserve integer type for transaction_count
+        self.detail = {
+            "error": "protected",
+            "detail": (
+                "Dieses Mitglied kann nicht gelöscht werden, da es mit Lagertransaktionen verknüpft ist. "
+                "Bitte wählen Sie eine Löschstrategie."
+            ),
+            "transaction_count": transaction_count,
+            "member_name": member_name,
+        }
+
+
 @extend_schema_view(
     list=extend_schema(
         summary="List all members",
@@ -111,7 +133,14 @@ class PassthroughRenderer(BaseRenderer):
     create=extend_schema(summary="Create new member"),
     update=extend_schema(summary="Update member"),
     partial_update=extend_schema(summary="Partially update member"),
-    destroy=extend_schema(summary="Delete member"),
+    destroy=extend_schema(
+        summary="Delete member",
+        description=(
+            "Deletes the member. Returns 409 if the member has linked inventory transactions. "
+            "In that case use the delete-with-strategy action to resolve the conflict."
+        ),
+        responses={204: None, 409: None},
+    ),
 )
 class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Member.objects.select_related("status", "group", "storage_location").prefetch_related(
@@ -276,32 +305,16 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
         return Response(serializer.data)
 
-    @extend_schema(
-        summary="Delete member",
-        description=(
-            "Deletes the member. Returns 409 if the member has linked inventory transactions "
-            "that must be handled first. Use the delete_with_strategy action in that case."
-        ),
-    )
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
+    def perform_destroy(self, instance):
+        """Delete member; raise MemberProtectedConflict (409) if transactions are linked."""
         try:
-            self.perform_destroy(instance)
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            instance.delete()
         except ProtectedError:
             transaction_count = self._get_member_transaction_count(instance)
-            return Response(
-                {
-                    "error": "protected",
-                    "detail": (
-                        "Dieses Mitglied kann nicht gelöscht werden, da es mit Lagertransaktionen verknüpft ist. "
-                        "Bitte wählen Sie eine Löschstrategie."
-                    ),
-                    "transaction_count": transaction_count,
-                    "member_name": f"{instance.name} {instance.lastname}",
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
+            raise MemberProtectedConflict(
+                transaction_count=transaction_count,
+                member_name=f"{instance.name} {instance.lastname}",
+            ) from None
 
     def _get_member_transaction_count(self, member):
         """Returns total number of transactions linked to member's storage location."""
@@ -336,7 +349,14 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         strategy = serializer.validated_data["strategy"]
         self._apply_deletion_strategy(member, strategy)
-        member.delete()
+        try:
+            member.delete()
+        except ProtectedError:
+            transaction_count = self._get_member_transaction_count(member)
+            raise MemberProtectedConflict(
+                transaction_count=transaction_count,
+                member_name=f"{member.name} {member.lastname}",
+            ) from None
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _apply_deletion_strategy(self, member, strategy):
