@@ -1,6 +1,6 @@
 <template>
   <div class="services-list-container">
-    <div v-if="loading" class="loading-container">
+    <div v-if="loading && (!services || services.length === 0)" class="loading-container">
       <ProgressSpinner />
     </div>
 
@@ -18,6 +18,7 @@
     <DataView
       v-else
       :value="services"
+      :loading="loading"
       :paginator="totalRecords > pageSize"
       :rows="pageSize"
       :totalRecords="totalRecords"

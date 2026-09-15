@@ -121,6 +121,15 @@ export const useAuthStore = defineStore('auth', () => {
       const departmentsStore = useDepartmentsStore()
       await departmentsStore.fetchDepartments()
       departmentsStore.initializeActiveDepartment(response.data)
+
+      // Warm up members/servicebook/parents caches in the background for the
+      // active department (realm) so those modules feel instant. Never block
+      // on this — it's a fire-and-forget cache prime.
+      import('@/composables/useWarmup').then(({ useWarmup }) => {
+        const { warmupStores, watchDepartmentChanges } = useWarmup()
+        warmupStores()
+        watchDepartmentChanges()
+      })
     } catch (err) {
       error.value = 'Failed to fetch user data'
       throw err

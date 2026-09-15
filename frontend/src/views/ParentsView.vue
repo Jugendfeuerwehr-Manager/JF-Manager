@@ -38,8 +38,8 @@
       </template>
     </Card>
 
-    <!-- Loading State -->
-    <div v-if="parentsStore.loading" class="loading-container">
+    <!-- Loading State (only when there is no cached data yet) -->
+    <div v-if="parentsStore.loading && parentsStore.parents.length === 0" class="loading-container">
       <ProgressSpinner />
     </div>
 
@@ -48,6 +48,7 @@
       <template #content>
         <DataTable
           :value="parentsStore.parents"
+          :loading="parentsStore.loading"
           paginator
           :rows="currentRows"
           :first="tableFirst"
