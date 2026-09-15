@@ -199,16 +199,16 @@
         </TabPanel>
      </TabView>
     </div>
-  </div>
 
-  <MemberDeletionDialog
-    v-model="showDeletionDialog"
-    :member-name="deletionConflict.memberName"
-    :transaction-count="deletionConflict.transactionCount"
-    :loading="deletionLoading"
-    @confirm="handleDeletionStrategy"
-    @cancel="showDeletionDialog = false"
-  />
+    <MemberDeletionDialog
+      v-model="showDeletionDialog"
+      :member-name="deletionConflict.memberName"
+      :transaction-count="deletionConflict.transactionCount"
+      :loading="deletionLoading"
+      @confirm="handleDeletionStrategy"
+      @cancel="showDeletionDialog = false"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">

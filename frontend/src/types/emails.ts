@@ -9,12 +9,14 @@ export interface EmailMessage {
   subject: string
   body_html: string
   body_text: string
-  recipient_type: 'all' | 'group' | 'individual'
+  recipient_type: 'all' | 'group' | 'individual' | 'multiple'
   recipient_type_display: string
   recipient_group: number | null
   recipient_group_name: string | null
   recipient_member: number | null
   recipient_member_name: string | null
+  recipient_members: number[]
+  recipient_member_names: string[]
   status: 'draft' | 'sending' | 'sent' | 'failed' | 'partial'
   status_display: string
   total_recipients: number
@@ -45,9 +47,10 @@ export interface EmailMessageCreate {
   body_html: string
   body_text?: string
   layout?: string
-  recipient_type: 'all' | 'group' | 'individual'
+  recipient_type: 'all' | 'group' | 'individual' | 'multiple'
   recipient_group?: number
   recipient_member?: number
+  recipient_members?: number[]
   attachments?: File[]
 }
 
@@ -88,9 +91,10 @@ export interface EmailSendResponse {
 }
 
 export interface EmailRecipientCountRequest {
-  recipient_type: 'all' | 'group' | 'individual'
+  recipient_type: 'all' | 'group' | 'individual' | 'multiple'
   recipient_group?: number
   recipient_member?: number
+  recipient_members?: number[]
 }
 
 export interface EmailRecipientCountResponse {

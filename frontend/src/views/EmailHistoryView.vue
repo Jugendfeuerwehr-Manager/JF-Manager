@@ -78,6 +78,9 @@
               <span v-else-if="data.recipient_type === 'group' && data.recipient_group_name">
                 {{ data.recipient_group_name }}
               </span>
+              <span v-else-if="data.recipient_type === 'multiple' && data.recipient_member_names?.length">
+                {{ data.recipient_member_names.join(', ') }}
+              </span>
               <span v-else-if="data.recipient_type === 'all'">
                 -
               </span>
@@ -153,6 +156,9 @@
             </p>
             <p v-if="email.recipient_type === 'group' && email.recipient_group_name">
               <strong>Gruppe:</strong> {{ email.recipient_group_name }}
+            </p>
+            <p v-if="email.recipient_type === 'multiple' && email.recipient_member_names?.length">
+              <strong>Empfänger:</strong> {{ email.recipient_member_names.join(', ') }}
             </p>
             <p><strong>Datum:</strong> {{ formatDate(email.created_at) }}</p>
             <div class="stats">

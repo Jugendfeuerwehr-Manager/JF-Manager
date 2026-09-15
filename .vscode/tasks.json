@@ -54,6 +54,9 @@
                 "shell": {
                     "executable": "/bin/zsh",
                     "args": ["-c"]
+                },
+                "env": {
+                    "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
                 }
             },
             "presentation": {
@@ -86,7 +89,8 @@
                 "env": {
                     "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
                     "DJANGO_SECRET_KEY": "ABCdefGheiasdjkn13njkasndk1n3kjnkjansd",
-                    "REDIS_URL": "redis://localhost:6379"
+                    "REDIS_URL": "redis://localhost:6379",
+                    "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
                 }
             },
             "presentation": {

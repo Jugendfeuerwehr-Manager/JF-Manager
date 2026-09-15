@@ -47,6 +47,7 @@ class EmailMessageListSerializer(serializers.ModelSerializer):
     recipient_member_name = serializers.CharField(
         source="recipient_member.get_full_name", read_only=True, allow_null=True
     )
+    recipient_member_names = serializers.SerializerMethodField()
     recipient_type_display = serializers.CharField(source="get_recipient_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -63,6 +64,8 @@ class EmailMessageListSerializer(serializers.ModelSerializer):
             "recipient_group_name",
             "recipient_member",
             "recipient_member_name",
+            "recipient_members",
+            "recipient_member_names",
             "status",
             "status_display",
             "total_recipients",
@@ -84,6 +87,9 @@ class EmailMessageListSerializer(serializers.ModelSerializer):
             "sent_at",
         ]
 
+    def get_recipient_member_names(self, obj):
+        return [member.get_full_name() for member in obj.recipient_members.all()]
+
 
 class EmailMessageDetailSerializer(serializers.ModelSerializer):
     """Serializer for detailed email message view."""
@@ -93,6 +99,7 @@ class EmailMessageDetailSerializer(serializers.ModelSerializer):
     recipient_member_name = serializers.CharField(
         source="recipient_member.get_full_name", read_only=True, allow_null=True
     )
+    recipient_member_names = serializers.SerializerMethodField()
     recipient_type_display = serializers.CharField(source="get_recipient_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     recipients = EmailRecipientSerializer(many=True, read_only=True)
@@ -113,6 +120,8 @@ class EmailMessageDetailSerializer(serializers.ModelSerializer):
             "recipient_group_name",
             "recipient_member",
             "recipient_member_name",
+            "recipient_members",
+            "recipient_member_names",
             "status",
             "status_display",
             "total_recipients",
@@ -139,9 +148,14 @@ class EmailMessageDetailSerializer(serializers.ModelSerializer):
             "recipients",
         ]
 
+    def get_recipient_member_names(self, obj):
+        return [member.get_full_name() for member in obj.recipient_members.all()]
+
 
 class EmailMessageCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating email messages."""
+
+    recipient_members = serializers.PrimaryKeyRelatedField(queryset=Member.objects.all(), many=True, required=False)
 
     class Meta:
         model = EmailMessage
@@ -153,6 +167,7 @@ class EmailMessageCreateSerializer(serializers.ModelSerializer):
             "recipient_type",
             "recipient_group",
             "recipient_member",
+            "recipient_members",
             "department",
         ]
 
@@ -170,12 +185,23 @@ class EmailMessageCreateSerializer(serializers.ModelSerializer):
                 {"recipient_member": 'Mitglied muss ausgewählt werden, wenn Empfängertyp "Einzelnes Mitglied" ist.'}
             )
 
+        if recipient_type == "multiple" and not data.get("recipient_members"):
+            raise serializers.ValidationError(
+                {
+                    "recipient_members": 'Mindestens ein Mitglied muss ausgewählt werden, wenn Empfängertyp "Mehrere Mitglieder" ist.'
+                }
+            )
+
         return data
 
     def create(self, validated_data):
         """Set sender from request user."""
         validated_data["sender"] = self.context["request"].user
-        return super().create(validated_data)
+        recipient_members = validated_data.pop("recipient_members", None)
+        email_message = super().create(validated_data)
+        if recipient_members:
+            email_message.recipient_members.set(recipient_members)
+        return email_message
 
 
 class EmailTemplateVariablesSerializer(serializers.Serializer):

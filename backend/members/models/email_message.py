@@ -19,6 +19,12 @@ class EmailMessage(models.Model):
     """
     Model to store outgoing email messages sent to members and their parents.
     Tracks all emails sent through the system for history and auditing.
+
+    A single send action always maps to exactly one EmailMessage row, even when it
+    targets several recipients (recipient_type "all"/"group"/"multiple"), so the
+    E-Mail-Verlauf never shows one row per recipient for the same mass mail. Older
+    rows created before the "multiple" type existed can be retroactively merged with
+    `manage.py consolidate_email_history`.
     """
 
     STATUS_CHOICES = [
@@ -33,6 +39,7 @@ class EmailMessage(models.Model):
         ("all", "Alle Mitglieder"),
         ("group", "Gruppe"),
         ("individual", "Einzelnes Mitglied"),
+        ("multiple", "Mehrere Mitglieder"),
     ]
 
     LAYOUT_CHOICES = [
@@ -71,6 +78,13 @@ class EmailMessage(models.Model):
     )
     recipient_member = models.ForeignKey(
         Member, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Empfängermitglied"
+    )
+    # Used when recipient_type == "multiple": an explicit, non-group set of members targeted by one send.
+    recipient_members = models.ManyToManyField(
+        Member,
+        blank=True,
+        related_name="targeted_emails",
+        verbose_name="Empfängermitglieder",
     )
 
     # Status tracking

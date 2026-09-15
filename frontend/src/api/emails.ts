@@ -45,7 +45,10 @@ export const emailsApi = {
     if (attachments && attachments.length > 0) {
       const formData = new FormData()
       Object.entries(fields).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value === undefined || value === null) return
+        if (Array.isArray(value)) {
+          value.forEach((item) => formData.append(key, String(item)))
+        } else {
           formData.append(key, String(value))
         }
       })

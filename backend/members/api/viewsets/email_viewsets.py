@@ -275,6 +275,12 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                     {"error": "Mitglied nicht gefunden oder kein Zugriff"}, status=status.HTTP_404_NOT_FOUND
                 )
             recipients = EmailRecipientCollector.get_recipients_for_member(member)
+        elif recipient_type == "multiple":
+            member_ids = request.data.get("recipient_members") or []
+            if not member_ids:
+                return Response({"error": "recipient_members erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
+            members = member_qs.filter(id__in=member_ids)
+            recipients = EmailRecipientCollector.get_recipients_for_members(members, member_qs=member_qs)
         else:
             return Response({"error": "Ungültiger recipient_type"}, status=status.HTTP_400_BAD_REQUEST)
 

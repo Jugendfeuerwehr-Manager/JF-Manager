@@ -110,6 +110,19 @@ class EmailRecipientCollector:
         """Get all recipients for a single member."""
         return cls.get_member_emails(member)
 
+    @classmethod
+    def get_recipients_for_members(cls, members, member_qs=None) -> list[dict[str, str]]:
+        """Get all recipients for an explicit list/queryset of members (grouped 'multiple' send)."""
+        recipients = []
+        member_ids = [m.id for m in members]
+        base_qs = member_qs if member_qs is not None else Member.objects.all()
+        allowed_members = base_qs.filter(id__in=member_ids)
+
+        for member in allowed_members:
+            recipients.extend(cls.get_member_emails(member))
+
+        return recipients
+
 
 class EmailTemplateRenderer:
     """
@@ -208,6 +221,7 @@ class MemberEmailService:
         recipient_type: str,
         recipient_group: Group | None = None,
         recipient_member: Member | None = None,
+        recipient_members: list[Member] | None = None,
     ) -> EmailMessage:
         """
         Create a new email message record.
@@ -217,9 +231,10 @@ class MemberEmailService:
             subject: Email subject
             body_html: HTML body
             body_text: Plain text body
-            recipient_type: 'all', 'group', or 'individual'
+            recipient_type: 'all', 'group', 'individual', or 'multiple'
             recipient_group: Group instance if recipient_type is 'group'
             recipient_member: Member instance if recipient_type is 'individual'
+            recipient_members: Member instances if recipient_type is 'multiple'
 
         Returns:
             EmailMessage instance
@@ -234,6 +249,9 @@ class MemberEmailService:
             recipient_member=recipient_member,
             status="draft",
         )
+
+        if recipient_members:
+            email_message.recipient_members.set(recipient_members)
 
         return email_message
 
@@ -260,6 +278,10 @@ class MemberEmailService:
             )
         elif email_message.recipient_type == "individual":
             recipients = EmailRecipientCollector.get_recipients_for_member(email_message.recipient_member)
+        elif email_message.recipient_type == "multiple":
+            recipients = EmailRecipientCollector.get_recipients_for_members(
+                email_message.recipient_members.all(), member_qs=member_qs
+            )
         else:
             raise ValueError(f"Invalid recipient type: {email_message.recipient_type}")
 

@@ -443,34 +443,19 @@ const updateRecipientCount = async () => {
 
   try {
     loadingRecipients.value = true
-    // For multiple members, calculate count client-side
     if (form.value.recipient_type === 'multiple') {
       if (form.value.recipient_members.length === 0) {
         recipientCount.value = 0
         recipients.value = []
         return
       }
-      
-      // Calculate total unique recipients for all selected members
-      let allRecipients: Array<{ name: string; email: string; source: string }> = []
-      for (const memberId of form.value.recipient_members) {
-        const response = await emailsStore.getRecipientCount({
-          recipient_type: 'individual',
-          recipient_member: memberId
-        })
-        allRecipients = [...allRecipients, ...response.recipients.map(r => ({ name: r.name, email: r.email, source: 'Mitglied' }))]
-      }
-      
-      // Deduplicate by email
-      const uniqueMap = new Map()
-      allRecipients.forEach(r => {
-        if (!uniqueMap.has(r.email.toLowerCase())) {
-          uniqueMap.set(r.email.toLowerCase(), r)
-        }
+
+      const response = await emailsStore.getRecipientCount({
+        recipient_type: 'multiple',
+        recipient_members: form.value.recipient_members
       })
-      
-      recipients.value = Array.from(uniqueMap.values())
-      recipientCount.value = recipients.value.length
+      recipients.value = (response.recipients || []).map(r => ({ name: r.name, email: r.email, source: 'Mitglied' }))
+      recipientCount.value = response.count
       return
     }
     
@@ -545,36 +530,29 @@ const sendEmail = async () => {
           emailBody += '<br><br>---<br>' + userSignature.value
         }
 
-        // For multiple members, send individual emails to each member
+        // For multiple members, send one grouped email so history shows a single entry
         if (form.value.recipient_type === 'multiple') {
-          let totalSuccessful = 0
-          let totalFailed = 0
-          
-          for (const memberId of form.value.recipient_members) {
-            const result = await emailsStore.sendEmail({
-              subject: form.value.subject,
-              body_html: emailBody,
-              layout: layout.value,
-              recipient_type: 'individual',
-              recipient_member: memberId,
-              attachments: attachments.value.length > 0 ? attachments.value : undefined
-            })
-            totalSuccessful += result.result.successful
-            totalFailed += result.result.failed
-          }
-          
+          const result = await emailsStore.sendEmail({
+            subject: form.value.subject,
+            body_html: emailBody,
+            layout: layout.value,
+            recipient_type: 'multiple',
+            recipient_members: form.value.recipient_members,
+            attachments: attachments.value.length > 0 ? attachments.value : undefined
+          })
+
           toast.add({
             severity: 'success',
             summary: 'Erfolg',
-            detail: `E-Mail wurde an ${totalSuccessful} Empfänger gesendet`,
+            detail: `E-Mail wurde an ${result.result.successful} Empfänger gesendet`,
             life: 5000
           })
-          
-          if (totalFailed > 0) {
+
+          if (result.result.failed > 0) {
             toast.add({
               severity: 'warn',
               summary: 'Teilweise fehlgeschlagen',
-              detail: `${totalFailed} E-Mail(s) konnten nicht zugestellt werden`,
+              detail: `${result.result.failed} E-Mail(s) konnten nicht zugestellt werden`,
               life: 5000
             })
           }
