@@ -231,6 +231,26 @@
                   class="remove-avatar"
                 />
               </div>
+              <div v-if="avatarPreview" class="avatar-controls">
+                <Button
+                  icon="pi pi-undo"
+                  label="Nach links drehen"
+                  severity="secondary"
+                  outlined
+                  type="button"
+                  @click="rotateAvatar(-90)"
+                  :disabled="saving"
+                />
+                <Button
+                  icon="pi pi-refresh"
+                  label="Nach rechts drehen"
+                  severity="secondary"
+                  outlined
+                  type="button"
+                  @click="rotateAvatar(90)"
+                  :disabled="saving"
+                />
+              </div>
               <FileUpload
                 mode="basic"
                 accept="image/*"
@@ -238,6 +258,15 @@
                 :auto="false"
                 chooseLabel="Bild auswählen"
                 @select="onFileSelect"
+                :disabled="saving"
+              />
+              <Button
+                icon="pi pi-camera"
+                label="Kamera öffnen"
+                severity="secondary"
+                outlined
+                type="button"
+                @click="openCamera"
                 :disabled="saving"
               />
             </div>
@@ -266,11 +295,40 @@
     <div v-else class="loading-container">
       <ProgressSpinner />
     </div>
+
+    <Dialog
+      v-model:visible="cameraVisible"
+      modal
+      header="Profilbild aufnehmen"
+      :style="{ width: 'min(32rem, 95vw)' }"
+      @hide="closeCamera"
+    >
+      <div class="camera-dialog">
+        <template v-if="cameraPermissionPending">
+          <p>Für die Aufnahme wird Zugriff auf Ihre Kamera benötigt.</p>
+          <div class="camera-actions">
+            <Button label="Abbrechen" severity="secondary" type="button" @click="closeCamera" />
+            <Button label="Kamera erlauben" icon="pi pi-camera" type="button" @click="requestCameraPermission" />
+          </div>
+        </template>
+        <template v-else>
+          <video ref="cameraVideo" autoplay playsinline class="camera-video" />
+          <small v-if="cameraError" class="p-error">{{ cameraError }}</small>
+          <Button
+            label="Aufnehmen"
+            icon="pi pi-camera"
+            type="button"
+            :disabled="!!cameraError"
+            @click="capturePhoto"
+          />
+        </template>
+      </div>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
@@ -287,6 +345,7 @@ import Checkbox from 'primevue/checkbox'
 import SelectButton from 'primevue/selectbutton'
 import FileUpload from 'primevue/fileupload'
 import Image from 'primevue/image'
+import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { parseFlexibleDate, formatDateGerman } from '@/utils/dateParsing'
@@ -302,6 +361,11 @@ const saving = ref(false)
 const isEditMode = computed(() => !!route.params.id)
 const avatarFile = ref<File | null>(null)
 const avatarPreview = ref<string | null>(null)
+const cameraVisible = ref(false)
+const cameraPermissionPending = ref(false)
+const cameraError = ref('')
+const cameraVideo = ref<HTMLVideoElement | null>(null)
+let cameraStream: MediaStream | null = null
 
 const genderOptions = [
   { label: 'Männlich', value: 'male' },
@@ -372,7 +436,7 @@ onMounted(async () => {
         city: member.city,
         phone: member.phone,
         mobile: member.mobile,
-        notes: member.notes,
+        notes: member.notes ?? '',
         joined: member.joined ? new Date(member.joined) : null,
         identityCardNumber: member.identityCardNumber,
         canSwimm: member.canSwimm,
@@ -461,6 +525,83 @@ function onFileSelect(event: { files: File[] }) {
   }
 }
 
+function openCamera() {
+  cameraError.value = ''
+  cameraVisible.value = true
+  cameraPermissionPending.value = true
+}
+
+async function requestCameraPermission() {
+  cameraPermissionPending.value = false
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraError.value = 'Die Kamera wird von diesem Browser nicht unterstützt.'
+    return
+  }
+
+  await nextTick()
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    if (cameraVideo.value) {
+      cameraVideo.value.srcObject = cameraStream
+    }
+  } catch {
+    cameraError.value = 'Kamerazugriff nicht möglich. Bitte prüfen Sie die Browser-Berechtigung.'
+  }
+}
+
+function closeCamera() {
+  cameraStream?.getTracks().forEach((track) => track.stop())
+  cameraStream = null
+  cameraPermissionPending.value = false
+  if (cameraVideo.value) {
+    cameraVideo.value.srcObject = null
+  }
+  cameraVisible.value = false
+}
+
+function capturePhoto() {
+  const video = cameraVideo.value
+  if (!video || video.videoWidth === 0 || video.videoHeight === 0) return
+
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d')?.drawImage(video, 0, 0)
+  canvas.toBlob((blob) => {
+    if (!blob) return
+    const file = new File([blob], `member-avatar-${Date.now()}.jpg`, { type: 'image/jpeg' })
+    avatarFile.value = file
+    avatarPreview.value = URL.createObjectURL(file)
+    closeCamera()
+  }, 'image/jpeg', 0.92)
+}
+
+async function rotateAvatar(degrees: number) {
+  if (!avatarPreview.value) return
+  const image = new window.Image()
+  image.src = avatarPreview.value
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve()
+    image.onerror = () => reject(new Error('Bild konnte nicht geladen werden'))
+  })
+
+  const canvas = document.createElement('canvas')
+  const quarterTurn = Math.abs(degrees) % 180 === 90
+  canvas.width = quarterTurn ? image.height : image.width
+  canvas.height = quarterTurn ? image.width : image.height
+  const context = canvas.getContext('2d')
+  if (!context) return
+  context.translate(canvas.width / 2, canvas.height / 2)
+  context.rotate((degrees * Math.PI) / 180)
+  context.drawImage(image, -image.width / 2, -image.height / 2)
+  canvas.toBlob((blob) => {
+    if (!blob) return
+    const file = new File([blob], `member-avatar-${Date.now()}.jpg`, { type: 'image/jpeg' })
+    avatarFile.value = file
+    avatarPreview.value = URL.createObjectURL(file)
+  }, 'image/jpeg', 0.92)
+}
+
 function removeAvatar() {
   avatarFile.value = null
   avatarPreview.value = null
@@ -525,7 +666,7 @@ async function handleSubmit() {
     if (formData.city) formDataToSend.append('city', formData.city)
     if (formData.phone) formDataToSend.append('phone', formData.phone)
     if (formData.mobile) formDataToSend.append('mobile', formData.mobile)
-    if (formData.notes) formDataToSend.append('notes', formData.notes)
+    formDataToSend.append('notes', formData.notes)
     if (formData.joined) {
       const joinedStr = formData.joined.toISOString().split('T')[0]
       if (joinedStr) {
@@ -579,6 +720,8 @@ async function handleSubmit() {
     saving.value = false
   }
 }
+
+onBeforeUnmount(closeCamera)
 </script>
 
 <style scoped>
@@ -670,6 +813,25 @@ async function handleSubmit() {
   flex-direction: column;
   gap: 1rem;
   padding: 1rem 0;
+}
+
+.avatar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.camera-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.camera-video {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  background: var(--surface-900);
 }
 
 .avatar-preview {
