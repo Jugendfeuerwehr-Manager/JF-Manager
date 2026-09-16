@@ -16,7 +16,7 @@
           </IconField>
         </div>
 
-        <Dropdown
+        <Select
           v-if="!mobileSearchMode"
           v-model="localFilters.status"
           :options="statuses"
@@ -28,7 +28,7 @@
           @change="onFilterChange"
         />
 
-        <Dropdown
+        <Select
           v-if="!mobileSearchMode"
           v-model="localFilters.group"
           :options="groups"
@@ -40,7 +40,7 @@
           @change="onFilterChange"
         />
 
-        <Dropdown
+        <Select
           v-if="!mobileSearchMode"
           v-model="localFilters.gender"
           :options="genderOptions"
@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
 import Card from 'primevue/card'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'

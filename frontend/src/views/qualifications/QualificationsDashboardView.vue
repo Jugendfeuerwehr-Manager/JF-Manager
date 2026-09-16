@@ -38,8 +38,13 @@
     </div>
 
     <section v-if="isMobile" class="mobile-qualifications-section">
-      <TabView v-model:activeIndex="mobileTabIndex" class="mobile-tabview">
-        <TabPanel header="Qualifikationen" value="0">
+      <Tabs v-model:value="mobileTabIndex" class="mobile-tabview">
+        <TabList>
+          <Tab :value="0">Qualifikationen</Tab>
+          <Tab :value="1">Sonderaufgaben</Tab>
+        </TabList>
+        <TabPanels>
+        <TabPanel :value="0">
           <div class="mobile-tab-content">
             <Card class="mobile-filter-card">
               <template #content>
@@ -54,7 +59,7 @@
                   </div>
                   <div class="mobile-filter-field">
                     <label for="qual-mobile-status">Status</label>
-                    <Dropdown
+                    <Select
                       id="qual-mobile-status"
                       v-model="mobileFilters.status"
                       :options="mobileQualificationStatusOptions"
@@ -64,7 +69,7 @@
                   </div>
                   <div class="mobile-filter-field">
                     <label for="qual-mobile-type">Typ</label>
-                    <Dropdown
+                    <Select
                       id="qual-mobile-type"
                       v-model="mobileFilters.type"
                       :options="qualificationTypeOptions"
@@ -90,7 +95,7 @@
           </div>
         </TabPanel>
 
-        <TabPanel header="Sonderaufgaben" value="1">
+        <TabPanel :value="1">
           <div class="mobile-tab-content">
             <Card class="mobile-filter-card">
               <template #content>
@@ -105,7 +110,7 @@
                   </div>
                   <div class="mobile-filter-field">
                     <label for="special-mobile-status">Status</label>
-                    <Dropdown
+                    <Select
                       id="special-mobile-status"
                       v-model="mobileSpecialTaskFilters.status"
                       :options="mobileSpecialTaskStatusOptions"
@@ -115,7 +120,7 @@
                   </div>
                   <div class="mobile-filter-field">
                     <label for="special-mobile-type">Aufgabentyp</label>
-                    <Dropdown
+                    <Select
                       id="special-mobile-type"
                       v-model="mobileSpecialTaskFilters.task"
                       :options="specialTaskTypeOptions"
@@ -141,7 +146,8 @@
             />
           </div>
         </TabPanel>
-      </TabView>
+        </TabPanels>
+      </Tabs>
     </section>
 
     <!-- Statistics Cards -->
@@ -267,8 +273,11 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
-import Dropdown from 'primevue/dropdown'
-import TabView from 'primevue/tabview'
+import Select from 'primevue/select'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'

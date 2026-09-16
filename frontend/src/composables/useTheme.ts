@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch } from 'vue'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -81,12 +81,6 @@ export function useTheme() {
 
   watch(themeMode, (mode) => {
     applyTheme(mode)
-  })
-
-  onUnmounted(() => {
-    if (themeMode.value !== 'system') {
-      removeSystemListener()
-    }
   })
 
   return {

@@ -62,8 +62,8 @@
       />
     </div>
 
-    <!-- PrimeVue Sidebar for global navigation -->
-    <Sidebar
+    <!-- PrimeVue Drawer for global navigation -->
+    <Drawer
       v-model:visible="navigationVisible"
       position="left"
       class="menu-sidebar"
@@ -109,7 +109,7 @@
         class="w-full"
         @click="handleLogout"
       />
-    </Sidebar>
+    </Drawer>
 
     <!-- User Menu -->
     <Menu ref="userMenu" :model="userMenuItems" popup />
@@ -126,7 +126,7 @@ import { useTheme } from '@/composables/useTheme'
 import AppTopbar from './AppTopbar.vue'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
-import Sidebar from 'primevue/sidebar'
+import Drawer from 'primevue/drawer'
 import Divider from 'primevue/divider'
 import Menu from 'primevue/menu'
 import Toolbar from 'primevue/toolbar'

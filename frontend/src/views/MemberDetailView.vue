@@ -167,37 +167,47 @@
     </div>
     <ParentContacts :parents="parents" :loading="loadingParents" variant="detailed" class="col-12"/>
      <!-- Main Content Tabs -->
-    <TabView v-model:activeIndex="activeTab" :lazy="true" class="profile-tabs col-12">
+    <Tabs v-model:value="activeTab" lazy class="profile-tabs col-12">
+      <TabList>
+        <Tab value="0">Qualifikationen</Tab>
+        <Tab value="1">Sonderaufgaben</Tab>
+        <Tab value="2">Einträge</Tab>
+        <Tab value="3">Anwesenheit</Tab>
+        <Tab value="4">Ausrüstung</Tab>
+        <Tab value="5">Anhänge</Tab>
+      </TabList>
+      <TabPanels>
         <!-- Qualifications Tab -->
-        <TabPanel :value="0" header="Qualifikationen">
+        <TabPanel value="0">
           <QualificationsManager :member-id="memberId" />
         </TabPanel>
 
         <!-- Special Tasks Tab -->
-        <TabPanel :value="1" header="Sonderaufgaben">
+        <TabPanel value="1">
           <SpecialTasksManager :member-id="memberId" />
         </TabPanel>
 
         <!-- Events Tab -->
-        <TabPanel :value="2" header="Einträge">
+        <TabPanel value="2">
           <EventsManager :member-id="memberId" />
         </TabPanel>
 
         <!-- Attendance Tab -->
-        <TabPanel :value="3" header="Anwesenheit">
+        <TabPanel value="3">
           <AttendanceTab :member-id="memberId" />
         </TabPanel>
 
         <!-- Inventory Tab -->
-        <TabPanel :value="4" header="Ausrüstung">
+        <TabPanel value="4">
           <MemberEquipmentTab :member-id="memberId" />
         </TabPanel>
 
         <!-- Attachments Tab -->
-        <TabPanel :value="5" header="Anhänge">
+        <TabPanel value="5">
           <AttachmentsManager :member-id="memberId" />
         </TabPanel>
-     </TabView>
+      </TabPanels>
+    </Tabs>
     </div>
 
     <MemberDeletionDialog
@@ -223,7 +233,10 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import Tag from 'primevue/tag'
-import TabView from 'primevue/tabview'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -246,7 +259,7 @@ const parents = ref<Parent[]>([])
 const loading = ref(true)
 const loadingParents = ref(false)
 const menu = ref()
-const activeTab = ref(0) // track active tab to lazily mount tab panels
+const activeTab = ref('0') // track active tab to lazily mount tab panels
 
 const showDeletionDialog = ref(false)
 const deletionLoading = ref(false)

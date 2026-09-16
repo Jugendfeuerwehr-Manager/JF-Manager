@@ -1,6 +1,6 @@
 <template>
-  <!-- Mobile: PrimeVue Sidebar -->
-  <Sidebar
+  <!-- Mobile: PrimeVue Drawer -->
+  <Drawer
     v-model:visible="sidebarVisible"
     position="left"
     class="w-20rem"
@@ -27,7 +27,7 @@
         </a>
       </template>
     </Menu>
-  </Sidebar>
+  </Drawer>
 
   <!-- Desktop: Fixed Sidebar (collapsible) -->
   <aside v-if="!isMobile" :class="['sidebar', { 'sidebar-collapsed': isCollapsed }]">
@@ -67,7 +67,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAppSettings } from '@/composables/useAppSettings'
-import Sidebar from 'primevue/sidebar';
+import Drawer from 'primevue/drawer';
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';

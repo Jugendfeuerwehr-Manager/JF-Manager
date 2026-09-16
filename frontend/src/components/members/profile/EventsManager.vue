@@ -20,7 +20,7 @@
       <div class="event-form">
         <div class="field">
           <label for="event-type">Typ *</label>
-          <Dropdown 
+          <Select
             id="event-type"
             v-model="eventForm.type"
             :options="eventsStore.eventTypeOptions"
@@ -156,7 +156,7 @@ import type { Event, EventType } from '@/types/api'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Calendar from 'primevue/calendar'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import DataView from 'primevue/dataview'
 import Tag from 'primevue/tag'

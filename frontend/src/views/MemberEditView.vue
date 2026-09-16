@@ -43,12 +43,17 @@
                 <label for="birthday">Geburtsdatum</label>
                 <Calendar 
                   id="birthday" 
-                  v-model="formData.birthday" 
-                  date-format="yy-mm-dd"
+                  :model-value="formData.birthday" 
+                  date-format="dd.mm.yy"
                   :show-icon="true"
                   :max-date="new Date()"
-                  update-model-type="replace"
+                  update-model-type="date"
+                  :invalid="!!errors.birthday"
+                  @update:model-value="(val: Date | Date[] | (Date | null)[] | null | undefined) => onDatePick('birthday', val)"
+                  @input="(e: Event) => onDateTextInput('birthday', e)"
+                  @blur="(e: { value: string }) => commitDateField('birthday', e.value)"
                 />
+                <small v-if="errors.birthday" class="p-error">{{ errors.birthday }}</small>
               </div>
 
               <div class="field">
@@ -142,12 +147,17 @@
                 <label for="joined">Eintrittsdatum</label>
                 <Calendar 
                   id="joined" 
-                  v-model="formData.joined" 
-                  date-format="yy-mm-dd"
+                  :model-value="formData.joined" 
+                  date-format="dd.mm.yy"
                   :show-icon="true"
                   :max-date="new Date()"
-                  update-model-type="replace"
+                  update-model-type="date"
+                  :invalid="!!errors.joined"
+                  @update:model-value="(val: Date | Date[] | (Date | null)[] | null | undefined) => onDatePick('joined', val)"
+                  @input="(e: Event) => onDateTextInput('joined', e)"
+                  @blur="(e: { value: string }) => commitDateField('joined', e.value)"
                 />
+                <small v-if="errors.joined" class="p-error">{{ errors.joined }}</small>
               </div>
 
               <div class="field">
@@ -279,6 +289,7 @@ import FileUpload from 'primevue/fileupload'
 import Image from 'primevue/image'
 import ProgressSpinner from 'primevue/progressspinner'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { parseFlexibleDate, formatDateGerman } from '@/utils/dateParsing'
 
 const route = useRoute()
 const router = useRouter()
@@ -322,8 +333,14 @@ const formData = reactive({
 
 const errors = reactive({
   name: '',
-  lastname: ''
+  lastname: '',
+  birthday: '',
+  joined: ''
 })
+
+// Raw text the user is currently typing into the date fields, used to validate on blur/submit
+const birthdayText = ref('')
+const joinedText = ref('')
 
 const statusOptions = computed(() => membersStore.statusOptions)
 const groupOptions = computed(() => membersStore.groupOptions)
@@ -371,6 +388,9 @@ onMounted(async () => {
       if (!groupStillAvailable) {
         formData.group = null
       }
+
+      birthdayText.value = formatDateGerman(formData.birthday)
+      joinedText.value = formatDateGerman(formData.joined)
     } catch {
       toast.add({
         severity: 'error',
@@ -384,6 +404,50 @@ onMounted(async () => {
     }
   }
 })
+
+type DateField = 'birthday' | 'joined'
+
+const dateFieldTexts: Record<DateField, typeof birthdayText> = {
+  birthday: birthdayText,
+  joined: joinedText,
+}
+
+// Calendar popup selection always yields a valid Date (or null when cleared)
+function onDatePick(field: DateField, value: unknown) {
+  const date = value instanceof Date ? value : null
+  formData[field] = date
+  dateFieldTexts[field].value = formatDateGerman(date)
+  errors[field] = ''
+}
+
+function onDateTextInput(field: DateField, event: Event) {
+  dateFieldTexts[field].value = (event.target as HTMLInputElement).value
+}
+
+// Parses the raw typed text and commits it to formData, or sets a validation error
+function commitDateField(field: DateField, rawText: string): boolean {
+  const trimmed = rawText.trim()
+  if (!trimmed) {
+    formData[field] = null
+    errors[field] = ''
+    return true
+  }
+
+  const parsed = parseFlexibleDate(trimmed)
+  if (!parsed) {
+    errors[field] = 'Ungültiges Datum. Bitte z.B. TT.MM.JJJJ eingeben.'
+    return false
+  }
+  if (parsed > new Date()) {
+    errors[field] = 'Datum darf nicht in der Zukunft liegen.'
+    return false
+  }
+
+  formData[field] = parsed
+  dateFieldTexts[field].value = formatDateGerman(parsed)
+  errors[field] = ''
+  return true
+}
 
 function onFileSelect(event: { files: File[] }) {
   const file = event.files[0]
@@ -418,6 +482,14 @@ function validateForm(): boolean {
     isValid = false
   }
 
+  if (!commitDateField('birthday', birthdayText.value)) {
+    isValid = false
+  }
+
+  if (!commitDateField('joined', joinedText.value)) {
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -426,7 +498,7 @@ async function handleSubmit() {
     toast.add({
       severity: 'warn',
       summary: 'Validierung fehlgeschlagen',
-      detail: 'Bitte füllen Sie alle erforderlichen Felder aus',
+      detail: 'Bitte korrigieren Sie die markierten Felder',
       life: 3000
     })
     return
