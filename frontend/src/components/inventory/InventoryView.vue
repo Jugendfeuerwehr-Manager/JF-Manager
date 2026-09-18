@@ -10,10 +10,10 @@
       </template>
       <template #actions>
         <Button
-          label="Ausleihen"
+          label="Ausleihe & Einkleidung"
           icon="pi pi-user"
           severity="primary"
-          @click="showQuickLoanDialog = true"
+          @click="navigateToTab('lending')"
         />
         <Button
           label="Rückgabe"
@@ -35,18 +35,27 @@
         <InventoryDashboard @navigate="navigateToTab" />
       </TabPanel>
 
-      <!-- Member Loans -->
+      <!-- Lending & Outfitting Workbench -->
       <TabPanel :value="1">
         <template #header>
+          <i class="pi pi-user tab-icon"></i>
+          <span>Ausleihe & Einkleidung</span>
+        </template>
+        <LendingWorkbench />
+      </TabPanel>
+
+      <!-- Member Loans -->
+      <TabPanel :value="2">
+        <template #header>
           <i class="pi pi-users tab-icon"></i>
-          <span>Ausleihen</span>
+          <span>Aktive Ausleihen</span>
           <Badge v-if="memberLoansCount > 0" :value="memberLoansCount" severity="info" class="ml-2" />
         </template>
         <MemberLoansList />
       </TabPanel>
 
       <!-- Stock Overview -->
-      <TabPanel :value="2">
+      <TabPanel :value="3">
         <template #header>
           <i class="pi pi-box tab-icon"></i>
           <span>Bestand</span>
@@ -55,7 +64,7 @@
       </TabPanel>
 
       <!-- Items Management -->
-      <TabPanel :value="3">
+      <TabPanel :value="4">
         <template #header>
           <i class="pi pi-list tab-icon"></i>
           <span>Artikel</span>
@@ -64,7 +73,7 @@
       </TabPanel>
 
       <!-- Locations Management -->
-      <TabPanel :value="4">
+      <TabPanel :value="5">
         <template #header>
           <i class="pi pi-map-marker tab-icon"></i>
           <span>Lagerorte</span>
@@ -73,7 +82,7 @@
       </TabPanel>
 
       <!-- Categories Management -->
-      <TabPanel :value="5">
+      <TabPanel :value="6">
         <template #header>
           <i class="pi pi-tags tab-icon"></i>
           <span>Kategorien</span>
@@ -82,24 +91,27 @@
       </TabPanel>
 
       <!-- Transactions History -->
-      <TabPanel :value="6">
+      <TabPanel :value="7">
         <template #header>
           <i class="pi pi-history tab-icon"></i>
           <span>Verlauf</span>
         </template>
         <TransactionsHistory />
       </TabPanel>
+
+      <!-- Orders -->
+      <TabPanel :value="8">
+        <template #header>
+          <i class="pi pi-shopping-cart tab-icon"></i>
+          <span>Bestellungen</span>
+        </template>
+        <InventoryOrdersTab />
+      </TabPanel>
     </TabView>
 
     <!-- Global Transaction Dialog -->
     <TransactionDialog
       v-model="showTransactionDialog"
-      @success="onTransactionSuccess"
-    />
-
-    <!-- Quick Loan Dialog -->
-    <QuickLoanDialog
-      v-model="showQuickLoanDialog"
       @success="onTransactionSuccess"
     />
 
@@ -135,9 +147,10 @@ import LocationFileBrowser from '@/components/inventory/organisms/LocationFileBr
 import CategoriesManagement from '@/components/inventory/organisms/CategoriesManagement.vue'
 import TransactionsHistory from '@/components/inventory/organisms/TransactionsHistory.vue'
 import TransactionDialog from '@/components/inventory/molecules/TransactionDialog.vue'
-import QuickLoanDialog from '@/components/inventory/molecules/QuickLoanDialogV2.vue'
 import QuickReturnDialog from '@/components/inventory/molecules/QuickReturnDialog.vue'
 import InventoryDashboard from '@/components/inventory/organisms/InventoryDashboard.vue'
+import LendingWorkbench from '@/components/inventory/organisms/LendingWorkbench.vue'
+import InventoryOrdersTab from '@/components/inventory/organisms/InventoryOrdersTab.vue'
 
 import { useInventoryStore } from '@/stores/inventory'
 import { useToast } from 'primevue/usetoast'
@@ -147,13 +160,30 @@ const router = useRouter()
 const toast = useToast()
 const inventoryStore = useInventoryStore()
 
-const activeTab = ref(0)
-const showTransactionDialog = ref(false)
-const showQuickLoanDialog = ref(false)
-const showQuickReturnDialog = ref(false)
+interface Props {
+  initialTab?: string
+}
+const props = withDefaults(defineProps<Props>(), { initialTab: undefined })
 
 // Tab name mapping for URL routing
-const tabNames = ['overview', 'loans', 'stock', 'items', 'locations', 'categories', 'history']
+const tabNames = ['overview', 'lending', 'loans', 'stock', 'items', 'locations', 'categories', 'history', 'orders']
+
+function resolveInitialTabIndex(): number {
+  const queryTab = route.query.tab
+  if (typeof queryTab === 'string') {
+    const idx = tabNames.indexOf(queryTab)
+    if (idx >= 0) return idx
+  }
+  if (props.initialTab) {
+    const idx = tabNames.indexOf(props.initialTab)
+    if (idx >= 0) return idx
+  }
+  return 0
+}
+
+const activeTab = ref(resolveInitialTabIndex())
+const showTransactionDialog = ref(false)
+const showQuickReturnDialog = ref(false)
 
 // Computed
 const totalStock = computed(() => {
@@ -199,7 +229,6 @@ function navigateToTab(tabName: string) {
 
 function onTransactionSuccess() {
   showTransactionDialog.value = false
-  showQuickLoanDialog.value = false
   showQuickReturnDialog.value = false
   toast.add({
     severity: 'success',

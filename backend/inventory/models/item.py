@@ -28,6 +28,11 @@ class Item(models.Model):
         verbose_name="Hat Varianten",
         help_text="Markieren Sie dies, wenn dieser Artikel Varianten hat (z.B. verschiedene Größen)",
     )
+    is_standard_item = models.BooleanField(
+        default=False,
+        verbose_name="Standardartikel",
+        help_text="Artikel, der bei einer Ersteinkleidung standardmäßig benötigt wird.",
+    )
 
     # Legacy Felder
     size = models.CharField(max_length=100, blank=True, default="", verbose_name="Größe ")

@@ -12,14 +12,14 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ("name", "category", "base_unit", "total_stock", "identifier1", "identifier2")
-    list_filter = ("category", "base_unit")
+    list_display = ("name", "category", "is_standard_item", "base_unit", "total_stock", "identifier1", "identifier2")
+    list_filter = ("category", "base_unit", "is_standard_item")
     search_fields = ["name", "identifier1", "identifier2"]
     autocomplete_fields = ["rented_by", "category"]
     readonly_fields = ("total_stock",)
 
     fieldsets = (
-        ("Grunddaten", {"fields": ("name", "category", "base_unit", "attributes")}),
+        ("Grunddaten", {"fields": ("name", "category", "base_unit", "attributes", "is_standard_item")}),
         ("Inventarnummern", {"fields": ("identifier1", "identifier2")}),
         ("Legacy", {"fields": ("size", "rented_by"), "classes": ("collapse",)}),
         ("Statistiken", {"fields": ("total_stock",), "classes": ("collapse",)}),

@@ -23,14 +23,15 @@ class OrderStatusAdmin(admin.ModelAdmin):
 
 @admin.register(OrderableItem)
 class OrderableItemAdmin(admin.ModelAdmin):
-    list_display = ["name", "category", "has_sizes", "is_active", "created_at"]
+    list_display = ["name", "category", "inventory_item", "has_sizes", "is_active", "created_at"]
     list_editable = ["is_active"]
     list_filter = ["category", "has_sizes", "is_active"]
-    search_fields = ["name", "category", "description"]
+    search_fields = ["name", "category", "description", "inventory_item__name"]
+    autocomplete_fields = ["inventory_item"]
     ordering = ["category", "name"]
 
     fieldsets = (
-        ("Grunddaten", {"fields": ("name", "category", "description", "is_active")}),
+        ("Grunddaten", {"fields": ("name", "inventory_item", "category", "description", "is_active")}),
         (
             "Größen",
             {

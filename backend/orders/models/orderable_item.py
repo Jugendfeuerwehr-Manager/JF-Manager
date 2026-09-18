@@ -5,6 +5,16 @@ class OrderableItem(models.Model):
     """Bestellbare Ausrüstungsgegenstände"""
 
     name = models.CharField(max_length=200, verbose_name="Name")
+    inventory_item = models.ForeignKey(
+        "inventory.Item",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        unique=True,
+        related_name="orderable_items",
+        verbose_name="Inventarartikel",
+        help_text="Gemeinsamer Inventarartikel für Lagerbestand und Bestellungen.",
+    )
     category = models.CharField(max_length=100, verbose_name="Kategorie")
     description = models.TextField(blank=True, verbose_name="Beschreibung")
     has_sizes = models.BooleanField(default=True, verbose_name="Hat Größen")

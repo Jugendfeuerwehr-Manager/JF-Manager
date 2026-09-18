@@ -27,6 +27,7 @@ export interface OrderStatus {
 export interface OrderableItem {
   id: number
   name: string
+  inventory_item: number | null
   category: string
   description: string
   has_sizes: boolean
@@ -39,6 +40,7 @@ export interface OrderableItem {
 
 export interface OrderableItemCreate {
   name: string
+  inventory_item?: number | null
   category: string
   description?: string
   has_sizes: boolean

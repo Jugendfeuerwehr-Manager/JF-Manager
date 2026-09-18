@@ -7,7 +7,6 @@
     :closable="!loading"
   >
     <div class="quick-loan-form">
-      <!-- Step 1: Select Member -->
       <div class="field">
         <label>An wen wird ausgeliehen? *</label>
         <Dropdown
@@ -30,93 +29,42 @@
         </Dropdown>
       </div>
 
-      <!-- Step 2: Select Main Article -->
       <div class="field">
-        <label>Welcher Artikel? *</label>
-        <Dropdown
-          v-model="selectedItem"
-          :options="itemOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Artikel auswählen..."
-          filter
-          filter-placeholder="Artikel suchen..."
-          class="w-full"
-        >
-          <template #option="{ option }">
-            <div class="article-option">
-              <div class="article-info">
-                <span class="article-name">{{ option.label }}</span>
-                <Tag v-if="option.category" :value="option.category" severity="secondary" size="small" />
-              </div>
-              <div class="article-stock-info">
-                <Tag
-                  v-if="option.hasVariants"
-                  value="Größen wählbar"
-                  severity="info"
-                  size="small"
-                />
-                <Tag
-                  v-else
-                  :value="`${option.available} verfügbar`"
-                  :severity="option.available > 0 ? 'success' : 'danger'"
-                  size="small"
-                />
-              </div>
-            </div>
-          </template>
-          <template #value="{ value }">
-            <span v-if="value">{{ getItemLabel(value) }}</span>
-            <span v-else class="placeholder">Artikel auswählen...</span>
-          </template>
-        </Dropdown>
-      </div>
-
-      <!-- Step 2b: Select Size/Variant (if applicable) -->
-      <div v-if="selectedItemHasVariants" class="field">
-        <label>Welche Größe/Variante? *</label>
-        <div class="variant-grid">
-          <div
-            v-for="variant in variantOptions"
-            :key="variant.value"
-            class="variant-card"
-            :class="{
-              selected: selectedVariant === variant.value,
-              disabled: variant.available === 0
-            }"
-            @click="variant.available > 0 && (selectedVariant = variant.value)"
-          >
-            <div class="variant-size">{{ variant.sizeLabel }}</div>
-            <div class="variant-availability">
-              <Tag
-                :value="`${variant.available} verfügbar`"
-                :severity="variant.available > 0 ? 'success' : 'danger'"
-                size="small"
-              />
-            </div>
-            <div v-if="variant.bestSourceName" class="variant-source">
-              {{ variant.bestSourceName }}
-            </div>
-          </div>
+        <div class="field-heading">
+          <label>Artikel *</label>
+          <Button label="Artikel hinzufügen" icon="pi pi-plus" text size="small" @click="addLine" />
         </div>
-      </div>
-
-      <!-- Step 3: Quantity -->
-      <div class="field">
-        <label>Menge *</label>
-        <div class="quantity-row">
-          <InputNumber
-            v-model="quantity"
-            :min="1"
-            :max="maxQuantity"
-            show-buttons
-            button-layout="horizontal"
-            :input-style="{ width: '60px', textAlign: 'center' }"
+        <div v-for="(line, index) in lines" :key="line.id" class="loan-line">
+          <Dropdown
+            v-model="line.itemId"
+            :options="itemOptions"
+            option-label="label"
+            option-value="value"
+            placeholder="Artikel auswählen..."
+            filter
+            class="item-select"
+            @change="resetLine(line)"
           />
-          <span class="available-text">
-            von {{ maxQuantity }} verfügbar
-            <span v-if="bestSourceName" class="source-hint">(aus {{ bestSourceName }})</span>
-          </span>
+          <Dropdown
+            v-if="line.itemId && getItem(line.itemId)?.is_variant_parent"
+            v-model="line.variantId"
+            :options="getVariantOptions(line.itemId)"
+            option-label="label"
+            option-value="value"
+            placeholder="Größe/Variante"
+            class="variant-select"
+          />
+          <InputNumber v-model="line.quantity" :min="1" :max="getAvailable(line)" show-buttons class="quantity-input" />
+          <Tag :value="`${getAvailable(line)} verfügbar`" :severity="getAvailable(line) > 0 ? 'success' : 'danger'" />
+          <Button
+            icon="pi pi-trash"
+            severity="danger"
+            text
+            rounded
+            aria-label="Artikel entfernen"
+            :disabled="lines.length === 1"
+            @click="removeLine(index)"
+          />
         </div>
       </div>
 
@@ -126,7 +74,6 @@
         <InputText v-model="note" placeholder="z.B. Veranstaltung, Grund..." class="w-full" />
       </div>
 
-      <!-- Validation Message -->
       <Message v-if="validationMessage" severity="warn" :closable="false">
         {{ validationMessage }}
       </Message>
@@ -135,11 +82,11 @@
     <template #footer>
       <Button label="Abbrechen" severity="secondary" text @click="closeDialog" :disabled="loading" />
       <Button
-        label="Ausleihen"
+        label="Artikel ausgeben"
         icon="pi pi-check"
         :loading="loading"
         @click="submit"
-        :disabled="!isValid"
+        :disabled="!canSubmit"
       />
     </template>
   </Dialog>
@@ -155,17 +102,20 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useInventoryStore } from '@/stores/inventory'
+import { useMembersStore } from '@/stores/members'
 import { useToast } from 'primevue/usetoast'
 
 interface Props {
   modelValue: boolean
   preselectedMember?: number
   preselectedItem?: number // Item ID (not "item:123" format)
+  firstOutfitting?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   preselectedMember: undefined,
-  preselectedItem: undefined
+  preselectedItem: undefined,
+  firstOutfitting: false
 })
 
 const emit = defineEmits<{
@@ -174,122 +124,70 @@ const emit = defineEmits<{
 }>()
 
 const inventoryStore = useInventoryStore()
+const membersStore = useMembersStore()
 const toast = useToast()
 
 const loading = ref(false)
 const selectedMember = ref<number | null>(props.preselectedMember || null)
-const selectedItem = ref<number | null>(props.preselectedItem || null)
-const selectedVariant = ref<number | null>(null)
-const quantity = ref(1)
 const note = ref('')
+
+interface LoanLine {
+  id: number
+  itemId: number | null
+  variantId: number | null
+  quantity: number
+}
+
+let nextLineId = 1
+const lines = ref<LoanLine[]>([createLine(props.preselectedItem)])
 
 const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
 
-// Member options from member locations
 const memberOptions = computed(() => {
-  return inventoryStore.memberLocations.map((l) => ({
-    value: l.id,
-    label: l.name,
-    member_id: l.member
+  return membersStore.members.map((member) => ({ value: member.id, label: member.full_name }))
+})
+
+const itemOptions = computed(() => {
+  return inventoryStore.items.map((item) => ({
+    value: item.id,
+    label: item.name,
+    category: item.category_name || undefined
   }))
 })
 
-// Main article options (items only, not variants)
-const itemOptions = computed(() => {
-  const options: {
-    value: number
-    label: string
-    category?: string
-    hasVariants: boolean
-    available: number
-  }[] = []
+function createLine(itemId: number | undefined = undefined): LoanLine {
+  return { id: nextLineId++, itemId: itemId || null, variantId: null, quantity: 1 }
+}
 
-  inventoryStore.items.forEach((item) => {
-    if (item.is_variant_parent && item.variants?.length) {
-      // Item with variants - show total available across all variants
-      const totalAvailable = item.variants.reduce((sum, v) => {
-        const stockInfo = getAvailableStock('variant', v.id)
-        return sum + stockInfo.quantity
-      }, 0)
-      options.push({
-        value: item.id,
-        label: item.name,
-        category: item.category_name || undefined,
-        hasVariants: true,
-        available: totalAvailable
-      })
-    } else {
-      // Regular item without variants
-      const stockInfo = getAvailableStock('item', item.id)
-      options.push({
-        value: item.id,
-        label: item.name,
-        category: item.category_name || undefined,
-        hasVariants: false,
-        available: stockInfo.quantity
-      })
-    }
-  })
+function getItem(itemId: number | null) {
+  return itemId ? inventoryStore.items.find((item) => item.id === itemId) : undefined
+}
 
-  // Sort: available items first, then by name
-  return options.sort((a, b) => {
-    if (a.available > 0 && b.available === 0) return -1
-    if (a.available === 0 && b.available > 0) return 1
-    return a.label.localeCompare(b.label)
-  })
-})
+function getVariantOptions(itemId: number) {
+  return (getItem(itemId)?.variants || []).map((variant) => ({
+    value: variant.id,
+    label: Object.values(variant.variant_attributes || {}).join(' / ') || variant.sku
+  }))
+}
 
-// Check if selected item has variants
-const selectedItemHasVariants = computed(() => {
-  const itemOption = itemOptions.value.find((o) => o.value === selectedItem.value)
-  return itemOption?.hasVariants || false
-})
+function resetLine(line: LoanLine) {
+  line.variantId = null
+  line.quantity = 1
+}
 
-// Get selected item's full object
-const selectedItemObject = computed(() => {
-  if (!selectedItem.value) return null
-  return inventoryStore.items.find((i) => i.id === selectedItem.value)
-})
+function addLine() {
+  lines.value.push(createLine())
+}
 
-// Variant options for selected item
-const variantOptions = computed(() => {
-  if (!selectedItemObject.value?.is_variant_parent) return []
-
-  return (selectedItemObject.value.variants || []).map((variant) => {
-    const stockInfo = getAvailableStock('variant', variant.id)
-    
-    // Extract size label from variant attributes
-    const attrs = variant.variant_attributes || {}
-    const sizeLabel = attrs.größe || attrs.groesse || attrs.size || 
-                     attrs.Größe || attrs.Groesse || attrs.Size ||
-                     Object.values(attrs).join(' / ') || 
-                     `Variante ${variant.id}`
-
-    return {
-      value: variant.id,
-      sizeLabel,
-      available: stockInfo.quantity,
-      bestSourceId: stockInfo.locationId,
-      bestSourceName: stockInfo.locationName
-    }
-  }).sort((a, b) => {
-    // Sort by size (try to parse as number first)
-    const aNum = parseInt(a.sizeLabel)
-    const bNum = parseInt(b.sizeLabel)
-    if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum
-    return a.sizeLabel.localeCompare(b.sizeLabel)
-  })
-})
+function removeLine(index: number) {
+  if (lines.value.length > 1) lines.value.splice(index, 1)
+}
 
 // Get available stock from storage locations (not member locations)
-function getAvailableStock(type: string, id: number): {
-  quantity: number
-  locationId: number | null
-  locationName: string | null
-} {
+function getAvailableStock(type: 'item' | 'variant', id: number): number {
   const relevantStocks = inventoryStore.stocks.filter((s) => {
     const isCorrectItem = type === 'variant' ? s.item_variant === id : s.item === id
     if (!isCorrectItem) return false
@@ -297,89 +195,46 @@ function getAvailableStock(type: string, id: number): {
     const location = inventoryStore.locations.find((l) => l.id === s.location)
     return location && !location.is_member && s.quantity > 0
   })
-
-  if (relevantStocks.length === 0) {
-    return { quantity: 0, locationId: null, locationName: null }
-  }
-
-  // Sum all available and find best source
-  const totalQuantity = relevantStocks.reduce((sum, s) => sum + s.quantity, 0)
-  const bestStock = relevantStocks.reduce((best, current) =>
-    current.quantity > best.quantity ? current : best
-  )
-  const bestLocation = inventoryStore.locations.find((l) => l.id === bestStock.location)
-
-  return {
-    quantity: totalQuantity,
-    locationId: bestStock.location,
-    locationName: bestLocation?.name || null
-  }
+  return relevantStocks.reduce((sum, stock) => sum + stock.quantity, 0)
 }
 
-// Selected stock info (either from variant or item)
-const selectedStockInfo = computed(() => {
-  if (selectedItemHasVariants.value) {
-    if (!selectedVariant.value) return null
-    return variantOptions.value.find((v) => v.value === selectedVariant.value)
-  } else {
-    if (!selectedItem.value) return null
-    const stockInfo = getAvailableStock('item', selectedItem.value)
-    return {
-      available: stockInfo.quantity,
-      bestSourceId: stockInfo.locationId,
-      bestSourceName: stockInfo.locationName
-    }
-  }
-})
+function getAvailable(line: LoanLine) {
+  if (!line.itemId) return 0
+  return line.variantId
+    ? getAvailableStock('variant', line.variantId)
+    : getAvailableStock('item', line.itemId)
+}
 
-const maxQuantity = computed(() => {
-  return selectedStockInfo.value?.available || 0
-})
-
-const bestSourceName = computed(() => {
-  return selectedStockInfo.value?.bestSourceName
-})
-
-const isValid = computed(() => {
-  if (!selectedMember.value || !selectedItem.value) return false
-  if (selectedItemHasVariants.value && !selectedVariant.value) return false
-  return quantity.value > 0 && quantity.value <= maxQuantity.value
+const canSubmit = computed(() => {
+  if (!selectedMember.value || lines.value.length === 0) return false
+  const identities = lines.value.map((line) => `${line.variantId ? 'variant' : 'item'}:${line.variantId || line.itemId}`)
+  if (new Set(identities).size !== identities.length) return false
+  return lines.value.every((line) => {
+    const item = getItem(line.itemId)
+    return line.itemId && (!item?.is_variant_parent || line.variantId) && line.quantity > 0
+  })
 })
 
 const validationMessage = computed(() => {
-  if (selectedItem.value && !selectedItemHasVariants.value && maxQuantity.value === 0) {
-    return 'Dieser Artikel ist nicht auf Lager.'
-  }
-  if (selectedVariant.value && maxQuantity.value === 0) {
-    return 'Diese Größe ist nicht auf Lager.'
-  }
-  if (quantity.value > maxQuantity.value) {
-    return `Nur ${maxQuantity.value} verfügbar.`
-  }
+  const identities = lines.value.map((line) => `${line.variantId ? 'variant' : 'item'}:${line.variantId || line.itemId}`)
+  if (new Set(identities).size !== identities.length) return 'Ein Artikel darf nur einmal hinzugefügt werden.'
+  if (lines.value.some((line) => line.itemId && getAvailable(line) === 0)) return 'Mindestens ein Artikel ist nicht auf Lager.'
+  if (lines.value.some((line) => line.itemId && line.quantity > getAvailable(line))) return 'Eine Menge ist größer als der verfügbare Bestand.'
+  if (lines.value.some((line) => line.itemId && getItem(line.itemId)?.is_variant_parent && !line.variantId)) return 'Bitte für jeden Variantenartikel eine Größe auswählen.'
   return null
-})
-
-function getItemLabel(value: number): string {
-  const option = itemOptions.value.find((a) => a.value === value)
-  return option?.label || String(value)
-}
-
-// Reset variant when item changes
-watch(selectedItem, () => {
-  selectedVariant.value = null
-  quantity.value = 1
 })
 
 // Reset when dialog opens
 watch(
   () => props.modelValue,
-  (newVal) => {
+  async (newVal) => {
     if (newVal) {
       selectedMember.value = props.preselectedMember || null
-      selectedItem.value = props.preselectedItem || null
-      selectedVariant.value = null
-      quantity.value = 1
+      lines.value = props.firstOutfitting
+        ? inventoryStore.items.filter((item) => item.is_standard_item).map((item) => createLine(item.id))
+        : [createLine(props.preselectedItem)]
       note.value = ''
+      if (membersStore.members.length === 0) await membersStore.fetchMembers({ limit: 1000 })
     }
   }
 )
@@ -389,41 +244,34 @@ function closeDialog() {
 }
 
 async function submit() {
-  if (!isValid.value || !selectedItem.value || !selectedMember.value) return
+  if (!canSubmit.value || !selectedMember.value) return
 
   loading.value = true
   try {
-    // Determine if we're using a variant or item
-    const useVariant = selectedItemHasVariants.value && selectedVariant.value
-    const targetType = useVariant ? 'variant' : 'item'
-    const targetId = useVariant ? selectedVariant.value! : selectedItem.value
+    const hasMissingItems = lines.value.some((line) => getAvailable(line) < line.quantity)
+    const orderMissing = hasMissingItems
+      ? window.confirm('Einige Artikel sind nicht ausreichend vorhanden. Sollen diese bestellt werden?')
+      : false
 
-    const stockInfo = getAvailableStock(targetType, targetId)
-    const sourceId = stockInfo.locationId
+    if (hasMissingItems && !orderMissing) return
 
-    if (!sourceId) {
-      throw new Error('Keine Quelle gefunden')
-    }
-
-    await inventoryStore.createTransaction({
-      transaction_type: 'LOAN',
-      item: useVariant ? null : selectedItem.value,
-      item_variant: useVariant ? selectedVariant.value : null,
-      source: sourceId,
-      target: selectedMember.value,
-      quantity: quantity.value,
-      note: note.value
+    const result = await inventoryStore.batchLoan({
+      member: selectedMember.value,
+      items: lines.value.map((line) => ({
+        item: line.variantId ? null : line.itemId,
+        item_variant: line.variantId,
+        quantity: line.quantity
+      })),
+      note: note.value,
+      order_missing: orderMissing
     })
-
-    const itemLabel = getItemLabel(selectedItem.value)
-    const variantLabel = useVariant 
-      ? variantOptions.value.find((v) => v.value === selectedVariant.value)?.sizeLabel 
-      : ''
 
     toast.add({
       severity: 'success',
-      summary: 'Ausgeliehen',
-      detail: `${quantity.value}x ${itemLabel}${variantLabel ? ` (${variantLabel})` : ''} erfolgreich ausgeliehen.`,
+      summary: 'Ausgabe abgeschlossen',
+      detail: result.missing_count > 0
+        ? `${result.transactions.length} Artikel ausgegeben und ${result.missing_count} Artikel bestellt.`
+        : `${result.transactions.length} Artikel wurden erfolgreich ausgegeben.`,
       life: 3000
     })
 

@@ -175,7 +175,6 @@ const allMainNavItems: PermissionedItem[] = [
 const allSecondaryNavItems: PermissionedItem[] = [
   { ...createNavItem('Einträge', 'pi pi-list', '/log'), staffOnly: true },
   { ...createNavItem('Inventar', 'pi pi-box', '/inventory'), viewPerm: 'view_item' },
-  { ...createNavItem('Bestellungen', 'pi pi-shopping-cart', '/orders'), viewPerm: 'view_order' },
   { ...createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'), viewPerm: 'view_emailmessage' },
   { ...createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'), viewPerm: 'view_qualification' },
   { ...createNavItem('Ausbildung', 'pi pi-calendar', '/training'), viewPerm: 'view_trainingsession' },

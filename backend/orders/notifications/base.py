@@ -9,7 +9,6 @@ import logging
 from abc import ABC
 
 from django.conf import settings
-from django.urls import reverse
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -144,9 +143,8 @@ class NotificationContext:
         return self._context.copy()
 
     def _build_order_url(self, order):
-        """Build absolute URL for order detail page."""
-        path = reverse("orders:detail", kwargs={"pk": order.pk})
-        return f"{self.protocol}://{self.domain}{path}"
+        """Build absolute URL for the order detail page in the Vue SPA (no Django "orders" URL namespace exists)."""
+        return f"{settings.FRONTEND_URL}/orders/{order.pk}"
 
 
 class NotificationError(Exception):

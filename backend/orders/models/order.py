@@ -1,5 +1,5 @@
+from django.conf import settings
 from django.db import models
-from django.urls import reverse
 
 from members.models import Member
 from users.models import CustomUser
@@ -34,7 +34,8 @@ class Order(models.Model):
         return f"Bestellung #{self.pk} für {self.member}"
 
     def get_absolute_url(self):
-        return reverse("orders:detail", kwargs={"pk": self.pk})
+        # Orders are managed in the Vue SPA; there is no Django "orders" URL namespace.
+        return f"{settings.FRONTEND_URL}/orders/{self.pk}"
 
     def get_common_status(self):
         """Gibt den am häufigsten vorkommenden Status der Artikel zurück"""

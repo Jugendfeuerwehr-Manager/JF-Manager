@@ -27,6 +27,11 @@
             show-clear
             @change="onFilterChange"
           />
+
+          <div class="filter-checkbox">
+            <Checkbox v-model="filters.standardOnly" input-id="standardOnly" binary @change="onFilterChange" />
+            <label for="standardOnly">Nur Standardartikel</label>
+          </div>
         </div>
       </template>
     </Card>
@@ -53,6 +58,7 @@
                 <div class="item-name-row">
                   <span class="item-name">{{ data.name }}</span>
                   <Tag v-if="data.department === null" value="G" icon="pi pi-globe" severity="contrast" />
+                  <Tag v-if="data.is_standard_item" value="Standard" icon="pi pi-star-fill" severity="help" />
                 </div>
                 <span v-if="data.is_variant_parent" class="variant-info">
                   <i class="pi pi-sitemap"></i>
@@ -136,6 +142,7 @@ import Dropdown from 'primevue/dropdown'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import Checkbox from 'primevue/checkbox'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -150,7 +157,8 @@ const toast = useToast()
 
 const filters = ref({
   search: '',
-  category: null as number | null
+  category: null as number | null,
+  standardOnly: false
 })
 
 const showItemDialog = ref(false)
@@ -175,6 +183,11 @@ const filteredItems = computed(() => {
 
     // Filter by category
     if (filters.value.category !== null && item.category !== filters.value.category) {
+      return false
+    }
+
+    // Filter by standard-item flag
+    if (filters.value.standardOnly && !item.is_standard_item) {
       return false
     }
 
@@ -261,8 +274,16 @@ function onItemSaved() {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr auto;
   gap: 1rem;
+  align-items: center;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
 }
 
 .table-card {

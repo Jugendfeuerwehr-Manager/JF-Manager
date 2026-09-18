@@ -17,6 +17,7 @@ class OrderableItemSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "inventory_item",
             "category",
             "description",
             "has_sizes",
@@ -34,7 +35,7 @@ class OrderableItemMinimalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderableItem
-        fields = ["id", "name", "category", "has_sizes"]
+        fields = ["id", "name", "category", "has_sizes", "inventory_item"]
 
 
 class OrderableItemCreateUpdateSerializer(serializers.ModelSerializer):
@@ -42,7 +43,15 @@ class OrderableItemCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderableItem
-        fields = ["name", "category", "description", "has_sizes", "available_sizes", "is_active"]
+        fields = [
+            "name",
+            "inventory_item",
+            "category",
+            "description",
+            "has_sizes",
+            "available_sizes",
+            "is_active",
+        ]
 
     def validate_available_sizes(self, value):
         """Validate sizes format"""

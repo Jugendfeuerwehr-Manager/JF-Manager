@@ -153,11 +153,24 @@ const router = createRouter({
           component: () => import('@/components/inventory/InventoryView.vue'),
           props: { initialTab: 'locations' }
         },
-        // Orders
+        {
+          path: 'inventory/lending',
+          name: 'inventory-lending',
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'lending' }
+        },
+        {
+          path: 'inventory/orders',
+          name: 'inventory-orders',
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'orders' }
+        },
+        // Orders - integrated into the Inventory module as a tab
         {
           path: 'orders',
           name: 'orders',
-          component: () => import('@/views/OrdersView.vue')
+          component: () => import('@/components/inventory/InventoryView.vue'),
+          props: { initialTab: 'orders' }
         },
         {
           path: 'orders/analytics',

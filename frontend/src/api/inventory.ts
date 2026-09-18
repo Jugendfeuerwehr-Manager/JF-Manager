@@ -27,6 +27,8 @@ import type {
   StockResponse,
   Transaction,
   TransactionCreate,
+  BatchLoanCreate,
+  BatchLoanResponse,
   TransactionListParams,
   PaginatedResponse,
   MemberEquipmentResponse,
@@ -87,6 +89,15 @@ export const itemsApi = {
    */
   list(params?: ItemListParams) {
     return apiClient.get<PaginatedResponse<Item>>('/inventory/items/', { params })
+  },
+
+  /**
+   * List items configured for first outfitting
+   */
+  listStandardItems(params?: Omit<ItemListParams, 'is_standard_item'>) {
+    return apiClient.get<PaginatedResponse<Item>>('/inventory/items/', {
+      params: { ...params, is_standard_item: true }
+    })
   },
 
   /**
@@ -286,6 +297,13 @@ export const transactionsApi = {
    */
   create(data: TransactionCreate) {
     return apiClient.post<Transaction>('/inventory/transactions/', data)
+  },
+
+  /**
+   * Issue multiple available items to one member atomically
+   */
+  batchLoan(data: BatchLoanCreate) {
+    return apiClient.post<BatchLoanResponse>('/inventory/transactions/batch-loan/', data)
   },
 
   /**

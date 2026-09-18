@@ -4,17 +4,23 @@ ViewSets for Stock (read-only) and Transaction (full CRUD + discard statistics).
 
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction as db_transaction
 from django.db.models import Count, Sum
 from django.utils import timezone
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from inventory.models import Stock, Transaction
+from inventory.models import Stock, StorageLocation, Transaction
 from jf_manager_backend.mixins import BasePermissionedViewSet
+from members.models import Member
+from orders.api.serializers.order import OrderCreateSerializer, OrderDetailSerializer
+from orders.models import OrderableItem, OrderStatus
+from orders.services.inventory_sync import sync_orderable_item
 
-from .access import filter_item_department_queryset_for_user
-from .serializers import StockSerializer, TransactionSerializer
+from .access import filter_item_department_queryset_for_user, get_user_department_ids, is_org_wide_user
+from .serializers import BatchLoanSerializer, StockSerializer, TransactionSerializer
 
 
 class StockViewSet(BasePermissionedViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -52,6 +58,141 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()  # user is injected in serializer.create
+
+    @action(detail=False, methods=["post"], url_path="batch-loan")
+    def batch_loan(self, request):
+        """Issue several already available items to one member atomically."""
+        input_serializer = BatchLoanSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        data = input_serializer.validated_data
+
+        try:
+            member = Member.objects.get(pk=data["member"])
+        except Member.DoesNotExist:
+            return Response({"detail": "Mitglied nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not is_org_wide_user(request.user):
+            allowed_departments = get_user_department_ids(request.user)
+            member_departments = set(member.departments.values_list("id", flat=True))
+            if not member_departments.intersection(allowed_departments):
+                return Response({"detail": "Kein Zugriff auf dieses Mitglied."}, status=status.HTTP_403_FORBIDDEN)
+
+        with db_transaction.atomic():
+            member_location = StorageLocation.objects.filter(member=member, is_member=True).first()
+            if member_location is None:
+                member_location = StorageLocation.objects.create(
+                    name=f"{member.name} {member.lastname}",
+                    is_member=True,
+                    member=member,
+                    department=member.departments.first(),
+                )
+
+            source_stocks = []
+            missing_lines = []
+            for line in data["items"]:
+                stock_filter = {"item": line.get("item"), "item_variant": line.get("item_variant")}
+                stocks = list(
+                    Stock.objects.select_for_update()
+                    .filter(**stock_filter, quantity__gt=0, location__is_member=False)
+                    .select_related("location")
+                    .order_by("-quantity", "id")
+                )
+                available = sum(stock.quantity for stock in stocks)
+                if available < line["quantity"]:
+                    if not data["order_missing"]:
+                        raise serializers.ValidationError(
+                            {
+                                "items": [
+                                    "Nicht genügend Bestand. Für fehlende Artikel muss die Bestellung bestätigt werden."
+                                ]
+                            }
+                        )
+                    if available:
+                        source_stocks.append(({**line, "quantity": available}, stocks))
+                    missing_lines.append({**line, "quantity": line["quantity"] - available})
+                    continue
+                source_stocks.append((line, stocks))
+
+            order = None
+            if missing_lines:
+                order_lines = []
+                default_order_status = OrderStatus.objects.filter(code="NEW").first()
+                if not default_order_status:
+                    default_order_status = OrderStatus.objects.filter(code="ORDERED").first()
+                if not default_order_status:
+                    default_order_status = OrderStatus.objects.first()
+                if default_order_status is None:
+                    raise serializers.ValidationError({"order": "Kein Bestellstatus ist konfiguriert."})
+
+                for line in missing_lines:
+                    inventory_item = line.get("item") or line["item_variant"].parent_item
+                    orderable_item = (
+                        OrderableItem.objects.filter(inventory_item=inventory_item, is_active=True)
+                        .order_by("id")
+                        .first()
+                    )
+                    if orderable_item is None:
+                        # Orders always reference an inventory item; provision the bridge row on demand.
+                        orderable_item = sync_orderable_item(inventory_item)
+                    size = ""
+                    if line.get("item_variant"):
+                        size = next(iter(line["item_variant"].variant_attributes.values()), "")
+                    order_lines.append(
+                        {
+                            "item": orderable_item.pk,
+                            "size": size,
+                            "quantity": line["quantity"],
+                            "status": default_order_status.pk,
+                            "notes": "Vorgemerkte Ausleihe aus der Kleiderkammer",
+                        }
+                    )
+
+                order_serializer = OrderCreateSerializer(
+                    data={
+                        "member": member.pk,
+                        "department": member.departments.first().pk if member.departments.exists() else None,
+                        "notes": data["note"] or "Bestellung für fehlende Ausleihartikel",
+                        "items": order_lines,
+                    },
+                    context={"request": request},
+                )
+                order_serializer.is_valid(raise_exception=True)
+                order = order_serializer.save()
+
+            created_transactions = []
+            for line, stocks in source_stocks:
+                remaining = line["quantity"]
+                for source_stock in stocks:
+                    quantity = min(remaining, source_stock.quantity)
+                    transaction_serializer = TransactionSerializer(
+                        data={
+                            "transaction_type": "LOAN",
+                            "item": line.get("item").pk if line.get("item") else None,
+                            "item_variant": line.get("item_variant").pk if line.get("item_variant") else None,
+                            "source": source_stock.location.pk,
+                            "target": member_location.pk,
+                            "quantity": quantity,
+                            "note": data["note"],
+                        },
+                        context={"request": request},
+                    )
+                    transaction_serializer.is_valid(raise_exception=True)
+                    try:
+                        created_transactions.append(transaction_serializer.save())
+                    except DjangoValidationError as exc:
+                        raise serializers.ValidationError({"items": exc.messages}) from exc
+                    remaining -= quantity
+                    if remaining == 0:
+                        break
+
+        return Response(
+            {
+                "transactions": TransactionSerializer(created_transactions, many=True).data,
+                "order": OrderDetailSerializer(order).data if order else None,
+                "missing_count": len(missing_lines),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=False, methods=["get"], url_path="discard-statistics")
     def discard_statistics(self, request):

@@ -70,6 +70,7 @@ export interface Item {
   base_unit: string
   attributes: Record<string, unknown> | null
   is_variant_parent: boolean
+  is_standard_item: boolean
   // Legacy fields
   size: string
   identifier1: string
@@ -86,6 +87,7 @@ export interface ItemCreate {
   base_unit?: string
   attributes?: Record<string, unknown> | null
   is_variant_parent?: boolean
+  is_standard_item?: boolean
   size?: string
   identifier1?: string
   identifier2?: string
@@ -97,6 +99,7 @@ export interface ItemUpdate {
   base_unit?: string
   attributes?: Record<string, unknown> | null
   is_variant_parent?: boolean
+  is_standard_item?: boolean
   size?: string
   identifier1?: string
   identifier2?: string
@@ -206,6 +209,25 @@ export interface TransactionCreate {
   discard_reason?: DiscardReason | null
 }
 
+export interface BatchLoanLine {
+  item?: number | null
+  item_variant?: number | null
+  quantity: number
+}
+
+export interface BatchLoanCreate {
+  member: number
+  items: BatchLoanLine[]
+  note?: string
+  order_missing?: boolean
+}
+
+export interface BatchLoanResponse {
+  transactions: Transaction[]
+  order: import('@/types/orders').Order | null
+  missing_count: number
+}
+
 /**
  * API list parameters
  */
@@ -220,6 +242,7 @@ export interface ItemListParams {
   search?: string
   category?: number
   is_variant_parent?: boolean
+  is_standard_item?: boolean
   limit?: number
   offset?: number
 }

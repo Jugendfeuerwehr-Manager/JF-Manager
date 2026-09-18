@@ -104,7 +104,6 @@ const menuItems: MenuItem[] = [
   { label: 'Eltern', icon: 'pi pi-user', route: '/parents' },
   { separator: true },
   { label: 'Inventar', icon: 'pi pi-box', route: '/inventory' },
-  { label: 'Bestellungen', icon: 'pi pi-shopping-cart', route: '/orders' },
   { separator: true },
   { label: 'E-Mail senden', icon: 'pi pi-envelope', route: '/emails/compose' },
   { label: 'E-Mail-Verlauf', icon: 'pi pi-history', route: '/emails/history' },

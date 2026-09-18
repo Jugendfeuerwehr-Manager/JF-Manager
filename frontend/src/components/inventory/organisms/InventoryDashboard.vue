@@ -72,11 +72,11 @@
         <template #content>
           <div class="quick-actions">
             <Button
-              label="Artikel ausleihen"
+              label="Ausleihe & Einkleidung"
               icon="pi pi-user"
               class="action-button"
               severity="primary"
-              @click="showQuickLoanDialog = true"
+              @click="$emit('navigate', 'lending')"
             />
             <Button
               label="Rückgabe erfassen"
@@ -200,12 +200,6 @@
       @success="onTransactionSuccess"
     />
 
-    <!-- Quick Loan Dialog -->
-    <QuickLoanDialog
-      v-model="showQuickLoanDialog"
-      @success="onTransactionSuccess"
-    />
-
     <!-- Quick Return Dialog -->
     <QuickReturnDialog
       v-model="showQuickReturnDialog"
@@ -222,7 +216,6 @@ import Avatar from 'primevue/avatar'
 import Badge from 'primevue/badge'
 import TransactionTypeBadge from '../atoms/TransactionTypeBadge.vue'
 import TransactionDialog from '../molecules/TransactionDialog.vue'
-import QuickLoanDialog from '../molecules/QuickLoanDialogV2.vue'
 import QuickReturnDialog from '../molecules/QuickReturnDialog.vue'
 import { useInventoryStore } from '@/stores/inventory'
 import type { TransactionType } from '@/types/inventory'
@@ -234,7 +227,6 @@ defineEmits<{
 const inventoryStore = useInventoryStore()
 
 const showTransactionDialog = ref(false)
-const showQuickLoanDialog = ref(false)
 const showQuickReturnDialog = ref(false)
 const transactionType = ref<TransactionType>('LOAN')
 
@@ -294,7 +286,6 @@ function openTransactionDialog(type: TransactionType) {
 
 function onTransactionSuccess() {
   showTransactionDialog.value = false
-  showQuickLoanDialog.value = false
   showQuickReturnDialog.value = false
 }
 </script>

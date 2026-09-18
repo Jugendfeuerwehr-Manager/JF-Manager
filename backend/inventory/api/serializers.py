@@ -59,6 +59,7 @@ class ItemSerializer(serializers.ModelSerializer):
             "base_unit",
             "attributes",
             "is_variant_parent",
+            "is_standard_item",
             # legacy fields (kept for backward compat of forms)
             "size",
             "identifier1",
@@ -262,3 +263,31 @@ class TransactionSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             validated_data.setdefault("user", request.user)
         return super().create(validated_data)
+
+
+class BatchLoanLineSerializer(serializers.Serializer):
+    item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all(), required=False, allow_null=True)
+    item_variant = serializers.PrimaryKeyRelatedField(
+        queryset=ItemVariant.objects.select_related("parent_item"), required=False, allow_null=True
+    )
+    quantity = serializers.IntegerField(min_value=1)
+
+    def validate(self, attrs):
+        if (attrs.get("item") is None) == (attrs.get("item_variant") is None):
+            raise serializers.ValidationError("Genau ein Artikel oder eine Artikel-Variante ist erforderlich.")
+        return attrs
+
+
+class BatchLoanSerializer(serializers.Serializer):
+    member = serializers.IntegerField(min_value=1)
+    items = BatchLoanLineSerializer(many=True, allow_empty=False)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+    order_missing = serializers.BooleanField(required=False, default=False)
+
+    def validate_items(self, value):
+        identities = [
+            ("item", line["item"].pk) if line.get("item") else ("variant", line["item_variant"].pk) for line in value
+        ]
+        if len(identities) != len(set(identities)):
+            raise serializers.ValidationError("Ein Artikel darf in einer Sammelausgabe nur einmal vorkommen.")
+        return value

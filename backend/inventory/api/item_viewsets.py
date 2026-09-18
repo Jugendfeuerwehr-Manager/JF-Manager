@@ -48,7 +48,7 @@ class ItemViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets
     serializer_class = ItemSerializer
     include_central_records = True
     search_fields = ["name", "category__name", "identifier1", "identifier2"]
-    filterset_fields = ["category", "is_variant_parent"]
+    filterset_fields = ["category", "is_variant_parent", "is_standard_item"]
 
     @action(detail=True, methods=["get"], url_path="variants")
     def variants(self, request, pk=None):

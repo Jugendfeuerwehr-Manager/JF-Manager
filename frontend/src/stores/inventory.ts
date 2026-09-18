@@ -35,6 +35,7 @@ import type {
   StockListParams,
   Transaction,
   TransactionCreate,
+  BatchLoanCreate,
   TransactionListParams,
   MemberLoan
 } from '@/types/inventory'
@@ -243,6 +244,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     } finally {
       itemsLoading.value = false
     }
+  }
+
+  async function fetchStandardItems(params?: Omit<ItemListParams, 'is_standard_item'>) {
+    return fetchItems({ ...params, is_standard_item: true })
   }
 
   async function fetchItem(id: number) {
@@ -568,6 +573,23 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
+  async function batchLoan(data: BatchLoanCreate) {
+    transactionsLoading.value = true
+    error.value = null
+    try {
+      const response = await transactionsApi.batchLoan(data)
+      transactions.value = [...response.data.transactions, ...transactions.value]
+      transactionsPagination.value.count += response.data.transactions.length
+      await fetchStocks({ limit: 1000 })
+      return response.data
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Failed to issue items'
+      throw err
+    } finally {
+      transactionsLoading.value = false
+    }
+  }
+
   async function deleteTransaction(id: number) {
     transactionsLoading.value = true
     error.value = null
@@ -653,6 +675,7 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     // Actions - Items
     fetchItems,
+    fetchStandardItems,
     fetchItem,
     createItem,
     updateItem,
@@ -679,6 +702,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     // Actions - Transactions
     fetchTransactions,
     createTransaction,
+    batchLoan,
     deleteTransaction,
 
     // Utility

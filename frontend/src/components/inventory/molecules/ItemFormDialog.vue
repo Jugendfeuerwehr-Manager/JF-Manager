@@ -48,6 +48,13 @@
         </div>
       </div>
 
+      <div class="field">
+        <div class="flex align-items-center gap-2">
+          <Checkbox v-model="form.is_standard_item" input-id="isStandardItem" binary />
+          <label for="isStandardItem">Standardartikel (Teil der Ersteinkleidung)</label>
+        </div>
+      </div>
+
       <!-- Variant Management (only if editing an item with variants) -->
       <div v-if="form.is_variant_parent && isEdit" class="variants-section">
         <Divider />
@@ -210,6 +217,7 @@ const form = ref<ItemCreate & ItemUpdate>({
   base_unit: 'Stück',
   attributes: null,
   is_variant_parent: false,
+  is_standard_item: false,
   size: '',
   identifier1: '',
   identifier2: ''
@@ -244,6 +252,7 @@ watch(
         base_unit: props.item.base_unit,
         attributes: props.item.attributes,
         is_variant_parent: props.item.is_variant_parent,
+        is_standard_item: props.item.is_standard_item,
         size: props.item.size,
         identifier1: props.item.identifier1,
         identifier2: props.item.identifier2
@@ -255,6 +264,7 @@ watch(
         base_unit: 'Stück',
         attributes: null,
         is_variant_parent: false,
+        is_standard_item: false,
         size: '',
         identifier1: '',
         identifier2: ''
