@@ -16,6 +16,22 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1, verbose_name="Anzahl")
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, verbose_name="Status")
     received_date = models.DateTimeField(null=True, blank=True, verbose_name="Eingangsdatum")
+    receipt_transaction = models.OneToOneField(
+        "inventory.Transaction",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="received_order_item",
+        verbose_name="Lagerzugang",
+    )
+    loan_transaction = models.OneToOneField(
+        "inventory.Transaction",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="delivered_order_item",
+        verbose_name="Ausleihbuchung",
+    )
     delivered_date = models.DateTimeField(null=True, blank=True, verbose_name="Ausgabedatum")
     notes = models.TextField(blank=True, verbose_name="Bemerkungen")
 
@@ -60,9 +76,9 @@ class OrderItem(models.Model):
                     old_status = original.status
 
                     # Auto-update dates based on status
-                    if self.status.code == "received" and not self.received_date:
+                    if self.status.code.upper() == "RECEIVED" and not self.received_date:
                         self.received_date = timezone.now()
-                    elif self.status.code == "delivered" and not self.delivered_date:
+                    elif self.status.code.upper() == "DELIVERED" and not self.delivered_date:
                         self.delivered_date = timezone.now()
 
             except OrderItem.DoesNotExist:

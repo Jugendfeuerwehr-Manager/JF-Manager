@@ -24,6 +24,14 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
     filterset_fields = ["parent", "is_member", "member"]
 
     def _assert_member_access(self, member):
+        '''Assert that the current user has access to the given member. Raises PermissionDenied if not.
+
+        Args:
+            member: The member instance to check access for.
+
+        Raises:
+            PermissionDenied: If the current user does not have access to the member.
+        '''
         user = self.request.user
         if is_org_wide_user(user):
             return
@@ -52,7 +60,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
             return member.personal_storage_location, False
         except StorageLocation.DoesNotExist:
             pass
-
+        # If the member has no departments and the user is org-wide, we allow creating the location without a department.
         default_department = member.departments.first()
         if default_department is None and not is_org_wide_user(request.user):
             allowed_department_id = next(iter(get_user_department_ids(request.user)), None)
@@ -60,7 +68,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
                 from departments.models import Department
 
                 default_department = Department.objects.filter(pk=allowed_department_id).first()
-
+        # Create the personal storage location for the member, associating it with the default department if available.
         location = StorageLocation.objects.create(
             name=f"{member.name} {member.lastname}",
             is_member=True,

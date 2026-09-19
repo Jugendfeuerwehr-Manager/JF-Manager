@@ -163,8 +163,35 @@
       :item="selectedItem"
       :status-options="statusOptions"
       @update:visible="statusDialogVisible = $event"
-      @status-updated="handleStatusUpdated"
+      @success="handleStatusUpdated"
     />
+
+    <Dialog v-model:visible="receiptDialogVisible" modal header="Wareneingang buchen" :style="{ width: '26rem' }">
+      <label for="order-receipt-location">Lagerort für die Lieferung *</label>
+      <p v-if="legacyReceiptCount" class="text-sm">
+        {{ legacyReceiptCount }} Altartikel ohne Inventarverknüpfung: Für diese wird kein Bestand gebucht.
+      </p>
+      <Dropdown id="order-receipt-location" v-model="receiptLocationId" :options="receiptLocations"
+        optionLabel="name" optionValue="id" placeholder="Lagerort wählen" class="w-full mt-2" />
+      <template #footer>
+        <Button label="Abbrechen" severity="secondary" text @click="receiptDialogVisible = false; quickStatusId = null" />
+        <Button label="Eingang buchen" :disabled="!receiptLocationId" @click="submitQuickStatus(receiptLocationId!)" />
+      </template>
+    </Dialog>
+    <Dialog v-model:visible="loanDialogVisible" modal header="Ausleihe anlegen?" :style="{ width: '29rem' }">
+      <p>Sollen die ausgegebenen Artikel als Ausleihe für das Mitglied gebucht werden?</p>
+      <p v-if="legacyLoanCount" class="text-sm">
+        {{ legacyLoanCount }} Altartikel ohne Inventarverknüpfung können nicht automatisch ausgeliehen werden.
+      </p>
+      <p v-if="missingReceiptCount" class="text-sm">
+        Für {{ missingReceiptCount }} Artikel fehlt ein gebuchter Wareneingang. Die automatische Ausleihe ist für diese Artikel nicht möglich.
+      </p>
+      <template #footer>
+        <Button label="Abbrechen" severity="secondary" text @click="loanDialogVisible = false; quickStatusId = null" />
+        <Button label="Nur Status ändern" severity="secondary" outlined @click="submitQuickDelivery(false)" />
+        <Button label="Ausleihe anlegen" :disabled="missingReceiptCount > 0" @click="submitQuickDelivery(true)" />
+      </template>
+    </Dialog>
 
     <!-- Send Summary Dialog -->
     
@@ -184,10 +211,12 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Badge from 'primevue/badge'
 import Dropdown from 'primevue/dropdown'
+import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import { useOrdersStore } from '@/stores/orders'
 import { useOrderStatusStore } from '@/stores/orderStatus'
+import { useInventoryStore } from '@/stores/inventory'
 import { orderItemsApi } from '@/api/orderItems'
 import UpdateItemStatusDialog from './molecules/UpdateItemStatusDialog.vue'
 import type { OrderItem } from '@/types/orders'
@@ -208,12 +237,24 @@ const emit = defineEmits<{
 const router = useRouter()
 const ordersStore = useOrdersStore()
 const statusStore = useOrderStatusStore()
+const inventoryStore = useInventoryStore()
+const receiptDialogVisible = ref(false)
+const loanDialogVisible = ref(false)
+const receiptLocationId = ref<number | null>(null)
+const receiptLocations = computed(() => inventoryStore.locations.filter(location => !location.is_member))
 const confirm = useConfirm()
 const toast = useToast()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
 const order = computed(() => ordersStore.currentOrder)
+const legacyReceiptCount = computed(() =>
+  order.value?.items.filter(item => item.status !== quickStatusId.value && !item.item_details?.inventory_item).length || 0
+)
+const legacyLoanCount = legacyReceiptCount
+const missingReceiptCount = computed(() =>
+  order.value?.items.filter(item => item.status !== quickStatusId.value && item.item_details?.inventory_item && !item.receipt_transaction).length || 0
+)
 const statusOptions = computed(() => statusStore.statuses || [])
 
 // Status dialog
@@ -279,6 +320,22 @@ const allowedNextStatuses = computed(() => {
 
 async function handleQuickStatusChange() {
   if (!quickStatusId.value || !order.value) return
+  const statusCode = statusOptions.value.find(status => status.id === quickStatusId.value)?.code.toUpperCase()
+  if (statusCode === 'RECEIVED' && order.value.items.some(item => item.item_details?.inventory_item)) {
+    receiptLocationId.value = null
+    await inventoryStore.fetchLocations({ limit: 1000 })
+    receiptDialogVisible.value = true
+    return
+  }
+  if (statusCode === 'DELIVERED' && order.value.items.some(item => item.item_details?.inventory_item)) {
+    loanDialogVisible.value = true
+    return
+  }
+  confirmQuickStatus()
+}
+
+function confirmQuickStatus() {
+  if (!order.value) return
   
   confirm.require({
     message: `Alle ${order.value.items.length} Artikel auf den ausgewählten Status setzen?`,
@@ -319,6 +376,46 @@ async function handleQuickStatusChange() {
       quickStatusId.value = null
     }
   })
+}
+
+async function submitQuickStatus(locationId: number) {
+  if (!order.value || !quickStatusId.value) return
+  receiptDialogVisible.value = false
+  try {
+    await orderItemsApi.bulkUpdateStatus({
+      item_ids: order.value.items.filter(item => item.status !== quickStatusId.value).map(item => item.id),
+      status: quickStatusId.value,
+      receipt_location: locationId
+    })
+    await loadOrder()
+    quickStatusId.value = null
+    toast.add({ severity: 'success', summary: 'Wareneingang gebucht', life: 3000 })
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: getApiErrorMessage(error, 'Wareneingang fehlgeschlagen'), life: 3000 })
+  }
+}
+
+async function submitQuickDelivery(createLoan: boolean) {
+  if (!order.value || !quickStatusId.value) return
+  loanDialogVisible.value = false
+  try {
+    await orderItemsApi.bulkUpdateStatus({
+      item_ids: order.value.items.filter(item => item.status !== quickStatusId.value).map(item => item.id),
+      status: quickStatusId.value,
+      create_loan: createLoan
+    })
+    if (createLoan) {
+      await Promise.all([
+        inventoryStore.fetchStocks({ limit: 1000 }).catch(() => undefined),
+        inventoryStore.fetchTransactions({ limit: 1000 }).catch(() => undefined)
+      ])
+    }
+    await loadOrder()
+    quickStatusId.value = null
+    toast.add({ severity: 'success', summary: createLoan ? 'Ausleihe angelegt' : 'Status aktualisiert', life: 3000 })
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: getApiErrorMessage(error, 'Ausgabe fehlgeschlagen'), life: 3000 })
+  }
 }
 
 function confirmDelete() {

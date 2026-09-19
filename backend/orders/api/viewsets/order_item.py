@@ -4,7 +4,7 @@ Order Item ViewSet
 
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
@@ -65,11 +65,18 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
         # Use the serializer for validation
         serializer = OrderItemUpdateSerializer(
-            order_item, data={"status": status_id}, partial=True, context={"request": request}
+            order_item,
+            data={
+                key: request.data[key]
+                for key in ("status", "receipt_location", "create_loan", "notes")
+                if key in request.data
+            },
+            partial=True,
+            context={"request": request},
         )
 
         if serializer.is_valid():
-            serializer.save()
+            order_item = serializer.save()
 
             # Send notification if status changed
             if old_status != new_status:
@@ -96,35 +103,45 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         except OrderStatus.DoesNotExist:
             return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not isinstance(item_ids, list) or len(item_ids) != len(set(map(str, item_ids))):
+            return Response({"item_ids": "Bitte eindeutige Bestellpositionen angeben."}, status=400)
+
         updated_items = []
-        errors = []
-
-        with transaction.atomic():
-            for item_id in item_ids:
-                try:
-                    order_item = OrderItem.objects.get(id=item_id)
-                    old_status = order_item.status
-
-                    serializer = OrderItemUpdateSerializer(
-                        order_item, data={"status": status_id}, partial=True, context={"request": request}
+        try:
+            with transaction.atomic():
+                order_items = list(OrderItem.objects.select_for_update().filter(pk__in=item_ids).order_by("pk"))
+                if len(order_items) != len(item_ids):
+                    raise serializers.ValidationError(
+                        {"item_ids": "Mindestens eine Bestellposition wurde nicht gefunden."}
                     )
-
-                    if serializer.is_valid():
-                        serializer.save()
-                        updated_items.append(order_item.id)
-
-                        # Send notification if status changed
-                        if old_status != new_status:
-                            OrderNotificationService.send_status_update_notification(
-                                order_item, old_status, new_status, request.user, request
+                for order_item in order_items:
+                    old_status = order_item.status
+                    update_data = {"status": status_id}
+                    if request.data.get("receipt_location") is not None:
+                        update_data["receipt_location"] = request.data["receipt_location"]
+                    if "create_loan" in request.data:
+                        update_data["create_loan"] = request.data["create_loan"]
+                    serializer = OrderItemUpdateSerializer(
+                        order_item,
+                        data=update_data,
+                        partial=True,
+                        context={"request": request},
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    updated_items.append(order_item.id)
+                    if old_status != new_status:
+                        transaction.on_commit(
+                            lambda item=order_item, previous=old_status: (
+                                OrderNotificationService.send_status_update_notification(
+                                    item, previous, new_status, request.user, request
+                                )
                             )
-                    else:
-                        errors.append({"item_id": item_id, "errors": serializer.errors})
+                        )
+        except serializers.ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
 
-                except OrderItem.DoesNotExist:
-                    errors.append({"item_id": item_id, "errors": "Item not found"})
-
-        return Response({"updated": len(updated_items), "updated_ids": updated_items, "errors": errors})
+        return Response({"updated": len(updated_items), "updated_ids": updated_items, "errors": []})
 
     @action(detail=True, methods=["get"])
     def history(self, request, pk=None):

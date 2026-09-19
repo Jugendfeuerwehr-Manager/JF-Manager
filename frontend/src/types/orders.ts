@@ -69,6 +69,7 @@ export interface OrderItem {
     name: string
     category: string
     has_sizes: boolean
+    inventory_item: number | null
   }
   item_name: string
   size: string
@@ -84,6 +85,8 @@ export interface OrderItem {
   status_code: string
   status_color: string
   received_date: string | null
+  receipt_transaction: number | null
+  loan_transaction: number | null
   delivered_date: string | null
   notes: string
 }
@@ -105,6 +108,8 @@ export interface OrderItemUpdate {
   quantity?: number
   status?: number
   notes?: string
+  receipt_location?: number
+  create_loan?: boolean
 }
 
 export interface Order {
@@ -256,6 +261,8 @@ export interface BulkStatusUpdateRequest {
   item_ids: number[]
   status: number
   notes?: string
+  receipt_location?: number
+  create_loan?: boolean
 }
 
 export interface BulkStatusUpdateResponse {

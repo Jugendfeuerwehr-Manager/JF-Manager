@@ -23,7 +23,7 @@
 
           <div class="field">
             <label>An wen wird ausgegeben? *</label>
-            <Dropdown
+            <Select
               v-model="selectedMember"
               :options="memberOptions"
               option-label="label"
@@ -39,7 +39,7 @@
                   <span>{{ option.label }}</span>
                 </div>
               </template>
-            </Dropdown>
+            </Select>
           </div>
 
           <Message v-if="mode === 'outfitting' && standardItems.length === 0" severity="warn" :closable="false">
@@ -50,11 +50,11 @@
           <div class="field">
             <div class="field-heading">
               <label>Artikel *</label>
-              <Button label="Artikel hinzufügen" icon="pi pi-plus" text size="small" @click="addLine" />
+
             </div>
 
             <div v-for="(line, index) in lines" :key="line.id" class="loan-line">
-              <Dropdown
+              <Select
                 v-model="line.itemId"
                 :options="itemOptions"
                 option-label="label"
@@ -64,13 +64,23 @@
                 class="item-select"
                 @change="resetLine(line)"
               />
-              <Dropdown
+              <Select
                 v-if="line.itemId && getItem(line.itemId)?.is_variant_parent"
                 v-model="line.variantId"
                 :options="getVariantOptions(line.itemId)"
                 option-label="label"
                 option-value="value"
                 placeholder="Größe/Variante"
+                class="variant-select"
+                @change="line.sourceId = null"
+              />
+              <Select
+                v-if="getSourceOptions(line).length > 1"
+                v-model="line.sourceId"
+                :options="getSourceOptions(line)"
+                option-label="label"
+                option-value="value"
+                placeholder="Lagerort wählen"
                 class="variant-select"
               />
               <InputNumber v-model="line.quantity" :min="1" show-buttons class="quantity-input" />
@@ -79,7 +89,7 @@
                 :value="`${getAvailable(line)} verfügbar`"
                 severity="success"
               />
-              <Tag v-else :value="`${getAvailable(line)} verfügbar · ${line.quantity - getAvailable(line)} werden bestellt`" severity="warning" />
+              <Tag v-else :value="`${getAvailable(line)} verfügbar · ${line.quantity - getAvailable(line)} werden bestellt`" severity="warn" />
               <Button
                 icon="pi pi-trash"
                 severity="danger"
@@ -89,6 +99,10 @@
                 :disabled="lines.length === 1"
                 @click="removeLine(index)"
               />
+            </div>
+
+            <div class="field-footer">
+              <Button label="Artikel hinzufügen" icon="pi pi-plus" text size="small" @click="addLine" />
             </div>
           </div>
 
@@ -224,7 +238,7 @@
 import { ref, computed, watch } from 'vue'
 import Card from 'primevue/card'
 import SelectButton from 'primevue/selectbutton'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
@@ -261,11 +275,12 @@ interface LoanLine {
   itemId: number | null
   variantId: number | null
   quantity: number
+  sourceId: number | null
 }
 
 let nextLineId = 1
 function createLine(itemId: number | null = null): LoanLine {
-  return { id: nextLineId++, itemId, variantId: null, quantity: 1 }
+  return { id: nextLineId++, itemId, variantId: null, quantity: 1, sourceId: null }
 }
 
 const lines = ref<LoanLine[]>([createLine()])
@@ -297,7 +312,19 @@ function getVariantOptions(itemId: number) {
 
 function resetLine(line: LoanLine) {
   line.variantId = null
+  line.sourceId = null
   line.quantity = 1
+}
+
+function getSourceOptions(line: LoanLine) {
+  if (!line.itemId || (getItem(line.itemId)?.is_variant_parent && !line.variantId)) return []
+  return inventoryStore.stocks
+    .filter((stock) => (line.variantId ? stock.item_variant === line.variantId : stock.item === line.itemId) && stock.quantity > 0)
+    .filter((stock) => {
+      const location = inventoryStore.locations.find((entry) => entry.id === stock.location)
+      return location && !location.is_member
+    })
+    .map((stock) => ({ value: stock.location, label: `${stock.location_name} (${stock.quantity})` }))
 }
 
 function addLine() {
@@ -321,6 +348,11 @@ function getAvailableStock(type: 'item' | 'variant', id: number): number {
 
 function getAvailable(line: LoanLine) {
   if (!line.itemId) return 0
+  if (line.sourceId) {
+    const stock = inventoryStore.stocks.find((entry) => entry.location === line.sourceId &&
+      (line.variantId ? entry.item_variant === line.variantId : entry.item === line.itemId))
+    return stock?.quantity || 0
+  }
   return line.variantId ? getAvailableStock('variant', line.variantId) : getAvailableStock('item', line.itemId)
 }
 
@@ -350,11 +382,15 @@ const canSubmit = computed(() => {
   if (new Set(identities).size !== identities.length) return false
   return lines.value.every((line) => {
     const item = getItem(line.itemId)
-    return line.itemId && (!item?.is_variant_parent || line.variantId) && line.quantity > 0
+    return line.itemId && (!item?.is_variant_parent || line.variantId) && line.quantity > 0 &&
+      (getSourceOptions(line).length <= 1 || line.sourceId !== null)
   })
 })
 
 const validationMessage = computed(() => {
+  if (lines.value.some((line) => getSourceOptions(line).length > 1 && line.sourceId === null)) {
+    return 'Bitte für Artikel mit Bestand an mehreren Lagerorten einen Quellort wählen.'
+  }
   const identities = lines.value.map((line) => `${line.variantId ? 'variant' : 'item'}:${line.variantId || line.itemId}`)
   if (new Set(identities).size !== identities.length) return 'Ein Artikel darf nur einmal hinzugefügt werden.'
   if (lines.value.some((line) => line.itemId && getItem(line.itemId)?.is_variant_parent && !line.variantId)) {
@@ -453,7 +489,8 @@ async function submit() {
       items: lines.value.map((line) => ({
         item: line.variantId ? null : line.itemId,
         item_variant: line.variantId,
-        quantity: line.quantity
+        quantity: line.quantity,
+        source: line.sourceId || getSourceOptions(line)[0]?.value || undefined
       })),
       note: note.value,
       order_missing: orderMissing
@@ -547,6 +584,12 @@ async function submit() {
   align-items: center;
 }
 
+.field-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
 .member-option {
   display: flex;
   align-items: center;
@@ -555,10 +598,9 @@ async function submit() {
 
 .loan-line {
   display: flex;
-  align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .item-select {
@@ -570,11 +612,9 @@ async function submit() {
   flex: 1;
   min-width: 140px;
 }
-
 .quantity-input {
-  width: 110px;
-}
 
+}
 .form-actions {
   display: flex;
   justify-content: flex-end;

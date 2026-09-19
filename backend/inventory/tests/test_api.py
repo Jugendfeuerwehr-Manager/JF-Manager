@@ -77,6 +77,22 @@ class InventoryAPITest(APITestCase):
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 3)
         self.assertEqual(Stock.objects.get(item=second_item, location=self.location).quantity, 2)
 
+    def test_batch_loan_uses_selected_source(self):
+        other = StorageLocation.objects.create(name="Lager 2")
+        Stock.objects.create(item=self.item, location=other, quantity=4)
+        member = Member.objects.create(name="Max", lastname="Mustermann")
+
+        response = self.client.post(
+            "/api/v1/inventory/transactions/batch-loan/",
+            {"member": member.pk, "items": [{"item": self.item.pk, "quantity": 2, "source": other.pk}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["transactions"][0]["source"], other.pk)
+        self.assertEqual(Stock.objects.get(item=self.item, location=other).quantity, 2)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 5)
+
     def test_batch_loan_can_create_order_for_missing_mapped_item(self):
         # No manual OrderableItem creation needed: the order/inventory sync signal
         # already provisioned one automatically when self.item was created.

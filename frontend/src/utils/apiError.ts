@@ -11,6 +11,7 @@ type ApiErrorShape = {
   response?: {
     data?: {
       detail?: string
+      [key: string]: unknown
     }
   }
   message?: string
@@ -18,5 +19,13 @@ type ApiErrorShape = {
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   const e = error as ApiErrorShape
-  return e.response?.data?.detail ?? e.message ?? fallback
+  const data = e.response?.data
+  if (data?.detail) return data.detail
+  if (data) {
+    for (const value of Object.values(data)) {
+      if (typeof value === 'string') return value
+      if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
+    }
+  }
+  return e.message ?? fallback
 }

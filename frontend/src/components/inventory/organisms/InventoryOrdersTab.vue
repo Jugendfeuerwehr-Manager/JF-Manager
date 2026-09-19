@@ -111,6 +111,7 @@ function handleSort(event: import('primevue/datatable').DataTableSortEvent) {
 onMounted(async () => {
   await Promise.all([loadOrders(), ordersStore.fetchStatistics().catch(() => undefined), statusStore.fetchActiveStatuses().catch(() => undefined)])
 })
+
 </script>
 
 <style scoped>

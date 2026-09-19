@@ -32,7 +32,7 @@
           <i class="pi pi-home tab-icon"></i>
           <span>Übersicht</span>
         </template>
-        <InventoryDashboard @navigate="navigateToTab" />
+        <InventoryDashboard v-if="activeTab === 0" @navigate="navigateToTab" />
       </TabPanel>
 
       <!-- Lending & Outfitting Workbench -->
@@ -41,7 +41,7 @@
           <i class="pi pi-user tab-icon"></i>
           <span>Ausleihe & Einkleidung</span>
         </template>
-        <LendingWorkbench />
+        <LendingWorkbench v-if="activeTab === 1" />
       </TabPanel>
 
       <!-- Member Loans -->
@@ -51,7 +51,7 @@
           <span>Aktive Ausleihen</span>
           <Badge v-if="memberLoansCount > 0" :value="memberLoansCount" severity="info" class="ml-2" />
         </template>
-        <MemberLoansList />
+        <MemberLoansList v-if="activeTab === 2" />
       </TabPanel>
 
       <!-- Stock Overview -->
@@ -60,7 +60,7 @@
           <i class="pi pi-box tab-icon"></i>
           <span>Bestand</span>
         </template>
-        <StockOverview />
+        <StockOverview v-if="activeTab === 3" />
       </TabPanel>
 
       <!-- Items Management -->
@@ -69,7 +69,7 @@
           <i class="pi pi-list tab-icon"></i>
           <span>Artikel</span>
         </template>
-        <ItemsManagement />
+        <ItemsManagement v-if="activeTab === 4" />
       </TabPanel>
 
       <!-- Locations Management -->
@@ -78,7 +78,7 @@
           <i class="pi pi-map-marker tab-icon"></i>
           <span>Lagerorte</span>
         </template>
-        <LocationFileBrowser />
+        <LocationFileBrowser v-if="activeTab === 5" />
       </TabPanel>
 
       <!-- Categories Management -->
@@ -87,7 +87,7 @@
           <i class="pi pi-tags tab-icon"></i>
           <span>Kategorien</span>
         </template>
-        <CategoriesManagement />
+        <CategoriesManagement v-if="activeTab === 6" />
       </TabPanel>
 
       <!-- Transactions History -->
@@ -96,7 +96,7 @@
           <i class="pi pi-history tab-icon"></i>
           <span>Verlauf</span>
         </template>
-        <TransactionsHistory />
+        <TransactionsHistory v-if="activeTab === 7" />
       </TabPanel>
 
       <!-- Orders -->
@@ -105,7 +105,7 @@
           <i class="pi pi-shopping-cart tab-icon"></i>
           <span>Bestellungen</span>
         </template>
-        <InventoryOrdersTab />
+        <InventoryOrdersTab v-if="activeTab === 8" />
       </TabPanel>
     </TabView>
 

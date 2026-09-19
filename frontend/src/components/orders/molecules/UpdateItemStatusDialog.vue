@@ -19,6 +19,7 @@
             :style="{ backgroundColor: item.status_color, color: 'white' }"
           />
         </div>
+
         <div v-if="item.size" class="mt-2">
           <Badge :value="`Größe: ${item.size}`" severity="secondary" />
         </div>
@@ -50,6 +51,28 @@
           </Dropdown>
           <small v-if="submitted && !formData.status" class="p-error">Status ist erforderlich</small>
         </div>
+
+        <div v-if="requiresReceiptLocation" class="field">
+          <label for="receipt-location" class="font-semibold">Lagerort für Wareneingang *</label>
+          <Dropdown id="receipt-location" v-model="formData.receipt_location" :options="receiptLocations"
+            optionLabel="name" optionValue="id" placeholder="Lagerort wählen" class="w-full" />
+          <small v-if="submitted && !formData.receipt_location" class="p-error">Bitte Lagerort wählen</small>
+        </div>
+        <Message v-if="isReceiving && !item.item_details?.inventory_item" severity="warn" :closable="false">
+          Dieser Altartikel ist nicht mit dem Inventar verknüpft. Der Statuswechsel bucht keinen Bestand.
+        </Message>
+        <div v-if="isDelivering && item.item_details?.inventory_item" class="field">
+          <div class="flex align-items-center gap-2">
+            <Checkbox id="create-loan" v-model="createLoan" binary :disabled="!item.receipt_transaction" />
+            <label for="create-loan">Ausleihe für das Mitglied anlegen?</label>
+          </div>
+          <small v-if="!item.receipt_transaction" class="text-500">
+            Für eine Ausleihe muss zuvor ein Wareneingang gebucht sein.
+          </small>
+        </div>
+        <Message v-if="isDelivering && !item.item_details?.inventory_item" severity="warn" :closable="false">
+          Dieser Altartikel ist nicht mit dem Inventar verknüpft. Eine automatische Ausleihe ist nicht möglich.
+        </Message>
 
         <!-- Received Date -->
         <div class="field">
@@ -169,9 +192,12 @@ import Textarea from 'primevue/textarea'
 import Tag from 'primevue/tag'
 import Badge from 'primevue/badge'
 import Divider from 'primevue/divider'
+import Message from 'primevue/message'
+import Checkbox from 'primevue/checkbox'
 import { orderItemsApi } from '@/api/orderItems'
 import type { OrderItem, OrderStatus } from '@/types/orders'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { useInventoryStore } from '@/stores/inventory'
 
 interface Props {
   visible: boolean
@@ -188,8 +214,23 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const toast = useToast()
+const inventoryStore = useInventoryStore()
+const receiptLocations = computed(() => inventoryStore.locations.filter(location => !location.is_member))
+const isReceiving = computed(() =>
+  props.statusOptions.find(status => status.id === formData.value.status)?.code.toUpperCase() === 'RECEIVED' &&
+  props.item?.status !== formData.value.status
+)
+const isDelivering = computed(() =>
+  props.statusOptions.find(status => status.id === formData.value.status)?.code.toUpperCase() === 'DELIVERED' &&
+  props.item?.status !== formData.value.status
+)
+const requiresReceiptLocation = computed(() =>
+  props.item?.item_details?.inventory_item &&
+  isReceiving.value
+)
 const loading = ref(false)
 const submitted = ref(false)
+const createLoan = ref(false)
 
 const isVisible = computed({
   get: () => props.visible,
@@ -201,13 +242,15 @@ interface FormData {
   received_date: Date | null
   delivered_date: Date | null
   notes: string
+  receipt_location: number | null
 }
 
 const formData = ref<FormData>({
   status: null,
   received_date: null,
   delivered_date: null,
-  notes: ''
+  notes: '',
+  receipt_location: null
 })
 
 // Watch for item changes to populate form
@@ -217,10 +260,16 @@ watch(() => props.item, (newItem) => {
       status: newItem.status,
       received_date: newItem.received_date ? new Date(newItem.received_date) : null,
       delivered_date: newItem.delivered_date ? new Date(newItem.delivered_date) : null,
-      notes: newItem.notes || ''
+      notes: newItem.notes || '',
+      receipt_location: null
     }
     submitted.value = false
+    createLoan.value = false
   }
+}, { immediate: true })
+
+watch(() => props.visible, (visible) => {
+  if (visible) inventoryStore.fetchLocations({ limit: 1000 })
 }, { immediate: true })
 
 // Auto-set dates based on status
@@ -262,14 +311,19 @@ async function handleSubmit() {
   }
   
   if (!props.item) return
+  if (requiresReceiptLocation.value && !formData.value.receipt_location) return
   
   loading.value = true
   
   try {
-    const updateData: { status: number | null; notes: string; received_date?: string; delivered_date?: string } = {
+    const updateData: { status: number | null; notes: string; received_date?: string; delivered_date?: string; receipt_location?: number; create_loan?: boolean } = {
       status: formData.value.status,
       notes: formData.value.notes
     }
+    if (requiresReceiptLocation.value && formData.value.receipt_location) {
+      updateData.receipt_location = formData.value.receipt_location
+    }
+    if (isDelivering.value) updateData.create_loan = createLoan.value
     
     if (formData.value.received_date) {
       updateData.received_date = formData.value.received_date.toISOString()
@@ -280,6 +334,12 @@ async function handleSubmit() {
     }
     
     await orderItemsApi.updateStatus(props.item.id, formData.value.status, updateData)
+    if (requiresReceiptLocation.value || createLoan.value) {
+      await Promise.all([
+        inventoryStore.fetchStocks({ limit: 1000 }).catch(() => undefined),
+        inventoryStore.fetchTransactions({ limit: 1000 }).catch(() => undefined)
+      ])
+    }
     
     toast.add({
       severity: 'success',

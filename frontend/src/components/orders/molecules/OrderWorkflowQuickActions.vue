@@ -76,17 +76,47 @@
         Keine Aktion verfügbar
       </span>
     </template>
+    <Dialog v-model:visible="receiptDialogVisible" modal header="Wareneingang buchen" :style="{ width: '26rem' }">
+      <label for="workflow-receipt-location">Lagerort für die Lieferung *</label>
+      <p v-if="legacyReceiptCount" class="text-sm">
+        {{ legacyReceiptCount }} Altartikel ohne Inventarverknüpfung: Für diese wird kein Bestand gebucht.
+      </p>
+      <Select id="workflow-receipt-location" v-model="receiptLocationId" :options="receiptLocations"
+        optionLabel="name" optionValue="id" placeholder="Lagerort wählen" class="w-full mt-2" />
+      <template #footer>
+        <Button label="Abbrechen" severity="secondary" text @click="receiptDialogVisible = false" />
+        <Button label="Eingang buchen" :disabled="!receiptLocationId" @click="confirmReceipt" />
+      </template>
+    </Dialog>
+    <Dialog v-model:visible="loanDialogVisible" modal header="Ausleihe anlegen?" :style="{ width: '29rem' }">
+      <p>Sollen die ausgegebenen Artikel als Ausleihe für das Mitglied gebucht werden?</p>
+      <p v-if="legacyLoanCount" class="text-sm">
+        {{ legacyLoanCount }} Altartikel ohne Inventarverknüpfung können nicht automatisch ausgeliehen werden.
+      </p>
+      <p v-if="missingReceiptCount" class="text-sm">
+        Für {{ missingReceiptCount }} Artikel fehlt ein gebuchter Wareneingang. Die automatische Ausleihe ist für diese Artikel nicht möglich.
+      </p>
+      <template #footer>
+        <Button label="Abbrechen" severity="secondary" text @click="loanDialogVisible = false" />
+        <Button label="Nur Status ändern" severity="secondary" outlined @click="confirmDelivery(false)" />
+        <Button label="Ausleihe anlegen" :disabled="missingReceiptCount > 0" @click="confirmDelivery(true)" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { orderItemsApi } from '@/api/orderItems'
 import { ordersApi } from '@/api/orders'
 import { useOrderStatusStore } from '@/stores/orderStatus'
+import { useInventoryStore } from '@/stores/inventory'
 import type { Order, OrderItem } from '@/types/orders'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   order: Order
@@ -114,7 +144,16 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const statusStore = useOrderStatusStore()
+const inventoryStore = useInventoryStore()
 const loadingStatusId = ref<number | null>(null)
+const receiptDialogVisible = ref(false)
+const loanDialogVisible = ref(false)
+const receiptLocationId = ref<number | null>(null)
+const legacyReceiptCount = ref(0)
+const legacyLoanCount = ref(0)
+const missingReceiptCount = ref(0)
+const pendingStatusId = ref<number | null>(null)
+const receiptLocations = computed(() => inventoryStore.locations.filter(location => !location.is_member))
 const itemsCache = ref<Record<number, OrderItem[]>>({})
 
 // Workflow transitions mapping (must match backend)
@@ -206,10 +245,6 @@ const ensureStatusesLoaded = async () => {
 }
 
 const fetchOrderItems = async (): Promise<OrderItem[]> => {
-  if (props.order.items && props.order.items.length > 0) {
-    return props.order.items
-  }
-
   if (itemsCache.value[props.order.id]) {
     return itemsCache.value[props.order.id]!
   }
@@ -221,10 +256,45 @@ const fetchOrderItems = async (): Promise<OrderItem[]> => {
 
 const handleStatusClick = async (statusId: number) => {
   await ensureStatusesLoaded()
-  loadingStatusId.value = statusId
-
   try {
     const items = await fetchOrderItems()
+    const statusCode = statusStore.sortedStatuses.find(status => status.id === statusId)?.code.toUpperCase()
+    if (statusCode === 'RECEIVED' && items.some(item => item.status !== statusId && item.item_details?.inventory_item)) {
+      legacyReceiptCount.value = items.filter(item => item.status !== statusId && !item.item_details?.inventory_item).length
+      pendingStatusId.value = statusId
+      receiptLocationId.value = null
+      await inventoryStore.fetchLocations({ limit: 1000 })
+      receiptDialogVisible.value = true
+      return
+    }
+    if (statusCode === 'DELIVERED' && items.some(item => item.status !== statusId && item.item_details?.inventory_item)) {
+      legacyLoanCount.value = items.filter(item => item.status !== statusId && !item.item_details?.inventory_item).length
+      missingReceiptCount.value = items.filter(item => item.status !== statusId && item.item_details?.inventory_item && !item.receipt_transaction).length
+      pendingStatusId.value = statusId
+      loanDialogVisible.value = true
+      return
+    }
+    await submitStatus(statusId, items)
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Aktualisierung fehlgeschlagen', detail: getApiErrorMessage(error, 'Statusänderung konnte nicht durchgeführt werden.'), life: 3000 })
+  }
+}
+
+const confirmReceipt = async () => {
+  if (!pendingStatusId.value || !receiptLocationId.value) return
+  receiptDialogVisible.value = false
+  await submitStatus(pendingStatusId.value, await fetchOrderItems(), receiptLocationId.value)
+}
+
+const confirmDelivery = async (createLoan: boolean) => {
+  if (!pendingStatusId.value) return
+  loanDialogVisible.value = false
+  await submitStatus(pendingStatusId.value, await fetchOrderItems(), undefined, createLoan)
+}
+
+const submitStatus = async (statusId: number, items: OrderItem[], receiptLocation?: number, createLoan = false) => {
+  loadingStatusId.value = statusId
+  try {
     const itemIds = items
       .filter(item => item.status !== statusId)
       .map(item => item.id)
@@ -241,8 +311,16 @@ const handleStatusClick = async (statusId: number) => {
 
     await orderItemsApi.bulkUpdateStatus({
       item_ids: itemIds,
-      status: statusId
+      status: statusId,
+      receipt_location: receiptLocation,
+      create_loan: createLoan
     })
+    if (receiptLocation || createLoan) {
+      await Promise.all([
+        inventoryStore.fetchStocks({ limit: 1000 }).catch(() => undefined),
+        inventoryStore.fetchTransactions({ limit: 1000 }).catch(() => undefined)
+      ])
+    }
 
     toast.add({
       severity: 'success',
@@ -252,11 +330,12 @@ const handleStatusClick = async (statusId: number) => {
     })
 
     emit('statusChanged', props.order.id)
-  } catch {
+    delete itemsCache.value[props.order.id]
+  } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Aktualisierung fehlgeschlagen',
-      detail: 'Statusänderung konnte nicht durchgeführt werden.',
+      detail: getApiErrorMessage(error, 'Statusänderung konnte nicht durchgeführt werden.'),
       life: 3000
     })
   } finally {

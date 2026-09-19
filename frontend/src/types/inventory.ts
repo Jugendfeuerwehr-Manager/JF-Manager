@@ -213,6 +213,7 @@ export interface BatchLoanLine {
   item?: number | null
   item_variant?: number | null
   quantity: number
+  source?: number | null
 }
 
 export interface BatchLoanCreate {

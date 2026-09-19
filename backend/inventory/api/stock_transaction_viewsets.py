@@ -19,7 +19,13 @@ from orders.api.serializers.order import OrderCreateSerializer, OrderDetailSeria
 from orders.models import OrderableItem, OrderStatus
 from orders.services.inventory_sync import sync_orderable_item
 
-from .access import filter_item_department_queryset_for_user, get_user_department_ids, is_org_wide_user
+from .access import (
+    can_manage_department,
+    filter_item_department_queryset_for_user,
+    get_user_department_ids,
+    is_location_allowed_for_item_department,
+    is_org_wide_user,
+)
 from .serializers import BatchLoanSerializer, StockSerializer, TransactionSerializer
 
 
@@ -90,7 +96,18 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
             source_stocks = []
             missing_lines = []
             for line in data["items"]:
+                inventory_item = line.get("item") or line["item_variant"].parent_item
+                if not can_manage_department(request.user, inventory_item.department_id):
+                    raise serializers.ValidationError({"items": "Kein Zugriff auf diesen Artikel."})
+                if (
+                    line.get("source")
+                    and not is_org_wide_user(request.user)
+                    and not is_location_allowed_for_item_department(line["source"], inventory_item.department_id)
+                ):
+                    raise serializers.ValidationError({"source": "Kein Zugriff auf diesen Lagerort."})
                 stock_filter = {"item": line.get("item"), "item_variant": line.get("item_variant")}
+                if line.get("source"):
+                    stock_filter["location"] = line["source"]
                 stocks = list(
                     Stock.objects.select_for_update()
                     .filter(**stock_filter, quantity__gt=0, location__is_member=False)

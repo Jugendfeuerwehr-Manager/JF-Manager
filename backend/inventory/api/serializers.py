@@ -271,10 +271,13 @@ class BatchLoanLineSerializer(serializers.Serializer):
         queryset=ItemVariant.objects.select_related("parent_item"), required=False, allow_null=True
     )
     quantity = serializers.IntegerField(min_value=1)
+    source = serializers.PrimaryKeyRelatedField(queryset=StorageLocation.objects.all(), required=False)
 
     def validate(self, attrs):
         if (attrs.get("item") is None) == (attrs.get("item_variant") is None):
             raise serializers.ValidationError("Genau ein Artikel oder eine Artikel-Variante ist erforderlich.")
+        if attrs.get("source") and attrs["source"].is_member:
+            raise serializers.ValidationError({"source": "Ein Mitglieder-Lagerort ist keine Ausleihquelle."})
         return attrs
 
 
