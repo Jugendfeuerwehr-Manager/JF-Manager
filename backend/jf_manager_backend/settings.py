@@ -35,6 +35,9 @@ if not DEBUG and not SECRET_KEY:
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+# Nginx forwards the original scheme when TLS terminates at a reverse proxy.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # CSRF Trusted Origins - required for POST requests from frontend
 # Must include full URL scheme (https:// or http://)
 CSRF_TRUSTED_ORIGINS_ENV = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
