@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.32 schützt die jobungebundene Sync-Abfrage; 23/23 relevante Backendtests bestanden. |
-| Aktuelles Paket | SEC-01.32 korrigiert; SEC-01.33 als nächster Teilschritt. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.33 zeigt Bestellpositions-Leck in Liste und Detail; 0/2 neue Regressionen bestanden. |
+| Aktuelles Paket | SEC-01.33 rot getestet; SEC-01.34 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `5dbacba` (`SEC-01.31`); SEC-01.32 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `0f2abb7` (`SEC-01.32`); SEC-01.33 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.33: offene SEC-01-Pfade gegen Rollen-/Objektvertrag inventarisieren und relevante Backendprüfungen ausführen. |
+| Nächster konkreter Schritt | SEC-01.34: Bestellpositionen nach Recht und Abteilung der tatsächlichen Bestellung filtern. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.32 grün: Sync-Gruppenabfrage verlangt Organisationssicht und globales Testrecht; SEC-01.33 Inventar. |
+| SEC-01 | in Arbeit | Codex | SEC-01.33 rot: Bestellpositionen aus B trotz fehlendem B-Recht sichtbar. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -624,15 +624,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.31`: Sync-Abfrage ohne Jobbezug sowie übrige SEC-01-Sonderaktionen auf aktionsbezogene Rechte prüfen.
   - `SEC-01.32`: Jobungebundene Sync-Gruppenabfrage nur mit Organisationssicht und globalem Testrecht erlauben.
   - `SEC-01.33`: Restliche SEC-01-Aktions-/Objektpfade gegen Abnahmevertrag inventarisieren und relevante Backendtests ausführen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.31 `5dbacba` mit zwei roten Sync-Abfrageregressionen; SEC-01.32 wird mit diesem Checkpoint committed.
+  - `SEC-01.34`: Bestellpositionen nach Modellrecht und Abteilung ihrer tatsächlichen Bestellung filtern.
+- **Letzter dauerhafter Checkpoint:** SEC-01.32 `0f2abb7` mit 23 bestandenen relevanten Backendtests; SEC-01.33 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-01.31-Regressionen `5dbacba`; Sync-Abfrage-Korrektur in diesem SEC-01.32-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.32: 23/23 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Mitglieder-Löschaktion, Ereignisansichten, Mitgliederanhänge, Export, Qualifikations-/Sonderaufgabenanhänge sowie Sync-Aktionen wurden in SEC-01.22/.24/.26/.28/.30/.32 korrigiert. Inventar-Schreibziele bleiben offen. Das Inventar ist ein Codebefund, keine vollständige HTTP-Abnahme aller Pfade.
-- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen müssen inventarisiert werden. `SEC-01` ist noch nicht vollständig abgenommen.
-- **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.33` offene SEC-01-Pfade inventarisieren und relevante Backendprüfungen ausführen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-01.32-Korrektur `0f2abb7`; Bestellpositions-Regressionen in diesem SEC-01.33-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.33: 0/2 neue HTTP-Regressionen bestanden; B-Bestellposition ist in Liste und Detail sichtbar. Ruff und Diff-Check bestanden. Breite Suite mit 277 Tests läuft noch; Ergebnis ausstehend. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Bestellpositionen ohne Filter nach Bestellabteilung sind in SEC-01.33 rot getestet. Mitgliederlisten einschließlich Export/Anhang/Check-Aktionen und Staff-Zweig in `create_from_event_type` gehören zur umfassenden SEC-03-Migration; Zielrelationen und Sammelaktionen in Bestellungen gehören zu SEC-02. Weitere Inventar-Schreibziele gehören zu SEC-02/SEC-09. Der Inventarstand ist noch keine vollständige HTTP-Abnahme aller Pfade.
+- **Offene Fehler / Risiken:** B-Bestellpositionen sind ohne B-Recht lesbar. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Laufende Prozesse und sichere Fortsetzung:** breite Backendprüfung (`api_tests`, `departments.tests`, `members.tests`, `qualifications.tests`, `orders.tests`, `external_sync.tests`, `users.tests`) läuft; Ergebnis nach Abschluss im nächsten Checkpoint erfassen.
+- **Nächster konkreter Schritt:** `SEC-01.34` Bestellpositionen nach tatsächlicher Bestellabteilung und Modellrecht filtern.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -678,3 +679,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.30 | Sync-Aktionen und Bereinigungsvorschau verlangen ihre ausdrücklichen Rechte an der tatsächlichen Jobabteilung; organisationsweite Jobs verlangen Organisationssicht und globales Aktionsrecht. Positiver A-Ausführungsfall und verweigerter B-Fall ergänzt. | 20/20 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.30): enforce explicit sync action rights` | SEC-01.31 übrige Pfade prüfen. |
 | 03.10.2026 | SEC-01.31 | Zwei HTTP-Regressionen für jobungebundene Sync-Gruppenabfrage mit scoped Anlegerecht und Organisationssicht plus globalem Anlege- ohne Testrecht ergänzt. | 0/2 neue Tests bestanden: beide Abfragen liefern 200. Erwartete rote Befunde; Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.31): expose unbound sync lookup rights` | SEC-01.32 Organisationssicht und globales Testrecht durchsetzen. |
 | 03.10.2026 | SEC-01.32 | Jobungebundene Sync-Gruppenabfrage verlangt Organisationssicht und globales Testrecht; scoped Testrecht ohne Organisationssicht wird verweigert. | 23/23 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.32): protect unbound sync group lookup` | SEC-01.33 Restinventar und Prüfungen. |
+| 03.10.2026 | SEC-01.33 | Restinventar: Bestellpositionen ohne Bestellabteilungsfilter; zwei A/B-HTTP-Regressionen für Liste und Detail ergänzt. Mitgliederlisten für SEC-03, Zielrelationen/Sammelaktionen für SEC-02 vorgemerkt. | 0/2 neue Tests bestanden: B-Position in Liste und Detail sichtbar; Ruff und Diff-Check bestanden. Breite 277er-Prüfung läuft noch. | Dieser Commit: `test(SEC-01.33): expose order item department bypass` | SEC-01.34 Bestellpositionen filtern. |
