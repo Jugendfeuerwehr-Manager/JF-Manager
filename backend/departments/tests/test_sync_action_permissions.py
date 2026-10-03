@@ -104,3 +104,17 @@ class SyncActionPermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         provider.list_top_level_groups.assert_not_called()
+
+    def test_scoped_test_right_without_org_scope_cannot_query_unbound_groups(self):
+        role = self.runner.department_roles.get(department=self.department)
+        role.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="external_sync", codename="test_syncjob")
+        )
+        self.client.force_authenticate(user=self.runner)
+        response = self.client.post(
+            "/api/v1/sync-jobs/spond-top-level-groups/",
+            {"username": "example", "password": "test-only-password"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

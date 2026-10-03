@@ -52,6 +52,7 @@ class SyncJobActionPermissions(DepartmentRoleModelPermissions):
     action_permissions = {
         "run_now": "external_sync.run_syncjob",
         "test_connection": "external_sync.test_syncjob",
+        "spond_top_level_groups": "external_sync.test_syncjob",
         "garbage_collect": "external_sync.garbage_collect_syncjob",
         "garbage_collection_preview": "external_sync.garbage_collect_syncjob",
     }
@@ -61,6 +62,11 @@ class SyncJobActionPermissions(DepartmentRoleModelPermissions):
         if action_permission:
             return [action_permission]
         return super()._required_permissions(request, view)
+
+    def has_permission(self, request, view):
+        if view.action == "spond_top_level_groups":
+            return view._user_is_org_wide(request.user) and request.user.has_perm("external_sync.test_syncjob")
+        return super().has_permission(request, view)
 
     def has_object_permission(self, request, view, obj):
         if obj.department_id is None:
