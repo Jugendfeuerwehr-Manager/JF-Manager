@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
-from members.models import Member
+from members.models import EmailMessage, Member
 
 
 class EmailRolePermissionTests(APITestCase):
@@ -56,3 +56,29 @@ class EmailRolePermissionTests(APITestCase):
         response = self.preview(self.member_b)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_department_sender_sees_only_messages_from_sending_department(self):
+        message_a = EmailMessage.objects.create(
+            sender=self.sender, department=self.department_a, subject="A", body_html="<p>A</p>", recipient_type="all"
+        )
+        EmailMessage.objects.create(
+            sender=self.sender, department=self.department_b, subject="B", body_html="<p>B</p>", recipient_type="all"
+        )
+        self.client.force_authenticate(user=self.sender)
+
+        response = self.client.get("/api/v1/emails/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual({item["id"] for item in response.data["results"]}, {message_a.pk})
+
+    def test_global_sending_right_still_obeys_department_scope(self):
+        self.staff.user_permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="can_send_member_emails")
+        )
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.staff.pk))
+
+        allowed = self.preview(self.member_a)
+        denied = self.preview(self.member_b)
+
+        self.assertEqual(allowed.status_code, status.HTTP_200_OK, allowed.data)
+        self.assertEqual(denied.status_code, status.HTTP_404_NOT_FOUND)

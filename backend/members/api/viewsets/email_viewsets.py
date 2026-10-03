@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
-from members.api.permissions import CanSendEmails
+from members.api.permissions import CanSendEmails, sending_department_ids
 from members.api.serializers.email_serializers import (
     EmailMessageCreateSerializer,
     EmailMessageDetailSerializer,
@@ -52,9 +52,10 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Filter queryset based on user permissions."""
         queryset = super().get_queryset()
 
-        # Non-staff users can only see their own emails
-        if not self.request.user.is_staff:
+        if not self.request.user.is_superuser:
             queryset = queryset.filter(sender=self.request.user)
+        if not self.request.user.has_perm("members.can_send_member_emails"):
+            queryset = queryset.filter(department_id__in=sending_department_ids(self.request.user))
 
         return queryset
 
@@ -65,19 +66,17 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """
         user = self.request.user
         base_qs = Member.objects.prefetch_related("departments")
+        has_global_right = user.has_perm("members.can_send_member_emails")
 
-        if self._user_is_org_wide(user):
-            requested_dept = self._resolve_requested_department(user)
+        requested_dept = self._resolve_requested_department(user)
+        if self._user_is_org_wide(user) and has_global_right:
             if requested_dept is not None:
                 return base_qs.filter(departments__id=requested_dept).distinct()
             return base_qs
 
-        allowed_ids = self._user_department_ids(user)
-        requested_dept = self._resolve_requested_department(user)
-
+        allowed_ids = self._user_department_ids(user) if has_global_right else sending_department_ids(user)
         if requested_dept is not None:
-            return base_qs.filter(departments__id=requested_dept).distinct()
-
+            allowed_ids = [requested_dept] if requested_dept in allowed_ids else []
         return base_qs.filter(departments__id__in=allowed_ids).distinct()
 
     @action(detail=False, methods=["post"])
