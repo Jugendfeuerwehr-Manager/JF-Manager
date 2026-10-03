@@ -63,3 +63,61 @@ class DepartmentRoleLeakageTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.group_a.refresh_from_db()
         self.assertEqual(self.group_a.name, "A group")
+
+
+class StaffAndScopePermissionTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.department_a = Department.objects.create(name="A", code="staff-a")
+        cls.department_b = Department.objects.create(name="B", code="staff-b")
+        cls.group_a = Group.objects.create(name="A group", department=cls.department_a)
+        cls.group_b = Group.objects.create(name="B group", department=cls.department_b)
+        cls.staff = get_user_model().objects.create_user(username="staff-only", password="test-only-password", is_staff=True)
+        cls.org_scope = get_user_model().objects.create_user(username="org-scope", password="test-only-password")
+        cls.org_scope.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+
+    def test_staff_without_model_permission_cannot_read_or_write(self):
+        self.client.force_authenticate(user=self.staff)
+
+        self.assertEqual(self.client.get("/api/v1/groups/").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.patch(f"/api/v1/groups/{self.group_b.pk}/", {"name": "Changed"}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_org_scope_without_model_permission_cannot_read_or_write(self):
+        self.client.force_authenticate(user=self.org_scope)
+
+        self.assertEqual(self.client.get("/api/v1/groups/").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.patch(f"/api/v1/groups/{self.group_b.pk}/", {"name": "Changed"}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_staff_department_role_does_not_expose_other_departments(self):
+        reader = AuthGroup.objects.create(name="Staff reader A")
+        reader.permissions.add(Permission.objects.get(content_type__app_label="members", codename="view_group"))
+        UserDepartmentRole.objects.create(user=self.staff, department=self.department_a).groups.add(reader)
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.get("/api/v1/groups/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item["id"] for item in response.data["results"]}, {self.group_a.pk})
+        self.assertEqual(
+            self.client.get(f"/api/v1/groups/?department={self.department_b.pk}").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_org_scope_with_explicit_global_view_permission_can_read_but_not_write(self):
+        self.org_scope.user_permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="view_group")
+        )
+        self.client.force_authenticate(user=self.org_scope)
+
+        response = self.client.get("/api/v1/groups/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item["id"] for item in response.data["results"]}, {self.group_a.pk, self.group_b.pk})
+        self.assertEqual(
+            self.client.patch(f"/api/v1/groups/{self.group_b.pk}/", {"name": "Changed"}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
