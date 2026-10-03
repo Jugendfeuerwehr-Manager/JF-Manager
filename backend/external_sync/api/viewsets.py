@@ -24,10 +24,28 @@ from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 
 class ExternalSyncScopeMixin:
     def _user_is_org_wide(self, user):
-        return user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        return user.is_superuser or user.has_perm("departments.can_access_all_departments")
 
     def _user_department_ids(self, user):
         return list(user.department_roles.values_list("department_id", flat=True))
+
+    def _filter_by_scope_permission(self, queryset, department_field, permission):
+        user = self.request.user
+        org_wide = self._user_is_org_wide(user)
+        if org_wide and user.has_perm(permission):
+            return queryset
+
+        allowed_ids = set(self._user_department_ids(user))
+        if not user.has_perm(permission):
+            app_label, codename = permission.split(".", 1)
+            role_ids = set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label=app_label,
+                    groups__permissions__codename=codename,
+                ).values_list("department_id", flat=True)
+            )
+            allowed_ids = role_ids if org_wide else allowed_ids & role_ids
+        return queryset.filter(**{f"{department_field}__in": allowed_ids})
 
 
 class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
@@ -41,17 +59,15 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
     ordering = ["name"]
 
     def get_queryset(self):
-        user = self.request.user
         queryset = super().get_queryset()
-
-        if self._user_is_org_wide(user):
-            department_id = self.request.query_params.get("department")
-            if department_id:
-                return queryset.filter(department_id=department_id)
-            return queryset
-
-        allowed_department_ids = self._user_department_ids(user)
-        return queryset.filter(department_id__in=allowed_department_ids)
+        required = DepartmentRoleModelPermissions()._required_permissions(self.request, self)
+        if required is None:
+            return queryset.none()
+        queryset = self._filter_by_scope_permission(queryset, "department_id", required[0])
+        department_id = self.request.query_params.get("department")
+        if department_id:
+            queryset = queryset.filter(department_id=department_id)
+        return queryset
 
     def get_serializer_class(self):
         if self.action in {"list"}:
@@ -197,11 +213,5 @@ class SyncRunViewSet(ExternalSyncScopeMixin, viewsets.ReadOnlyModelViewSet):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        user = self.request.user
         queryset = super().get_queryset()
-
-        if self._user_is_org_wide(user):
-            return queryset
-
-        allowed_department_ids = self._user_department_ids(user)
-        return queryset.filter(job__department_id__in=allowed_department_ids)
+        return self._filter_by_scope_permission(queryset, "job__department_id", "external_sync.view_syncrun")

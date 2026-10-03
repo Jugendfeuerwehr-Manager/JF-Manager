@@ -42,7 +42,7 @@ class StockViewSet(BasePermissionedViewSet, mixins.ListModelMixin, mixins.Retrie
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return filter_item_department_queryset_for_user(queryset, self.request.user)
+        return filter_item_department_queryset_for_user(queryset, self.request.user, "inventory.view_stock")
 
 
 class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
@@ -60,7 +60,20 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return filter_item_department_queryset_for_user(queryset, self.request.user)
+        action = {
+            "GET": "view",
+            "HEAD": "view",
+            "OPTIONS": "view",
+            "POST": "add",
+            "PUT": "change",
+            "PATCH": "change",
+            "DELETE": "delete",
+        }.get(self.request.method)
+        if action is None:
+            return queryset.none()
+        return filter_item_department_queryset_for_user(
+            queryset, self.request.user, f"inventory.{action}_transaction"
+        )
 
     def perform_create(self, serializer):
         serializer.save()  # user is injected in serializer.create

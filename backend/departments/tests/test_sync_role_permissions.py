@@ -48,3 +48,37 @@ class SyncRolePermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual({item["id"] for item in response.data["results"]}, {self.run_a.pk})
+
+    def test_org_scope_without_global_model_right_stays_in_role_department(self):
+        self.staff.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.staff.pk))
+
+        jobs = self.client.get("/api/v1/sync-jobs/")
+        runs = self.client.get("/api/v1/sync-runs/")
+
+        self.assertEqual(jobs.status_code, status.HTTP_200_OK, jobs.data)
+        self.assertEqual(runs.status_code, status.HTTP_200_OK, runs.data)
+        self.assertEqual({item["id"] for item in jobs.data["results"]}, {self.job_a.pk})
+        self.assertEqual({item["id"] for item in runs.data["results"]}, {self.run_a.pk})
+
+    def test_staff_role_cannot_create_organization_job_without_org_scope(self):
+        role = self.staff.department_roles.get(department=self.department_a)
+        role.groups.get().permissions.add(
+            Permission.objects.get(content_type__app_label="external_sync", codename="add_syncjob")
+        )
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.staff.pk))
+
+        response = self.client.post(
+            "/api/v1/sync-jobs/",
+            {
+                "name": "Not allowed",
+                "provider": SyncJob.Provider.HI_ORG,
+                "scope": SyncJob.Scope.ORGANIZATION,
+                "run_mode": SyncJob.RunMode.MANUAL,
+                "deletion_mode": SyncJob.DeletionMode.REVIEW,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(SyncJob.objects.filter(name="Not allowed").exists())

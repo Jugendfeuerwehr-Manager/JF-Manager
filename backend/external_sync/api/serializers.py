@@ -124,7 +124,7 @@ class SyncJobDetailSerializer(SyncJobListSerializer):
         if not user or not user.is_authenticated:
             return attrs
 
-        is_org_wide = user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        is_org_wide = user.is_superuser or user.has_perm("departments.can_access_all_departments")
         allowed_department_ids = set(user.department_roles.values_list("department_id", flat=True))
 
         if scope == SyncJob.Scope.ORGANIZATION and not is_org_wide:
