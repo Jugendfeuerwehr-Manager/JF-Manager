@@ -74,3 +74,33 @@ class SyncActionPermissionTests(APITestCase):
         self.assertEqual(allowed.status_code, status.HTTP_201_CREATED)
         self.assertEqual(denied.status_code, status.HTTP_404_NOT_FOUND)
         provider.run.assert_called_once()
+
+    def test_scoped_add_right_cannot_query_unbound_provider_groups(self):
+        provider = Mock()
+        provider.list_top_level_groups.return_value = []
+        with patch("external_sync.api.viewsets.get_provider", return_value=provider):
+            response = self.client.post(
+                "/api/v1/sync-jobs/spond-top-level-groups/",
+                {"username": "example", "password": "test-only-password"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        provider.list_top_level_groups.assert_not_called()
+
+    def test_org_scope_and_add_right_cannot_query_provider_without_test_right(self):
+        self.creator.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+        self.creator.user_permissions.add(
+            Permission.objects.get(content_type__app_label="external_sync", codename="add_syncjob")
+        )
+        provider = Mock()
+        provider.list_top_level_groups.return_value = []
+        with patch("external_sync.api.viewsets.get_provider", return_value=provider):
+            response = self.client.post(
+                "/api/v1/sync-jobs/spond-top-level-groups/",
+                {"username": "example", "password": "test-only-password"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        provider.list_top_level_groups.assert_not_called()
