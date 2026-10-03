@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.22 bindet `delete-with-strategy` an das Löschrecht; 14/14 relevante Backendtests bestanden. |
-| Aktuelles Paket | SEC-01.22 korrigiert; SEC-01.23 als nächster Teilschritt. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.23 zeigt Ereignis-Leck in Liste, Detail und Mitgliederaktion; 0/3 neue Regressionen bestanden. |
+| Aktuelles Paket | SEC-01.23 rot getestet; SEC-01.24 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `c577365` (`SEC-01.21`); SEC-01.22 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `f6db9ec` (`SEC-01.22`); SEC-01.23 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.23: Ereignislisten und eingebettete Mitgliederereignisse bei A/B-Rollen als HTTP-Regression prüfen. |
+| Nächster konkreter Schritt | SEC-01.24: Ereignislisten, Details und Mitgliederaktion nach `view_event` der tatsächlichen Mitgliedsabteilung filtern. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.22 grün: Löschaktion verlangt Löschrecht am Mitglied; SEC-01.23 Ereignissicht prüfen. |
+| SEC-01 | in Arbeit | Codex | SEC-01.23 rot: Ereignisse aus B trotz fehlendem B-Ereignisrecht sichtbar. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -614,15 +614,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.21`: Verbliebene Sonderaktionen und verknüpfte Objekte mit HTTP-Regressionen prüfen. In diesem Commit zwei rote Löschaktions-Regressionen.
   - `SEC-01.22`: `delete-with-strategy` an das Löschrecht des tatsächlichen Mitglieds binden.
   - `SEC-01.23`: Ereignislisten, Detailansicht und eingebettete Mitgliederereignisse bei A/B-Rollen als HTTP-Regression prüfen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.21 `c577365` mit zwei roten Regressionen; SEC-01.22 wird mit diesem Checkpoint committed.
+  - `SEC-01.24`: Ereignislisten, Detailansicht und Mitgliederaktion nach `view_event` an der tatsächlichen Mitgliedsabteilung filtern.
+- **Letzter dauerhafter Checkpoint:** SEC-01.22 `f6db9ec` mit 14 bestandenen relevanten Backendtests; SEC-01.23 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Regressionen bis SEC-01.21 in `c577365`; Korrekturen bis SEC-01.20 in `c7c011c`; Mitglieder-Löschrechtkorrektur in diesem SEC-01.22-Commit. Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22` korrigiert. `delete-with-strategy` prüft nun das Löschrecht des tatsächlichen Mitglieds. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.22: 14/14 relevante Backendtests, Ruff und Diff-Check bestanden. Breite 216er-Suite nach SEC-01.22 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Qualifikationen, Sonderaufgaben, Anwesenheit, E-Mail-Berechtigung, Abteilungsendpunkt sowie Inventar-/Sync-Listen wurden in SEC-01.12/.14/.16/.18/.20 korrigiert. Mitglieder-Löschaktion wurde in SEC-01.22 korrigiert. Noch zu prüfen: Mitglieder-Sonderaktionen `events`, `attachments`, `export-excel`; Qualifikationsanhänge; Sync-Sonderaktionen und Inventar-Schreibziele. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
-- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-01.22-Korrektur `f6db9ec`; Ereignis-Regressionen in diesem SEC-01.23-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.23: 0/3 neue HTTP-Regressionen bestanden; A-Ereignisrecht legt B-Ereignisse in Liste, Detail und Mitgliederaktion offen. Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Mitglieder-Löschaktion wurde in SEC-01.22 korrigiert; Ereignisansichten sind in SEC-01.23 rot getestet. Noch zu prüfen: Mitglieder-Sonderaktionen `attachments`, `export-excel`; Qualifikationsanhänge; Sync-Sonderaktionen und Inventar-Schreibziele. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
+- **Offene Fehler / Risiken:** Ereignisse aus B sind bei bloßem B-Mitgliederrecht sichtbar. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.23` Ereignislisten und eingebettete Mitgliederereignisse bei A/B-Rollen per HTTP prüfen.
+- **Nächster konkreter Schritt:** `SEC-01.24` Ereignisansichten nach `view_event` an der tatsächlichen Mitgliedsabteilung filtern.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -658,3 +659,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.20 | Staff-Bypass aus Inventar-/Sync-Bereich entfernt; Listen nach Modellrecht je Abteilung gefiltert. Sync-Serializer verlangt echte Organisationssicht; zusätzliche Fälle für B-Zuordnung ohne B-Recht und Organisationssicht ohne globales Modellrecht. | 24/24 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht erneut ausgeführt; Schreibzielprüfung bleibt SEC-02. | Dieser Commit: `fix(SEC-01.20): scope inventory and sync reads by model rights` | SEC-01.21 Sonderaktionen/Objektbeziehungen prüfen. |
 | 03.10.2026 | SEC-01.21 | Zwei HTTP-Regressionen für `delete-with-strategy` mit ausschließlich Anlege- bzw. Löschrecht ergänzt. | 0/2 neue Tests bestanden: Anlegerecht löscht Mitglied (204), Löschrecht wird verweigert (403). Erwartete rote Sicherheitsbefunde. | Dieser Commit: `test(SEC-01.21): expose member deletion action rights` | SEC-01.22 Löschrecht durchsetzen. |
 | 03.10.2026 | SEC-01.22 | `delete-with-strategy` verlangt `members.delete_member`; zusätzlicher Fall mit Löschrecht in A und bloßer Zuordnung in B schützt das tatsächliche Mitglied. | 14/14 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.22): require delete permission for member strategy action` | SEC-01.23 Ereignissicht prüfen. |
+| 03.10.2026 | SEC-01.23 | Drei HTTP-Regressionen für Ereignisliste, -detail und Mitgliederaktion mit `view_event` in A und nur `view_member` in B ergänzt. | 0/3 neue Tests bestanden: B-Ereignis wird dreifach sichtbar. Erwartete rote Sicherheitsbefunde; Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.23): expose member event scope bypass` | SEC-01.24 Ereignisrechte an Mitgliedsabteilung binden. |
