@@ -11,7 +11,7 @@ def permitted_departments(user, permission):
 
 
 def has_department_permission(user, permission, department_id):
-    if user.is_superuser or user.is_staff or user.has_perm(permission):
+    if user.is_superuser or user.has_perm(permission):
         return True
     if department_id is None:
         return False
@@ -19,6 +19,6 @@ def has_department_permission(user, permission, department_id):
 
 
 def filter_by_permission(queryset, user, permission, department_field="department_id"):
-    if user.is_superuser or user.is_staff or user.has_perm(permission):
+    if user.is_superuser or user.has_perm(permission):
         return queryset
     return queryset.filter(Q(**{f"{department_field}__in": permitted_departments(user, permission)}))

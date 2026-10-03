@@ -49,6 +49,9 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Get services filtered by department scope."""
         self.queryset = Service.objects.select_related("training_session").prefetch_related("operations_manager")
         queryset = super().get_queryset()
+        if self.action in ("attendance_board", "staff_statistics"):
+            # These actions enforce attendance rights instead of service rights.
+            return queryset
         permission = {
             "create": "servicebook.add_service",
             "update": "servicebook.change_service",
@@ -201,10 +204,13 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         from ..attendance_board import staff_report
 
         if not (
-            request.user.is_staff or request.user.is_superuser
+            request.user.is_superuser
             or request.user.has_perm("servicebook.view_attendance")
             or request.user.has_perm("servicebook.change_attendance")
-            or request.user.department_roles.filter(groups__permissions__codename__in=["view_attendance", "change_attendance"]).exists()
+            or request.user.department_roles.filter(
+                groups__permissions__content_type__app_label="servicebook",
+                groups__permissions__codename__in=["view_attendance", "change_attendance"],
+            ).exists()
         ):
             raise PermissionDenied("Keine Berechtigung zum Anzeigen der Anwesenheit.")
         from rest_framework import serializers
@@ -216,7 +222,7 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         dates = DateRange(data=request.query_params)
         dates.is_valid(raise_exception=True)
         services = self.filter_queryset(self.get_queryset())
-        if not request.user.has_perm("servicebook.view_attendance") and not request.user.has_perm("servicebook.change_attendance") and not request.user.is_staff:
+        if not request.user.is_superuser and not request.user.has_perm("servicebook.view_attendance") and not request.user.has_perm("servicebook.change_attendance"):
             from django.db.models import Q
 
             allowed = request.user.department_roles.filter(

@@ -109,6 +109,13 @@ class AttendanceBoardTests(TestCase):
         self.assertEqual(statistics.status_code, 403)
         self.assertFalse(Attendance.objects.filter(service=self.service, person=self.member).exists())
 
+        self.staff.user_permissions.add(
+            Permission.objects.get(codename="view_attendance", content_type__app_label="servicebook")
+        )
+        self.client.force_authenticate(get_user_model().objects.get(pk=self.staff.pk))
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/servicebook/services/staff_statistics/").status_code, 200)
+
     def test_legacy_attendance_endpoints_cannot_bypass_department_scope(self):
         foreign_service = Service.objects.create(start=self.service.start, end=self.service.end, department=self.other)
         record = Attendance.objects.create(service=foreign_service, person=self.member, state="A")

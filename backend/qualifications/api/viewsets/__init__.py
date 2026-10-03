@@ -41,6 +41,11 @@ from ..serializers import (
 class PersonDepartmentRoleModelPermissions(DepartmentRoleModelPermissions):
     """Check the real department of a qualification's member or task's member."""
 
+    def _required_permissions(self, request, view):
+        if view.action == "end_task":
+            return ["qualifications.change_specialtask"]
+        return super()._required_permissions(request, view)
+
     def has_object_permission(self, request, view, obj):
         user = request.user
         if user.is_superuser:
