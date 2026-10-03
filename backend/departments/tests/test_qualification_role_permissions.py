@@ -120,3 +120,33 @@ class QualificationRolePermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual({item["id"] for item in response.data["results"]}, {self.qualification_a.pk})
+
+    def test_ending_task_requires_change_right_in_its_department(self):
+        role = self.reader.department_roles.get(department=self.department_a)
+        role.groups.get().permissions.add(
+            Permission.objects.get(content_type__app_label="qualifications", codename="change_specialtask")
+        )
+        self.client.force_authenticate(user=self.reader)
+
+        allowed = self.client.post(f"/api/v1/qualifications/specialtasks/{self.task_a.pk}/end_task/")
+        denied = self.client.post(f"/api/v1/qualifications/specialtasks/{self.task_b.pk}/end_task/")
+
+        self.assertEqual(allowed.status_code, status.HTTP_200_OK, allowed.data)
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.task_b.refresh_from_db()
+        self.assertIsNone(self.task_b.end_date)
+
+    def test_add_only_role_cannot_end_existing_task(self):
+        user = get_user_model().objects.create_user(username="task-add-only", password="test-only-password")
+        group = AuthGroup.objects.create(name="Special task creator A")
+        group.permissions.add(
+            Permission.objects.get(content_type__app_label="qualifications", codename="add_specialtask")
+        )
+        UserDepartmentRole.objects.create(user=user, department=self.department_a).groups.add(group)
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(f"/api/v1/qualifications/specialtasks/{self.task_a.pk}/end_task/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.task_a.refresh_from_db()
+        self.assertIsNone(self.task_a.end_date)
