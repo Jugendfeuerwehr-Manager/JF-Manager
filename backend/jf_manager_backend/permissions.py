@@ -57,24 +57,36 @@ class DepartmentRoleModelPermissions(BasePermission):
             return queryset.model
         return None
 
-    def _department_role_codenames(self, request):
+    def _department_role_permissions(self, request, department_id=None):
         user = request.user
         roles = user.department_roles.prefetch_related("groups__permissions")
 
-        raw_department = request.query_params.get("department")
-        if raw_department:
-            try:
-                dept_id = int(raw_department)
-                roles = roles.filter(department_id=dept_id)
-            except (TypeError, ValueError):
-                pass
+        if department_id is None:
+            raw_department = request.query_params.get("department")
+            if raw_department:
+                try:
+                    department_id = int(raw_department)
+                except (TypeError, ValueError):
+                    return set()
+        if department_id is not None:
+            roles = roles.filter(department_id=department_id)
 
-        codenames = set()
+        permissions = set()
         for role in roles:
             for group in role.groups.all():
                 for perm in group.permissions.all():
-                    codenames.add(perm.codename)
-        return codenames
+                    permissions.add(f"{perm.content_type.app_label}.{perm.codename}")
+        return permissions
+
+    def _required_permissions(self, request, view):
+        model = self._get_model(view)
+        templates = self.perms_map.get(request.method)
+        if model is None or templates is None:
+            return None
+        return [
+            template % {"app_label": model._meta.app_label, "model_name": model._meta.model_name}
+            for template in templates
+        ]
 
     def has_permission(self, request, view):
         user = request.user
@@ -84,25 +96,31 @@ class DepartmentRoleModelPermissions(BasePermission):
         if user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments"):
             return True
 
-        model = self._get_model(view)
-        if model is None:
-            return True
-
-        required_perms = self.perms_map.get(request.method, [])
-        if not required_perms:
-            return True
-
-        app_label = model._meta.app_label
-        model_name = model._meta.model_name
-        role_codenames = self._department_role_codenames(request)
-
-        for perm_tmpl in required_perms:
-            perm_name = perm_tmpl % {"app_label": app_label, "model_name": model_name}
-            codename = perm_name.split(".", 1)[1]
-            if user.has_perm(perm_name):
-                continue
-            if codename in role_codenames:
-                continue
+        required_perms = self._required_permissions(request, view)
+        if required_perms is None:
             return False
+        role_permissions = self._department_role_permissions(request)
+        return all(user.has_perm(permission) or permission in role_permissions for permission in required_perms)
 
-        return True
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_superuser or user.is_staff:
+            return True
+
+        required_perms = self._required_permissions(request, view)
+        if required_perms is None:
+            return False
+        if all(user.has_perm(permission) for permission in required_perms):
+            return True
+
+        # Single-department records must be checked against their real owner,
+        # regardless of an absent or manipulated query parameter.
+        if not hasattr(obj, "department_id"):
+            return True  # Other object relationships are covered per endpoint.
+        if obj.department_id is None:
+            return request.method in SAFE_METHODS and all(
+                permission in self._department_role_permissions(request) for permission in required_perms
+            )
+
+        role_permissions = self._department_role_permissions(request, obj.department_id)
+        return all(user.has_perm(permission) or permission in role_permissions for permission in required_perms)

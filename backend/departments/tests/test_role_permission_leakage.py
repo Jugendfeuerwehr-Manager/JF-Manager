@@ -52,3 +52,14 @@ class DepartmentRoleLeakageTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.group_a.refresh_from_db()
         self.assertEqual(self.group_a.name, "Changed A")
+
+    def test_same_codename_from_other_app_does_not_grant_write(self):
+        writer = AuthGroup.objects.get(name="Writer A")
+        writer.permissions.clear()
+        writer.permissions.add(Permission.objects.get(content_type__app_label="auth", codename="change_group"))
+
+        response = self.client.patch(f"/api/v1/groups/{self.group_a.pk}/", {"name": "Changed A"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.group_a.refresh_from_db()
+        self.assertEqual(self.group_a.name, "A group")
