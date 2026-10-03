@@ -30,7 +30,9 @@ class ExternalSyncApiTests(APITestCase):
             Permission.objects.get(codename="can_access_all_departments"),
             *Permission.objects.filter(
                 content_type__app_label="external_sync",
-                codename__in=["view_syncjob", "add_syncjob", "change_syncjob", "view_syncrun"],
+                codename__in=[
+                    "view_syncjob", "add_syncjob", "change_syncjob", "view_syncrun", "run_syncjob", "test_syncjob"
+                ],
             ),
         )
 

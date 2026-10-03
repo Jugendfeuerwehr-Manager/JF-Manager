@@ -48,10 +48,33 @@ class ExternalSyncScopeMixin:
         return queryset.filter(**{f"{department_field}__in": allowed_ids})
 
 
+class SyncJobActionPermissions(DepartmentRoleModelPermissions):
+    action_permissions = {
+        "run_now": "external_sync.run_syncjob",
+        "test_connection": "external_sync.test_syncjob",
+        "garbage_collect": "external_sync.garbage_collect_syncjob",
+        "garbage_collection_preview": "external_sync.garbage_collect_syncjob",
+    }
+
+    def _required_permissions(self, request, view):
+        action_permission = self.action_permissions.get(view.action)
+        if action_permission:
+            return [action_permission]
+        return super()._required_permissions(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        if obj.department_id is None:
+            required = self._required_permissions(request, view)
+            return view._user_is_org_wide(request.user) and required is not None and all(
+                request.user.has_perm(permission) for permission in required
+            )
+        return super().has_object_permission(request, view, obj)
+
+
 class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
     queryset = SyncJob.objects.select_related("department", "created_by").prefetch_related("runs")
     lookup_value_regex = r"\d+"
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, SyncJobActionPermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["provider", "scope", "department", "run_mode", "enabled", "deletion_mode"]
     search_fields = ["name", "provider"]
@@ -60,7 +83,7 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        required = DepartmentRoleModelPermissions()._required_permissions(self.request, self)
+        required = SyncJobActionPermissions()._required_permissions(self.request, self)
         if required is None:
             return queryset.none()
         queryset = self._filter_by_scope_permission(queryset, "department_id", required[0])
