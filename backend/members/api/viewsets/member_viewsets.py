@@ -143,18 +143,18 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         if self._user_is_org_wide(user):
             requested_dept = self._resolve_requested_department(user)
             if requested_dept is not None:
-                return base_qs.filter(departments__id=requested_dept).distinct()
-            return base_qs
+                base_qs = base_qs.filter(departments__id=requested_dept)
+            return self._filter_by_action_permission(base_qs.distinct(), user)
 
         allowed_ids = self._user_department_ids(user)
         requested_dept = self._resolve_requested_department(user)
 
         if requested_dept is not None:
-            return base_qs.filter(departments__id=requested_dept).distinct()
+            return self._filter_by_action_permission(base_qs.filter(departments__id=requested_dept).distinct(), user)
 
         # Department-scoped users only see members in their departments.
         # Members with no department are NOT surfaced (include_central_records=False).
-        return base_qs.filter(departments__id__in=allowed_ids).distinct()
+        return self._filter_by_action_permission(base_qs.filter(departments__id__in=allowed_ids).distinct(), user)
 
     def perform_create(self, serializer):
         """Auto-assign department on create for dept-scoped users."""
@@ -198,7 +198,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         from django.db.models import Count
 
-        qs = self.queryset
+        qs = self.get_queryset()
         total = qs.count()
 
         # Gender distribution
@@ -208,7 +208,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Status distribution
         by_status = []
-        for status_obj in Status.objects.all():
+        for status_obj in Status.objects.filter(pk__in=qs.values_list("status_id", flat=True)):
             count = qs.filter(status=status_obj).count()
             by_status.append({"name": status_obj.name, "color": status_obj.color, "count": count})
         no_status_count = qs.filter(status__isnull=True).count()
@@ -217,7 +217,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Group distribution
         by_group = []
-        for group_obj in Group.objects.all():
+        for group_obj in Group.objects.filter(pk__in=qs.values_list("group_id", flat=True)):
             count = qs.filter(group=group_obj).count()
             by_group.append({"name": group_obj.name, "count": count})
         no_group_count = qs.filter(group__isnull=True).count()
@@ -276,7 +276,6 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get", "post"], permission_classes=[IsAuthenticated])
     def attachments(self, request, pk=None):
         from django.contrib.contenttypes.models import ContentType
-
         from rest_framework.exceptions import PermissionDenied
         from rest_framework.request import clone_request
 

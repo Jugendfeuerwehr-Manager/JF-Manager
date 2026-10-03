@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.5 reproduziert drei Mitgliederlücken; 1/4 neue Tests bestanden. |
-| Aktuelles Paket | SEC-01.5: Mitgliederdaten und Statistiken als rote Regression. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.5 `4db95c8`; SEC-01.6 korrigiert Mitgliederrechte, 76/76 gezielte Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.6: Mitgliederlisten, Statistik und Objektprüfung korrigiert. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `033f3bf` (`SEC-01.4`). |
+| Letzter Roadmap-Commit | `4db95c8` (`SEC-01.5`); dieser Commit: `fix(SEC-01.6): scope member reads and writes to permitted departments`. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.6: Mitgliederlisten, Statistik und Objektschreibrechte nach tatsächlicher Abteilung korrigieren. |
+| Nächster konkreter Schritt | SEC-01.7: übrige Objektbeziehungen, eigene Listenfilter, Sonderaktionen und lokale Staff-Bypässe inventarisieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.5 rot: Liste und Statistik enthalten fremde Mitglieder; PATCH in B über Recht aus A möglich. |
+| SEC-01 | in Arbeit | Codex | SEC-01.5 `4db95c8`; SEC-01.6: 76/76 relevante Backendtests bestanden; weitere Endpunkte offen. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -596,16 +596,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.3`: Staff- und Organisationsbereich ohne fachliche Rechte als HTTP-Regression testen. Rot nachgewiesen in `c6a55dc`.
   - `SEC-01.4`: Zentrale Rechte- und Listenfilter für Staff und organisationsweiten Bereich korrigieren. In diesem Commit erledigt.
   - `SEC-01.5`: Mitgliederlisten, Statistiken und Schreibzugriffe bei A/B-Rollen als Regression testen. In diesem Commit rot nachgewiesen.
-  - `SEC-01.6`: Mitglieder nach tatsächlicher Abteilungsberechtigung filtern und gemeinsame Stammdaten objektbezogen schützen.
+  - `SEC-01.6`: Mitglieder nach tatsächlicher Abteilungsberechtigung filtern und gemeinsame Stammdaten objektbezogen schützen. In diesem Commit erledigt.
   - `SEC-01.7`: Weitere Objektbeziehungen, Listen und Sonderaktionen inventarisieren und gegen den vollständigen Vertrag testen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.4 `033f3bf`, 263 Backendtests bestanden.
+- **Letzter dauerhafter Checkpoint:** SEC-01.5 `4db95c8`; SEC-01.6 nach 76 bestandenen Backendtests in diesem Commit.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`; Korrekturen `797d5d4`, `033f3bf`; `backend/departments/tests/test_member_role_permissions.py` in diesem Commit: `test(SEC-01.5): expose member scope and statistics leakage`.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5` rot nachgewiesen; `SEC-01.2`/`.4` korrigiert. `is_staff` gibt in zentraler Rechteklasse und Abteilungsmixin keinen fachlichen Vollzugriff mehr; `can_access_all_departments` erweitert nur den Bereich. Leselisten mit Abteilungsrollen werden nach Aktionsrecht gefiltert, sofern sie den gemeinsamen Mixin-Queryset nutzen.
-- **Ausgeführte Prüfungen mit Ergebnis:** Vor SEC-01.5: 263/263 Backendtests, 10/10 Sicherheitsregressionen, Ruff und `git diff --check` bestanden. Neue Member-Tests: 1/4 bestanden, 3 erwartungsgemäß rot. `manage.py test` ohne explizite Module scheitert vor Testbeginn an einem vorhandenen Namenskonflikt von `inventory/tests.py` und `inventory/tests/`; explizite Module umgehen die Discovery-Schwäche.
+- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`, `4db95c8`; Korrekturen `797d5d4`, `033f3bf`; `backend/jf_manager_backend/permissions.py`, `backend/members/api/viewsets/member_viewsets.py`, Member-Test und Journal in diesem Commit: `fix(SEC-01.6): scope member reads and writes to permitted departments`.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5` rot nachgewiesen; `SEC-01.2`/`.4`/`.6` korrigiert. Mitgliederdaten mit mehreren Abteilungen nutzen beim Lesen nur Abteilungen mit Leserecht; bei gemeinsam zugeordneten Mitgliedern genügt Schreibrecht in einer zugehörigen Abteilung für gemeinsame Stammdaten. Statistik zählt nur sichtbare Mitglieder und zeigt keine Gruppen aus fremden Datensätzen.
+- **Ausgeführte Prüfungen mit Ergebnis:** Vor SEC-01.5: 263/263 Backendtests bestanden. Neue Member-Tests vor Fix: 1/4 bestanden, 3 rot. Nach Fix: 76/76 relevante Backendtests einschließlich Member-, Rollen- und Scoping-Tests bestanden. Vollständiger 263er-Lauf nach SEC-01.6 nicht erneut ausgeführt. Ruff und `git diff --check` bestanden; bestehende unsortierte lokale Imports im bearbeiteten ViewSet wurden formatiert. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
 - **Offene Fehler / Risiken:** Objektmodelle ohne einzelnes `department_id`, eigene ViewSet-Listenfilter, Sonderaktionen und weitere lokal codierte Staff-Bypässe sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.6` Member-Queryset und Objektprüfung korrigieren; alle vier Tests grün prüfen.
+- **Nächster konkreter Schritt:** `SEC-01.7` nach Risiko aufteilen, insbesondere Parent/Qualifikation, eigene Statistikaktionen und Staff-Bypässe.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -624,3 +624,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.3 | HTTP-Tests für Staff ohne Fachrecht, organisationsweiten Bereich ohne Fachrecht und Staff mit Rolle nur in A. | 1/4 bestanden, 3 erwartungsgemäß fehlgeschlagen: unberechtigtes Lesen und fremde Datensätze in Listen. | Dieser Commit: `test(SEC-01.3): expose staff and scope permission bypasses` | SEC-01.4 Rechte- und Listenfilter korrigieren. |
 | 03.10.2026 | SEC-01.4 | Staff-Bypass entfernt, Bereich und Modellrechte getrennt, Leselisten mit Abteilungsrollen gefiltert; veraltete Sync- und Scoping-Testvorbereitungen auf explizite Rechte umgestellt. | 263/263 Backendtests über explizite Module, 10/10 Sicherheitsregressionen, Ruff und Diff-Check bestanden. Vorheriger breiter Lauf: 9 veraltete Sync-Fixture-Annahmen; korrigiert. Discovery ohne Modulliste weiterhin defekt. | Dieser Commit: `fix(SEC-01.4): separate scope from model permissions` | SEC-01.5 weitere Objektbeziehungen, Sonderaktionen und lokale Bypässe. |
 | 03.10.2026 | SEC-01.5 | Vier HTTP-Regressionen für Mitglieder mit Abteilungen A, B und A/B ergänzt. | 1/4 bestanden; Liste und Statistik enthalten fremdes B-Mitglied, PATCH auf B wird trotz Schreibrecht nur in A mit 200 akzeptiert. | Dieser Commit: `test(SEC-01.5): expose member scope and statistics leakage` | SEC-01.6 Queryset und Objektprüfung. |
+| 03.10.2026 | SEC-01.6 | Member-Queryset nach Modellrecht gefiltert, Statistik auf sichtbare Mitglieder begrenzt, Objektprüfung für M2M-Abteilungen ergänzt. | 76/76 relevante Backendtests bestanden; zusätzliche Gruppenname-Prüfung grün. Gesamte 263er-Suite nach dieser Änderung nicht erneut ausgeführt. | Dieser Commit: `fix(SEC-01.6): scope member reads and writes to permitted departments` | SEC-01.7 weitere Zugriffspfade priorisieren. |

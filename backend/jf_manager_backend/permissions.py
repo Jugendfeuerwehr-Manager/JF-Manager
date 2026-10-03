@@ -113,7 +113,24 @@ class DepartmentRoleModelPermissions(BasePermission):
         # Single-department records must be checked against their real owner,
         # regardless of an absent or manipulated query parameter.
         if not hasattr(obj, "department_id"):
-            return True  # Other object relationships are covered per endpoint.
+            if not hasattr(obj, "departments"):
+                return True  # Other object relationships are covered per endpoint.
+
+            object_department_ids = set(obj.departments.values_list("id", flat=True))
+            if not user.has_perm("departments.can_access_all_departments"):
+                object_department_ids &= set(user.department_roles.values_list("department_id", flat=True))
+            if not object_department_ids:
+                return False
+            if all(user.has_perm(permission) for permission in required_perms):
+                return True
+            return any(
+                all(
+                    user.has_perm(permission)
+                    or permission in self._department_role_permissions(request, department_id)
+                    for permission in required_perms
+                )
+                for department_id in object_department_ids
+            )
         if obj.department_id is not None and not (
             user.has_perm("departments.can_access_all_departments")
             or user.department_roles.filter(department_id=obj.department_id).exists()

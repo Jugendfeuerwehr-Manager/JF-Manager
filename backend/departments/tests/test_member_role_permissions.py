@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
+from members.models import Group as MemberGroup
 from members.models import Member
 
 
@@ -46,12 +47,19 @@ class MemberRolePermissionTests(APITestCase):
         )
 
     def test_statistics_count_only_members_with_read_permission(self):
+        group_a = MemberGroup.objects.create(name="Visible group", department=self.department_a)
+        group_b = MemberGroup.objects.create(name="Hidden group", department=self.department_b)
+        self.member_a.group = group_a
+        self.member_a.save(update_fields=["group"])
+        self.member_b.group = group_b
+        self.member_b.save(update_fields=["group"])
         self.client.force_authenticate(user=self.reader)
 
         response = self.client.get("/api/v1/members/statistics/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["total"], 2)
+        self.assertNotIn("Hidden group", {group["name"] for group in response.data["by_group"]})
 
     def test_write_role_in_a_cannot_change_member_only_in_b(self):
         self.client.force_authenticate(user=self.writer)
