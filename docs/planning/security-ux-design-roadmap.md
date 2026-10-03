@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: Ausgangsstand `b20e36f`, Plan `3619a63`, Agent-Regeln `7aeb4dd`; Testbasis geprüft. |
-| Aktuelles Paket | EXEC-01.4: Ausgangstests geprüft; SEC-01 folgt. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.1 reproduziert fremden Schreibzugriff mit HTTP 200 statt 403. |
+| Aktuelles Paket | SEC-01.1: dauerhafter Regressionstest rot nachgewiesen. |
 | Umsetzungsstatus | Noch keine fachliche Roadmap-Umsetzung. Vorhandene Änderungen sind als Ausgangsstand gesichert, nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
 | Commit dieses Planungsschritts | Planungsdatei `3619a63`, Agent-Regeln `7aeb4dd`; dieser Commit: `test(EXEC-01.4): record baseline test results`. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01 übernehmen und die Rechtevermischung als dauerhaften Regressionstest festhalten. |
+| Nächster konkreter Schritt | SEC-01.2: zentrale Rechteprüfung nach Objektabteilung korrigieren und Regression grün prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | offen | — | Reproduzierte Rollenvermischung als Regressionstest festhalten. |
+| SEC-01 | in Arbeit | Codex | SEC-01.1 rot: fremder PATCH liefert 200 statt 403; SEC-01.2 Korrektur folgt. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -584,6 +584,25 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse:** keine durch diesen Planungsschritt.
 - **Nächster Schritt:** `SEC-01.1`: dauerhafte Regression für abteilungsübergreifende Rechtevermischung.
 
+### SEC-01: aktueller Detailstand
+
+- **Status:** in Arbeit.
+- **Verantwortlich:** Codex.
+- **Abhängigkeiten:** EXEC-01 abgeschlossen; SEC-02 wird die Ziel- und Relationsprüfung aller Schreibaktionen ergänzen.
+- **Ziel und Abnahme:** Aktionsrechte hängen von der tatsächlichen Objektabteilung ab. Ein Lesezugriff in B zusammen mit Schreibrecht in A erlaubt keine Änderung in B, unabhängig von Queryparametern. Vollqualifizierte Permissions und unbekannte Aktionen werden sicher behandelt.
+- **Teilschritte:**
+  - `SEC-01.1`: HTTP-Regression für gemischte Rollen A/B mit und ohne Abteilungsparameter, inklusive erlaubter Änderung in A.
+  - `SEC-01.2`: Zentrale Modell- und Objektberechtigungen nach Aktion und Objektabteilung korrigieren.
+  - `SEC-01.3`: Betroffene Endpunkte und Sonderaktionen inventarisieren und gegen den neuen Vertrag testen.
+- **Letzter dauerhafter Checkpoint:** Ausgangstests in `3669c4d` dokumentiert.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Geänderte Dateien / Commit-Bezug:** `backend/departments/tests/test_role_permission_leakage.py`; dieser Commit: `test(SEC-01.1): expose cross-department write leakage`.
+- **Umgesetzte Teilschritte:** `SEC-01.1` als fehlschlagender Regressionstest (Rotphase) abgeschlossen.
+- **Ausgeführte Prüfungen mit Ergebnis:** 3 Regressionstests: 2 bestanden, 1 erwartungsgemäß fehlgeschlagen (HTTP 200 statt 403 bei PATCH ohne Filter). 48 ausgewählte Backendtests vor SEC-01 bestanden.
+- **Offene Fehler / Risiken:** Rechteklasse kombiniert derzeit Codenamen verschiedener Abteilungen und betrachtet die Objektabteilung nicht.
+- **Laufende Prozesse und sichere Fortsetzung:** keine.
+- **Nächster konkreter Schritt:** `SEC-01.2` Rechteprüfung korrigieren, dann alle 3 Regressionstests erneut ausführen.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -596,3 +615,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | EXEC-01.1 | Planungsdatei nach Sicherung des Ausgangsstands aktualisiert. | `git diff --check` vor Commit erneut prüfen; keine Anwendungstests für Markdown. | Dieser Commit: `docs(EXEC-01.1): record security and product roadmap` | `EXEC-01.3`: Repository-`AGENTS.md`. |
 | 03.10.2026 | EXEC-01.3 | `AGENTS.md` als Einstiegspunkt mit Branch-, Teilschritt- und Journalregeln ergänzt. | Dokumentprüfung und `git diff --check` vor Commit; Anwendungstests für reine Anweisung nicht ausgeführt. | Dieser Commit: `docs(EXEC-01.3): add roadmap instructions for agents` | Testbasis prüfen. |
 | 03.10.2026 | EXEC-01.4 | Lokale Backend- und Frontend-Testumgebung gefunden; wiederholbare Ausgangsprüfung durchgeführt. | 48/48 ausgewählte Backendtests und 66/66 Frontend-Unit-Tests bestanden. Kein Gesamttest. | Dieser Commit: `test(EXEC-01.4): record baseline test results` | SEC-01.1 übernehmen und Regression schreiben. |
+| 03.10.2026 | SEC-01.1 | HTTP-Test für Schreibrecht in A, Leserecht in B und PATCH auf Gruppen in beiden Abteilungen. | 2/3 bestanden; fremder PATCH ohne Queryparameter antwortet 200 statt 403. Erwarteter roter Sicherheitsbefund; Test bleibt bis zur Korrektur fehlgeschlagen. | Dieser Commit: `test(SEC-01.1): expose cross-department write leakage` | SEC-01.2 Rechteprüfung nach Objektabteilung. |
