@@ -91,6 +91,18 @@ class InventoryDepartmentAccessTest(APITestCase):
         self.assertIn(self.item_central.name, names)
         self.assertNotIn(self.item_dept_b.name, names)
 
+    def test_staff_flag_does_not_expose_foreign_department_stock(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=["is_staff"])
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.user.pk))
+
+        response = self.client.get("/api/v1/inventory/stocks/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        names = {entry["item_name"] for entry in response.data["results"]}
+        self.assertIn(self.item_dept_a.name, names)
+        self.assertNotIn(self.item_dept_b.name, names)
+
     def test_transaction_for_foreign_department_item_is_rejected(self):
         response = self.client.post(
             "/api/v1/inventory/transactions/",
