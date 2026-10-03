@@ -3,7 +3,7 @@ Department scoping permission tests.
 
 Covers:
   - Unauthenticated users are denied access
-  - Org-wide users (is_staff / can_access_all_departments) see all data
+  - Org-wide users with model view rights see all data
   - Department-scoped users only see data belonging to their departments
   - Transitive parent scoping via children's department memberships
   - The ?department= query param is validated for dept-scoped users
@@ -59,7 +59,7 @@ def _make_parent(name, children=None):
 class DeptScopingFixture(APITestCase):
     """
     Two departments (Dept A, Dept B), three users:
-      - staff_user   : is_staff=True (org-wide)
+      - staff_user   : is_staff=True with explicit org scope and model view rights
       - user_a       : scoped to Dept A only
       - user_b       : scoped to Dept B only
     """
@@ -70,6 +70,10 @@ class DeptScopingFixture(APITestCase):
         cls.dept_b = Department.objects.create(name="Abteilung B", code="dept-b")
 
         cls.staff_user = _make_user("staff", is_staff=True)
+        cls.staff_user.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            *Permission.objects.filter(content_type__app_label="members", codename__in=["view_member", "view_parent"]),
+        )
         cls.user_a = _make_user("user_a")
         cls.user_b = _make_user("user_b")
 
@@ -329,7 +333,10 @@ class OrgWidePermissionTest(DeptScopingFixture):
 
         cls.perm_user = _make_user("perm_user", is_staff=False)
         perm = Permission.objects.get(codename="can_access_all_departments")
-        cls.perm_user.user_permissions.add(perm)
+        cls.perm_user.user_permissions.add(
+            perm,
+            *Permission.objects.filter(content_type__app_label="members", codename__in=["view_member", "view_parent"]),
+        )
 
     def _ids(self, response):
         return {item["id"] for item in response.data["results"]}

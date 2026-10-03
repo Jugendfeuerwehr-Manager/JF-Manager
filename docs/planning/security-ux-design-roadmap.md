@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.3 reproduziert Staff-/Organisations-Bypässe; 3 von 4 neuen Tests rot. |
-| Aktuelles Paket | SEC-01.3: Regression für Staff- und Organisationsbereich. |
-| Umsetzungsstatus | Noch keine fachliche Roadmap-Umsetzung. Vorhandene Änderungen sind als Ausgangsstand gesichert, nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.3 `c6a55dc`; SEC-01.4: 263/263 Backendtests und 10/10 Sicherheitsregressionen bestanden. |
+| Aktuelles Paket | SEC-01.4: Staff-/Organisations-Bypässe in zentralem Vertrag korrigiert. |
+| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Commit dieses Planungsschritts | Planungsdatei `3619a63`, Agent-Regeln `7aeb4dd`; dieser Commit: `test(EXEC-01.4): record baseline test results`. |
+| Letzter Roadmap-Commit | `c6a55dc` (`SEC-01.3`); dieser Commit: `fix(SEC-01.4): separate scope from model permissions`. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.4: Zugriffsklasse und Abteilungsfilter korrigieren; rote Tests grün prüfen. |
+| Nächster konkreter Schritt | SEC-01.5: Endpunkte ohne einzelne Objektabteilung, Sonderaktionen und lokale Staff-Bypässe inventarisieren und absichern. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.3 rot: Staff und Organisationsbereich umgehen fachliche Rechte. SEC-01.4 folgt. |
+| SEC-01 | in Arbeit | Codex | SEC-01.4: 263/263 Backendtests und 10/10 Sicherheitsregressionen bestanden; weitere Endpunkte offen. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -571,10 +571,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Abhängigkeiten:** keine; vorhandener Arbeitsstand muss geschützt werden.
 - **Ziel:** Verbindlicher, während der Umsetzung gepflegter Plan mit einem gemeinsamen Branch und nachvollziehbaren Teilschritt-Commits.
 - **Teilschritte:**
-  - `EXEC-01.1`: Vollständigen Plan einschließlich Branch-/Commitregeln anlegen und prüfen. Datei vorhanden; Commit steht noch aus.
+  - `EXEC-01.1`: Vollständigen Plan einschließlich Branch-/Commitregeln anlegen und prüfen. Erledigt in `3619a63`.
   - `EXEC-01.2`: Bestehenden Git-Arbeitsstand erfassen und sichern; Umsetzungsbranch anlegen/prüfen. Erledigt mit Ausgangs-Commit `b20e36f` vor diesem Planungs-Commit.
-  - `EXEC-01.3`: Repository-`AGENTS.md` mit verbindlichem Plan-/Fortschrittsverweis ergänzen und separat committen. In diesem Commit erledigt.
-  - `EXEC-01.4`: Testbasis prüfen und Ausgangsergebnisse dokumentieren; erste Regression folgt als `SEC-01.1`. Mit diesem Commit erledigt.
+  - `EXEC-01.3`: Repository-`AGENTS.md` mit verbindlichem Plan-/Fortschrittsverweis ergänzen und separat committen. Erledigt in `7aeb4dd`.
+  - `EXEC-01.4`: Testbasis prüfen und Ausgangsergebnisse dokumentieren; erste Regression folgt als `SEC-01.1`. Erledigt in `3669c4d`.
 - **Letzter dauerhafter Checkpoint:** 03.10.2026, Agent-Regeln `7aeb4dd`; 48 Backend- und 66 Frontendtests bestanden.
 - **Branch:** `feat/security-roles-training-operations`, von `main` bei `a04fc88`.
 - **Geänderte Dateien:** `docs/planning/security-ux-design-roadmap.md`, `AGENTS.md`; vorbestehender Arbeitsstand separat in `b20e36f`.
@@ -592,18 +592,18 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Ziel und Abnahme:** Aktionsrechte hängen von der tatsächlichen Objektabteilung ab. Ein Lesezugriff in B zusammen mit Schreibrecht in A erlaubt keine Änderung in B, unabhängig von Queryparametern. Vollqualifizierte Permissions und unbekannte Aktionen werden sicher behandelt.
 - **Teilschritte:**
   - `SEC-01.1`: HTTP-Regression für gemischte Rollen A/B mit und ohne Abteilungsparameter, inklusive erlaubter Änderung in A.
-  - `SEC-01.2`: Zentrale Modellrechte vollqualifiziert prüfen; Objektberechtigung für Datensätze mit `department_id` nach tatsächlicher Objektabteilung prüfen. In diesem Commit erledigt.
-  - `SEC-01.3`: Staff- und Organisationsbereich ohne fachliche Rechte als HTTP-Regression testen. In diesem Commit rot nachgewiesen.
-  - `SEC-01.4`: Zentrale Rechte- und Listenfilter für Staff und organisationsweiten Bereich korrigieren.
+  - `SEC-01.2`: Zentrale Modellrechte vollqualifiziert prüfen; Objektberechtigung für Datensätze mit `department_id` nach tatsächlicher Objektabteilung prüfen. Erledigt in `797d5d4`.
+  - `SEC-01.3`: Staff- und Organisationsbereich ohne fachliche Rechte als HTTP-Regression testen. Rot nachgewiesen in `c6a55dc`.
+  - `SEC-01.4`: Zentrale Rechte- und Listenfilter für Staff und organisationsweiten Bereich korrigieren. In diesem Commit erledigt.
   - `SEC-01.5`: Weitere Objektbeziehungen, Listen und Sonderaktionen inventarisieren und gegen den vollständigen Vertrag testen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.2 `797d5d4`, 51 ausgewählte Backendtests bestanden.
+- **Letzter dauerhafter Checkpoint:** SEC-01.3 `c6a55dc`; SEC-01.4 nach 263 bestandenen Backendtests in diesem Commit.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Test `3f78cc8`; Korrektur `797d5d4`; weiterer Test in diesem Commit: `test(SEC-01.3): expose staff and scope permission bypasses`.
-- **Umgesetzte Teilschritte:** `SEC-01.1` rot nachgewiesen; `SEC-01.2` korrigiert; `SEC-01.3` als rote Regression abgeschlossen.
-- **Ausgeführte Prüfungen mit Ergebnis:** Vor SEC-01.3 51/51 ausgewählte Backendtests und 4/4 Regressionstests bestanden. Neue Staff-/Scope-Tests: 1/4 bestanden, 3 erwartungsgemäß fehlgeschlagen. Kein vollständiger Backend-Testlauf.
-- **Offene Fehler / Risiken:** Objektmodelle ohne einzelnes `department_id`, Sonderaktionen und Listenfilter benötigen weitere Arbeit. `is_staff` und organisationsweiter Bereich umgehen derzeit fachliche Rechte.
-- **Laufende Prozesse und sichere Fortsetzung:** keine.
-- **Nächster konkreter Schritt:** `SEC-01.4` Staff-/Organisations-Bypässe korrigieren und beide Testgruppen prüfen.
+- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`; erste Korrektur `797d5d4`; `backend/jf_manager_backend/permissions.py`, `backend/departments/mixins.py`, zugehörige Tests und Journal in diesem Commit: `fix(SEC-01.4): separate scope from model permissions`.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3` rot nachgewiesen; `SEC-01.2`/`.4` korrigiert. `is_staff` gibt in zentraler Rechteklasse und Abteilungsmixin keinen fachlichen Vollzugriff mehr; `can_access_all_departments` erweitert nur den Bereich. Leselisten mit Abteilungsrollen werden nach Aktionsrecht gefiltert.
+- **Ausgeführte Prüfungen mit Ergebnis:** Vor Fix 1/4 neue Staff-/Scope-Tests bestanden, 3 erwartungsgemäß rot. Nach Fix 56/56 gezielte Backendtests bestanden. Der erste breite Lauf (263 Tests) scheiterte an 9 Sync-Tests mit impliziter Staff-Freigabe; Testkonten erhielten die fachlich erforderlichen Rechte. Wiederholung: 263/263 Backendtests bestanden. Zwei zusätzliche Bereichstests ergänzt, danach 10/10 Sicherheitsregressionen bestanden. Ruff und `git diff --check` bestanden. `manage.py test` ohne explizite Module scheitert vor Testbeginn an einem vorhandenen Namenskonflikt von `inventory/tests.py` und `inventory/tests/`; explizite Module umgehen die Discovery-Schwäche.
+- **Offene Fehler / Risiken:** Objektmodelle ohne einzelnes `department_id`, eigene ViewSet-Listenfilter, Sonderaktionen und weitere lokal codierte Staff-Bypässe sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
+- **Nächster konkreter Schritt:** `SEC-01.5` Zugriffspfade inventarisieren und nach Risiko in weitere kleine Teilschritte aufteilen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -620,3 +620,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.1 | HTTP-Test für Schreibrecht in A, Leserecht in B und PATCH auf Gruppen in beiden Abteilungen. | 2/3 bestanden; fremder PATCH ohne Queryparameter antwortet 200 statt 403. Erwarteter roter Sicherheitsbefund; Test bleibt bis zur Korrektur fehlgeschlagen. | Dieser Commit: `test(SEC-01.1): expose cross-department write leakage` | SEC-01.2 Rechteprüfung nach Objektabteilung. |
 | 03.10.2026 | SEC-01.2 | Zentrale Rollenprüfung nutzt App-Label und Codename; bei Datensätzen mit `department_id` wird die tatsächliche Objektabteilung geprüft. | 51/51 ausgewählte Backendtests bestanden; zusätzlicher Codename-Test ergibt 4/4 Regressionstests. Andere Objektbeziehungen und Sonderaktionen noch nicht abgenommen. | Dieser Commit: `fix(SEC-01.2): enforce department-scoped object permissions` | SEC-01.3 weitere Zugriffspfade und Staff-Bypässe. |
 | 03.10.2026 | SEC-01.3 | HTTP-Tests für Staff ohne Fachrecht, organisationsweiten Bereich ohne Fachrecht und Staff mit Rolle nur in A. | 1/4 bestanden, 3 erwartungsgemäß fehlgeschlagen: unberechtigtes Lesen und fremde Datensätze in Listen. | Dieser Commit: `test(SEC-01.3): expose staff and scope permission bypasses` | SEC-01.4 Rechte- und Listenfilter korrigieren. |
+| 03.10.2026 | SEC-01.4 | Staff-Bypass entfernt, Bereich und Modellrechte getrennt, Leselisten mit Abteilungsrollen gefiltert; veraltete Sync- und Scoping-Testvorbereitungen auf explizite Rechte umgestellt. | 263/263 Backendtests über explizite Module, 10/10 Sicherheitsregressionen, Ruff und Diff-Check bestanden. Vorheriger breiter Lauf: 9 veraltete Sync-Fixture-Annahmen; korrigiert. Discovery ohne Modulliste weiterhin defekt. | Dieser Commit: `fix(SEC-01.4): separate scope from model permissions` | SEC-01.5 weitere Objektbeziehungen, Sonderaktionen und lokale Bypässe. |

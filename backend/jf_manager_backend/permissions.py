@@ -93,7 +93,7 @@ class DepartmentRoleModelPermissions(BasePermission):
         if not user or not user.is_authenticated:
             return False
 
-        if user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments"):
+        if user.is_superuser:
             return True
 
         required_perms = self._required_permissions(request, view)
@@ -104,19 +104,23 @@ class DepartmentRoleModelPermissions(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         user = request.user
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return True
 
         required_perms = self._required_permissions(request, view)
         if required_perms is None:
             return False
-        if all(user.has_perm(permission) for permission in required_perms):
-            return True
-
         # Single-department records must be checked against their real owner,
         # regardless of an absent or manipulated query parameter.
         if not hasattr(obj, "department_id"):
             return True  # Other object relationships are covered per endpoint.
+        if obj.department_id is not None and not (
+            user.has_perm("departments.can_access_all_departments")
+            or user.department_roles.filter(department_id=obj.department_id).exists()
+        ):
+            return False
+        if all(user.has_perm(permission) for permission in required_perms):
+            return True
         if obj.department_id is None:
             return request.method in SAFE_METHODS and all(
                 permission in self._department_role_permissions(request) for permission in required_perms

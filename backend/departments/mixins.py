@@ -14,8 +14,8 @@ Usage:
 The mixin overrides get_queryset() to transparently filter results.
 It also hooks into perform_create() to auto-assign the active department.
 
-Org-wide access conditions (no filtering applied):
-  - user.is_staff is True
+Org-wide scope conditions (model rights are checked separately):
+  - user.is_superuser is True
   - user.has_perm('departments.can_access_all_departments') is True
 
 Optional query param ?department=<id> lets org-wide users additionally filter
@@ -46,7 +46,50 @@ class DepartmentScopeViewSetMixin:
 
     def _user_is_org_wide(self, user) -> bool:
         """Return True if the user has unrestricted cross-department access."""
-        return user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        return user.is_superuser or user.has_perm("departments.can_access_all_departments")
+
+    def _filter_by_action_permission(self, qs, user):
+        """Intersect visible departments with the rights for this action."""
+        from django.db.models import Q
+
+        from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+
+        # Detail writes must reach the object check so an assigned read-only
+        # department receives a permission denial instead of a missing object.
+        if self.request.method not in ("GET", "HEAD", "OPTIONS"):
+            return qs
+
+        if user.is_superuser or not any(
+            issubclass(permission_class, DepartmentRoleModelPermissions)
+            for permission_class in self.permission_classes
+        ):
+            return qs
+
+        permission = DepartmentRoleModelPermissions()
+        required = permission._required_permissions(self.request, self)
+        if required is None:
+            return qs.none()
+        if all(user.has_perm(name) for name in required):
+            return qs
+
+        allowed_ids = set(self._user_department_ids(user))
+        for name in required:
+            if user.has_perm(name):
+                continue
+            allowed_ids &= {
+                department_id
+                for department_id in user.department_roles.filter(
+                    groups__permissions__content_type__app_label=name.split(".", 1)[0],
+                    groups__permissions__codename=name.split(".", 1)[1],
+                ).values_list("department_id", flat=True)
+            }
+
+        if self.include_central_records and self.request.method in ("GET", "HEAD", "OPTIONS") and allowed_ids:
+            return qs.filter(
+                Q(**{f"{self.department_field}__in": allowed_ids})
+                | Q(**{f"{self.department_field}__isnull": True})
+            ).distinct()
+        return qs.filter(**{f"{self.department_field}__in": allowed_ids}).distinct()
 
     def _user_department_ids(self, user) -> list:
         """Return list of department PKs the user is explicitly assigned to."""
@@ -100,7 +143,7 @@ class DepartmentScopeViewSetMixin:
             # Org-wide: optionally narrow to a single dept
             if requested_dept is not None:
                 qs = qs.filter(**{self.department_field: requested_dept})
-            return qs
+            return self._filter_by_action_permission(qs, user)
 
         # Department-scoped user
         allowed_ids = self._user_department_ids(user)
@@ -126,7 +169,7 @@ class DepartmentScopeViewSetMixin:
             else:
                 qs = qs.filter(**{self.department_field: requested_dept})
 
-        return qs
+        return self._filter_by_action_permission(qs, user)
 
     # ------------------------------------------------------------------ #
     # perform_create                                                       #

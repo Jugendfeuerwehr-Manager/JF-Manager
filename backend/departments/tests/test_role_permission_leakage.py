@@ -1,7 +1,8 @@
 """Regression tests for rights that must stay within their department."""
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group as AuthGroup, Permission
+from django.contrib.auth.models import Group as AuthGroup
+from django.contrib.auth.models import Permission
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -119,5 +120,33 @@ class StaffAndScopePermissionTests(APITestCase):
         self.assertEqual({item["id"] for item in response.data["results"]}, {self.group_a.pk, self.group_b.pk})
         self.assertEqual(
             self.client.patch(f"/api/v1/groups/{self.group_b.pk}/", {"name": "Changed"}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_org_scope_with_only_a_role_sees_only_a(self):
+        reader = AuthGroup.objects.create(name="Org reader A")
+        reader.permissions.add(Permission.objects.get(content_type__app_label="members", codename="view_group"))
+        UserDepartmentRole.objects.create(user=self.org_scope, department=self.department_a).groups.add(reader)
+        self.client.force_authenticate(user=self.org_scope)
+
+        response = self.client.get("/api/v1/groups/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item["id"] for item in response.data["results"]}, {self.group_a.pk})
+        self.assertEqual(
+            self.client.get(f"/api/v1/groups/?department={self.department_b.pk}").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_global_model_permission_without_org_scope_does_not_expand_departments(self):
+        self.staff.user_permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="view_group")
+        )
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.get("/api/v1/groups/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"], [])
+        self.assertEqual(
+            self.client.get(f"/api/v1/groups/?department={self.department_b.pk}").status_code,
             status.HTTP_403_FORBIDDEN,
         )
