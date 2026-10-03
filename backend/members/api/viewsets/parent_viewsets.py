@@ -6,12 +6,13 @@ children (members). Access is transitive: parent visibility follows the
 department memberships of their children.
 """
 
-from django.db.models import Q
+from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import clone_request
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
@@ -27,7 +28,7 @@ from members.models import Parent
     partial_update=extend_schema(summary="Partially update parent"),
     destroy=extend_schema(summary="Delete parent"),
 )
-class ParentViewSet(viewsets.ModelViewSet):
+class ParentViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     serializer_class = ParentSerializer
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     queryset = Parent.objects.all()  # used by router for basename; actual filtering in get_queryset()
@@ -36,6 +37,12 @@ class ParentViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "lastname", "email", "email2"]
     ordering_fields = ["name", "lastname"]
     ordering = ["lastname", "name"]
+    department_field = "children__departments"
+
+    def perform_create(self, serializer):
+        # Parent links are validated by the serializer; there is no direct
+        # department field to auto-assign through the shared mixin.
+        serializer.save()
 
     def get_serializer(self, *args, **kwargs):
         serializer = super().get_serializer(*args, **kwargs)
@@ -70,14 +77,19 @@ class ParentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Parent.objects.prefetch_related("children")
+        from members.api.viewsets.member_viewsets import MemberViewSet
+
+        member_view = MemberViewSet()
+        member_view.request = clone_request(self.request, "GET")
+        visible_children = member_view.get_queryset()
+        qs = Parent.objects.prefetch_related(Prefetch("children", queryset=visible_children))
 
         if self._user_is_org_wide(user):
             requested_dept = self._resolve_requested_department(user)
             if requested_dept is not None:
                 # Narrow to parents whose children belong to the requested dept
                 qs = qs.filter(children__departments__id=requested_dept)
-            return qs.distinct()
+            return self._filter_by_action_permission(qs.distinct(), user)
 
         # Department-scoped user: show parents of children in their departments
         allowed_ids = self._user_department_ids(user)
@@ -86,7 +98,6 @@ class ParentViewSet(viewsets.ModelViewSet):
         if requested_dept is not None:
             allowed_ids = [requested_dept]
 
-        # Parents whose children have at least one matching department,
-        # OR parents with no children at all (department-agnostic orphans)
-        qs = qs.filter(Q(children__departments__id__in=allowed_ids) | Q(children__isnull=True))
-        return qs.distinct()
+        # Unassigned contacts have no department for a scoped role to use.
+        qs = qs.filter(children__departments__id__in=allowed_ids)
+        return self._filter_by_action_permission(qs.distinct(), user)

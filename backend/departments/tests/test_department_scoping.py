@@ -210,7 +210,7 @@ class ParentScopingTest(DeptScopingFixture):
         ids = self._ids(resp)
         self.assertIn(self.parent_a.id, ids)
         self.assertIn(self.parent_both.id, ids)  # child is in dept A too
-        self.assertIn(self.parent_orphan.id, ids)  # no children — still visible
+        self.assertNotIn(self.parent_orphan.id, ids)  # no department to authorize
         self.assertNotIn(self.parent_b.id, ids)  # child is only in dept B
 
     def test_user_b_sees_parents_of_dept_b_children(self):

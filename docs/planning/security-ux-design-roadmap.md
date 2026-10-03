@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.7 reproduziert drei Elternrechte-Lücken; 1/4 neue Tests bestanden. |
-| Aktuelles Paket | SEC-01.7: transitive Elternrechte als rote Regression. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.7 `3d72b58`; SEC-01.8 korrigiert Elternzugriffe, 42/42 relevante Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.8: transitive Elternrechte und Kinderausgabe korrigiert. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `fcdbaef` (`SEC-01.6`). |
+| Letzter Roadmap-Commit | `3d72b58` (`SEC-01.7`); dieser Commit: `fix(SEC-01.8): scope parent access and child references`. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.8: Elternlisten, Schreibzugriffe und verschachtelte Kinder nach A/B-Rechten korrigieren. |
+| Nächster konkreter Schritt | SEC-01.9: übrige eigene Listenfilter und Sonderaktionen priorisieren, besonders verschachtelte Elternausgaben über Mitgliederdetails. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.7 rot: fremde Eltern und Kinder sichtbar; PATCH über fremde Abteilung möglich. |
+| SEC-01 | in Arbeit | Codex | SEC-01.7 `3d72b58`; SEC-01.8: 42/42 relevante Backendtests bestanden. Weitere Pfade offen. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -598,16 +598,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.5`: Mitgliederlisten, Statistiken und Schreibzugriffe bei A/B-Rollen als Regression testen. In diesem Commit rot nachgewiesen.
   - `SEC-01.6`: Mitglieder nach tatsächlicher Abteilungsberechtigung filtern und gemeinsame Stammdaten objektbezogen schützen. In diesem Commit erledigt.
   - `SEC-01.7`: Elternlisten, Objektänderungen und verschachtelte Kinder bei A/B-Rollen als Regression testen. In diesem Commit rot nachgewiesen.
-  - `SEC-01.8`: Elternzugriffe nach Berechtigung der Kinderabteilungen filtern und verschachtelte Kinder sicher ausgeben.
+  - `SEC-01.8`: Elternzugriffe nach Berechtigung der Kinderabteilungen filtern und verschachtelte Kinder sicher ausgeben. In diesem Commit erledigt.
   - `SEC-01.9`: Weitere Objektbeziehungen, Listen und Sonderaktionen inventarisieren und gegen den vollständigen Vertrag testen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.6 `fcdbaef`, 76 relevante Backendtests bestanden.
+- **Letzter dauerhafter Checkpoint:** SEC-01.7 `3d72b58`; SEC-01.8 nach 42 bestandenen Backendtests in diesem Commit.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`, `4db95c8`; Korrekturen `797d5d4`, `033f3bf`, `fcdbaef`; `backend/departments/tests/test_parent_role_permissions.py` in diesem Commit: `test(SEC-01.7): expose parent and nested-child leakage`.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7` rot nachgewiesen; `SEC-01.2`/`.4`/`.6` korrigiert. Mitgliederdaten mit mehreren Abteilungen nutzen beim Lesen nur Abteilungen mit Leserecht; bei gemeinsam zugeordneten Mitgliedern genügt Schreibrecht in einer zugehörigen Abteilung für gemeinsame Stammdaten. Statistik zählt nur sichtbare Mitglieder und zeigt keine Gruppen aus fremden Datensätzen.
-- **Ausgeführte Prüfungen mit Ergebnis:** Vor SEC-01.7: 76/76 relevante Backendtests bestanden; letzter breiter Lauf vor SEC-01.5: 263/263. Neue Eltern-Tests: 1/4 bestanden, 3 erwartungsgemäß rot. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Offene Fehler / Risiken:** Objektmodelle ohne einzelnes `department_id`, eigene ViewSet-Listenfilter, Sonderaktionen und weitere lokal codierte Staff-Bypässe sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`, `4db95c8`, `3d72b58`; Korrekturen `797d5d4`, `033f3bf`, `fcdbaef`; `backend/jf_manager_backend/permissions.py`, `backend/members/api/viewsets/parent_viewsets.py`, Scoping-Test und Journal in diesem Commit: `fix(SEC-01.8): scope parent access and child references`.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8` korrigiert. Elternlisten und -änderungen nutzen Abteilungen ihrer verknüpften Kinder. Die Eltern-API gibt nur Kinder mit sichtbarer Mitgliedsberechtigung aus. Kontakte ohne Kinder sind für abteilungsgebundene Rollen unsichtbar; organisationsweite Benutzer benötigen zusätzlich das fachliche Modellrecht.
+- **Ausgeführte Prüfungen mit Ergebnis:** Vor SEC-01.7: 76/76 relevante Backendtests bestanden; letzter breiter Lauf vor SEC-01.5: 263/263. Neue Eltern-Tests vor Fix: 1/4 bestanden, 3 rot. Nach Fix: 42/42 relevante Backendtests bestanden. Vollständiger 263er-Lauf nach SEC-01.8 nicht erneut ausgeführt. Ruff und `git diff --check` bestanden. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Offene Fehler / Risiken:** Verschachtelte Elternausgaben über Mitgliederserializer, Qualifikationen, eigene ViewSet-Listenfilter, Sonderaktionen und lokal codierte Staff-Bypässe sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.8` transitive Rechteprüfung und verschachtelte Ausgabe korrigieren.
+- **Nächster konkreter Schritt:** `SEC-01.9` weitere Zugriffswege inventarisieren, zuerst verschachtelte Elternausgaben und eigene Statistikaktionen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -628,3 +628,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.5 | Vier HTTP-Regressionen für Mitglieder mit Abteilungen A, B und A/B ergänzt. | 1/4 bestanden; Liste und Statistik enthalten fremdes B-Mitglied, PATCH auf B wird trotz Schreibrecht nur in A mit 200 akzeptiert. | Dieser Commit: `test(SEC-01.5): expose member scope and statistics leakage` | SEC-01.6 Queryset und Objektprüfung. |
 | 03.10.2026 | SEC-01.6 | Member-Queryset nach Modellrecht gefiltert, Statistik auf sichtbare Mitglieder begrenzt, Objektprüfung für M2M-Abteilungen ergänzt. | 76/76 relevante Backendtests bestanden; zusätzliche Gruppenname-Prüfung grün. Gesamte 263er-Suite nach dieser Änderung nicht erneut ausgeführt. | Dieser Commit: `fix(SEC-01.6): scope member reads and writes to permitted departments` | SEC-01.7 weitere Zugriffspfade priorisieren. |
 | 03.10.2026 | SEC-01.7 | Vier HTTP-Regressionen für Elternkontakte in A, B, gemeinsame Kontakte und verschachtelte Kinder ergänzt. | 1/4 bestanden; fremde Eltern und Kind-ID werden sichtbar, PATCH auf fremden Elternkontakt antwortet 200. | Dieser Commit: `test(SEC-01.7): expose parent and nested-child leakage` | SEC-01.8 transitive Rechte und Kinderausgabe korrigieren. |
+| 03.10.2026 | SEC-01.8 | Eltern-Queryset nach Abteilung und Aktionsrecht gefiltert; verschachtelte Kind-IDs folgen der Mitgliedersichtbarkeit. Objektprüfung nutzt alle tatsächlich verknüpften Kinder unabhängig vom gefilterten Ausgabe-Prefetch. | 42/42 relevante Backendtests bestanden; erster Fixversuch verweigerte gemeinsamen Kontakt fälschlich, nach Korrektur grün. Breite Suite nach diesem Fix nicht erneut ausgeführt. | Dieser Commit: `fix(SEC-01.8): scope parent access and child references` | SEC-01.9 verschachtelte Ausgaben und Sonderaktionen. |

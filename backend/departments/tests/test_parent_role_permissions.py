@@ -48,7 +48,7 @@ class ParentRolePermissionTests(APITestCase):
 
         response = self.client.get("/api/v1/parents/")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(
             {item["id"] for item in response.data["results"]},
             {self.parent_a.pk, self.parent_shared.pk},
@@ -76,6 +76,6 @@ class ParentRolePermissionTests(APITestCase):
 
         response = self.client.patch(f"/api/v1/parents/{self.parent_shared.pk}/", {"name": "Changed"}, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.parent_shared.refresh_from_db()
         self.assertEqual(self.parent_shared.name, "Changed")
