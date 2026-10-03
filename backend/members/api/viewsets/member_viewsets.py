@@ -28,7 +28,7 @@ from members.api_serializers import (
     MemberListSerializer,
     ParentSerializer,
 )
-from members.models import Attachment, Event, Group, Member, Status
+from members.models import Attachment, Group, Member, Status
 
 
 class MemberActionPermissions(DepartmentRoleModelPermissions):
@@ -284,8 +284,18 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     @extend_schema(summary="Get member's events")
     @action(detail=True, methods=["get"])
     def events(self, request, pk=None):
+        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.event_viewsets import EventRolePermissions, EventViewSet
+
         member = self.get_object()
-        events = Event.objects.filter(member=member).order_by("-datetime")
+        event_view = EventViewSet()
+        event_view.request = clone_request(request, "GET")
+        event_view.action = "list"
+        if not EventRolePermissions().has_permission(event_view.request, event_view):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen von Ereignissen.")
+        events = event_view.get_queryset().filter(member=member).order_by("-datetime")
         serializer = EventSerializer(events, many=True, context={"request": request})
         return Response(serializer.data)
 

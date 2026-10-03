@@ -55,3 +55,19 @@ class EventScopePermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
+
+    def test_member_events_in_permitted_department_are_visible(self):
+        response = self.client.get(f"/api/v1/members/{self.member_a.pk}/events/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([row["id"] for row in response.data], [self.event_a.pk])
+
+    def test_change_right_in_a_does_not_allow_event_change_in_b(self):
+        group_a = AuthGroup.objects.get(name="Event viewer A")
+        group_a.permissions.add(Permission.objects.get(content_type__app_label="members", codename="change_event"))
+
+        response = self.client.patch(f"/api/v1/events/{self.event_b.pk}/", {"notes": "changed"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.event_b.refresh_from_db()
+        self.assertEqual(self.event_b.notes, "B event")
