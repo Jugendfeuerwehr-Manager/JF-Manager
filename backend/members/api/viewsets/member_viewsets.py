@@ -307,9 +307,12 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         from rest_framework.request import clone_request
 
         permission_request = clone_request(request, "PATCH" if request.method == "POST" else request.method)
-        if not DepartmentRoleModelPermissions().has_permission(permission_request, self):
+        permission = DepartmentRoleModelPermissions()
+        if not permission.has_permission(permission_request, self):
             raise PermissionDenied("Keine Berechtigung für die Anhänge dieses Mitglieds.")
         member = self.get_object()
+        if not permission.has_object_permission(permission_request, self, member):
+            raise PermissionDenied("Keine Berechtigung für die Anhänge dieses Mitglieds.")
         content_type = ContentType.objects.get_for_model(Member)
         if request.method == "POST":
             serializer = AttachmentSerializer(data=request.data, context={"request": request})

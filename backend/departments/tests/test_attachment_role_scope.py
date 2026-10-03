@@ -54,3 +54,16 @@ class AttachmentRoleScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Attachment.objects.filter(pk=self.attachment_b.pk).exists())
+
+    def test_permitted_department_can_upload_and_change_attachment(self):
+        member_a = Member.objects.get(name="A")
+        upload = self.client.post(
+            f"/api/v1/members/{member_a.pk}/attachments/", {"name": "A document"}, format="json"
+        )
+        self.assertEqual(upload.status_code, status.HTTP_201_CREATED)
+
+        changed = self.client.patch(
+            f"/api/v1/attachments/{upload.data['id']}/", {"name": "Updated A document"}, format="json"
+        )
+        self.assertEqual(changed.status_code, status.HTTP_200_OK)
+        self.assertEqual(Attachment.objects.get(pk=upload.data["id"]).name, "Updated A document")

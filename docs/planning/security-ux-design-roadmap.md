@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.25 zeigt unberechtigte Schreibzugriffe auf B-Mitgliederanhänge; 0/3 neue Regressionen bestanden. |
-| Aktuelles Paket | SEC-01.25 rot getestet; SEC-01.26 als nächster Teilschritt. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.26 bindet Anhang-Schreibaktionen an die Eigentümerabteilung; 22/22 relevante Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.26 korrigiert; SEC-01.27 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `ee0add3` (`SEC-01.24`); SEC-01.25 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `0ca9cc2` (`SEC-01.25`); SEC-01.26 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.26: Anhang-Schreibaktionen an das Änderungsrecht der tatsächlichen Eigentümerabteilung binden. |
+| Nächster konkreter Schritt | SEC-01.27: Mitgliederexport und Qualifikationsanhänge auf fachliche Rechte und Objektbereich prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.25 rot: B-Mitgliederanhänge trotz fehlendem B-Änderungsrecht schreibbar. |
+| SEC-01 | in Arbeit | Codex | SEC-01.26 grün: Anhang-Schreibaktionen nach Eigentümerabteilung; SEC-01.27 Export/Qualifikationsanhänge prüfen. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -617,15 +617,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.24`: Ereignislisten, Detailansicht und Mitgliederaktion nach `view_event` an der tatsächlichen Mitgliedsabteilung filtern.
   - `SEC-01.25`: Mitgliederanhänge auf Aktionsrecht und tatsächliche Objektabteilung per HTTP prüfen.
   - `SEC-01.26`: Mitglieder-Anhangupload und generische Anhangänderung/-löschung nach Änderungsrecht der tatsächlichen Eigentümerabteilung absichern.
-- **Letzter dauerhafter Checkpoint:** SEC-01.24 `ee0add3` mit 19 bestandenen relevanten Backendtests; SEC-01.25 wird mit diesem Checkpoint committed.
+  - `SEC-01.27`: Mitgliederexport und Qualifikationsanhänge auf fachliche Rechte und Objektbereich per HTTP prüfen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.25 `0ca9cc2` mit drei roten Anhang-Regressionen; SEC-01.26 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-01.24-Korrektur `ee0add3`; Anhang-Regressionen in diesem SEC-01.25-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.25: 0/3 neue HTTP-Regressionen bestanden; Upload, Änderung und Löschung eines B-Anhangs mit nur A-Änderungsrecht möglich. Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Mitglieder-Löschaktion und Ereignisansichten wurden in SEC-01.22/.24 korrigiert; Mitgliederanhänge sind in SEC-01.25 rot getestet. Noch zu prüfen: `export-excel`, Qualifikationsanhänge, Sync-Sonderaktionen und Inventar-Schreibziele. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
-- **Offene Fehler / Risiken:** B-Mitgliederanhänge sind ohne B-Änderungsrecht schreibbar. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-01.25-Regressionen `0ca9cc2`; Anhang-Korrektur in diesem SEC-01.26-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.26: 22/22 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Mitglieder-Löschaktion, Ereignisansichten und Mitgliederanhänge wurden in SEC-01.22/.24/.26 korrigiert. Noch zu prüfen: `export-excel`, Qualifikationsanhänge, Sync-Sonderaktionen und Inventar-Schreibziele. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
+- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.26` Anhang-Schreibaktionen an das Änderungsrecht der tatsächlichen Eigentümerabteilung binden.
+- **Nächster konkreter Schritt:** `SEC-01.27` Mitgliederexport und Qualifikationsanhänge per HTTP prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -664,3 +665,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.23 | Drei HTTP-Regressionen für Ereignisliste, -detail und Mitgliederaktion mit `view_event` in A und nur `view_member` in B ergänzt. | 0/3 neue Tests bestanden: B-Ereignis wird dreifach sichtbar. Erwartete rote Sicherheitsbefunde; Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.23): expose member event scope bypass` | SEC-01.24 Ereignisrechte an Mitgliedsabteilung binden. |
 | 03.10.2026 | SEC-01.24 | Ereignislisten/Details nach `view_event` der Mitgliedsabteilung gefiltert; Objektaktionen prüfen die tatsächliche Mitgliedsabteilung. Mitgliederaktion verwendet dieselbe Ereignissicht. Positive A-Ansicht und verweigerte B-Änderung ergänzt. | 19/19 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.24): scope member events by event rights` | SEC-01.25 Mitgliederanhänge prüfen. |
 | 03.10.2026 | SEC-01.25 | Drei HTTP-Regressionen für Mitglieder-Anhangupload sowie generische Änderung und Löschung mit Änderungsrecht in A, bloßer Zuordnung in B ergänzt. | 0/3 neue Tests bestanden: B-Upload 201, B-Änderung 200, B-Löschung 204. Erwartete rote Sicherheitsbefunde; Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.25): expose attachment owner scope bypass` | SEC-01.26 Eigentümerrechte durchsetzen. |
+| 03.10.2026 | SEC-01.26 | Mitglieder-Anhangupload prüft das konkrete Mitglied; generische Anhangänderung/-löschung filtert Mitglieder-Eigentümer nach Änderungsrecht je Abteilung. Erlaubten A-Upload und A-Änderung ergänzt. | 22/22 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.26): scope attachment writes to owner rights` | SEC-01.27 Export und Qualifikationsanhänge prüfen. |
