@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: Vorhandener Arbeitsstand in `b20e36f` gesichert; Umsetzungsbranch angelegt. |
-| Aktuelles Paket | EXEC-01: Ausgangsstand gesichert; Planungs-Commit folgt. |
+| Letzter Checkpoint | 03.10.2026: Ausgangsstand `b20e36f`, Planungsdatei `3619a63`; Repository-Anweisung folgt in diesem Commit. |
+| Aktuelles Paket | EXEC-01.3: Repository-Anweisung für spätere Umsetzung ergänzt. |
 | Umsetzungsstatus | Noch keine fachliche Roadmap-Umsetzung. Vorhandene Änderungen sind als Ausgangsstand gesichert, nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Commit dieses Planungsschritts | Dieser Commit: `docs(EXEC-01.1): record security and product roadmap`. |
+| Commit dieses Planungsschritts | Planungsdatei `3619a63`; dieser Commit: `docs(EXEC-01.3): add roadmap instructions for agents`. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | Repository-`AGENTS.md` ergänzen; Testbasis prüfen; SEC-01 mit dauerhaftem Regressionstest beginnen. |
+| Nächster konkreter Schritt | Testbasis prüfen und SEC-01 mit dauerhaftem Regressionstest beginnen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -530,7 +530,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
-| EXEC-01 | in Arbeit | Codex | Ausgangsstand `b20e36f`; Branch angelegt. Planungs-Commit und `AGENTS.md` folgen. |
+| EXEC-01 | in Arbeit | Codex | Ausgangsstand `b20e36f`, Plan `3619a63`; `AGENTS.md` in diesem Commit. Testbasis folgt. |
 | SEC-01 | offen | — | Reproduzierte Rollenvermischung als Regressionstest festhalten. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
@@ -573,16 +573,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Teilschritte:**
   - `EXEC-01.1`: Vollständigen Plan einschließlich Branch-/Commitregeln anlegen und prüfen. Datei vorhanden; Commit steht noch aus.
   - `EXEC-01.2`: Bestehenden Git-Arbeitsstand erfassen und sichern; Umsetzungsbranch anlegen/prüfen. Erledigt mit Ausgangs-Commit `b20e36f` vor diesem Planungs-Commit.
-  - `EXEC-01.3`: Repository-`AGENTS.md` mit verbindlichem Plan-/Fortschrittsverweis ergänzen und separat committen.
+  - `EXEC-01.3`: Repository-`AGENTS.md` mit verbindlichem Plan-/Fortschrittsverweis ergänzen und separat committen. In diesem Commit erledigt.
   - `EXEC-01.4`: Testbasis und erste Regressionstest-Teilschritte vorbereiten; Ausgangsergebnisse dokumentieren und separat committen.
-- **Letzter dauerhafter Checkpoint:** 03.10.2026, Ausgangs-Commit `b20e36f`.
+- **Letzter dauerhafter Checkpoint:** 03.10.2026, Planungs-Commit `3619a63`; Repository-Anweisung in diesem Commit.
 - **Branch:** `feat/security-roles-training-operations`, von `main` bei `a04fc88`.
-- **Geänderte Dateien:** `docs/planning/security-ux-design-roadmap.md`; vorbestehender Arbeitsstand separat in `b20e36f`.
-- **Commit-Bezug:** Ausgangsstand `b20e36f`; dieser Commit: `docs(EXEC-01.1): record security and product roadmap`.
+- **Geänderte Dateien:** `docs/planning/security-ux-design-roadmap.md`, `AGENTS.md`; vorbestehender Arbeitsstand separat in `b20e36f`.
+- **Commit-Bezug:** Ausgangsstand `b20e36f`, Planungsdatei `3619a63`; dieser Commit: `docs(EXEC-01.3): add roadmap instructions for agents`.
 - **Prüfungen:** Dokumentstruktur geprüft; alle 33 Arbeitspakete eindeutig in der Statusübersicht vorhanden; Branch-/Commit-/Checkpointregeln vollständig; Codeblöcke ausgeglichen; keine nachgestellten Leerzeichen; `git diff --check` ohne Befund. Keine Anwendungstests ausgeführt, da nur Markdown angelegt wurde.
 - **Offene Risiken:** Ausgangsstand enthält frühere Änderungen aus mehreren Modulen; deren Qualität ist noch nicht erneut geprüft. Lokale `dump.rdb` bleibt unversioniert.
 - **Laufende Prozesse:** keine durch diesen Planungsschritt.
-- **Nächster Schritt:** `EXEC-01.3`: Repository-`AGENTS.md` ergänzen.
+- **Nächster Schritt:** `EXEC-01.4`: Testbasis prüfen und Ausgangsergebnisse dokumentieren.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -594,3 +594,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | EXEC-01.1 | Vollständige Planungsdatei angelegt. Ein gemeinsamer Feature-Branch, ein eigener Commit pro Teilschritt und laufende Checkpoints verbindlich ergänzt. | Strukturprüfung bestanden: 33 eindeutige Pakete, erforderliche Arbeitsregeln, ausgeglichene Codeblöcke und keine nachgestellten Leerzeichen. `git diff --check` ohne Befund; Anwendungscode unverändert. | Noch nicht committed; Planungs-Commit beim Start des Umsetzungsbranches vorgesehen. | Ausgangsstand schützen, Branch anlegen/prüfen und Planungsdatei separat committen. |
 | 03.10.2026 | EXEC-01.2 | 102 vorbestehende Dateien geprüft, als Ausgangsstand auf neuem Branch gesichert. Redis-Datendatei `dump.rdb` ausgeschlossen. | Staged-Diff ohne Whitespacefehler; Anwendungstests für diesen Sicherungsschritt nicht ausgeführt. | `b20e36f` | Planungsdatei separat committen. |
 | 03.10.2026 | EXEC-01.1 | Planungsdatei nach Sicherung des Ausgangsstands aktualisiert. | `git diff --check` vor Commit erneut prüfen; keine Anwendungstests für Markdown. | Dieser Commit: `docs(EXEC-01.1): record security and product roadmap` | `EXEC-01.3`: Repository-`AGENTS.md`. |
+| 03.10.2026 | EXEC-01.3 | `AGENTS.md` als Einstiegspunkt mit Branch-, Teilschritt- und Journalregeln ergänzt. | Dokumentprüfung und `git diff --check` vor Commit; Anwendungstests für reine Anweisung nicht ausgeführt. | Dieser Commit: `docs(EXEC-01.3): add roadmap instructions for agents` | Testbasis prüfen. |
