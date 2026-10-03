@@ -116,3 +116,25 @@ class ParentRolePermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         shared_contact = next(item for item in response.data["parents"] if item["id"] == self.parent_shared.pk)
         self.assertEqual(shared_contact["children"], [self.child_a.pk])
+
+    def test_member_list_assigns_visible_contacts_to_each_child(self):
+        other_child = Member.objects.create(name="Another", lastname="Child")
+        other_child.departments.add(self.department_a)
+        self.parent_shared.children.add(other_child)
+        self.client.force_authenticate(user=self.reader)
+
+        response = self.client.get("/api/v1/members/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        members = {item["id"]: item for item in response.data["results"]}
+        self.assertEqual(set(members), {self.child_a.pk, other_child.pk})
+        self.assertEqual(
+            {parent["id"] for parent in members[self.child_a.pk]["parents"]},
+            {self.parent_a.pk, self.parent_shared.pk},
+        )
+        self.assertEqual(
+            {parent["id"] for parent in members[other_child.pk]["parents"]},
+            {self.parent_shared.pk},
+        )
+        shared_contact = members[other_child.pk]["parents"][0]
+        self.assertEqual(set(shared_contact["children"]), {self.child_a.pk, other_child.pk})

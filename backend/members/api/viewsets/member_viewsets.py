@@ -260,8 +260,17 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     @extend_schema(summary="Get member's parents")
     @action(detail=True, methods=["get"])
     def parents(self, request, pk=None):
+        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
+
         member = self.get_object()
-        serializer = ParentSerializer(member.parent_set.all(), many=True, context={"request": request})
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        if not DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen von Elternkontakten.")
+        serializer = ParentSerializer(parent_view.get_queryset().filter(children=member), many=True, context={"request": request})
         return Response(serializer.data)
 
     @extend_schema(summary="Get member's events")

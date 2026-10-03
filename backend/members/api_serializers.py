@@ -41,12 +41,38 @@ class ParentSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "full_name"]
 
 
+def visible_parent_data(member, context, root_instance):
+    """Serialize visible contacts once for all members in the response."""
+    request = context.get("request")
+    if request is None or not request.user.is_authenticated:
+        return []
+
+    if "_visible_parent_data_by_member" not in context:
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
+
+        members = [root_instance] if isinstance(root_instance, Member) else list(root_instance)
+        parent_data = {item.pk: [] for item in members}
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        parents = parent_view.get_queryset().filter(children__pk__in=parent_data).distinct()
+        for parent in parents:
+            serialized = ParentSerializer(parent, context=context).data
+            for child in parent.children.all():
+                if child.pk in parent_data:
+                    parent_data[child.pk].append(serialized)
+        context["_visible_parent_data_by_member"] = parent_data
+
+    return context["_visible_parent_data_by_member"].get(member.pk, [])
+
+
 class MemberListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for list views"""
 
     status = StatusSerializer(read_only=True)
     group = GroupSerializer(read_only=True)
-    parents = ParentSerializer(source="parent_set", many=True, read_only=True)
+    parents = serializers.SerializerMethodField()
     age = serializers.IntegerField(source="get_age", read_only=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar_url = serializers.SerializerMethodField()
@@ -84,6 +110,9 @@ class MemberListSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.avatar.url)
         return None
 
+    def get_parents(self, obj):
+        return visible_parent_data(obj, self.context, self.root.instance)
+
     def get_has_alert(self, obj):
         try:
             from servicebook.selectors import get_attandance_alert_by_member
@@ -104,7 +133,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
     group_id = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(), source="group", write_only=True, required=False
     )
-    parents = ParentSerializer(source="parent_set", many=True, read_only=True)
+    parents = serializers.SerializerMethodField()
     age = serializers.IntegerField(source="get_age", read_only=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar_url = serializers.SerializerMethodField()
@@ -147,6 +176,9 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.avatar.url)
         return None
+
+    def get_parents(self, obj):
+        return visible_parent_data(obj, self.context, self.root.instance)
 
 
 class MemberCreateUpdateSerializer(serializers.ModelSerializer):
