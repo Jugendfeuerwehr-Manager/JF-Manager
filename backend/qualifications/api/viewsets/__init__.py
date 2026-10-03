@@ -38,6 +38,67 @@ from ..serializers import (
 )
 
 
+class PersonDepartmentRoleModelPermissions(DepartmentRoleModelPermissions):
+    """Check the real department of a qualification's member or task's member."""
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_superuser:
+            return True
+        required = self._required_permissions(request, view)
+        if required is None:
+            return False
+        if obj.member_id is None:
+            return (
+                obj.user_id == user.pk
+                and all(user.has_perm(name) or name in self._department_role_permissions(request) for name in required)
+            ) or (
+                view._user_is_org_wide(user) and all(user.has_perm(name) for name in required)
+            )
+
+        department_ids = set(obj.member.departments.values_list("id", flat=True))
+        if not view._user_is_org_wide(user):
+            department_ids &= set(view._user_department_ids(user))
+        return any(
+            all(user.has_perm(name) or name in self._department_role_permissions(request, department_id) for name in required)
+            for department_id in department_ids
+        )
+
+
+class PersonDepartmentScopeMixin(DepartmentScopeViewSetMixin):
+    """Apply member department and action rights to person-linked records."""
+
+    def _scope_person_queryset(self, queryset, permission, *, filter_permission=True):
+        user = self.request.user
+        requested_dept = self._resolve_requested_department(user)
+        org_wide = self._user_is_org_wide(user)
+        global_right = user.is_superuser or user.has_perm(permission)
+
+        if org_wide and requested_dept is None and (global_right or not filter_permission):
+            return queryset
+
+        department_ids = (
+            {requested_dept} if requested_dept is not None else set(self._user_department_ids(user))
+        )
+        if filter_permission and not global_right:
+            app_label, codename = permission.split(".", 1)
+            right_ids = set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label=app_label,
+                    groups__permissions__codename=codename,
+                ).values_list("department_id", flat=True)
+            )
+            if org_wide and requested_dept is None:
+                department_ids = right_ids
+            else:
+                department_ids &= right_ids
+
+        scope = Q(member__departments__id__in=department_ids)
+        if requested_dept is None and (global_right or department_ids):
+            scope |= Q(user=user)
+        return queryset.filter(scope).distinct()
+
+
 class QualificationTypeViewSet(viewsets.ModelViewSet):
     """ViewSet for QualificationType"""
 
@@ -54,12 +115,12 @@ class QualificationTypeViewSet(viewsets.ModelViewSet):
         return QualificationTypeSerializer
 
 
-class QualificationViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
+class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Qualifications with custom actions"""
 
     queryset = Qualification.objects.select_related("member", "user", "type").prefetch_related("attachments")
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, PersonDepartmentRoleModelPermissions]
     filterset_class = QualificationFilter
     search_fields = [
         "member__first_name",
@@ -73,31 +134,12 @@ class QualificationViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     ordering = ["-date_acquired"]
 
     def get_queryset(self):
-        """Filter qualifications by department scope.
-
-        - Org-wide users see all qualifications; support optional ?department= filter.
-        - Users with view_all_qualifications see all qualifications scoped to their departments.
-        - All other authenticated users see only their own qualifications.
-        """
-        user = self.request.user
         base_qs = Qualification.objects.select_related("member", "user", "type").prefetch_related("attachments")
-
-        if self._user_is_org_wide(user):
-            requested_dept = self._resolve_requested_department(user)
-            if requested_dept is not None:
-                return base_qs.filter(member__departments__id=requested_dept).distinct()
-            return base_qs
-
-        allowed_ids = self._user_department_ids(user)
-        requested_dept = self._resolve_requested_department(user)
-        dept_ids = [requested_dept] if requested_dept is not None else allowed_ids
-
-        if user.has_perm("qualifications.view_all_qualifications"):
-            # Can see all qualifications for members in their department scope
-            return base_qs.filter(member__departments__id__in=dept_ids).distinct()
-
-        # Default: own qualifications only (user FK), scoped to allowed departments
-        return base_qs.filter(Q(user=user) | Q(member__departments__id__in=dept_ids)).distinct()
+        return self._scope_person_queryset(
+            base_qs,
+            "qualifications.view_qualification",
+            filter_permission=self.action not in ("retrieve", "update", "partial_update", "destroy"),
+        )
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -115,32 +157,12 @@ class QualificationViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         Returns dashboard statistics
         """
-        user = request.user
-
-        # Filter based on department scope (mirrors get_queryset logic)
-        if self._user_is_org_wide(user):
-            requested_dept = self._resolve_requested_department(user)
-            if requested_dept is not None:
-                qualifications_qs = Qualification.objects.filter(member__departments__id=requested_dept).distinct()
-                special_tasks_qs = SpecialTask.objects.filter(member__departments__id=requested_dept).distinct()
-            else:
-                qualifications_qs = Qualification.objects.all()
-                special_tasks_qs = SpecialTask.objects.all()
-        else:
-            allowed_ids = self._user_department_ids(user)
-            requested_dept = self._resolve_requested_department(user)
-            dept_ids = [requested_dept] if requested_dept is not None else allowed_ids
-
-            if user.has_perm("qualifications.view_all_qualifications"):
-                qualifications_qs = Qualification.objects.filter(member__departments__id__in=dept_ids).distinct()
-                special_tasks_qs = SpecialTask.objects.filter(member__departments__id__in=dept_ids).distinct()
-            else:
-                qualifications_qs = Qualification.objects.filter(
-                    Q(user=user) | Q(member__departments__id__in=dept_ids)
-                ).distinct()
-                special_tasks_qs = SpecialTask.objects.filter(
-                    Q(user=user) | Q(member__departments__id__in=dept_ids)
-                ).distinct()
+        qualifications_qs = self._scope_person_queryset(
+            Qualification.objects.all(), "qualifications.view_qualification"
+        )
+        special_tasks_qs = self._scope_person_queryset(
+            SpecialTask.objects.all(), "qualifications.view_specialtask"
+        )
 
         today = date.today()
         soon_threshold = today + timedelta(days=30)
@@ -263,43 +285,24 @@ class SpecialTaskTypeViewSet(viewsets.ModelViewSet):
     ordering_fields = ["name"]
 
 
-class SpecialTaskViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
+class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Special Tasks with custom actions"""
 
     queryset = SpecialTask.objects.select_related("member", "user", "task").prefetch_related("attachments")
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, PersonDepartmentRoleModelPermissions]
     filterset_class = SpecialTaskFilter
     search_fields = ["member__first_name", "member__last_name", "user__first_name", "user__last_name", "task__name"]
     ordering_fields = ["start_date", "end_date"]
     ordering = ["-start_date"]
 
     def get_queryset(self):
-        """Filter special tasks by department scope.
-
-        - Org-wide users see all tasks; support optional ?department= filter.
-        - Users with view_all_specialtasks see all tasks scoped to their departments.
-        - All other authenticated users see only their own tasks.
-        """
-        user = self.request.user
         base_qs = SpecialTask.objects.select_related("member", "user", "task").prefetch_related("attachments")
-
-        if self._user_is_org_wide(user):
-            requested_dept = self._resolve_requested_department(user)
-            if requested_dept is not None:
-                return base_qs.filter(member__departments__id=requested_dept).distinct()
-            return base_qs
-
-        allowed_ids = self._user_department_ids(user)
-        requested_dept = self._resolve_requested_department(user)
-        dept_ids = [requested_dept] if requested_dept is not None else allowed_ids
-
-        if user.has_perm("qualifications.view_all_specialtasks"):
-            # Can see all special tasks for members in their department scope
-            return base_qs.filter(member__departments__id__in=dept_ids).distinct()
-
-        # Default: own tasks only (user FK), scoped to allowed departments
-        return base_qs.filter(Q(user=user) | Q(member__departments__id__in=dept_ids)).distinct()
+        return self._scope_person_queryset(
+            base_qs,
+            "qualifications.view_specialtask",
+            filter_permission=self.action not in ("retrieve", "update", "partial_update", "destroy", "end_task"),
+        )
 
     def get_serializer_class(self):
         if self.action == "list":

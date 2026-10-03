@@ -38,7 +38,7 @@ class QualificationRolePermissionTests(APITestCase):
         role_a.permissions.add(
             *Permission.objects.filter(
                 content_type__app_label="qualifications",
-                codename__in=["view_qualification", "view_specialtask"],
+                codename__in=["view_qualification", "change_qualification", "view_specialtask"],
             )
         )
         UserDepartmentRole.objects.create(user=cls.reader, department=cls.department_a).groups.add(role_a)
@@ -75,3 +75,48 @@ class QualificationRolePermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual({item["id"] for item in response.data["results"]}, {self.task_a.pk})
+
+    def test_special_task_detail_denies_department_without_model_right(self):
+        self.client.force_authenticate(user=self.reader)
+
+        response = self.client.get(f"/api/v1/qualifications/specialtasks/{self.task_b.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_qualification_write_uses_actual_member_department(self):
+        self.client.force_authenticate(user=self.reader)
+
+        denied = self.client.patch(
+            f"/api/v1/qualifications/{self.qualification_b.pk}/", {"issued_by": "Changed"}, format="json"
+        )
+        allowed = self.client.patch(
+            f"/api/v1/qualifications/{self.qualification_a.pk}/", {"issued_by": "Changed"}, format="json"
+        )
+
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(allowed.status_code, status.HTTP_200_OK, allowed.data)
+        self.qualification_b.refresh_from_db()
+        self.assertEqual(self.qualification_b.issued_by, "")
+
+    def test_qualification_statistics_require_special_task_right(self):
+        role = self.reader.department_roles.get(department=self.department_a)
+        special_task_permission = Permission.objects.get(
+            content_type__app_label="qualifications", codename="view_specialtask"
+        )
+        role.groups.get().permissions.remove(special_task_permission)
+        self.client.force_authenticate(user=self.reader)
+
+        response = self.client.get("/api/v1/qualifications/statistics/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["total_qualifications"], 1)
+        self.assertEqual(response.data["active_special_tasks"], 0)
+
+    def test_org_scope_does_not_expand_qualification_model_right(self):
+        self.reader.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+        self.client.force_authenticate(user=self.reader)
+
+        response = self.client.get("/api/v1/qualifications/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual({item["id"] for item in response.data["results"]}, {self.qualification_a.pk})

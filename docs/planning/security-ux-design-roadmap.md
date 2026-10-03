@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.11 zeigt vier Rechtevermischungen bei Qualifikationen und Sonderaufgaben; 0/4 neue Regressionen bestanden. |
-| Aktuelles Paket | SEC-01.11 inventarisiert und rot getestet; SEC-01.12 als nächster Teilschritt. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.12 korrigiert die vier Qualifikations-/Sonderaufgabenlecks; 216/216 breite Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.12 abgeschlossen; SEC-01.13 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `f3e2a8e` (`SEC-01.10`). |
+| Letzter Roadmap-Commit | `1adc182` (`SEC-01.11`); SEC-01.12 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.12: Qualifikationen und Sonderaufgaben nach tatsächlicher Personenabteilung und Modellrecht filtern. |
+| Nächster konkreter Schritt | SEC-01.13: weitere priorisierte Sonderaktionen und Staff-Bypässe als HTTP-Regressionen testen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.11 rot: Qualifikationen/Sonderaufgaben aus fremder Rechteabteilung in Listen, Detail und Statistik sichtbar. |
+| SEC-01 | in Arbeit | Codex | SEC-01.12: Qualifikationen/Sonderaufgaben nach Personenabteilung und Modellrecht gefiltert; weitere Sonderaktionen offen. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -602,17 +602,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.9`: Eingebettete Elternkontakte in Mitgliederlisten/-details und die Mitglied-Eltern-Aktion als Regression testen. In diesem Commit rot nachgewiesen.
   - `SEC-01.10`: Eingebettete Elternkontakte über denselben Elternrechtevertrag filtern. In diesem Commit erledigt.
   - `SEC-01.11`: Weitere Objektbeziehungen, Listen und Sonderaktionen inventarisieren und gegen den vollständigen Vertrag testen. In diesem Commit vier rote Qualifikationsregressionen und Pfadinventar.
-  - `SEC-01.12`: Qualifikationen/Sonderaufgaben einschließlich Statistik und Objektprüfung nach tatsächlicher Personenabteilung und fachlichem Recht filtern.
+  - `SEC-01.12`: Qualifikationen/Sonderaufgaben einschließlich Statistik und Objektprüfung nach tatsächlicher Personenabteilung und fachlichem Recht filtern. In diesem Commit erledigt.
   - `SEC-01.13`: Weitere priorisierte Pfade aus dem Inventar als HTTP-Regressionen testen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.10 `f3e2a8e`, 85 relevante Backendtests bestanden; SEC-01.11 wird mit diesem Checkpoint committed.
+- **Letzter dauerhafter Checkpoint:** SEC-01.11 `1adc182` rot nachgewiesen; SEC-01.12 wird mit diesem Checkpoint committed, 216 breite Backendtests bestanden.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`, `4db95c8`, `3d72b58`, `a13b495`; Korrekturen `797d5d4`, `033f3bf`, `fcdbaef`, `7618536`, `f3e2a8e`; neue Qualifikationsregressionen und Pfadinventar in diesem SEC-01.11-Commit.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10` korrigiert. Elternlisten und -änderungen nutzen Abteilungen ihrer verknüpften Kinder. Auch eingebettete Elternkontakte und die Mitglied-Eltern-Aktion folgen der gefilterten Elternsicht; verschachtelte Kinder folgen der Mitgliedssichtbarkeit.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.11: 0/4 neue Backendregressionen bestanden, vier erwartete Sicherheitsfehler reproduziert. Vorher SEC-01.10: 85/85 relevante Backendtests, Ruff und Diff-Check bestanden. Breiter Lauf nach SEC-01.10 nicht ausgeführt; letzter breiter Lauf vor SEC-01.5: 263/263. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Qualifikations- und Sonderaufgaben-ViewSets filtern über alle zugewiesenen Abteilungen statt über die Abteilungen mit dem jeweiligen Modellrecht; Statistik baut eigene Querysets, Objektprüfung kennt die Relation `member`/`user` nicht. Ebenfalls zu prüfen: Servicebook-`attendance_permissions.py` mit Staff-Freigabe; `members/api/permissions.py` für E-Mail-Versand; `departments/api/viewsets/departments.py`; Inventar-`access.py`; externe Sync-Scope-Prüfung; Mitglieder-Sonderaktionen `events`, `attachments`, `delete-with-strategy`, `export-excel`; Qualifikationsanhänge und `end_task`. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
-- **Offene Fehler / Risiken:** Die vier Qualifikationsfälle sind noch rot. Weitere Objektbeziehungen, eigene ViewSet-Listenfilter, Sonderaktionen und lokal codierte Staff-Bypässe sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** Regressionen `3f78cc8`, `c6a55dc`, `4db95c8`, `3d72b58`, `a13b495`, `1adc182`; Korrekturen `797d5d4`, `033f3bf`, `fcdbaef`, `7618536`, `f3e2a8e`; Personenbereichsprüfung und ergänzte Rechtefälle in diesem SEC-01.12-Commit.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12` korrigiert. Elternkontakte und Qualifikationen/Sonderaufgaben nutzen bei Lese- und Objektzugriffen ihre tatsächlichen Personenabteilungen und fachlichen Modellrechte. Die Qualifikationsstatistik prüft Sonderaufgabenrechte gesondert.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.12: 33/33 gezielte und 216/216 breite Backendtests bestanden; Ruff und Diff-Check bestanden. SEC-01.11 hatte zuvor 0/4 neue Regressionen bestanden und damit vier erwartete Sicherheitsfehler reproduziert. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Die in SEC-01.11 gefundenen Qualifikations-/Sonderaufgabenfilter und die Objektprüfung sind in SEC-01.12 korrigiert. Noch zu prüfen: Servicebook-`attendance_permissions.py` mit Staff-Freigabe; `members/api/permissions.py` für E-Mail-Versand; `departments/api/viewsets/departments.py`; Inventar-`access.py`; externe Sync-Scope-Prüfung; Mitglieder-Sonderaktionen `events`, `attachments`, `delete-with-strategy`, `export-excel`; Qualifikationsanhänge und `end_task`. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
+- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-Schreibaktionen gehören zu SEC-02. Weitere Objektbeziehungen, Sonderaktionen und lokal codierte Staff-Bypässe sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.12` Qualifikationen/Sonderaufgaben nach tatsächlicher Personenabteilung und fachlichem Recht filtern; danach `SEC-01.13` weitere Inventarpfade prüfen.
+- **Nächster konkreter Schritt:** `SEC-01.13` weitere priorisierte Sonderaktionen und Staff-Bypässe als HTTP-Regressionen testen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -637,3 +637,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.9 | Drei Regressionen für eingebettete Elternkontakte und die Mitglied-Eltern-Aktion ergänzt. | 4/7 Eltern-Tests bestanden; Mitgliedersicht allein zeigt Kontaktfelder, Aktion antwortet 200 ohne Elternrecht und eingebettete Kindliste enthält B. | Dieser Commit: `test(SEC-01.9): expose embedded parent contact leakage` | SEC-01.10 Ausgabe- und Aktionsfilter. |
 | 03.10.2026 | SEC-01.10 | Eingebettete Elternkontakte über den Eltern-Queryset gefiltert und für Mitgliederlisten gebündelt; die Mitglied-Eltern-Aktion verlangt Eltern-Leserecht. Mehrfach-Mitglieder-Zuordnung zusätzlich abgesichert. | 85/85 relevante Backendtests, Ruff und Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.10): filter embedded parent contacts by permission` | SEC-01.11 weitere Zugriffspfade inventarisieren und testen. |
 | 03.10.2026 | SEC-01.11 | Objektbeziehungen, eigene Listenfilter und Sonderaktionen inventarisiert; vier HTTP-Regressionen für Qualifikationen/Sonderaufgaben mit A-Recht und B-Zuordnung ergänzt. | 0/4 neue Tests bestanden: B erscheint in Qualifikationsliste/-detail/-statistik und Sonderaufgabenliste. Erwartete rote Sicherheitsbefunde; weitere Inventarpfade nicht ausgeführt. | Dieser Commit: `test(SEC-01.11): expose qualification role leakage` | SEC-01.12 Querysets, Statistik und Objektprüfung korrigieren. |
+| 03.10.2026 | SEC-01.12 | Qualifikations- und Sonderaufgaben-Querysets nach fachlich erlaubten Personenabteilungen gefiltert; Objektprüfung für verknüpfte Mitglieder und Benutzer ergänzt; Statistik verwendet gesonderte Modellrechte. Zusätzliche Prüfungen für Schreibobjekt, Spezialaufgabe, organisationsweite Sicht und fehlendes Sonderaufgabenrecht. | 33/33 gezielte sowie 216/216 breite Backendtests, Ruff und Diff-Check bestanden. Zielrelationen bei Schreibaktionen nicht geprüft; SEC-02. | Dieser Commit: `fix(SEC-01.12): scope qualifications by person permissions` | SEC-01.13 weitere Sonderaktionen und Staff-Bypässe prüfen. |
