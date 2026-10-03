@@ -43,6 +43,15 @@ class ParentRolePermissionTests(APITestCase):
         UserDepartmentRole.objects.create(user=cls.writer, department=cls.department_a).groups.add(write_group)
         UserDepartmentRole.objects.create(user=cls.writer, department=cls.department_b).groups.add(read_group)
 
+        cls.member_only = get_user_model().objects.create_user(
+            username="member-without-parent-right", password="test-only-password"
+        )
+        member_read_group = AuthGroup.objects.create(name="Member reader without contacts")
+        member_read_group.permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="view_member")
+        )
+        UserDepartmentRole.objects.create(user=cls.member_only, department=cls.department_a).groups.add(member_read_group)
+
     def test_org_scope_with_parent_role_only_in_a_sees_only_a_contacts(self):
         self.client.force_authenticate(user=self.reader)
 
@@ -79,3 +88,31 @@ class ParentRolePermissionTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.parent_shared.refresh_from_db()
         self.assertEqual(self.parent_shared.name, "Changed")
+
+    def test_member_view_does_not_embed_contacts_without_parent_permission(self):
+        self.client.force_authenticate(user=self.member_only)
+
+        list_response = self.client.get("/api/v1/members/")
+        detail_response = self.client.get(f"/api/v1/members/{self.child_a.pk}/")
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        member_data = next(item for item in list_response.data["results"] if item["id"] == self.child_a.pk)
+        self.assertEqual(member_data["parents"], [])
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_response.data["parents"], [])
+
+    def test_member_parent_action_requires_parent_view_permission(self):
+        self.client.force_authenticate(user=self.member_only)
+
+        response = self.client.get(f"/api/v1/members/{self.child_a.pk}/parents/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_embedded_contact_filters_children_from_other_department(self):
+        self.client.force_authenticate(user=self.reader)
+
+        response = self.client.get(f"/api/v1/members/{self.child_a.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        shared_contact = next(item for item in response.data["parents"] if item["id"] == self.parent_shared.pk)
+        self.assertEqual(shared_contact["children"], [self.child_a.pk])
