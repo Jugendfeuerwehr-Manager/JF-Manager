@@ -30,6 +30,18 @@ class AttendanceSerializer(serializers.ModelSerializer):
             "state_display",
         ]
 
+    def validate(self, data):
+        person = data.get("person", getattr(self.instance, "person", None))
+        service = data.get("service", getattr(self.instance, "service", None))
+        if (
+            person
+            and service
+            and service.department_id
+            and not person.departments.filter(pk=service.department_id).exists()
+        ):
+            raise serializers.ValidationError("Person gehört nicht zur Abteilung dieses Dienstes.")
+        return data
+
     def get_person_details(self, obj):
         """Get detailed person information."""
         if obj.person:
@@ -42,7 +54,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
         return None
 
 
-class AttendanceCreateSerializer(serializers.ModelSerializer):
+class AttendanceCreateSerializer(AttendanceSerializer):
     """Serializer for creating attendance records."""
 
     class Meta:
@@ -51,6 +63,7 @@ class AttendanceCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validate that attendance record doesn't already exist."""
+        data = super().validate(data)
         person = data.get("person")
         service = data.get("service")
 
@@ -79,6 +92,21 @@ class AttendanceBulkUpdateSerializer(serializers.Serializer):
             if item["state"] not in ["A", "E", "F", None]:
                 raise serializers.ValidationError("Invalid state value")
         return value
+
+    def validate(self, data):
+        service = data["service"]
+        people = Member.objects.all()
+        if service.department_id:
+            people = people.filter(departments=service.department_id)
+        ids = [item["person_id"] for item in data["attendances"]]
+        try:
+            valid_ids = set(people.filter(pk__in=ids).values_list("pk", flat=True))
+            requested_ids = {int(pk) for pk in ids}
+        except (ValueError, TypeError):
+            raise serializers.ValidationError("Ungültige Person-ID.") from None
+        if requested_ids != valid_ids:
+            raise serializers.ValidationError("Person gehört nicht zur Abteilung dieses Dienstes.")
+        return data
 
     def save(self):
         """Bulk update or create attendance records with atomic transaction."""

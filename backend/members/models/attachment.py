@@ -81,7 +81,9 @@ class Attachment(models.Model):
     def get_download_url(self):
         """Get the download URL for the file."""
         if self.file:
-            return self.file.url
+            from members.attachment_links import preview_url
+
+            return preview_url(self)
         return None
 
     def get_file_size_human(self):

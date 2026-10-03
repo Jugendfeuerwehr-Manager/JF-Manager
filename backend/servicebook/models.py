@@ -62,3 +62,14 @@ class Attendance(models.Model):
     def __str__(self):
         return f"{self.person.name} war {self.state} bei {self.service.__str__()}"
         # return self.person.name + " war " + self.state + " bei " + self.service.__str__()
+
+
+class StaffAttendance(models.Model):
+    """Attendance of youth leaders and instructors, independent of exercise leadership."""
+
+    person = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="service_attendances")
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name="staff_attendances")
+    state = models.CharField(max_length=1, choices=Attendance.STATES)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["person", "service"], name="unique_staff_service_attendance")]

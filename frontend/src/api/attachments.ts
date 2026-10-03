@@ -19,8 +19,8 @@ export const attachmentsApi = {
     return apiClient.get<Attachment>(`/attachments/${id}/`)
   },
 
-  create(data: FormData) {
-    return apiClient.post<Attachment>('/attachments/', data, {
+  createForMember(memberId: number, data: FormData) {
+    return apiClient.post<Attachment>(`/members/${memberId}/attachments/`, data, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },

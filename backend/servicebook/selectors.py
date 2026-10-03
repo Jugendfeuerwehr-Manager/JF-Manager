@@ -40,9 +40,12 @@ def get_summary_of_attendances_per_service(service: Service):
     }
 
 
-def get_top_lists_by_state(state, max_entries=7):
+def get_top_lists_by_state(state, max_entries=7, services=None):
+    attendances = Attendance.objects.filter(state=state)
+    if services is not None:
+        attendances = attendances.filter(service__in=services)
     return (
-        Attendance.objects.filter(state=state)
+        attendances
         .values("person__name", "person__lastname")
         .annotate(num_services=Count("person"))
         .order_by("-num_services")[:max_entries]
@@ -73,7 +76,7 @@ def get_attandance_alert_by_member(member: Member, n_not_present=5, n_last_items
     return failed >= n_not_present
 
 
-def get_attendance_over_time_data():
+def get_attendance_over_time_data(services=None):
     """
     Get attendance data over time for chart visualization.
     Returns:
@@ -81,17 +84,19 @@ def get_attendance_over_time_data():
     """
     # Try to get cached data first
     cache_key = "attendance_over_time_data"
-    cached_data = cache.get(cache_key)
+    use_cache = services is None
+    cached_data = cache.get(cache_key) if use_cache else None
     if cached_data is not None:
         return cached_data
 
     # Get recent services ordered chronologically (oldest first for timeline)
-    services = Service.objects.all().order_by("start")
+    services = (services if services is not None else Service.objects.all()).order_by("start")
 
     if not services:
         empty_data = {"service_labels": [], "service_dates": [], "attendance_data": {"A": [], "E": [], "F": []}}
         # Cache empty result for 5 minutes
-        cache.set(cache_key, empty_data, 300)
+        if use_cache:
+            cache.set(cache_key, empty_data, 300)
         return empty_data
 
     # Optimize database queries by getting all attendance data in one query
@@ -140,7 +145,8 @@ def get_attendance_over_time_data():
     }
 
     # Cache result for 7 days (604800 seconds) since data only changes 1-2 times per week
-    cache.set(cache_key, result, 604800)
+    if use_cache:
+        cache.set(cache_key, result, 604800)
 
     return result
 

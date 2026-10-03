@@ -1,263 +1,329 @@
 <template>
-  <div class="attendance-manager">
+  <section class="attendance-manager" aria-label="Anwesenheit erfassen">
     <div class="manager-header">
-      <IconField iconPosition="left">
-        <InputIcon>
-          <i class="pi pi-search" />
-        </InputIcon>
-        <InputText
-          v-model="searchQuery"
-          placeholder="Mitglied suchen..."
-          class="search-input"
+      <div class="tabs" role="group" aria-label="Teilnehmergruppe">
+        <Button :outlined="kind !== 'member'" label="Jugendliche" @click="kind = 'member'" />
+        <Button
+          :outlined="kind !== 'staff'"
+          label="Jugendleiter / Ausbilder"
+          @click="kind = 'staff'"
         />
-      </IconField>
-    </div>
-
-    <Divider />
-
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
-      <ProgressSpinner />
-    </div>
-
-    <!-- Member List -->
-    <div v-else class="members-list">
-      <div
-        v-for="member in filteredMembers"
-        :key="member.id"
-        class="member-item"
+        <Button
+          text
+          label="Team-Auswertung"
+          icon="pi pi-chart-bar"
+          @click="toggleReport"
+        />
+      </div>
+      <p class="sync-status" role="status">{{ syncMessage }} · Abgleich alle 3 Sekunden</p>
+      <InputText v-model="searchQuery" placeholder="Person suchen …" aria-label="Person suchen" />
+      <label class="filter"
+        ><input v-model="onlyUnmarked" type="checkbox" /> Nur noch nicht erfasst</label
       >
-        <div class="member-info">
-          <span class="member-name">{{ member.full_name }}</span>
-        </div>
+      <p class="legend">
+        A = Anwesend · E = Entschuldigt · F = Fehlend. Erneutes Antippen setzt den Status zurück.
+      </p>
+      <p class="counts">
+        {{ counts.present }} anwesend · {{ counts.excused }} entschuldigt ·
+        {{ counts.absent }} fehlend · {{ counts.open }} offen
+      </p>
+    </div>
+    <div v-if="showReport" class="report">
+      <h3>Jugendleiter und Ausbilder – Auswertung</h3>
+      <div class="tabs">
+        <label>Von <input v-model="dateFrom" type="date" @change="loadReport" /></label>
+        <label>Bis <input v-model="dateTo" type="date" @change="loadReport" /></label>
+      </div>
+      <p>Erfasste Dienste im Zeitraum, Stunden aus der Dienstdauer bei Anwesenheit.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Anwesend</th>
+              <th>Entschuldigt</th>
+              <th>Fehlend</th>
+              <th>Stunden</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in report" :key="row.id">
+              <th>{{ row.full_name }}</th>
+              <td>{{ row.present }}</td>
+              <td>{{ row.excused }}</td>
+              <td>{{ row.absent }}</td>
+              <td>{{ row.hours }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-if="!report.length">Keine Team-Anwesenheiten im gewählten Zeitraum.</p>
+    </div>
+    <div v-if="loading" class="empty-state"><ProgressSpinner /></div>
+    <div v-else class="members-list">
+      <div v-for="person in filteredPeople" :key="`${kind}-${person.id}`" class="member-item">
+        <span class="member-name">{{ person.full_name }}</span>
         <AttendanceButtonGroup
-          :current-state="getAttendanceState(member.id)"
-          :loading="updatingMemberId === member.id"
-          @select="(state) => handleAttendanceUpdate(member.id, state)"
+          :current-state="person.state"
+          :loading="pending.has(`${kind}-${person.id}`)"
+          @select="(state) => update(person, state)"
         />
       </div>
-
-      <!-- Empty State -->
-      <div v-if="filteredMembers.length === 0" class="empty-state">
-        <p>Keine Mitglieder gefunden</p>
-      </div>
+      <p v-if="!filteredPeople.length" class="empty-state">
+        Keine passenden Personen.
+        {{ onlyUnmarked ? 'Alle sichtbaren Anwesenheiten sind erfasst.' : '' }}
+      </p>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
-import Divider from 'primevue/divider'
+import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import AttendanceButtonGroup from '../atoms/AttendanceButtonGroup.vue'
-import type { AttendanceState } from '@/types/servicebook'
-import { useMembersStore } from '@/stores/members'
-import { useServicebookStore } from '@/stores/servicebook'
+import { servicesApi } from '@/api/servicebook'
+import type {
+  AttendanceBoard,
+  AttendanceBoardPerson,
+  AttendanceState,
+  StaffAttendanceStatistic,
+} from '@/types/servicebook'
 import { getApiErrorMessage } from '@/utils/apiError'
 
-interface Props {
-  serviceId: number
-}
-
-const props = defineProps<Props>()
-
+const props = defineProps<{ serviceId: number }>()
 const toast = useToast()
-const membersStore = useMembersStore()
-const servicebookStore = useServicebookStore()
-
+const board = ref<AttendanceBoard>({ members: [], staff: [] })
+const kind = ref<'member' | 'staff'>('member')
 const searchQuery = ref('')
-const updatingMemberId = ref<number | null>(null)
-
-// Local attendance state
-const localAttendance = ref<Map<number, AttendanceState | null>>(new Map())
-const initialAttendance = ref<Map<number, AttendanceState | null>>(new Map())
-
-// Computed loading state
-const loading = computed(() => membersStore.loading)
-
-// Load members and initialize attendance on mount
-onMounted(async () => {
-  // Always fetch all members with no pagination limit for attendance control
-  await membersStore.fetchMembers({ limit: 10000 })
-  initializeAttendance()
-})
-
-// Watch for current service changes to reload attendance
-watch(
-  () => servicebookStore.currentService,
-  (newService) => {
-    if (newService && newService.id === props.serviceId) {
-      initializeAttendance()
-    }
-  },
-  { deep: true }
+const onlyUnmarked = ref(false)
+const pending = ref(new Set<string>())
+const loading = ref(true)
+const syncMessage = ref('Anwesenheiten werden geladen')
+const showReport = ref(false)
+const report = ref<StaffAttendanceStatistic[]>([])
+const dateFrom = ref(`${new Date().getFullYear()}-01-01`)
+const dateTo = ref(`${new Date().getFullYear()}-12-31`)
+let timer: ReturnType<typeof setInterval> | undefined
+let refreshing = false
+let disposed = false
+let revision = 0
+const people = computed(() => (kind.value === 'member' ? board.value.members : board.value.staff))
+const filteredPeople = computed(() =>
+  people.value.filter(
+    (p) =>
+      (!onlyUnmarked.value || p.state === null) &&
+      p.full_name.toLocaleLowerCase().includes(searchQuery.value.toLocaleLowerCase()),
+  ),
 )
+const counts = computed(() => ({
+  present: people.value.filter((p) => p.state === 'A').length,
+  excused: people.value.filter((p) => p.state === 'E').length,
+  absent: people.value.filter((p) => p.state === 'F').length,
+  open: people.value.filter((p) => p.state === null).length,
+}))
 
-const initializeAttendance = () => {
-  localAttendance.value.clear()
-  initialAttendance.value.clear()
-
-  const currentService = servicebookStore.currentService
-  if (!currentService || currentService.id !== props.serviceId) return
-
-  // Map attendees by person ID
-  if (currentService.attendees_with_status) {
-    currentService.attendees_with_status.forEach((attendee) => {
-      localAttendance.value.set(attendee.id, attendee.state)
-      initialAttendance.value.set(attendee.id, attendee.state)
-    })
-  }
-}
-
-const filteredMembers = computed(() => {
-  const query = searchQuery.value.toLowerCase()
-  if (!query) return membersStore.members
-
-  return membersStore.members.filter((member) => {
-    const fullName = `${member.name} ${member.lastname}`.toLowerCase()
-    return fullName.includes(query)
-  })
-})
-
-const getAttendanceState = (memberId: number): AttendanceState | null => {
-  return localAttendance.value.get(memberId) || null
-}
-
-const handleAttendanceUpdate = async (memberId: number, state: AttendanceState) => {
-  updatingMemberId.value = memberId
-  
-  // Toggle behavior: if same state clicked, clear it
-  const currentState = localAttendance.value.get(memberId)
-  const newState = currentState === state ? null : state
-  
-  // Update local state immediately for UI responsiveness
-  if (newState === null) {
-    localAttendance.value.delete(memberId)
-  } else {
-    localAttendance.value.set(memberId, newState)
-  }
-
-  // Save to server immediately
+async function refresh() {
+  if (refreshing || disposed || pending.value.size) return
+  refreshing = true
+  const serviceId = props.serviceId
+  const requestRevision = revision
   try {
-    console.log('AttendanceManager: Updating attendance for member', memberId, 'to state', newState)
-    
-    // Build the full attendance list from current state
-    const attendances = Array.from(localAttendance.value.entries()).map(([person_id, state]) => ({
-      person_id,
-      state
-    }))
-    
-    // If we're clearing this member's attendance, explicitly send null
-    if (newState === null) {
-      attendances.push({ person_id: memberId, state: null })
+    const { data } = await servicesApi.getAttendanceBoard(serviceId)
+    // A response started before a local edit must never roll that edit back.
+    if (
+      !disposed &&
+      serviceId === props.serviceId &&
+      requestRevision === revision &&
+      !pending.value.size
+    ) {
+      board.value = data
+      syncMessage.value = 'Aktueller Stand synchronisiert'
     }
+  } catch {
+    if (!disposed) syncMessage.value = 'Abgleich unterbrochen – Verbindung wird erneut geprüft'
+  } finally {
+    refreshing = false
+    loading.value = false
+  }
+}
 
-    await servicebookStore.bulkUpdateAttendance({
-      service: props.serviceId,
-      attendances
+async function update(person: AttendanceBoardPerson, state: AttendanceState) {
+  const selectedKind = kind.value
+  const key = `${selectedKind}-${person.id}`
+  if (pending.value.has(key)) return
+  const serviceId = props.serviceId
+  const previous = person.state
+  const next = previous === state ? null : state
+  pending.value.add(key)
+  revision++
+  person.state = next
+  syncMessage.value = 'Wird gespeichert …'
+  try {
+    await servicesApi.updateAttendanceBoard(serviceId, {
+      kind: selectedKind,
+      person_id: person.id,
+      state: next,
+      expected_state: previous,
     })
-    
-    // Update initial state to reflect saved state
-    if (newState === null) {
-      initialAttendance.value.delete(memberId)
-    } else {
-      initialAttendance.value.set(memberId, newState)
-    }
-    
-    console.log('AttendanceManager: Attendance updated successfully')
+    syncMessage.value = 'Gespeichert'
+    if (showReport.value) await loadReport()
   } catch (error) {
-    
-    // Revert local state on error
-    if (currentState === null || currentState === undefined) {
-      localAttendance.value.delete(memberId)
-    } else {
-      localAttendance.value.set(memberId, currentState)
-    }
-    
+    person.state = previous
+    syncMessage.value = 'Änderung nicht gespeichert'
     toast.add({
       severity: 'error',
-      summary: 'Fehler',
-      detail: getApiErrorMessage(error, 'Fehler beim Speichern der Anwesenheit'),
-      life: 5000
+      summary: 'Anwesenheit prüfen',
+      detail: getApiErrorMessage(
+        error,
+        'Speichern fehlgeschlagen. Der aktuelle Stand wird neu geladen.',
+      ),
+      life: 7000,
     })
   } finally {
-    updatingMemberId.value = null
+    pending.value.delete(key)
+    revision++
+    await refresh()
   }
 }
+
+function toggleReport() {
+  showReport.value = !showReport.value
+  void loadReport()
+}
+
+async function loadReport() {
+  if (!showReport.value) return
+  try {
+    report.value = (
+      await servicesApi.getStaffStatistics({
+        date_from: dateFrom.value || undefined,
+        date_to: dateTo.value || undefined,
+      })
+    ).data.results
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Auswertung',
+      detail: getApiErrorMessage(error, 'Auswertung konnte nicht geladen werden.'),
+      life: 5000,
+    })
+  }
+}
+function onVisibility() {
+  if (!document.hidden) void refresh()
+}
+onMounted(() => {
+  void refresh()
+  timer = setInterval(() => {
+    if (!document.hidden) void refresh()
+  }, 3000)
+  document.addEventListener('visibilitychange', onVisibility)
+})
+watch(
+  () => props.serviceId,
+  () => {
+    revision++
+    board.value = { members: [], staff: [] }
+    loading.value = true
+    void refresh()
+  },
+)
+onUnmounted(() => {
+  disposed = true
+  clearInterval(timer)
+  document.removeEventListener('visibilitychange', onVisibility)
+})
 </script>
 
 <style scoped>
 .attendance-manager {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
   background: var(--surface-0);
-  border-radius: var(--border-radius);
+  border-radius: 12px;
   border: 1px solid var(--surface-border);
 }
-
-.manager-header {
+.manager-header,
+.report {
   padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
-
-.manager-header h3 {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.search-input {
-  width: 100%;
-}
-
-.loading-container {
+.tabs {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   align-items: center;
-  padding: 3rem;
 }
-
+.sync-status,
+.legend,
+.counts {
+  margin: 0;
+  font-size: 0.875rem;
+}
+.sync-status,
+.legend {
+  color: var(--text-color-secondary);
+}
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .members-list {
-  flex: 1;
-  min-height: 0; /* Critical for flex child with overflow */
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.5rem 1rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.4rem;
 }
-
 .member-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem;
+  gap: 0.5rem;
+  padding: 0.65rem 0.5rem;
   background: var(--surface-50);
-  border-radius: var(--border-radius);
+  border-radius: 8px;
 }
-
-.member-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  flex: 1;
-}
-
 .member-name {
   font-weight: 500;
-  color: var(--text-color);
+  overflow-wrap: anywhere;
 }
-
 .empty-state {
   text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-color-secondary);
+  padding: 2rem 1rem;
+}
+.report {
+  border-block: 1px solid var(--surface-border);
+}
+.report h3,
+.report p {
+  margin: 0;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--surface-border);
+}
+input[type='date'] {
+  padding: 0.5rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface-0);
+  color: var(--text-color);
 }
 </style>

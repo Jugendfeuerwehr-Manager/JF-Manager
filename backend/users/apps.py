@@ -5,6 +5,8 @@ class UsersConfig(AppConfig):
     name = "users"
 
     def ready(self):
+        from . import signals  # noqa: F401
+
         # Configure TokenAdmin fields after apps are loaded to avoid
         # importing auth token models at module import time which can
         # trigger app-loading errors when INSTALLED_APPS isn't ready.

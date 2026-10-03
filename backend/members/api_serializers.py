@@ -280,10 +280,18 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
     def get_file_url(self, obj):
         if obj.file:
+            from members.attachment_links import preview_url
+
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.file.url)
+                return request.build_absolute_uri(preview_url(obj))
+            return preview_url(obj)
         return None
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["file"] = representation["file_url"]
+        return representation
 
     def get_mime_type(self, obj):
         if obj.file:

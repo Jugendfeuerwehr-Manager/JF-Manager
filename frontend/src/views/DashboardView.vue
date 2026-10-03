@@ -5,8 +5,8 @@
       <p class="text-surface-600">Willkommen zurück, {{ authStore.userFullName }}</p>
     </div>
 
-    <div class="grid">
-      <div class="col-4 md:col-6 lg:col-3">
+    <div class="dashboard-stats">
+      <div>
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -20,7 +20,7 @@
         </Card>
       </div>
 
-      <div class="col-4 md:col-6 lg:col-3">
+      <div>
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -34,7 +34,7 @@
         </Card>
       </div>
 
-      <div class="col-4 md:col-6 lg:col-3">
+      <div>
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -51,7 +51,7 @@
         </Card>
       </div>
 
-      <div class="col-4 md:col-6 lg:col-3">
+      <div>
         <Card>
           <template #content>
             <div class="flex items-center justify-between">
@@ -297,6 +297,18 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dashboard-stats > div { min-width: 0; }
+
+@media (max-width: 767px) {
+  .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .attendance-chart-wrapper {
   display: flex;
   flex-direction: column;
@@ -445,5 +457,4 @@ onMounted(async () => {
   }
 }
 </style>
-
 

@@ -1,6 +1,6 @@
 /**
  * Servicebook TypeScript Type Definitions
- * 
+ *
  * Models for managing services (Dienste) and attendance tracking
  */
 
@@ -12,9 +12,9 @@
  * Attendance state enum matching Django model choices
  */
 export enum AttendanceState {
-  PRESENT = 'A',    // Anwesend
-  EXCUSED = 'E',    // Entschuldigt
-  ABSENT = 'F'      // Fehlend
+  PRESENT = 'A', // Anwesend
+  EXCUSED = 'E', // Entschuldigt
+  ABSENT = 'F', // Fehlend
 }
 
 /**
@@ -23,7 +23,7 @@ export enum AttendanceState {
 export const AttendanceStateLabels: Record<AttendanceState, string> = {
   [AttendanceState.PRESENT]: 'Anwesend',
   [AttendanceState.EXCUSED]: 'Entschuldigt',
-  [AttendanceState.ABSENT]: 'Fehlend'
+  [AttendanceState.ABSENT]: 'Fehlend',
 }
 
 /**
@@ -32,7 +32,7 @@ export const AttendanceStateLabels: Record<AttendanceState, string> = {
 export const AttendanceStateColors: Record<AttendanceState, string> = {
   [AttendanceState.PRESENT]: 'success',
   [AttendanceState.EXCUSED]: 'warn',
-  [AttendanceState.ABSENT]: 'danger'
+  [AttendanceState.ABSENT]: 'danger',
 }
 
 // ============================================================================
@@ -64,8 +64,8 @@ export interface AttendanceSummary {
  */
 export interface Service {
   id: number
-  start: string  // ISO datetime
-  end: string    // ISO datetime
+  start: string // ISO datetime
+  end: string // ISO datetime
   place: string | null
   topic: string | null
   department?: number | null
@@ -97,7 +97,7 @@ export interface ServiceDetail {
   place: string | null
   topic: string | null
   description: string | null
-  events: string | null  // Special occurrences
+  events: string | null // Special occurrences
   department?: number | null
   training_session?: number | null
   operations_manager: OperationsManager[]
@@ -212,9 +212,9 @@ export interface AttendanceChartData {
   service_labels: string[]
   service_dates: string[]
   attendance_data: {
-    A: number[]  // Present
-    E: number[]  // Excused
-    F: number[]  // Absent
+    A: number[] // Present
+    E: number[] // Excused
+    F: number[] // Absent
   }
 }
 
@@ -316,4 +316,25 @@ export interface AttendanceButtonState {
   currentState: AttendanceState | null
   loading: boolean
   error: string | null
+}
+
+export interface AttendanceBoardPerson {
+  id: number
+  full_name: string
+  state: AttendanceState | null
+}
+
+export interface AttendanceBoard {
+  members: AttendanceBoardPerson[]
+  staff: AttendanceBoardPerson[]
+}
+
+export interface StaffAttendanceStatistic {
+  id: number
+  full_name: string
+  present: number
+  excused: number
+  absent: number
+  total: number
+  hours: number
 }

@@ -37,11 +37,11 @@ export const useAttachmentsStore = defineStore('attachments', () => {
     }
   }
 
-  async function createAttachment(formData: FormData) {
+  async function createAttachment(memberId: number, formData: FormData) {
     loading.value = true
     error.value = null
     try {
-      const response = await attachmentsApi.create(formData)
+      const response = await attachmentsApi.createForMember(memberId, formData)
       attachments.value.unshift(response.data)
       return response.data
     } catch (err) {

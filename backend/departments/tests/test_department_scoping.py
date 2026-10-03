@@ -30,7 +30,10 @@ def _make_user(username, *, is_staff=False):
 
 
 def _assign_dept(user, department):
-    """Create a UserDepartmentRole (no groups needed for scoping tests)."""
+    """Give the fixture read permissions; the tests isolate department scoping."""
+    user.user_permissions.add(
+        *Permission.objects.filter(content_type__app_label="members", codename__in=["view_member", "view_parent"])
+    )
     return UserDepartmentRole.objects.create(user=user, department=department)
 
 
@@ -278,7 +281,7 @@ class DepartmentEndpointTest(DeptScopingFixture):
 
 
 class UserDepartmentRoleAdminTest(DeptScopingFixture):
-    """GET /api/v1/admin/department-roles/ — staff only."""
+    """Staff may read role assignments; only superusers may change them."""
 
     URL = "/api/v1/admin/department-roles/"
 
@@ -299,9 +302,10 @@ class UserDepartmentRoleAdminTest(DeptScopingFixture):
         ids = {item["id"] for item in resp.data["results"]}
         self.assertGreaterEqual(len(ids), 2)
 
-    def test_staff_can_create_role(self):
+    def test_superuser_can_create_role(self):
         new_user = _make_user("new_user_for_role")
-        self.client.force_authenticate(user=self.staff_user)
+        admin = User.objects.create_superuser(username="role_admin", password="safe-regression-42!")
+        self.client.force_authenticate(user=admin)
         resp = self.client.post(
             self.URL, {"user": new_user.id, "department": self.dept_a.id, "group_ids": []}, format="json"
         )

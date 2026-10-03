@@ -5,6 +5,8 @@
       <p class="text-color-secondary mt-1 mb-0">Benutzer, Gruppen und Berechtigungen verwalten</p>
     </div>
 
+    <p v-if="!authStore.user?.is_superuser" role="status" class="mb-3 text-color-secondary">Lesemodus: Benutzer, Gruppen und Rollen können ausschließlich durch einen Superuser geändert werden.</p>
+
     <TabView lazy>
       <TabPanel value="0">
         <template #header>
@@ -35,6 +37,8 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import UsersPanel from '@/components/admin/organisms/UsersPanel.vue'

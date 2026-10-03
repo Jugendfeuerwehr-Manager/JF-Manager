@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 # Swagger/OpenAPI documentation
 from drf_spectacular.views import (
@@ -8,14 +8,15 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework.authtoken import views
 
 # API URLs
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
+
+from members.attachment_links import attachment_preview, deny_direct_attachments
+from users.auth_security import SecureObtainAuthToken, SecureTokenObtainPairView
 
 # OIDC auth views
 from users.oidc_views import (
@@ -30,11 +31,13 @@ from .api_views import AppSettingsView, PublicBrandingView
 from .rest_urls import api
 
 api_patterns = [
+    path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
+    path("api/v1/push/", include("notifications.urls")),
     path("api/v1/", include(api.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
-    path("api-token-auth/", views.obtain_auth_token),
+    path("api-token-auth/", SecureObtainAuthToken.as_view()),
     # JWT Authentication endpoints
-    path("api/v1/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/v1/auth/login/", SecureTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/v1/auth/verify/", TokenVerifyView.as_view(), name="token_verify"),
     # OIDC Authentication endpoints
@@ -72,5 +75,6 @@ urlpatterns = api_patterns + auth_patterns + health_patterns
 if settings.DEBUG:
     from django.conf.urls.static import static
 
+    urlpatterns += [re_path(r"^uploads/attachments/", deny_direct_attachments)]
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

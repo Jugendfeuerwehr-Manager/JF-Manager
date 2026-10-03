@@ -68,6 +68,9 @@
 
           <Divider />
 
+          <DeviceSettings />
+          <Divider />
+
           <!-- Email Signature -->
           <div class="profile-section">
             <h3>
@@ -169,6 +172,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import { userApi } from '@/api/user'
+import DeviceSettings from '@/components/DeviceSettings.vue'
 
 const toast = useToast()
 const authStore = useAuthStore()

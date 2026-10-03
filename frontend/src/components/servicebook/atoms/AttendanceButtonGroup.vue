@@ -3,7 +3,10 @@
     <Button
       v-for="state in states"
       :key="state.value"
-      :label="loading ? '' : state.label"
+      :label="state.label"
+      :aria-label="state.title"
+      :aria-pressed="isActive(state.value)"
+      :title="state.title"
       :severity="getButtonSeverity(state.value)"
       :outlined="!isActive(state.value)"
       :loading="loading"
@@ -31,15 +34,15 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
-  disabled: false
+  disabled: false,
 })
 
 const emit = defineEmits<Emits>()
 
 const states = [
-  { value: AttendanceState.PRESENT, label: 'A' },
-  { value: AttendanceState.EXCUSED, label: 'E' },
-  { value: AttendanceState.ABSENT, label: 'F' }
+  { value: AttendanceState.PRESENT, label: 'A', title: 'Anwesend' },
+  { value: AttendanceState.EXCUSED, label: 'E', title: 'Entschuldigt' },
+  { value: AttendanceState.ABSENT, label: 'F', title: 'Fehlend' },
 ]
 
 const isActive = (state: AttendanceState) => {
@@ -63,7 +66,8 @@ const handleClick = (state: AttendanceState) => {
 }
 
 .attendance-btn {
-  min-width: 2.5rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   font-weight: 600;
 }
 </style>

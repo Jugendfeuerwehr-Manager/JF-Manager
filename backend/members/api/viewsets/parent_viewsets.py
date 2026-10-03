@@ -14,6 +14,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from members.api_serializers import ParentSerializer
 from members.models import Parent
 
@@ -28,13 +29,23 @@ from members.models import Parent
 )
 class ParentViewSet(viewsets.ModelViewSet):
     serializer_class = ParentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     queryset = Parent.objects.all()  # used by router for basename; actual filtering in get_queryset()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = []
     search_fields = ["name", "lastname", "email", "email2"]
     ordering_fields = ["name", "lastname"]
     ordering = ["lastname", "name"]
+
+    def get_serializer(self, *args, **kwargs):
+        serializer = super().get_serializer(*args, **kwargs)
+        if not kwargs.get("many", False):
+            from members.api.viewsets.member_viewsets import MemberViewSet
+
+            member_view = MemberViewSet()
+            member_view.request = self.request
+            serializer.fields["children"].child_relation.queryset = member_view.get_queryset()
+        return serializer
 
     def _user_is_org_wide(self, user) -> bool:
         return DepartmentScopeViewSetMixin._user_is_org_wide(self, user)

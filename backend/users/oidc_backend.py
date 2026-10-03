@@ -12,6 +12,7 @@ Subclasses mozilla_django_oidc.auth.OIDCAuthenticationBackend to:
 
 import logging
 
+from django.db import transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 logger = logging.getLogger("users.oidc_backend")
@@ -106,31 +107,33 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
     # ---------------------------------------------------------------------------
 
     def filter_users_by_claims(self, claims):
+        """Identify accounts by the stable issuer/subject pair.
+
+        Never auto-link local/LDAP accounts or match a provider-controlled subject
+        to a local username: either would let the provider take over that account.
         """
-        Find existing user by email first (case-insensitive), then by sub claim.
-        """
+        from django.core.exceptions import PermissionDenied
+
+        issuer = claims.get("iss", "").rstrip("/")
+        subject = claims.get("sub", "")
+        if not issuer or not subject:
+            raise PermissionDenied("OIDC-Identität fehlt.")
+        bound = self.UserModel.objects.filter(oidc_issuer=issuer, oidc_subject=subject, auth_source="oidc")
+        if bound.exists():
+            return bound
         email = claims.get("email", "").strip()
-        if email:
-            users = self.UserModel.objects.filter(email__iexact=email)
-            if users.exists():
-                logger.debug("OIDC: found existing user by email '%s'", email)
-                return users
-
-        # Fall back to sub claim stored as username
-        sub = claims.get("sub", "")
-        if sub:
-            users = self.UserModel.objects.filter(username=sub)
-            if users.exists():
-                logger.debug("OIDC: found existing user by sub '%s'", sub)
-                return users
-
-        logger.debug("OIDC: no existing user found for email='%s' sub='%s'", email, sub)
-        return self.UserModel.objects.none()
+        if not email or claims.get("email_verified") is not True:
+            raise PermissionDenied("Der OIDC-Anbieter muss eine bestätigte E-Mail-Adresse liefern.")
+        users = self.UserModel.objects.filter(email__iexact=email)
+        if users.exists():
+            raise PermissionDenied("Ein vorhandenes Konto darf nicht automatisch mit OIDC verknüpft werden.")
+        return users
 
     # ---------------------------------------------------------------------------
     # User creation / update
     # ---------------------------------------------------------------------------
 
+    @transaction.atomic
     def create_user(self, claims):
         config = self._get_config()
         email = claims.get("email", "").strip()
@@ -202,10 +205,13 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
 
     def _apply_claims(self, user, claims, groups, config):
         """Apply name, email, staff/superuser flags and group mappings to user."""
+        # Persist provider identity; subsequent logins no longer depend on mutable email.
+        user.oidc_issuer = claims.get("iss", "").rstrip("/")
+        user.oidc_subject = claims.get("sub", "")
         user.first_name = claims.get("given_name", claims.get("first_name", user.first_name)) or user.first_name
         user.last_name = claims.get("family_name", claims.get("last_name", user.last_name)) or user.last_name
         email = claims.get("email", "").strip()
-        if email:
+        if email and claims.get("email_verified") is True:
             user.email = email
 
         # Staff / superuser flags from group membership

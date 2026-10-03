@@ -272,13 +272,24 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         serializer = EventSerializer(events, many=True, context={"request": request})
         return Response(serializer.data)
 
-    @extend_schema(summary="Get member's attachments")
-    @action(detail=True, methods=["get"])
+    @extend_schema(summary="Get or upload member attachments")
+    @action(detail=True, methods=["get", "post"], permission_classes=[IsAuthenticated])
     def attachments(self, request, pk=None):
         from django.contrib.contenttypes.models import ContentType
 
+        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.request import clone_request
+
+        permission_request = clone_request(request, "PATCH" if request.method == "POST" else request.method)
+        if not DepartmentRoleModelPermissions().has_permission(permission_request, self):
+            raise PermissionDenied("Keine Berechtigung für die Anhänge dieses Mitglieds.")
         member = self.get_object()
         content_type = ContentType.objects.get_for_model(Member)
+        if request.method == "POST":
+            serializer = AttachmentSerializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save(content_type=content_type, object_id=member.pk, uploaded_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         attachments = Attachment.objects.filter(content_type=content_type, object_id=member.id).order_by("-uploaded_at")
         serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
         return Response(serializer.data)

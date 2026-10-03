@@ -1,11 +1,11 @@
 <template>
   <div class="app-topbar">
-    <Menubar :model="menuItems" class="topbar-menubar">
+    <Toolbar class="topbar-menubar">
       <template #start>
-        <div class="logo" @click="$router.push('/')">
+        <router-link class="logo" to="/">
           <i class="pi pi-shield"></i>
           <span class="logo-text">{{ websiteTitle }}</span>
-        </div>
+        </router-link>
       </template>
 
       <template #end>
@@ -49,7 +49,7 @@
             />
           </div>
 
-          <div class="user-profile" @click="toggleUserMenu">
+          <button type="button" class="user-profile" aria-label="Benutzermenü öffnen" aria-haspopup="menu" @click="toggleUserMenu">
             <Avatar
               :label="userInitials"
               shape="circle"
@@ -60,10 +60,10 @@
               <span class="user-name">{{ authStore.user?.first_name || 'User' }}</span>
             </div>
             <i class="pi pi-angle-down"></i>
-          </div>
+          </button>
         </div>
       </template>
-    </Menubar>
+    </Toolbar>
     <Menu ref="userMenu" :model="userMenuItems" popup class="user-menu" />
   </div>
 </template>
@@ -77,54 +77,15 @@ import { useTheme } from '@/composables/useTheme'
 import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
-import Menubar from 'primevue/menubar'
+import Toolbar from 'primevue/toolbar'
 import type { MenuItem } from 'primevue/menuitem'
 import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
-
-const emit = defineEmits<{
-  menuClick : []
-}>()
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { websiteTitle } = useAppSettings()
 const { themeMode, setMode } = useTheme()
 const userMenu = ref()
-
-const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
-  label,
-  icon,
-  to,
-  command: () => router.push(to)
-})
-
-/** All possible top-bar quick-nav items with their required view permission. */
-interface PermissionedNavItem extends MenuItem {
-  viewPerm?: string   // bare codename, e.g. 'view_member'
-  staffOnly?: boolean
-}
-
-const allTopbarItems: PermissionedNavItem[] = [
-  { ...createNavItem('Mitglieder', 'pi pi-users', '/members'), viewPerm: 'view_member' },
-  { ...createNavItem('Eltern', 'pi pi-user', '/parents'), viewPerm: 'view_parent' },
-  { ...createNavItem('Dienstbuch', 'pi pi-book', '/servicebook'), viewPerm: 'view_service' },
-]
-
-const menuItems = computed<MenuItem[]>(() => {
-  const visible = allTopbarItems.filter(item => {
-    if (authStore.isOrgWide) return true
-    if (item.viewPerm) return authStore.hasPerm(item.viewPerm)
-    return true
-  })
-  return [
-    ...visible,
-    {
-      label: 'Mehr',
-      icon: 'pi pi-ellipsis-h',
-      command: () => emit('menuClick')
-    }
-  ]
-})
 
 const userInitials = computed(() => {
   if (!authStore.user) return 'U'
@@ -177,7 +138,7 @@ const toggleUserMenu = (event: Event) => {
   border: none;
   background: transparent;
   padding: 0 1.5rem;
-  max-width: 1600px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -189,6 +150,7 @@ const toggleUserMenu = (event: Event) => {
   display: flex;
   align-items: center;
   cursor: pointer;
+  text-decoration: none;
   gap: 0.75rem;
   color: var(--primary-color);
   font-weight: 700;
@@ -223,6 +185,9 @@ const toggleUserMenu = (event: Event) => {
 }
 
 .user-profile {
+  border: 0;
+  background: transparent;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 0.75rem;

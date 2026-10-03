@@ -1,121 +1,35 @@
 <template>
   <div class="layout-wrapper">
-    <!-- Desktop: Top Navigation Bar -->
-    <AppTopbar v-if="!isMobile" @menu-click="toggleNavigation" />
+    <a href="#main-content" class="skip-link">Zum Inhalt springen</a>
+    <AppTopbar v-if="!isMobile" />
+    <header v-else class="mobile-toolbar">
+      <Button icon="pi pi-bars" label="Module" text aria-controls="module-drawer" :aria-expanded="navigationVisible" @click="navigationVisible = true" />
+      <router-link to="/" class="mobile-title">{{ websiteTitle }}</router-link>
+      <Button icon="pi pi-user" text rounded aria-label="Benutzermenü öffnen" aria-haspopup="menu" @click="toggleUserMenu" />
+    </header>
 
-    <!-- Mobile: PrimeVue Toolbar -->
-    <Toolbar v-else class="mobile-toolbar">
-      <template #start>
-        <Button
-          icon="pi pi-bars"
-          text
-          rounded
-          class="mobile-toolbar-button"
-          @click="toggleNavigation"
-          aria-label="Navigation öffnen"
-        />
-        <div class="mobile-toolbar-title">
-          <i class="pi pi-shield"></i>
-          <span>{{ websiteTitle }}</span>
-        </div>
-      </template>
-      <template #end>
-        <div class="mobile-toolbar-end">
-          <DepartmentSwitcher compact />
-          <Button
-            :icon="themeIcon"
-            text
-            rounded
-            size="small"
-            class="mobile-toolbar-button"
-            aria-label="Theme wechseln"
-            @click="cycleTheme"
-          />
-          <Avatar
-            :label="userInitials"
-            shape="circle"
-            size="normal"
-            class="mobile-toolbar-avatar"
-            @click="toggleUserMenu"
-          />
-        </div>
-      </template>
-    </Toolbar>
-
-    <!-- Main Content -->
-    <div class="layout-main" :class="{ 'has-bottom-nav': isMobile }">
-      <div class="layout-content" :class="{ 'layout-content--full-width': isFullWidthRoute }">
-        <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
+    <aside v-if="!isMobile" class="desktop-sidebar"><ModuleNavigation /></aside>
+    <main id="main-content" tabindex="-1" class="layout-main">
+      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') }">
+        <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" />
       </div>
-    </div>
+    </main>
 
-    <!-- Mobile: Bottom Tab Navigation -->
-    <div v-if="isMobile" class="mobile-bottom-nav">
-      <TabMenu
-        :model="mobileNavItems"
-        :active-index="mobileActiveIndex"
-        class="mobile-tabmenu"
-      />
-    </div>
+    <nav v-if="isMobile" class="mobile-bottom-nav" aria-label="Schnellzugriff">
+      <router-link to="/" :aria-current="route.path === '/' ? 'page' : undefined"><i class="pi pi-home" aria-hidden="true"></i><span>Übersicht</span></router-link>
+      <router-link v-if="authStore.canAccessModule('view_member')" to="/members" :aria-current="route.path.startsWith('/members') ? 'page' : undefined"><i class="pi pi-users" aria-hidden="true"></i><span>Mitglieder</span></router-link>
+      <router-link v-if="authStore.canAccessModule('view_service')" to="/servicebook" :aria-current="route.path.startsWith('/servicebook') ? 'page' : undefined"><i class="pi pi-book" aria-hidden="true"></i><span>Dienstbuch</span></router-link>
+      <button type="button" aria-controls="module-drawer" :aria-expanded="navigationVisible" @click="navigationVisible = true"><i class="pi pi-th-large" aria-hidden="true"></i><span>Alle Module</span></button>
+    </nav>
 
-    <!-- PrimeVue Drawer for global navigation -->
-    <Drawer
-      v-model:visible="navigationVisible"
-      position="left"
-      class="menu-sidebar"
-      @hide="navigationVisible = false"
-    >
-      <template #header>
-        <div class="sidebar-header">
-          <i class="pi pi-shield"></i>
-          <span>{{ websiteTitle }}</span>
-        </div>
-      </template>
-
-      <div class="sidebar-nav">
-        <div
-          v-for="section in sidebarSections"
-          :key="section.label"
-          class="sidebar-section"
-        >
-          <p class="sidebar-section__label">{{ section.label }}</p>
-          <div class="sidebar-links">
-            <button
-              v-for="item in section.items"
-              :key="item.to ?? item.label ?? item.icon"
-              class="sidebar-link"
-              :class="{ 'is-active': isActivePath(item) }"
-              type="button"
-              @click="navigateTo(item)"
-            >
-              <i :class="item.icon"></i>
-              <span>{{ item.label }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <Divider />
-
-      <Button
-        label="Abmelden"
-        icon="pi pi-sign-out"
-        severity="danger"
-        outlined
-        class="w-full"
-        @click="handleLogout"
-      />
+    <Drawer id="module-drawer" v-model:visible="navigationVisible" position="left" class="module-drawer" header="Alle Module">
+      <div class="drawer-context"><DepartmentSwitcher /><Button :icon="themeIcon" text rounded aria-label="Farbschema wechseln" @click="cycleTheme" /></div>
+      <ModuleNavigation @navigate="navigationVisible = false" />
+      <Button label="Abmelden" icon="pi pi-sign-out" severity="secondary" outlined @click="handleLogout" />
     </Drawer>
-
-    <!-- User Menu -->
     <Menu ref="userMenu" :model="userMenuItems" popup />
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -124,16 +38,11 @@ import { useDepartmentsStore } from '@/stores/departments'
 import { useAppSettings } from '@/composables/useAppSettings'
 import { useTheme } from '@/composables/useTheme'
 import AppTopbar from './AppTopbar.vue'
+import ModuleNavigation from './ModuleNavigation.vue'
 import Button from 'primevue/button'
-import Avatar from 'primevue/avatar'
 import Drawer from 'primevue/drawer'
-import Divider from 'primevue/divider'
 import Menu from 'primevue/menu'
-import Toolbar from 'primevue/toolbar'
-import TabMenu from 'primevue/tabmenu'
-import type { MenuItem } from 'primevue/menuitem'
 import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
-
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -141,366 +50,42 @@ const departmentsStore = useDepartmentsStore()
 const { websiteTitle } = useAppSettings()
 const { themeMode, setMode } = useTheme()
 const userMenu = ref()
-
-const isMobile = ref(window.innerWidth < 768)
+const isMobile = ref(window.innerWidth < 1024)
 const navigationVisible = ref(false)
-
-/** Routes that should fill the full available width without a max-width cap */
-const isFullWidthRoute = computed(() => {
-  const path = route.path
-  return path.startsWith('/settings')
-})
-
-const createNavItem = (label: string, icon: string, to: string): MenuItem => ({
-  label,
-  icon,
-  to,
-  command: () => router.push(to)
-})
-
-interface PermissionedItem extends MenuItem {
-  viewPerm?: string   // bare Django codename, e.g. 'view_member'
-  staffOnly?: boolean
-}
-
-const allMainNavItems: PermissionedItem[] = [
-  createNavItem('Dashboard', 'pi pi-home', '/'),
-  { ...createNavItem('Mitglieder', 'pi pi-users', '/members'), viewPerm: 'view_member' },
-  { ...createNavItem('Gruppen', 'pi pi-sitemap', '/groups'), viewPerm: 'view_group' },
-  { ...createNavItem('Listen', 'pi pi-list-check', '/lists'), viewPerm: 'view_memberlist' },
-  { ...createNavItem('Eltern', 'pi pi-user', '/parents'), viewPerm: 'view_parent' },
-  { ...createNavItem('Dienstbuch', 'pi pi-book', '/servicebook'), viewPerm: 'view_service' },
-]
-
-const allSecondaryNavItems: PermissionedItem[] = [
-  { ...createNavItem('Einträge', 'pi pi-list', '/log'), staffOnly: true },
-  { ...createNavItem('Inventar', 'pi pi-box', '/inventory'), viewPerm: 'view_item' },
-  { ...createNavItem('E-Mails', 'pi pi-envelope', '/emails/compose'), viewPerm: 'view_emailmessage' },
-  { ...createNavItem('Qualifikationen', 'pi pi-crown', '/qualifications'), viewPerm: 'view_qualification' },
-  { ...createNavItem('Ausbildung', 'pi pi-calendar', '/training'), viewPerm: 'view_trainingsession' },
-  { ...createNavItem('Einstellungen', 'pi pi-cog', '/settings'), staffOnly: true },
-  { ...createNavItem('Benutzerverwaltung', 'pi pi-shield', '/users'), staffOnly: true },
-]
-
-function filterNavItems(items: PermissionedItem[]): MenuItem[] {
-  return items.filter(item => {
-    if (authStore.isOrgWide) return true
-    if (item.staffOnly) return false
-    if (item.viewPerm) return authStore.hasPerm(item.viewPerm)
-    return true
-  })
-}
-
-const mainNavItems = computed(() => filterNavItems(allMainNavItems))
-const secondaryNavItems = computed(() => filterNavItems(allSecondaryNavItems))
-
-const sidebarSections = computed(() => [
-  { label: 'Hauptmodule', items: mainNavItems.value },
-  { label: 'Weitere Bereiche', items: secondaryNavItems.value }
+const userMenuItems = computed(() => [
+  { label: 'Mein Profil', icon: 'pi pi-user', command: () => router.push('/profile') },
+  { label: 'Farbschema wechseln', icon: themeIcon.value, command: cycleTheme },
+  { separator: true },
+  { label: 'Abmelden', icon: 'pi pi-sign-out', command: handleLogout },
 ])
-
-const mobileNavItems = computed<MenuItem[]>(() => {
-  const candidates: PermissionedItem[] = [
-    allMainNavItems.find(item => item.to === '/members')!,
-    allMainNavItems.find(item => item.to === '/servicebook')!,
-    allSecondaryNavItems.find(item => item.to === '/orders')!,
-  ]
-  return candidates.filter(item => {
-    if (!item) return false
-    if (authStore.isOrgWide) return true
-    if (item.viewPerm) return authStore.hasPerm(item.viewPerm)
-    return true
-  }) as MenuItem[]
-})
-
-const mobileActiveIndex = computed(() => {
-  const currentPath = route.path
-  const index = mobileNavItems.value.findIndex(item => {
-    if (!item.to) return false
-    return currentPath.startsWith(item.to as string)
-  })
-  return index === -1 ? 0 : index
-})
-
-const userInitials = computed(() => {
-  if (!authStore.user) return 'U'
-  const first = authStore.user.first_name?.[0] || ''
-  const last = authStore.user.last_name?.[0] || ''
-  return `${first}${last}`.toUpperCase()
-})
-
-const userMenuItems = computed<MenuItem[]>(() => [
-  {
-    label: 'Profil',
-    icon: 'pi pi-user',
-    command: () => router.push('/profile')
-  },
-  ...(authStore.isStaff ? [{
-    label: 'Einstellungen',
-    icon: 'pi pi-cog',
-    command: () => router.push('/settings')
-  }] : []),
-  {
-    separator: true
-  },
-  {
-    label: 'Abmelden',
-    icon: 'pi pi-sign-out',
-    command: () => authStore.logout()
-  }
-])
-
-const toggleNavigation = () => {
-  navigationVisible.value = !navigationVisible.value
+const themeIcon = computed(() => themeMode.value === 'dark' ? 'pi pi-moon' : themeMode.value === 'light' ? 'pi pi-sun' : 'pi pi-desktop')
+function cycleTheme() {
+  const modes = ['light', 'dark', 'system'] as const
+  setMode(modes[(modes.indexOf(themeMode.value) + 1) % modes.length]!)
 }
-
-const toggleUserMenu = (event: Event) => {
-  userMenu.value.toggle(event)
-}
-
-const handleLogout = () => {
-  navigationVisible.value = false
-  authStore.logout()
-}
-
-const isActivePath = (item: MenuItem) => {
-  if (!item.to) return false
-  const target = item.to as string
-  return route.path === target || route.path.startsWith(`${target}/`)
-}
-
-const navigateTo = (item: MenuItem) => {
-  if (!item.to) return
-  router.push(item.to as string)
-  navigationVisible.value = false
-}
-
-const themeIcon = computed(() => {
-  if (themeMode.value === 'dark') return 'pi pi-moon'
-  if (themeMode.value === 'light') return 'pi pi-sun'
-  return 'pi pi-desktop'
-})
-
-const cycleTheme = () => {
-  const order: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system']
-  const idx = order.indexOf(themeMode.value)
-  setMode(order[(idx + 1) % order.length] as 'light' | 'dark' | 'system')
-}
-
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 768
-}
-
-watch(
-  () => route.path,
-  () => {
-    if (navigationVisible.value) {
-      navigationVisible.value = false
-    }
-  }
-)
-
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
+function toggleUserMenu(event: Event) { userMenu.value.toggle(event) }
+function handleLogout() { navigationVisible.value = false; authStore.logout() }
+function handleResize() { isMobile.value = window.innerWidth < 1024; if (!isMobile.value) navigationVisible.value = false }
+watch(() => route.path, () => { navigationVisible.value = false })
+onMounted(() => { window.addEventListener('resize', handleResize) })
+onUnmounted(() => { window.removeEventListener('resize', handleResize) })
 </script>
-
 <style scoped>
-.layout-wrapper {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface-ground);
-}
-
-/* Main Content */
-.layout-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.layout-main.has-bottom-nav {
-  padding-bottom: 80px; /* Space for bottom nav */
-  margin-top: 60px; /* Space for mobile toolbar */
-}
-
-.layout-content {
-  flex: 1;
-  max-width: 1600px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.layout-content--full-width {
-  max-width: none;
-  padding: 0 !important;
-}
-
-/* Desktop: Add top padding */
-@media (min-width: 768px) {
-  .layout-main {
-    margin-top: 70px;
-  }
-  
-  .layout-content {
-    padding: 2rem;
-  }
-}
-
-.mobile-toolbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  border-bottom: 1px solid var(--p-menu-border-color);
-  background: var(--p-menu-background);
-  height: 60px;
-}
-
-.mobile-toolbar-button {
-  color: var(--text-color-secondary);
-}
-
-.mobile-toolbar-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--primary-color);
-}
-
-.mobile-toolbar-avatar {
-  cursor: pointer;
-}
-
-.mobile-toolbar-end {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-  flex-shrink: 1;
-  overflow: hidden;
-}
-
-.mobile-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  border-top: 1px solid var(--p-menu-border-color);
-  background: var(--p-menu-background);
-}
-
-.mobile-tabmenu :deep(.p-tabmenu-nav) {
-  justify-content: space-around;
-}
-
-.mobile-tabmenu :deep(.p-menuitem-link) {
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.menu-sidebar {
-  max-width: 22rem;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--primary-color);
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.sidebar-section__label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-color-secondary);
-  margin-bottom: 0.5rem;
-}
-
-.sidebar-links {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--border-radius);
-  border: 1px solid var(--surface-border);
-  background: transparent;
-  color: var(--text-color);
-  font-weight: 500;
-  text-align: left;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.sidebar-link i {
-  font-size: 1rem;
-  color: currentColor;
-}
-
-.sidebar-link:hover {
-  background: var(--surface-100);
-}
-
-.sidebar-link.is-active {
-  background: var(--primary-100);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* Hide mobile elements on desktop */
-@media (min-width: 768px) {
-  .mobile-toolbar,
-  .mobile-bottom-nav {
-    display: none;
-  }
-}
-
-/* ── Print: hide all navigation chrome ────────────────────────────────────── */
-@media print {
-  .mobile-toolbar,
-  .mobile-bottom-nav,
-  .menu-sidebar {
-    display: none !important;
-  }
-
-  .layout-main {
-    margin-top: 0 !important;
-    padding-bottom: 0 !important;
-  }
-
-  .layout-content {
-    max-width: none !important;
-    padding: 0 !important;
-  }
-}
+.layout-wrapper { min-height: 100dvh; background: var(--surface-ground); }
+.skip-link { position: fixed; top: -100px; left: 1rem; z-index: 2000; padding: .8rem; background: var(--surface-card); color: var(--text-color); }
+.skip-link:focus { top: .5rem; }
+.desktop-sidebar { position: fixed; top: 70px; left: 0; bottom: 0; width: 232px; overflow-y: auto; background: var(--surface-card); border-right: 1px solid var(--surface-border); z-index: 900; }
+.layout-main { margin-left: 232px; padding-top: 70px; min-width: 0; }
+.layout-content { padding: 1.5rem; max-width: 1600px; margin: 0 auto; }
+.layout-content--full-width { max-width: none; padding: 0; }
+.mobile-toolbar { position: fixed; inset: 0 0 auto; height: 60px; z-index: 1000; background: var(--surface-card); border-bottom: 1px solid var(--surface-border); display: flex; align-items: center; justify-content: space-between; padding: 0 .6rem; gap: .5rem; }
+.mobile-title { font-weight: 700; font-size: .95rem; color: var(--text-color); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mobile-bottom-nav { position: fixed; inset: auto 0 0; z-index: 1000; display: flex; justify-content: space-around; background: var(--surface-card); border-top: 1px solid var(--surface-border); padding: .4rem .3rem calc(.4rem + env(safe-area-inset-bottom, 0px)); }
+.mobile-bottom-nav a, .mobile-bottom-nav button { display: flex; flex: 1; align-items: center; justify-content: center; flex-direction: column; gap: .4rem; min-height: 48px; color: var(--text-color-secondary); text-decoration: none; font: inherit; font-size: .66rem; border: 0; background: transparent; cursor: pointer; }
+.mobile-bottom-nav i { font-size: 1.15rem; }
+.mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav [aria-expanded="true"] { color: var(--primary-color); font-weight: 700; }
+.drawer-context { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+@media (max-width: 1023px) { .layout-main { margin-left: 0; padding-top: 60px; padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } .layout-content { padding: 1rem; } .layout-content--full-width { padding: 0; } }
+@media (max-width: 480px) { .layout-content { padding: .75rem; } .layout-content--full-width { padding: 0; } }
+@media print { .desktop-sidebar, .mobile-toolbar, .mobile-bottom-nav, .skip-link { display: none !important; } .layout-main { margin: 0; padding: 0; } .layout-content { max-width: none; padding: 0; } }
 </style>

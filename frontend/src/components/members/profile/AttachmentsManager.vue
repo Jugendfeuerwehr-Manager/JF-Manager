@@ -327,11 +327,7 @@ const uploadAttachment = async () => {
     if (newAttachment.value.description) {
       formData.append('description', newAttachment.value.description)
     }
-    // ContentType for Member model (ID: 19)
-    formData.append('content_type', '19')
-    formData.append('object_id', props.memberId.toString())
-
-    await attachmentsStore.createAttachment(formData)
+    await attachmentsStore.createAttachment(props.memberId, formData)
     
     toast.add({
       severity: 'success',

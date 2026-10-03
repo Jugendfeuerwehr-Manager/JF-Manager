@@ -1,5 +1,6 @@
 <template>
   <form class="user-detail-form" @submit.prevent="handleSubmit">
+    <fieldset :disabled="!authStore.user?.is_superuser" style="border: 0; padding: 0; margin: 0; min-width: 0">
     <!-- Header -->
     <div class="form-header flex align-items-center justify-between mb-4">
       <div class="flex align-items-center gap-2">
@@ -17,6 +18,7 @@
           @click="emit('cancel')"
         />
         <Button
+          v-if="authStore.user?.is_superuser"
           type="submit"
           :label="isNew ? 'Erstellen' : 'Speichern'"
           icon="pi pi-check"
@@ -176,6 +178,7 @@
         </div>
       </div>
     </Fieldset>
+    </fieldset>
   </form>
 </template>
 

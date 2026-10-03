@@ -133,6 +133,9 @@ const deLocale = {
   }
 }
 
+import { registerPwa } from './utils/pwa'
+registerPwa()
+
 const app = createApp(App)
 
 app.use(createPinia())

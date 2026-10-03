@@ -9,7 +9,8 @@ from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from servicebook.models import Attendance
+from departments.mixins import DepartmentScopeViewSetMixin
+from servicebook.models import Attendance, Service
 from servicebook.selectors import get_attandance_list
 
 from ..serializers import (
@@ -19,7 +20,7 @@ from ..serializers import (
 )
 
 
-class AttendanceViewSet(viewsets.ModelViewSet):
+class AttendanceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing attendance records.
 
@@ -29,6 +30,8 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     - Search by person name
     - Bulk update endpoint for efficient attendance marking
     """
+
+    department_field = "service__department"
 
     authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
@@ -42,7 +45,23 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get attendance list with optimized queries."""
-        return get_attandance_list().select_related("person", "service")
+        self.queryset = get_attandance_list().select_related("person", "service")
+        return super().get_queryset()
+
+    def get_serializer(self, *args, **kwargs):
+        serializer = super().get_serializer(*args, **kwargs)
+        if "data" not in kwargs:
+            return serializer
+        services = Service.objects.all()
+        user = self.request.user
+        requested = self._resolve_requested_department(user)
+        if not self._user_is_org_wide(user):
+            services = services.filter(department_id__in=self._user_department_ids(user))
+        if requested is not None:
+            services = services.filter(department_id=requested)
+        if "service" in serializer.fields:
+            serializer.fields["service"].queryset = services
+        return serializer
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""

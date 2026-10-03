@@ -1,226 +1,93 @@
 # JF-Manager
 
-JF-Manager ist eine Webanwendung zur einfachen Verwaltung deiner Jugendfeuerwehr.
+**Mehr Zeit für eure Jugendfeuerwehr.** JF-Manager bringt Mitglieder, Eltern, Dienste, Ausbildung und Ausstattung an einen Ort. Jugendleiterinnen und Jugendleiter können Anwesenheiten gemeinsam erfassen; die Anwendung ist auf dem Smartphone als Web-App installierbar.
 
-## 📝 Historie & Beschreibung
+![JF-Manager: Übersicht mit dauerhaft sichtbarer Modulnavigation und fiktiven Beispieldaten](docs/images/dashboard.png)
 
-Das Projekt wurde von mir im Jahr 2018 begonnen, mit dem Ziel eine einfachere und unkomplizierte Webanwendung zu bauen, um meine Jugendfeuerwehr zu verwalten.
+Die Abbildungen stammen aus einer eigens erzeugten Demo mit **ausschließlich fiktiven Daten**. [Benutzerhandbuch](docs/user-guide.md) · [Installation](#installation) · [Mitmachen](CONTRIBUTING.md)
 
-Wir hatten vorher lediglich einige Listen in Excel und andere Verwaltungssoftware war uns zu kompliziert.
+## Was ihr damit erledigt
 
-Mit dem JF-Manager lässt sich aktuell der Dienstbetrieb einer Jugendfeuerwehr online verwalten.
-Es wird stetig weiterentwickelt und um neue Funktionen ergänzt. Wie oben bereits erwähnt ist das ganze ein Hobbyprojekt und erst ganz frisch (2025) als OpenSource verfügbar - Vielleicht kann es ja noch jemand brauchen ...
+| Alltag | Im JF-Manager |
+| --- | --- |
+| Mitglieder begleiten | Stammdaten, Gruppen, Elternkontakte, Notizen, Anhänge und auswählbare Excel-Exporte |
+| Dienste dokumentieren | Termine, Themen, Übungsleitung, besondere Vorkommnisse und Anwesenheiten |
+| Gemeinsam abhaken | Jugendliche und Betreuungspersonen getrennt erfassen; Änderungen einzelner Personen sofort speichern und alle drei Sekunden abgleichen |
+| Betreuungsarbeit auswerten | Anwesenheit von Jugendleitern/Ausbildern nach Zeitraum und geleisteten Stunden auswerten |
+| Ausbildung planen | Ausbildungskalender, wiederkehrende Termine, Planer, Bausteinbibliothek und Handouts |
+| Ausstattung verwalten | Inventar, Lagerorte, Ausleihen, Barcode-Erfassung und Bestellabläufe |
+| Kommunikation organisieren | Listen mit Check-Workflow, E-Mails, Versandhistorie und Benachrichtigungen für Dienst- und Bestellereignisse |
+| Verantwortlichkeiten abbilden | Abteilungen, Rollen, Qualifikationen, Sonderaufgaben, LDAP und OIDC-SSO |
 
+Die Modulnavigation ist auf dem Desktop dauerhaft sichtbar und durchsuchbar. Mobil führen **Module** und **Alle Module** zur vollständigen Übersicht.
 
-### 🎯 Hauptfunktionen
+![Anwesenheit von Jugendleitern und Ausbildern im Dienstbuch](docs/images/attendance.png)
 
-- Verwaltung von Mitgliedern
-  - Flexible Excel-Exporte mit auswählbaren Spalten
-  - Erfassen von Ehrungen, Notizen, Auszeichnungen etc.
-- Listen (Anwesenheits- und Aktionslisten) mit Check-Workflow, Notizen und Export
-- Gruppen-Editor
-  - Fachliche Mitgliedsgruppen (`/groups`)
-  - Berechtigungsgruppen (Admin-Gruppenverwaltung unter `/users`)
-- Verwaltung von Eltern, inkl. E-Mail und Verknüpfung mit den Mitgliedern
-- Kleiderkammer
-  - Barcode Scanner
-  - Zuordnung zu den Mitgliedern
-- Dienstbuch
-  - Erfassen von Diensten
-  - Dokumentieren von besonderen Vorkommnissen
-  - Anwesenheit erfassen und auswerten
-- Bestellwesen
-  - Bestellungen erstellen und verwalten
-  - Status-Workflow mit E-Mail-Benachrichtigungen
-- Qualifikationen & Sonderaufgaben
-- Zentrales Einstellungsmodul (General, E-Mail, Mitglieder, Dienst, Bestellungen)
-- LDAP-Integration inkl. Verbindungs-Test und LDAP→Abteilungsrollen-Mapping
-- SSO via OIDC (z. B. Nextcloud/Keycloak) inkl. Gruppen-Mapping
-- Abteilungsfähige Mehrmandanten-Logik mit rollenbasierter Daten-Sicht
-- Externe Synchronisation von Mitgliedern/Gruppen über Spond
-  - inkl. Betriebsmodi und Bereinigungsvorschau
-  - erweiterbar für weitere Provider
-- REST API zur Anbindung von eigenen Apps und Diensten
+Beim Abhaken wird nur die ausgewählte Person gespeichert. Bearbeiten zwei Personen gleichzeitig denselben Eintrag, fordert die Anwendung zur Prüfung des aktuellen Stands auf. Die Team-Auswertung zählt anwesend, entschuldigt und fehlend sowie Stunden aus der Dienstdauer. [Schrittweise Anleitung im Handbuch](docs/user-guide.md#dienstbuch-und-gemeinsame-anwesenheitserfassung)
 
+![Alle Module in der mobilen Web-App](docs/images/mobile.png)
 
-## 📦 Tech Stack
+Die Web-App lässt sich unter HTTPS zum Startbildschirm hinzufügen. Push-Mitteilungen werden **pro Gerät freiwillig** im Profil aktiviert; wählbar sind Dienste und Bestellungen. Der Sperrbildschirm zeigt allgemeine Hinweise ohne Mitgliedernamen. Für Datenzugriff und Änderungen ist eine Internetverbindung nötig. [Einrichtung und technische Grenzen](docs/push-and-pwa.md)
 
-| Komponente | Technologie |
-|------------|-------------|
-| Backend | Django 5.0 + Django REST Framework |
-| Frontend | Vue 3 + TypeScript + Pinia + PrimeVue + Vite |
-| Datenbank | PostgreSQL (Produktion) / SQLite (Entwicklung) |
-| Auth | JWT (djangorestframework-simplejwt) |
-| State Management | Pinia (Composition API) |
-| Build | Docker Multi-Stage, Vite |
+## Installation
 
-## 🏗️ Projektstruktur
+Für den eigenen Server braucht ihr Docker Compose, eine PostgreSQL-Datenbank (im Compose enthalten), einen öffentlichen Hostnamen und für die installierbare Web-App eine HTTPS-Verbindung. Die mitgelieferte Compose-Konfiguration enthält Backend, Frontend, Datenbank, Redis und einen Push-Versandprozess. Vor dem Einsatz mit echten Mitgliederdaten [Sicherheitsupdate und bekannte Mediengrenze](docs/security-upgrade.md) lesen.
 
-```mermaid
-flowchart TD
-  ROOT[JF-Manager]
-
-  ROOT --> BACKEND[backend<br/>Django REST API]
-  ROOT --> FRONTEND[frontend<br/>Vue 3 SPA]
-  ROOT --> DC_PROD[docker-compose.yml<br/>Produktion: Backend + Frontend + DB + Redis]
-  ROOT --> DC_DEV[docker-compose.dev.yml<br/>Entwicklung]
-  ROOT --> NGINX[nginx<br/>Nginx-Konfiguration Reverse Proxy]
-  ROOT --> DOCS[docs<br/>Dokumentation]
-
-  BACKEND --> API_TESTS[api_tests<br/>API-Tests]
-  BACKEND --> INVENTORY[inventory<br/>Kleiderkammer]
-  BACKEND --> MEMBERS[members<br/>Mitglieder und Eltern]
-  BACKEND --> ORDERS[orders<br/>Bestellwesen Referenz-Implementierung]
-  BACKEND --> QUALIFICATIONS[qualifications<br/>Qualifikationen]
-  BACKEND --> SERVICEBOOK[servicebook<br/>Dienstbuch]
-  BACKEND --> SETTINGS[settings_manager<br/>Einstellungen]
-  BACKEND --> USERS[users<br/>Benutzerverwaltung]
-  BACKEND --> CORE[jf_manager_backend<br/>Django-Einstellungen und REST-URLs]
-
-  ORDERS --> ORDERS_API[orders/api<br/>Modulare API-Struktur: ViewSets + Serializers]
-
-  FRONTEND --> SRC[src]
-  SRC --> FE_API[api<br/>HTTP-Client Axios]
-  SRC --> COMPONENTS[components<br/>Vue-Komponenten Atomic Design]
-  SRC --> STORES[stores<br/>Pinia Stores]
-  SRC --> TYPES[types<br/>TypeScript Interfaces]
-  SRC --> VIEWS[views<br/>Seiten-Komponenten]
-  SRC --> ROUTER[router<br/>Vue Router]
-```
-
-## 🚀 Installation & Setup
-
-### Lokale Entwicklungsumgebung
-
-**Voraussetzungen:**
-- Python 3.10+
-- Node.js 20.19+ oder 22.12+
-- pipenv (`pip install pipenv`)
-
-1. Repository klonen:
-```bash
+```sh
 git clone https://github.com/Jugendfeuerwehr-Manager/JF-Manager.git
 cd JF-Manager
+cp .env.example .env
 ```
 
-2. Backend einrichten:
-```bash
-cd backend
-cp example.env .env          # Umgebungsvariablen anpassen
-pipenv install
-pipenv run python manage.py migrate
-pipenv run python manage.py createsuperuser
-```
+In `.env` mindestens `POSTGRES_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ADMIN_PASSWORD`, `DJANGO_ADMIN_EMAIL`, `ALLOWED_HOSTS` und `CSRF_TRUSTED_ORIGINS` für eure Domain setzen. Danach:
 
-3. Frontend einrichten:
-```bash
-cd frontend
-npm install
-```
-
-4. Entwicklungsserver starten:
-```bash
-# Aus dem Projektroot:
-./start-dev.sh
-
-# Oder manuell in zwei Terminals:
-# Terminal 1 - Backend (Port 8000):
-cd backend && pipenv run python manage.py runserver
-
-# Terminal 2 - Frontend (Port 5173):
-cd frontend && npm run dev
-```
-
-Nach dem Start:
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000/api/v1/
-- **Django Admin**: http://localhost:8000/admin/
-
-### Docker-Installation (Produktion)
-
-1. Repository klonen und Umgebungsvariablen konfigurieren:
-```bash
-git clone https://github.com/Jugendfeuerwehr-Manager/JF-Manager.git
-cd JF-Manager
-cp backend/example.env .env
-# .env anpassen (SECRET_KEY, DB-Passwörter, E-Mail etc.)
-```
-
-2. Container bauen und starten:
-```bash
+```sh
 docker compose up -d --build
+docker compose ps
 ```
 
-Die Anwendung ist unter http://localhost (Port 80) erreichbar.
-Das Frontend (Nginx) dient als Reverse Proxy und leitet API-Anfragen an das Backend weiter.
+Die Anwendung ist zunächst am konfigurierten HTTP-Port erreichbar. Für öffentliches Hosting TLS am vorgeschalteten Reverse Proxy einrichten und die tatsächliche HTTPS-Domain in der Konfiguration hinterlegen. Mobile Installation und Push benötigen einen sicheren Ursprung; Push wird erst nach [VAPID-Konfiguration](docs/push-and-pwa.md) aktiv. Die Datenbankmigrationen laufen im Backend-Einstiegspunkt; beim Aktualisieren zusätzlich die Schritte im [Sicherheitsupdate](docs/security-upgrade.md) beachten. Ausführliche Varianten: [Docker](docs/deployment/docker.md), [Portainer](portainer/README.md) und [Betrieb](docs/getting-started.md).
 
-3. Admin-Benutzer erstellen (falls nicht über Umgebungsvariablen):
-```bash
-docker exec -it jf_manager_backend python manage.py createsuperuser
-```
+## Ausprobieren mit Beispieldaten
 
-### Umgebungsvariablen
+Die lokale Demo erzeugt eine **neue temporäre SQLite-Datenbank** mit zwölf fiktiven Mitgliedern, vier Betreuungspersonen und Beispieldiensten. Sie benutzt weder die vorhandene Anwendungsdatenbank noch echten E-Mail- oder Push-Versand. Voraussetzungen sind Python 3.10+, Pipenv und Node.js 20.19+ beziehungsweise 22.12+.
 
-| Variable | Beschreibung | Standard |
-|----------|-------------|----------|
-| `DJANGO_SECRET_KEY` | Django Secret Key (erforderlich) | - |
-| `POSTGRES_DB` | Datenbankname | `jf_manager_backend` |
-| `POSTGRES_USER` | Datenbank-Benutzer | `jf_manager` |
-| `POSTGRES_PASSWORD` | Datenbank-Passwort | - |
-| `DEBUG` | Debug-Modus | `False` |
-| `ALLOWED_HOSTS` | Erlaubte Hostnamen | `localhost,127.0.0.1` |
-| `EMAIL_HOST` | SMTP-Server | - |
-| `EMAIL_PORT` | SMTP-Port | `587` |
-| `VITE_API_BASE_URL` | API-URL für Frontend | `/api/v1` |
-
-Vollständige Übersicht: siehe `backend/example.env`
-
-## 🧪 Tests
-
-```bash
-# Backend API-Tests
+```sh
 cd backend
-pipenv run python manage.py test api_tests --verbosity=2
-
-# Backend Linting
-cd backend
-pipenv run ruff check .
-
-# Frontend Type-Check
-cd frontend
-npm run type-check
-
-# Frontend Linting
-cd frontend
-npm run lint
-
-# Frontend Unit-Tests
-cd frontend
-npm run test:unit
+pipenv install
+pipenv run python demo.py --port 8011
 ```
 
-## 📚 Dokumentation
+Benutzername und zufälliges Demopasswort erscheinen im Terminal. In einem zweiten Terminal:
 
-Die vollständige Dokumentation befindet sich im [docs/](docs/) Verzeichnis:
+```sh
+cd frontend
+npm ci
+VITE_API_BASE_URL=http://127.0.0.1:8011/api/v1 npm run dev
+```
 
-- [Erste Schritte](docs/getting-started.md) – Lokale Entwicklung, Umgebungsvariablen
-- [Architektur](docs/architecture/overview.md) – Docker-Architektur, Netzwerk, Sicherheit
-- [Abteilungen & Berechtigungen](docs/architecture/departments-and-permissions.md) – Scoping-Modell, aktive Abteilung, Berechtigungsdurchsetzung
-- [API Referenz](docs/api/reference.md) – REST API Endpunkte, Authentifizierung
-- [Deployment](docs/deployment/docker.md) – Docker Compose, SSL, Backup
-- [Portainer](docs/deployment/portainer.md) – Deployment via Portainer
-- [Build Pipeline](docs/development/build-pipeline.md) – CI, GHCR image build/push, deployment workflow
-- [Mitglieder, Listen, Gruppen, Excel-Export](docs/domains/members-lists-groups-exports.md) – Neue Listen-/Gruppen- und Exportfunktionen
-- [Settings, LDAP, SSO](docs/domains/settings-ldap-sso.md) – Einstellungen und externe Authentifizierung
-- [Abteilungen (Operational Guide)](docs/domains/departments.md) – Praxisleitfaden für Abteilungsbetrieb
-- [External Sync mit Spond](docs/domains/external-sync-spond.md) – Sync-Jobs und Provider-Erweiterung
-- [Training Modul](docs/domains/training-module.md) – Kalender, Planer, Bibliothek, Handout und Mobile-Planer
-- [Training Modul Architektur](docs/architecture/training-module.md) – Datenmodell, API-Architektur und Frontend-Integration
+Anschließend `http://localhost:5173` öffnen. Die Demo lauscht nur lokal. Für die reguläre Entwicklung stehen [Startanleitung](docs/getting-started.md) und `./start-dev.sh` bereit.
 
-## 🤝 Beitragen
+## Einstieg für das Team
 
-Wir freuen uns über Beiträge zur Verbesserung des JF-Managers! Bitte lies dir unsere Beitragsrichtlinien durch, bevor du Änderungen vorschlägst.
+1. Persönlich anmelden; bei eingerichtetem SSO den entsprechenden Knopf verwenden.
+2. Die richtige Abteilung auswählen und über die Modulnavigation **Mitglieder** und **Dienstbuch** öffnen.
+3. Einen Dienst speichern, anschließend Jugendliche und Betreuungspersonen im Anwesenheitsbereich erfassen.
+4. Im Profil die Standard-Abteilung, E-Mail-Signatur sowie Installation und Mitteilungen verwalten.
 
-## 📄 Lizenz
+![Klarer Anmeldebildschirm ohne künstliche Wartezeit](docs/images/login.png)
 
-[GNU AFFERO GENERAL PUBLIC LICENSE](backend/LICENSE)
+![Geräteeinstellungen im persönlichen Profil](docs/images/profile.png)
+
+Das [Benutzerhandbuch](docs/user-guide.md) erläutert alle Module mit praktischen Abläufen. Die [Architektur](docs/architecture/overview.md), [API-Referenz](docs/api/reference.md) und [Entwicklungsdokumentation](docs/development/build-pipeline.md) helfen bei Erweiterungen.
+
+## Technik und Qualität
+
+Das Backend verwendet Django 5 und Django REST Framework, das Frontend Vue 3, TypeScript und PrimeVue. PostgreSQL dient als Produktionsdatenbank, Redis als gemeinsamer Cache; Docker Compose stellt die Dienste bereit. Zugriffsrechte werden für Benutzer, Abteilungen und einzelne API-Routen geprüft. Dieses Update schließt insbesondere fremde Profiländerungen, Rechteausweitung über Benutzer-Routen und wiederverwendbare Passwort-Reset-Links. [Betriebs- und Migrationshinweise](docs/security-upgrade.md)
+
+```sh
+cd backend && PIPENV_DONT_LOAD_ENV=1 DJANGO_SECRET_KEY=local-test-only-secret-key-32-chars REDIS_URL=none pipenv run python manage.py test api_tests users departments.tests servicebook.tests.test_attendance_board servicebook.tests.test_attendance_by_member servicebook.tests.test_attendance_race_condition notifications
+cd ../frontend && npm run build && npm run test:unit -- --run
+```
+
+JF-Manager ist unter der [GNU Affero General Public License](backend/LICENSE) veröffentlicht. Beiträge sind willkommen: [CONTRIBUTING.md](CONTRIBUTING.md).

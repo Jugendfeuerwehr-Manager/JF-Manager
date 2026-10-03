@@ -12,6 +12,15 @@ from PIL import Image as Img
 class CustomUser(AbstractUser):
     # add additional fields in here
 
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                fields=["oidc_issuer", "oidc_subject"],
+                condition=~models.Q(oidc_subject=""),
+                name="unique_oidc_identity",
+            )
+        ]
+
     class AuthSource(models.TextChoices):
         LOCAL = "local", "Lokal"
         LDAP = "ldap", "LDAP"
@@ -24,6 +33,9 @@ class CustomUser(AbstractUser):
         verbose_name="Authentifizierungsquelle",
         help_text="Gibt an, ob der Benutzer lokal oder über ein externes System (LDAP/OIDC) verwaltet wird.",
     )
+
+    oidc_issuer = models.CharField(max_length=500, blank=True, default="", editable=False)
+    oidc_subject = models.CharField(max_length=255, blank=True, default="", editable=False)
 
     dsgvo_internal = models.BooleanField(default=False)
     dsgvo_external = models.BooleanField(default=False)

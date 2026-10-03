@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "django_filters",
     "import_export",
@@ -102,6 +103,7 @@ INSTALLED_APPS = [
     "settings_manager.apps.SettingsManagerConfig",
     "django_rq",
     "health",
+    "notifications.apps.NotificationsConfig",
     "mozilla_django_oidc",
 ]
 
@@ -236,6 +238,9 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+# Password reset links expire after one hour.
+PASSWORD_RESET_TIMEOUT = 3600
+
 # JWT Settings
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
@@ -243,6 +248,8 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
+    "CHECK_REVOKE_TOKEN": True,
+    "TOKEN_REFRESH_SERIALIZER": "users.auth_security.SecureTokenRefreshSerializer",
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
     "VERIFYING_KEY": None,
@@ -290,6 +297,8 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+TEST_RUNNER = "jf_manager_backend.test_runner.CacheIsolatedRunner"
 
 
 # Cache configuration
@@ -366,3 +375,12 @@ LOGGING = {
         },
     },
 }
+
+# Web Push: opt-in per device; private key never leaves the backend.
+WEB_PUSH_PUBLIC_KEY = os.environ.get("WEB_PUSH_PUBLIC_KEY", "")
+WEB_PUSH_PRIVATE_KEY = os.environ.get("WEB_PUSH_PRIVATE_KEY", "")
+WEB_PUSH_SUBJECT = os.environ.get("WEB_PUSH_SUBJECT", "")
+WEB_PUSH_ALLOWED_HOSTS = [
+    "fcm.googleapis.com", "updates.push.services.mozilla.com",
+    "push.services.mozilla.com", "web.push.apple.com", "notify.windows.com",
+]

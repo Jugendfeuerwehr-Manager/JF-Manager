@@ -73,6 +73,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
             "is_staff",
+            "is_active",
             "is_superuser",
             "groups",
             "permissions",
@@ -80,6 +81,11 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "has_org_wide_access",
             "auth_source",
         ]
+
+    def validate_email(self, value):
+        if self.instance and self.instance.auth_source != "local" and value != self.instance.email:
+            raise serializers.ValidationError("Die E-Mail-Adresse wird durch den Anmeldedienst verwaltet.")
+        return value
 
     def get_has_org_wide_access(self, obj):
         return obj.is_staff or obj.is_superuser or obj.has_perm("departments.can_access_all_departments")
@@ -162,14 +168,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
 
-    def validate_email(self, value):
-        """Check if user with this email exists"""
-        import contextlib
-
-        with contextlib.suppress(User.DoesNotExist):
-            User.objects.get(email=value, is_active=True)
-        return value
-
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     """Serializer for confirming password reset with token"""
@@ -214,7 +212,7 @@ class PasswordChangeSerializer(serializers.Serializer):
 
         # Validate password strength
         try:
-            validate_password(data["new_password"])
+            validate_password(data["new_password"], user=self.context["request"].user)
         except ValidationError as e:
             raise serializers.ValidationError({"new_password": list(e.messages)}) from e
 

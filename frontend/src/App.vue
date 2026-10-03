@@ -5,6 +5,14 @@ import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useAppSettings } from '@/composables/useAppSettings'
 
+import { useAuthStore } from '@/stores/auth'
+import { disableDevicePush } from '@/utils/pwa'
+
+const auth = useAuthStore()
+watch(() => auth.isAuthenticated, (authenticated) => {
+  if (!authenticated) void disableDevicePush().catch(() => {})
+}, { immediate: true })
+
 const { websiteTitle, setDocumentTitle } = useAppSettings()
 
 // Update document title when website title changes

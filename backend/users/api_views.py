@@ -1,12 +1,16 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
@@ -19,6 +23,7 @@ from .api_serializers import (
     UserInfoSerializer,
     UserSerializer,
 )
+from .auth_security import PasswordActionThrottle
 from .tokens import password_reset_token
 
 User = get_user_model()
@@ -75,7 +80,7 @@ def _send_external_auth_password_info(user):
     update=extend_schema(summary="Update user", description="Update user information"),
     partial_update=extend_schema(summary="Partially update user", description="Update specific user fields"),
 )
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.prefetch_related(
         "groups",
         "user_permissions",
@@ -93,8 +98,20 @@ class UserViewSet(viewsets.ModelViewSet):
     # change_password) are reachable while still avoiding DELETE/PUT
     http_method_names = ["get", "patch", "post", "head", "options"]  # No delete or full update
 
+    def get_throttles(self):
+        if self.action in {"request_password_reset", "reset_password", "change_password"}:
+            return [PasswordActionThrottle()]
+        return super().get_throttles()
+
+    def partial_update(self, request, *args, **kwargs):
+        if str(kwargs.get("pk")) != str(request.user.pk):
+            raise PermissionDenied("Sie können hier nur Ihr eigenes Profil bearbeiten.")
+        return super().partial_update(request, *args, **kwargs)
+
     def get_serializer_class(self):
-        if self.action in ["me", "retrieve", "update", "partial_update"]:
+        if self.action in ["me", "update", "partial_update"] or (
+            self.action == "retrieve" and str(self.kwargs.get("pk")) == str(self.request.user.pk)
+        ):
             return UserInfoSerializer
         return UserSerializer
 
@@ -133,7 +150,7 @@ class UserViewSet(viewsets.ModelViewSet):
         email = serializer.validated_data["email"]
 
         try:
-            user = User.objects.get(email=email, is_active=True)
+            user = User.objects.get(email__iexact=email, is_active=True)
 
             # External users cannot reset their password in JF-Manager
             if getattr(user, "auth_source", "local") != "local":
@@ -160,7 +177,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     html_message=html_message,
                     fail_silently=False,
                 )
-        except User.DoesNotExist:
+        except (User.DoesNotExist, User.MultipleObjectsReturned):
             # Don't reveal that user doesn't exist
             pass
 
@@ -180,6 +197,7 @@ class UserViewSet(viewsets.ModelViewSet):
         },
     )
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @transaction.atomic
     def reset_password(self, request):
         """Reset password using token from email"""
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -188,7 +206,7 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             # Decode user ID
             uid = force_str(urlsafe_base64_decode(serializer.validated_data["uid"]))
-            user = User.objects.get(pk=uid)
+            user = User.objects.select_for_update().get(pk=uid, is_active=True)
 
             # External users cannot reset their password in JF-Manager
             if getattr(user, "auth_source", "local") != "local":
@@ -203,7 +221,11 @@ class UserViewSet(viewsets.ModelViewSet):
             if not password_reset_token.check_token(user, serializer.validated_data["token"]):
                 return Response({"error": "Invalid or expired reset token."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Set new password
+            try:
+                validate_password(serializer.validated_data["new_password"], user=user)
+            except ValidationError as exc:
+                return Response({"new_password": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
+            # Set new password; the token becomes invalid immediately.
             user.set_password(serializer.validated_data["new_password"])
             user.save()
 

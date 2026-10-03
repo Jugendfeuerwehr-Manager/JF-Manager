@@ -46,13 +46,17 @@ services:
   backend:
     container_name: jf_manager_backend
     image: jf_manager_backend:latest
-    environment:
+    environment: &backend-environment
       DATABASE_URL: postgres://${POSTGRES_USER:-jf_manager}:${POSTGRES_PASSWORD:-changeme}@db/${POSTGRES_DB:-jf_manager_backend}
       REDIS_URL: redis://redis:6379
       DJANGO_MANAGEPY_MIGRATE: ${DJANGO_MANAGEPY_MIGRATE:-on}
       DJANGO_ADMIN_PASSWORD: ${DJANGO_ADMIN_PASSWORD}
       DJANGO_ADMIN_EMAIL: ${DJANGO_ADMIN_EMAIL}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost,http://127.0.0.1}
       DEBUG: ${DEBUG:-False}
@@ -97,6 +101,24 @@ services:
     tmpfs:
       - /tmp
       - /tmp/django_imagefit
+
+  push-worker:
+    image: jf_manager_backend:latest
+    entrypoint: ["python", "manage.py", "send_push", "--loop"]
+    environment:
+      <<: *backend-environment
+      DJANGO_MANAGEPY_MIGRATE: "off"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
 
   frontend:
     container_name: jf_manager_frontend

@@ -17,6 +17,7 @@
         </template>
         <template #end>
           <Button
+            v-if="authStore.user?.is_superuser"
             icon="pi pi-plus"
             label="Neu"
             size="small"
@@ -117,6 +118,7 @@
         <h3 class="detail-empty-title">Kein Benutzer ausgewählt</h3>
         <p class="detail-empty-sub">Wähle einen Benutzer aus der Liste oder lege einen neuen an.</p>
         <Button
+          v-if="authStore.user?.is_superuser"
           label="Neuen Benutzer anlegen"
           icon="pi pi-plus"
           size="small"
@@ -126,7 +128,7 @@
 
       <!-- Actions footer for existing users -->
       <div
-        v-if="selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail"
+        v-if="authStore.user?.is_superuser && selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail"
         class="detail-footer flex justify-content-end gap-2 mt-4 pt-3"
       >
         <Button
@@ -164,6 +166,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useAdminStore } from '@/stores/admin'
 import { useUsersStore } from '@/stores/users'
 import { useConfirm } from 'primevue/useconfirm'
@@ -178,6 +181,7 @@ import UserDetailForm from '@/components/admin/molecules/UserDetailForm.vue'
 import type { AdminUserDetail, AdminUser } from '@/types/admin'
 
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
 const usersStore = useUsersStore()
 const confirm = useConfirm()
 const toast = useToast()

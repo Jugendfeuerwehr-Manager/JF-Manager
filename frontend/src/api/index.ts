@@ -41,44 +41,52 @@ apiClient.interceptors.request.use(
   (error: AxiosError) => Promise.reject(error)
 )
 
-// Response interceptor - Handle token refresh
+// Share a refresh operation so concurrent requests do not reuse a rotated token.
+let refreshPromise: Promise<string> | null = null
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
+    if (
+      error.response?.status !== 401 || !originalRequest || originalRequest._retry ||
+      originalRequest.url?.startsWith('/auth/')
+    ) return Promise.reject(error)
 
-    // If 401 and not already retried, try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
+    originalRequest._retry = true
+    const refreshToken = localStorage.getItem('refreshToken')
+    if (!refreshToken) return Promise.reject(error)
 
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (refreshToken) {
-        try {
-          // Try to refresh the token
-          const response = await axios.post(
-            `${apiClient.defaults.baseURL}/auth/refresh/`,
-            { refresh: refreshToken }
-          )
-          
-          const newAccessToken = response.data.access
-          localStorage.setItem('accessToken', newAccessToken)
-
-          // Retry original request with new token
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-          }
-          return apiClient(originalRequest)
-        } catch (refreshError) {
-          // Refresh failed, clear storage and redirect to login
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
-          window.location.href = '/login'
-          return Promise.reject(refreshError)
-        }
+    try {
+      const currentAccess = localStorage.getItem('accessToken')
+      // A different request may already have completed the refresh.
+      if (currentAccess && originalRequest.headers.Authorization !== `Bearer ${currentAccess}`) {
+        originalRequest.headers.Authorization = `Bearer ${currentAccess}`
+        return apiClient(originalRequest)
       }
+      if (!refreshPromise) {
+        refreshPromise = axios.post(`${apiClient.defaults.baseURL}/auth/refresh/`, { refresh: refreshToken })
+          .then((response) => {
+            // Logout or a different login must not be undone by an in-flight response.
+            if (localStorage.getItem('refreshToken') !== refreshToken) {
+              throw new Error('Anmeldung wurde zwischenzeitlich geändert.')
+            }
+            localStorage.setItem('accessToken', response.data.access)
+            if (response.data.refresh) localStorage.setItem('refreshToken', response.data.refresh)
+            return response.data.access as string
+          })
+          .finally(() => { refreshPromise = null })
+      }
+      originalRequest.headers.Authorization = `Bearer ${await refreshPromise}`
+      return apiClient(originalRequest)
+    } catch (refreshError) {
+      if (localStorage.getItem('refreshToken') === refreshToken) {
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+        window.location.href = '/login'
+      }
+      return Promise.reject(refreshError)
     }
-
-    return Promise.reject(error)
   }
 )
 

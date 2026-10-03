@@ -71,6 +71,7 @@
             <div class="card-header">
               <span class="font-semibold">{{ selectedDept.name }}: Benutzer</span>
               <Button
+                v-if="authStore.user?.is_superuser"
                 label="Hinzufügen"
                 icon="pi pi-user-plus"
                 size="small"
@@ -104,7 +105,7 @@
                   </div>
                   <span v-else class="text-color-secondary text-xs">Keine Gruppen</span>
                 </div>
-                <div class="flex gap-1 ml-2 flex-shrink-0">
+                <div v-if="authStore.user?.is_superuser" class="flex gap-1 ml-2 flex-shrink-0">
                   <Button
                     icon="pi pi-pencil"
                     size="small"
@@ -237,6 +238,8 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
