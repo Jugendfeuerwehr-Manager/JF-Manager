@@ -30,6 +30,14 @@ from members.api_serializers import (
 )
 from members.models import Attachment, Event, Group, Member, Status
 
+
+class MemberActionPermissions(DepartmentRoleModelPermissions):
+    def _required_permissions(self, request, view):
+        if view.action == "delete_with_strategy":
+            return ["members.delete_member"]
+        return super()._required_permissions(request, view)
+
+
 MEMBER_EXPORT_COLUMNS = {
     "name": "Vorname",
     "lastname": "Nachname",
@@ -124,7 +132,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Member.objects.select_related("status", "group", "storage_location").prefetch_related(
         "parent_set", "departments"
     )
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, MemberActionPermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "group", "canSwimm", "gender"]
     search_fields = ["name", "lastname", "email", "identityCardNumber"]

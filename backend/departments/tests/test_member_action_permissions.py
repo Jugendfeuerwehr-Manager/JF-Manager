@@ -46,3 +46,17 @@ class MemberDeletionActionPermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, response.data)
         self.assertFalse(Member.objects.filter(pk=self.member.pk).exists())
+
+    def test_delete_role_cannot_delete_member_in_read_only_department(self):
+        department_b = Department.objects.create(name="B", code="member-action-b")
+        member_b = Member.objects.create(name="B", lastname="Member")
+        member_b.departments.add(department_b)
+        UserDepartmentRole.objects.create(user=self.deleter, department=department_b)
+        self.client.force_authenticate(user=self.deleter)
+
+        response = self.client.post(
+            f"/api/v1/members/{member_b.pk}/delete-with-strategy/", {"strategy": "unlink"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Member.objects.filter(pk=member_b.pk).exists())
