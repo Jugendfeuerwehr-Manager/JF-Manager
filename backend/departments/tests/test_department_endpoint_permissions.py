@@ -1,6 +1,7 @@
 """Staff status alone must not grant organisation-wide department management."""
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -45,3 +46,33 @@ class DepartmentEndpointPermissionTests(APITestCase):
         self.assertEqual(deleted.status_code, status.HTTP_403_FORBIDDEN)
         self.department_a.refresh_from_db()
         self.assertEqual(self.department_a.name, "A")
+
+    def test_org_view_permission_does_not_grant_department_management(self):
+        self.staff.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.staff.pk))
+
+        listed = self.client.get("/api/v1/departments/")
+        changed = self.client.patch(f"/api/v1/departments/{self.department_b.pk}/", {"name": "Changed"})
+
+        self.assertEqual(listed.status_code, status.HTTP_200_OK, listed.data)
+        self.assertEqual(
+            {item["id"] for item in listed.data["results"]},
+            {self.department_a.pk, self.department_b.pk},
+        )
+        self.assertEqual(changed.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_org_management_permission_allows_department_changes(self):
+        self.staff.user_permissions.add(Permission.objects.get(codename="can_manage_all_departments"))
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.staff.pk))
+
+        listed = self.client.get("/api/v1/departments/")
+        changed = self.client.patch(f"/api/v1/departments/{self.department_b.pk}/", {"name": "Changed"})
+        created = self.client.post("/api/v1/departments/", {"name": "New", "code": "endpoint-role-new"})
+
+        self.assertEqual(listed.status_code, status.HTTP_200_OK, listed.data)
+        self.assertEqual(
+            {item["id"] for item in listed.data["results"]},
+            {self.department_a.pk, self.department_b.pk},
+        )
+        self.assertEqual(changed.status_code, status.HTTP_200_OK, changed.data)
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
