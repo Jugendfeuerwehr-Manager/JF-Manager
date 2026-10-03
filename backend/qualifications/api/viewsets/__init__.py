@@ -44,6 +44,8 @@ class PersonDepartmentRoleModelPermissions(DepartmentRoleModelPermissions):
     def _required_permissions(self, request, view):
         if view.action == "end_task":
             return ["qualifications.change_specialtask"]
+        if view.action in ("attachments", "delete_attachment") and request.method not in ("GET", "HEAD", "OPTIONS"):
+            return [f"qualifications.change_{view.queryset.model._meta.model_name}"]
         return super()._required_permissions(request, view)
 
     def has_object_permission(self, request, view, obj):
@@ -143,7 +145,8 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
         return self._scope_person_queryset(
             base_qs,
             "qualifications.view_qualification",
-            filter_permission=self.action not in ("retrieve", "update", "partial_update", "destroy"),
+            filter_permission=self.action not in ("retrieve", "update", "partial_update", "destroy")
+            and not (self.action in ("attachments", "delete_attachment") and self.request.method != "GET"),
         )
 
     def get_serializer_class(self):
@@ -244,9 +247,6 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
 
         elif request.method == "POST":
             # Upload attachment
-            if not request.user.has_perm("qualifications.change_qualification"):
-                return Response({"detail": "Keine Berechtigung zum Bearbeiten."}, status=status.HTTP_403_FORBIDDEN)
-
             file_obj = request.FILES.get("file")
             name = request.data.get("name") or (file_obj.name if file_obj else None)
             description = request.data.get("description", "")
@@ -269,9 +269,6 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     def delete_attachment(self, request, pk=None, attachment_id=None):
         """Delete an attachment from a qualification."""
         qualification = self.get_object()
-
-        if not request.user.has_perm("qualifications.change_qualification"):
-            return Response({"detail": "Keine Berechtigung zum Löschen."}, status=status.HTTP_403_FORBIDDEN)
 
         attachment = get_object_or_404(qualification.attachments, pk=attachment_id)
         attachment.delete()
@@ -306,7 +303,8 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
         return self._scope_person_queryset(
             base_qs,
             "qualifications.view_specialtask",
-            filter_permission=self.action not in ("retrieve", "update", "partial_update", "destroy", "end_task"),
+            filter_permission=self.action not in ("retrieve", "update", "partial_update", "destroy", "end_task")
+            and not (self.action in ("attachments", "delete_attachment") and self.request.method != "GET"),
         )
 
     def get_serializer_class(self):
@@ -352,9 +350,6 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
 
         elif request.method == "POST":
             # Upload attachment
-            if not request.user.has_perm("qualifications.change_specialtask"):
-                return Response({"detail": "Keine Berechtigung zum Bearbeiten."}, status=status.HTTP_403_FORBIDDEN)
-
             file_obj = request.FILES.get("file")
             name = request.data.get("name") or (file_obj.name if file_obj else None)
             description = request.data.get("description", "")
@@ -373,9 +368,6 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     def delete_attachment(self, request, pk=None, attachment_id=None):
         """Delete an attachment from a special task."""
         task = self.get_object()
-
-        if not request.user.has_perm("qualifications.change_specialtask"):
-            return Response({"detail": "Keine Berechtigung zum Löschen."}, status=status.HTTP_403_FORBIDDEN)
 
         attachment = get_object_or_404(task.attachments, pk=attachment_id)
         attachment.delete()

@@ -441,8 +441,9 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request):
-        if not request.user.has_perm("members.view_member"):
-            return Response({"error": "Keine Berechtigung für Mitglieder-Export"}, status=403)
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
 
         # Determine which columns to export
         columns_param = request.query_params.get("columns", "")
@@ -456,6 +457,13 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Apply the same filters as the list view
         qs = self.filter_queryset(self.get_queryset())
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        parent_view.action = "list"
+        if DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
+            visible_parents = parent_view.get_queryset().filter(children__in=qs).distinct()
+        else:
+            visible_parents = parent_view.queryset.none()
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -473,7 +481,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         today = date.today()
 
         for row_idx, member in enumerate(qs, start=2):
-            parents = list(member.parent_set.all()[:2])
+            parents = list(visible_parents.filter(children=member)[:2])
             p1 = parents[0] if len(parents) > 0 else None
             p2 = parents[1] if len(parents) > 1 else None
 

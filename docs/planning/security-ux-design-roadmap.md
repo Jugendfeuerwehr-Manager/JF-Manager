@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.27 zeigt Export-/Elternkontakt- und Qualifikationsanhangfehler; 0/3 neue Regressionen bestanden. |
-| Aktuelles Paket | SEC-01.27 rot getestet; SEC-01.28 als nächster Teilschritt. |
+| Letzter Checkpoint | 03.10.2026: SEC-01.28 korrigiert Export-/Elternkontakt- und Qualifikationsanhangrechte; 29/29 relevante Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.28 korrigiert; SEC-01.29 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `a39261b` (`SEC-01.26`); SEC-01.27 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `1a8b9c5` (`SEC-01.27`); SEC-01.28 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.28: Mitgliederexport und Qualifikationsanhänge nach fachlichem Recht und tatsächlichem Objektbereich korrigieren. |
+| Nächster konkreter Schritt | SEC-01.29: Sync-Sonderaktionen auf aktionsbezogene Rechte und Objektbereich per HTTP prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -531,7 +531,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.27 rot: Exportrechte/Elternkontakt und Qualifikationsanhang-Schreibrecht fehlerhaft. |
+| SEC-01 | in Arbeit | Codex | SEC-01.28 grün: Export/Elternkontakt und Qualifikationsanhänge; SEC-01.29 Sync-Sonderaktionen prüfen. |
 | SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -619,15 +619,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.26`: Mitglieder-Anhangupload und generische Anhangänderung/-löschung nach Änderungsrecht der tatsächlichen Eigentümerabteilung absichern.
   - `SEC-01.27`: Mitgliederexport und Qualifikationsanhänge auf fachliche Rechte und Objektbereich per HTTP prüfen.
   - `SEC-01.28`: Mitgliederexport für abteilungsbezogene Leserechte öffnen, Elternfelder nach Elternleserecht filtern und Qualifikationsanhänge mit passendem Änderungsrecht prüfen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.26 `a39261b` mit 22 bestandenen relevanten Backendtests; SEC-01.27 wird mit diesem Checkpoint committed.
+  - `SEC-01.29`: Sync-Sonderaktionen auf aktionsbezogene Rechte und tatsächliche Jobabteilung per HTTP prüfen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.27 `1a8b9c5` mit drei roten Export-/Anhang-Regressionen; SEC-01.28 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-01.26-Korrektur `a39261b`; Export-/Qualifikationsanhang-Regressionen in diesem SEC-01.27-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.27: 0/3 neue HTTP-Regressionen bestanden; scoped Export 403, Elternkontakt ohne Elternrecht enthalten, scoped Qualifikationsanhangupload 403. Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Mitglieder-Löschaktion, Ereignisansichten und Mitgliederanhänge wurden in SEC-01.22/.24/.26 korrigiert. Export und Qualifikationsanhänge sind in SEC-01.27 rot getestet. Noch zu prüfen: Sync-Sonderaktionen, weitere Qualifikationsanhangaktionen und Inventar-Schreibziele. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
-- **Offene Fehler / Risiken:** Export-/Elternkontakt- und Qualifikationsanhangrechte sind fehlerhaft. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-01.27-Regressionen `1a8b9c5`; Export-/Qualifikationsanhang-Korrektur in diesem SEC-01.28-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.28: 29/29 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Mitglieder-Löschaktion, Ereignisansichten, Mitgliederanhänge, Export und Qualifikations-/Sonderaufgabenanhänge wurden in SEC-01.22/.24/.26/.28 korrigiert. Noch zu prüfen: Sync-Sonderaktionen und Inventar-Schreibziele. Das Inventar ist ein Codebefund, keine HTTP-Abnahme dieser weiteren Pfade.
+- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Weitere Objektbeziehungen und Sonderaktionen sind offen. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; letzter breiter Testbericht `/tmp/jf-manager-backend-tests-final.log`.
-- **Nächster konkreter Schritt:** `SEC-01.28` Export und Qualifikationsanhänge nach fachlichem Recht und tatsächlichem Objektbereich korrigieren.
+- **Nächster konkreter Schritt:** `SEC-01.29` Sync-Sonderaktionen auf Aktions- und Objektberechtigungen per HTTP prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -668,3 +669,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.25 | Drei HTTP-Regressionen für Mitglieder-Anhangupload sowie generische Änderung und Löschung mit Änderungsrecht in A, bloßer Zuordnung in B ergänzt. | 0/3 neue Tests bestanden: B-Upload 201, B-Änderung 200, B-Löschung 204. Erwartete rote Sicherheitsbefunde; Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.25): expose attachment owner scope bypass` | SEC-01.26 Eigentümerrechte durchsetzen. |
 | 03.10.2026 | SEC-01.26 | Mitglieder-Anhangupload prüft das konkrete Mitglied; generische Anhangänderung/-löschung filtert Mitglieder-Eigentümer nach Änderungsrecht je Abteilung. Erlaubten A-Upload und A-Änderung ergänzt. | 22/22 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.26): scope attachment writes to owner rights` | SEC-01.27 Export und Qualifikationsanhänge prüfen. |
 | 03.10.2026 | SEC-01.27 | Drei HTTP-Regressionen für scoped Mitgliederexport, Elternkontakt im Export ohne Elternleserecht und scoped Qualifikationsanhangupload ergänzt. | 0/3 neue Tests bestanden: Export 403, Elternadresse offengelegt, Anhangupload 403. Erwartete rote Befunde; Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.27): expose export and qualification attachment rights` | SEC-01.28 fachliche Rechte korrigieren. |
+| 03.10.2026 | SEC-01.28 | Mitgliederexport nutzt abteilungsbezogene Mitgliedersicht und Elternrechte; Qualifikations- und Sonderaufgabenanhänge nutzen das Änderungsrecht am tatsächlichen Objekt für Upload/Löschen. Positive Eltern-, Lösch- und Sonderaufgabenfälle ergänzt. | 29/29 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.28): scope export and qualification attachment rights` | SEC-01.29 Sync-Sonderaktionen prüfen. |
