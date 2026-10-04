@@ -15,6 +15,22 @@ def get_user_department_ids(user) -> set[int]:
     return set(user.department_roles.values_list("department_id", flat=True))
 
 
+def visible_item_department_ids(user, permission: str) -> set[int] | None:
+    """Return permitted department IDs, or None for full organization scope."""
+    if is_org_wide_user(user) and user.has_perm(permission):
+        return None
+    allowed_ids = get_user_department_ids(user)
+    if not user.has_perm(permission):
+        app_label, codename = permission.split(".", 1)
+        allowed_ids &= set(
+            user.department_roles.filter(
+                groups__permissions__content_type__app_label=app_label,
+                groups__permissions__codename=codename,
+            ).values_list("department_id", flat=True)
+        )
+    return allowed_ids
+
+
 def can_manage_department(user, department_id: int | None, permission: str) -> bool:
     """
     Return whether the user may mutate data owned by the given department.

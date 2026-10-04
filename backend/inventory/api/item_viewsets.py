@@ -5,9 +5,12 @@ ViewSets for Category, Item, and ItemVariant.
 from django.db.models import Q, Sum
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from inventory.api.access import can_manage_department, visible_item_department_ids
 from inventory.models import Category, Item, ItemVariant, Stock
 from jf_manager_backend.mixins import BasePermissionedViewSet
 from jf_manager_backend.permissions import OrgWideWritePermission
@@ -30,12 +33,19 @@ class CategoryViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
     def get_queryset(self):
         from django.db.models import Count
 
-        return Category.objects.annotate(item_count=Count("item")).all()
+        allowed_ids = visible_item_department_ids(self.request.user, "inventory.view_item")
+        if allowed_ids is None:
+            return Category.objects.annotate(item_count=Count("item"))
+        visible = Q(item__department_id__in=allowed_ids) | Q(item__department__isnull=True)
+        return Category.objects.annotate(item_count=Count("item", filter=visible if allowed_ids else Q(pk__isnull=True)))
 
     @action(detail=True, methods=["get"], url_path="items")
     def items(self, request, pk=None):
         category = self.get_object()
         items = Item.objects.filter(category=category).select_related("category")
+        allowed_ids = visible_item_department_ids(request.user, "inventory.view_item")
+        if allowed_ids is not None:
+            items = items.filter(Q(department_id__in=allowed_ids) | Q(department__isnull=True)) if allowed_ids else items.none()
         page = self.paginate_queryset(items)
         serializer = ItemSerializer(page or items, many=True, context={"request": request})
         if page is not None:
@@ -76,11 +86,21 @@ class ItemViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets
         return Response({"results": serializer.data})
 
 
-class ItemVariantViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
+class ItemVariantViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets.ModelViewSet):
     queryset = ItemVariant.objects.select_related("parent_item__category")
     serializer_class = ItemVariantSerializer
+    department_field = "parent_item__department"
+    include_central_records = True
     search_fields = ["parent_item__name", "sku"]
     filterset_fields = ["parent_item", "parent_item__category"]
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method not in SAFE_METHODS:
+            codename = "delete" if request.method == "DELETE" else "change"
+            permission = f"inventory.{codename}_itemvariant"
+            if not can_manage_department(request.user, obj.parent_item.department_id, permission):
+                raise PermissionDenied("Keine Berechtigung für Varianten dieses Artikels.")
 
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):

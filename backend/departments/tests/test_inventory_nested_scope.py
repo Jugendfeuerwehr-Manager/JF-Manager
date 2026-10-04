@@ -53,3 +53,42 @@ class InventoryNestedScopeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         rows = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
         self.assertEqual({row["id"] for row in rows}, {self.item_a.pk, self.central_item.pk})
+
+    def test_category_count_excludes_other_department_items(self):
+        response = self.client.get(f"/api/v1/inventory/categories/{self.category.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["item_count"], 2)
+
+    def test_variant_change_right_in_a_cannot_modify_b_variant(self):
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="change_itemvariant")
+        )
+
+        response = self.client.patch(
+            f"/api/v1/inventory/variants/{self.variant_b.pk}/", {"sku": "changed"}, format="json"
+        )
+
+        self.assertIn(response.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND))
+        self.variant_b.refresh_from_db()
+        self.assertEqual(self.variant_b.sku, "")
+
+    def test_variant_change_right_in_a_allows_a_but_not_central_variant(self):
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="change_itemvariant")
+        )
+        self.viewer.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+
+        own = self.client.patch(
+            f"/api/v1/inventory/variants/{self.variant_a.pk}/", {"sku": "own"}, format="json"
+        )
+        central = self.client.patch(
+            f"/api/v1/inventory/variants/{self.central_variant.pk}/", {"sku": "central"}, format="json"
+        )
+
+        self.assertEqual(own.status_code, status.HTTP_200_OK, own.data)
+        self.assertEqual(central.status_code, status.HTTP_403_FORBIDDEN)
+        self.central_variant.refresh_from_db()
+        self.assertEqual(self.central_variant.sku, "")
