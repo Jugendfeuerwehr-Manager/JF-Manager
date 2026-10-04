@@ -147,6 +147,25 @@ class StockLedgerRegressionTest(TestCase):
         self.assertEqual(Transaction.objects.count(), 1)
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 2)
 
+    def test_invalid_keyed_request_does_not_reserve_key(self):
+        headers = {"HTTP_IDEMPOTENCY_KEY": "retry-after-invalid"}
+        invalid = self.client.post(
+            "/api/v1/inventory/transactions/",
+            {"transaction_type": "IN", "item": 999999, "target": self.location.pk, "quantity": 2},
+            format="json",
+            **headers,
+        )
+        valid = self.client.post(
+            "/api/v1/inventory/transactions/",
+            {"transaction_type": "IN", "item": self.item.pk, "target": self.location.pk, "quantity": 2},
+            format="json",
+            **headers,
+        )
+
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(valid.status_code, 201, valid.data)
+        self.assertEqual(Transaction.objects.count(), 1)
+
     def test_stock_identity_cannot_be_duplicated(self):
         Stock.objects.create(item=self.item, location=self.location, quantity=2)
 

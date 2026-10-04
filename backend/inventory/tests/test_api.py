@@ -80,6 +80,29 @@ class InventoryAPITest(APITestCase):
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 3)
         self.assertEqual(Stock.objects.get(item=second_item, location=self.location).quantity, 2)
 
+    def test_batch_loan_idempotency_replays_without_second_movement(self):
+        member = Member.objects.create(name="Erika", lastname="Beispiel")
+        payload = {"member": member.pk, "items": [{"item": self.item.pk, "quantity": 2}], "note": "Ausgabe"}
+        headers = {"HTTP_IDEMPOTENCY_KEY": "batch-loan-test-1"}
+
+        first = self.client.post("/api/v1/inventory/transactions/batch-loan/", payload, format="json", **headers)
+        second = self.client.post("/api/v1/inventory/transactions/batch-loan/", payload, format="json", **headers)
+
+        self.assertEqual(first.status_code, 201, first.data)
+        self.assertEqual(second.status_code, 201, second.data)
+        self.assertEqual(second.data["transactions"][0]["id"], first.data["transactions"][0]["id"])
+        self.assertEqual(Transaction.objects.filter(transaction_type="LOAN").count(), 1)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 3)
+
+        changed = self.client.post(
+            "/api/v1/inventory/transactions/batch-loan/",
+            {**payload, "items": [{"item": self.item.pk, "quantity": 1}]},
+            format="json",
+            **headers,
+        )
+        self.assertEqual(changed.status_code, 409)
+        self.assertEqual(Transaction.objects.filter(transaction_type="LOAN").count(), 1)
+
     def test_batch_loan_uses_selected_source(self):
         other = StorageLocation.objects.create(name="Lager 2")
         Stock.objects.create(item=self.item, location=other, quantity=4)

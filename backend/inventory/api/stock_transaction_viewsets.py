@@ -14,6 +14,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from inventory.models import Stock, StorageLocation, Transaction
+from inventory.services.booking_idempotency import run_idempotent_booking
 from jf_manager_backend.mixins import BasePermissionedViewSet
 from members.models import Member
 from orders.api.serializers.order import OrderCreateSerializer, OrderDetailSerializer
@@ -83,6 +84,13 @@ class TransactionViewSet(
     def perform_create(self, serializer):
         serializer.save()  # user is injected in serializer.create
 
+    def create(self, request, *args, **kwargs):
+        return run_idempotent_booking(
+            request,
+            lambda: super(TransactionViewSet, self).create(request, *args, **kwargs),
+            replay_allowed=lambda data: self.get_queryset().filter(pk=data.get("id")).exists(),
+        )
+
     @action(detail=True, methods=["post"], url_path="reverse")
     def reverse(self, request, pk=None):
         """Correct a booked movement by posting one linked compensating movement."""
@@ -136,6 +144,15 @@ class TransactionViewSet(
 
     @action(detail=False, methods=["post"], url_path="batch-loan")
     def batch_loan(self, request):
+        return run_idempotent_booking(
+            request,
+            lambda: self._batch_loan_impl(request),
+            replay_allowed=lambda data: all(
+                self.get_queryset().filter(pk=movement["id"]).exists() for movement in data.get("transactions", [])
+            ),
+        )
+
+    def _batch_loan_impl(self, request):
         """Issue several already available items to one member atomically."""
         input_serializer = BatchLoanSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
