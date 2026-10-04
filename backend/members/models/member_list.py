@@ -10,6 +10,15 @@ class MemberList(models.Model):
     """
 
     name = models.CharField(max_length=200, verbose_name="Listenname")
+    department = models.ForeignKey(
+        "departments.Department",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="member_lists",
+        verbose_name="Abteilung",
+        help_text="Ohne Abteilung nur für ungeklärte Altlisten während der Migration.",
+    )
     description = models.TextField(blank=True, default="", verbose_name="Beschreibung")
     color = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbe")
     attachments = GenericRelation("Attachment", related_query_name="memberlist")
