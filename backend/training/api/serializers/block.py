@@ -3,9 +3,26 @@
 from rest_framework import serializers
 
 from members.models import Group
+from training.api.permissions import can_manage_training_department
 from training.models import TrainingBlock, TrainingMedia
 
 from .library_block import TrainingMediaSerializer
+
+
+def validate_block_target(serializer, attrs):
+    request = serializer.context.get("request")
+    if request is None:
+        return attrs
+    session = attrs.get("session", getattr(serializer.instance, "session", None))
+    if session is None or not can_manage_training_department(request.user, session.department_id):
+        raise serializers.ValidationError({"session": "Keine Schreibberechtigung für die Zielübung."})
+
+    groups = attrs.get("groups")
+    if groups is None:
+        groups = serializer.instance.groups.all() if serializer.instance is not None else []
+    if any(group.department_id != session.department_id for group in groups):
+        raise serializers.ValidationError({"groups": "Gruppen müssen zur Übungsabteilung gehören."})
+    return attrs
 
 
 class GroupMiniSerializer(serializers.ModelSerializer):
@@ -41,6 +58,9 @@ class TrainingBlockSerializer(serializers.ModelSerializer):
             "attachments",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+    def validate(self, attrs):
+        return validate_block_target(self, super().validate(attrs))
 
     def get_media(self, obj):
         from django.contrib.contenttypes.models import ContentType
@@ -84,6 +104,9 @@ class TrainingBlockCreateSerializer(serializers.ModelSerializer):
             "nextcloud_folder_url",
         ]
 
+    def validate(self, attrs):
+        return validate_block_target(self, super().validate(attrs))
+
     def create(self, validated_data):
         groups = validated_data.pop("groups", [])
         # If library_block supplied with no content, copy content from it
@@ -109,6 +132,9 @@ class TrainingBlockMoveSerializer(serializers.ModelSerializer):
         many=True,
         required=False,
     )
+
+    def validate(self, attrs):
+        return validate_block_target(self, super().validate(attrs))
 
     def update(self, instance, validated_data):
         groups = validated_data.pop("groups", None)

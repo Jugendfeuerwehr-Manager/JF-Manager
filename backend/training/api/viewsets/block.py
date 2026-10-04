@@ -81,7 +81,7 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Override create to return full TrainingBlockSerializer response (with nested groups)."""
-        serializer = TrainingBlockCreateSerializer(data=request.data)
+        serializer = TrainingBlockCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         full_serializer = TrainingBlockSerializer(serializer.instance, context={"request": request})
@@ -95,7 +95,7 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         Update position fields for drag-and-drop in the swimlane planner.
         """
         block = self.get_object()
-        serializer = TrainingBlockMoveSerializer(block, data=request.data, partial=True)
+        serializer = TrainingBlockMoveSerializer(block, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(TrainingBlockSerializer(block, context={"request": request}).data)

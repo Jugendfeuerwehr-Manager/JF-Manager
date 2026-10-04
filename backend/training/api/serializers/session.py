@@ -3,6 +3,7 @@
 from rest_framework import serializers
 
 from members.models import Group
+from training.api.permissions import can_manage_training_department
 from training.models import TrainingSession
 
 from .block import GroupMiniSerializer, TrainingBlockSerializer
@@ -97,9 +98,7 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
 
         department = attrs.get("department", getattr(self.instance, "department", None))
         department_id = getattr(department, "pk", None)
-        user = request.user
-        org_wide = user.is_superuser or user.has_perm("departments.can_access_all_departments")
-        if not org_wide and (department_id is None or not user.department_roles.filter(department_id=department_id).exists()):
+        if not can_manage_training_department(request.user, department_id):
             raise serializers.ValidationError({"department": "Keine Schreibberechtigung für die Zielabteilung."})
 
         groups = attrs.get("groups")
