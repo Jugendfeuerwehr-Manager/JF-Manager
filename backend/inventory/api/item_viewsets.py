@@ -60,6 +60,13 @@ class ItemViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets
     search_fields = ["name", "category__name", "identifier1", "identifier2"]
     filterset_fields = ["category", "is_variant_parent", "is_standard_item"]
 
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method not in SAFE_METHODS:
+            codename = "delete" if request.method == "DELETE" else "change"
+            if not can_manage_department(request.user, obj.department_id, f"inventory.{codename}_item"):
+                raise PermissionDenied("Keine Berechtigung für diesen Artikel.")
+
     @action(detail=True, methods=["get"], url_path="variants")
     def variants(self, request, pk=None):
         item = self.get_object()

@@ -350,3 +350,22 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(StorageLocation.objects.filter(pk=location.pk).exists())
+
+    def test_org_inventory_manager_can_delete_central_item_and_location(self):
+        item = Item.objects.create(name="Central disposable", category=self.category)
+        location = StorageLocation.objects.create(name="Central disposable")
+        manager = get_user_model().objects.create_user(username="nested-global-deleter")
+        manager.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            Permission.objects.get(content_type__app_label="inventory", codename="delete_item"),
+            Permission.objects.get(content_type__app_label="inventory", codename="delete_storagelocation"),
+        )
+        self.client.force_authenticate(user=manager)
+
+        item_response = self.client.delete(f"/api/v1/inventory/items/{item.pk}/")
+        location_response = self.client.delete(f"/api/v1/inventory/locations/{location.pk}/")
+
+        self.assertEqual(item_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(location_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Item.objects.filter(pk=item.pk).exists())
+        self.assertFalse(StorageLocation.objects.filter(pk=location.pk).exists())

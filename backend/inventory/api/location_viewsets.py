@@ -6,6 +6,7 @@ from django.db.models import Q, Sum
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
@@ -28,6 +29,14 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
     include_central_records = True
     search_fields = ["name", "parent__name", "member__name", "member__lastname"]
     filterset_fields = ["parent", "is_member", "member"]
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method not in SAFE_METHODS:
+            codename = "delete" if request.method == "DELETE" else "change"
+            permission = f"inventory.{codename}_storagelocation"
+            if not can_manage_department(request.user, obj.department_id, permission):
+                raise PermissionDenied("Keine Berechtigung für diesen Lagerort.")
 
     def get_queryset(self):
         queryset = super().get_queryset()
