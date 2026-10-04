@@ -57,6 +57,70 @@ class StockLedgerRegressionTest(TestCase):
         self.assertTrue(Transaction.objects.filter(pk=movement.pk).exists())
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 2)
 
+        update = self.client.patch(f"/api/v1/inventory/transactions/{movement.pk}/", {"quantity": 4}, format="json")
+        self.assertEqual(update.status_code, 405)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 2)
+
+    def test_model_does_not_allow_deleting_booked_transaction(self):
+        movement = self._receipt()
+
+        with self.assertRaises(ValidationError):
+            movement.delete()
+
+        self.assertTrue(Transaction.objects.filter(pk=movement.pk).exists())
+
+    def test_explicit_reversal_restores_stock_and_links_original(self):
+        movement = self._receipt()
+
+        response = self.client.post(
+            f"/api/v1/inventory/transactions/{movement.pk}/reverse/", {"reason": "Falsche Erfassung"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        correction = Transaction.objects.get(pk=response.data["id"])
+        self.assertEqual(correction.reverses_id, movement.pk)
+        self.assertEqual(correction.transaction_type, "OUT")
+        self.assertIn("Falsche Erfassung", correction.note)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 0)
+
+        repeated = self.client.post(
+            f"/api/v1/inventory/transactions/{movement.pk}/reverse/", {"reason": "Noch einmal"}, format="json"
+        )
+        self.assertEqual(repeated.status_code, 409)
+        self.assertEqual(Transaction.objects.count(), 2)
+
+    def test_reversal_requires_reason_and_change_right(self):
+        movement = self._receipt()
+        missing_reason = self.client.post(f"/api/v1/inventory/transactions/{movement.pk}/reverse/", {}, format="json")
+        self.assertEqual(missing_reason.status_code, 400)
+
+        self.user.user_permissions.remove(Permission.objects.get(codename="change_transaction"))
+        self.user = get_user_model().objects.get(pk=self.user.pk)
+        self.client.force_authenticate(user=self.user)
+        forbidden = self.client.post(
+            f"/api/v1/inventory/transactions/{movement.pk}/reverse/", {"reason": "Kein Recht"}, format="json"
+        )
+        self.assertEqual(forbidden.status_code, 403)
+        self.assertEqual(Transaction.objects.count(), 1)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 2)
+
+    def test_move_reversal_swaps_locations_and_restores_both_balances(self):
+        other = StorageLocation.objects.create(name="Zweites Lager")
+        Stock.objects.create(item=self.item, location=self.location, quantity=4)
+        movement = Transaction.objects.create(
+            transaction_type="MOVE", item=self.item, source=self.location, target=other, quantity=2
+        )
+
+        response = self.client.post(
+            f"/api/v1/inventory/transactions/{movement.pk}/reverse/", {"reason": "Falsches Ziel"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        correction = Transaction.objects.get(pk=response.data["id"])
+        self.assertEqual((correction.source_id, correction.target_id), (other.pk, self.location.pk))
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 4)
+        self.assertEqual(Stock.objects.get(item=self.item, location=other).quantity, 0)
+
     def test_same_idempotency_key_replays_one_receipt(self):
         payload = {"transaction_type": "IN", "item": self.item.pk, "target": self.location.pk, "quantity": 2}
         headers = {"HTTP_IDEMPOTENCY_KEY": "sec09-receipt-1"}

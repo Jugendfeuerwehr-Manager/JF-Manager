@@ -86,3 +86,9 @@ class TransactionAdmin(admin.ModelAdmin):
         if not obj.user:
             obj.user = request.user
         super().save_model(request, obj, form, change)
+
+    def has_change_permission(self, request, obj=None):
+        return obj is None and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return False

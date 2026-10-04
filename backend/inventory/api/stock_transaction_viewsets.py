@@ -46,7 +46,13 @@ class StockViewSet(BasePermissionedViewSet, mixins.ListModelMixin, mixins.Retrie
         return filter_item_department_queryset_for_user(queryset, self.request.user, "inventory.view_stock")
 
 
-class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
+class TransactionViewSet(
+    BasePermissionedViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = Transaction.objects.select_related(
         "item",
         "item_variant",
@@ -72,12 +78,61 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
         }.get(self.request.method)
         if action is None:
             return queryset.none()
-        return filter_item_department_queryset_for_user(
-            queryset, self.request.user, f"inventory.{action}_transaction"
-        )
+        return filter_item_department_queryset_for_user(queryset, self.request.user, f"inventory.{action}_transaction")
 
     def perform_create(self, serializer):
         serializer.save()  # user is injected in serializer.create
+
+    @action(detail=True, methods=["post"], url_path="reverse")
+    def reverse(self, request, pk=None):
+        """Correct a booked movement by posting one linked compensating movement."""
+        original = self.get_object()
+        item = original.item or original.item_variant.parent_item
+        if not can_manage_department(request.user, item.department_id, "inventory.change_transaction"):
+            raise PermissionDenied("Kein Recht zur Korrektur dieser Bestandsbewegung.")
+        reason = request.data.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            raise serializers.ValidationError({"reason": "Ein Korrekturgrund ist erforderlich."})
+
+        with db_transaction.atomic():
+            original = Transaction.objects.select_for_update().get(pk=original.pk)
+            if original.reverses_id or Transaction.objects.filter(reverses=original).exists():
+                return Response(
+                    {"detail": "Diese Buchung ist bereits eine Gegenbuchung oder wurde korrigiert."}, status=409
+                )
+
+            if original.transaction_type == "IN":
+                kind, source, target = "OUT", original.target, None
+            elif original.transaction_type in ("OUT", "DISCARD"):
+                kind, source, target = "IN", None, original.source
+            else:
+                kind, source, target = "MOVE", original.target, original.source
+            if (kind == "IN" and target is None) or (kind != "IN" and source is None):
+                raise serializers.ValidationError({"detail": "Quell- oder Zielort der ursprünglichen Buchung fehlt."})
+            if kind == "MOVE" and target is None:
+                raise serializers.ValidationError({"detail": "Quellort der ursprünglichen Buchung fehlt."})
+            if not is_org_wide_user(request.user) and any(
+                location is not None and not is_location_allowed_for_item_department(location, item.department_id)
+                for location in (source, target)
+            ):
+                raise PermissionDenied("Kein Recht für Quell- oder Zielort der Gegenbuchung.")
+
+            correction = Transaction(
+                transaction_type=kind,
+                item=original.item,
+                item_variant=original.item_variant,
+                source=source,
+                target=target,
+                quantity=original.quantity,
+                note=f"Gegenbuchung zu #{original.pk}: {reason.strip()}",
+                user=request.user,
+                reverses=original,
+            )
+            try:
+                correction.save()
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({"detail": exc.messages}) from exc
+        return Response(TransactionSerializer(correction).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"], url_path="batch-loan")
     def batch_loan(self, request):

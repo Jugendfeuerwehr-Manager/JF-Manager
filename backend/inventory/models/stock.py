@@ -110,6 +110,14 @@ class Transaction(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, verbose_name="Benutzer"
     )
+    reverses = models.OneToOneField(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversal",
+        verbose_name="Korrigiert Buchung",
+    )
 
     former_member_name = models.CharField(
         max_length=255,
@@ -171,10 +179,34 @@ class Transaction(models.Model):
         return self.item or self.item_variant
 
     def save(self, *args, **kwargs):
+        if self.pk is not None:
+            previous = type(self).objects.get(pk=self.pk)
+            immutable_fields = (
+                "transaction_type",
+                "discard_reason",
+                "item_id",
+                "item_variant_id",
+                "source_id",
+                "target_id",
+                "quantity",
+                "date",
+                "note",
+                "user_id",
+                "former_member_name",
+                "reverses_id",
+            )
+            if any(getattr(self, field) != getattr(previous, field) for field in immutable_fields):
+                raise ValidationError(
+                    "Gebuchte Bestandsbewegungen sind unveränderlich. Bitte eine Gegenbuchung anlegen."
+                )
+            return
         self.clean()
         with db_transaction.atomic():
             super().save(*args, **kwargs)
             self.update_stock()
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Gebuchte Bestandsbewegungen dürfen nicht gelöscht werden.")
 
     def update_stock(self):
         stock_params = {}

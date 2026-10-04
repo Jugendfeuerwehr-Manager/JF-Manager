@@ -210,7 +210,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        read_only_fields = ["date", "user", "former_member_name"]
+        read_only_fields = ["date", "user", "former_member_name", "reverses"]
         fields = [
             "id",
             "transaction_type",
@@ -229,6 +229,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "discard_reason",
             "discard_reason_display",
             "former_member_name",
+            "reverses",
         ]
 
     def get_source_name(self, obj):
