@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-09.3 sichert eindeutige Bestandszeilen und atomare Mengenänderungen; zwei Idempotenzfälle bleiben rot. Lokaler Bestand: 3 Zeilen, keine Dubletten. SEC-09.2 liegt in `cd2aadc`. |
-| Aktuelles Paket | SEC-09.3 Bestandsidentität; SEC-03.6 normale Listenoberfläche und ROLE-01.5 Bestandsgruppen laufen getrennt. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
+| Letzter Checkpoint | 04.10.2026: ROLE-01.5 zeigt Bestandsgruppen und bindet nach Fingerprint-Bestätigung ausdrücklich; SEC-09.3 liegt in `7564cc3`, zwei Idempotenzfälle bleiben rot. SEC-03.6-Oberfläche wird parallel bearbeitet. |
+| Aktuelles Paket | ROLE-01.5 abgeschlossen; SEC-03.6 normale Listenoberfläche und SEC-09.4 Idempotenz folgen. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `cd2aadc` (SEC-09.2); SEC-09.3 ist dieser Backend-Commit. |
+| Letzter Roadmap-Commit | `7564cc3` (SEC-09.3); ROLE-01.5 ist dieser Zuordnungs-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-09.4: dauerhafte Idempotenz für Buchungswege; parallel SEC-03.6 und ROLE-01.5 integrieren. |
+| Nächster konkreter Schritt | SEC-03.6 Oberfläche integrieren; danach SEC-09.4 Idempotenz und ROLE-01.6 Rollen-API. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -543,7 +543,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
 | SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.3 eindeutiger und atomarer Bestand; SEC-09.4 Buchungs-Idempotenz. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
-| ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.4 Seed mit 16 technischen Vorlagen aus elf Fachrollen; ROLE-01.5 Bestandsgruppen und Zuweisungen. SEC-01/02-Bereichsprüfung bleibt Abnahmeabhängigkeit. |
+| ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.5 expliziter Bestandsgruppenvergleich/-bindung; ROLE-01.6 Rollen-API und Administration. SEC-01/02-Bereichsprüfung bleibt Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | offen | — | Atomarer Planvertrag und Versionsprüfung. |
@@ -600,14 +600,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `ROLE-01.5`: Bestehende Gruppen und Zuweisungen mit expliziter Zuordnung und Rechtevergleich migrieren; Staff nicht automatisch aufwerten.
   - `ROLE-01.6`: Rollen-API und Administrationsansicht für Beschreibung, Vergleich, Anpassung und Archivierung implementieren.
   - `ROLE-01.7`: Einzel- und Kombinationsrechte, Bereichstrennung, Wiederholung des Seeds und Migration gegen SEC-01/02 prüfen und Rollenhandbuch aktualisieren.
-- **Letzter dauerhafter Checkpoint:** ROLE-01.3 `0986352`; ROLE-01.4 wird mit diesem Seed-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** ROLE-01.4 `09b40ff`; ROLE-01.5 wird mit diesem Zuordnungs-Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** ROLE-01.1-Manifest `4fbe993` und Folge-Status; ROLE-01.2 `7fa273b`; ROLE-01.3 `0986352`; ROLE-01.4 Rollenkatalog, Management-Command, Tests, Manifest und dieser Checkpoint in diesem Commit.
-- **Umgesetzte Teilschritte:** `ROLE-01.1` bis `ROLE-01.4`.
-- **Ausgeführte Prüfungen mit Ergebnis:** ROLE-01.1: 84/84 Manifest-Permissions vorhanden. ROLE-01.2: 24/24 gezielte Backendtests. ROLE-01.3: 6/6 Modelltests. ROLE-01.4: 13/13 kombinierte Seed-/Modelltests sowie Ruff check/format bestanden; breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** SEC-01/02 sind offen. Trainings- und Bestell-Sonderrechte werden in der API noch teils global geprüft; abteilungsgebundene Rollen benötigen Bereichsprüfung. Bestehende Gruppen und Zuweisungen sind nicht migriert; der Seed weist keine Benutzer zu. `QuerySet.update` kann die Modellvalidierung für unveränderliche Vorlagenschlüssel umgehen; Seed/API dürfen den Schlüssel nur über validierte Pfade behandeln. `settings_admin` ist fachlich noch nicht definiert. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
-- **Laufende Prozesse und sichere Fortsetzung:** SEC-03.5b-Frontend liegt in getrennten Dateien uncommitted; nur ROLE-01.4-Dateien und dieser Roadmap-Stand werden gestaged. Git-Staging und Commits ausschließlich durch den Integrationsagenten.
-- **Nächster konkreter Schritt:** `ROLE-01.5` vorhandene Gruppen, Rechte und Zuweisungen sichtbar machen und explizite Zuordnung ohne Staff-Aufwertung vorbereiten.
+- **Geänderte Dateien / Commit-Bezug:** ROLE-01.1-Manifest `4fbe993` und Folge-Status; ROLE-01.2 `7fa273b`; ROLE-01.3 `0986352`; ROLE-01.4 `09b40ff`; ROLE-01.5 Vergleichs-/Zuordnungs-Command, Tests, Manifest und dieser Checkpoint in diesem Commit.
+- **Umgesetzte Teilschritte:** `ROLE-01.1` bis `ROLE-01.5`.
+- **Ausgeführte Prüfungen mit Ergebnis:** ROLE-01.1: 84/84 Manifest-Permissions vorhanden. ROLE-01.2: 24/24 gezielte Backendtests. ROLE-01.3: 6/6 Modelltests. ROLE-01.5: 23/23 kombinierte Rollenmodell-/Seed-/Zuordnungstests und Ruff check/format bestanden; breite Suite nicht ausgeführt. Command auf Anwendungsdatenbank nicht ausgeführt.
+- **Offene Fehler / Risiken:** SEC-01/02 sind offen. Trainings- und Bestell-Sonderrechte werden in der API noch teils global geprüft; abteilungsgebundene Rollen benötigen Bereichsprüfung. Bei ausdrücklich zugeordneter Altgruppe bleiben zusätzliche Rechte bestehen und müssen vor produktiver Bindung geprüft werden. Global-/Abteilungs-Mischzuweisungen benötigen manuelle Bereinigung. `QuerySet.update` kann die Modellvalidierung für unveränderliche Vorlagenschlüssel umgehen. `settings_admin` ist fachlich noch nicht definiert. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
+- **Laufende Prozesse und sichere Fortsetzung:** SEC-03.6-Frontend liegt in getrennten Dateien uncommitted; nur ROLE-01.5-Dateien und dieser Roadmap-Stand werden gestaged. Git-Staging und Commits ausschließlich durch den Integrationsagenten.
+- **Nächster konkreter Schritt:** `ROLE-01.6` Rollen-API und Administrationsansicht für Beschreibung, Vergleich, Anpassung und Archivierung; Bereichsprüfung vor produktiver Zuweisung.
 
 ### SEC-01: aktueller Detailstand
 
@@ -852,3 +852,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-03.5b | Superuser-Ansicht für offene Listen mit Einträgen, möglichen Abteilungen, Notizen, Checkstand, Beschreibung und Anhangmetadaten ergänzt. Aktive Zielabteilung und optionale bestehende Zielliste sind wählbar; vorhandene Bindungen bleiben fest. Einzelzuordnung und bewusst bestätigter Abschluss verwenden die Klärungs-API. | Vue-Typecheck und 6/6 gezielte Frontendtests bestanden; breite Frontend-Suite nicht ausgeführt. Staged-Diff-Check vor Commit. | Dieser Commit: `feat(SEC-03.5b): add legacy list resolution view` | SEC-03.6 normale Listenoberfläche. |
 | 04.10.2026 | SEC-09.2 | Bereits gebuchte Bewegungen speichern bei No-op nicht erneut und weisen Änderungen zurück. API bietet nur Lesen, Anlage und mit Original verknüpfte, begründete Gegenbuchung; Änderungs-/Löschmethoden entfallen, Admin-Bearbeitung ist gesperrt. Korrektur prüft zusätzlich Add-/Change-Recht und Quell-/Zielbereich. | 7/7 gezielte und 31/31 angrenzende Backendtests bestanden; 3 Idempotenz-/Bestandsdubletten-Regressionen erwartungsgemäß rot. Migrationsabgleich, Ruff und Diff-Check vor Commit; PostgreSQL-Konkurrenz und breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-09.2): make booked movements reversible and immutable` | SEC-09.3 eindeutiger atomarer Bestand; SEC-09.5 direkte Bulk-Pfade schließen. |
 | 04.10.2026 | SEC-09.3 | Eindeutige Bestandsidentität für Artikel/Variante je Ort und nichtnegative Menge als Constraints ergänzt. Migration prüft Dubletten vorab ohne automatische Zusammenlegung; Verbuchung sperrt Zeilen in stabiler Reihenfolge und nutzt bedingte `F`-Updates in einer Transaktion. | Lokaler Datenbestand 3 Zeilen/0 Dubletten; 10/10 gezielte und 31/31 angrenzende Backendtests, Migrationsabgleich, Ruff und Diff-Check bestanden. Zwei Idempotenztests erwartungsgemäß rot; PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-09.3): make stock identity and updates atomic` | SEC-09.4 dauerhafte Idempotenz. |
+| 04.10.2026 | ROLE-01.5 | Read-only-Audit bestehender Gruppen mit Rechten und Zuweisungs-IDs sowie explizite Zuordnung einer Gruppe zu einer Vorlage nach Soll/Ist-Vergleich und Fingerprint ergänzt. Keine automatische Rechte-, Mitgliedschafts- oder Staff-Änderung. Scope-/Bindungskonflikte und belegte Seed-Gruppen werden abgewiesen. | 23/23 kombinierte Rollenmodell-/Seed-/Zuordnungstests, Ruff und Diff-Check bestanden. Command auf Anwendungsdatenbank und breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-01.5): reconcile existing role groups explicitly` | ROLE-01.6 Rollen-API und Administrationsansicht. |
