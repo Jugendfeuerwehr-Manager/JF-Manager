@@ -29,6 +29,7 @@ class MemberList(models.Model):
         verbose_name = "Mitgliederliste"
         verbose_name_plural = "Mitgliederlisten"
         ordering = ["name"]
+        permissions = [("export_memberlist", "Kann Mitgliederlisten exportieren")]
 
     def __str__(self):
         return self.name

@@ -7,7 +7,7 @@ from io import BytesIO
 
 import openpyxl
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -55,6 +55,38 @@ LIST_EXTRA_DEFAULT_COLUMNS = ["list_checked", "list_notes"]
 ALL_LIST_EXPORT_COLUMNS = {**MEMBER_EXPORT_COLUMNS, **LIST_EXTRA_COLUMNS}
 
 
+class MemberListRolePermissions(DepartmentRoleModelPermissions):
+    """List actions use their actual write or export permission."""
+
+    def _required_permissions(self, request, view):
+        if request.method == "OPTIONS":
+            return []
+        action = getattr(view, "action", None)
+        if action in ("create", "create_from_event_type") and request.method == "POST":
+            codenames = ("add_memberlist",)
+        elif action == "destroy" and request.method == "DELETE":
+            codenames = ("delete_memberlist",)
+        elif action == "export_excel" and request.method in ("GET", "HEAD"):
+            codenames = ("view_memberlist", "export_memberlist")
+        elif action in ("list", "retrieve", "attachments") and request.method in ("GET", "HEAD"):
+            codenames = ("view_memberlist",)
+        elif (
+            (action in ("update", "partial_update") and request.method in ("PUT", "PATCH"))
+            or (action == "attachments" and request.method == "POST")
+            or (action == "delete_attachment" and request.method == "DELETE")
+            or (
+                action
+                in ("add_member", "remove_member", "bulk_add", "toggle_check", "set_check", "check_all", "uncheck_all")
+                and request.method == "POST"
+            )
+            or (action == "update_entry_notes" and request.method == "PATCH")
+        ):
+            codenames = ("change_memberlist",)
+        else:
+            return None
+        return [f"members.{codename}" for codename in codenames]
+
+
 @extend_schema_view(
     list=extend_schema(summary="List all member lists"),
     retrieve=extend_schema(summary="Get a member list with all entries"),
@@ -65,7 +97,54 @@ ALL_LIST_EXPORT_COLUMNS = {**MEMBER_EXPORT_COLUMNS, **LIST_EXTRA_COLUMNS}
 )
 class MemberListViewSet(viewsets.ModelViewSet):
     queryset = MemberList.objects.all()
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, MemberListRolePermissions]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        requested = self.request.query_params.get("department")
+        if requested is not None:
+            try:
+                department_id = int(requested)
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError({"department": "Ungültige Abteilung."}) from exc
+            if (
+                not user.is_superuser
+                and not user.has_perm("departments.can_access_all_departments")
+                and not (user.department_roles.filter(department_id=department_id).exists())
+            ):
+                raise PermissionDenied("Keine Berechtigung für diese Abteilung.")
+            queryset = queryset.filter(department_id=department_id)
+
+        # Unassigned legacy lists remain in a superuser-only migration queue.
+        if user.is_superuser:
+            return queryset
+        queryset = queryset.filter(department__isnull=False)
+        invalid_entries = MemberListEntry.objects.filter(member_list_id=OuterRef("pk")).exclude(
+            member__departments__id=OuterRef("department_id")
+        )
+        queryset = queryset.annotate(_has_invalid_entries=Exists(invalid_entries)).filter(_has_invalid_entries=False)
+
+        required = MemberListRolePermissions()._required_permissions(self.request, self)
+        if required is None:
+            return queryset.none()
+        if user.has_perm("departments.can_access_all_departments") and all(
+            user.has_perm(permission) for permission in required
+        ):
+            return queryset
+
+        allowed_ids = set(user.department_roles.values_list("department_id", flat=True))
+        for permission in required:
+            if user.has_perm(permission):
+                continue
+            app_label, codename = permission.split(".", 1)
+            allowed_ids &= set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label=app_label,
+                    groups__permissions__codename=codename,
+                ).values_list("department_id", flat=True)
+            )
+        return queryset.filter(department_id__in=allowed_ids)
 
     def _require_list_write(self, member_list):
         if member_list.department_id is None or not can_write_list_department(
@@ -98,8 +177,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
             serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
             return Response(serializer.data)
 
-        if not request.user.has_perm("members.change_memberlist"):
-            return Response({"detail": "Keine Berechtigung zum Bearbeiten."}, status=status.HTTP_403_FORBIDDEN)
+        self._require_list_write(member_list)
 
         file_obj = request.FILES.get("file")
         name = request.data.get("name") or (file_obj.name if file_obj else None)
@@ -124,8 +202,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
         """Delete an attachment from a member list."""
         member_list = self.get_object()
 
-        if not request.user.has_perm("members.change_memberlist"):
-            return Response({"detail": "Keine Berechtigung zum Löschen."}, status=status.HTTP_403_FORBIDDEN)
+        self._require_list_write(member_list)
 
         attachment = get_object_or_404(member_list.attachments, pk=attachment_id)
         attachment.delete()
@@ -157,6 +234,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def remove_member(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/remove_member/ — remove a member from this list."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         deleted, _ = MemberListEntry.objects.filter(member_list=member_list, member_id=member_id).delete()
         return Response({"removed": bool(deleted), "member_count": member_list.member_count})
@@ -188,6 +266,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def toggle_check(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/toggle_check/ — toggle checked state for one member."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         try:
             entry = MemberListEntry.objects.get(member_list=member_list, member_id=member_id)
@@ -200,6 +279,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def set_check(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/set_check/ — set checked state for one member explicitly."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         checked = request.data.get("checked")
         if checked is None:
@@ -217,6 +297,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def check_all(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/check_all/ — mark all members as checked."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         now = timezone.now()
         member_list.entries.update(checked=True, checked_at=now)
         return Response({"checked_count": member_list.member_count})
@@ -225,6 +306,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def uncheck_all(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/uncheck_all/ — reset all check states."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_list.entries.update(checked=False, checked_at=None)
         return Response({"checked_count": 0})
 
@@ -232,6 +314,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def update_entry_notes(self, request, pk=None):
         """PATCH /api/v1/member-lists/{id}/update_entry_notes/ — set notes on a list entry."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         notes = request.data.get("notes", "")
         updated = MemberListEntry.objects.filter(member_list=member_list, member_id=member_id).update(notes=notes)
@@ -319,9 +402,6 @@ class MemberListViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request, pk=None):
-        if not request.user.has_perm("members.view_memberlist"):
-            return Response({"error": "Keine Berechtigung für Listen-Export"}, status=403)
-
         member_list = self.get_object()
 
         # Determine which columns to export

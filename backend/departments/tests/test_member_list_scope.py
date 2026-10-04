@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework import status
@@ -47,6 +48,7 @@ class MemberListDepartmentScopeTests(APITestCase):
                 codename__in=["view_memberlist", "add_memberlist", "change_memberlist", "delete_memberlist"],
             )
         )
+        role_group.permissions.add(Permission.objects.get(codename="export_memberlist"))
         UserDepartmentRole.objects.create(user=cls.editor_a, department=cls.department_a).groups.add(role_group)
         # The export and nested attachment actions currently check global
         # permissions directly. Grant them to isolate the owner scope decision.
@@ -98,6 +100,14 @@ class MemberListDepartmentScopeTests(APITestCase):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
+    def test_view_right_without_export_right_cannot_export_own_list(self):
+        group = Group.objects.get(name="List editor A")
+        group.permissions.remove(Permission.objects.get(codename="export_memberlist"))
+
+        response = self.client.get(f"{self._url(self.list_a)}export-excel/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_foreign_nested_attachments_are_hidden(self):
         response = self.client.get(f"{self._url(self.list_b)}attachments/")
 
@@ -119,6 +129,89 @@ class MemberListDepartmentScopeTests(APITestCase):
             response = self.client.get(f"/api/v1/attachments/{self.attachment_b.pk}/download/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_signed_preview_of_foreign_list_attachment_is_denied(self):
+        from members.attachment_links import preview_url
+
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            self.attachment_b.file.save("b-list.pdf", SimpleUploadedFile("b-list.pdf", b"%PDF-1.4\n"), save=True)
+            url = preview_url(self.attachment_b)
+            self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
+            self.client.force_authenticate(user=None)
+            self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_unassigned_legacy_list_is_hidden_from_non_superusers(self):
+        legacy = MemberList.objects.create(name="Legacy unresolved")
+        legacy_attachment = Attachment.objects.create(content_object=legacy, name="Legacy attachment")
+        self.editor_a.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+
+        listing = self.client.get("/api/v1/member-lists/")
+        detail = self.client.get(self._url(legacy))
+        attachment = self.client.get(f"/api/v1/attachments/{legacy_attachment.pk}/")
+
+        self.assertNotIn(legacy.pk, {item["id"] for item in listing.data["results"]})
+        self.assertIn(self.list_b.pk, {item["id"] for item in listing.data["results"]})
+        self.assertEqual(detail.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(attachment.status_code, status.HTTP_404_NOT_FOUND)
+
+        superuser = get_user_model().objects.create_superuser(
+            username="list-migration-admin", password="test-only-password"
+        )
+        self.client.force_authenticate(user=superuser)
+        self.assertEqual(self.client.get(self._url(legacy)).status_code, status.HTTP_200_OK)
+
+    def test_owned_list_with_foreign_legacy_entry_is_hidden_until_repaired(self):
+        MemberListEntry.objects.create(member_list=self.list_a, member=self.member_b, notes="Foreign legacy data")
+
+        listing = self.client.get("/api/v1/member-lists/")
+        detail = self.client.get(self._url(self.list_a))
+        exported = self.client.get(f"{self._url(self.list_a)}export-excel/")
+        attachment = self.client.get(f"/api/v1/attachments/{self.attachment_a.pk}/")
+
+        self.assertNotIn(self.list_a.pk, {item["id"] for item in listing.data["results"]})
+        self.assertEqual(detail.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(exported.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(attachment.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_shared_member_is_valid_in_a_list(self):
+        self.member_b.departments.add(self.department_a)
+        MemberListEntry.objects.create(member_list=self.list_a, member=self.member_b)
+
+        listing = self.client.get("/api/v1/member-lists/")
+        detail = self.client.get(self._url(self.list_a))
+
+        self.assertIn(self.list_a.pk, {item["id"] for item in listing.data["results"]})
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item["member"]["id"] for item in detail.data["entries"]},
+            {self.member_a.pk, self.member_b.pk},
+        )
+
+    def test_legacy_list_preview_requires_superuser_and_orphan_preview_is_hidden(self):
+        from members.attachment_links import preview_url
+
+        legacy = MemberList.objects.create(name="Legacy preview")
+        legacy_attachment = Attachment.objects.create(content_object=legacy, name="Legacy preview attachment")
+        orphan = Attachment.objects.create(
+            content_type=ContentType.objects.get_for_model(MemberList),
+            object_id=999999,
+            name="Orphan preview attachment",
+        )
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            legacy_attachment.file.save("legacy.pdf", SimpleUploadedFile("legacy.pdf", b"legacy"), save=True)
+            orphan.file.save("orphan.pdf", SimpleUploadedFile("orphan.pdf", b"orphan"), save=True)
+            legacy_url = preview_url(legacy_attachment)
+            orphan_url = preview_url(orphan)
+
+            self.assertEqual(self.client.get(legacy_url).status_code, status.HTTP_404_NOT_FOUND)
+            superuser = get_user_model().objects.create_superuser(
+                username="list-preview-admin", password="test-only-password"
+            )
+            self.client.force_authenticate(user=superuser)
+            preview = self.client.get(legacy_url)
+            self.assertEqual(preview.status_code, status.HTTP_200_OK)
+            self.assertEqual(b"".join(preview.streaming_content), b"legacy")
+            self.assertEqual(self.client.get(orphan_url).status_code, status.HTTP_404_NOT_FOUND)
 
     def test_foreign_list_attachment_cannot_be_changed_or_deleted(self):
         changed = self.client.patch(f"/api/v1/attachments/{self.attachment_b.pk}/", {"name": "Changed"}, format="json")
@@ -143,6 +236,31 @@ class MemberListDepartmentScopeTests(APITestCase):
         self.entry_b.refresh_from_db()
         self.assertFalse(self.entry_b.checked)
         self.assertEqual(self.entry_b.notes, "Private B note")
+
+    def test_change_role_without_add_role_can_edit_and_upload_own_list(self):
+        group = Group.objects.get(name="List editor A")
+        group.permissions.remove(Permission.objects.get(codename="add_memberlist"))
+        self.editor_a.user_permissions.remove(Permission.objects.get(codename="change_memberlist"))
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=self.editor_a.pk))
+
+        created = self.client.post(
+            "/api/v1/member-lists/", {"name": "Not allowed", "department": self.department_a.pk}, format="json"
+        )
+        checked = self.client.post(
+            f"{self._url(self.list_a)}set_check/",
+            {"member_id": self.member_a.pk, "checked": True},
+            format="json",
+        )
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            uploaded = self.client.post(
+                f"{self._url(self.list_a)}attachments/",
+                {"file": SimpleUploadedFile("a.pdf", b"%PDF-1.4\n")},
+                format="multipart",
+            )
+
+        self.assertEqual(created.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(checked.status_code, status.HTTP_200_OK)
+        self.assertEqual(uploaded.status_code, status.HTTP_201_CREATED)
 
     def test_mixed_add_member_target_is_rejected_without_partial_write(self):
         response = self.client.post(

@@ -51,8 +51,14 @@ def visible_parent_data(member, context, root_instance):
         from rest_framework.request import clone_request
 
         from members.api.viewsets.parent_viewsets import ParentViewSet
+        from members.models import MemberList
 
-        members = [root_instance] if isinstance(root_instance, Member) else list(root_instance)
+        if isinstance(root_instance, Member):
+            members = [root_instance]
+        elif isinstance(root_instance, MemberList):
+            members = list(Member.objects.filter(list_entries__member_list=root_instance).distinct())
+        else:
+            members = list(root_instance)
         parent_data = {item.pk: [] for item in members}
         parent_view = ParentViewSet()
         parent_view.request = clone_request(request, "GET")
