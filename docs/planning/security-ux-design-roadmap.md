@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 03.10.2026: SEC-01.34 filtert Bestellpositionen nach tatsächlicher Bestellabteilung; 51/51 relevante Backendtests bestanden. |
-| Aktuelles Paket | SEC-01.34 korrigiert; SEC-01.35 als nächster Teilschritt. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.35 belegt zentrale Ausleihe und ein Rechte-Leck bei zentralen Beständen; 1/2 neue Regressionen bestanden. |
+| Aktuelles Paket | SEC-01.35 rot getestet; SEC-01.36 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `c34c7b3` (`SEC-01.33`); SEC-01.34 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `30cb50c` (`SEC-01.34`); SEC-01.35 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.35: verbleibende SEC-01-Aktions- und Objektpfade samt Bestellaktionen prüfen. |
+| Nächster konkreter Schritt | SEC-01.36: zentrale Inventar-Schreibaktionen an globales Inventarrecht binden; zentrale Ausleihe an Abteilungsmitglieder erhalten. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -97,7 +97,7 @@ Versions- und Supportangaben beim tatsächlichen Implementierungsbeginn erneut p
 | ID | Priorität | Befund und verbindlicher Lieferumfang |
 | --- | --- | --- |
 | SEC-01 | P0 | Reproduzierte Vermischung abteilungsbezogener Rechte: Rechte zentral nach Aktion und tatsächlicher Objektabteilung prüfen. Queryparameter dürfen Zugriffe nur einschränken. Rollen aus unterschiedlichen Abteilungen nicht zusammenführen. Vollqualifizierte Django-Permissions verwenden; unbekannte Aktionen standardmäßig verweigern. |
-| SEC-02 | P0 | Reproduzierte Gruppenanlage in fremder Abteilung: Zielabteilungen und relationale Zuordnungen bei sämtlichen Schreibaktionen prüfen; insbesondere Gruppen, Ausbildung, Listen, Qualifikationen, Inventar und Bestellungen. Sammelaktionen dürfen keine unzulässigen Teiländerungen hinterlassen. |
+| SEC-02 | P0 | Reproduzierte Gruppenanlage in fremder Abteilung: Zielabteilungen und relationale Zuordnungen bei sämtlichen Schreibaktionen prüfen; insbesondere Gruppen, Ausbildung, Listen, Qualifikationen, Inventar und Bestellungen. Zentrale Inventarartikel/-lagerorte bleiben optional; zentrale Ausgabe an Mitglieder jeder Abteilung ist mit globalem Inventarrecht möglich, abteilungseigene Verwaltung bleibt auf ihre Abteilung begrenzt. Sammelaktionen dürfen keine unzulässigen Teiländerungen hinterlassen. |
 | SEC-03 | P0 | Reproduzierter Zugriff auf fremde Mitglieder über globale Listen: Mitgliederlisten samt Einträgen, Exporten und Anhängen abteilungsbezogen machen. Gemischte Altlisten kontrolliert aufteilen. Mehrdeutige Zuordnungen und Anhänge bis zur Klärung für normale Nutzer sperren. |
 | SEC-04 | P0 | Ungefilterte HTML-Übernahme und uneinheitliche `v-html`-Ausgaben: Textplatzhalter escapen; Rich Text serverseitig mit Allowlist und frontendseitig über eine gemeinsame DOMPurify-Komponente bereinigen. Regex-Bereinigung ersetzen. E-Mail-Vorschauen ohne Skriptausführung isolieren. Altinhalte ebenfalls sicher ausgeben und migrieren. |
 | SEC-05 | P0 | Öffentliche Medien außerhalb des gesperrten Anhangpfads: Private Medien ausschließlich nach Objektberechtigung ausliefern. Öffentliche Branding-Dateien getrennt behandeln. Alte öffentliche Uploadpfade und Cachefreigaben beseitigen. Dateiinhalte, Anzahl und Gesamtgröße prüfen. |
@@ -112,6 +112,7 @@ Django 5.0 erhält keine Sicherheitsupdates mehr. Ziel ist die jeweils aktuelle 
 #### Gemeinsame Sicherheitsverträge
 
 - Organisationsweite Sichtbarkeit und fachliche Änderungsrechte getrennt behandeln. `can_access_all_departments` erweitert nur den Datenbereich.
+- Zentrales Inventar (`department=NULL`) ist ein eigener Eigentümerbereich. Abteilungsbezogene Inventarrechte erlauben seine Ansicht gemäß Fachrecht, aber keine zentrale Änderung oder Ausgabe. Ein globales Inventarrecht mit Organisationssicht darf zentrale Artikel an Mitglieder jeder Abteilung verleihen; der Artikel bleibt zentral, der persönliche Lagerort folgt dem Mitglied. Abteilungseigene Artikel und Lagerorte bleiben unabhängig verwaltbar.
 - Bei gemeinsam zugeordneten Mitgliedern genügt Schreibrecht in einer zugehörigen Abteilung für gemeinsame Stammdaten. Abteilungszuordnungen ändern nur organisationsweit ausdrücklich autorisierte Administratoren.
 - Verschachtelte Daten, etwa weitere Kinder eines Elternkontakts, nach Sichtbarkeit filtern.
 - Aktionsrechte ausdrücklich abbilden: Abhaken verlangt Änderungsrechte, Exportieren Exportrechte und Versand Versandberechtigung.
@@ -148,6 +149,7 @@ Django-Gruppen bleiben die Quelle der Berechtigungen. Eine ergänzende Rollenbes
 Verbindliche Regeln:
 
 - Fachmodule Inventar, Bestellungen und E-Mail werden separat ergänzt; Leitungsrollen erhalten sie nicht automatisch.
+- Inventarartikel und Lagerorte dürfen einer Abteilung oder der Organisation (`department=NULL`) gehören. Eine zentrale Kleiderkammer kann Mitglieder aller Abteilungen ausstatten; Abteilungen verwalten ihre eigenen Bestände. Organisationssicht allein gewährt kein globales Inventar-Schreibrecht.
 - Rollen werden additiv kombiniert, jeweils nur innerhalb ihres zugewiesenen Bereichs.
 - `is_staff` allein gewährt keinen fachlichen Vollzugriff; es steuert den Django-Admin-Zugang. Superuser bleibt ein gesondertes Notfallkonto mit MFA.
 - Endgültiges Löschen beziehungsweise Anonymisieren personenbezogener Daten ist eine gesonderte, initial nicht delegierbare Berechtigung.
@@ -531,8 +533,8 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.34 grün: Bestellpositionen nach Bestellabteilung; SEC-01.35 Restprüfung. |
-| SEC-02 | offen | — | Zielabteilungen und Relationsprüfungen inventarisieren. |
+| SEC-01 | in Arbeit | Codex | SEC-01.35 rot: Organisationssicht plus A-Inventarrecht erlaubt zentrale Ausleihe. |
+| SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
@@ -589,7 +591,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Status:** in Arbeit.
 - **Verantwortlich:** Codex.
 - **Abhängigkeiten:** EXEC-01 abgeschlossen; SEC-02 wird die Ziel- und Relationsprüfung aller Schreibaktionen ergänzen.
-- **Ziel und Abnahme:** Aktionsrechte hängen von der tatsächlichen Objektabteilung ab. Ein Lesezugriff in B zusammen mit Schreibrecht in A erlaubt keine Änderung in B, unabhängig von Queryparametern. Vollqualifizierte Permissions und unbekannte Aktionen werden sicher behandelt.
+- **Ziel und Abnahme:** Aktionsrechte hängen von der tatsächlichen Objektabteilung ab. Ein Lesezugriff in B zusammen mit Schreibrecht in A erlaubt keine Änderung in B, unabhängig von Queryparametern. Organisationssicht mit bloßem A-Inventarrecht erlaubt keine zentrale Änderung; globales Inventarrecht mit Organisationssicht erlaubt die zentrale Ausgabe an Mitglieder beliebiger Abteilungen. Vollqualifizierte Permissions und unbekannte Aktionen werden sicher behandelt.
 - **Teilschritte:**
   - `SEC-01.1`: HTTP-Regression für gemischte Rollen A/B mit und ohne Abteilungsparameter, inklusive erlaubter Änderung in A.
   - `SEC-01.2`: Zentrale Modellrechte vollqualifiziert prüfen; Objektberechtigung für Datensätze mit `department_id` nach tatsächlicher Objektabteilung prüfen. Erledigt in `797d5d4`.
@@ -625,16 +627,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.32`: Jobungebundene Sync-Gruppenabfrage nur mit Organisationssicht und globalem Testrecht erlauben.
   - `SEC-01.33`: Restliche SEC-01-Aktions-/Objektpfade gegen Abnahmevertrag inventarisieren und relevante Backendtests ausführen.
   - `SEC-01.34`: Bestellpositionen nach Modellrecht und Abteilung ihrer tatsächlichen Bestellung filtern.
-  - `SEC-01.35`: Verbleibende Aktions- und Objektpfade in SEC-01 einschließlich Bestellaktionen mit HTTP-Tests prüfen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.33 `c34c7b3` mit zwei roten Bestellpositionsregressionen; SEC-01.34 wird mit diesem Checkpoint committed.
+  - `SEC-01.35`: Zentrale Kleiderkammer als optionalen Eigentümerbereich im Vertrag erfassen; Ausleihe an Abteilungsmitglied und fehlendes globales Inventarrecht als HTTP-Regression prüfen.
+  - `SEC-01.36`: Zentrale Inventar-Schreibaktionen nach globalem Inventarrecht absichern und bisherige Staff-Testrollen explizit berechtigen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.34 `30cb50c` mit 51 bestandenen relevanten Backendtests; SEC-01.35 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-01.33-Regressionen `c34c7b3`; Bestellpositions-Korrektur in diesem SEC-01.34-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.34: 51/51 relevante Bestell-/API-Backendtests sowie 6/6 gezielte Bestellpositionsprüfungen, Ruff und Diff-Check bestanden. Die vorher gestartete breite Suite mit 277/277 Tests bestand auf dem Stand vor SEC-01.34. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Bestellpositionen werden in SEC-01.34 nach ihrer Bestellung gefiltert. Mitgliederlisten einschließlich Export/Anhang/Check-Aktionen und Staff-Zweig in `create_from_event_type` gehören zur umfassenden SEC-03-Migration; Zielrelationen und Sammelaktionen in Bestellungen gehören zu SEC-02. Weitere Inventar-Schreibziele gehören zu SEC-02/SEC-09. Der Inventarstand ist noch keine vollständige HTTP-Abnahme aller Pfade.
-- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-01.34-Korrektur `30cb50c`; zentrale Inventar-Regressionen und Fachvertrag in diesem SEC-01.35-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.35: 1/2 neue HTTP-Regressionen bestanden; zentrale Ausleihe an A-Mitglied funktioniert, aber Organisationssicht plus nur A-Transaktionsrecht erlaubt ebenfalls zentrale Ausleihe (201 statt 403). Ruff und Diff-Check bestanden. Ältere Inventar-API-Tests: 4/8 bestanden; vier zentrale Ausleihfälle verwenden nur Staff ohne Organisationssicht und müssen im Korrekturschritt auf ausdrückliche Rechte umgestellt werden. Vorherige 277er-Suite bestand vor SEC-01.34 und ohne Inventar-Testpaket. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Zentrale Artikel und Lagerorte (`department=NULL`) sind bereits optional und für Abteilungsrollen sichtbar. Die zentrale Ausleihe an ein Abteilungsmitglied funktioniert mit Organisationssicht und globalem Inventarrecht; die Rechteprüfung bei zentralen Schreibaktionen vermischt noch Organisationssicht und scoped Fachrecht. Mitgliederlisten gehören zur SEC-03-Migration; Zielrelationen/Sammelaktionen in Bestellungen und weitere Inventar-Schreibziele zu SEC-02/SEC-09.
+- **Offene Fehler / Risiken:** Organisationssicht plus bloßes A-Inventarrecht erlaubt zentrale Ausleihe. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.35` verbleibende Aktions- und Objektpfade samt Bestellaktionen per HTTP prüfen.
+- **Nächster konkreter Schritt:** `SEC-01.36` zentrale Inventar-Schreibaktionen nur mit globalem Inventarrecht erlauben; positive zentrale Ausleihe erhalten.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -682,3 +685,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.32 | Jobungebundene Sync-Gruppenabfrage verlangt Organisationssicht und globales Testrecht; scoped Testrecht ohne Organisationssicht wird verweigert. | 23/23 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.32): protect unbound sync group lookup` | SEC-01.33 Restinventar und Prüfungen. |
 | 03.10.2026 | SEC-01.33 | Restinventar: Bestellpositionen ohne Bestellabteilungsfilter; zwei A/B-HTTP-Regressionen für Liste und Detail ergänzt. Mitgliederlisten für SEC-03, Zielrelationen/Sammelaktionen für SEC-02 vorgemerkt. | 0/2 neue Tests bestanden: B-Position in Liste und Detail sichtbar; Ruff und Diff-Check bestanden. Breite 277er-Prüfung läuft noch. | Dieser Commit: `test(SEC-01.33): expose order item department bypass` | SEC-01.34 Bestellpositionen filtern. |
 | 03.10.2026 | SEC-01.34 | Bestellpositionen nach Modellrecht und tatsächlicher Bestellabteilung gefiltert; Statusaktionen erhalten eigenes abteilungsbezogenes Recht, Sammeländerung nutzt denselben gefilterten Bereich. Zentrale Bestelltests mit ausdrücklicher Organisationssicht/Modellrecht versehen. | 51/51 relevante und 6/6 gezielte Backendtests, Ruff und Diff-Check bestanden. Zuvor 277/277 breite Tests auf Stand vor dieser Korrektur bestanden. | Dieser Commit: `fix(SEC-01.34): scope order items and status actions` | SEC-01.35 übrige Pfade prüfen. |
+| 04.10.2026 | SEC-01.35 | Nutzeranforderung zur optionalen zentralen Kleiderkammer und abteilungseigenen Beständen im Fachvertrag ergänzt. HTTP-Test belegt zentrale Ausgabe an A-Mitglied mit globalem Inventarrecht; zweiter Test deckt zentrale Ausgabe mit bloß scoped A-Recht trotz Organisationssicht auf. | 1/2 neue Tests bestanden; Sicherheitsfall 201 statt 403. Ältere Inventar-API-Tests 4/8, weil Staff-Testrolle ohne ausdrückliche Organisationssicht. Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.35): define central inventory lending rights` | SEC-01.36 zentrale Inventarrechte korrigieren. |
