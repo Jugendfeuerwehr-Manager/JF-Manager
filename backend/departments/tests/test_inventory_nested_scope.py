@@ -208,3 +208,16 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertEqual(StorageLocation.objects.get(member=member).department_id, self.item_a.department_id)
+
+    def test_member_location_post_rejects_member_in_department_without_add_right(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="add_storagelocation")
+        )
+
+        response = self.client.post(f"/api/v1/inventory/locations/for-member/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(StorageLocation.objects.filter(member=member).exists())
