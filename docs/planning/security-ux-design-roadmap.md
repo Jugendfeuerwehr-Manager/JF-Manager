@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.56 beseitigt Staff-Bypass für globale Schreibrechte; 24/24 gezielte und 350/350 breite Backendtests bestanden. ROLE-01.1 ist dokumentiert. |
-| Aktuelles Paket | SEC-01.56 korrigiert; SEC-01.57 als nächster Sicherheitsschritt. ROLE-01.1 abgeschlossen; ROLE-01.2 folgt. |
-| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 04.10.2026: SEC-02.0 legt Ziel- und Relationsprüfungen fest; SEC-01.56 zuvor mit 24/24 gezielten und 350/350 breiten Backendtests grün. |
+| Aktuelles Paket | SEC-02 vorbereitet; SEC-02.1 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
+| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `89c089f` (SEC-01.55); SEC-01.56 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `79cfe57` (SEC-01.56); SEC-02.0 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.57: weitere globale Schreibansichten und SEC-01-Abnahme gegen tatsächlichen Code und HTTP prüfen. |
+| Nächster konkreter Schritt | SEC-02.1: fremde Gruppenanlage und relationale Zielabteilung per HTTP reproduzieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -534,7 +534,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
-| SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
+| SEC-02 | in Arbeit | Codex | SEC-02.0 Vertrag und Teilschritte definiert; SEC-02.1 Gruppen-Zielabteilung reproduzieren. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
@@ -683,6 +683,32 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
 - **Nächster konkreter Schritt:** `SEC-01.57` Restabnahme der globalen Schreibansichten.
 
+### SEC-02: aktueller Detailstand
+
+- **Status:** in Arbeit; Detailvertrag vor Implementierung festgelegt.
+- **Verantwortlich:** Codex.
+- **Abhängigkeiten:** SEC-01-Rechteprüfung für Quellobjekte und Aktionen ist weitgehend umgesetzt; `SEC-01.57` bleibt als Restabnahme offen. SEC-09 prüft Bestandsbuchungen und parallele Änderungen vertieft. SEC-03 behandelt gemischte Mitgliederlisten.
+- **Ziel und Abnahme:** Jede Schreibaktion prüft die tatsächliche Zielabteilung und alle relationalen Zuordnungen mit dem passenden Fachrecht. A-Recht plus bloße B-Zuordnung darf keine B-Gruppe, B-Variante, B-Qualifikation, B-Bestellung oder B-Lagerortänderung erzeugen. Zentrale Artikel und Lagerorte (`department=NULL`) sind optional; globales Inventarrecht mit Organisationssicht erlaubt die zentrale Ausgabe an Mitglieder jeder Abteilung. Abteilungen behalten eigenes Material und können es mit ihrem scoped Recht verwalten. Sammelaktionen sind atomar: ein unerlaubter Teil lässt keine zulässigen Teiländerungen zurück. HTTP-Regressionen belegen erlaubte und verweigerte Fälle.
+- **Teilschritte mit stabilen IDs:**
+  - `SEC-02.0`: Ziel-/Relationsvertrag, Abnahme und Abhängigkeiten vor Paketbeginn dokumentieren.
+  - `SEC-02.1`: Gruppenanlage und -änderung mit A-Schreibrecht und B-Zielabteilung per HTTP als Regression prüfen.
+  - `SEC-02.2`: Gruppenziele nach tatsächlicher Abteilung und aktionsbezogenem Recht validieren.
+  - `SEC-02.3`: Inventarartikel, Varianten und Lagerorte mit fremden Ziel-/Elternrelationen sowie zentralem Eigentümerbereich per HTTP prüfen.
+  - `SEC-02.4`: Inventar-Zielrelationen absichern und zentrale/abteilungseigene Positivfälle erhalten.
+  - `SEC-02.5`: Qualifikationen, Bestellungen und Ausbildung auf fremde Zielrelationen per HTTP prüfen.
+  - `SEC-02.6`: Diese Zielrelationen vor dem Speichern validieren.
+  - `SEC-02.7`: Sammelaktionen mit gemischten erlaubten/unerlaubten Zielen auf Teiländerungen prüfen.
+  - `SEC-02.8`: Sammelaktionen vollständig validieren und atomar ausführen.
+  - `SEC-02.9`: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen; offene SEC-09-/SEC-03-Grenzen ausdrücklich dokumentieren.
+- **Letzter dauerhafter Checkpoint:** SEC-01.56 `79cfe57`; dieser SEC-02.0-Vertrag wird separat committed.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Geänderte Dateien / Commit-Bezug:** Nur dieser Roadmap-Detailblock und Status in diesem SEC-02.0-Commit.
+- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage.
+- **Ausgeführte Prüfungen mit Ergebnis:** Dokumentstruktur und Diff-Check bestanden; Anwendungstests für den reinen Planungsblock nicht ausgeführt.
+- **Offene Fehler / Risiken:** Reproduzierte Gruppenanlage in fremder Abteilung und ungeprüfte Relationen in Inventar, Qualifikationen, Bestellungen und Ausbildung. Keine Abnahme von SEC-02.
+- **Laufende Prozesse und sichere Fortsetzung:** keine; `dump.rdb` bleibt unversioniert.
+- **Nächster konkreter Schritt:** `SEC-02.1` Gruppen-Zielabteilung mit HTTP-Regressionsfall prüfen.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -753,3 +779,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.54 | Kategorien verlangen für globale Schreibaktionen Organisationssicht und globales Kategorierecht; Staff mit A-Recht und Organisationssicht mit nur scoped A-Recht abgewiesen. Voll berechtigter Anlage-/Änderungs-/Löschfall ergänzt. | 63/63 relevante Inventartests, Ruff und Diff-Check bestanden. Breiter Lauf nicht ausgeführt. | Dieser Commit: `fix(SEC-01.54): require global rights for inventory categories` | SEC-01.55 andere globale Schreibrechte prüfen. |
 | 04.10.2026 | SEC-01.55 | Zwei HTTP-Regressionen für globale Bestellstatus und Katalogartikel bei Staff mit nur A-Rollenrecht ergänzt. | 0/2 neue Tests bestanden: beide Anlegenaktionen erlaubt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.55): expose scoped staff global catalog writes` | SEC-01.56 Organisationsprüfung und globale Modellrechte korrigieren. |
 | 04.10.2026 | SEC-01.56 | Staff-Ausnahme aus `OrgWideWritePermission` entfernt. Globale Bestellstatus/-katalog-Aktionen verlangen zusätzlich das passende globale Modellrecht; scoped Recht plus Organisationssicht reicht nicht. Positiver globaler Fall ergänzt. | 24/24 gezielte und 350/350 breite Backendtests, Ruff und Diff-Check bestanden. | Dieser Commit: `fix(SEC-01.56): require explicit global catalog write rights` | SEC-01.57 übrige globale Ansichten abnehmen. |
+| 04.10.2026 | SEC-02.0 | Ziel- und Relationsvertrag, zentrale Kleiderkammer, abteilungseigene Bestände, Abhängigkeiten und stabile Teilschritt-IDs vor Paketbeginn dokumentiert. | Dokumentstruktur und Diff-Check bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(SEC-02.0): define target relation security contract` | SEC-02.1 fremde Gruppenanlage reproduzieren. |
