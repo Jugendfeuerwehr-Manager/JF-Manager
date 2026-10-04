@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.38 schützt verknüpfte Inventaransichten und Variantenänderungen; 17/17 gezielte Tests bestanden. |
-| Aktuelles Paket | SEC-01.38 korrigiert; SEC-01.39 als nächster Teilschritt. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.39 weist zwei ungeschützte Bestandsansichten per HTTP nach; 0/2 neue Tests bestanden. |
+| Aktuelles Paket | SEC-01.39 rot nachgewiesen; SEC-01.40 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `5053716` (`SEC-01.37`); SEC-01.38 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `5e396d6` (`SEC-01.38`); SEC-01.39 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.39: Bestände und andere verschachtelte Inventarpfade auf fremde Artikel und Aktionsrechte per HTTP prüfen. |
+| Nächster konkreter Schritt | SEC-01.40: Bestandsansichten an `view_stock` und den tatsächlichen Artikeleigentümer binden. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -533,7 +533,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.38 grün: Varianten und Kategorieartikel nach Eigentümer gefiltert; SEC-01.39 weitere Inventarpfade. |
+| SEC-01 | in Arbeit | Codex | SEC-01.39 rot: zentraler Lagerort zeigt B-Bestand und Artikelbestand ignoriert `view_stock`; SEC-01.40 Korrektur. |
 | SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -632,15 +632,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.37`: Verknüpfte Inventarlisten, zentrale und abteilungseigene Sicht sowie übrige SEC-01-Pfade per HTTP prüfen.
   - `SEC-01.38`: Variantenliste/-detail und Kategorieartikel nach dem Recht am tatsächlichen Elternartikel filtern; zentrale Varianten/Artikel für berechtigte Abteilungsrollen sichtbar lassen. Abnahme: alle drei SEC-01.37-Regressionen und relevante Inventartests grün, Ruff und Staged-Diff geprüft.
   - `SEC-01.39`: Bestands- und weitere verschachtelte Inventaransichten bei A/B-Rollen sowie zentralen und abteilungseigenen Artikeln per HTTP auf Fremdsicht und fehlendes Fachrecht prüfen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.37 `5053716`; SEC-01.38 wird mit diesem Checkpoint committed.
+  - `SEC-01.40`: Verschachtelte Artikel-, Varianten- und Lagerortbestände nur mit `view_stock` am tatsächlichen Artikeleigentümer anzeigen; Summen aus denselben gefilterten Beständen berechnen. Abnahme: SEC-01.39-Regressionen und relevante Inventartests grün, Ruff und Staged-Diff geprüft.
+- **Letzter dauerhafter Checkpoint:** SEC-01.38 `5e396d6`; SEC-01.39 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Drei verknüpfte Leseregressionen `5053716`; Inventarfilter, Variantenobjektprüfung und erweiterte Regressionen in diesem SEC-01.38-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.38: 17/17 gezielte Inventartests, Ruff und Diff-Check bestanden. Zwei zusätzliche Regressionen (Kategorieanzahl und B-Variantenänderung) waren vor der Korrektur rot. Breite Gesamtprüfung nach SEC-01.36 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Geänderte Dateien / Commit-Bezug:** Inventarfilter und Variantenobjektprüfung `5e396d6`; zwei Bestandsregressionen in diesem SEC-01.39-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.39: 0/2 neue Bestandsregressionen bestanden; erwartete Fremdsicht und fehlendes Bestandsrecht. SEC-01.38 zuvor 17/17 gezielte Tests bestanden. Breite Gesamtprüfung nach SEC-01.36 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
-- **Offene Fehler / Risiken:** Bestands- und weitere verschachtelte Inventarpfade müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Offene Fehler / Risiken:** Verschachtelte Bestände zeigen fremde Artikel und ignorieren `view_stock`. Weitere Inventarpfade müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.39` Bestands- und weitere verschachtelte Inventarpfade per HTTP prüfen.
+- **Nächster konkreter Schritt:** `SEC-01.40` Bestandsrechte in verschachtelten Ansichten durchsetzen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -692,3 +693,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.36 | Zentrale Artikel, Lagerorte und Buchungen verlangen globales Fachrecht plus Organisationssicht. Abteilungsobjekte nutzen das Recht ihrer tatsächlichen Abteilung. Zentrale Ausgabe an A-Mitglied und abteilungseigene Artikelanlage geprüft; Bestellbuchungen verlangen Inventar-Buchungsrecht. Ältere Staff-Testrollen explizit berechtigt. | 42/42 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.36): separate central and department inventory rights` | SEC-01.37 verknüpfte Inventarlisten prüfen. |
 | 04.10.2026 | SEC-01.37 | Drei HTTP-Regressionen für Variantenliste/-detail und Kategorieartikel bei Leserecht in A, bloßer Rolle in B und zentralem Artikel ergänzt. | 0/3 neue Tests bestanden: B-Artikel und B-Variante sichtbar; zentrale Sicht bleibt als Sollfall. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.37): expose nested inventory read leakage` | SEC-01.38 nach tatsächlichem Artikeleigentümer filtern. |
 | 04.10.2026 | SEC-01.38 | Variantenliste/-detail nach Elternartikelabteilung gefiltert; Kategorieartikel und sichtbare Artikelanzahl begrenzt; Variantenänderungen an tatsächliches Abteilungs- bzw. globales Zentralrecht gebunden. Zusätzliche rote Regressionen für Kategorieanzahl und B-Variantenänderung, positiver A-Fall. | 17/17 gezielte Inventartests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.38): scope linked inventory views by item owner` | SEC-01.39 weitere Bestandsansichten prüfen. |
+| 04.10.2026 | SEC-01.39 | HTTP-Regressionen für B-Bestand in zentralem Lagerort und Artikelbestand ohne `view_stock` ergänzt. | 0/2 neue Tests bestanden; beide Lecks bestätigt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.39): expose nested stock permission bypasses` | SEC-01.40 Bestandsansichten absichern. |

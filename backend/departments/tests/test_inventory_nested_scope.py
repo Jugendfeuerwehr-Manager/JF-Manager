@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
-from inventory.models import Category, Item, ItemVariant
+from inventory.models import Category, Item, ItemVariant, Stock, StorageLocation
 
 
 class InventoryNestedScopeTests(APITestCase):
@@ -23,9 +23,13 @@ class InventoryNestedScopeTests(APITestCase):
         cls.central_variant = ItemVariant.objects.create(
             parent_item=cls.central_item, variant_attributes={"size": "C"}
         )
+        cls.central_location = StorageLocation.objects.create(name="Shared storage")
+        cls.stock_a = Stock.objects.create(item=cls.item_a, location=cls.central_location, quantity=1)
+        cls.stock_b = Stock.objects.create(item=cls.item_b, location=cls.central_location, quantity=2)
+        cls.central_stock = Stock.objects.create(item=cls.central_item, location=cls.central_location, quantity=3)
         cls.viewer = get_user_model().objects.create_user(username="nested-inventory-viewer")
         group_a = Group.objects.create(name="Nested inventory viewer A")
-        for codename in ("view_category", "view_item", "view_itemvariant"):
+        for codename in ("view_category", "view_item", "view_itemvariant", "view_storagelocation"):
             group_a.permissions.add(
                 Permission.objects.get(content_type__app_label="inventory", codename=codename)
             )
@@ -92,3 +96,20 @@ class InventoryNestedScopeTests(APITestCase):
         self.assertEqual(central.status_code, status.HTTP_403_FORBIDDEN)
         self.central_variant.refresh_from_db()
         self.assertEqual(self.central_variant.sku, "")
+
+    def test_central_location_stock_excludes_other_department_items(self):
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="view_stock")
+        )
+
+        response = self.client.get(f"/api/v1/inventory/locations/{self.central_location.pk}/stock/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({row["id"] for row in response.data["rows"]}, {self.stock_a.pk, self.central_stock.pk})
+        self.assertEqual(response.data["total"], 4)
+
+    def test_item_stock_requires_stock_view_right(self):
+        response = self.client.get(f"/api/v1/inventory/items/{self.item_a.pk}/stock/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
