@@ -81,7 +81,8 @@ class ItemSerializer(serializers.ModelSerializer):
         department = attrs.get("department", getattr(self.instance, "department", None))
         department_id = getattr(department, "id", None)
 
-        if not can_manage_department(user, department_id):
+        permission = "inventory.change_item" if self.instance else "inventory.add_item"
+        if not can_manage_department(user, department_id, permission):
             raise serializers.ValidationError(
                 {"department": "Artikel dürfen nur in der eigenen Abteilung verwaltet werden."}
             )
@@ -120,7 +121,8 @@ class StorageLocationSerializer(serializers.ModelSerializer):
         department = attrs.get("department", getattr(self.instance, "department", None))
         department_id = getattr(department, "id", None)
 
-        if not can_manage_department(user, department_id):
+        permission = "inventory.change_storagelocation" if self.instance else "inventory.add_storagelocation"
+        if not can_manage_department(user, department_id, permission):
             raise serializers.ValidationError(
                 {"department": "Lagerorte dürfen nur in der eigenen Abteilung verwaltet werden."}
             )
@@ -244,17 +246,19 @@ class TransactionSerializer(serializers.ModelSerializer):
         elif item_variant is not None:
             item_department_id = item_variant.parent_item.department_id
 
-        if user and not is_org_wide_user(user):
-            if not can_manage_department(user, item_department_id):
+        if user:
+            permission = "inventory.change_transaction" if self.instance else "inventory.add_transaction"
+            if not can_manage_department(user, item_department_id, permission):
                 raise serializers.ValidationError(
                     {"item": "Transaktionen sind nur für Artikel der eigenen Abteilung erlaubt."}
                 )
 
-            for field_name, location in (("source", source), ("target", target)):
-                if location is None:
-                    continue
-                if not is_location_allowed_for_item_department(location, item_department_id):
-                    raise serializers.ValidationError({field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."})
+            if not is_org_wide_user(user):
+                for field_name, location in (("source", source), ("target", target)):
+                    if location is None:
+                        continue
+                    if not is_location_allowed_for_item_department(location, item_department_id):
+                        raise serializers.ValidationError({field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."})
 
         return attrs
 

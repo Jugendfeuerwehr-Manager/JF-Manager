@@ -14,6 +14,7 @@ class OrderReceiptTest(APITestCase):
             Permission.objects.get(codename="can_access_all_departments"),
             Permission.objects.get(codename="can_change_order_status"),
             Permission.objects.get(codename="change_orderitem"),
+            Permission.objects.get(codename="add_transaction"),
         )
         self.client.force_authenticate(self.user)
         self.ordered = OrderStatus.objects.get(code="ORDERED")

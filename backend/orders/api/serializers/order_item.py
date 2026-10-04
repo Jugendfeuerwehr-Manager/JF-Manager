@@ -178,7 +178,7 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
                         {"receipt_location": "Bitte einen Lagerort für den Wareneingang wählen."}
                     )
                 inventory_item = instance.item.inventory_item
-                if not can_manage_department(user, inventory_item.department_id) or (
+                if not can_manage_department(user, inventory_item.department_id, "inventory.add_transaction") or (
                     not is_org_wide_user(user)
                     and not is_location_allowed_for_item_department(location, inventory_item.department_id)
                 ):
@@ -220,7 +220,7 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
                             {"create_loan": "Für diese Position muss zuerst ein Wareneingang gebucht sein."}
                         )
                     inventory_item = instance.item.inventory_item
-                    if not can_manage_department(user, inventory_item.department_id):
+                    if not can_manage_department(user, inventory_item.department_id, "inventory.add_transaction"):
                         raise serializers.ValidationError({"create_loan": "Kein Zugriff auf diesen Artikel."})
                     member = instance.order.member
                     if not is_org_wide_user(user) and not set(

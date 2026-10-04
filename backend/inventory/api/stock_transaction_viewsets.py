@@ -10,6 +10,7 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from inventory.models import Stock, StorageLocation, Transaction
@@ -110,8 +111,8 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
             missing_lines = []
             for line in data["items"]:
                 inventory_item = line.get("item") or line["item_variant"].parent_item
-                if not can_manage_department(request.user, inventory_item.department_id):
-                    raise serializers.ValidationError({"items": "Kein Zugriff auf diesen Artikel."})
+                if not can_manage_department(request.user, inventory_item.department_id, "inventory.add_transaction"):
+                    raise PermissionDenied("Kein Inventar-Ausgaberecht für diesen Artikel.")
                 if (
                     line.get("source")
                     and not is_org_wide_user(request.user)

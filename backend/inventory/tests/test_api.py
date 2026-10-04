@@ -13,7 +13,10 @@ class InventoryAPITest(APITestCase):
         self.user = User.objects.create_user(username="tester", password="pw12345")
         self.user.is_staff = True
         self.user.save(update_fields=["is_staff"])
-        self.user.user_permissions.add(*Permission.objects.filter(codename__in=["view_item", "add_transaction"]))
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            *Permission.objects.filter(codename__in=["view_item", "add_transaction"]),
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.category = Category.objects.create(name="Helm")

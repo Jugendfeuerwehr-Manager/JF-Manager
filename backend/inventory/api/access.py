@@ -15,19 +15,28 @@ def get_user_department_ids(user) -> set[int]:
     return set(user.department_roles.values_list("department_id", flat=True))
 
 
-def can_manage_department(user, department_id: int | None) -> bool:
+def can_manage_department(user, department_id: int | None, permission: str) -> bool:
     """
     Return whether the user may mutate data owned by the given department.
 
-    Central records remain visible to department-scoped users but mutable only
-    by org-wide users.
+    Central records require both org-wide scope and a global model right.
+    Department records require a right for their actual department.
     """
-    if is_org_wide_user(user):
+    if is_org_wide_user(user) and user.has_perm(permission):
         return True
     if department_id is None:
         # Central/main-org records are visible for everyone but mutable only org-wide.
         return False
-    return department_id in get_user_department_ids(user)
+    if department_id not in get_user_department_ids(user):
+        return False
+    if user.has_perm(permission):
+        return True
+    app_label, codename = permission.split(".", 1)
+    return user.department_roles.filter(
+        department_id=department_id,
+        groups__permissions__content_type__app_label=app_label,
+        groups__permissions__codename=codename,
+    ).exists()
 
 
 def is_location_allowed_for_item_department(location, item_department_id: int | None) -> bool:

@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.35 belegt zentrale Ausleihe und ein Rechte-Leck bei zentralen Beständen; 1/2 neue Regressionen bestanden. |
-| Aktuelles Paket | SEC-01.35 rot getestet; SEC-01.36 als nächster Teilschritt. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.36 schützt zentrale Schreibaktionen und erhält die zentrale Ausleihe; 42/42 relevante Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.36 korrigiert; SEC-01.37 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `30cb50c` (`SEC-01.34`); SEC-01.35 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `384f3d3` (`SEC-01.35`); SEC-01.36 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.36: zentrale Inventar-Schreibaktionen an globales Inventarrecht binden; zentrale Ausleihe an Abteilungsmitglieder erhalten. |
+| Nächster konkreter Schritt | SEC-01.37: verknüpfte Inventarlisten und übrige SEC-01-Pfade auf zentrale/abteilungseigene Sicht prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -533,7 +533,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.35 rot: Organisationssicht plus A-Inventarrecht erlaubt zentrale Ausleihe. |
+| SEC-01 | in Arbeit | Codex | SEC-01.36 grün: zentrale Ausleihe mit globalem Recht, Abteilungsmaterial mit scoped Recht; SEC-01.37 Restprüfung. |
 | SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -629,15 +629,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.34`: Bestellpositionen nach Modellrecht und Abteilung ihrer tatsächlichen Bestellung filtern.
   - `SEC-01.35`: Zentrale Kleiderkammer als optionalen Eigentümerbereich im Vertrag erfassen; Ausleihe an Abteilungsmitglied und fehlendes globales Inventarrecht als HTTP-Regression prüfen.
   - `SEC-01.36`: Zentrale Inventar-Schreibaktionen nach globalem Inventarrecht absichern und bisherige Staff-Testrollen explizit berechtigen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.34 `30cb50c` mit 51 bestandenen relevanten Backendtests; SEC-01.35 wird mit diesem Checkpoint committed.
+  - `SEC-01.37`: Verknüpfte Inventarlisten, zentrale und abteilungseigene Sicht sowie übrige SEC-01-Pfade per HTTP prüfen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.35 `384f3d3` mit einer roten zentralen Inventarregression; SEC-01.36 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-01.34-Korrektur `30cb50c`; zentrale Inventar-Regressionen und Fachvertrag in diesem SEC-01.35-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.35: 1/2 neue HTTP-Regressionen bestanden; zentrale Ausleihe an A-Mitglied funktioniert, aber Organisationssicht plus nur A-Transaktionsrecht erlaubt ebenfalls zentrale Ausleihe (201 statt 403). Ruff und Diff-Check bestanden. Ältere Inventar-API-Tests: 4/8 bestanden; vier zentrale Ausleihfälle verwenden nur Staff ohne Organisationssicht und müssen im Korrekturschritt auf ausdrückliche Rechte umgestellt werden. Vorherige 277er-Suite bestand vor SEC-01.34 und ohne Inventar-Testpaket. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
-- **Inventar weiterer Pfade:** Zentrale Artikel und Lagerorte (`department=NULL`) sind bereits optional und für Abteilungsrollen sichtbar. Die zentrale Ausleihe an ein Abteilungsmitglied funktioniert mit Organisationssicht und globalem Inventarrecht; die Rechteprüfung bei zentralen Schreibaktionen vermischt noch Organisationssicht und scoped Fachrecht. Mitgliederlisten gehören zur SEC-03-Migration; Zielrelationen/Sammelaktionen in Bestellungen und weitere Inventar-Schreibziele zu SEC-02/SEC-09.
-- **Offene Fehler / Risiken:** Organisationssicht plus bloßes A-Inventarrecht erlaubt zentrale Ausleihe. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-01.35-Regressionen und zentraler Fachvertrag `384f3d3`; zentrale Inventar-Korrektur in diesem SEC-01.36-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.36: 42/42 relevante Inventar-/Bestell-Backendtests, Ruff und Diff-Check bestanden. Die alte Inventar-API-Suite besteht nach ausdrücklicher Organisations- und Inventarberechtigung wieder. Breite Gesamtprüfung nach SEC-01.36 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
+- **Offene Fehler / Risiken:** Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. Verknüpfte Inventarlisten und weitere Sonderaktionen müssen geprüft werden. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.36` zentrale Inventar-Schreibaktionen nur mit globalem Inventarrecht erlauben; positive zentrale Ausleihe erhalten.
+- **Nächster konkreter Schritt:** `SEC-01.37` verknüpfte Inventarlisten und übrige SEC-01-Pfade per HTTP prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -686,3 +687,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 03.10.2026 | SEC-01.33 | Restinventar: Bestellpositionen ohne Bestellabteilungsfilter; zwei A/B-HTTP-Regressionen für Liste und Detail ergänzt. Mitgliederlisten für SEC-03, Zielrelationen/Sammelaktionen für SEC-02 vorgemerkt. | 0/2 neue Tests bestanden: B-Position in Liste und Detail sichtbar; Ruff und Diff-Check bestanden. Breite 277er-Prüfung läuft noch. | Dieser Commit: `test(SEC-01.33): expose order item department bypass` | SEC-01.34 Bestellpositionen filtern. |
 | 03.10.2026 | SEC-01.34 | Bestellpositionen nach Modellrecht und tatsächlicher Bestellabteilung gefiltert; Statusaktionen erhalten eigenes abteilungsbezogenes Recht, Sammeländerung nutzt denselben gefilterten Bereich. Zentrale Bestelltests mit ausdrücklicher Organisationssicht/Modellrecht versehen. | 51/51 relevante und 6/6 gezielte Backendtests, Ruff und Diff-Check bestanden. Zuvor 277/277 breite Tests auf Stand vor dieser Korrektur bestanden. | Dieser Commit: `fix(SEC-01.34): scope order items and status actions` | SEC-01.35 übrige Pfade prüfen. |
 | 04.10.2026 | SEC-01.35 | Nutzeranforderung zur optionalen zentralen Kleiderkammer und abteilungseigenen Beständen im Fachvertrag ergänzt. HTTP-Test belegt zentrale Ausgabe an A-Mitglied mit globalem Inventarrecht; zweiter Test deckt zentrale Ausgabe mit bloß scoped A-Recht trotz Organisationssicht auf. | 1/2 neue Tests bestanden; Sicherheitsfall 201 statt 403. Ältere Inventar-API-Tests 4/8, weil Staff-Testrolle ohne ausdrückliche Organisationssicht. Ruff und Diff-Check bestanden. | Dieser Commit: `test(SEC-01.35): define central inventory lending rights` | SEC-01.36 zentrale Inventarrechte korrigieren. |
+| 04.10.2026 | SEC-01.36 | Zentrale Artikel, Lagerorte und Buchungen verlangen globales Fachrecht plus Organisationssicht. Abteilungsobjekte nutzen das Recht ihrer tatsächlichen Abteilung. Zentrale Ausgabe an A-Mitglied und abteilungseigene Artikelanlage geprüft; Bestellbuchungen verlangen Inventar-Buchungsrecht. Ältere Staff-Testrollen explizit berechtigt. | 42/42 relevante Backendtests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.36): separate central and department inventory rights` | SEC-01.37 verknüpfte Inventarlisten prüfen. |

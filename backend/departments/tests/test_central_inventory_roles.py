@@ -62,3 +62,26 @@ class CentralInventoryRoleTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(Transaction.objects.filter(transaction_type="LOAN", item=self.central_item).exists())
         self.assertEqual(Stock.objects.get(item=self.central_item, location=self.central_location).quantity, 3)
+
+    def test_department_manager_can_create_own_item_but_not_central_item(self):
+        role = self.scoped_manager.department_roles.get(department=self.department)
+        role.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="add_item")
+        )
+        self.client.force_authenticate(user=self.scoped_manager)
+
+        own = self.client.post(
+            "/api/v1/inventory/items/",
+            {"name": "Department tent", "category": self.central_item.category_id, "department": self.department.pk},
+            format="json",
+        )
+        central = self.client.post(
+            "/api/v1/inventory/items/",
+            {"name": "Central tent", "category": self.central_item.category_id, "department": None},
+            format="json",
+        )
+
+        self.assertEqual(own.status_code, status.HTTP_201_CREATED, own.data)
+        self.assertEqual(central.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Item.objects.get(name="Department tent").department_id, self.department.pk)
+        self.assertFalse(Item.objects.filter(name="Central tent").exists())
