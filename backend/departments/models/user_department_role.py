@@ -11,8 +11,8 @@ class UserDepartmentRole(models.Model):
     Each group can carry arbitrary permissions, which apply only within
     the context of that department.
 
-    Users with is_staff=True or the departments.can_access_all_departments
-    permission bypass this table and see all data.
+    Staff status alone grants no department or subject permission. Organization
+    scope requires its explicit permission and the corresponding subject right.
     """
 
     user = models.ForeignKey(
