@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-09.0 dokumentiert Bestandsbuchungsrisiken und Teilschritte. SEC-03.5a liegt in `5c5ddb3` mit 59/59 kombinierten Backendtests; SEC-03.5b und ROLE-01.4 werden parallel in getrennten Dateien bearbeitet. |
-| Aktuelles Paket | SEC-03.5b Superuser-Oberfläche und ROLE-01.4 Seed in Arbeit; SEC-09.0 übernommen. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
+| Letzter Checkpoint | 04.10.2026: SEC-09.1 reproduziert sechs Bestandsbuchungsfehler; PostgreSQL-Konkurrenztest ausstehend. SEC-03.5b und ROLE-01.4 werden parallel in getrennten Dateien bearbeitet. |
+| Aktuelles Paket | SEC-09.1 rote Regressionen; SEC-03.5b Superuser-Oberfläche und ROLE-01.4 Seed in Arbeit. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `5c5ddb3` (SEC-03.5a); SEC-09.0 ist dieser Planungs-Commit. |
+| Letzter Roadmap-Commit | `9e2395d` (SEC-09.0); SEC-09.1 ist dieser Test-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-09.1: Wiederholungs- und Konkurrenzfehler als Backend-Regressionen festhalten; parallel SEC-03.5b und ROLE-01.4 integrieren. |
+| Nächster konkreter Schritt | SEC-09.2: gebuchte Bewegungen unveränderlich machen und Korrekturweg einführen; parallel SEC-03.5b und ROLE-01.4 integrieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -541,7 +541,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
-| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.0 Vertrag/Teilschritte; SEC-09.1 rote Buchungsregressionen. |
+| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.1: sechs rote Buchungsregressionen; SEC-09.2 Unveränderlichkeit und Gegenbuchung. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
 | ROLE-01 | in Arbeit | Codex (Rollen-Session) | ROLE-01.3 beschreibendes Rollenmodell; ROLE-01.4 idempotenter Seed folgt. SEC-01/02-Bereichsprüfung bleibt Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
@@ -743,20 +743,20 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Ziel und Abnahme:** Eine fachliche Bestandsbewegung wird genau einmal gebucht. Gespeicherte Buchungen können nicht still geändert oder gelöscht werden; Korrekturen erzeugen nachvollziehbare Gegenbuchungen. Bestand je Artikel oder Variante und Lagerort ist eindeutig und nie negativ. Parallele Buchungen verlieren keine Änderungen. Wiederholte API-Aufrufe mit derselben Idempotenzkennung erzeugen keine zweite Bewegung; dieselbe Kennung mit anderem Inhalt wird abgewiesen. Mehrteilige Ausgaben, Rückgaben und Bestelleingänge sind vollständig atomar. Rechte und tatsächliche Quell-/Zielabteilungen bleiben geprüft; PostgreSQL-Konkurrenz-, Rollback- und Wiederholungsfälle bestehen.
 - **Teilschritte mit stabilen IDs:**
   - `SEC-09.0`: Iststand, Aufrufwege, Abhängigkeiten, Abnahme und Teilschritte dokumentieren.
-  - `SEC-09.1`: Regressionen für erneutes `Transaction.save()`, Änderung/Löschung, doppelte API-Aufrufe und konkurrierende Zu- und Abbuchungen ergänzen; beobachtete Fehler rot festhalten.
+  - `SEC-09.1`: Regressionen für erneutes `Transaction.save()`, Änderung/Löschung, doppelte API-Aufrufe und doppelte Bestandsidentitäten ergänzen; beobachtete Fehler rot festhalten. PostgreSQL-Konkurrenz in `SEC-09.6` prüfen.
   - `SEC-09.2`: Gebuchte Transaktionen unveränderlich machen; explizite Gegenbuchung mit Bezug auf das Original und geprüfter Berechtigung einführen.
   - `SEC-09.3`: Eindeutige Bestandsidentität, atomare und gesperrte Mengenänderungen sowie Nichtnegativität auf Datenbankebene absichern; bestehende Dubletten vor Constraint prüfen.
   - `SEC-09.4`: Dauerhafte Idempotenz für einzelne und mehrteilige Buchungswege einführen; gleiche Kennung/Inhalt wiedergeben und abweichenden Inhalt ablehnen.
   - `SEC-09.5`: Direkte Bestandsänderungen außerhalb des Buchungsdienstes schließen und Inventar-, Bestell-, Leih- und Mitgliedschaftsabläufe auf den gemeinsamen Vertrag umstellen.
   - `SEC-09.6`: PostgreSQL-Konkurrenz, Rollback, Rechte, Zielabteilungen und Bedien-/API-Vertrag abnehmen; verbleibende Betriebsgrenzen dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-03.5a `5c5ddb3`; `SEC-09.0` wird mit diesem Planungs-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** SEC-09.0 `9e2395d`; `SEC-09.1` wird mit diesem Test-Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Nur dieser Roadmap-Detailblock und zugehöriger Status/Journalstand in `SEC-09.0`.
-- **Umgesetzte Teilschritte:** `SEC-09.0` Dokumentation; keine Bestandskorrektur umgesetzt.
-- **Ausgeführte Prüfungen mit Ergebnis:** Codeinventar und Git-Abgleich bestanden; Anwendungstests für den Planungsstand nicht ausgeführt. Dokument-/Staged-Diff-Check vor Commit ausführen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`; sechs Modell-/HTTP-Regressionen und dieser Status/Journalstand in `SEC-09.1`.
+- **Umgesetzte Teilschritte:** `SEC-09.0` Dokumentation und `SEC-09.1` rote Regressionen; keine Bestandskorrektur umgesetzt.
+- **Ausgeführte Prüfungen mit Ergebnis:** 6/6 neue Tests erwartungsgemäß fehlgeschlagen: doppelte Verbuchung, erlaubte Änderung, erlaubte Löschung, ignorierte gleiche/abweichende Idempotenzkennung und doppelte Bestandsidentität. PostgreSQL-Konkurrenztest nicht ausgeführt. Ruff und Staged-Diff-Check vor Commit ausführen.
 - **Offene Fehler / Risiken:** `Transaction.save()` ruft bei jedem Speichern `update_stock()` auf. `Stock` hat keinen Eindeutigkeitsconstraint für Artikel/Variante und Lagerort; `get_or_create` und anschließendes Python-Read-Modify-Write schützen parallele Buchungen nicht. Bestehende Daten können Dubletten enthalten. Weitere direkte Schreibwege und Korrektursemantik müssen vor Änderung inventarisiert werden. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
 - **Laufende Prozesse und sichere Fortsetzung:** SEC-03.5b-Oberfläche und ROLE-01.4-Seed werden parallel in anderen Dateien bearbeitet. Git-Staging und Commits erfolgen nur durch den Integrationsagenten.
-- **Nächster konkreter Schritt:** `SEC-09.1` gezielte rote Modell-/HTTP-Regressionen für Wiederholung und Konkurrenz; vor `SEC-09.3` Datenbestand auf Dubletten prüfen.
+- **Nächster konkreter Schritt:** `SEC-09.2` gebuchte Bewegungen unveränderlich machen und ausdrückliche Gegenbuchung einführen; vor `SEC-09.3` Datenbestand auf Dubletten prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -847,3 +847,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | ROLE-01.3 | `RoleTemplate` mit stabilem Schlüssel, Version, erlaubtem Bereich, Delegierbarkeit, Archivierung und optional eindeutiger Django-Gruppenbindung ergänzt; veralteten Staff-Bypass-Docstring korrigiert. Das Modell vergibt selbst keine Rechte. | 6/6 gezielte Modelltests, Migrationsabgleich, Ruff check/format und Diff-Check bestanden; breite Suite nicht ausgeführt. SEC-03.5-Dateien parallel uncommitted und nicht Teil dieses Commits. | Dieser Commit: `feat(ROLE-01.3): add descriptive role template model` | ROLE-01.4 Seed; SEC-03.5 getrennt fortsetzen. |
 | 04.10.2026 | SEC-03.5a | Superuser-API zeigt offene Altlisten mit Mitgliedsbereichen und Anhangmetadaten; atomare Aufrufe ordnen Einträge, Beschreibung und Anhänge bewusst einer Abteilung zu. Persistente Quelle-Ziel-Bindung macht Teilaufrufe idempotent; Abschluss sperrt weitere Zuordnung, ungelöste Quellen und gebundene Ziele sind gegen Löschen geschützt. | 9/9 gezielte Klärungstests und 59/59 kombinierte Backendtests bestanden; Migrationsabgleich, Ruff und Diff-Check bestanden. Breite Suite und Superuser-UI nicht ausgeführt. | Dieser Commit: `feat(SEC-03.5a): add explicit legacy list resolution API` | SEC-03.5b Oberfläche für die Klärung. |
 | 04.10.2026 | SEC-09.0 | Bestandsmodell und Buchungsweg inventarisiert; Vertrag für unveränderliche Bewegungen, Gegenbuchungen, eindeutigen nichtnegativen Bestand, atomare Konkurrenz und Idempotenz mit stabilen Teilschritten festgelegt. | Code-/Git-Abgleich bestanden; Anwendungstests für reine Planung nicht ausgeführt. Dokument- und Staged-Diff-Check vor Commit. | Dieser Commit: `docs(SEC-09.0): define stock ledger safeguards` | SEC-09.1 rote Wiederholungs- und Konkurrenzregressionen. |
+| 04.10.2026 | SEC-09.1 | Sechs Modell-/HTTP-Verträge für einmalige Verbuchung, unveränderliche Bewegungen, gesperrte Löschung, API-Idempotenz und eindeutige Bestandsidentität ergänzt. | 6/6 erwartungsgemäß fehlgeschlagen: 4 statt 2 Bestand nach erneutem Speichern, Änderung/Löschung erlaubt, zwei Buchungen pro Kennung, abweichender Inhalt akzeptiert, Bestandsdubletten erlaubt. PostgreSQL-Konkurrenztest nicht ausgeführt; Ruff und Staged-Diff-Check vor Commit. | Dieser Commit: `test(SEC-09.1): expose repeat stock booking failures` | SEC-09.2 Unveränderlichkeit und Gegenbuchung. |
