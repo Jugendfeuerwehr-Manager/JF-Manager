@@ -17,10 +17,8 @@ class OrgWideWritePermission(BasePermission):
     """
     Read-only access for authenticated users; write access only for org-wide users.
 
-    Org-wide users are:
-      - staff
-      - superusers
-      - users with departments.can_access_all_departments
+    Org-wide users are superusers or users with
+    departments.can_access_all_departments.
     """
 
     def has_permission(self, request, view):
@@ -31,7 +29,23 @@ class OrgWideWritePermission(BasePermission):
         if request.method in SAFE_METHODS:
             return True
 
-        return user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        return user.is_superuser or user.has_perm("departments.can_access_all_departments")
+
+
+class GlobalModelWritePermission(OrgWideWritePermission):
+    """Global catalogs also require the matching global model permission."""
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        action = {"POST": "add", "PUT": "change", "PATCH": "change", "DELETE": "delete"}.get(request.method)
+        queryset = getattr(view, "queryset", None)
+        if action is None or queryset is None:
+            return False
+        model = queryset.model
+        return request.user.has_perm(f"{model._meta.app_label}.{action}_{model._meta.model_name}")
 
 
 class DepartmentRoleModelPermissions(BasePermission):
