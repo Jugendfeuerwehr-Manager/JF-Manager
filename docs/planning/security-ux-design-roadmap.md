@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-02.1 reproduziert unerlaubte Gruppenanlage und Verschiebung nach B per HTTP (1/3 Tests bestanden, zwei erwartete Sicherheitsfehler); SEC-01.56 zuvor mit 24/24 gezielten und 350/350 breiten Backendtests grün. |
-| Aktuelles Paket | SEC-02 in Arbeit; SEC-02.2 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
+| Letzter Checkpoint | 04.10.2026: SEC-02.2 prüft Gruppen-Zielabteilungen vor dem Speichern; 40/40 gezielte Backendtests bestanden. |
+| Aktuelles Paket | SEC-02 in Arbeit; SEC-02.3 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `c0d3e15` (SEC-02.0); SEC-02.1 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `319f56d` (SEC-02.1); SEC-02.2 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-02.2: Gruppenziele bei Anlage und Abteilungswechsel anhand des aktionsbezogenen Rechts validieren. |
+| Nächster konkreter Schritt | SEC-02.3: Inventar-Ziel- und Elternrelationen per HTTP prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -700,14 +700,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-02.7`: Sammelaktionen mit gemischten erlaubten/unerlaubten Zielen auf Teiländerungen prüfen.
   - `SEC-02.8`: Sammelaktionen vollständig validieren und atomar ausführen.
   - `SEC-02.9`: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen; offene SEC-09-/SEC-03-Grenzen ausdrücklich dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-02.0 `c0d3e15`; SEC-02.1 wird separat committed.
+- **Letzter dauerhafter Checkpoint:** SEC-02.1 `319f56d`; SEC-02.2 wird separat committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** `backend/departments/tests/test_group_target_permissions.py` lag beim Einstieg unversioniert vor, wurde geprüft und für SEC-02.1 um einen erlaubten A-Fall ergänzt; Roadmap-Status und Journal in diesem SEC-02.1-Commit.
-- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage; `SEC-02.1` HTTP-Regression für Gruppen-Zielabteilungen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.1: 1/3 gezielte Backendtests bestanden; zwei erwartete Sicherheitsfehler (B-Anlage 201 statt 400, Verschiebung A→B 200 statt 400). Ruff bestanden; Staged-Diff-Check vor Commit. Breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** Gruppenanlage in fremder Abteilung und Verschiebung dorthin sind möglich. Relationen in Inventar, Qualifikationen, Bestellungen und Ausbildung ungeprüft. Keine Abnahme von SEC-02.
+- **Geänderte Dateien / Commit-Bezug:** SEC-02.1: `backend/departments/tests/test_group_target_permissions.py` aus geprüftem unversioniertem Ausgangsstand übernommen (`319f56d`). SEC-02.2: Gruppen-Viewset, zugehörige HTTP-Tests und dieser Roadmap-Status.
+- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage; `SEC-02.1` HTTP-Regression für Gruppen-Zielabteilungen; `SEC-02.2` Schreibzielprüfung.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.1: 1/3 gezielte Backendtests bestanden, zwei erwartete Sicherheitsfehler. SEC-02.2: 40/40 gezielte Gruppen- und Abteilungstests sowie Ruff bestanden; Staged-Diff-Check vor Commit. Breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** Inventar-, Qualifikations-, Bestell- und Ausbildungsrelationen ungeprüft. Keine Abnahme von SEC-02.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; `dump.rdb` bleibt unversioniert.
-- **Nächster konkreter Schritt:** `SEC-02.2` Gruppenziele vor dem Speichern am passenden Abteilungsrecht prüfen.
+- **Nächster konkreter Schritt:** `SEC-02.3` Inventar-Ziel- und Elternrelationen per HTTP prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -781,3 +781,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.56 | Staff-Ausnahme aus `OrgWideWritePermission` entfernt. Globale Bestellstatus/-katalog-Aktionen verlangen zusätzlich das passende globale Modellrecht; scoped Recht plus Organisationssicht reicht nicht. Positiver globaler Fall ergänzt. | 24/24 gezielte und 350/350 breite Backendtests, Ruff und Diff-Check bestanden. | Dieser Commit: `fix(SEC-01.56): require explicit global catalog write rights` | SEC-01.57 übrige globale Ansichten abnehmen. |
 | 04.10.2026 | SEC-02.0 | Ziel- und Relationsvertrag, zentrale Kleiderkammer, abteilungseigene Bestände, Abhängigkeiten und stabile Teilschritt-IDs vor Paketbeginn dokumentiert. | Dokumentstruktur und Diff-Check bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(SEC-02.0): define target relation security contract` | SEC-02.1 fremde Gruppenanlage reproduzieren. |
 | 04.10.2026 | SEC-02.1 | Vorhandene unversionierte HTTP-Regression für Gruppen-Zielabteilungen geprüft und mit erlaubter A-Anlage ergänzt. B-Anlage und Verschiebung A→B sind unerlaubt möglich. | 1/3 gezielte Backendtests bestanden; zwei erwartete Sicherheitsfehler: HTTP 201 und 200 statt 400. Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-02.1): expose group target department bypass` | SEC-02.2 Gruppenziele absichern. |
+| 04.10.2026 | SEC-02.2 | Gruppenanlage und -änderung validieren die tatsächliche Zielabteilung mit `add_group` bzw. `change_group` vor dem Speichern. Gruppen ohne Abteilung verlangen Organisationssicht und globales Fachrecht; positive Fälle für A, berechtigten Wechsel und zentrale Gruppe ergänzt. | 40/40 gezielte Gruppen- und Abteilungstests sowie Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.2): validate group target department writes` | SEC-02.3 Inventar-Zielrelationen per HTTP prüfen. |

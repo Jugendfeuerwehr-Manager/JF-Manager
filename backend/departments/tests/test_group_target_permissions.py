@@ -52,3 +52,42 @@ class GroupTargetPermissionTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Group.objects.filter(name="Own group", department=self.department_a).exists())
+
+    def test_create_group_without_target_does_not_become_global(self):
+        response = self.client.post("/api/v1/groups/", {"name": "Unowned group"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Group.objects.filter(name="Unowned group").exists())
+
+    def test_scoped_writer_cannot_explicitly_create_global_group(self):
+        response = self.client.post(
+            "/api/v1/groups/", {"name": "Global group", "department": None}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Group.objects.filter(name="Global group").exists())
+
+    def test_global_writer_can_create_global_group(self):
+        self.user.user_permissions.add(
+            Permission.objects.get(content_type__app_label="departments", codename="can_access_all_departments"),
+            Permission.objects.get(content_type__app_label="members", codename="add_group"),
+        )
+
+        response = self.client.post(
+            "/api/v1/groups/", {"name": "Global group", "department": None}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Group.objects.filter(name="Global group", department__isnull=True).exists())
+
+    def test_move_group_to_writable_department_is_allowed(self):
+        reader = AuthGroup.objects.get(name="Group target reader B")
+        reader.permissions.add(Permission.objects.get(content_type__app_label="members", codename="change_group"))
+
+        response = self.client.patch(
+            f"/api/v1/groups/{self.group_a.pk}/", {"department": self.department_b.pk}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.group_a.refresh_from_db()
+        self.assertEqual(self.group_a.department_id, self.department_b.pk)
