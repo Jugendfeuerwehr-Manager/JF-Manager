@@ -304,3 +304,27 @@ class InventoryNestedScopeTests(APITestCase):
         response = self.client.get(f"/api/v1/inventory/locations/{location.pk}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_central_member_location_in_own_department_remains_visible(self):
+        member = Member.objects.create(name="Another A", lastname="Borrower")
+        member.departments.add(self.item_a.department)
+        location = StorageLocation.objects.create(name="Central A equipment", member=member, is_member=True)
+
+        response = self.client.get(f"/api/v1/inventory/locations/{location.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+
+    def test_org_inventory_viewer_can_read_central_member_location_across_departments(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        location = StorageLocation.objects.create(name="Central B equipment", member=member, is_member=True)
+        viewer = get_user_model().objects.create_user(username="nested-global-central-viewer")
+        viewer.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            Permission.objects.get(content_type__app_label="inventory", codename="view_storagelocation"),
+        )
+        self.client.force_authenticate(user=viewer)
+
+        response = self.client.get(f"/api/v1/inventory/locations/{location.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)

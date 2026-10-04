@@ -29,6 +29,15 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
     search_fields = ["name", "parent__name", "member__name", "member__lastname"]
     filterset_fields = ["parent", "is_member", "member"]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.method != "GET":
+            return queryset
+        allowed_ids = visible_item_department_ids(self.request.user, "inventory.view_storagelocation")
+        if allowed_ids is None:
+            return queryset
+        return queryset.filter(Q(member__isnull=True) | Q(member__departments__id__in=allowed_ids)).distinct()
+
     def _assert_member_access(self, member):
         '''Assert that the current user has access to the given member. Raises PermissionDenied if not.
 

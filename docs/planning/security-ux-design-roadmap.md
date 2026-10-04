@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.49 weist zwei Fremdzugriffe auf abteilungslose persönliche Lagerorte nach; 0/2 neue Tests bestanden. ROLE-01.1 ist dokumentiert. |
-| Aktuelles Paket | SEC-01.49 rot nachgewiesen; SEC-01.50 als nächster Sicherheitsschritt. ROLE-01.1 abgeschlossen; ROLE-01.2 folgt. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.50 filtert persönliche Lagerorte nach Mitgliedsbereich; 56/56 relevante Tests bestanden. ROLE-01.1 ist dokumentiert. |
+| Aktuelles Paket | SEC-01.50 korrigiert; SEC-01.51 als nächster Sicherheitsschritt. ROLE-01.1 abgeschlossen; ROLE-01.2 folgt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `6f2e300` (SEC-01.48); SEC-01.49 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `de4f2cc` (SEC-01.49); SEC-01.50 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.50: persönliche Lagerorte ohne Abteilungsfeld nach Mitgliedsbereich filtern; zentrale Lagerorte sichtbar halten. |
+| Nächster konkreter Schritt | SEC-01.51: zentrale Inventar-Löschaktionen bei fehlender Organisationssicht per HTTP prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -533,7 +533,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.49 rot: abteilungslose persönliche B-Lagerorte in A-Liste/Detail; SEC-01.50 Korrektur. |
+| SEC-01 | in Arbeit | Codex | SEC-01.50 grün: personenbezogene Orte nach Mitgliedsbereich; SEC-01.51 zentrale Löschrechte prüfen. |
 | SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -666,15 +666,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.48`: Persönliche Lagerort- und Ausrüstungsansicht nur mit `inventory.view_storagelocation` in der tatsächlichen Mitglieds- bzw. Lagerortabteilung oder globalem Fachrecht und Organisationssicht ausliefern. Abnahme: SEC-01.47-Regressionen und positive A-/globale Fälle grün, relevante Backendtests, Ruff und Staged-Diff geprüft.
   - `SEC-01.49`: Direkte Lagerortliste/-detail bei zentralem Lager und personenbezogenem Lagerort mit fremder Mitgliedsabteilung sowie weitere SEC-01-Restpfade per HTTP prüfen.
   - `SEC-01.50`: Personenbezogene Lagerorte mit `department=NULL` nach verknüpfter Mitgliedsabteilung und `view_storagelocation` filtern; echte zentrale Lagerorte ohne Mitglied für berechtigte Abteilungsrollen sichtbar halten. Abnahme: SEC-01.49-Regressionen, relevante Backendtests, Ruff und Staged-Diff grün.
-- **Letzter dauerhafter Checkpoint:** SEC-01.48 `6f2e300`; SEC-01.49 wird mit diesem Checkpoint committed.
+  - `SEC-01.51`: Zentrale Inventarartikel und Lagerorte beim Löschen mit globalem Modellrecht ohne Organisationssicht sowie mit vollständigem globalem Recht per HTTP prüfen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.49 `de4f2cc`; SEC-01.50 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Persönliche Leserechte-Korrektur `6f2e300`; zwei direkte Lagerortregressionen in diesem SEC-01.49-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41`/`.43`/`.45`/`.47`/`.49` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42`/`.44`/`.46`/`.48` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.49: 0/2 neue HTTP-Regressionen bestanden; persönlicher B-Lagerort ohne Abteilungsfeld erscheint in A-Liste und Detail. Ruff und Diff-Check bestanden. SEC-01.48 zuvor 52/52 relevante Tests bestanden; breiter Lauf nach SEC-01.48 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Geänderte Dateien / Commit-Bezug:** Direkte Lagerortregressionen `de4f2cc`; Queryset-Filter und positive zentrale/personenbezogene Sicht in diesem SEC-01.50-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41`/`.43`/`.45`/`.47`/`.49` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42`/`.44`/`.46`/`.48`/`.50` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.50: 56/56 relevante Inventartests, Ruff und Diff-Check bestanden; breiter Lauf nach SEC-01.50 nicht ausgeführt. SEC-01.42 zuvor 326/326 breite Backendtests bestanden. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
-- **Offene Fehler / Risiken:** Abteilungslose persönliche B-Lagerorte erscheinen in A-Liste und Detail. Weitere Inventar-Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Offene Fehler / Risiken:** Zentrale Löschaktionen und weitere Inventar-Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.50` personenbezogene Lagerorte anhand des Mitglieds filtern.
+- **Nächster konkreter Schritt:** `SEC-01.51` zentrale Inventar-Löschaktionen prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -739,3 +740,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.47 | Zwei HTTP-Regressionen für B-Mitgliedslagerort und B-Ausrüstung bei A-Leserecht und bloßer B-Zuordnung ergänzt. | 0/2 neue Tests bestanden; beide Endpunkte geben B-Metadaten mit 200 aus. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.47): expose member inventory read scope bypasses` | SEC-01.48 persönliches Leserecht prüfen. |
 | 04.10.2026 | SEC-01.48 | Persönliche Lesewege prüfen `view_storagelocation` an Mitglieds- und Lagerortabteilung; A-Lesefall und organisationsweit berechtigter B-Lesefall ergänzt. POST-Anlage bleibt an `add_storagelocation` gebunden. | 52/52 relevante Inventartests, Ruff und Diff-Check bestanden. Breiter Lauf nicht ausgeführt. | Dieser Commit: `fix(SEC-01.48): enforce member location read scope` | SEC-01.49 direkte Lagerortlisten prüfen. |
 | 04.10.2026 | SEC-01.49 | Zwei HTTP-Regressionen für direkte Liste/Detail eines abteilungslosen persönlichen B-Lagerorts bei A-Leserecht ergänzt; echter zentraler Lagerort als sichtbarer Positivfall. | 0/2 neue Tests bestanden: B-Personenlagerort sichtbar. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.49): expose central member location read leakage` | SEC-01.50 personenbezogene zentrale Orte filtern. |
+| 04.10.2026 | SEC-01.50 | Direktes Lagerort-Queryset filtert personenbezogene Orte nach Mitgliedsabteilung; zentrale Lager ohne Person bleiben sichtbar. Eigener A-Personenort und globaler B-Zugriff positiv geprüft. | 56/56 relevante Inventartests, Ruff und Diff-Check bestanden. Breiter Lauf nicht ausgeführt. | Dieser Commit: `fix(SEC-01.50): scope personal locations in inventory queries` | SEC-01.51 zentrale Löschaktionen prüfen. |
