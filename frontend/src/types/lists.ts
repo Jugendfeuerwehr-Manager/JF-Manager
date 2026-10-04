@@ -33,6 +33,7 @@ export interface MemberListCreate {
   name: string
   description?: string
   color?: string
+  department: number
 }
 
 export type MemberListUpdate = Partial<MemberListCreate>

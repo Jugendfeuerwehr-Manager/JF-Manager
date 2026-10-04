@@ -11,7 +11,7 @@
       </div>
       <div class="header-actions">
         <Button v-if="authStore.user?.is_superuser" label="Altlisten klären" icon="pi pi-shield" severity="secondary" outlined @click="router.push({ name: 'legacy-list-resolution' })" />
-        <Button label="Neue Liste" icon="pi pi-plus" @click="openCreateDialog" />
+        <Button label="Neue Liste" icon="pi pi-plus" :disabled="createDepartments.length === 0" :title="createDepartments.length === 0 ? 'Keine berechtigte aktive Abteilung verfügbar' : undefined" @click="openCreateDialog" />
       </div>
     </div>
 
@@ -38,7 +38,7 @@
       <i class="pi pi-list-check empty-big-icon"></i>
       <h2>Noch keine Listen</h2>
       <p>Erstelle deine erste Liste, um Mitglieder zu organisieren.</p>
-      <Button label="Erste Liste erstellen" icon="pi pi-plus" @click="openCreateDialog" />
+      <Button label="Erste Liste erstellen" icon="pi pi-plus" :disabled="createDepartments.length === 0" @click="openCreateDialog" />
     </div>
 
     <!-- No search results -->
@@ -74,6 +74,7 @@
                   @click.stop="emailList(list)"
                 />
                 <Button
+                  v-if="canEditList(list)"
                   icon="pi pi-pencil"
                   text
                   rounded
@@ -131,23 +132,44 @@
       :style="{ width: 'min(480px, 95vw)' }"
     >
       <div class="dialog-form">
+        <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
+        <div class="form-field">
+          <label class="field-label" for="list-department">Abteilung *</label>
+          <Select
+            id="list-department"
+            v-model="formData.department"
+            :options="formDepartments"
+            option-label="name"
+            option-value="id"
+            placeholder="Abteilung auswählen"
+            class="w-full"
+            :disabled="!!editingList || store.saving"
+            @update:model-value="formError = ''"
+          />
+          <small v-if="editingList" class="form-hint">Die Abteilung einer bestehenden Liste kann nicht geändert werden.</small>
+          <small v-else-if="!formDepartments.length" class="form-hint">Für dein Konto ist keine aktive Abteilung mit Listen-Schreibrecht verfügbar.</small>
+        </div>
         <div class="form-field">
           <label class="field-label">Name *</label>
           <InputText
+            id="list-name"
             v-model="formData.name"
             placeholder="z.B. Ausflug 2025"
             class="w-full"
             autofocus
+            :disabled="store.saving"
             @keyup.enter="saveForm"
           />
         </div>
         <div class="form-field">
           <label class="field-label">Beschreibung</label>
           <Textarea
+            id="list-description"
             v-model="formData.description"
             rows="2"
             placeholder="Optional: kurze Beschreibung"
             class="w-full"
+            :disabled="store.saving"
           />
         </div>
         <div class="form-field">
@@ -159,18 +181,18 @@
               class="color-swatch"
               :class="{ 'color-swatch--active': formData.color === c }"
               :style="{ background: c }"
-              @click="formData.color = c"
+              @click="!store.saving && (formData.color = c)"
             ></div>
-            <input type="color" v-model="formData.color" class="color-picker" />
+            <input type="color" v-model="formData.color" class="color-picker" :disabled="store.saving" />
           </div>
         </div>
       </div>
       <template #footer>
-        <Button label="Abbrechen" text @click="showFormDialog = false" />
+        <Button label="Abbrechen" text :disabled="store.saving" @click="showFormDialog = false" />
         <Button
           :label="editingList ? 'Speichern' : 'Erstellen'"
           icon="pi pi-check"
-          :disabled="!formData.name.trim()"
+          :disabled="!formData.name.trim() || !formData.department"
           :loading="store.saving"
           @click="saveForm"
         />
@@ -193,18 +215,23 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
+import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Toast from 'primevue/toast'
 import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useAuthStore } from '@/stores/auth'
+import { useDepartmentsStore } from '@/stores/departments'
+import { getApiErrorMessage } from '@/utils/apiError'
 import type { MemberList } from '@/types/lists'
 
 const router = useRouter()
 const store = useMemberListsStore()
 const membersStore = useMembersStore()
 const authStore = useAuthStore()
+const departmentsStore = useDepartmentsStore()
 const confirm = useConfirm()
 const toast = useToast()
 
@@ -223,6 +250,34 @@ const filteredLists = computed(() => {
       l.name.toLowerCase().includes(q) ||
       (l.description ?? '').toLowerCase().includes(q),
   )
+})
+
+function hasPermission(permissions: string[] | undefined, qualifiedName: string) {
+  if (!permissions) return false
+  const codename = qualifiedName.split('.').at(-1)
+  return permissions.includes('superuser') || permissions.includes(qualifiedName) || (!!codename && permissions.includes(codename))
+}
+
+function canWriteDepartment(departmentId: number, action: 'add' | 'change') {
+  const user = authStore.user
+  if (!user) return false
+  if (user.is_superuser) return true
+  const modelPermission = `members.${action}_memberlist`
+  const hasOrgWideScope = hasPermission(user.permissions, 'departments.can_access_all_departments')
+  if (hasOrgWideScope && hasPermission(user.permissions, modelPermission)) return true
+  const role = user.department_roles.find((item) => item.department_id === departmentId)
+  return hasPermission(role?.permissions, modelPermission)
+}
+
+const activeDepartments = computed(() => departmentsStore.departments.filter((department) => department.is_active))
+const createDepartments = computed(() => activeDepartments.value.filter((department) => canWriteDepartment(department.id, 'add')))
+const formDepartments = computed(() => {
+  const allowed = activeDepartments.value.filter((department) =>
+    canWriteDepartment(department.id, editingList.value ? 'change' : 'add'),
+  )
+  const currentId = editingList.value?.department
+  const current = currentId == null ? undefined : departmentsStore.departments.find((department) => department.id === currentId)
+  return current && !allowed.some((department) => department.id === current.id) ? [current, ...allowed] : allowed
 })
 
 // ── Navigation ────────────────────────────────────────────────────────────
@@ -249,38 +304,74 @@ async function emailList(list: MemberList) {
 // ── Create / Edit ─────────────────────────────────────────────────────────
 const showFormDialog = ref(false)
 const editingList = ref<MemberList | null>(null)
-const formData = reactive({ name: '', description: '', color: '#3B82F6' })
+const formError = ref('')
+const formData = reactive({ name: '', description: '', color: '#3B82F6', department: null as number | null })
+
+async function ensureDepartments() {
+  if (!departmentsStore.departments.length) await departmentsStore.fetchDepartments()
+  return !departmentsStore.error
+}
 
 function openCreateDialog() {
+  formError.value = ''
+  if (createDepartments.value.length === 0) {
+    toast.add({ severity: 'error', summary: 'Keine Abteilung verfügbar', detail: 'Für dein Konto ist keine aktive Abteilung mit Listen-Schreibrecht verfügbar.', life: 4000 })
+    return
+  }
   editingList.value = null
   formData.name = ''
   formData.description = ''
   formData.color = '#3B82F6'
+  formData.department = null
   showFormDialog.value = true
 }
 
-function openEditDialog(list: MemberList) {
+async function openEditDialog(list: MemberList) {
+  formError.value = ''
+  if (!(await ensureDepartments())) {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Abteilungen konnten nicht geladen werden.', life: 4000 })
+    return
+  }
+  if (list.department === null || !canWriteDepartment(list.department, 'change')) return
   editingList.value = list
   formData.name = list.name
   formData.description = list.description
   formData.color = list.color
+  formData.department = list.department
   showFormDialog.value = true
 }
 
 async function saveForm() {
+  formError.value = ''
   if (!formData.name.trim()) return
+  if (formData.department === null) {
+    formError.value = 'Bitte wähle eine Abteilung aus.'
+    return
+  }
+  if (editingList.value && formData.department !== editingList.value.department) {
+    formError.value = 'Die Abteilung einer bestehenden Liste kann nicht geändert werden.'
+    return
+  }
+  if (!canWriteDepartment(formData.department, editingList.value ? 'change' : 'add')) {
+    formError.value = 'Für diese Abteilung fehlt die erforderliche Listenberechtigung.'
+    return
+  }
   try {
     if (editingList.value) {
-      await store.updateList(editingList.value.id, { ...formData })
+      await store.updateList(editingList.value.id, { ...formData, department: formData.department })
       toast.add({ severity: 'success', summary: 'Gespeichert', detail: formData.name, life: 2500 })
     } else {
-      const created = await store.createList({ ...formData })
+      const created = await store.createList({ ...formData, department: formData.department })
       toast.add({ severity: 'success', summary: 'Erstellt', detail: created.name, life: 2500 })
     }
     showFormDialog.value = false
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht gespeichert werden.', life: 4000 })
+  } catch (err) {
+    formError.value = getApiErrorMessage(err, 'Die Liste konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten.')
   }
+}
+
+function canEditList(list: MemberList) {
+  return list.department !== null && canWriteDepartment(list.department, 'change')
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────
@@ -307,6 +398,7 @@ function formatDate(iso: string) {
 onMounted(() => {
   store.fetchLists()
   membersStore.fetchMembers({ limit: 1000 })
+  if (!departmentsStore.departments.length) departmentsStore.fetchDepartments()
 })
 </script>
 
