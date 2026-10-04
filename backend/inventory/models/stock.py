@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db import transaction as db_transaction
+from django.db.models import F
 
 from .item import Item
 from .location import StorageLocation
@@ -24,7 +25,16 @@ class Stock(models.Model):
                 check=models.Q(item__isnull=False, item_variant__isnull=True)
                 | models.Q(item__isnull=True, item_variant__isnull=False),
                 name="stock_either_item_or_variant",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["location", "item"], condition=models.Q(item__isnull=False), name="stock_unique_item_location"
+            ),
+            models.UniqueConstraint(
+                fields=["location", "item_variant"],
+                condition=models.Q(item_variant__isnull=False),
+                name="stock_unique_variant_location",
+            ),
+            models.CheckConstraint(check=models.Q(quantity__gte=0), name="stock_nonnegative_quantity"),
         ]
         verbose_name = "Bestand"
         verbose_name_plural = "Bestände"
@@ -209,39 +219,29 @@ class Transaction(models.Model):
         raise ValidationError("Gebuchte Bestandsbewegungen dürfen nicht gelöscht werden.")
 
     def update_stock(self):
-        stock_params = {}
-        if self.item:
-            stock_params = {"item": self.item, "item_variant": None}
-        elif self.item_variant:
-            stock_params = {"item": None, "item_variant": self.item_variant}
-        if self.transaction_type == "IN":
-            # IN: Only add to target (stock coming from outside the system)
-            stock, _created = Stock.objects.get_or_create(
-                location=self.target, defaults={"quantity": 0, **stock_params}, **stock_params
-            )
-            stock.quantity += self.quantity
-            stock.save()
-        elif self.transaction_type in ["OUT", "DISCARD"]:
-            try:
-                stock = Stock.objects.get(location=self.source, **stock_params)
-                if stock.quantity < self.quantity:
-                    raise ValidationError(f"Nicht genügend Bestand. Verfügbar: {stock.quantity}")
-                stock.quantity -= self.quantity
-                stock.save()
-            except Stock.DoesNotExist as e:
-                raise ValidationError("Kein Bestand am Quellort vorhanden.") from e
-        elif self.transaction_type in ["MOVE", "LOAN", "RETURN"]:
-            # MOVE, LOAN, RETURN: Subtract from source and add to target
-            try:
-                source_stock = Stock.objects.get(location=self.source, **stock_params)
-                if source_stock.quantity < self.quantity:
-                    raise ValidationError(f"Nicht genügend Bestand. Verfügbar: {source_stock.quantity}")
-                source_stock.quantity -= self.quantity
-                source_stock.save()
-            except Stock.DoesNotExist as e:
-                raise ValidationError("Kein Bestand am Quellort vorhanden.") from e
+        stock_params = {"item_id": self.item_id, "item_variant_id": self.item_variant_id}
+        target_stock = None
+        if self.transaction_type in ("IN", "MOVE", "LOAN", "RETURN"):
             target_stock, _created = Stock.objects.get_or_create(
-                location=self.target, defaults={"quantity": 0, **stock_params}, **stock_params
+                location=self.target, defaults={"quantity": 0}, **stock_params
             )
-            target_stock.quantity += self.quantity
-            target_stock.save()
+
+        source_stock = None
+        if self.transaction_type != "IN":
+            source_stock = Stock.objects.filter(location=self.source, **stock_params).first()
+            if source_stock is None:
+                raise ValidationError("Kein Bestand am Quellort vorhanden.")
+
+        # Lock existing rows in one stable order, including the target of a transfer.
+        stock_ids = [stock.pk for stock in (source_stock, target_stock) if stock is not None]
+        list(Stock.objects.select_for_update().filter(pk__in=stock_ids).order_by("pk"))
+
+        if source_stock is not None:
+            changed = Stock.objects.filter(pk=source_stock.pk, quantity__gte=self.quantity).update(
+                quantity=F("quantity") - self.quantity
+            )
+            if not changed:
+                current = Stock.objects.get(pk=source_stock.pk).quantity
+                raise ValidationError(f"Nicht genügend Bestand. Verfügbar: {current}")
+        if target_stock is not None:
+            Stock.objects.filter(pk=target_stock.pk).update(quantity=F("quantity") + self.quantity)

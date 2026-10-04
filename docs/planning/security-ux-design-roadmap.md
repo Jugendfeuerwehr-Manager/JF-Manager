@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-09.2 verhindert wiederholte und veränderte Buchungen über Modell/API und bietet eine verknüpfte Gegenbuchung; drei SEC-09.1-Fälle zu Idempotenz und Bestandsdubletten bleiben rot. SEC-03.5b liegt in `f5da4fd`. |
-| Aktuelles Paket | SEC-09.2 Gegenbuchung; SEC-03.6 normale Listenoberfläche und ROLE-01.5 Bestandsgruppen laufen getrennt. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
+| Letzter Checkpoint | 04.10.2026: SEC-09.3 sichert eindeutige Bestandszeilen und atomare Mengenänderungen; zwei Idempotenzfälle bleiben rot. Lokaler Bestand: 3 Zeilen, keine Dubletten. SEC-09.2 liegt in `cd2aadc`. |
+| Aktuelles Paket | SEC-09.3 Bestandsidentität; SEC-03.6 normale Listenoberfläche und ROLE-01.5 Bestandsgruppen laufen getrennt. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `f5da4fd` (SEC-03.5b); SEC-09.2 ist dieser Backend-Commit. |
+| Letzter Roadmap-Commit | `cd2aadc` (SEC-09.2); SEC-09.3 ist dieser Backend-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-09.3: Bestandsidentität und atomare Mengenänderung absichern; parallel SEC-03.6 und ROLE-01.5 integrieren. |
+| Nächster konkreter Schritt | SEC-09.4: dauerhafte Idempotenz für Buchungswege; parallel SEC-03.6 und ROLE-01.5 integrieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -541,7 +541,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
-| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.2 Modell-/API-Unveränderlichkeit und Gegenbuchung; SEC-09.3 eindeutiger und atomarer Bestand. |
+| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.3 eindeutiger und atomarer Bestand; SEC-09.4 Buchungs-Idempotenz. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.4 Seed mit 16 technischen Vorlagen aus elf Fachrollen; ROLE-01.5 Bestandsgruppen und Zuweisungen. SEC-01/02-Bereichsprüfung bleibt Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
@@ -737,7 +737,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
-- **Status:** in Arbeit; `SEC-09.2` Gegenbuchung und Modell-/API-Sperre geprüft, atomarer Bestand und Idempotenz offen.
+- **Status:** in Arbeit; `SEC-09.3` Bestandseindeutigkeit und atomare Mengenänderung geprüft, Idempotenz offen.
 - **Verantwortlich:** Codex (Integrationsagent); Bestandsmodell, API und aufrufende Dienste werden in getrennten Teilschritten geprüft.
 - **Abhängigkeiten:** SEC-01-Rechtevertrag und SEC-02-Ziel- und Sammelprüfung für Inventar, Bestellungen und Mitglieder. UX-05 baut auf dem gesicherten Buchungsvertrag auf. PostgreSQL ist für die verbindliche Konkurrenzprüfung erforderlich; SQLite-Prüfungen decken diesen Fall nicht gleichwertig ab.
 - **Ziel und Abnahme:** Eine fachliche Bestandsbewegung wird genau einmal gebucht. Gespeicherte Buchungen können nicht still geändert oder gelöscht werden; Korrekturen erzeugen nachvollziehbare Gegenbuchungen. Bestand je Artikel oder Variante und Lagerort ist eindeutig und nie negativ. Parallele Buchungen verlieren keine Änderungen. Wiederholte API-Aufrufe mit derselben Idempotenzkennung erzeugen keine zweite Bewegung; dieselbe Kennung mit anderem Inhalt wird abgewiesen. Mehrteilige Ausgaben, Rückgaben und Bestelleingänge sind vollständig atomar. Rechte und tatsächliche Quell-/Zielabteilungen bleiben geprüft; PostgreSQL-Konkurrenz-, Rollback- und Wiederholungsfälle bestehen.
@@ -749,14 +749,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-09.4`: Dauerhafte Idempotenz für einzelne und mehrteilige Buchungswege einführen; gleiche Kennung/Inhalt wiedergeben und abweichenden Inhalt ablehnen.
   - `SEC-09.5`: Direkte Bestandsänderungen außerhalb des Buchungsdienstes schließen und Inventar-, Bestell-, Leih- und Mitgliedschaftsabläufe auf den gemeinsamen Vertrag umstellen.
   - `SEC-09.6`: PostgreSQL-Konkurrenz, Rollback, Rechte, Zielabteilungen und Bedien-/API-Vertrag abnehmen; verbleibende Betriebsgrenzen dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-09.1 `45022d2`; `SEC-09.2` wird mit diesem Backend-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** SEC-09.2 `cd2aadc`; `SEC-09.3` wird mit diesem Backend-Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`, SEC-09.1 `45022d2`; SEC-09.2 Modell, API, Admin, Migration `0013`, Tests und dieser Checkpoint in diesem Commit.
-- **Umgesetzte Teilschritte:** `SEC-09.0` bis `SEC-09.2`.
-- **Ausgeführte Prüfungen mit Ergebnis:** 7/7 gezielte Unveränderlichkeits- und Gegenbuchungstests sowie 31/31 angrenzende Inventar-/Bestell-/Mitglieder-Tests bestanden; übrige drei SEC-09.1-Regressionen für Idempotenz und Bestandsdubletten erwartungsgemäß fehlgeschlagen. PostgreSQL-Konkurrenztest nicht ausgeführt. Migrations-, Ruff- und Staged-Diff-Check vor Commit.
-- **Offene Fehler / Risiken:** Der Modellschutz erfasst keine `QuerySet.update/delete`-Aufrufe; insbesondere die Mitglieder-Löschstrategien verändern oder löschen historische Buchungen noch direkt und gehören zu SEC-09.5. `Stock` hat keinen Eindeutigkeitsconstraint; `get_or_create` und anschließendes Python-Read-Modify-Write schützen parallele Buchungen nicht. Bestehende Daten können Dubletten enthalten. Gegenbuchungen können bei inzwischen verbrauchtem Bestand abgewiesen werden. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
+- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`, SEC-09.1 `45022d2`, SEC-09.2 `cd2aadc`; SEC-09.3 Bestandsmodell/Migration `0014`, atomare Verbuchung, Tests und dieser Checkpoint in diesem Commit.
+- **Umgesetzte Teilschritte:** `SEC-09.0` bis `SEC-09.3`.
+- **Ausgeführte Prüfungen mit Ergebnis:** Lokale Datenprüfung: 3 Bestandszeilen, 0 doppelte Identitäten. 10/10 gezielte Buchungs-/Constraint-Tests sowie 31/31 angrenzende Inventar-/Bestell-/Mitglieder-Tests bestanden. Zwei SEC-09.1-Idempotenzregressionen weiterhin erwartungsgemäß fehlgeschlagen. PostgreSQL-Konkurrenztest nicht ausgeführt. Migrationsabgleich und Ruff bestanden; Staged-Diff-Check vor Commit.
+- **Offene Fehler / Risiken:** Migration `0014` verweigert vorhandene Dubletten und erfordert dann fachliche Bereinigung; andere Installationen wurden nicht geprüft. Der Modellschutz erfasst keine `QuerySet.update/delete`-Aufrufe; Mitglieder-Löschstrategien verändern oder löschen historische Buchungen noch direkt und gehören zu SEC-09.5. PostgreSQL-Konkurrenztest fehlt bis `SEC-09.6`. Gegenbuchungen können bei inzwischen verbrauchtem Bestand abgewiesen werden. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
 - **Laufende Prozesse und sichere Fortsetzung:** SEC-03.6-Oberfläche und ROLE-01.5-Gruppenzuordnung werden parallel in anderen Dateien bearbeitet. Git-Staging und Commits erfolgen nur durch den Integrationsagenten.
-- **Nächster konkreter Schritt:** `SEC-09.3` Dubletten im Datenbestand prüfen, Bestandsidentität und Mengenänderung atomar absichern; danach `SEC-09.4` Idempotenz.
+- **Nächster konkreter Schritt:** `SEC-09.4` dauerhafte Idempotenz für einzelne und mehrteilige Buchungswege; danach `SEC-09.5` direkte Bulk-Pfade schließen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -851,3 +851,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | ROLE-01.4 | Versionierten Katalog für 16 Bereichsvarianten aus elf Fachrollen und idempotenten Seed mit vollständigem Soll/Ist-Vergleich ergänzt. Der Command legt nur neue Vorlagen/Gruppen an, übernimmt keine gleichnamigen Gruppen, überschreibt keine bestehenden Rechte und weist keine Benutzer zu. | 13/13 kombinierte Seed-/Modelltests, Ruff check/format und Diff-Check bestanden; Seed auf Anwendungsdatenbank und breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-01.4): seed versioned role templates safely` | ROLE-01.5 vorhandene Gruppen und Zuweisungen explizit zuordnen. |
 | 04.10.2026 | SEC-03.5b | Superuser-Ansicht für offene Listen mit Einträgen, möglichen Abteilungen, Notizen, Checkstand, Beschreibung und Anhangmetadaten ergänzt. Aktive Zielabteilung und optionale bestehende Zielliste sind wählbar; vorhandene Bindungen bleiben fest. Einzelzuordnung und bewusst bestätigter Abschluss verwenden die Klärungs-API. | Vue-Typecheck und 6/6 gezielte Frontendtests bestanden; breite Frontend-Suite nicht ausgeführt. Staged-Diff-Check vor Commit. | Dieser Commit: `feat(SEC-03.5b): add legacy list resolution view` | SEC-03.6 normale Listenoberfläche. |
 | 04.10.2026 | SEC-09.2 | Bereits gebuchte Bewegungen speichern bei No-op nicht erneut und weisen Änderungen zurück. API bietet nur Lesen, Anlage und mit Original verknüpfte, begründete Gegenbuchung; Änderungs-/Löschmethoden entfallen, Admin-Bearbeitung ist gesperrt. Korrektur prüft zusätzlich Add-/Change-Recht und Quell-/Zielbereich. | 7/7 gezielte und 31/31 angrenzende Backendtests bestanden; 3 Idempotenz-/Bestandsdubletten-Regressionen erwartungsgemäß rot. Migrationsabgleich, Ruff und Diff-Check vor Commit; PostgreSQL-Konkurrenz und breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-09.2): make booked movements reversible and immutable` | SEC-09.3 eindeutiger atomarer Bestand; SEC-09.5 direkte Bulk-Pfade schließen. |
+| 04.10.2026 | SEC-09.3 | Eindeutige Bestandsidentität für Artikel/Variante je Ort und nichtnegative Menge als Constraints ergänzt. Migration prüft Dubletten vorab ohne automatische Zusammenlegung; Verbuchung sperrt Zeilen in stabiler Reihenfolge und nutzt bedingte `F`-Updates in einer Transaktion. | Lokaler Datenbestand 3 Zeilen/0 Dubletten; 10/10 gezielte und 31/31 angrenzende Backendtests, Migrationsabgleich, Ruff und Diff-Check bestanden. Zwei Idempotenztests erwartungsgemäß rot; PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-09.3): make stock identity and updates atomic` | SEC-09.4 dauerhafte Idempotenz. |

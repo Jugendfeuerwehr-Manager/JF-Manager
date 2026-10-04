@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from inventory.models import Item, Stock, StorageLocation, Transaction
+from inventory.models import Item, ItemVariant, Stock, StorageLocation, Transaction
 
 
 class StockLedgerRegressionTest(TestCase):
@@ -154,3 +154,25 @@ class StockLedgerRegressionTest(TestCase):
             Stock.objects.create(item=self.item, location=self.location, quantity=3)
 
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 2)
+
+    def test_variant_stock_identity_cannot_be_duplicated(self):
+        variant = ItemVariant.objects.create(parent_item=self.item, variant_attributes={"size": "M"})
+        Stock.objects.create(item_variant=variant, location=self.location, quantity=2)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Stock.objects.create(item_variant=variant, location=self.location, quantity=3)
+
+        self.assertEqual(Stock.objects.get(item_variant=variant, location=self.location).quantity, 2)
+
+    def test_failed_transfer_rolls_back_target_stock_and_movement(self):
+        target = StorageLocation.objects.create(name="Leeres Ziellager")
+        Stock.objects.create(item=self.item, location=self.location, quantity=1)
+
+        with self.assertRaises(ValidationError):
+            Transaction.objects.create(
+                transaction_type="MOVE", item=self.item, source=self.location, target=target, quantity=2
+            )
+
+        self.assertFalse(Transaction.objects.exists())
+        self.assertFalse(Stock.objects.filter(item=self.item, location=target).exists())
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 1)
