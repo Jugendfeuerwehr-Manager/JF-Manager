@@ -1,0 +1,310 @@
+"""Version 1 of the built-in role templates; groups remain the permission source."""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class RoleSpec:
+    key: str
+    name: str
+    description: str
+    scope: str
+    is_delegable: bool
+    permissions: tuple[str, ...]
+    version: int = 1
+
+    @property
+    def group_name(self):
+        return f"jf_role__{self.key}"
+
+
+PERMISSION_BLOCKS = {
+    "organization_scope": ("departments.can_access_all_departments",),
+    "member_reader": ("members.view_member",),
+    "member_editor": ("members.view_member", "members.add_member", "members.change_member"),
+    "parent_reader": ("members.view_parent",),
+    "parent_editor": ("members.view_parent", "members.add_parent", "members.change_parent"),
+    "group_reader": ("members.view_group",),
+    "group_editor": ("members.view_group", "members.add_group", "members.change_group"),
+    "list_editor": (
+        "members.view_memberlist",
+        "members.add_memberlist",
+        "members.change_memberlist",
+        "members.view_memberlistentry",
+        "members.add_memberlistentry",
+        "members.change_memberlistentry",
+    ),
+    "list_exporter": ("members.export_memberlist",),
+    "service_reader": ("servicebook.view_service", "servicebook.view_attendance"),
+    "attendance_editor": (
+        "servicebook.view_attendance",
+        "servicebook.add_attendance",
+        "servicebook.change_attendance",
+    ),
+    "service_editor": (
+        "servicebook.view_service",
+        "servicebook.add_service",
+        "servicebook.change_service",
+        "servicebook.view_attendance",
+        "servicebook.add_attendance",
+        "servicebook.change_attendance",
+    ),
+    "training_reader": ("training.view_trainingsession", "training.view_trainingblock"),
+    "training_editor": (
+        "training.view_trainingsession",
+        "training.add_trainingsession",
+        "training.change_trainingsession",
+        "training.view_trainingblock",
+        "training.add_trainingblock",
+        "training.change_trainingblock",
+        "training.can_manage_training",
+    ),
+    "library_editor": (
+        "training.view_libraryblock",
+        "training.add_libraryblock",
+        "training.change_libraryblock",
+        "training.view_libraryblockcategory",
+        "training.add_libraryblockcategory",
+        "training.change_libraryblockcategory",
+        "training.view_libraryblocktag",
+        "training.add_libraryblocktag",
+        "training.change_libraryblocktag",
+        "training.can_manage_library",
+    ),
+    "qualification_reader": ("qualifications.view_qualification", "qualifications.view_specialtask"),
+    "qualification_editor": (
+        "qualifications.view_qualification",
+        "qualifications.add_qualification",
+        "qualifications.change_qualification",
+        "qualifications.view_qualificationtype",
+    ),
+    "task_editor": (
+        "qualifications.view_specialtask",
+        "qualifications.add_specialtask",
+        "qualifications.change_specialtask",
+        "qualifications.view_specialtasktype",
+    ),
+    "inventory_reader": (
+        "inventory.view_item",
+        "inventory.view_itemvariant",
+        "inventory.view_storagelocation",
+        "inventory.view_stock",
+    ),
+    "inventory_editor": (
+        "inventory.view_item",
+        "inventory.add_item",
+        "inventory.change_item",
+        "inventory.view_itemvariant",
+        "inventory.add_itemvariant",
+        "inventory.change_itemvariant",
+        "inventory.view_storagelocation",
+        "inventory.add_storagelocation",
+        "inventory.change_storagelocation",
+        "inventory.view_stock",
+        "inventory.add_stock",
+        "inventory.view_transaction",
+        "inventory.add_transaction",
+        "inventory.can_rent",
+    ),
+    "order_editor": (
+        "orders.view_order",
+        "orders.add_order",
+        "orders.change_order",
+        "orders.can_manage_orders",
+        "orders.can_change_order_status",
+        "orders.view_orderitem",
+        "orders.add_orderitem",
+        "orders.change_orderitem",
+        "orders.view_orderableitem",
+    ),
+    "email_sender": (
+        "members.can_send_member_emails",
+        "members.view_emailmessage",
+        "members.add_emailmessage",
+    ),
+    "identity_admin": (
+        "users.view_customuser",
+        "users.add_customuser",
+        "users.change_customuser",
+        "auth.view_group",
+        "auth.add_group",
+        "auth.change_group",
+        "departments.view_userdepartmentrole",
+        "departments.add_userdepartmentrole",
+        "departments.change_userdepartmentrole",
+        "departments.view_roletemplate",
+        "departments.add_roletemplate",
+        "departments.change_roletemplate",
+    ),
+    "department_admin": (
+        "departments.view_department",
+        "departments.add_department",
+        "departments.change_department",
+        "departments.can_manage_all_departments",
+    ),
+}
+
+
+def _permissions(*blocks):
+    return tuple(sorted({permission for block in blocks for permission in PERMISSION_BLOCKS[block]}))
+
+
+ROLE_SPECS = (
+    RoleSpec(
+        "youth_director",
+        "Jugendwart",
+        "Fachliche Jugendleitung auf Organisationsebene.",
+        "organization",
+        False,
+        _permissions(
+            "member_editor",
+            "parent_editor",
+            "group_editor",
+            "list_editor",
+            "list_exporter",
+            "service_editor",
+            "training_editor",
+            "qualification_editor",
+            "task_editor",
+            "organization_scope",
+        ),
+    ),
+    RoleSpec(
+        "department_youth_director",
+        "Abteilungsjugendwart",
+        "Fachliche Jugendleitung in der zugewiesenen Abteilung.",
+        "department",
+        False,
+        _permissions(
+            "member_editor",
+            "parent_editor",
+            "group_editor",
+            "list_editor",
+            "list_exporter",
+            "service_editor",
+            "training_editor",
+            "qualification_editor",
+            "task_editor",
+        ),
+    ),
+    RoleSpec(
+        "youth_leader",
+        "Jugendleiter",
+        "Dienste, Listen und Übungen der Abteilung bearbeiten.",
+        "department",
+        True,
+        _permissions(
+            "member_reader",
+            "parent_reader",
+            "group_reader",
+            "list_editor",
+            "service_editor",
+            "training_editor",
+            "qualification_reader",
+        ),
+    ),
+    RoleSpec(
+        "supervisor",
+        "Betreuer",
+        "Dienste und Übungen lesen sowie Anwesenheit erfassen.",
+        "department",
+        True,
+        _permissions("member_reader", "parent_reader", "service_reader", "attendance_editor", "training_reader"),
+    ),
+    RoleSpec(
+        "inventory_manager",
+        "Inventarverwaltung (Abteilung)",
+        "Material der zugewiesenen Abteilung verwalten.",
+        "department",
+        True,
+        _permissions("inventory_editor"),
+    ),
+    RoleSpec(
+        "inventory_manager_organization",
+        "Inventarverwaltung (Organisation)",
+        "Zentrales Material verwalten.",
+        "organization",
+        True,
+        _permissions("inventory_editor", "organization_scope"),
+    ),
+    RoleSpec(
+        "order_manager",
+        "Bestellverwaltung (Abteilung)",
+        "Bestellungen der zugewiesenen Abteilung verwalten.",
+        "department",
+        True,
+        _permissions("order_editor", "inventory_reader"),
+    ),
+    RoleSpec(
+        "order_manager_organization",
+        "Bestellverwaltung (Organisation)",
+        "Organisationsweite Bestellungen verwalten.",
+        "organization",
+        True,
+        _permissions("order_editor", "inventory_reader", "organization_scope"),
+    ),
+    RoleSpec(
+        "email_communicator",
+        "E-Mail-Kommunikation (Abteilung)",
+        "Nachrichten im Abteilungsbereich versenden.",
+        "department",
+        True,
+        _permissions("member_reader", "email_sender"),
+    ),
+    RoleSpec(
+        "email_communicator_organization",
+        "E-Mail-Kommunikation (Organisation)",
+        "Organisationsweite Nachrichten versenden.",
+        "organization",
+        True,
+        _permissions("member_reader", "email_sender", "organization_scope"),
+    ),
+    RoleSpec(
+        "training_planner",
+        "Ausbildungsplanung (Abteilung)",
+        "Übungen der zugewiesenen Abteilung planen.",
+        "department",
+        True,
+        _permissions("training_editor", "group_reader"),
+    ),
+    RoleSpec(
+        "training_planner_organization",
+        "Ausbildungsplanung (Organisation)",
+        "Organisationsweite Übungen planen.",
+        "organization",
+        True,
+        _permissions("training_editor", "group_reader", "organization_scope"),
+    ),
+    RoleSpec(
+        "library_editor",
+        "Bibliotheksredaktion",
+        "Gemeinsame Ausbildungsbausteine verwalten.",
+        "organization",
+        False,
+        _permissions("library_editor", "organization_scope"),
+    ),
+    RoleSpec(
+        "qualification_manager",
+        "Qualifikationsverwaltung (Abteilung)",
+        "Qualifikationen der Abteilung verwalten.",
+        "department",
+        True,
+        _permissions("qualification_editor", "task_editor", "member_reader"),
+    ),
+    RoleSpec(
+        "qualification_manager_organization",
+        "Qualifikationsverwaltung (Organisation)",
+        "Organisationsweite Qualifikationen verwalten.",
+        "organization",
+        True,
+        _permissions("qualification_editor", "task_editor", "member_reader", "organization_scope"),
+    ),
+    RoleSpec(
+        "system_administrator",
+        "Systemadministration",
+        "Konten, Abteilungen und Rollengruppen verwalten.",
+        "organization",
+        False,
+        _permissions("identity_admin", "department_admin", "organization_scope"),
+    ),
+)
