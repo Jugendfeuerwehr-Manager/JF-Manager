@@ -283,3 +283,24 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data["id"], location.pk)
+
+    def test_central_member_location_is_not_in_other_department_location_list(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        location = StorageLocation.objects.create(name="Central B equipment", member=member, is_member=True)
+
+        response = self.client.get("/api/v1/inventory/locations/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rows = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertIn(self.central_location.pk, {row["id"] for row in rows})
+        self.assertNotIn(location.pk, {row["id"] for row in rows})
+
+    def test_central_member_location_detail_is_hidden_from_other_department(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        location = StorageLocation.objects.create(name="Central B equipment", member=member, is_member=True)
+
+        response = self.client.get(f"/api/v1/inventory/locations/{location.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
