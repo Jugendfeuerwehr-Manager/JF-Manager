@@ -12,7 +12,12 @@ from departments.mixins import DepartmentScopeViewSetMixin
 from inventory.models import Stock, StorageLocation, Transaction
 from jf_manager_backend.mixins import BasePermissionedViewSet
 
-from .access import filter_item_department_queryset_for_user, get_user_department_ids, is_org_wide_user
+from .access import (
+    can_manage_department,
+    filter_item_department_queryset_for_user,
+    get_user_department_ids,
+    is_org_wide_user,
+)
 from .serializers import StockSerializer, StorageLocationSerializer, TransactionSerializer
 
 
@@ -100,6 +105,14 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
                 return Response({"detail": "Persönlicher Lagerort nicht vorhanden."}, status=status.HTTP_404_NOT_FOUND)
             created = False
         else:
+            try:
+                target_department_id = member.personal_storage_location.department_id
+            except StorageLocation.DoesNotExist:
+                target_department_id = member.departments.values_list("id", flat=True).first()
+            if not can_manage_department(
+                request.user, target_department_id, "inventory.add_storagelocation"
+            ):
+                raise PermissionDenied("Keine Anlegeberechtigung in der Mitgliedsabteilung.")
             location, created = self._get_or_create_personal_storage_location(request, member)
         serializer = self.get_serializer(location)
         return_status = status.HTTP_201_CREATED if created and request.method == "POST" else status.HTTP_200_OK

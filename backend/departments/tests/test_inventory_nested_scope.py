@@ -221,3 +221,18 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(StorageLocation.objects.filter(member=member).exists())
+
+    def test_org_inventory_manager_can_create_member_location_across_departments(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        manager = get_user_model().objects.create_user(username="nested-global-manager")
+        manager.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            Permission.objects.get(content_type__app_label="inventory", codename="add_storagelocation"),
+        )
+        self.client.force_authenticate(user=manager)
+
+        response = self.client.post(f"/api/v1/inventory/locations/for-member/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(StorageLocation.objects.get(member=member).department_id, self.item_b.department_id)
