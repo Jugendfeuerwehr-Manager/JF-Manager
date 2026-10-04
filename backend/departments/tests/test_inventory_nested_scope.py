@@ -328,3 +328,25 @@ class InventoryNestedScopeTests(APITestCase):
         response = self.client.get(f"/api/v1/inventory/locations/{location.pk}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+
+    def test_global_item_delete_right_without_org_scope_cannot_delete_central_item(self):
+        item = Item.objects.create(name="Central disposable", category=self.category)
+        self.viewer.user_permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="delete_item")
+        )
+
+        response = self.client.delete(f"/api/v1/inventory/items/{item.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Item.objects.filter(pk=item.pk).exists())
+
+    def test_global_location_delete_right_without_org_scope_cannot_delete_central_location(self):
+        location = StorageLocation.objects.create(name="Central disposable")
+        self.viewer.user_permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="delete_storagelocation")
+        )
+
+        response = self.client.delete(f"/api/v1/inventory/locations/{location.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(StorageLocation.objects.filter(pk=location.pk).exists())
