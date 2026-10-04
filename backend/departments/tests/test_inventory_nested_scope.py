@@ -6,7 +6,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
-from inventory.models import Category, Item, ItemVariant, Stock, StorageLocation
+from inventory.models import Category, Item, ItemVariant, Stock, StorageLocation, Transaction
+from members.models import Member
 
 
 class InventoryNestedScopeTests(APITestCase):
@@ -27,6 +28,16 @@ class InventoryNestedScopeTests(APITestCase):
         cls.stock_a = Stock.objects.create(item=cls.item_a, location=cls.central_location, quantity=1)
         cls.stock_b = Stock.objects.create(item=cls.item_b, location=cls.central_location, quantity=2)
         cls.central_stock = Stock.objects.create(item=cls.central_item, location=cls.central_location, quantity=3)
+        cls.member_a = Member.objects.create(name="A", lastname="Borrower")
+        cls.member_a.departments.add(department_a)
+        cls.member_location = StorageLocation.objects.create(
+            name="Member A", member=cls.member_a, is_member=True, department=department_a
+        )
+        cls.member_stock_a = Stock.objects.create(item=cls.item_a, location=cls.member_location, quantity=1)
+        cls.member_stock_b = Stock.objects.create(item=cls.item_b, location=cls.member_location, quantity=2)
+        cls.member_central_stock = Stock.objects.create(
+            item=cls.central_item, location=cls.member_location, quantity=3
+        )
         cls.viewer = get_user_model().objects.create_user(username="nested-inventory-viewer")
         group_a = Group.objects.create(name="Nested inventory viewer A")
         for codename in ("view_category", "view_item", "view_itemvariant", "view_storagelocation"):
@@ -124,3 +135,43 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {"total": 0, "rows": []})
+
+    def test_member_equipment_without_stock_or_transaction_right_has_no_details(self):
+        response = self.client.get(
+            f"/api/v1/inventory/locations/member-equipment/{self.member_a.pk}/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["equipment"], [])
+        self.assertEqual(response.data["total_items"], 0)
+        self.assertEqual(response.data["recent_transactions"], [])
+
+    def test_member_equipment_filters_stock_and_transactions_by_item_owner(self):
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        for codename in ("view_stock", "view_transaction"):
+            role_a.groups.first().permissions.add(
+                Permission.objects.get(content_type__app_label="inventory", codename=codename)
+            )
+        transaction_a = Transaction.objects.create(
+            transaction_type="LOAN", item=self.item_a, source=self.central_location,
+            target=self.member_location, quantity=1
+        )
+        Transaction.objects.create(
+            transaction_type="LOAN", item=self.item_b, source=self.central_location,
+            target=self.member_location, quantity=2
+        )
+
+        response = self.client.get(
+            f"/api/v1/inventory/locations/member-equipment/{self.member_a.pk}/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {row["id"] for row in response.data["equipment"]},
+            {self.member_stock_a.pk, self.member_central_stock.pk},
+        )
+        self.assertEqual(response.data["total_items"], 5)
+        self.assertEqual(
+            {row["id"] for row in response.data["recent_transactions"]},
+            {transaction_a.pk},
+        )
