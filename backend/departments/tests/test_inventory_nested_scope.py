@@ -113,3 +113,14 @@ class InventoryNestedScopeTests(APITestCase):
         response = self.client.get(f"/api/v1/inventory/items/{self.item_a.pk}/stock/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_variant_stock_requires_stock_view_right(self):
+        response = self.client.get(f"/api/v1/inventory/variants/{self.variant_a.pk}/stock/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_central_location_stock_without_stock_right_is_empty(self):
+        response = self.client.get(f"/api/v1/inventory/locations/{self.central_location.pk}/stock/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"total": 0, "rows": []})

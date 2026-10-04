@@ -10,7 +10,7 @@ from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
-from inventory.api.access import can_manage_department, visible_item_department_ids
+from inventory.api.access import can_manage_department, can_view_item_department, visible_item_department_ids
 from inventory.models import Category, Item, ItemVariant, Stock
 from jf_manager_backend.mixins import BasePermissionedViewSet
 from jf_manager_backend.permissions import OrgWideWritePermission
@@ -70,6 +70,8 @@ class ItemViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):
         item = self.get_object()
+        if not can_view_item_department(request.user, item.department_id, "inventory.view_stock"):
+            raise PermissionDenied("Kein Leserecht für den Artikelbestand.")
         stock_qs = Stock.objects.filter(item=item) | Stock.objects.filter(item_variant__parent_item=item)
         stock_qs = stock_qs.select_related("location", "item", "item_variant", "item_variant__parent_item")
         serializer = StockSerializer(stock_qs, many=True)
@@ -105,6 +107,10 @@ class ItemVariantViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, v
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):
         variant = self.get_object()
+        if not can_view_item_department(
+            request.user, variant.parent_item.department_id, "inventory.view_stock"
+        ):
+            raise PermissionDenied("Kein Leserecht für den Variantenbestand.")
         qs = variant.stock_set.select_related("location").all()
         serializer = StockSerializer(qs, many=True)
         total = qs.aggregate(total=Sum("quantity"))["total"] or 0

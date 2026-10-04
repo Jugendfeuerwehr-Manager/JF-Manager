@@ -31,6 +31,14 @@ def visible_item_department_ids(user, permission: str) -> set[int] | None:
     return allowed_ids
 
 
+def can_view_item_department(user, department_id: int | None, permission: str) -> bool:
+    """Check a nested item read against its own model right and owner."""
+    allowed_ids = visible_item_department_ids(user, permission)
+    if allowed_ids is None:
+        return True
+    return bool(allowed_ids) if department_id is None else department_id in allowed_ids
+
+
 def can_manage_department(user, department_id: int | None, permission: str) -> bool:
     """
     Return whether the user may mutate data owned by the given department.

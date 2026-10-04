@@ -12,7 +12,7 @@ from departments.mixins import DepartmentScopeViewSetMixin
 from inventory.models import Stock, StorageLocation, Transaction
 from jf_manager_backend.mixins import BasePermissionedViewSet
 
-from .access import get_user_department_ids, is_org_wide_user
+from .access import filter_item_department_queryset_for_user, get_user_department_ids, is_org_wide_user
 from .serializers import StockSerializer, StorageLocationSerializer, TransactionSerializer
 
 
@@ -50,6 +50,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
             "item_variant__parent_item",
             "location",
         )
+        qs = filter_item_department_queryset_for_user(qs, request.user, "inventory.view_stock")
         serializer = StockSerializer(qs, many=True)
         total = qs.aggregate(total=Sum("quantity"))["total"] or 0
         return Response({"total": total, "rows": serializer.data})
