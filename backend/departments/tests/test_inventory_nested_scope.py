@@ -369,3 +369,32 @@ class InventoryNestedScopeTests(APITestCase):
         self.assertEqual(location_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Item.objects.filter(pk=item.pk).exists())
         self.assertFalse(StorageLocation.objects.filter(pk=location.pk).exists())
+
+    def test_staff_with_scoped_category_change_right_cannot_change_global_category(self):
+        self.viewer.is_staff = True
+        self.viewer.save(update_fields=["is_staff"])
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="change_category")
+        )
+
+        response = self.client.patch(
+            f"/api/v1/inventory/categories/{self.category.pk}/", {"name": "Changed"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.name, "Shared category")
+
+    def test_staff_with_scoped_category_add_right_cannot_create_global_category(self):
+        self.viewer.is_staff = True
+        self.viewer.save(update_fields=["is_staff"])
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="add_category")
+        )
+
+        response = self.client.post("/api/v1/inventory/categories/", {"name": "New global"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Category.objects.filter(name="New global").exists())
