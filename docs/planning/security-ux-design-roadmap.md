@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-02.9-Checkpoint schützt Trainingsblock-Ziele; 382/382 breite und danach 22/22 gezielte Backendtests bestanden. Paketabnahme wegen SEC-03/ROLE-01.2/SEC-09 offen. |
-| Aktuelles Paket | SEC-02.9 in Prüfung; SEC-02 bleibt in Arbeit. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
-| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 04.10.2026: SEC-03.0-Detailblock vorbereitet; SEC-02.9-WIP liegt in `1aebe19`. Dessen 382/382 breite und danach 22/22 gezielte Backendtests waren bestanden; Paketabnahme wegen SEC-03/ROLE-01.2/SEC-09 offen. |
+| Aktuelles Paket | SEC-03 übernommen; SEC-03.1 Zugriffslücke reproduzieren. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen; ROLE-01.2 parallel in Arbeit. |
+| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `5057612` (SEC-02.8); SEC-02.9 wird als WIP-Checkpoint committed. |
+| Letzter Roadmap-Commit | `1aebe19` (SEC-02.9 WIP); SEC-03.0 ist dieser Planungs-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-03 mit Detailblock übernehmen und Mitgliederlisten abteilungsbezogen machen; danach SEC-02.9-Abnahme wiederholen. |
+| Nächster konkreter Schritt | SEC-03.1: fremde Listen- und Eintragszugriffe per HTTP reproduzieren; danach Abteilungsbesitz und kontrollierte Altdatenmigration umsetzen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -535,7 +535,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
 | SEC-02 | in Arbeit | Codex | SEC-02.0 Vertrag und Teilschritte definiert; SEC-02.1 Gruppen-Zielabteilung reproduzieren. |
-| SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
+| SEC-03 | in Arbeit | Codex (Integrationsagent) | SEC-03.0 Vertrag und Teilschritte; SEC-03.1 HTTP-Regressionsfälle. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
@@ -709,6 +709,30 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** keine; `dump.rdb` bleibt unversioniert.
 - **Nächster konkreter Schritt:** SEC-03-Detailblock vor Paketbeginn ausfüllen, Mitgliederlisten und Relationen migrieren; danach `SEC-02.9` mit ROLE-01.2 und SEC-09-Befunden erneut abnehmen.
 
+### SEC-03: Mitgliederlisten nach Abteilung
+
+- **Status:** in Arbeit; `SEC-03.0` Vertrag und Teilschritte festgelegt, Implementierung noch nicht begonnen.
+- **Verantwortlich:** Codex (Integrationsagent); Listenänderungen bleiben einem Bearbeiter zugeordnet.
+- **Abhängigkeiten:** SEC-01-Rechtevertrag und SEC-02-Zielprüfung; generische Anhänge erben die Eigentümerberechtigung. SEC-08 behandelt zusätzlich sichere Tabellenzellen, SEC-05 private Dateiauslieferung.
+- **Ziel und Abnahme:** Jede neue Liste hat genau eine gültige Abteilung; Einträge gehören ihr an. Abteilungsrollen sehen und ändern ausschließlich dort berechtigte Listen, Einträge, Exporte und Anhänge; ein Queryparameter erweitert nie den Bereich. Gemischte Altdaten werden nach eindeutigem Eigentümer aufgeteilt, Checkstände und Notizen bleiben erhalten. Mehrdeutige Mitgliedschaften, leere Listen, Beschreibungen und Anhänge bleiben bis zu expliziter Superuser-Zuordnung für normale Nutzer verborgen. Migration ist prüfbar und wiederaufnehmbar. A/B- und Organisations-Positivfälle sowie Altbestandsfälle bestehen.
+- **Teilschritte mit stabilen IDs:**
+  - `SEC-03.0`: Iststand, Abhängigkeiten, Abnahme und Teilschritte dokumentieren.
+  - `SEC-03.1`: HTTP-Regressionen für fremde Listen, Einträge, Export, Anhänge und gemischte Schreibziele mit A/B-Rollen ergänzen.
+  - `SEC-03.2`: Abteilungsbesitz im Modell und in den API-Serializern einführen; neue Listen und Einträge einschließlich Sammel-/Ereignisanlage vor dem Schreiben validieren.
+  - `SEC-03.3`: Listen-Querysets und sämtliche Aktionen mit tatsächlicher Eigentümerabteilung und Aktionsrecht absichern; generische Anhangpfade einbeziehen.
+  - `SEC-03.4`: Eindeutige Altlisten und eindeutig trennbare Einträge kontrolliert migrieren; Checkstände und Notizen erhalten.
+  - `SEC-03.5`: Mehrdeutige Altlisten, Mehrfachmitgliedschaften, Beschreibungen und Anhänge in einen Superuser-Klärungsablauf überführen; keine automatische Anhangvervielfältigung.
+  - `SEC-03.6`: Frontend-Anlage und -Bearbeitung mit erforderlicher Abteilung sowie sicheren Fehlerzuständen anpassen.
+  - `SEC-03.7`: Migrations- und Zugriffssuite, Schema- und Bedienvertrag prüfen; SEC-03-Abnahme und SEC-02.9-Restprüfung dokumentieren.
+- **Letzter dauerhafter Checkpoint:** `1aebe19` (SEC-02.9 WIP); dieser SEC-03.0-Commit übernimmt das Paket.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Geänderte Dateien / Commit-Bezug:** zunächst nur dieser Roadmap-Detailblock.
+- **Umgesetzte Teilschritte:** `SEC-03.0` mit diesem Commit; übrige offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** Iststand anhand von Listenmodell, Viewsets, Serializer und Git geprüft; Anwendungstests für reine Planung nicht ausgeführt.
+- **Offene Fehler / Risiken:** Bisherige Listen haben keine Eigentümerabteilung. Globales Listen-Queryset und unvalidierte Einträge erlauben Abteilungsvermischung; Altbestandsmigration muss unklare Sichtbarkeit sperren. `dump.rdb` ist fremd/unversioniert und bleibt unangetastet.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine SEC-03-Prozesse; ROLE-01.2 wird parallel in anderen Dateien bearbeitet. Git-Staging und Commits erfolgen nur durch den Integrationsagenten.
+- **Nächster konkreter Schritt:** `SEC-03.1` als reproduzierbare HTTP-Regressionen umsetzen.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -789,3 +813,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-02.7 | HTTP-Regressionen für A/B-Inventar-Sammelausgabe und A/B-Bestellpositionsstatus mit B-Lesebereich. Beide lehnen den gesamten Aufruf ab; A/B-Bestände, Transaktionen, persönlicher Lagerort und Status bleiben unverändert. | 8/8 gezielte Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-02.7): verify mixed batch targets are atomic` | SEC-02.8 Sammelziele vor Schreibschleifen validieren. |
 | 04.10.2026 | SEC-02.8 | Inventar-Sammelzielprüfung vor persönlichen Lagerort verschoben; Bestellpositionsstatus validiert alle Serializer vor der Schreibschleife. Verschachtelte Bestellanlage ist atomar. `quick_create` leitet eindeutige Mitgliedsabteilung ab und nutzt dieselbe Zielrechteprüfung; erlaubter A- und abgewiesener B-Fall ergänzt. | 33/33 relevante Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.8): validate batch targets before writes` | SEC-02.9 Paketabnahme und Grenzen. |
 | 04.10.2026 | SEC-02.9 WIP | Quercheck fand vier fremde Trainingsblock-Schreibwege. Block-Anlage, Änderung, Sitzungswechsel und Gruppenverschiebung prüfen jetzt die tatsächliche Sitzungsabteilung; erlaubter A-Fall ergänzt. Paketabnahme bleibt wegen SEC-03-Listen, ROLE-01.2-Trainingsrecht und SEC-09-Bestandsgrenzen offen. | 382/382 breite Backendtests (explizite Module), danach 22/22 gezielte Backendtests, Ruff und Staged-Diff-Check bestanden. SEC-02-Abnahme nicht ausgeführt. | Dieser Commit: `fix(SEC-02.9 WIP): scope training block targets` | SEC-03-Detailblock beginnen; SEC-02.9 später erneut abnehmen. |
+| 04.10.2026 | SEC-03.0 | Listenmodell, Viewsets, Serializer, Git-Stand und Abhängigkeiten abgeglichen; Abnahme und stabile Teilschritte für Abteilungsbesitz, Datenmigration, Anhänge und Oberfläche festgelegt. | Dokument- und Codeabgleich bestanden; Anwendungstests für den Planungsstand nicht ausgeführt. | Dieser Commit: `docs(SEC-03.0): define department list migration steps` | SEC-03.1 HTTP-Regressionen für fremde Listen und Ziele. |
