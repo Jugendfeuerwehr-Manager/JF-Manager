@@ -108,3 +108,24 @@ class OrderItemRoleScopeTests(APITestCase):
         self.line_a.refresh_from_db()
         self.line_b.refresh_from_db()
         self.assertEqual(self.line_a.status_id, self.line_b.status_id)
+
+    def test_bulk_status_change_rejects_read_only_b_item_without_partial_change(self):
+        role_a = self.viewer.department_roles.get(department=self.line_a.order.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="orders", codename="can_change_order_status")
+        )
+        new_status, _ = OrderStatus.objects.get_or_create(code="NEW", defaults={"name": "New"})
+        original_a = self.line_a.status_id
+        original_b = self.line_b.status_id
+
+        response = self.client.post(
+            "/api/v1/order-items/bulk_update_status/",
+            {"item_ids": [self.line_a.pk, self.line_b.pk], "status": new_status.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.line_a.refresh_from_db()
+        self.line_b.refresh_from_db()
+        self.assertEqual(self.line_a.status_id, original_a)
+        self.assertEqual(self.line_b.status_id, original_b)
