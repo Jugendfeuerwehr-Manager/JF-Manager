@@ -14,7 +14,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `fe33648` (`SEC-01.41`); SEC-01.42 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `4fbe993` (`ROLE-01.1` mit SEC-01.42-Code durch paralleles Staging); dieser Checkpoint korrigiert die SEC-Zuordnung. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | SEC-01.43: persönliche Lagerorte und weitere Inventar-Sonderaktionen auf Rechte sowie unbeabsichtigte Schreibeffekte prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -533,7 +533,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.41 rot: Mitgliederausrüstung zeigt Bestände/Buchungen ohne Fachrecht und fremdes Material; SEC-01.42 Korrektur. |
+| SEC-01 | in Arbeit | Codex | SEC-01.42 grün: Mitgliederausrüstung nach Fachrecht und Eigentümer gefiltert; SEC-01.43 Restprüfung. |
 | SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -700,3 +700,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.40 | Artikel-/Variantenbestand verlangt `view_stock` am tatsächlichen Artikeleigentümer; Lagerortbestand und Summe nutzen denselben Filter. Testrolle mit legitimem zentralem Zugriff explizit berechtigt; Varianten- und Leeransichten ergänzt. | 41/41 relevante Inventartests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.40): enforce stock rights in nested inventory views` | SEC-01.41 Mitgliederausrüstung und Sonderaktionen prüfen. |
 | 04.10.2026 | SEC-01.41 | Zwei HTTP-Regressionen für Mitgliederausrüstung ohne Bestands-/Buchungsrecht sowie fremde B-Artikel und -Buchungen trotz A-Recht ergänzt. | 0/2 neue Tests bestanden; beide Lecks bestätigt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.41): expose member equipment scope bypasses` | SEC-01.42 Mitgliederausrüstung filtern. |
 | 04.10.2026 | SEC-01.42 | Mitgliederausrüstung und Summe nach `view_stock`, Buchungsverlauf nach `view_transaction` jeweils am Artikeleigentümer gefiltert. | 43/43 relevante Inventartests, 326/326 breite Backendtests, Ruff und Diff-Check bestanden. | Dieser Commit: `fix(SEC-01.42): scope member equipment by inventory rights` | SEC-01.43 persönliche Lagerorte prüfen. |
+| 04.10.2026 | SEC-01.42 Checkpointkorrektur | Beim parallelen Staging wurden SEC-01.42-Code und Detail-/Journalstand versehentlich mit `4fbe993` committed. Der Code bleibt dort unverändert; dieser Commit ordnet Paketstatus und Commit-Bezug richtig zu. | 43/43 gezielte und 326/326 breite Backendtests bestanden; keine erneute Ausführung für die Dokumentkorrektur. | Dieser Commit: `docs(SEC-01.42): correct concurrent checkpoint attribution` | SEC-01.43 persönliche Lagerorte prüfen. |
