@@ -6,6 +6,7 @@ from django.core.management import call_command
 from rest_framework.test import APITestCase
 
 from departments.models import Department, RoleTemplate, UserDepartmentRole
+from departments.role_comparison import compare_role_template
 
 
 class RoleTemplateReadApiTests(APITestCase):
@@ -18,6 +19,14 @@ class RoleTemplateReadApiTests(APITestCase):
         )
         cls.admin = get_user_model().objects.create_user(username="role-read-admin")
         cls.admin.user_permissions.add(cls.view_permission)
+        cls.editor = get_user_model().objects.create_user(username="role-edit-admin")
+        cls.editor.user_permissions.add(
+            cls.view_permission,
+            Permission.objects.get(content_type__app_label="departments", codename="change_roletemplate"),
+            Permission.objects.get(content_type__app_label="departments", codename="add_roletemplate"),
+            Permission.objects.get(content_type__app_label="auth", codename="change_group"),
+            Permission.objects.get(content_type__app_label="auth", codename="add_group"),
+        )
         cls.staff = get_user_model().objects.create_user(username="role-read-staff", is_staff=True)
         cls.department_user = get_user_model().objects.create_user(username="role-read-dept")
         cls.department = Department.objects.create(name="Nord", code="role-read-nord")
@@ -72,6 +81,102 @@ class RoleTemplateReadApiTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         url = f"/api/v1/admin/role-templates/{self.template.pk}/"
         response = self.client.patch(url, {"name": "Changed"}, format="json")
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 403)
         self.template.refresh_from_db()
         self.assertEqual(self.template.name, "Jugendleiter")
+
+    def test_metadata_patch_requires_current_fingerprint_and_cannot_change_key_or_scope(self):
+        self.client.force_authenticate(user=self.editor)
+        url = f"/api/v1/admin/role-templates/{self.template.pk}/"
+        old = compare_role_template(self.template)["fingerprint"]
+        forbidden = self.client.patch(url, {"fingerprint": old, "scope": "organization"}, format="json")
+        self.assertEqual(forbidden.status_code, 400)
+        changed = self.client.patch(url, {"fingerprint": old, "name": "Neue Anzeige"}, format="json")
+        self.assertEqual(changed.status_code, 200)
+        self.template.refresh_from_db()
+        self.assertEqual(self.template.key, "youth_leader")
+        self.assertEqual(self.template.scope, "department")
+        self.assertEqual(self.template.name, "Neue Anzeige")
+        stale = self.client.patch(url, {"fingerprint": old, "name": "Veraltet"}, format="json")
+        self.assertEqual(stale.status_code, 409)
+
+    def test_permission_change_requires_change_group_and_preserves_scope(self):
+        url = f"/api/v1/admin/role-templates/{self.template.pk}/apply-permissions/"
+        fingerprint = compare_role_template(self.template)["fingerprint"]
+        names = compare_role_template(self.template)["actual_permissions"]
+        self.client.force_authenticate(user=self.admin)
+        self.assertEqual(
+            self.client.post(url, {"fingerprint": fingerprint, "permissions": names}, format="json").status_code,
+            403,
+        )
+        self.client.force_authenticate(user=self.editor)
+        missing_fingerprint = self.client.post(url, {"permissions": names}, format="json")
+        self.assertEqual(missing_fingerprint.status_code, 400)
+        invalid = self.client.post(
+            url,
+            {"fingerprint": fingerprint, "permissions": [*names, "departments.can_access_all_departments"]},
+            format="json",
+        )
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(compare_role_template(self.template)["actual_permissions"], names)
+        updated = self.client.post(
+            url,
+            {"fingerprint": fingerprint, "permissions": [*names, "members.export_memberlist"]},
+            format="json",
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertIn("members.export_memberlist", updated.data["extra_permissions"])
+        self.assertNotEqual(updated.data["fingerprint"], fingerprint)
+        stale = self.client.post(url, {"fingerprint": fingerprint, "permissions": names}, format="json")
+        self.assertEqual(stale.status_code, 409)
+
+    def test_admin_cannot_change_own_group(self):
+        self.template.group.user_set.add(self.editor)
+        self.client.force_authenticate(user=self.editor)
+        fingerprint = compare_role_template(self.template)["fingerprint"]
+        response = self.client.post(
+            f"/api/v1/admin/role-templates/{self.template.pk}/apply-permissions/",
+            {"fingerprint": fingerprint, "permissions": compare_role_template(self.template)["actual_permissions"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_archive_keeps_existing_group_rights(self):
+        self.client.force_authenticate(user=self.editor)
+        url = f"/api/v1/admin/role-templates/{self.template.pk}/archive/"
+        old_permissions = set(self.template.group.permissions.values_list("pk", flat=True))
+        fingerprint = compare_role_template(self.template)["fingerprint"]
+        response = self.client.post(url, {"fingerprint": fingerprint}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.template.refresh_from_db()
+        self.assertTrue(self.template.is_archived)
+        self.assertEqual(set(self.template.group.permissions.values_list("pk", flat=True)), old_permissions)
+        patch = self.client.patch(
+            f"/api/v1/admin/role-templates/{self.template.pk}/",
+            {"fingerprint": compare_role_template(self.template)["fingerprint"], "name": "Should fail"},
+            format="json",
+        )
+        self.assertEqual(patch.status_code, 400)
+
+    def test_duplicate_creates_unassigned_group_and_rolls_back_invalid_key(self):
+        self.client.force_authenticate(user=self.editor)
+        url = f"/api/v1/admin/role-templates/{self.template.pk}/duplicate/"
+        fingerprint = compare_role_template(self.template)["fingerprint"]
+        invalid = self.client.post(url, {"fingerprint": fingerprint, "key": "Bad-Key", "name": "Bad"}, format="json")
+        self.assertEqual(invalid.status_code, 400)
+        self.assertFalse(Group.objects.filter(name="jf_role__Bad-Key").exists())
+        response = self.client.post(
+            url,
+            {"fingerprint": fingerprint, "key": "new_custom_role", "name": "Neue Rolle"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        duplicate = RoleTemplate.objects.get(key="new_custom_role")
+        self.assertEqual(duplicate.scope, self.template.scope)
+        self.assertFalse(duplicate.is_delegable)
+        self.assertEqual(
+            set(duplicate.group.permissions.values_list("pk", flat=True)),
+            set(self.template.group.permissions.values_list("pk", flat=True)),
+        )
+        self.assertFalse(duplicate.group.user_set.exists())
+        self.assertFalse(duplicate.group.department_assignments.exists())

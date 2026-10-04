@@ -61,13 +61,16 @@ def compare_role_template(template):
         "group_name": group.name if group else None,
         "updated_at": template.updated_at.isoformat(),
         "actual_permission_ids": sorted(group.permissions.values_list("pk", flat=True)) if group else [],
+        "actual_permissions": actual,
         "expected_permissions": expected,
         "expected_metadata": expected_metadata,
         "global_user_ids": sorted(group.user_set.values_list("pk", flat=True)) if group else [],
         "staff_user_ids": sorted(group.user_set.filter(is_staff=True).values_list("pk", flat=True)) if group else [],
-        "department_role_ids": sorted(group.department_assignments.values_list("pk", flat=True)) if group else [],
-        "ldap_mapping_ids": sorted(group.ldap_role_mappings.values_list("pk", flat=True)) if group else [],
-        "oidc_mapping_ids": sorted(group.oidc_group_mappings.values_list("pk", flat=True)) if group else [],
+        "department_assignments": (
+            sorted(group.department_assignments.values_list("pk", "user_id", "department_id")) if group else []
+        ),
+        "ldap_mappings": sorted(group.ldap_role_mappings.values_list("pk", "department_id")) if group else [],
+        "oidc_mappings": sorted(group.oidc_group_mappings.values_list("pk", "department_id")) if group else [],
     }
     fingerprint = hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
