@@ -9,9 +9,9 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
+from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from orders.api.filters import OrderItemFilter
-from orders.api.permissions import CanChangeOrderStatus
 from orders.api.serializers import (
     OrderItemCreateSerializer,
     OrderItemSerializer,
@@ -22,7 +22,17 @@ from orders.models import OrderItem, OrderStatus
 from orders.notifications import OrderNotificationService
 
 
-class OrderItemViewSet(viewsets.ModelViewSet):
+class OrderItemRolePermissions(DepartmentRoleModelPermissions):
+    def _required_permissions(self, request, view):
+        if view.action in ("update_status", "bulk_update_status"):
+            return ["orders.can_change_order_status"]
+        return super()._required_permissions(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        return super().has_object_permission(request, view, obj.order)
+
+
+class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet for Order Items
 
@@ -31,12 +41,37 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
     queryset = OrderItem.objects.select_related("order", "item", "status", "order__member").all()
     serializer_class = OrderItemSerializer
-    permission_classes = [permissions.IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [permissions.IsAuthenticated, OrderItemRolePermissions]
+    department_field = "order__department"
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = OrderItemFilter
     search_fields = ["item__name", "order__member__name", "order__member__lastname"]
     ordering_fields = ["order__order_date", "item__name", "status__sort_order"]
     ordering = ["-order__order_date"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.method in permissions.SAFE_METHODS:
+            return queryset
+
+        required = OrderItemRolePermissions()._required_permissions(self.request, self)
+        if not required:
+            return queryset.none()
+        user = self.request.user
+        if self._user_is_org_wide(user) and all(user.has_perm(name) for name in required):
+            return queryset
+        allowed_ids = set(self._user_department_ids(user))
+        for name in required:
+            if user.has_perm(name):
+                continue
+            app_label, codename = name.split(".", 1)
+            allowed_ids &= set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label=app_label,
+                    groups__permissions__codename=codename,
+                ).values_list("department_id", flat=True)
+            )
+        return queryset.filter(order__department_id__in=allowed_ids)
 
     def get_serializer_class(self):
         """Use different serializers for different actions"""
@@ -46,7 +81,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
             return OrderItemUpdateSerializer
         return OrderItemSerializer
 
-    @action(detail=True, methods=["post"], permission_classes=[CanChangeOrderStatus])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, OrderItemRolePermissions])
     def update_status(self, request, pk=None):
         """Update status of a single order item"""
         order_item = self.get_object()
@@ -88,7 +123,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=["post"], permission_classes=[CanChangeOrderStatus])
+    @action(detail=False, methods=["post"], permission_classes=[permissions.IsAuthenticated, OrderItemRolePermissions])
     def bulk_update_status(self, request):
         """Update status for multiple order items"""
         item_ids = request.data.get("item_ids", [])
@@ -109,7 +144,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         updated_items = []
         try:
             with transaction.atomic():
-                order_items = list(OrderItem.objects.select_for_update().filter(pk__in=item_ids).order_by("pk"))
+                order_items = list(self.get_queryset().select_for_update().filter(pk__in=item_ids).order_by("pk"))
                 if len(order_items) != len(item_ids):
                     raise serializers.ValidationError(
                         {"item_ids": "Mindestens eine Bestellposition wurde nicht gefunden."}

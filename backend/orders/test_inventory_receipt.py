@@ -10,7 +10,11 @@ from orders.models import Order, OrderableItem, OrderItem, OrderStatus
 class OrderReceiptTest(APITestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="receiver", password="pw12345", is_staff=True)
-        self.user.user_permissions.add(Permission.objects.get(codename="can_change_order_status"))
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            Permission.objects.get(codename="can_change_order_status"),
+            Permission.objects.get(codename="change_orderitem"),
+        )
         self.client.force_authenticate(self.user)
         self.ordered = OrderStatus.objects.get(code="ORDERED")
         self.received = OrderStatus.objects.get(code="RECEIVED")
