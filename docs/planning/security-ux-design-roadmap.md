@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.42 filtert Mitgliederausrüstung nach Bestands-/Buchungsrecht und Artikeleigentümer; 43/43 gezielte und 326/326 breite Backendtests bestanden. |
-| Aktuelles Paket | SEC-01.42 korrigiert; SEC-01.43 als nächster Teilschritt. |
-| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 04.10.2026: ROLE-01.1 bildet elf Rollen und 84 vorhandene Permissions ab; SEC-01.42 ist durch `28269eb` korrekt zugeordnet. |
+| Aktuelles Paket | ROLE-01.1 abgeschlossen; ROLE-01.2 als nächster Rollenschritt. SEC-01.43 folgt parallel. |
+| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `4fbe993` (`ROLE-01.1` mit SEC-01.42-Code durch paralleles Staging); dieser Checkpoint korrigiert die SEC-Zuordnung. |
+| Letzter Roadmap-Commit | `28269eb` (SEC-01.42-Checkpointkorrektur); dieser Commit ergänzt den ROLE-01.1-Paketstatus zu Manifest `4fbe993`. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.43: persönliche Lagerorte und weitere Inventar-Sonderaktionen auf Rechte sowie unbeabsichtigte Schreibeffekte prüfen. |
+| Nächster konkreter Schritt | ROLE-01.2: fehlende Trainingsrechte und Bereichsvertrag; parallel SEC-01.43: persönliche Lagerorte und weitere Inventar-Sonderaktionen prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -543,7 +543,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
 | SEC-09 | offen | — | Bestandsbuchungen und Änderungsrouten absichern. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
-| ROLE-01 | offen | — | Rollenmanifest auf Django-Permissions abbilden. |
+| ROLE-01 | in Arbeit | Codex (Rollen-Session) | ROLE-01.1: Rollen-/Permission-Vertrag geprüft; ROLE-01.2 fehlende Trainingsrechte und Bereichsvertrag. SEC-01/02 bleiben Abnahmeabhängigkeiten. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | offen | — | Atomarer Planvertrag und Versionsprüfung. |
@@ -585,6 +585,29 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Offene Risiken:** Ausgangsstand enthält frühere Änderungen aus mehreren Modulen; deren Qualität ist noch nicht erneut geprüft. Lokale `dump.rdb` bleibt unversioniert.
 - **Laufende Prozesse:** keine durch diesen Planungsschritt.
 - **Nächster Schritt:** `SEC-01.1`: dauerhafte Regression für abteilungsübergreifende Rechtevermischung.
+
+### ROLE-01: aktueller Detailstand
+
+- **Status:** in Arbeit; die endgültige Abnahme hängt von SEC-01/02 ab.
+- **Verantwortlicher Agent:** Codex (Rollen-Session); Security-Session bearbeitet ausschließlich SEC-Pakete.
+- **Abhängigkeiten:** EXEC-01 abgeschlossen. SEC-01/02 müssen vor der produktiven Aktivierung und Rechteabnahme abgeschlossen sein. ROLE-02 nutzt die hier beschriebenen Vorlagen und Geltungsbereiche.
+- **Ziel und Abnahmekriterien:** Stabile Vorlagenschlüssel, Anzeigenamen, Beschreibungen, Versionen, Geltungsbereiche und Delegierbarkeit liegen zusätzlich zu Django-Gruppen vor. Jede ausgelieferte Permission existiert und ist fachlich begründet. Ein wiederholter Seed erzeugt keine Duplikate und überschreibt keine kundenseitig veränderten Gruppen. Bestehende Gruppen werden nicht allein über gleiche Namen übernommen; Staff erhält keine fachlichen Rechte durch Migration. Standardrollen einzeln und kombiniert sind nach Abschluss von SEC-01/02 geprüft.
+- **Teilschritte mit stabilen IDs:**
+  - `ROLE-01.1`: Tatsächliche Modell- und Sonderpermissions inventarisieren; versioniertes Rollenmanifest mit Schlüssel, Beschreibung, Bereich, Delegierbarkeit und Permission-Zuordnung anlegen; fehlende fachliche Rechte ausdrücklich markieren.
+  - `ROLE-01.2`: Fehlende, für Vorlagen erforderliche Django-Permissions samt Migration und Tests ergänzen.
+  - `ROLE-01.3`: Rollenbeschreibung als Datenmodell samt Migration und sicheren Eindeutigkeitsregeln ergänzen.
+  - `ROLE-01.4`: Idempotenten Erstinstallations-Seed für Standardgruppen/Vorlagen und Vergleich geänderter Vorlagen implementieren; keine stillschweigende Erweiterung bestehender Gruppen.
+  - `ROLE-01.5`: Bestehende Gruppen und Zuweisungen mit expliziter Zuordnung und Rechtevergleich migrieren; Staff nicht automatisch aufwerten.
+  - `ROLE-01.6`: Rollen-API und Administrationsansicht für Beschreibung, Vergleich, Anpassung und Archivierung implementieren.
+  - `ROLE-01.7`: Einzel- und Kombinationsrechte, Bereichstrennung, Wiederholung des Seeds und Migration gegen SEC-01/02 prüfen und Rollenhandbuch aktualisieren.
+- **Letzter dauerhafter Checkpoint:** `ROLE-01.1`-Manifest in `4fbe993`; dieser Folgecommit ergänzt den durch paralleles Staging fehlenden Paketstatus.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Geänderte Dateien / Commit-Bezug:** `docs/planning/role-permission-manifest.md` in `4fbe993`; dieser ROLE-01-Block und Status in `docs(ROLE-01.1): record role package checkpoint`. Der SEC-01.42-Code wurde beim parallelen Staging ebenfalls in `4fbe993` aufgenommen und in `28269eb` zugeordnet.
+- **Umgesetzte Teilschritte:** `ROLE-01.1`.
+- **Ausgeführte Prüfungen mit Ergebnis:** 84 im Manifest gelistete Permissions gegen geladene Django-Modelle geprüft: 84/84 vorhanden, bestanden. `git diff --check` bestanden. Anwendungstests für die reine Vertragsdokumentation nicht ausgeführt.
+- **Offene Fehler / Risiken:** SEC-01/02 sind offen. Trainingsansichten referenzieren `training.can_manage_training` und `training.can_manage_library`; beide Sonderrechte fehlen im Modell. Globale `has_perm`-Prüfungen in weiteren Fach-APIs verhindern teils noch abteilungsgebundene Rollen. Export, Delegation, Anonymisierung und Einstellungen benötigen eigene Rechteverträge.
+- **Laufende Prozesse und sichere Fortsetzung:** Security-Session bearbeitet SEC-01. Dateiverantwortung: ROLE-01 nur Rollen-Dateien; Inventar-/Security-Dateien bleiben bei der Security-Session. Git- und Roadmap-Schreiboperationen vor jedem Commit abstimmen.
+- **Nächster konkreter Schritt:** `ROLE-01.2` Trainings-Sonderrechte definieren und ihren Abteilungs-/Organisationsbereich vor einer Vorlagenaktivierung absichern.
 
 ### SEC-01: aktueller Detailstand
 
@@ -701,3 +724,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.41 | Zwei HTTP-Regressionen für Mitgliederausrüstung ohne Bestands-/Buchungsrecht sowie fremde B-Artikel und -Buchungen trotz A-Recht ergänzt. | 0/2 neue Tests bestanden; beide Lecks bestätigt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.41): expose member equipment scope bypasses` | SEC-01.42 Mitgliederausrüstung filtern. |
 | 04.10.2026 | SEC-01.42 | Mitgliederausrüstung und Summe nach `view_stock`, Buchungsverlauf nach `view_transaction` jeweils am Artikeleigentümer gefiltert. | 43/43 relevante Inventartests, 326/326 breite Backendtests, Ruff und Diff-Check bestanden. | Dieser Commit: `fix(SEC-01.42): scope member equipment by inventory rights` | SEC-01.43 persönliche Lagerorte prüfen. |
 | 04.10.2026 | SEC-01.42 Checkpointkorrektur | Beim parallelen Staging wurden SEC-01.42-Code und Detail-/Journalstand versehentlich mit `4fbe993` committed. Der Code bleibt dort unverändert; dieser Commit ordnet Paketstatus und Commit-Bezug richtig zu. | 43/43 gezielte und 326/326 breite Backendtests bestanden; keine erneute Ausführung für die Dokumentkorrektur. | Dieser Commit: `docs(SEC-01.42): correct concurrent checkpoint attribution` | SEC-01.43 persönliche Lagerorte prüfen. |
+| 04.10.2026 | ROLE-01.1 | Elf Rollenvorlagen mit stabilen Schlüsseln, Bereichen, anfänglicher Delegierbarkeit und Permission-Bausteinen im Manifest `4fbe993` abgebildet. Dieser Folgecommit ergänzt den wegen parallelem Staging fehlenden ROLE-Paketstatus; SEC-01.42 wurde in `28269eb` zugeordnet. | 84/84 gelistete Django-Permissions vorhanden; `git diff --check` bestanden. Anwendungstests für die Vertragsdokumentation nicht ausgeführt. | Dieser Commit: `docs(ROLE-01.1): record role package checkpoint` | ROLE-01.2 Trainingsrechte und Bereichsvertrag. |
