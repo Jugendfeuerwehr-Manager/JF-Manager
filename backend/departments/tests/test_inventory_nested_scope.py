@@ -236,3 +236,26 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertEqual(StorageLocation.objects.get(member=member).department_id, self.item_b.department_id)
+
+    def test_member_location_get_requires_view_right_in_member_department(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        location = StorageLocation.objects.create(
+            name="Member B", member=member, is_member=True, department=self.item_b.department
+        )
+
+        response = self.client.get(f"/api/v1/inventory/locations/for-member/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(StorageLocation.objects.filter(pk=location.pk).exists())
+
+    def test_member_equipment_get_requires_view_right_in_member_department(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        StorageLocation.objects.create(
+            name="Member B", member=member, is_member=True, department=self.item_b.department
+        )
+
+        response = self.client.get(f"/api/v1/inventory/locations/member-equipment/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
