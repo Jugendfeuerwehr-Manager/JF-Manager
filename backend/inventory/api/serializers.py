@@ -43,6 +43,19 @@ class ItemVariantSerializer(serializers.ModelSerializer):
             "total_stock",
         ]
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or getattr(request, "method", "GET") in ("GET", "HEAD", "OPTIONS"):
+            return attrs
+
+        parent_item = attrs.get("parent_item", getattr(self.instance, "parent_item", None))
+        permission = "inventory.change_itemvariant" if self.instance else "inventory.add_itemvariant"
+        if parent_item is None or not can_manage_department(user, parent_item.department_id, permission):
+            raise serializers.ValidationError({"parent_item": "Keine Schreibberechtigung für diesen Artikel."})
+        return attrs
+
 
 class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
@@ -87,6 +100,12 @@ class ItemSerializer(serializers.ModelSerializer):
                 {"department": "Artikel dürfen nur in der eigenen Abteilung verwaltet werden."}
             )
 
+        rented_by = attrs.get("rented_by", getattr(self.instance, "rented_by", None))
+        if rented_by is not None and department_id is not None and not rented_by.departments.filter(
+            pk=department_id
+        ).exists():
+            raise serializers.ValidationError({"rented_by": "Das Mitglied gehört nicht zur Artikelabteilung."})
+
         return attrs
 
 
@@ -126,6 +145,16 @@ class StorageLocationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"department": "Lagerorte dürfen nur in der eigenen Abteilung verwaltet werden."}
             )
+
+        parent = attrs.get("parent", getattr(self.instance, "parent", None))
+        if parent is not None and parent.department_id != department_id:
+            raise serializers.ValidationError({"parent": "Der Elternlagerort gehört zu einem anderen Bereich."})
+
+        member = attrs.get("member", getattr(self.instance, "member", None))
+        if member is not None:
+            member_department_ids = set(member.departments.values_list("id", flat=True))
+            if department_id not in member_department_ids and (department_id is not None or member_department_ids):
+                raise serializers.ValidationError({"member": "Das Mitglied gehört nicht zur Lagerortabteilung."})
 
         return attrs
 

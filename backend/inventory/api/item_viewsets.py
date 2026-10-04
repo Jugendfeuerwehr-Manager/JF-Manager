@@ -119,6 +119,10 @@ class ItemVariantViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, v
     search_fields = ["parent_item__name", "sku"]
     filterset_fields = ["parent_item", "parent_item__category"]
 
+    def perform_create(self, serializer):
+        # The parent item determines the department; it is not a variant field.
+        serializer.save()
+
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)
         if request.method not in SAFE_METHODS:

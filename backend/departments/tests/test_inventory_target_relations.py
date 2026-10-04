@@ -19,8 +19,10 @@ class InventoryTargetRelationTests(APITestCase):
         category = Category.objects.create(name="Equipment")
         cls.item_a = Item.objects.create(name="A item", category=category, department=cls.department_a)
         cls.item_b = Item.objects.create(name="B item", category=category, department=cls.department_b)
+        cls.central_item = Item.objects.create(name="Central item", category=category, department=None)
         cls.variant_a = ItemVariant.objects.create(parent_item=cls.item_a, variant_attributes={"size": "a"})
         cls.location_b = StorageLocation.objects.create(name="B shelf", department=cls.department_b)
+        cls.central_location = StorageLocation.objects.create(name="Central shelf", department=None)
         cls.member_b = Member.objects.create(name="B", lastname="Member")
         cls.member_b.departments.add(cls.department_b)
 
@@ -41,6 +43,15 @@ class InventoryTargetRelationTests(APITestCase):
         )
         UserDepartmentRole.objects.create(user=cls.user, department=cls.department_a).groups.add(writer)
         UserDepartmentRole.objects.create(user=cls.user, department=cls.department_b).groups.add(reader)
+
+        cls.global_manager = get_user_model().objects.create_user(username="inventory-target-global-writer")
+        cls.global_manager.user_permissions.add(
+            Permission.objects.get(content_type__app_label="departments", codename="can_access_all_departments"),
+            *Permission.objects.filter(
+                content_type__app_label="inventory",
+                codename__in=["add_item", "add_itemvariant", "add_storagelocation"],
+            ),
+        )
 
     def setUp(self):
         self.client.force_authenticate(user=self.user)
@@ -121,3 +132,49 @@ class InventoryTargetRelationTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(StorageLocation.objects.filter(name="A child", parent=parent_a).exists())
+
+    def test_single_department_writer_can_create_variant_for_own_parent(self):
+        self.user.department_roles.filter(department=self.department_b).delete()
+
+        response = self.client.post(
+            "/api/v1/inventory/variants/",
+            {"parent_item": self.item_a.pk, "variant_attributes": {"size": "single"}},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(ItemVariant.objects.filter(parent_item=self.item_a, variant_attributes={"size": "single"}).exists())
+
+    def test_global_manager_can_create_central_variant_and_location(self):
+        self.client.force_authenticate(user=self.global_manager)
+
+        variant = self.client.post(
+            "/api/v1/inventory/variants/",
+            {"parent_item": self.central_item.pk, "variant_attributes": {"size": "central"}},
+            format="json",
+        )
+        location = self.client.post(
+            "/api/v1/inventory/locations/",
+            {"name": "Central child", "department": None, "parent": self.central_location.pk},
+            format="json",
+        )
+
+        self.assertEqual(variant.status_code, status.HTTP_201_CREATED, variant.data)
+        self.assertEqual(location.status_code, status.HTTP_201_CREATED, location.data)
+
+    def test_global_manager_can_link_central_item_to_department_member(self):
+        self.client.force_authenticate(user=self.global_manager)
+
+        response = self.client.post(
+            "/api/v1/inventory/items/",
+            {
+                "name": "Central linked item",
+                "category": self.central_item.category_id,
+                "department": None,
+                "rented_by": self.member_b.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertTrue(Item.objects.filter(name="Central linked item", rented_by=self.member_b).exists())
