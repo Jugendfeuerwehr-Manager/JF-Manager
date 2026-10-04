@@ -66,6 +66,12 @@ const router = createRouter({
           meta: { requiresPerm: 'view_memberlist' }
         },
         {
+          path: 'lists/legacy-resolution',
+          name: 'legacy-list-resolution',
+          component: () => import('@/views/LegacyListResolutionView.vue'),
+          meta: { requiresSuperuser: true }
+        },
+        {
           path: 'members/create',
           name: 'members-create',
           component: () => import('@/views/MemberEditView.vue')
@@ -373,6 +379,8 @@ router.beforeEach(async (to, from, next) => {
     next('/')
   } else if (to.meta.requiresStaff && authStore.isAuthenticated && !authStore.isOrgWide) {
     // Non-staff user trying to access a staff-only route → redirect to dashboard
+    next('/')
+  } else if (to.meta.requiresSuperuser && authStore.isAuthenticated && !authStore.user?.is_superuser) {
     next('/')
   } else if (to.meta.requiresPerm && authStore.isAuthenticated && !authStore.hasPerm(to.meta.requiresPerm)) {
     // Missing permission for this route → redirect to dashboard

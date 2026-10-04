@@ -33,7 +33,11 @@ apiClient.interceptors.request.use(
       !config.url.startsWith('/departments') &&
       !config.url.startsWith('/admin/')
     ) {
-      config.params = { ...config.params, department: activeDeptId }
+      config.params = {
+        ...config.params,
+        // An explicit department is a deliberate target/filter from the caller.
+        ...(config.params?.department == null ? { department: activeDeptId } : {}),
+      }
     }
 
     return config

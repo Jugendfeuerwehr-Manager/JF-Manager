@@ -9,7 +9,10 @@
         </h1>
         <Tag :value="`${store.lists.length} Listen`" severity="secondary" />
       </div>
-      <Button label="Neue Liste" icon="pi pi-plus" @click="openCreateDialog" />
+      <div class="header-actions">
+        <Button v-if="authStore.user?.is_superuser" label="Altlisten klären" icon="pi pi-shield" severity="secondary" outlined @click="router.push({ name: 'legacy-list-resolution' })" />
+        <Button label="Neue Liste" icon="pi pi-plus" @click="openCreateDialog" />
+      </div>
     </div>
 
     <!-- Search -->
@@ -195,11 +198,13 @@ import Textarea from 'primevue/textarea'
 import Toast from 'primevue/toast'
 import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
+import { useAuthStore } from '@/stores/auth'
 import type { MemberList } from '@/types/lists'
 
 const router = useRouter()
 const store = useMemberListsStore()
 const membersStore = useMembersStore()
+const authStore = useAuthStore()
 const confirm = useConfirm()
 const toast = useToast()
 

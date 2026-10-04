@@ -18,6 +18,7 @@ export interface MemberList {
   name: string
   description: string
   color: string
+  department: number | null
   member_count: number
   checked_count: number
   created_at: string
