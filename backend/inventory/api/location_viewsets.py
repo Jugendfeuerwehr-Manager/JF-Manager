@@ -116,13 +116,17 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
         stock_qs = Stock.objects.filter(location=location, quantity__gt=0).select_related(
             "item", "item_variant", "item_variant__parent_item", "location"
         )
+        stock_qs = filter_item_department_queryset_for_user(
+            stock_qs, request.user, "inventory.view_stock"
+        )
         total_items = sum(s.quantity for s in stock_qs)
 
-        transactions_qs = (
-            Transaction.objects.filter(Q(source=location) | Q(target=location))
-            .select_related("item", "item_variant", "item_variant__parent_item", "source", "target", "user")
-            .order_by("-date")[:20]
+        transactions_qs = Transaction.objects.filter(Q(source=location) | Q(target=location)).select_related(
+            "item", "item_variant", "item_variant__parent_item", "source", "target", "user"
         )
+        transactions_qs = filter_item_department_queryset_for_user(
+            transactions_qs, request.user, "inventory.view_transaction"
+        ).order_by("-date")[:20]
 
         return Response(
             {

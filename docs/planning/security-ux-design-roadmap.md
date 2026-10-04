@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.41 weist zwei ungeschützte Mitgliederausrüstungsansichten per HTTP nach; 0/2 neue Tests bestanden. |
-| Aktuelles Paket | SEC-01.41 rot nachgewiesen; SEC-01.42 als nächster Teilschritt. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.42 filtert Mitgliederausrüstung nach Bestands-/Buchungsrecht und Artikeleigentümer; 43/43 gezielte und 326/326 breite Backendtests bestanden. |
+| Aktuelles Paket | SEC-01.42 korrigiert; SEC-01.43 als nächster Teilschritt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `6b513a4` (`SEC-01.40`); SEC-01.41 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `fe33648` (`SEC-01.41`); SEC-01.42 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.42: Mitgliederausrüstung nach `view_stock`/`view_transaction` und Artikeleigentümer filtern. |
+| Nächster konkreter Schritt | SEC-01.43: persönliche Lagerorte und weitere Inventar-Sonderaktionen auf Rechte sowie unbeabsichtigte Schreibeffekte prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -635,15 +635,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.40`: Verschachtelte Artikel-, Varianten- und Lagerortbestände nur mit `view_stock` am tatsächlichen Artikeleigentümer anzeigen; Summen aus denselben gefilterten Beständen berechnen. Abnahme: SEC-01.39-Regressionen und relevante Inventartests grün, Ruff und Staged-Diff geprüft.
   - `SEC-01.41`: Mitgliederausrüstung und weitere Inventar-Sonderaktionen bei A/B-Rollen, zentralen Beständen und fehlenden Fachrechten per HTTP prüfen.
   - `SEC-01.42`: Mitgliederausrüstung einschließlich Summe und Buchungsverlauf nach `view_stock` beziehungsweise `view_transaction` am tatsächlichen Artikeleigentümer filtern. Abnahme: SEC-01.41-Regressionen und relevante Inventartests grün, Ruff und Staged-Diff geprüft.
-- **Letzter dauerhafter Checkpoint:** SEC-01.40 `6b513a4`; SEC-01.41 wird mit diesem Checkpoint committed.
+  - `SEC-01.43`: Persönliche Lagerorte und weitere Inventar-Sonderaktionen auf Aktionsrecht, Mitgliedsbereich und unbeabsichtigte Schreibeffekte per HTTP prüfen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.41 `fe33648`; SEC-01.42 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Verschachtelte Bestandsfilter `6b513a4`; Mitgliederausrüstungsregressionen in diesem SEC-01.41-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.41: 0/2 neue Mitgliederausrüstungsregressionen bestanden; Bestände/Buchungen ohne Fachrecht und B-Material sichtbar. SEC-01.40 zuvor 41/41 relevante Tests bestanden. Breite Gesamtprüfung nach SEC-01.36 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Geänderte Dateien / Commit-Bezug:** Mitgliederausrüstungsregressionen `fe33648`; Bestands-/Buchungsfilter in diesem SEC-01.42-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.42: 43/43 relevante Inventartests, 326/326 breite Backendtests (explizite Module), Ruff und Diff-Check bestanden. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
-- **Offene Fehler / Risiken:** Mitgliederausrüstung zeigt fremde oder unberechtigte Bestände/Buchungen. Weitere Inventarpfade müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Offene Fehler / Risiken:** Persönliche Lagerorte und weitere Inventar-Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.42` Mitgliederausrüstung nach Fachrecht und Artikeleigentümer filtern.
+- **Nächster konkreter Schritt:** `SEC-01.43` persönliche Lagerorte und weitere Inventar-Sonderaktionen prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -698,3 +699,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.39 | HTTP-Regressionen für B-Bestand in zentralem Lagerort und Artikelbestand ohne `view_stock` ergänzt. | 0/2 neue Tests bestanden; beide Lecks bestätigt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.39): expose nested stock permission bypasses` | SEC-01.40 Bestandsansichten absichern. |
 | 04.10.2026 | SEC-01.40 | Artikel-/Variantenbestand verlangt `view_stock` am tatsächlichen Artikeleigentümer; Lagerortbestand und Summe nutzen denselben Filter. Testrolle mit legitimem zentralem Zugriff explizit berechtigt; Varianten- und Leeransichten ergänzt. | 41/41 relevante Inventartests, Ruff und Diff-Check bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-01.40): enforce stock rights in nested inventory views` | SEC-01.41 Mitgliederausrüstung und Sonderaktionen prüfen. |
 | 04.10.2026 | SEC-01.41 | Zwei HTTP-Regressionen für Mitgliederausrüstung ohne Bestands-/Buchungsrecht sowie fremde B-Artikel und -Buchungen trotz A-Recht ergänzt. | 0/2 neue Tests bestanden; beide Lecks bestätigt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.41): expose member equipment scope bypasses` | SEC-01.42 Mitgliederausrüstung filtern. |
+| 04.10.2026 | SEC-01.42 | Mitgliederausrüstung und Summe nach `view_stock`, Buchungsverlauf nach `view_transaction` jeweils am Artikeleigentümer gefiltert. | 43/43 relevante Inventartests, 326/326 breite Backendtests, Ruff und Diff-Check bestanden. | Dieser Commit: `fix(SEC-01.42): scope member equipment by inventory rights` | SEC-01.43 persönliche Lagerorte prüfen. |
