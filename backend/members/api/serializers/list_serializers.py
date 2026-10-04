@@ -145,3 +145,19 @@ class CreateFromEventTypeInputSerializer(serializers.Serializer):
     invert = serializers.BooleanField(default=False)
     date_from = serializers.DateField(required=False, allow_null=True)
     date_to = serializers.DateField(required=False, allow_null=True)
+
+
+class ResolveLegacyListInputSerializer(serializers.Serializer):
+    department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.filter(is_active=True))
+    entry_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), required=False, default=list)
+    attachment_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), required=False, default=list)
+    target_list_id = serializers.IntegerField(min_value=1, required=False)
+    assign_description = serializers.BooleanField(required=False, default=False)
+    complete = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, attrs):
+        for key in ("entry_ids", "attachment_ids"):
+            values = attrs.get(key, [])
+            if len(values) != len(set(values)):
+                raise serializers.ValidationError({key: "IDs dürfen nicht doppelt vorkommen."})
+        return attrs

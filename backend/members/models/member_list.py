@@ -22,6 +22,7 @@ class MemberList(models.Model):
     description = models.TextField(blank=True, default="", verbose_name="Beschreibung")
     color = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbe")
     attachments = GenericRelation("Attachment", related_query_name="memberlist")
+    legacy_resolved_at = models.DateTimeField(null=True, blank=True, verbose_name="Altlistenklärung abgeschlossen")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,3 +79,14 @@ class MemberListEntry(models.Model):
         self.checked = not self.checked
         self.checked_at = timezone.now() if self.checked else None
         self.save(update_fields=["checked", "checked_at"])
+
+
+class MemberListLegacyTarget(models.Model):
+    """Stable destination for an explicitly resolved legacy source and department."""
+
+    source = models.ForeignKey(MemberList, on_delete=models.PROTECT, related_name="legacy_targets")
+    department = models.ForeignKey("departments.Department", on_delete=models.PROTECT)
+    target = models.OneToOneField(MemberList, on_delete=models.PROTECT, related_name="legacy_source_mapping")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["source", "department"], name="unique_legacy_list_target")]

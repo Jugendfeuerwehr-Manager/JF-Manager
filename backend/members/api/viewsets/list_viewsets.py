@@ -28,11 +28,13 @@ from members.api.serializers.list_serializers import (
     MemberListCreateUpdateSerializer,
     MemberListDetailSerializer,
     MemberListSerializer,
+    ResolveLegacyListInputSerializer,
     can_write_list_department,
 )
 from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_EXPORT_DEFAULT_COLUMNS
 from members.api_serializers import AttachmentSerializer
 from members.models import Attachment, Event, EventType, Member, MemberList, MemberListEntry
+from members.services.legacy_list_resolution import pending_resolution_data, resolve_legacy_list
 
 
 class PassthroughRenderer(BaseRenderer):
@@ -57,6 +59,11 @@ ALL_LIST_EXPORT_COLUMNS = {**MEMBER_EXPORT_COLUMNS, **LIST_EXTRA_COLUMNS}
 
 class MemberListRolePermissions(DepartmentRoleModelPermissions):
     """List actions use their actual write or export permission."""
+
+    def has_permission(self, request, view):
+        if getattr(view, "action", None) in ("pending_resolution", "resolve_legacy"):
+            return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+        return super().has_permission(request, view)
 
     def _required_permissions(self, request, view):
         if request.method == "OPTIONS":
@@ -98,6 +105,33 @@ class MemberListRolePermissions(DepartmentRoleModelPermissions):
 class MemberListViewSet(viewsets.ModelViewSet):
     queryset = MemberList.objects.all()
     permission_classes = [IsAuthenticated, MemberListRolePermissions]
+
+    def destroy(self, request, *args, **kwargs):
+        member_list = self.get_object()
+        if (
+            member_list.department_id is None
+            or hasattr(member_list, "legacy_source_mapping")
+            or member_list.legacy_targets.exists()
+        ):
+            return Response(
+                {"detail": "Altlisten und ihre Zuordnungen dürfen nicht gelöscht werden."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"], url_path="pending-resolution")
+    def pending_resolution(self, request):
+        sources = MemberList.objects.filter(department__isnull=True, legacy_resolved_at__isnull=True).order_by("pk")
+        return Response([pending_resolution_data(source) for source in sources])
+
+    @action(detail=True, methods=["get", "post"], url_path="resolve-legacy")
+    def resolve_legacy(self, request, pk=None):
+        source = get_object_or_404(MemberList, pk=pk, department__isnull=True, legacy_resolved_at__isnull=True)
+        if request.method == "GET":
+            return Response(pending_resolution_data(source))
+        serializer = ResolveLegacyListInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(resolve_legacy_list(source.pk, serializer.validated_data))
 
     def get_queryset(self):
         queryset = super().get_queryset()
