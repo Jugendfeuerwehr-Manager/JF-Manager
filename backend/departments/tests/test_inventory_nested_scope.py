@@ -398,3 +398,40 @@ class InventoryNestedScopeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(Category.objects.filter(name="New global").exists())
+
+    def test_org_scope_with_only_scoped_category_right_cannot_write_global_category(self):
+        self.viewer.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
+        role_a = self.viewer.department_roles.get(department=self.item_a.department)
+        role_a.groups.first().permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="change_category")
+        )
+
+        response = self.client.patch(
+            f"/api/v1/inventory/categories/{self.category.pk}/", {"name": "Changed"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.name, "Shared category")
+
+    def test_org_category_manager_can_create_change_and_delete_category(self):
+        manager = get_user_model().objects.create_user(username="nested-category-manager")
+        manager.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            *Permission.objects.filter(
+                content_type__app_label="inventory",
+                codename__in=["add_category", "change_category", "delete_category"],
+            ),
+        )
+        self.client.force_authenticate(user=manager)
+
+        created = self.client.post("/api/v1/inventory/categories/", {"name": "New global"}, format="json")
+        changed = self.client.patch(
+            f"/api/v1/inventory/categories/{created.data['id']}/", {"name": "Updated global"}, format="json"
+        )
+        deleted = self.client.delete(f"/api/v1/inventory/categories/{created.data['id']}/")
+
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        self.assertEqual(changed.status_code, status.HTTP_200_OK, changed.data)
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Category.objects.filter(pk=created.data["id"]).exists())

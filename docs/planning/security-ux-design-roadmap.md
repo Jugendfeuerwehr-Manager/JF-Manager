@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-01.53 weist zwei globale Kategorieschreibaktionen mit bloßem Staff- und A-Recht nach; 0/2 neue Tests bestanden. ROLE-01.1 ist dokumentiert. |
-| Aktuelles Paket | SEC-01.53 rot nachgewiesen; SEC-01.54 als nächster Sicherheitsschritt. ROLE-01.1 abgeschlossen; ROLE-01.2 folgt. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.54 schützt globale Kategorien mit Organisationssicht und globalem Fachrecht; 63/63 relevante Tests bestanden. ROLE-01.1 ist dokumentiert. |
+| Aktuelles Paket | SEC-01.54 korrigiert; SEC-01.55 als nächster Sicherheitsschritt. ROLE-01.1 abgeschlossen; ROLE-01.2 folgt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `5beef8d` (SEC-01.52); SEC-01.53 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `a8c61f2` (SEC-01.53); SEC-01.54 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.54: globale Kategorieschreibaktionen nur mit Organisationssicht und globalem Fachrecht zulassen. |
+| Nächster konkreter Schritt | SEC-01.55: übrige Nutzer von `OrgWideWritePermission` auf Staff-/Bereichs-Bypässe per HTTP prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -533,7 +533,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.53 rot: Staff mit A-Recht schreibt globale Kategorien; SEC-01.54 Korrektur. |
+| SEC-01 | in Arbeit | Codex | SEC-01.54 grün: globale Kategorien nur mit globalem Recht; SEC-01.55 weitere globale Schreibrechte prüfen. |
 | SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -670,15 +670,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.52`: Zentrale Artikel-/Lagerortänderung und -löschung nach globalem Fachrecht plus Organisationssicht absichern; abteilungseigene Rechte weiterhin auf tatsächliche Abteilung begrenzen. Abnahme: SEC-01.51-Regressionen und positive zentrale/abteilungseigene Fälle grün, relevante Backendtests, Ruff und Staged-Diff geprüft.
   - `SEC-01.53`: Globale Inventarkategorien und Staff-Sonderfälle auf Modellrecht plus ausdrückliche Organisationssicht per HTTP prüfen.
   - `SEC-01.54`: Kategorieanlage, -änderung und -löschung nur mit ausdrücklicher Organisationssicht und globalem Kategorierecht erlauben; Staff ohne Organisationssicht bleibt gesperrt. Abnahme: SEC-01.53-Regressionen und positive globale Fälle grün, relevante Backendtests, Ruff und Staged-Diff geprüft.
-- **Letzter dauerhafter Checkpoint:** SEC-01.52 `5beef8d`; SEC-01.53 wird mit diesem Checkpoint committed.
+  - `SEC-01.55`: Übrige Endpunkte mit `OrgWideWritePermission` bei Staff, scoped A-Recht und fehlender Organisationssicht per HTTP auf globale Schreibzugriffe prüfen.
+- **Letzter dauerhafter Checkpoint:** SEC-01.53 `a8c61f2`; SEC-01.54 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Zentrale Objektprüfung `5beef8d`; zwei Kategorie-Staff-Regressionen in diesem SEC-01.53-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41`/`.43`/`.45`/`.47`/`.49`/`.51`/`.53` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42`/`.44`/`.46`/`.48`/`.50`/`.52` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.53: 0/2 neue HTTP-Regressionen bestanden; Staff mit bloßem A-Recht schreibt globale Kategorien. Ruff und Diff-Check bestanden. SEC-01.52 zuvor 59/59 relevante Tests bestanden; breiter Lauf nach SEC-01.52 nicht ausgeführt. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Geänderte Dateien / Commit-Bezug:** Kategorie-Staff-Regressionen `a8c61f2`; globaler Kategorie-Rechtevertrag und positive Fälle in diesem SEC-01.54-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41`/`.43`/`.45`/`.47`/`.49`/`.51`/`.53` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42`/`.44`/`.46`/`.48`/`.50`/`.52`/`.54` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.54: 63/63 relevante Inventartests, Ruff und Diff-Check bestanden; breiter Lauf nach SEC-01.54 nicht ausgeführt. SEC-01.42 zuvor 326/326 breite Backendtests bestanden. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
-- **Offene Fehler / Risiken:** Staff mit A-Kategorierecht schreibt globale Kategorien. Weitere Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Offene Fehler / Risiken:** Weitere Endpunkte mit `OrgWideWritePermission` und Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.54` globale Kategorieschreibaktionen absichern.
+- **Nächster konkreter Schritt:** `SEC-01.55` weitere globale Schreibrechte prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -747,3 +748,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.51 | Zwei HTTP-Regressionen für Löschung zentraler Artikel und Lagerorte mit globalem Modellrecht, A-Rolle und fehlender Organisationssicht ergänzt. | 0/2 neue Tests bestanden: beide zentralen Objekte wurden gelöscht. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.51): expose central inventory delete scope bypass` | SEC-01.52 zentrale Löschung absichern. |
 | 04.10.2026 | SEC-01.52 | Artikel- und Lagerortobjektprüfung erzwingt für Änderung/Löschung das Fachrecht am tatsächlichen Eigentümer; zentrale Objekte brauchen Organisationssicht und globales Fachrecht. Globaler Löschfall positiv ergänzt. | 59/59 relevante Inventartests, Ruff und Diff-Check bestanden. Breiter Lauf nicht ausgeführt. | Dieser Commit: `fix(SEC-01.52): protect central inventory object writes` | SEC-01.53 Kategorien prüfen. |
 | 04.10.2026 | SEC-01.53 | Zwei HTTP-Regressionen für Kategorieanlage/-änderung bei Staff, A-Rollenrecht und fehlender Organisationssicht ergänzt. | 0/2 neue Tests bestanden: beide globalen Kategorieschreibaktionen erlaubt. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.53): expose staff category write bypass` | SEC-01.54 Kategorie-Schreibrechte absichern. |
+| 04.10.2026 | SEC-01.54 | Kategorien verlangen für globale Schreibaktionen Organisationssicht und globales Kategorierecht; Staff mit A-Recht und Organisationssicht mit nur scoped A-Recht abgewiesen. Voll berechtigter Anlage-/Änderungs-/Löschfall ergänzt. | 63/63 relevante Inventartests, Ruff und Diff-Check bestanden. Breiter Lauf nicht ausgeführt. | Dieser Commit: `fix(SEC-01.54): require global rights for inventory categories` | SEC-01.55 andere globale Schreibrechte prüfen. |

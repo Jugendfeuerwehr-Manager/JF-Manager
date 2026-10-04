@@ -6,14 +6,18 @@ from django.db.models import Q, Sum
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
-from inventory.api.access import can_manage_department, can_view_item_department, visible_item_department_ids
+from inventory.api.access import (
+    can_manage_department,
+    can_view_item_department,
+    is_org_wide_user,
+    visible_item_department_ids,
+)
 from inventory.models import Category, Item, ItemVariant, Stock
 from jf_manager_backend.mixins import BasePermissionedViewSet
-from jf_manager_backend.permissions import OrgWideWritePermission
 
 from .serializers import (
     CategorySerializer,
@@ -23,10 +27,22 @@ from .serializers import (
 )
 
 
+class CategoryWritePermission(BasePermission):
+    """Global categories require global model rights and organization scope."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        action = {"POST": "add", "PUT": "change", "PATCH": "change", "DELETE": "delete"}.get(request.method)
+        if action is None:
+            return False
+        return is_org_wide_user(request.user) and request.user.has_perm(f"inventory.{action}_category")
+
+
 class CategoryViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
     queryset = Category.objects.all()  # overridden by get_queryset; required for DRF router basename
     serializer_class = CategorySerializer
-    permission_classes = [*BasePermissionedViewSet.permission_classes, OrgWideWritePermission]
+    permission_classes = [*BasePermissionedViewSet.permission_classes, CategoryWritePermission]
     search_fields = ["name"]
     filterset_fields = ["name"]
 
