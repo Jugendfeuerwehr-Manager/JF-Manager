@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-03.3 sperrt fremde Listen und Listenanhänge; 43/43 gezielte und 8/8 Elternrechte-Tests bestanden. SEC-03.2 liegt in `17f7be9`; Paketabnahmen bleiben offen. |
-| Aktuelles Paket | SEC-03.3 abgeschlossen; SEC-03.4 kontrollierte Altdatenmigration folgt. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
+| Letzter Checkpoint | 04.10.2026: SEC-03.4 migriert eindeutige Altlisten atomar; 33/33 kombinierte Tests bestanden. SEC-03.3 liegt in `1618398`; unklare Altlisten bleiben zur Superuser-Klärung gesperrt. |
+| Aktuelles Paket | SEC-03.4 abgeschlossen; SEC-03.5 explizite Altbestands-Zuordnung folgt. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `17f7be9` (SEC-03.2); SEC-03.3 ist dieser Korrektur-Commit. |
+| Letzter Roadmap-Commit | `1618398` (SEC-03.3); SEC-03.4 ist dieser Migrations-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-03.4: eindeutige Altlisten und gemischte eindeutige Einträge migrieren; Checkstände und Notizen erhalten. |
+| Nächster konkreter Schritt | SEC-03.5: ungeklärte Listen, Mehrfachmitglieder, Beschreibungen und Anhänge per expliziter Superuser-Zuordnung klären. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -535,7 +535,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
-| SEC-03 | in Arbeit | Codex (Integrationsagent) | SEC-03.3 Zugriffe grün; SEC-03.4 Altlistenmigration vorbereiten. |
+| SEC-03 | in Arbeit | Codex (Integrationsagent) | SEC-03.4 eindeutige Altlisten migriert; SEC-03.5 Klärungsablauf. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
@@ -711,7 +711,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-03: Mitgliederlisten nach Abteilung
 
-- **Status:** in Arbeit; `SEC-03.3` schützt Listen-/Anhangzugriffe, Altbestandsmigration bleibt offen.
+- **Status:** in Arbeit; `SEC-03.4` migriert eindeutige Altbestände, explizite Klärung bleibt offen.
 - **Verantwortlich:** Codex (Integrationsagent); Listenänderungen bleiben einem Bearbeiter zugeordnet.
 - **Abhängigkeiten:** SEC-01-Rechtevertrag und SEC-02-Zielprüfung; generische Anhänge erben die Eigentümerberechtigung. SEC-08 behandelt zusätzlich sichere Tabellenzellen, SEC-05 private Dateiauslieferung.
 - **Ziel und Abnahme:** Jede neue Liste hat genau eine gültige Abteilung; Einträge gehören ihr an. Abteilungsrollen sehen und ändern ausschließlich dort berechtigte Listen, Einträge, Exporte und Anhänge; ein Queryparameter erweitert nie den Bereich. Gemischte Altdaten werden nach eindeutigem Eigentümer aufgeteilt, Checkstände und Notizen bleiben erhalten. Mehrdeutige Mitgliedschaften, leere Listen, Beschreibungen und Anhänge bleiben bis zu expliziter Superuser-Zuordnung für normale Nutzer verborgen. Migration ist prüfbar und wiederaufnehmbar. A/B- und Organisations-Positivfälle sowie Altbestandsfälle bestehen.
@@ -724,14 +724,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-03.5`: Mehrdeutige Altlisten, Mehrfachmitgliedschaften, Beschreibungen und Anhänge in einen Superuser-Klärungsablauf überführen; keine automatische Anhangvervielfältigung.
   - `SEC-03.6`: Frontend-Anlage und -Bearbeitung mit erforderlicher Abteilung sowie sicheren Fehlerzuständen anpassen.
   - `SEC-03.7`: Migrations- und Zugriffssuite, Schema- und Bedienvertrag prüfen; SEC-03-Abnahme und SEC-02.9-Restprüfung dokumentieren.
-- **Letzter dauerhafter Checkpoint:** `17f7be9` (SEC-03.2); SEC-03.3 wird mit diesem Korrektur-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** `1618398` (SEC-03.3); SEC-03.4 wird mit diesem Migrations-Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-03.0 `b537459`, SEC-03.1 `21d049d`, SEC-03.2 `17f7be9`; SEC-03.3: Listenberechtigungen/-Queryset, Detailserializer, signierte Listenanhänge, Exportrecht samt Migration `0028` und HTTP-Tests in diesem Commit.
-- **Umgesetzte Teilschritte:** `SEC-03.0` bis `SEC-03.3`; Altbestandsmigration und UI offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-03.3: 43/43 gezielte Listen-/Anhangtests und 8/8 Elternrechte-Tests (gemeinsamer Lauf 51/51), Migrationsabgleich ohne ausstehende Änderungen, Ruff check/format und Diff-Check bestanden; breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** Nullable Abteilung bleibt Migrations-Zwischenzustand. Ungeklärte und inkonsistente Altlisten sind für normale Nutzer gesperrt, benötigen aber Zuordnung/Aufteilung. `members.export_memberlist` muss vor ROLE-01-Seed ausdrücklich in den Rollenvertrag aufgenommen oder bewusst nicht vergeben werden. SEC-05 behandelt allgemeine Medienauslieferung; hier ist nur die Vorschau von Listenanhängen zusätzlich geschützt. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
+- **Geänderte Dateien / Commit-Bezug:** SEC-03.0 `b537459`, SEC-03.1 `21d049d`, SEC-03.2 `17f7be9`, SEC-03.3 `1618398`; SEC-03.4: Datenmigration `0029` und historischer Migrationstest in diesem Commit.
+- **Umgesetzte Teilschritte:** `SEC-03.0` bis `SEC-03.4`; manuelle Klärung und UI offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-03.4: 1/1 historischer Migrationstest samt Wiederholung und synthetischem Rollback; 33/33 kombinierte Tests bestanden, zusätzlich 30/30 Migration-/Scope-/Schreibtests beim Integrationsagenten. Migrationsabgleich, Ruff check/format und Diff-Check bestanden; breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** Nullable Abteilung bleibt für ungeklärte Altbestände. Migration übernimmt nur eindeutig sichtbare Inhalte; Beschreibung/Anhänge werden nicht kopiert. Der Rückwärtslauf der Datenmigration ist bewusst No-op: eine Rückkehr zum vorigen Datenzustand erfordert Backup/Restore. `members.export_memberlist` muss vor ROLE-01-Seed ausdrücklich in den Rollenvertrag aufgenommen oder bewusst nicht vergeben werden. SEC-05 behandelt allgemeine Medienauslieferung. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine SEC-03-Prozesse nach Testlauf; Git-Staging und Commits erfolgen nur durch den Integrationsagenten.
-- **Nächster konkreter Schritt:** `SEC-03.4` eindeutige Altlisten und Einträge kontrolliert und wiederaufnehmbar migrieren; Beschreibungen und Anhänge ohne klare Sichtbarkeit für Superuser-Klärung zurückhalten.
+- **Nächster konkreter Schritt:** `SEC-03.5` Superuser-Klärung für leere/mehrdeutige Listen, Einträge, Beschreibungen und Anhänge mit expliziter Zielabteilung bereitstellen; keine automatische Anhangvervielfältigung.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -818,3 +818,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-03.1 | A/B-HTTP-Regressionen für Listen, Einträge, Export, verschachtelte und generische Anhänge sowie gemischte Schreibziele ergänzt. Listen-Detail offenbart zusätzlich einen Serializer-500er. | 13 Tests: 15 erwartete Assertionsfehler und ein 500er; zwei A-Positivtests separat 2/2 bestanden. Ruff check/format und Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-03.1): expose cross-department list access` | SEC-03.2 Abteilungsbesitz und Zielprüfung. |
 | 04.10.2026 | SEC-03.2 | Nullable Listenabteilung für Altdaten eingeführt; API verlangt aktive Eigentümerabteilung und passendes Recht. Einzel-/Sammelziele werden vor atomarem Schreiben geprüft; Ereignisimport berücksichtigt nur Ereignisse der Zielabteilung oder globale Ereignistypen. Normaler Abteilungswechsel ist gesperrt. | 9/9 neue Schreibtests, 3/3 bestehende Anhangtests, 3/3 gezielte SEC-03.1-Zieltests, Migrationsabgleich, Ruff und Diff-Check bestanden. Vollständige rote SEC-03.1- und breite Suite nicht erneut ausgeführt. | Dieser Commit: `fix(SEC-03.2): validate department list write targets` | SEC-03.3 Lese- und Anhangbereich schließen. |
 | 04.10.2026 | SEC-03.3 | Listenqueryset, Sonderaktionen und Export an tatsächliche Abteilung und Aktionsrecht gebunden; neues `export_memberlist` eingeführt. Ungeklärte/inkonsistente Altlisten sind für normale Nutzer gesperrt; generische und verschachtelte Anhänge sowie signierte Listen-Vorschau erben die Sichtbarkeit. Listen-Detailserializer repariert. | 43/43 gezielte Listen-/Anhangtests und 8/8 Elternrechte-Tests (51/51 gemeinsam), Migrationsabgleich, Ruff und Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-03.3): scope list reads exports and attachments` | SEC-03.4 eindeutige Altlisten migrieren. |
+| 04.10.2026 | SEC-03.4 | Atomare historische Datenmigration weist vollständig eindeutige Altlisten zu und teilt eindeutige Einträge gemischter Listen nach Abteilung auf. Eintrags-IDs, Checkstände, Notizen und Zeiten bleiben erhalten; mehrdeutige Quellen, Beschreibungen und Anhänge bleiben gesperrt. Rückwärtslauf ändert Daten nicht; Wiederherstellung des Ursprungszustands benötigt Backup. | 1/1 historischer Migrationstest mit Wiederholung und Fehler-Rollback, 33/33 kombinierte Tests sowie 30/30 Integrationsprüfung, Migrationsabgleich, Ruff und Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `data(SEC-03.4): scope unambiguous legacy member lists` | SEC-03.5 explizite Superuser-Klärung. |
