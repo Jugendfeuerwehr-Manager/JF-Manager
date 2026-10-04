@@ -17,6 +17,7 @@ from .access import (
     filter_item_department_queryset_for_user,
     get_user_department_ids,
     is_org_wide_user,
+    visible_item_department_ids,
 )
 from .serializers import StockSerializer, StorageLocationSerializer, TransactionSerializer
 
@@ -38,13 +39,22 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
             PermissionDenied: If the current user does not have access to the member.
         '''
         user = self.request.user
-        if is_org_wide_user(user):
-            return
-
-        allowed_department_ids = get_user_department_ids(user)
         member_department_ids = set(member.departments.values_list("id", flat=True))
+        if self.request.method != "GET":
+            allowed_department_ids = None if is_org_wide_user(user) else get_user_department_ids(user)
+        else:
+            allowed_department_ids = visible_item_department_ids(user, "inventory.view_storagelocation")
+
+        if allowed_department_ids is None:
+            return
         if not member_department_ids.intersection(allowed_department_ids):
             raise PermissionDenied("Kein Zugriff auf dieses Mitglied.")
+        try:
+            location_department_id = member.personal_storage_location.department_id
+        except StorageLocation.DoesNotExist:
+            return
+        if location_department_id is not None and location_department_id not in allowed_department_ids:
+            raise PermissionDenied("Kein Leserecht für diesen persönlichen Lagerort.")
 
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):

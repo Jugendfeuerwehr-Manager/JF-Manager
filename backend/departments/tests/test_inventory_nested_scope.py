@@ -259,3 +259,27 @@ class InventoryNestedScopeTests(APITestCase):
         response = self.client.get(f"/api/v1/inventory/locations/member-equipment/{member.pk}/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_member_location_get_keeps_own_department_access(self):
+        response = self.client.get(f"/api/v1/inventory/locations/for-member/{self.member_a.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["id"], self.member_location.pk)
+
+    def test_org_inventory_viewer_can_read_member_location_across_departments(self):
+        member = Member.objects.create(name="B", lastname="Borrower")
+        member.departments.add(self.item_b.department)
+        location = StorageLocation.objects.create(
+            name="Member B", member=member, is_member=True, department=self.item_b.department
+        )
+        viewer = get_user_model().objects.create_user(username="nested-global-viewer")
+        viewer.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            Permission.objects.get(content_type__app_label="inventory", codename="view_storagelocation"),
+        )
+        self.client.force_authenticate(user=viewer)
+
+        response = self.client.get(f"/api/v1/inventory/locations/for-member/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["id"], location.pk)
