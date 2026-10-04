@@ -241,10 +241,7 @@ export const locationsApi = {
     return apiClient.get<StockResponse>(`/inventory/locations/${id}/stock/`)
   },
 
-  /**
-   * Get or create storage location for a member
-   * Auto-creates the location if it doesn't exist
-   */
+  /** Get an existing storage location for a member. */
   getForMember(memberId: number) {
     return apiClient.get<StorageLocation>(`/inventory/locations/for-member/${memberId}/`)
   },

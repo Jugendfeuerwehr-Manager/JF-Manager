@@ -82,8 +82,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
     @action(detail=False, methods=["get", "post"], url_path="for-member/(?P<member_id>[^/.]+)")
     def for_member(self, request, member_id=None):
         """
-        GET/POST: Return (or auto-create) the storage location for a member.
-        Auto-creation avoids manual location management for member equipment.
+        GET returns an existing personal location; POST creates it if needed.
         """
         from members.models import Member
 
@@ -94,7 +93,14 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
 
         self._assert_member_access(member)
 
-        location, created = self._get_or_create_personal_storage_location(request, member)
+        if request.method == "GET":
+            try:
+                location = member.personal_storage_location
+            except StorageLocation.DoesNotExist:
+                return Response({"detail": "Persönlicher Lagerort nicht vorhanden."}, status=status.HTTP_404_NOT_FOUND)
+            created = False
+        else:
+            location, created = self._get_or_create_personal_storage_location(request, member)
         serializer = self.get_serializer(location)
         return_status = status.HTTP_201_CREATED if created and request.method == "POST" else status.HTTP_200_OK
         return Response(serializer.data, status=return_status)
@@ -111,7 +117,19 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
 
         self._assert_member_access(member)
 
-        location, _ = self._get_or_create_personal_storage_location(request, member)
+        try:
+            location = member.personal_storage_location
+        except StorageLocation.DoesNotExist:
+            return Response(
+                {
+                    "member_id": int(member_id),
+                    "member_name": f"{member.name} {member.lastname}",
+                    "location_id": None,
+                    "equipment": [],
+                    "total_items": 0,
+                    "recent_transactions": [],
+                }
+            )
 
         stock_qs = Stock.objects.filter(location=location, quantity__gt=0).select_related(
             "item", "item_variant", "item_variant__parent_item", "location"
