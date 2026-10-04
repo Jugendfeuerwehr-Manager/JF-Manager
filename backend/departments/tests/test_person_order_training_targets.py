@@ -46,10 +46,9 @@ class PersonOrderTrainingTargetTests(APITestCase):
         cls.block_b = TrainingBlock.objects.create(title="B block", session=cls.session_b)
 
         cls.user = get_user_model().objects.create_user(username="relation-target-writer")
-        training_permission, _ = Permission.objects.get_or_create(
+        training_permission = Permission.objects.get(
             content_type=ContentType.objects.get_for_model(TrainingSession),
             codename="can_manage_training",
-            defaults={"name": "Manage training in test"},
         )
         cls.user.user_permissions.add(
             Permission.objects.get(content_type__app_label="orders", codename="can_manage_orders"),

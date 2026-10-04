@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-03.0-Detailblock vorbereitet; SEC-02.9-WIP liegt in `1aebe19`. Dessen 382/382 breite und danach 22/22 gezielte Backendtests waren bestanden; Paketabnahme wegen SEC-03/ROLE-01.2/SEC-09 offen. |
-| Aktuelles Paket | SEC-03 übernommen; SEC-03.1 Zugriffslücke reproduzieren. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen; ROLE-01.2 parallel in Arbeit. |
+| Letzter Checkpoint | 04.10.2026: ROLE-01.2 liefert zwei Trainingsrechte; 24/24 gezielte Tests bestanden. SEC-03.0 liegt in `b537459`, SEC-02.9-WIP in `1aebe19`; Paketabnahmen bleiben offen. |
+| Aktuelles Paket | SEC-03.1 Zugriffslücke reproduzieren. SEC-02.9 bleibt in Prüfung, SEC-01.57-Restabnahme offen; ROLE-01.2 abgeschlossen, ROLE-01 offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `1aebe19` (SEC-02.9 WIP); SEC-03.0 ist dieser Planungs-Commit. |
+| Letzter Roadmap-Commit | `b537459` (SEC-03.0); ROLE-01.2 ist dieser Teilschritt-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | SEC-03.1: fremde Listen- und Eintragszugriffe per HTTP reproduzieren; danach Abteilungsbesitz und kontrollierte Altdatenmigration umsetzen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -534,7 +534,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
-| SEC-02 | in Arbeit | Codex | SEC-02.0 Vertrag und Teilschritte definiert; SEC-02.1 Gruppen-Zielabteilung reproduzieren. |
+| SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | in Arbeit | Codex (Integrationsagent) | SEC-03.0 Vertrag und Teilschritte; SEC-03.1 HTTP-Regressionsfälle. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
@@ -543,7 +543,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
 | SEC-09 | offen | — | Bestandsbuchungen und Änderungsrouten absichern. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
-| ROLE-01 | in Arbeit | Codex (Rollen-Session) | ROLE-01.1: Rollen-/Permission-Vertrag geprüft; ROLE-01.2 fehlende Trainingsrechte und Bereichsvertrag. SEC-01/02 bleiben Abnahmeabhängigkeiten. |
+| ROLE-01 | in Arbeit | Codex (Rollen-Session) | ROLE-01.2: Trainings-/Bibliotheksrecht ausgeliefert; ROLE-01.3 Rollenmodell folgt. SEC-01/02-Bereichsprüfung bleibt Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | offen | — | Atomarer Planvertrag und Versionsprüfung. |
@@ -589,7 +589,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 ### ROLE-01: aktueller Detailstand
 
 - **Status:** in Arbeit; die endgültige Abnahme hängt von SEC-01/02 ab.
-- **Verantwortlicher Agent:** Codex (Rollen-Session); Security-Session bearbeitet ausschließlich SEC-Pakete.
+- **Verantwortlicher Agent:** Codex (Rollen-Session); der Integrationsagent übernimmt Roadmap und Git-Commits.
 - **Abhängigkeiten:** EXEC-01 abgeschlossen. SEC-01/02 müssen vor der produktiven Aktivierung und Rechteabnahme abgeschlossen sein. ROLE-02 nutzt die hier beschriebenen Vorlagen und Geltungsbereiche.
 - **Ziel und Abnahmekriterien:** Stabile Vorlagenschlüssel, Anzeigenamen, Beschreibungen, Versionen, Geltungsbereiche und Delegierbarkeit liegen zusätzlich zu Django-Gruppen vor. Jede ausgelieferte Permission existiert und ist fachlich begründet. Ein wiederholter Seed erzeugt keine Duplikate und überschreibt keine kundenseitig veränderten Gruppen. Bestehende Gruppen werden nicht allein über gleiche Namen übernommen; Staff erhält keine fachlichen Rechte durch Migration. Standardrollen einzeln und kombiniert sind nach Abschluss von SEC-01/02 geprüft.
 - **Teilschritte mit stabilen IDs:**
@@ -600,14 +600,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `ROLE-01.5`: Bestehende Gruppen und Zuweisungen mit expliziter Zuordnung und Rechtevergleich migrieren; Staff nicht automatisch aufwerten.
   - `ROLE-01.6`: Rollen-API und Administrationsansicht für Beschreibung, Vergleich, Anpassung und Archivierung implementieren.
   - `ROLE-01.7`: Einzel- und Kombinationsrechte, Bereichstrennung, Wiederholung des Seeds und Migration gegen SEC-01/02 prüfen und Rollenhandbuch aktualisieren.
-- **Letzter dauerhafter Checkpoint:** `ROLE-01.1`-Manifest in `4fbe993`; dieser Folgecommit ergänzt den durch paralleles Staging fehlenden Paketstatus.
+- **Letzter dauerhafter Checkpoint:** `ROLE-01.1`-Manifest in `4fbe993`; `ROLE-01.2` wird mit diesem Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** `docs/planning/role-permission-manifest.md` in `4fbe993`; dieser ROLE-01-Block und Status in `docs(ROLE-01.1): record role package checkpoint`. Der SEC-01.42-Code wurde beim parallelen Staging ebenfalls in `4fbe993` aufgenommen und in `28269eb` zugeordnet.
-- **Umgesetzte Teilschritte:** `ROLE-01.1`.
-- **Ausgeführte Prüfungen mit Ergebnis:** 84 im Manifest gelistete Permissions gegen geladene Django-Modelle geprüft: 84/84 vorhanden, bestanden. `git diff --check` bestanden. Anwendungstests für die reine Vertragsdokumentation nicht ausgeführt.
-- **Offene Fehler / Risiken:** SEC-01/02 sind offen. Trainingsansichten referenzieren `training.can_manage_training` und `training.can_manage_library`; beide Sonderrechte fehlen im Modell. Globale `has_perm`-Prüfungen in weiteren Fach-APIs verhindern teils noch abteilungsgebundene Rollen. Export, Delegation, Anonymisierung und Einstellungen benötigen eigene Rechteverträge.
-- **Laufende Prozesse und sichere Fortsetzung:** Security-Session bearbeitet SEC-01. Dateiverantwortung: ROLE-01 nur Rollen-Dateien; Inventar-/Security-Dateien bleiben bei der Security-Session. Git- und Roadmap-Schreiboperationen vor jedem Commit abstimmen.
-- **Nächster konkreter Schritt:** `ROLE-01.2` Trainings-Sonderrechte definieren und ihren Abteilungs-/Organisationsbereich vor einer Vorlagenaktivierung absichern.
+- **Geänderte Dateien / Commit-Bezug:** `docs/planning/role-permission-manifest.md` in `4fbe993`; ROLE-01.1-Status in `docs(ROLE-01.1): record role package checkpoint`. ROLE-01.2: Trainingsmodelle, Options-Migration, gezielte Tests und Bereinigung des SEC-02-Test-Fixtures in diesem Commit. Der SEC-01.42-Code wurde beim parallelen Staging ebenfalls in `4fbe993` aufgenommen und in `28269eb` zugeordnet.
+- **Umgesetzte Teilschritte:** `ROLE-01.1`, `ROLE-01.2`.
+- **Ausgeführte Prüfungen mit Ergebnis:** ROLE-01.1: 84/84 Manifest-Permissions vorhanden. ROLE-01.2: 24/24 gezielte Backendtests, `makemigrations training --check --dry-run`, Ruff und Diff-Check bestanden; breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** SEC-01/02 sind offen. Die Trainings-API prüft das nun vorhandene Sonderrecht global über `has_perm`; abteilungsgebundene Rollen benötigen vor Aktivierung zusätzlich eine Bereichsprüfung. Export, Delegation, Anonymisierung und Einstellungen benötigen eigene Rechteverträge.
+- **Laufende Prozesse und sichere Fortsetzung:** SEC-03.1-Tests entstehen parallel in eigener Datei. Git-Staging und Commits ausschließlich durch den Integrationsagenten.
+- **Nächster konkreter Schritt:** `ROLE-01.3` Rollenbeschreibung als Datenmodell ausarbeiten; vor Vorlagenaktivierung den Trainings-Bereichsvertrag mit SEC-01/02 schließen.
 
 ### SEC-01: aktueller Detailstand
 
@@ -814,3 +814,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-02.8 | Inventar-Sammelzielprüfung vor persönlichen Lagerort verschoben; Bestellpositionsstatus validiert alle Serializer vor der Schreibschleife. Verschachtelte Bestellanlage ist atomar. `quick_create` leitet eindeutige Mitgliedsabteilung ab und nutzt dieselbe Zielrechteprüfung; erlaubter A- und abgewiesener B-Fall ergänzt. | 33/33 relevante Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.8): validate batch targets before writes` | SEC-02.9 Paketabnahme und Grenzen. |
 | 04.10.2026 | SEC-02.9 WIP | Quercheck fand vier fremde Trainingsblock-Schreibwege. Block-Anlage, Änderung, Sitzungswechsel und Gruppenverschiebung prüfen jetzt die tatsächliche Sitzungsabteilung; erlaubter A-Fall ergänzt. Paketabnahme bleibt wegen SEC-03-Listen, ROLE-01.2-Trainingsrecht und SEC-09-Bestandsgrenzen offen. | 382/382 breite Backendtests (explizite Module), danach 22/22 gezielte Backendtests, Ruff und Staged-Diff-Check bestanden. SEC-02-Abnahme nicht ausgeführt. | Dieser Commit: `fix(SEC-02.9 WIP): scope training block targets` | SEC-03-Detailblock beginnen; SEC-02.9 später erneut abnehmen. |
 | 04.10.2026 | SEC-03.0 | Listenmodell, Viewsets, Serializer, Git-Stand und Abhängigkeiten abgeglichen; Abnahme und stabile Teilschritte für Abteilungsbesitz, Datenmigration, Anhänge und Oberfläche festgelegt. | Dokument- und Codeabgleich bestanden; Anwendungstests für den Planungsstand nicht ausgeführt. | Dieser Commit: `docs(SEC-03.0): define department list migration steps` | SEC-03.1 HTTP-Regressionen für fremde Listen und Ziele. |
+| 04.10.2026 | ROLE-01.2 | `can_manage_training` und `can_manage_library` als Django-Modellrechte samt Options-Migration ergänzt; SEC-02-Test nutzt ausgelieferte Permission statt Test-Ersatz. | 24/24 gezielte Backendtests, Migrationsabgleich, Ruff und Diff-Check bestanden; breite Suite nicht ausgeführt. Trainings-Bereichsprüfung bleibt offen. | Dieser Commit: `feat(ROLE-01.2): add training management permissions` | ROLE-01.3 Rollenmodell; Trainings-Bereichsprüfung vor Aktivierung. |

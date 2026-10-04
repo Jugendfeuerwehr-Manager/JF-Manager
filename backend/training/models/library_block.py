@@ -53,6 +53,9 @@ class LibraryBlock(models.Model):
         verbose_name = "Bibliotheksblock"
         verbose_name_plural = "Bibliotheksblöcke"
         ordering = ["title"]
+        permissions = [
+            ("can_manage_library", "Kann Trainingsbibliothek verwalten"),
+        ]
 
     # Federation identity — survives export/import
     export_uuid = models.UUIDField(

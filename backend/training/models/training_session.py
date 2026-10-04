@@ -11,6 +11,9 @@ class TrainingSession(models.Model):
         verbose_name = "Trainingseinheit"
         verbose_name_plural = "Trainingseinheiten"
         ordering = ["-date", "start_time"]
+        permissions = [
+            ("can_manage_training", "Kann Trainingseinheiten verwalten"),
+        ]
 
     class RecurrenceFrequency(models.TextChoices):
         WEEKLY = "WEEKLY", "Wöchentlich"
