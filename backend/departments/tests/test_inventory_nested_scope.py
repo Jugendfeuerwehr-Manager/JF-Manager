@@ -175,3 +175,23 @@ class InventoryNestedScopeTests(APITestCase):
             {row["id"] for row in response.data["recent_transactions"]},
             {transaction_a.pk},
         )
+
+    def test_member_location_get_does_not_create_missing_location(self):
+        member = Member.objects.create(name="New", lastname="Borrower")
+        member.departments.add(self.item_a.department)
+
+        response = self.client.get(f"/api/v1/inventory/locations/for-member/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(StorageLocation.objects.filter(member=member).exists())
+
+    def test_member_equipment_get_does_not_create_missing_location(self):
+        member = Member.objects.create(name="New", lastname="Borrower")
+        member.departments.add(self.item_a.department)
+
+        response = self.client.get(f"/api/v1/inventory/locations/member-equipment/{member.pk}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["equipment"], [])
+        self.assertIsNone(response.data["location_id"])
+        self.assertFalse(StorageLocation.objects.filter(member=member).exists())

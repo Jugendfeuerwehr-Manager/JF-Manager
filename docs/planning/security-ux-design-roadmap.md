@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: ROLE-01.1 bildet elf Rollen und 84 vorhandene Permissions ab; SEC-01.42 ist durch `28269eb` korrekt zugeordnet. |
-| Aktuelles Paket | ROLE-01.1 abgeschlossen; ROLE-01.2 als nächster Rollenschritt. SEC-01.43 folgt parallel. |
+| Letzter Checkpoint | 04.10.2026: SEC-01.43 weist zwei GET-Schreibeffekte bei persönlichen Lagerorten nach; 0/2 neue Tests bestanden. ROLE-01.1 ist dokumentiert. |
+| Aktuelles Paket | SEC-01.43 rot nachgewiesen; SEC-01.44 als nächster Sicherheitsschritt. ROLE-01.1 abgeschlossen; ROLE-01.2 folgt. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `28269eb` (SEC-01.42-Checkpointkorrektur); dieser Commit ergänzt den ROLE-01.1-Paketstatus zu Manifest `4fbe993`. |
+| Letzter Roadmap-Commit | `1d9bc79` (ROLE-01.1-Paketstatus); SEC-01.43 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | ROLE-01.2: fehlende Trainingsrechte und Bereichsvertrag; parallel SEC-01.43: persönliche Lagerorte und weitere Inventar-Sonderaktionen prüfen. |
+| Nächster konkreter Schritt | SEC-01.44: persönliche Lagerorte ohne Schreibeffekt durch GET ausliefern; ROLE-01.2 kann parallel folgen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -533,7 +533,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.42 grün: Mitgliederausrüstung nach Fachrecht und Eigentümer gefiltert; SEC-01.43 Restprüfung. |
+| SEC-01 | in Arbeit | Codex | SEC-01.43 rot: GET erzeugt persönliche Lagerorte; SEC-01.44 Korrektur. |
 | SEC-02 | offen | — | Zentrale und abteilungseigene Inventarziele samt Ausleihe an Abteilungsmitglieder prüfen. |
 | SEC-03 | offen | — | Listenmigration und Zugriffstests vorbereiten. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
@@ -659,15 +659,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.41`: Mitgliederausrüstung und weitere Inventar-Sonderaktionen bei A/B-Rollen, zentralen Beständen und fehlenden Fachrechten per HTTP prüfen.
   - `SEC-01.42`: Mitgliederausrüstung einschließlich Summe und Buchungsverlauf nach `view_stock` beziehungsweise `view_transaction` am tatsächlichen Artikeleigentümer filtern. Abnahme: SEC-01.41-Regressionen und relevante Inventartests grün, Ruff und Staged-Diff geprüft.
   - `SEC-01.43`: Persönliche Lagerorte und weitere Inventar-Sonderaktionen auf Aktionsrecht, Mitgliedsbereich und unbeabsichtigte Schreibeffekte per HTTP prüfen.
-- **Letzter dauerhafter Checkpoint:** SEC-01.41 `fe33648`; SEC-01.42 wird mit diesem Checkpoint committed.
+  - `SEC-01.44`: GET auf persönlichen Lagerort und Mitgliederausrüstung ohne Persistenzwirkung anbieten; fehlender Lagerort in der Detailaktion als 404, in der Ausrüstungsaktion als leere Ansicht mit `location_id=null`. Abnahme: SEC-01.43-Regressionen und relevante Backendtests grün, Ruff und Staged-Diff geprüft.
+- **Letzter dauerhafter Checkpoint:** SEC-01.42-Code in `4fbe993`, Zuordnung korrigiert in `28269eb`; SEC-01.43 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** Mitgliederausrüstungsregressionen `fe33648`; Bestands-/Buchungsfilter in diesem SEC-01.42-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
-- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42` korrigiert. Weitere Sonderaktionen bleiben offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.42: 43/43 relevante Inventartests, 326/326 breite Backendtests (explizite Module), Ruff und Diff-Check bestanden. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
+- **Geänderte Dateien / Commit-Bezug:** Bestands-/Buchungsfilter `4fbe993` mit Checkpointkorrektur `28269eb`; zwei GET-Schreibeffekt-Regressionen in diesem SEC-01.43-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
+- **Umgesetzte Teilschritte:** `SEC-01.1`/`.3`/`.5`/`.7`/`.9`/`.11`/`.13`/`.15`/`.17`/`.19`/`.21`/`.23`/`.25`/`.27`/`.29`/`.31`/`.33`/`.35`/`.37`/`.39`/`.41`/`.43` rot nachgewiesen; `SEC-01.2`/`.4`/`.6`/`.8`/`.10`/`.12`/`.14`/`.16`/`.18`/`.20`/`.22`/`.24`/`.26`/`.28`/`.30`/`.32`/`.34`/`.36`/`.38`/`.40`/`.42` korrigiert. Weitere Sonderaktionen bleiben offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-01.43: 0/2 neue GET-Regressionen bestanden; beide Schreibeffekte bestätigt. Ruff und Diff-Check bestanden. SEC-01.42 zuvor 43/43 relevante und 326/326 breite Backendtests bestanden. `manage.py test` ohne explizite Module scheitert an vorhandenem Namenskonflikt von `inventory/tests.py` und `inventory/tests/`.
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
-- **Offene Fehler / Risiken:** Persönliche Lagerorte und weitere Inventar-Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
+- **Offene Fehler / Risiken:** GET auf persönliche Lagerorte und Mitgliederausrüstung schreibt Datensätze. Weitere Inventar-Sonderaktionen müssen geprüft werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.43` persönliche Lagerorte und weitere Inventar-Sonderaktionen prüfen.
+- **Nächster konkreter Schritt:** `SEC-01.44` GET-Schreibeffekte beseitigen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -725,3 +726,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-01.42 | Mitgliederausrüstung und Summe nach `view_stock`, Buchungsverlauf nach `view_transaction` jeweils am Artikeleigentümer gefiltert. | 43/43 relevante Inventartests, 326/326 breite Backendtests, Ruff und Diff-Check bestanden. | Dieser Commit: `fix(SEC-01.42): scope member equipment by inventory rights` | SEC-01.43 persönliche Lagerorte prüfen. |
 | 04.10.2026 | SEC-01.42 Checkpointkorrektur | Beim parallelen Staging wurden SEC-01.42-Code und Detail-/Journalstand versehentlich mit `4fbe993` committed. Der Code bleibt dort unverändert; dieser Commit ordnet Paketstatus und Commit-Bezug richtig zu. | 43/43 gezielte und 326/326 breite Backendtests bestanden; keine erneute Ausführung für die Dokumentkorrektur. | Dieser Commit: `docs(SEC-01.42): correct concurrent checkpoint attribution` | SEC-01.43 persönliche Lagerorte prüfen. |
 | 04.10.2026 | ROLE-01.1 | Elf Rollenvorlagen mit stabilen Schlüsseln, Bereichen, anfänglicher Delegierbarkeit und Permission-Bausteinen im Manifest `4fbe993` abgebildet. Dieser Folgecommit ergänzt den wegen parallelem Staging fehlenden ROLE-Paketstatus; SEC-01.42 wurde in `28269eb` zugeordnet. | 84/84 gelistete Django-Permissions vorhanden; `git diff --check` bestanden. Anwendungstests für die Vertragsdokumentation nicht ausgeführt. | Dieser Commit: `docs(ROLE-01.1): record role package checkpoint` | ROLE-01.2 Trainingsrechte und Bereichsvertrag. |
+| 04.10.2026 | SEC-01.43 | Zwei HTTP-Regressionen für GET auf persönlichen Lagerort und Ausrüstungsansicht ohne vorhandenen Lagerort ergänzt. | 0/2 neue Tests bestanden: beide GETs erzeugen einen persistenten Lagerort. Ruff und Staged-Diff-Check bestanden. | Dieser Commit: `test(SEC-01.43): expose member location GET writes` | SEC-01.44 Lesewege ohne Persistenzwirkung ausführen. |
