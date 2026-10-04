@@ -213,6 +213,26 @@ class PersonOrderTrainingTargetTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
 
+    def test_quick_order_uses_writable_members_unique_department(self):
+        response = self.client.post(
+            "/api/v1/orders/quick_create/",
+            {"member": self.member_a.pk, "items": [{"item_id": self.order_item.pk, "size": "M", "quantity": 1}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertTrue(Order.objects.filter(member=self.member_a, department=self.department_a).exists())
+
+    def test_quick_order_rejects_read_only_members_department(self):
+        response = self.client.post(
+            "/api/v1/orders/quick_create/",
+            {"member": self.member_b.pk, "items": [{"item_id": self.order_item.pk, "size": "M", "quantity": 1}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Order.objects.filter(member=self.member_b).exists())
+
     def test_training_can_be_created_with_group_from_own_department(self):
         self.client.force_authenticate(user=self.training_user)
         response = self.client.post(

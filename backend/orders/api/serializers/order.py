@@ -2,6 +2,7 @@
 Order serializers with nested items and computed fields
 """
 
+from django.db import transaction
 from django.db.models import Count
 from rest_framework import serializers
 
@@ -124,6 +125,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         return validate_order_target(self, super().validate(attrs))
 
+    @transaction.atomic
     def create(self, validated_data):
         """Create order with nested items"""
         items_data = validated_data.pop("items")

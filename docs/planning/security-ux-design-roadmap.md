@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-02.7 belegt atomare Ablehnung gemischter A/B-Sammelziele; 8/8 gezielte Backendtests bestanden. |
-| Aktuelles Paket | SEC-02 in Arbeit; SEC-02.8 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
+| Letzter Checkpoint | 04.10.2026: SEC-02.8 validiert Sammelziele vor Schreibschleifen und sichert verschachtelte Bestellanlage atomar; 33/33 relevante Backendtests bestanden. |
+| Aktuelles Paket | SEC-02 in Arbeit; SEC-02.9 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `7223e55` (SEC-02.6); SEC-02.7 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `e9f7430` (SEC-02.7); SEC-02.8 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-02.8: Sammelziele vor Schreibschleifen vollständig validieren und atomar ausführen. |
+| Nächster konkreter Schritt | SEC-02.9: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen und SEC-03-/SEC-09-Grenzen dokumentieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -700,14 +700,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-02.7`: Sammelaktionen mit gemischten erlaubten/unerlaubten Zielen auf Teiländerungen prüfen.
   - `SEC-02.8`: Sammelaktionen vollständig validieren und atomar ausführen.
   - `SEC-02.9`: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen; offene SEC-09-/SEC-03-Grenzen ausdrücklich dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-02.6 `7223e55`; SEC-02.7 wird separat committed.
+- **Letzter dauerhafter Checkpoint:** SEC-02.7 `e9f7430`; SEC-02.8 wird separat committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-02.1 `319f56d`; SEC-02.2 `4e619a5`; SEC-02.3 `f578bb6`; SEC-02.4 `6335831`; SEC-02.5 `f28d282`; SEC-02.6 `7223e55`. SEC-02.7: Inventar-Sammeltest, Bestellpositions-Sammeltest und dieser Roadmap-Status.
-- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage; `SEC-02.1` Gruppen-Regression; `SEC-02.2` Gruppen-Schreibzielprüfung; `SEC-02.3` Inventar-Regression; `SEC-02.4` Inventar-Relationsprüfung; `SEC-02.5` Personen-/Bestell-/Trainingsregression; `SEC-02.6` Zielvalidierung; `SEC-02.7` Sammelaktionsregression.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.6: 31/31 gezielte und 15/15 zusätzliche Modulprüfungen bestanden. SEC-02.7: 8/8 gezielte Sammel-/Bestellpositionstests sowie Ruff bestanden; Staged-Diff-Check vor Commit. Breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** Sammelvalidierung vor Schreibschleifen und übrige Zielrelationen noch nicht abgenommen. Trainings-Sonderrecht fehlt weiterhin im Modell und wurde nur im Testfixture angelegt; ROLE-01.2 muss es ausliefern. Keine Abnahme von SEC-02.
+- **Geänderte Dateien / Commit-Bezug:** SEC-02.1 `319f56d`; SEC-02.2 `4e619a5`; SEC-02.3 `f578bb6`; SEC-02.4 `6335831`; SEC-02.5 `f28d282`; SEC-02.6 `7223e55`; SEC-02.7 `e9f7430`. SEC-02.8: Bestell-/Bestellpositions-Viewsets, Bestellserializer, Inventar-Sammelpfad, HTTP-Tests und dieser Roadmap-Status.
+- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage; `SEC-02.1` Gruppen-Regression; `SEC-02.2` Gruppen-Schreibzielprüfung; `SEC-02.3` Inventar-Regression; `SEC-02.4` Inventar-Relationsprüfung; `SEC-02.5` Personen-/Bestell-/Trainingsregression; `SEC-02.6` Zielvalidierung; `SEC-02.7` Sammelaktionsregression; `SEC-02.8` validierte atomare Sammelaktion.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.7: 8/8 gezielte Sammel-/Bestellpositionstests bestanden. SEC-02.8: 33/33 relevante Backendtests sowie Ruff bestanden; Staged-Diff-Check vor Commit. Breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** Paketweite Zielrelations-Abnahme steht aus. Trainings-Sonderrecht fehlt weiterhin im Modell und wurde nur im Testfixture angelegt; ROLE-01.2 muss es ausliefern. Mitgliederlisten mit Abteilungsbesitz gehören zur SEC-03-Migration; Bestandskonkurrenz und Idempotenz zu SEC-09.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; `dump.rdb` bleibt unversioniert.
-- **Nächster konkreter Schritt:** `SEC-02.8` Sammelziele vollständig vor Schreibschleifen prüfen und atomare Ausführung erhalten.
+- **Nächster konkreter Schritt:** `SEC-02.9` Ziel- und Relationsvertrag über Gruppen, Inventar, Qualifikationen, Bestellungen und Ausbildung abnehmen; SEC-03-/SEC-09-Grenzen festhalten.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -787,3 +787,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-02.5 | HTTP-Regressionen für B-Mitglied bei Qualifikation, B-Zielabteilung und B-Mitglied bei Bestellung sowie B-Abteilung und B-Gruppe bei Training; erlaubte A-Fälle als Kontrolle. Fehlendes Trainings-Sonderrecht für diesen Test im Fixture angelegt. | 3/9 gezielte Backendtests bestanden; sechs erwartete Sicherheitsfehler (fünfmal 201, einmal 200 statt 400). Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-02.5): expose person order and training target bypasses` | SEC-02.6 Zielrelationen absichern. |
 | 04.10.2026 | SEC-02.6 | Qualifikationen/Sonderaufgaben prüfen Zielpersonen mit aktionsbezogenem Recht, Bestellungen Zielabteilung und Mitglied, Trainingssitzungen Abteilung und Gruppen vor `save()`. Trainingsrollenrecht und Prüfung weiterer Trainingsobjekte bleiben ROLE-01.2 beziehungsweise SEC-02.9. | 31/31 gezielte und 15/15 zusätzliche Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.6): validate person order and training targets` | SEC-02.7 Sammelaktionen prüfen. |
 | 04.10.2026 | SEC-02.7 | HTTP-Regressionen für A/B-Inventar-Sammelausgabe und A/B-Bestellpositionsstatus mit B-Lesebereich. Beide lehnen den gesamten Aufruf ab; A/B-Bestände, Transaktionen, persönlicher Lagerort und Status bleiben unverändert. | 8/8 gezielte Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-02.7): verify mixed batch targets are atomic` | SEC-02.8 Sammelziele vor Schreibschleifen validieren. |
+| 04.10.2026 | SEC-02.8 | Inventar-Sammelzielprüfung vor persönlichen Lagerort verschoben; Bestellpositionsstatus validiert alle Serializer vor der Schreibschleife. Verschachtelte Bestellanlage ist atomar. `quick_create` leitet eindeutige Mitgliedsabteilung ab und nutzt dieselbe Zielrechteprüfung; erlaubter A- und abgewiesener B-Fall ergänzt. | 33/33 relevante Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.8): validate batch targets before writes` | SEC-02.9 Paketabnahme und Grenzen. |

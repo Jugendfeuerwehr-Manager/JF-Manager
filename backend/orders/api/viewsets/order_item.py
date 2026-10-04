@@ -149,8 +149,8 @@ class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                     raise serializers.ValidationError(
                         {"item_ids": "Mindestens eine Bestellposition wurde nicht gefunden."}
                     )
+                serializers_to_save = []
                 for order_item in order_items:
-                    old_status = order_item.status
                     update_data = {"status": status_id}
                     if request.data.get("receipt_location") is not None:
                         update_data["receipt_location"] = request.data["receipt_location"]
@@ -163,6 +163,10 @@ class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                         context={"request": request},
                     )
                     serializer.is_valid(raise_exception=True)
+                    serializers_to_save.append((order_item, serializer))
+
+                for order_item, serializer in serializers_to_save:
+                    old_status = order_item.status
                     serializer.save()
                     updated_items.append(order_item.id)
                     if old_status != new_status:

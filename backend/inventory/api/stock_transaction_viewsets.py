@@ -98,15 +98,6 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
                 return Response({"detail": "Kein Zugriff auf dieses Mitglied."}, status=status.HTTP_403_FORBIDDEN)
 
         with db_transaction.atomic():
-            member_location = StorageLocation.objects.filter(member=member, is_member=True).first()
-            if member_location is None:
-                member_location = StorageLocation.objects.create(
-                    name=f"{member.name} {member.lastname}",
-                    is_member=True,
-                    member=member,
-                    department=member.departments.first(),
-                )
-
             source_stocks = []
             missing_lines = []
             for line in data["items"]:
@@ -143,6 +134,15 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
                     missing_lines.append({**line, "quantity": line["quantity"] - available})
                     continue
                 source_stocks.append((line, stocks))
+
+            member_location = StorageLocation.objects.filter(member=member, is_member=True).first()
+            if member_location is None:
+                member_location = StorageLocation.objects.create(
+                    name=f"{member.name} {member.lastname}",
+                    is_member=True,
+                    member=member,
+                    department=member.departments.first(),
+                )
 
             order = None
             if missing_lines:
