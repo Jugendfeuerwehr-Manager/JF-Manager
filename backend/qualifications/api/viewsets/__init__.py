@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
@@ -74,6 +75,22 @@ class PersonDepartmentRoleModelPermissions(DepartmentRoleModelPermissions):
 
 class PersonDepartmentScopeMixin(DepartmentScopeViewSetMixin):
     """Apply member department and action rights to person-linked records."""
+
+    def _validate_person_target(self, serializer):
+        member = serializer.validated_data.get("member", getattr(serializer.instance, "member", None))
+        person = serializer.validated_data.get("user", getattr(serializer.instance, "user", None))
+        candidate = self.queryset.model(member=member, user=person)
+        permission = PersonDepartmentRoleModelPermissions()
+        if not permission.has_object_permission(self.request, self, candidate):
+            raise ValidationError({"member": "Keine Schreibberechtigung für die Zielperson."})
+
+    def perform_create(self, serializer):
+        self._validate_person_target(serializer)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._validate_person_target(serializer)
+        serializer.save()
 
     def _scope_person_queryset(self, queryset, permission, *, filter_permission=True):
         user = self.request.user

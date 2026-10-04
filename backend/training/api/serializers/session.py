@@ -89,6 +89,30 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_by", "created_at", "updated_at"]
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        if request is None:
+            return attrs
+
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        department_id = getattr(department, "pk", None)
+        user = request.user
+        org_wide = user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        if not org_wide and (department_id is None or not user.department_roles.filter(department_id=department_id).exists()):
+            raise serializers.ValidationError({"department": "Keine Schreibberechtigung für die Zielabteilung."})
+
+        groups = attrs.get("groups")
+        if groups is None:
+            groups = self.instance.groups.all() if self.instance is not None else []
+        if any(group.department_id != department_id for group in groups):
+            raise serializers.ValidationError({"group_ids": "Gruppen müssen zur Trainingsabteilung gehören."})
+
+        series_parent = attrs.get("series_parent", getattr(self.instance, "series_parent", None))
+        if series_parent is not None and series_parent.department_id != department_id:
+            raise serializers.ValidationError({"series_parent": "Die Serie gehört zu einer anderen Abteilung."})
+        return attrs
+
     def create(self, validated_data):
         groups = validated_data.pop("groups", [])
         request = self.context.get("request")

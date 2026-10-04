@@ -5,10 +5,26 @@ Order serializers with nested items and computed fields
 from django.db.models import Count
 from rest_framework import serializers
 
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from orders.models import Order
 
 from .order_item import OrderItemCreateSerializer, OrderItemMinimalSerializer, OrderItemSerializer
 from .order_status import OrderStatusMinimalSerializer
+
+
+def validate_order_target(serializer, attrs):
+    department = attrs.get("department", getattr(serializer.instance, "department", None))
+    member = attrs.get("member", getattr(serializer.instance, "member", None))
+    if department is None or member is None or not member.departments.filter(pk=department.pk).exists():
+        raise serializers.ValidationError({"member": "Das Mitglied muss zur Bestellabteilung gehören."})
+
+    request = serializer.context.get("request")
+    view = serializer.context.get("view")
+    if request is not None and view is not None:
+        candidate = Order(department=department)
+        if not DepartmentRoleModelPermissions().has_object_permission(request, view, candidate):
+            raise serializers.ValidationError({"department": "Keine Schreibberechtigung für die Bestellabteilung."})
+    return attrs
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -105,6 +121,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Order must contain at least one item")
         return value
 
+    def validate(self, attrs):
+        return validate_order_target(self, super().validate(attrs))
+
     def create(self, validated_data):
         """Create order with nested items"""
         items_data = validated_data.pop("items")
@@ -147,6 +166,9 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             "notes",
             "department",
         ]
+
+    def validate(self, attrs):
+        return validate_order_target(self, super().validate(attrs))
 
 
 class OrderListSerializer(serializers.ModelSerializer):

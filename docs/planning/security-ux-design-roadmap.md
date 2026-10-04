@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: SEC-02.5 reproduziert sechs unerlaubte Qualifikations-, Bestell- und Trainingsziele; 3/9 gezielte Backendtests bestanden. |
-| Aktuelles Paket | SEC-02 in Arbeit; SEC-02.6 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
+| Letzter Checkpoint | 04.10.2026: SEC-02.6 validiert Qualifikations-, Bestell- und Trainingsziele; 31/31 gezielte und 15/15 zusätzliche Backendtests bestanden. |
+| Aktuelles Paket | SEC-02 in Arbeit; SEC-02.7 als nächster Teilschritt. SEC-01.57-Restabnahme bleibt offen; ROLE-01.1 abgeschlossen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `6335831` (SEC-02.4); SEC-02.5 wird mit diesem Checkpoint committed. |
+| Letzter Roadmap-Commit | `f28d282` (SEC-02.5); SEC-02.6 wird mit diesem Checkpoint committed. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-02.6: Qualifikations-, Bestell- und Trainingsziele vor dem Speichern validieren. |
+| Nächster konkreter Schritt | SEC-02.7: Sammelaktionen mit gemischten erlaubten und unerlaubten Zielen auf Teiländerungen prüfen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -700,14 +700,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-02.7`: Sammelaktionen mit gemischten erlaubten/unerlaubten Zielen auf Teiländerungen prüfen.
   - `SEC-02.8`: Sammelaktionen vollständig validieren und atomar ausführen.
   - `SEC-02.9`: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen; offene SEC-09-/SEC-03-Grenzen ausdrücklich dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-02.4 `6335831`; SEC-02.5 wird separat committed.
+- **Letzter dauerhafter Checkpoint:** SEC-02.5 `f28d282`; SEC-02.6 wird separat committed.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-02.1 `319f56d`; SEC-02.2 `4e619a5`; SEC-02.3 `f578bb6`; SEC-02.4 `6335831`. SEC-02.5: Qualifikations-, Bestell- und Trainings-HTTP-Regression und dieser Roadmap-Status.
-- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage; `SEC-02.1` Gruppen-Regression; `SEC-02.2` Gruppen-Schreibzielprüfung; `SEC-02.3` Inventar-Regression; `SEC-02.4` Inventar-Relationsprüfung; `SEC-02.5` Personen-/Bestell-/Trainingsregression.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.4: 62/62 relevante Inventar- und Abteilungstests bestanden. SEC-02.5: 3/9 gezielte Backendtests bestanden, sechs erwartete Sicherheitsfehler; Ruff und Staged-Diff-Check bestanden. Breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** Fremde Qualifikationsmitglieder, Bestellabteilungen/-mitglieder und Trainingsabteilungen/-gruppen werden akzeptiert. Trainings-Sonderrecht fehlt weiterhin im Modell und wurde nur im Testfixture angelegt. Keine Abnahme von SEC-02.
+- **Geänderte Dateien / Commit-Bezug:** SEC-02.1 `319f56d`; SEC-02.2 `4e619a5`; SEC-02.3 `f578bb6`; SEC-02.4 `6335831`; SEC-02.5 `f28d282`. SEC-02.6: Qualifikations-Viewset, Bestell-/Trainings-Serializer, HTTP-Tests und dieser Roadmap-Status.
+- **Umgesetzte Teilschritte:** `SEC-02.0` Vertragsgrundlage; `SEC-02.1` Gruppen-Regression; `SEC-02.2` Gruppen-Schreibzielprüfung; `SEC-02.3` Inventar-Regression; `SEC-02.4` Inventar-Relationsprüfung; `SEC-02.5` Personen-/Bestell-/Trainingsregression; `SEC-02.6` Zielvalidierung.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.5: 3/9 gezielte Backendtests bestanden, sechs erwartete Sicherheitsfehler. SEC-02.6: 31/31 gezielte und 15/15 zusätzliche Modulprüfungen sowie Ruff bestanden; Staged-Diff-Check vor Commit. Breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** Sammelaktionen und übrige Zielrelationen noch nicht abgenommen. Trainings-Sonderrecht fehlt weiterhin im Modell und wurde nur im Testfixture angelegt; ROLE-01.2 muss es ausliefern. Keine Abnahme von SEC-02.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; `dump.rdb` bleibt unversioniert.
-- **Nächster konkreter Schritt:** `SEC-02.6` Qualifikations-, Bestell- und Trainingsziele vor dem Speichern validieren.
+- **Nächster konkreter Schritt:** `SEC-02.7` Sammelaktionen auf atomare Ablehnung gemischter Ziele prüfen.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -785,3 +785,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | SEC-02.3 | HTTP-Regressionen für fremden Varianten-Elternartikel, Lagerort-Eltern, Mitgliedslagerort und Artikel-`rented_by`; erlaubte A-Varianten- und Elternortfälle als Kontrolle. | 2/7 gezielte Backendtests bestanden; fünf erwartete Sicherheitsfehler (viermal 201, einmal 200 statt 400). Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-02.3): expose inventory target relation bypasses` | SEC-02.4 Inventar-Zielrelationen absichern. |
 | 04.10.2026 | SEC-02.4 | Varianten prüfen das Schreibrecht am neuen Elternartikel; Lagerorte verlangen passende Eltern- und Mitgliedsabteilung, Artikel eine passende `rented_by`-Mitgliedsabteilung. Variantenanlage speichert ohne künstliches Abteilungsfeld. Zentrale Varianten, Lagerorte und Artikel-Mitglied-Beziehung mit globalem Recht positiv geprüft. | 62/62 relevante Backendtests sowie Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.4): validate inventory target relations` | SEC-02.5 Qualifikationen, Bestellungen und Ausbildung prüfen. |
 | 04.10.2026 | SEC-02.5 | HTTP-Regressionen für B-Mitglied bei Qualifikation, B-Zielabteilung und B-Mitglied bei Bestellung sowie B-Abteilung und B-Gruppe bei Training; erlaubte A-Fälle als Kontrolle. Fehlendes Trainings-Sonderrecht für diesen Test im Fixture angelegt. | 3/9 gezielte Backendtests bestanden; sechs erwartete Sicherheitsfehler (fünfmal 201, einmal 200 statt 400). Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-02.5): expose person order and training target bypasses` | SEC-02.6 Zielrelationen absichern. |
+| 04.10.2026 | SEC-02.6 | Qualifikationen/Sonderaufgaben prüfen Zielpersonen mit aktionsbezogenem Recht, Bestellungen Zielabteilung und Mitglied, Trainingssitzungen Abteilung und Gruppen vor `save()`. Trainingsrollenrecht und Prüfung weiterer Trainingsobjekte bleiben ROLE-01.2 beziehungsweise SEC-02.9. | 31/31 gezielte und 15/15 zusätzliche Backendtests, Ruff und Staged-Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-02.6): validate person order and training targets` | SEC-02.7 Sammelaktionen prüfen. |
