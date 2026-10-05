@@ -2,6 +2,7 @@
 
 from django.test import SimpleTestCase
 
+from jf_manager_backend.html_safety import sanitize_rich_html
 from members.models import Member
 from members.services.email_service import EmailTemplateRenderer
 
@@ -32,3 +33,13 @@ class EmailHtmlSafetyTests(SimpleTestCase):
         self.assertNotIn("<script", rendered_html)
         self.assertNotIn("javascript:", rendered_html)
         self.assertNotIn("onclick", rendered_html)
+
+    def test_encoded_script_url_and_svg_are_removed(self):
+        rendered = sanitize_rich_html(
+            '<p><a href="java&#x73;cript:alert(1)">Info</a><svg onload="alert(1)">x</svg></p>'
+        )
+
+        self.assertIn("<p>", rendered)
+        self.assertNotIn("javascript:", rendered)
+        self.assertNotIn("<svg", rendered)
+        self.assertNotIn("onload", rendered)
