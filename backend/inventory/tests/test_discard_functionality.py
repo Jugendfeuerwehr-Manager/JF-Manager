@@ -13,10 +13,10 @@ from rest_framework.test import APIClient
 from inventory.models import (
     Category,
     Item,
-    Stock,
     StorageLocation,
     Transaction,
 )
+from inventory.opening_stock import book_opening_stock
 
 User = get_user_model()
 
@@ -30,7 +30,7 @@ class DiscardReasonFieldTestCase(TestCase):
         self.item = Item.objects.create(name="Test Item", category=self.category, base_unit="Stück")
         self.storage_location = StorageLocation.objects.create(name="Main Storage", is_member=False)
         # Create initial stock
-        Stock.objects.create(item=self.item, location=self.storage_location, quantity=100)
+        book_opening_stock(self.storage_location, 100, item=self.item)
 
     def test_discard_transaction_requires_reason(self):
         """DISCARD transactions must have a discard_reason"""
@@ -127,7 +127,7 @@ class DiscardStatisticsAPITestCase(TestCase):
     def test_discard_statistics_by_reason(self):
         """Statistics should group by discard reason"""
         # Create stock first
-        Stock.objects.create(item=self.item, location=self.storage_location, quantity=100)
+        book_opening_stock(self.storage_location, 100, item=self.item)
 
         # Create discards with different reasons
         Transaction.objects.create(
@@ -173,7 +173,7 @@ class DiscardStatisticsAPITestCase(TestCase):
     def test_discard_transaction_creation_via_api(self):
         """Creating DISCARD transaction via API should require discard_reason"""
         # Create stock first
-        Stock.objects.create(item=self.item, location=self.storage_location, quantity=100)
+        book_opening_stock(self.storage_location, 100, item=self.item)
 
         self.client.force_authenticate(user=self.user)
 
@@ -222,7 +222,7 @@ class DiscardFilteringTestCase(TestCase):
     def test_filter_transactions_by_discard_reason(self):
         """Should be able to filter transactions by discard_reason"""
         # Create stock first
-        Stock.objects.create(item=self.item, location=self.storage_location, quantity=100)
+        book_opening_stock(self.storage_location, 100, item=self.item)
 
         # Create transactions with different reasons
         Transaction.objects.create(

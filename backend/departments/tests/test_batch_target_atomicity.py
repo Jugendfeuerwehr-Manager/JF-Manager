@@ -8,6 +8,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
 from inventory.models import Category, Item, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -23,8 +24,8 @@ class InventoryBatchTargetAtomicityTests(APITestCase):
         cls.item_b = Item.objects.create(name="B item", category=category, department=cls.department_b)
         cls.location_a = StorageLocation.objects.create(name="A shelf", department=cls.department_a)
         cls.location_b = StorageLocation.objects.create(name="B shelf", department=cls.department_b)
-        Stock.objects.create(item=cls.item_a, location=cls.location_a, quantity=2)
-        Stock.objects.create(item=cls.item_b, location=cls.location_b, quantity=2)
+        book_opening_stock(cls.location_a, 2, item=cls.item_a)
+        book_opening_stock(cls.location_b, 2, item=cls.item_b)
 
         cls.user = get_user_model().objects.create_user(username="batch-target-writer")
         writer = AuthGroup.objects.create(name="Batch target writer A")
@@ -51,7 +52,7 @@ class InventoryBatchTargetAtomicityTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertFalse(Transaction.objects.exists())
+        self.assertFalse(Transaction.objects.filter(transaction_type="LOAN").exists())
         self.assertEqual(Stock.objects.get(item=self.item_a, location=self.location_a).quantity, 2)
         self.assertEqual(Stock.objects.get(item=self.item_b, location=self.location_b).quantity, 2)
         self.assertFalse(StorageLocation.objects.filter(member=self.member_a).exists())

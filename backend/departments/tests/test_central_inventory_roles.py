@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
 from inventory.models import Category, Item, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -19,7 +20,7 @@ class CentralInventoryRoleTests(APITestCase):
         category = Category.objects.create(name="Clothing")
         cls.central_item = Item.objects.create(name="Central jacket", category=category, department=None)
         cls.central_location = StorageLocation.objects.create(name="Central wardrobe", department=None)
-        Stock.objects.create(item=cls.central_item, location=cls.central_location, quantity=3)
+        book_opening_stock(cls.central_location, 3, item=cls.central_item)
 
         cls.global_manager = get_user_model().objects.create_user(
             username="central-wardrobe-manager", password="test-only-password"

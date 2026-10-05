@@ -8,6 +8,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from inventory.models import Item, ItemVariant, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 
 
 class StockLedgerRegressionTest(TestCase):
@@ -106,7 +107,7 @@ class StockLedgerRegressionTest(TestCase):
 
     def test_move_reversal_swaps_locations_and_restores_both_balances(self):
         other = StorageLocation.objects.create(name="Zweites Lager")
-        Stock.objects.create(item=self.item, location=self.location, quantity=4)
+        book_opening_stock(self.location, 4, item=self.item)
         movement = Transaction.objects.create(
             transaction_type="MOVE", item=self.item, source=self.location, target=other, quantity=2
         )
@@ -167,31 +168,31 @@ class StockLedgerRegressionTest(TestCase):
         self.assertEqual(Transaction.objects.count(), 1)
 
     def test_stock_identity_cannot_be_duplicated(self):
-        Stock.objects.create(item=self.item, location=self.location, quantity=2)
+        book_opening_stock(self.location, 2, item=self.item)
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Stock.objects.create(item=self.item, location=self.location, quantity=3)
+            Stock.objects.create(item=self.item, location=self.location)
 
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 2)
 
     def test_variant_stock_identity_cannot_be_duplicated(self):
         variant = ItemVariant.objects.create(parent_item=self.item, variant_attributes={"size": "M"})
-        Stock.objects.create(item_variant=variant, location=self.location, quantity=2)
+        book_opening_stock(self.location, 2, item_variant=variant)
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Stock.objects.create(item_variant=variant, location=self.location, quantity=3)
+            Stock.objects.create(item_variant=variant, location=self.location)
 
         self.assertEqual(Stock.objects.get(item_variant=variant, location=self.location).quantity, 2)
 
     def test_failed_transfer_rolls_back_target_stock_and_movement(self):
         target = StorageLocation.objects.create(name="Leeres Ziellager")
-        Stock.objects.create(item=self.item, location=self.location, quantity=1)
+        book_opening_stock(self.location, 1, item=self.item)
 
         with self.assertRaises(ValidationError):
             Transaction.objects.create(
                 transaction_type="MOVE", item=self.item, source=self.location, target=target, quantity=2
             )
 
-        self.assertFalse(Transaction.objects.exists())
+        self.assertEqual(Transaction.objects.count(), 1)  # only the opening balance
         self.assertFalse(Stock.objects.filter(item=self.item, location=target).exists())
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 1)

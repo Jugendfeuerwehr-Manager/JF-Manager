@@ -6,7 +6,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
-from inventory.models import Category, Item, ItemVariant, Stock, StorageLocation, Transaction
+from inventory.models import Category, Item, ItemVariant, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -25,19 +26,17 @@ class InventoryNestedScopeTests(APITestCase):
             parent_item=cls.central_item, variant_attributes={"size": "C"}
         )
         cls.central_location = StorageLocation.objects.create(name="Shared storage")
-        cls.stock_a = Stock.objects.create(item=cls.item_a, location=cls.central_location, quantity=1)
-        cls.stock_b = Stock.objects.create(item=cls.item_b, location=cls.central_location, quantity=2)
-        cls.central_stock = Stock.objects.create(item=cls.central_item, location=cls.central_location, quantity=3)
+        cls.stock_a = book_opening_stock(cls.central_location, 1, item=cls.item_a)
+        cls.stock_b = book_opening_stock(cls.central_location, 2, item=cls.item_b)
+        cls.central_stock = book_opening_stock(cls.central_location, 3, item=cls.central_item)
         cls.member_a = Member.objects.create(name="A", lastname="Borrower")
         cls.member_a.departments.add(department_a)
         cls.member_location = StorageLocation.objects.create(
             name="Member A", member=cls.member_a, is_member=True, department=department_a
         )
-        cls.member_stock_a = Stock.objects.create(item=cls.item_a, location=cls.member_location, quantity=1)
-        cls.member_stock_b = Stock.objects.create(item=cls.item_b, location=cls.member_location, quantity=2)
-        cls.member_central_stock = Stock.objects.create(
-            item=cls.central_item, location=cls.member_location, quantity=3
-        )
+        cls.member_stock_a = book_opening_stock(cls.member_location, 1, item=cls.item_a)
+        cls.member_stock_b = book_opening_stock(cls.member_location, 2, item=cls.item_b)
+        cls.member_central_stock = book_opening_stock(cls.member_location, 3, item=cls.central_item)
         cls.viewer = get_user_model().objects.create_user(username="nested-inventory-viewer")
         group_a = Group.objects.create(name="Nested inventory viewer A")
         for codename in ("view_category", "view_item", "view_itemvariant", "view_storagelocation"):
@@ -171,10 +170,10 @@ class InventoryNestedScopeTests(APITestCase):
             {self.member_stock_a.pk, self.member_central_stock.pk},
         )
         self.assertEqual(response.data["total_items"], 5)
-        self.assertEqual(
-            {row["id"] for row in response.data["recent_transactions"]},
-            {transaction_a.pk},
-        )
+        shown = {row["id"] for row in response.data["recent_transactions"]}
+        hidden = set(Transaction.objects.filter(item=self.item_b).values_list("pk", flat=True))
+        self.assertIn(transaction_a.pk, shown)
+        self.assertFalse(shown & hidden)
 
     def test_member_location_get_does_not_create_missing_location(self):
         member = Member.objects.create(name="New", lastname="Borrower")

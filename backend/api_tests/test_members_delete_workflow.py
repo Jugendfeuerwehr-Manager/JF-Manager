@@ -3,6 +3,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from inventory.models import Category, Item, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -120,7 +121,7 @@ class MemberDeleteWorkflowApiTest(TestCase):
         self.assertTrue(Transaction.objects.filter(pk=transaction.pk).exists())
 
     def test_direct_delete_rejects_stock_without_transactions(self):
-        Stock.objects.create(item=self.item, location=self.personal_storage, quantity=1)
+        book_opening_stock(self.personal_storage, 1, item=self.item)
 
         response = self.client.delete(f"/api/v1/members/{self.member.id}/")
 

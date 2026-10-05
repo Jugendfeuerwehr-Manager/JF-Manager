@@ -3,10 +3,45 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db import transaction as db_transaction
 from django.db.models import F
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 from .item import Item
 from .location import StorageLocation
 from .variant import ItemVariant
+
+LEDGER_ONLY = "Bestände ändern sich nur durch Buchungen (Eingang, Ausgabe, Rückgabe, Umlagerung, Aussortierung)."
+IMMUTABLE = "Gebuchte Bestandsbewegungen sind unveränderlich. Bitte eine Gegenbuchung anlegen."
+
+
+class StockQuerySet(models.QuerySet):
+    """Quantities move only through ``Transaction.update_stock``."""
+
+    def update(self, **kwargs):
+        raise ValidationError(LEDGER_ONLY)
+
+    def _apply_booking(self, delta):
+        # Single entry point for quantity changes, used by the booking service.
+        return super().update(quantity=F("quantity") + delta)
+
+    def delete(self):
+        if self.filter(quantity__gt=0).exists():
+            raise ValidationError("Bestände mit Menge können nicht gelöscht werden. " + LEDGER_ONLY)
+        return super().delete()
+
+
+class TransactionQuerySet(models.QuerySet):
+    """Booked movements cannot be changed or deleted in bulk either."""
+
+    def update(self, **kwargs):
+        raise ValidationError(IMMUTABLE)
+
+    def delete(self):
+        raise ValidationError("Gebuchte Bestandsbewegungen dürfen nicht gelöscht werden.")
+
+    def clear_former_member_names(self):
+        """Privacy action: the only permitted change to booked movements."""
+        return super(TransactionQuerySet, self.exclude(former_member_name="")).update(former_member_name="")
 
 
 class Stock(models.Model):
@@ -18,6 +53,8 @@ class Stock(models.Model):
     )
     location = models.ForeignKey(StorageLocation, on_delete=models.CASCADE, verbose_name="Lagerort")
     quantity = models.PositiveIntegerField(default=0, verbose_name="Menge")
+
+    objects = StockQuerySet.as_manager()
 
     class Meta:
         constraints = [
@@ -44,6 +81,20 @@ class Stock(models.Model):
             raise ValidationError("Entweder Artikel oder Artikel-Variante muss ausgewählt werden.")
         if self.item and self.item_variant:
             raise ValidationError("Nur eines von Artikel oder Artikel-Variante kann ausgewählt werden.")
+
+    def save(self, *args, **kwargs):
+        # New rows start empty; quantities change only via bookings.
+        if self.pk is None:
+            if self.quantity:
+                raise ValidationError(LEDGER_ONLY)
+        elif type(self).objects.filter(pk=self.pk).exclude(quantity=self.quantity).exists():
+            raise ValidationError(LEDGER_ONLY)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if type(self).objects.filter(pk=self.pk, quantity__gt=0).exists():
+            raise ValidationError("Bestände mit Menge können nicht gelöscht werden. " + LEDGER_ONLY)
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
         item_name = self.get_item_name()
@@ -137,6 +188,8 @@ class Transaction(models.Model):
         help_text="Name des Mitglieds, das zum Zeitpunkt der Transaktion verknüpft war (wird gesetzt, wenn ein Mitglied gelöscht wird)",
     )
 
+    objects = TransactionQuerySet.as_manager()
+
     class Meta:
         verbose_name = "Transaktion"
         verbose_name_plural = "Transaktionen"
@@ -206,9 +259,7 @@ class Transaction(models.Model):
                 "reverses_id",
             )
             if any(getattr(self, field) != getattr(previous, field) for field in immutable_fields):
-                raise ValidationError(
-                    "Gebuchte Bestandsbewegungen sind unveränderlich. Bitte eine Gegenbuchung anlegen."
-                )
+                raise ValidationError(IMMUTABLE)
             return
         self.clean()
         with db_transaction.atomic():
@@ -237,11 +288,23 @@ class Transaction(models.Model):
         list(Stock.objects.select_for_update().filter(pk__in=stock_ids).order_by("pk"))
 
         if source_stock is not None:
-            changed = Stock.objects.filter(pk=source_stock.pk, quantity__gte=self.quantity).update(
-                quantity=F("quantity") - self.quantity
+            changed = Stock.objects.filter(pk=source_stock.pk, quantity__gte=self.quantity)._apply_booking(
+                -self.quantity
             )
             if not changed:
                 current = Stock.objects.get(pk=source_stock.pk).quantity
                 raise ValidationError(f"Nicht genügend Bestand. Verfügbar: {current}")
         if target_stock is not None:
-            Stock.objects.filter(pk=target_stock.pk).update(quantity=F("quantity") + self.quantity)
+            Stock.objects.filter(pk=target_stock.pk)._apply_booking(self.quantity)
+
+
+@receiver(pre_delete, sender=Transaction)
+def protect_booked_movement(sender, instance, **kwargs):
+    # Also covers deletions collected by cascades from related objects.
+    raise ValidationError("Gebuchte Bestandsbewegungen dürfen nicht gelöscht werden.")
+
+
+@receiver(pre_delete, sender=Stock)
+def protect_stock_with_quantity(sender, instance, **kwargs):
+    if Stock.objects.filter(pk=instance.pk, quantity__gt=0).exists():
+        raise ValidationError("Bestände mit Menge können nicht gelöscht werden. " + LEDGER_ONLY)

@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-07.8 Abnahme; SEC-07 abgeschlossen. |
+| Letzter Checkpoint | 05.10.2026: SEC-09.5b Buchungen und Bestände nur noch über den Buchungsdienst änderbar; PostgreSQL-Trigger. |
 | Aktuelles Paket | SEC-03 bis SEC-08 abgeschlossen; SEC-09-Rest offen. Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `fe22e1f` (SEC-07.7c); SEC-07.8 ist dieser Commit. |
+| Letzter Roadmap-Commit | `2297392` (EXEC-01.5, Design-Session); SEC-09.5b ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-09.5b direkte Bulk-/Bereinigungspfade an Buchungen, dann SEC-09.5c und SEC-09.6. |
+| Nächster konkreter Schritt | SEC-09.5c Inventar-/Bestell-/Leih-Clients mit Idempotenzkennung; danach SEC-09.6 PostgreSQL-Abnahme und SEC-06.4 (unlesbare LDAP-Konfiguration darf lokalen Login nicht mit 500 abbrechen). |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -543,7 +543,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
-| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b idempotent; SEC-09.5a Mitgliedslöschung gesichert, SEC-09.5b/c offen. |
+| SEC-09 | in Arbeit | Claude | SEC-09.5b Bulk-/Direktpfade geschlossen, Trigger auf PostgreSQL geprüft; nächster Schritt SEC-09.5c Clients. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
@@ -846,7 +846,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
-- **Status:** in Arbeit; `SEC-09.4a/b` idempotent, `SEC-09.5a` Mitgliedslöschung gesichert, übrige Bulk-Pfade/Clients offen.
+- **Status:** in Arbeit; `SEC-09.4a/b` idempotent, `SEC-09.5a/b` Mitgliedslöschung und Direktpfade gesichert, Clients (`SEC-09.5c`) und Abnahme offen. Verantwortung ab SEC-09.5b: Claude.
 - **Verantwortlich:** Codex (Integrationsagent); Bestandsmodell, API und aufrufende Dienste werden in getrennten Teilschritten geprüft.
 - **Abhängigkeiten:** SEC-01-Rechtevertrag und SEC-02-Ziel- und Sammelprüfung für Inventar, Bestellungen und Mitglieder. UX-05 baut auf dem gesicherten Buchungsvertrag auf. PostgreSQL ist für die verbindliche Konkurrenzprüfung erforderlich; SQLite-Prüfungen decken diesen Fall nicht gleichwertig ab.
 - **Ziel und Abnahme:** Eine fachliche Bestandsbewegung wird genau einmal gebucht. Gespeicherte Buchungen können nicht still geändert oder gelöscht werden; Korrekturen erzeugen nachvollziehbare Gegenbuchungen. Bestand je Artikel oder Variante und Lagerort ist eindeutig und nie negativ. Parallele Buchungen verlieren keine Änderungen. Wiederholte API-Aufrufe mit derselben Idempotenzkennung erzeugen keine zweite Bewegung; dieselbe Kennung mit anderem Inhalt wird abgewiesen. Mehrteilige Ausgaben, Rückgaben und Bestelleingänge sind vollständig atomar. Rechte und tatsächliche Quell-/Zielabteilungen bleiben geprüft; PostgreSQL-Konkurrenz-, Rollback- und Wiederholungsfälle bestehen.
@@ -863,14 +863,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
     - `SEC-09.5b`: Übrige direkte Bulk-Änderungen, Verwaltungsbefehle und Datenschutzaktionen an gebuchten Bewegungen prüfen und auf explizite Buchungs- beziehungsweise Bereinigungsabläufe begrenzen.
     - `SEC-09.5c`: Schreibende Inventar-, Bestell- und Leih-Clients mit stabilen Idempotenzkennungen anbinden und Wiederholungs-/Konfliktfälle prüfen.
   - `SEC-09.6`: PostgreSQL-Konkurrenz, Rollback, Rechte, Zielabteilungen und Bedien-/API-Vertrag abnehmen; verbleibende Betriebsgrenzen dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-09.4b `fb2b43e`; `SEC-09.5a` wird mit diesem Mitgliedslösch-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** SEC-09.5b (dieser Commit); SEC-09.5a in Codex-Commit nach `fb2b43e`.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`, SEC-09.1 `45022d2`, SEC-09.2 `cd2aadc`, SEC-09.3 `7564cc3`, SEC-09.4a `2899380`, SEC-09.4b `fb2b43e`; SEC-09.5a Mitgliedslösch-API, Tests, Dialog und dieser Checkpoint in diesem Commit.
-- **Umgesetzte Teilschritte:** `SEC-09.0` bis `SEC-09.3`, `SEC-09.4a/b` und `SEC-09.5a`.
-- **Ausgeführte Prüfungen mit Ergebnis:** 23/23 kombinierte Mitgliedslösch-/Rechte-/Ledger-Tests, Frontend-Typecheck, Ruff und Diff-Check bestanden. PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** Idempotenzkennung bleibt bis SEC-09.5c optional. Gespeicherte Antworten brauchen einen Aufbewahrungsvertrag. Migration `0014` verweigert Dubletten bis zur fachlichen Bereinigung. Modellschutz erfasst keine `QuerySet.update/delete`-Aufrufe; übrige direkte Bulk-/Bereinigungspfade sind SEC-09.5b. Mitgliedslöschung mit historischem Lagerort erhält bei `unlink` dessen Namen; bei `anonymize` wird nur der Lagerortname anonymisiert. PostgreSQL-Konkurrenztest fehlt bis `SEC-09.6`. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
-- **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Nur SEC-09.5a-Dateien und Roadmap stagen; andere Änderungen bleiben unangetastet.
-- **Nächster konkreter Schritt:** `SEC-09.5b` direkte Bulk-/Bereinigungspfade prüfen, dann `SEC-09.5c` Clients und `SEC-09.6` PostgreSQL-Abnahme.
+- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`, SEC-09.1 `45022d2`, SEC-09.2 `cd2aadc`, SEC-09.3 `7564cc3`, SEC-09.4a `2899380`, SEC-09.4b `fb2b43e`; SEC-09.5a Mitgliedslösch-API, Tests und Dialog (Codex); SEC-09.5b Ledger-Sperren, Anfangsbestand-Helfer, Trigger-Migration `inventory.0016`, Befehle und Testfixtures in diesem Commit.
+- **Umgesetzte Teilschritte:** `SEC-09.0` bis `SEC-09.3`, `SEC-09.4a/b` und `SEC-09.5a/b`.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-09.5a: 23/23 kombinierte Mitgliedslösch-/Rechte-/Ledger-Tests, Frontend-Typecheck, Ruff und Diff-Check bestanden. SEC-09.5b: breiter SQLite-Lauf 597/597 (2 PostgreSQL-Tests übersprungen), Inventartests auf lokalem PostgreSQL 14 51/51 inkl. Trigger, Migrationsabgleich und Ruff bestanden. PostgreSQL-Konkurrenztest noch nicht ausgeführt.
+- **Offene Fehler / Risiken:** Idempotenzkennung bleibt bis SEC-09.5c optional. Gespeicherte Antworten brauchen einen Aufbewahrungsvertrag. Migration `0014` verweigert Dubletten bis zur fachlichen Bereinigung. Datenkorrekturen an Buchungen müssen den PostgreSQL-Trigger ausdrücklich im Wartungsfenster deaktivieren; `TRUNCATE` ist nicht abgefangen. Auf SQLite schützen nur Modell-/QuerySet-/Signal-Sperren. Produktion nutzt PostgreSQL 15, geprüft wurde lokal 14. Mitgliedslöschung mit historischem Lagerort erhält bei `unlink` dessen Namen; bei `anonymize` wird nur der Lagerortname anonymisiert. PostgreSQL-Konkurrenztest fehlt bis `SEC-09.6`. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
+- **Laufende Prozesse und sichere Fortsetzung:** Wegwerf-PostgreSQL-Cluster im Scratchpad der Claude-Sitzung (Port 55432, nur 127.0.0.1) für SEC-09.6; wird nach der Abnahme gestoppt. Nur eigene SEC-09-Dateien und Roadmap stagen.
+- **Nächster konkreter Schritt:** `SEC-09.5c` Clients, dann `SEC-09.6` PostgreSQL-Abnahme.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1104,3 +1104,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | DES-01.5b (Korrektur) | Der Journaleintrag zu DES-01.5b nennt 136/136 Frontendtests; tatsächlich liefen 133/133 (22 Testdateien). Detailblock korrigiert, Eintrag oben bleibt unverändert. | Ergebnis aus dem Testlauf vor `32e9f6e` übernommen; kein neuer Lauf nötig. | Dieser Commit: `docs(DES-01.5b): correct recorded test count` | DES-01.6. |
 
 | 05.10.2026 | EXEC-01.5 | Lokaler Start war seit SEC-07.6 unbrauchbar. Ursachen: getrackte, veraltete `frontend/vite.config.js`, `vitest.config.js`, `eslint.config.js` (kompiliert, Mai) überschatteten die `.ts`-Konfigurationen; Vite hatte dadurch keinen `/api`-Proxy und lieferte für API-Aufrufe `index.html`. `launch.json` setzte `DJANGO_DEBUG` statt `DEBUG` (Secure-Cookies über http); Worker-Task ohne `FIELD_ENCRYPTION_KEY`; `demo.py` ohne Schlüssel; README-Testbefehl ohne Schlüssel. Behoben: drei `.js`-Konfigurationen entfernt (ESLint lädt die `.ts`-Konfiguration nachweislich); `launch.json`/`tasks.json` laden Geheimnisse aus der ignorierten `backend/.env` statt getrackter Werte (auch der seit Projektbeginn eingecheckte Entwicklungs-`DJANGO_SECRET_KEY` entfernt; Historie unverändert), neue Startverbünde „JF-Manager: Backend + Frontend“ und „Demo: Backend + Frontend“, Migration vor dem Worker, Redis ohne Persistenz bzw. Wiederverwendung eines laufenden Redis. `start-dev.sh` prüft `.env`, migriert, startet Worker. Demo mit Wegwerf-Schlüssel und MFA-Hinweis. `example.env`, neue `frontend/.env.example`, Startanleitung (deutsch, Fehlerbilder) und README aktualisiert; `/dump.rdb` ignoriert. Lokale Nutzerdatenbank (Backup im temporären Arbeitsverzeichnis) nach `encryption-rotation.md` von altem Ersatzschlüssel auf den lokalen Schlüssel umverschlüsselt. | Proxy-/Cookie-/CSRF-Lauf gegen lokales Backend: Sitzung 200 mit CSRF-Cookie ohne `Secure`, Login ohne CSRF 403, falsches Passwort 401 (JSON), `/admin/login/` 302. Demo startet und antwortet. Rotation: Prüfung und `--apply` (2 Felder) und Nachprüfung nur mit neuem Schlüssel bestanden. Typecheck und 133/133 Frontendtests bestanden; ESLint über `src`: 1 vorbestehender Befund (`ListsView.spec.ts`, `no-explicit-any`). Echter Login mit Konto und MFA nicht ausgeführt. Befund an SEC übergeben: unlesbare, deaktivierte LDAP-Konfiguration bricht jeden Login mit 500 ab (SEC-06.4). | Dieser Commit: `fix(EXEC-01.5): restore local development start` | Weiter mit DES-01.6 Farbschema. |
+
+| 05.10.2026 | SEC-09.5b | Übernahme von SEC-09 durch Claude. `QuerySet.update/delete` auf Buchungen und `update` auf Beständen abgewiesen; Bestandsmengen ändern sich nur über `Transaction.update_stock`. Direktes Speichern oder Anlegen von Beständen mit Menge sowie Löschen von Beständen mit Menge (auch per Kaskade, `pre_delete`) abgewiesen. Einzige erlaubte Massenänderung an Buchungen: Datenschutz-Löschung ehemaliger Mitgliedsnamen; deren Endpunkt verlangt jetzt nur noch das eigene globale Recht, nicht zusätzlich `add_transaction` (vorbestehende Abweichung zur Oberfläche). PostgreSQL-Trigger (Migration `inventory.0016`) verbietet DELETE und UPDATE gebuchter Bewegungen außer dem Leeren des Namens. Beispieldaten-Befehle buchen Anfangsbestände als Eingang (`inventory.opening_stock.book_opening_stock`); `create_inventory_sample_data --clear` verweigert bei vorhandenen Buchungen. Testfixtures auf Eingangsbuchungen umgestellt. | 7/7 neue Guard-Tests auf SQLite, 9/9 auf PostgreSQL 14 inkl. 2 Trigger-Tests; Inventartests auf PostgreSQL 51/51; breiter SQLite-Lauf 597/597 (2 PostgreSQL-only übersprungen); Migrationsabgleich und Ruff bestanden. | Dieser Commit: `fix(SEC-09.5b): restrict stock and booked movements to the booking service` | SEC-09.5c Clients. |

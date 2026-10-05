@@ -4,7 +4,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
-from inventory.models import Category, Item, Stock, StorageLocation
+from inventory.models import Category, Item, StorageLocation
+from inventory.opening_stock import book_opening_stock
 
 
 class InventoryDepartmentAccessTest(APITestCase):
@@ -40,9 +41,9 @@ class InventoryDepartmentAccessTest(APITestCase):
         self.location_dept_b = StorageLocation.objects.create(name="Lager B", department=self.dept_b)
         self.location_central = StorageLocation.objects.create(name="Lager Zentral", department=None)
 
-        Stock.objects.create(item=self.item_dept_a, location=self.location_dept_a, quantity=10)
-        Stock.objects.create(item=self.item_dept_b, location=self.location_dept_b, quantity=10)
-        Stock.objects.create(item=self.item_central, location=self.location_central, quantity=10)
+        book_opening_stock(self.location_dept_a, 10, item=self.item_dept_a)
+        book_opening_stock(self.location_dept_b, 10, item=self.item_dept_b)
+        book_opening_stock(self.location_central, 10, item=self.item_central)
 
         self.client.force_authenticate(user=self.user)
 

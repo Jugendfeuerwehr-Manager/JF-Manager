@@ -4,6 +4,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from departments.models import Department
 from inventory.models import Category, Item, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -22,7 +23,7 @@ class InventoryAPITest(APITestCase):
         self.category = Category.objects.create(name="Helm")
         self.item = Item.objects.create(name="Helm A", category=self.category)
         self.location = StorageLocation.objects.create(name="Lager 1")
-        Stock.objects.create(item=self.item, location=self.location, quantity=5)
+        book_opening_stock(self.location, 5, item=self.item)
         self.department = Department.objects.create(name="Abteilung Test", code="dept-test")
 
     def test_list_items(self):
@@ -58,7 +59,7 @@ class InventoryAPITest(APITestCase):
 
     def test_batch_loan_issues_multiple_items(self):
         second_item = Item.objects.create(name="Handschuhe", category=self.category)
-        Stock.objects.create(item=second_item, location=self.location, quantity=3)
+        book_opening_stock(self.location, 3, item=second_item)
         member = Member.objects.create(name="Max", lastname="Mustermann")
 
         response = self.client.post(
@@ -105,7 +106,7 @@ class InventoryAPITest(APITestCase):
 
     def test_batch_loan_uses_selected_source(self):
         other = StorageLocation.objects.create(name="Lager 2")
-        Stock.objects.create(item=self.item, location=other, quantity=4)
+        book_opening_stock(other, 4, item=self.item)
         member = Member.objects.create(name="Max", lastname="Mustermann")
 
         response = self.client.post(

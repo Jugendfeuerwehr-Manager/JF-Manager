@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from inventory.models import Category, Item, ItemVariant, Stock, StorageLocation
+from inventory.opening_stock import book_opening_stock
 
 
 class Command(BaseCommand):
@@ -63,12 +64,9 @@ class Command(BaseCommand):
                 self.stdout.write(f'    ✓ Variante "Größe {size}" erstellt')
 
                 # Erstelle Bestand für Variante
-                stock, stock_created = Stock.objects.get_or_create(
-                    item_variant=variant,
-                    location=clothing_storage,
-                    defaults={"quantity": 5},  # 5 Hosen jeder Größe
-                )
+                stock_created = not Stock.objects.filter(item_variant=variant, location=clothing_storage).exists()
                 if stock_created:
+                    stock = book_opening_stock(clothing_storage, 5, item_variant=variant, note="Testbestand")
                     self.stdout.write(f"      ✓ Bestand von {stock.quantity} Stück angelegt")
 
         # Feuerwehrjacke
@@ -94,12 +92,9 @@ class Command(BaseCommand):
                 self.stdout.write(f'    ✓ Variante "Größe {size}" erstellt')
 
                 # Erstelle Bestand für Variante
-                stock, stock_created = Stock.objects.get_or_create(
-                    item_variant=variant,
-                    location=clothing_storage,
-                    defaults={"quantity": 3},  # 3 Jacken jeder Größe
-                )
+                stock_created = not Stock.objects.filter(item_variant=variant, location=clothing_storage).exists()
                 if stock_created:
+                    stock = book_opening_stock(clothing_storage, 3, item_variant=variant, note="Testbestand")
                     self.stdout.write(f"      ✓ Bestand von {stock.quantity} Stück angelegt")
 
         # Atemschutzmaske mit verschiedenen Größen
@@ -125,12 +120,9 @@ class Command(BaseCommand):
                 self.stdout.write(f'    ✓ Variante "Größe {size}" erstellt')
 
                 # Erstelle Bestand für Variante
-                stock, stock_created = Stock.objects.get_or_create(
-                    item_variant=variant,
-                    location=main_storage,
-                    defaults={"quantity": 8},  # 8 Masken jeder Größe
-                )
+                stock_created = not Stock.objects.filter(item_variant=variant, location=main_storage).exists()
                 if stock_created:
+                    stock = book_opening_stock(main_storage, 8, item_variant=variant, note="Testbestand")
                     self.stdout.write(f"      ✓ Bestand von {stock.quantity} Stück angelegt")
 
         # Erstelle auch einige Artikel ohne Varianten
@@ -147,10 +139,9 @@ class Command(BaseCommand):
             self.stdout.write(f'  ✓ Normaler Artikel "{normal_item.name}" erstellt')
 
             # Bestand für normalen Artikel
-            stock, stock_created = Stock.objects.get_or_create(
-                item=normal_item, location=main_storage, defaults={"quantity": 12}
-            )
+            stock_created = not Stock.objects.filter(item=normal_item, location=main_storage).exists()
             if stock_created:
+                stock = book_opening_stock(main_storage, 12, item=normal_item, note="Testbestand")
                 self.stdout.write(f"    ✓ Bestand von {stock.quantity} Stück angelegt")
 
         self.stdout.write(self.style.SUCCESS("Test-Daten erfolgreich erstellt!"))

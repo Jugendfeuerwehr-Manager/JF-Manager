@@ -11,6 +11,7 @@ from django.utils import timezone
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from inventory.models import Stock, StorageLocation, Transaction
@@ -348,7 +349,8 @@ class TransactionViewSet(
             }
         )
 
-    @action(detail=False, methods=["post"], url_path="clear-former-member-names")
+    # Own global privacy right; booking rights are deliberately not required.
+    @action(detail=False, methods=["post"], url_path="clear-former-member-names", permission_classes=[IsAuthenticated])
     def clear_former_member_names(self, request):
         """Clear all former member names from transactions (DSGVO compliance).
 
@@ -360,5 +362,5 @@ class TransactionViewSet(
                 {"detail": "Keine Berechtigung zum Löschen ehemaliger Mitgliedsnamen."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        cleared_count = Transaction.objects.exclude(former_member_name="").update(former_member_name="")
+        cleared_count = Transaction.objects.clear_former_member_names()
         return Response({"cleared_count": cleared_count})
