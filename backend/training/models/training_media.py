@@ -52,5 +52,7 @@ class TrainingMedia(models.Model):
     @property
     def url(self):
         if self.file:
-            return self.file.url
+            from jf_manager_backend.private_media import private_media_url
+
+            return private_media_url("training", self.pk)
         return ""

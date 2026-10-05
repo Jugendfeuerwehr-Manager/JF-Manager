@@ -55,6 +55,10 @@ class AttachmentViewSet(viewsets.ModelViewSet):
             if not all(permission.has_permission(owner_request, owner_view) for permission in owner_view.get_permissions()):
                 continue
             owners = owner_view.get_queryset()
+            if view_class is TrainingBlockViewSet:
+                user = self.request.user
+                if not (user.is_superuser or user.has_perm("departments.can_access_all_departments")):
+                    owners = owners.filter(session__department_id__in=user.department_roles.values("department_id"))
             if view_class is MemberViewSet and self.request.method not in SAFE_METHODS:
                 user = self.request.user
                 if not (owner_view._user_is_org_wide(user) and user.has_perm("members.change_member")):

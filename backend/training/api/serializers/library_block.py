@@ -27,7 +27,7 @@ class TrainingMediaSerializer(serializers.ModelSerializer):
 
     def get_url(self, obj):
         if obj.file:
-            return obj.file.url  # Relative path (e.g. /uploads/…); proxied by nginx/Vite
+            return obj.url
         return obj.url
 
 
@@ -161,7 +161,7 @@ class LibraryBlockExportSerializer(serializers.ModelSerializer):
         return [
             {
                 "original_filename": m.original_filename,
-                "url": request.build_absolute_uri(m.file.url) if (request and m.file) else m.url,
+                "url": request.build_absolute_uri(m.url) if (request and m.file) else m.url,
             }
             for m in qs
         ]

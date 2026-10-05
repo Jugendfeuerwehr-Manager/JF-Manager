@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-05.1 bindet signierte Anhänge an aktuelle Eigentümerrechte und sichere Downloadantworten. |
+| Letzter Checkpoint | 05.10.2026: SEC-05.2 ergänzt objektberechtigte Endpunkte für Avatare, Trainingsbilder und Mailanhänge. |
 | Aktuelles Paket | SEC-03 und SEC-04 abgeschlossen; SEC-05 bis SEC-08 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 und SEC-04 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `95bcab6` (SEC-05.0); SEC-05.1 ist dieser Commit. |
+| Letzter Roadmap-Commit | `84d089a` (SEC-05.1); SEC-05.2 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-05.2 private Endpunkte und Serializer. |
+| Nächster konkreter Schritt | SEC-05.3 authentifizierte Medienclients und Uploadauslieferung. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -537,7 +537,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
-| SEC-05 | in Arbeit | Codex | SEC-05.1 Anhangvorschau abgesichert; weitere Medien, Clients und Uploadgrenzen folgen. |
+| SEC-05 | in Arbeit | Codex | SEC-05.1/2 private Endpunkte implementiert; Clients und Uploadgrenzen folgen, Tests gebündelt am Paketende. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
@@ -781,7 +781,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Branch:** `feat/security-roles-training-operations`.
 - **Prüfungen:** Code-/Git-Abgleich bestanden; Anwendungstests für reine Planung nicht ausgeführt.
 - **Risiken / Checkpoint:** Bestehende direkte Bild-URLs benötigen Clientanpassung; Export-URLs dürfen keine Zugriffstokens enthalten. Keine produktiven Uploads verändern. `dump.rdb` bleibt unangetastet.
-- **Nächster Schritt:** SEC-05.2 private Endpunkte und Serializer.
+- **Nächster Schritt:** SEC-05.3 authentifizierte Medienclients und Uploadauslieferung.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -933,3 +933,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-05.0 | Private Medien, öffentliche Django-/Nginx-Auslieferung, signierte Vorschau und Branding inventarisiert; Rechte-/Uploadvertrag samt stabilen Teilschritten definiert. | Code-/Git-Abgleich bestanden; Anwendungstests für Planung nicht ausgeführt. | Dieser Commit: `docs(SEC-05.0): define private media contract` | SEC-05.1 Anhangvorschau. |
 
 | 05.10.2026 | SEC-05.1 | Signierte Anhangvorschau prüft Anmeldung und aktuelles Eigentümerqueryset. Zentrale Downloadantwort erkennt passive Vorschauformate anhand Signatur; aktive/unbekannte Inhalte nur Attachment, private/no-store und Sicherheitsheader. | 12/12 gezielte Anhangtests und Ruff bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-05.1): authorize every attachment preview` | SEC-05.2 weitere Medienendpunkte. |
+
+| 05.10.2026 | SEC-05.2 | Private API-Endpunkte für Avatare, Trainingsbilder und Mailanhänge erben aktuelle Eigentümerrechte. Serializer geben API-URLs aus; Trainingsanhänge zusätzlich abteilungsbezogen. | Code-Diff geprüft; Anwendungstests auf Nutzerwunsch bis zum Implementierungsende zurückgestellt, nicht ausgeführt. | Dieser Commit: `feat(SEC-05.2): serve media through authorized owners` | SEC-05.3 Clients und öffentliche Uploadpfade. |

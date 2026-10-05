@@ -1,3 +1,5 @@
+from jf_manager_backend.private_media import private_media_url
+from jf_manager_backend.media_fields import PrivateAvatarField
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
@@ -116,7 +118,7 @@ class MemberListSerializer(serializers.ModelSerializer):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("member-avatar", obj.pk, request)
         return None
 
     @extend_schema_field(ParentSerializer(many=True))
@@ -134,6 +136,7 @@ class MemberListSerializer(serializers.ModelSerializer):
 
 
 class MemberDetailSerializer(serializers.ModelSerializer):
+    avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
     """Detailed serializer for single member views"""
 
     status = StatusSerializer(read_only=True)
@@ -185,7 +188,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("member-avatar", obj.pk, request)
         return None
 
     def get_parents(self, obj):
@@ -193,6 +196,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
 
 
 class MemberCreateUpdateSerializer(serializers.ModelSerializer):
+    avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
     """Serializer for create/update operations"""
 
     def validate(self, attrs):

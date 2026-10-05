@@ -1,3 +1,5 @@
+from jf_manager_backend.private_media import private_media_url
+from jf_manager_backend.media_fields import PrivateAvatarField
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
@@ -24,6 +26,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class UserInfoSerializer(serializers.ModelSerializer):
+    avatar = PrivateAvatarField(kind="user-avatar", required=False, allow_null=True)
     """Complete user information including permissions"""
 
     email_signature = SanitizedHTMLField(required=False, allow_blank=True)
@@ -132,7 +135,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("user-avatar", obj.pk, request)
         return None
 
 
@@ -161,7 +164,7 @@ class UserSerializer(serializers.ModelSerializer):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("user-avatar", obj.pk, request)
         return None
 
 

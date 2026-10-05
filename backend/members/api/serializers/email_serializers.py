@@ -5,17 +5,24 @@ API serializers for email messaging system.
 from rest_framework import serializers
 
 from jf_manager_backend.html_safety import SanitizedHTMLField
+from jf_manager_backend.private_media import private_media_url
 from members.models import EmailAttachment, EmailMessage, EmailRecipient, Member
 
 
 class EmailAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for EmailAttachment model."""
 
+    file_url = serializers.SerializerMethodField()
+
+    def get_file_url(self, obj):
+        return private_media_url("email-attachment", obj.pk, self.context.get("request"))
+
     class Meta:
         model = EmailAttachment
         fields = [
             "id",
             "original_filename",
+            "file_url",
             "file_size",
             "content_type",
             "created_at",
