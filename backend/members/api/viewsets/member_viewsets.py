@@ -6,6 +6,7 @@ from datetime import date
 from io import BytesIO
 
 import openpyxl
+from django.db import transaction as db_transaction
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -278,7 +279,9 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         parent_view.request = clone_request(request, "GET")
         if not DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
             raise PermissionDenied("Keine Berechtigung zum Anzeigen von Elternkontakten.")
-        serializer = ParentSerializer(parent_view.get_queryset().filter(children=member), many=True, context={"request": request})
+        serializer = ParentSerializer(
+            parent_view.get_queryset().filter(children=member), many=True, context={"request": request}
+        )
         return Response(serializer.data)
 
     @extend_schema(summary="Get member's events")
@@ -331,6 +334,8 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         # Avoid hitting model-level ProtectedError in the default delete flow.
         if transaction_count:
             return self._member_protected_response(instance, transaction_count)
+        if self._has_member_stock(instance):
+            return self._member_stock_response()
 
         try:
             self.perform_destroy(instance)
@@ -364,6 +369,19 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         return list(storage_ids)
 
+    def _has_member_stock(self, member):
+        from inventory.models import Stock
+
+        return Stock.objects.filter(
+            location_id__in=self._get_member_storage_location_ids(member), quantity__gt=0
+        ).exists()
+
+    def _member_stock_response(self):
+        return Response(
+            {"detail": "Vor dem Löschen müssen alle Bestände des Mitglieds zurückgebucht werden."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
     def _member_protected_response(self, member, transaction_count):
         return Response(
             {
@@ -379,16 +397,16 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         )
 
     class _DeleteWithStrategySerializer(serializers.Serializer):
-        STRATEGY_CHOICES = ["unlink", "anonymize", "delete_transactions"]
+        STRATEGY_CHOICES = ["unlink", "anonymize"]
         strategy = serializers.ChoiceField(choices=STRATEGY_CHOICES)
 
     @extend_schema(
         summary="Delete member with strategy for linked transactions",
         description=(
             "Deletes the member and handles linked inventory transactions according to the chosen strategy:\n"
-            "- **unlink**: Stores the member's full name as a string on each transaction, then removes the link.\n"
-            "- **anonymize**: Marks transactions as 'Ehemaliges Mitglied' (no name stored, DSGVO-compliant).\n"
-            "- **delete_transactions**: Permanently deletes all linked transactions (destructive, history lost)."
+            "- **unlink**: Keeps the former personal storage location and its name in the booking history.\n"
+            "- **anonymize**: Removes the member name from the former personal storage location.\n"
+            "Locations with remaining stock must be cleared by a return booking first."
         ),
         request=_DeleteWithStrategySerializer,
         responses={204: None, 400: None},
@@ -401,29 +419,25 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         strategy = serializer.validated_data["strategy"]
-        self._apply_deletion_strategy(member, strategy)
         try:
-            member.delete()
+            with db_transaction.atomic():
+                from inventory.models import StorageLocation
+
+                member = Member.objects.select_for_update().get(pk=member.pk)
+                personal_locations = list(StorageLocation.objects.select_for_update().filter(member=member))
+                if self._has_member_stock(member):
+                    return self._member_stock_response()
+                for location in personal_locations:
+                    location.member = None
+                    location.is_member = False
+                    if strategy == "anonymize":
+                        location.name = f"Ehemaliges Mitglied #{location.pk}"
+                    location.save(update_fields=["member", "is_member", "name"])
+                member.delete()
         except ProtectedError:
             transaction_count = self._get_member_transaction_count(member)
             return self._member_protected_response(member, transaction_count)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def _apply_deletion_strategy(self, member, strategy):
-        """Apply the chosen transaction strategy before deleting the member."""
-        from inventory.models import Transaction
-
-        storage_ids = self._get_member_storage_location_ids(member)
-        if not storage_ids:
-            return
-
-        if strategy == "delete_transactions":
-            Transaction.objects.filter(Q(source_id__in=storage_ids) | Q(target_id__in=storage_ids)).delete()
-        elif strategy in ("unlink", "anonymize"):
-            former_name = f"{member.name} {member.lastname}" if strategy == "unlink" else "Ehemaliges Mitglied"
-            # Use bulk update to bypass model-level clean() validation
-            Transaction.objects.filter(source_id__in=storage_ids).update(source=None, former_member_name=former_name)
-            Transaction.objects.filter(target_id__in=storage_ids).update(target=None, former_member_name=former_name)
 
     @extend_schema(
         summary="Export members to Excel with column selection",

@@ -428,8 +428,9 @@ async function handleDeletionStrategy(strategy: MemberDeletionStrategy) {
     showDeletionDialog.value = false
     toast.add({ severity: 'success', summary: 'Erfolg', detail: 'Mitglied wurde gelöscht', life: 3000 })
     router.push('/members')
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Mitglied konnte nicht gelöscht werden', life: 3000 })
+  } catch (error) {
+    const response = error as { response?: { data?: { detail?: string } } }
+    toast.add({ severity: 'error', summary: 'Fehler', detail: response.response?.data?.detail ?? 'Mitglied konnte nicht gelöscht werden', life: 5000 })
   } finally {
     deletionLoading.value = false
   }

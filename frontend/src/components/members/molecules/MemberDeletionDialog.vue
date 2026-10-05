@@ -12,7 +12,8 @@
         <strong>{{ memberName }}</strong> hat
         <strong>{{ transactionCount }} Transaktion{{ transactionCount !== 1 ? 'en' : '' }}</strong>
         im Lager, die mit diesem Mitglied verknüpft sind.<br />
-        Bitte wählen Sie, wie diese behandelt werden sollen.
+        Bitte buchen Sie verbleibende Bestände zuerst zurück. Wählen Sie dann, ob der Name
+        des persönlichen Lagerorts erhalten bleibt.
       </Message>
 
       <div class="strategy-options">
@@ -30,17 +31,16 @@
             />
             <label for="strategy-unlink" class="strategy-title">
               <i class="pi pi-user-minus mr-2" />
-              Namen speichern
+              Lagerortnamen behalten
             </label>
           </div>
           <p class="strategy-description">
-            Der vollständige Name <em>{{ memberName }}</em> wird als Text in den Transaktionen
-            gespeichert. Die Verknüpfung zum Mitglied wird aufgehoben.
+            Der Name des persönlichen Lagerorts bleibt in der Buchungshistorie sichtbar.
+            Die Verknüpfung zum Mitglied wird aufgehoben.
           </p>
           <p class="strategy-note strategy-note--warn">
             <i class="pi pi-exclamation-triangle mr-1" />
-            Hinweis: Der Name verbleibt in der Datenbank. Über den DSGVO-Bereich kann er
-            nachträglich entfernt werden.
+            Hinweis: Ein personenbezogener Lagerortname bleibt in der Datenbank.
           </p>
         </div>
 
@@ -58,45 +58,19 @@
             />
             <label for="strategy-anonymize" class="strategy-title">
               <i class="pi pi-shield mr-2" />
-              Anonymisieren (DSGVO-konform)
+              Lagerortnamen anonymisieren
             </label>
           </div>
           <p class="strategy-description">
-            Transaktionen werden als „Ehemaliges Mitglied" gekennzeichnet. Kein Name wird
-            gespeichert.
+            Der persönliche Lagerort erhält einen neutralen Namen. Buchungen und Bestände
+            bleiben erhalten.
           </p>
           <p class="strategy-note strategy-note--success">
             <i class="pi pi-check-circle mr-1" />
-            Empfohlen: Kein personenbezogener Datensatz verbleibt.
+            Empfohlen, wenn der Lagerortname personenbezogen ist.
           </p>
         </div>
 
-        <!-- Option 3: Delete transactions -->
-        <div
-          class="strategy-card strategy-card--danger"
-          :class="{ selected: selectedStrategy === 'delete_transactions' }"
-          @click="selectedStrategy = 'delete_transactions'"
-        >
-          <div class="strategy-header">
-            <RadioButton
-              v-model="selectedStrategy"
-              input-id="strategy-delete"
-              value="delete_transactions"
-            />
-            <label for="strategy-delete" class="strategy-title">
-              <i class="pi pi-trash mr-2" />
-              Transaktionen löschen
-            </label>
-          </div>
-          <p class="strategy-description">
-            Alle verknüpften Transaktionen werden unwiderruflich gelöscht.
-          </p>
-          <p class="strategy-note strategy-note--danger">
-            <i class="pi pi-exclamation-circle mr-1" />
-            <strong>Warnung:</strong> Der Lagerhistorie fehlen danach diese Einträge. Aktuelle
-            Bestände des Mitglieds können dadurch inkonsistent werden.
-          </p>
-        </div>
       </div>
     </div>
 
@@ -110,7 +84,7 @@
       />
       <Button
         :label="confirmLabel"
-        :severity="selectedStrategy === 'delete_transactions' ? 'danger' : 'primary'"
+        severity="primary"
         :loading="loading"
         :disabled="!selectedStrategy"
         @click="confirm"
@@ -147,11 +121,9 @@ const selectedStrategy = ref<MemberDeletionStrategy | null>(null)
 const confirmLabel = computed(() => {
   switch (selectedStrategy.value) {
     case 'unlink':
-      return 'Namen speichern & löschen'
+      return 'Lagerort behalten & löschen'
     case 'anonymize':
       return 'Anonymisieren & löschen'
-    case 'delete_transactions':
-      return 'Transaktionen löschen & Mitglied löschen'
     default:
       return 'Strategie wählen'
   }

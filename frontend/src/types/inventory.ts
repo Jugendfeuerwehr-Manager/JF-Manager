@@ -372,7 +372,7 @@ export interface InventoryStatistics {
 /**
  * Deletion strategy options for members with linked inventory transactions
  */
-export type MemberDeletionStrategy = 'unlink' | 'anonymize' | 'delete_transactions'
+export type MemberDeletionStrategy = 'unlink' | 'anonymize'
 
 /**
  * Response returned when a member cannot be deleted directly due to linked transactions (HTTP 409)
