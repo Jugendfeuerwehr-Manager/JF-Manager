@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction as db_transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -171,6 +171,20 @@ class TransactionViewSet(
                 return Response({"detail": "Kein Zugriff auf dieses Mitglied."}, status=status.HTTP_403_FORBIDDEN)
 
         with db_transaction.atomic():
+            # Lock every candidate row up front in one stable order. Locking per
+            # line let parallel batches with a different line order deadlock.
+            candidates = Q()
+            for line in data["items"]:
+                line_filter = Q(item=line.get("item"), item_variant=line.get("item_variant"))
+                if line.get("source"):
+                    line_filter &= Q(location=line["source"])
+                candidates |= line_filter
+            list(
+                Stock.objects.select_for_update()
+                .filter(candidates, location__is_member=False)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
             source_stocks = []
             missing_lines = []
             for line in data["items"]:

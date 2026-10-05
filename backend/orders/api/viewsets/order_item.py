@@ -171,7 +171,9 @@ class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         updated_items = []
         try:
             with transaction.atomic():
-                order_items = list(self.get_queryset().select_for_update().filter(pk__in=item_ids).order_by("pk"))
+                order_items = list(
+                    self.get_queryset().select_for_update(of=("self",)).filter(pk__in=item_ids).order_by("pk")
+                )
                 if len(order_items) != len(item_ids):
                     raise serializers.ValidationError(
                         {"item_ids": "Mindestens eine Bestellposition wurde nicht gefunden."}

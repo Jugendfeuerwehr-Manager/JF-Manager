@@ -84,7 +84,7 @@ class ExportAndQualificationAttachmentRoleTests(APITestCase):
         self.assertEqual(self.qualification.attachments.count(), 1)
         preview = self.client.get(response.data["file_url"])
         self.assertEqual(preview.status_code, 200)
-        preview.close()
+        b"".join(preview.streaming_content)  # closes the file without request_finished
 
         deleted = self.client.delete(
             f"/api/v1/qualifications/{self.qualification.pk}/attachments/{response.data['id']}/"

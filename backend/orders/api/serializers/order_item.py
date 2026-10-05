@@ -149,7 +149,8 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
         create_loan = validated_data.pop("create_loan", False)
         with db_transaction.atomic():
             instance = (
-                OrderItem.objects.select_for_update()
+                # Lock only the order item; joined rows may be NULL (PostgreSQL rule).
+                OrderItem.objects.select_for_update(of=("self",))
                 .select_related("status", "item__inventory_item")
                 .get(pk=instance.pk)
             )

@@ -49,7 +49,7 @@ class RoleTemplateViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
 
     def _locked_template(self):
         template = get_object_or_404(
-            RoleTemplate.objects.select_for_update().select_related("group"), pk=self.kwargs["pk"]
+            RoleTemplate.objects.select_for_update(of=("self",)).select_related("group"), pk=self.kwargs["pk"]
         )
         if template.group_id:
             Group.objects.select_for_update().get(pk=template.group_id)

@@ -119,6 +119,6 @@ class AttachmentSecurityTests(APITestCase):
             self.assertEqual(response.status_code, 200)
             self.assertTrue(response["Content-Disposition"].startswith("attachment;"))
             self.assertEqual(response["Content-Type"], "application/octet-stream")
-            response.close()
+            b"".join(response.streaming_content)  # closes the file without request_finished
             self.member.departments.set([self.foreign_department])
             self.assertEqual(self.client.get(url).status_code, 404)

@@ -45,7 +45,7 @@ class PrivateMediaTests(APITestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response["Cache-Control"], "private, no-store")
-            response.close()
+            b"".join(response.streaming_content)  # closes the file without request_finished
         self.member.departments.set([self.foreign])
         self.block.session.department = self.foreign
         self.block.session.save()
@@ -69,7 +69,7 @@ class PrivateMediaTests(APITestCase):
         media = TrainingMedia.objects.create(content_object=library, file=image_file())
         response = self.client.get(f"/api/v1/private-media/training/{media.pk}/")
         self.assertEqual(response.status_code, 200)
-        response.close()
+        b"".join(response.streaming_content)  # closes the file without request_finished
 
     def test_email_attachment_is_scoped_to_its_sender(self):
         self.user.user_permissions.add(Permission.objects.get(codename="can_send_member_emails"))
@@ -78,7 +78,7 @@ class PrivateMediaTests(APITestCase):
         url = f"/api/v1/private-media/email-attachment/{attachment.pk}/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        response.close()
+        b"".join(response.streaming_content)  # closes the file without request_finished
         message.sender = get_user_model().objects.create_user(username="other-sender")
         message.save()
         self.assertEqual(self.client.get(url).status_code, 404)
