@@ -164,7 +164,7 @@ const genderStats = computed(() => {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: var(--border-radius);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
   overflow: hidden;
 }
 

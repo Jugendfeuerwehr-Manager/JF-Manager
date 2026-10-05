@@ -12,42 +12,29 @@
         :rows-per-page-options="[10, 20, 50]"
         paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         current-page-report-template="{first} bis {last} von {totalRecords}"
-        striped-rows
         removable-sort
         @page="emit('page', $event)"
         @sort="emit('sort', $event)"
         @row-click="(e) => emit('view', e.data)"
         class="clickable-rows"
       >
-        <Column :style="{ width: '3rem' }">
+        <Column field="lastname" header="Name" sortable>
           <template #body="{ data }">
-            <i
-              v-if="data.has_alert"
-              class="pi pi-exclamation-triangle alert-icon"
-              v-tooltip.top="'Anwesenheitsalarm'"
-            />
+            <MemberIdentity :member="data">
+              <span v-if="data.age">{{ data.age }} Jahre</span>
+              <span v-if="data.has_alert" class="alert-hint" v-tooltip.top="'In den letzten Diensten häufig nicht anwesend'"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Teilnahme prüfen</span>
+            </MemberIdentity>
           </template>
         </Column>
-
-        <Column field="name" header="Vorname" sortable />
-        <Column field="lastname" header="Nachname" sortable />
-
+        <Column header="Gruppe">
+          <template #body="{ data }">{{ data.group?.name ?? '–' }}</template>
+        </Column>
         <Column field="birthday" header="Geburtstag" sortable>
-          <template #body="{ data }">
-            {{ formatDate(data.birthday) }} ({{ data.age }})
-          </template>
+          <template #body="{ data }">{{ formatDate(data.birthday) }}</template>
         </Column>
-
-        <Column field="status" header="Status">
-          <template #body="{ data }">
-            <Tag
-              v-if="data.status"
-              :value="data.status.name"
-              :style="{ backgroundColor: data.status.color, color: 'white' }"
-            />
-          </template>
+        <Column header="Status">
+          <template #body="{ data }"><MemberStatusBadge :status="data.status" /></template>
         </Column>
-
         <Column
           v-if="showDepartments"
           header="Abteilung"
@@ -63,35 +50,12 @@
           </template>
         </Column>
 
-        <Column header="Aktionen" :style="{ width: '12rem' }">
+        <Column :style="{ width: '7rem' }">
+          <template #header><span class="sr-only">Aktionen</span></template>
           <template #body="{ data }">
             <div class="action-buttons">
-              <Button
-                icon="pi pi-eye"
-                size="small"
-                text
-                rounded
-                title="Ansehen"
-                @click.stop="emit('view', data)"
-              />
-              <Button
-                icon="pi pi-pencil"
-                size="small"
-                text
-                rounded
-                severity="secondary"
-                title="Bearbeiten"
-                @click.stop="emit('edit', data)"
-              />
-              <Button
-                icon="pi pi-trash"
-                size="small"
-                text
-                rounded
-                severity="danger"
-                title="Löschen"
-                @click.stop="emit('delete', data)"
-              />
+              <Button icon="pi pi-pencil" text rounded severity="secondary" :aria-label="`${data.full_name} bearbeiten`" v-tooltip.top="'Bearbeiten'" @click.stop="emit('edit', data)" />
+              <Button icon="pi pi-trash" text rounded severity="danger" :aria-label="`${data.full_name} löschen`" v-tooltip.top="'Löschen'" @click.stop="emit('delete', data)" />
             </div>
           </template>
         </Column>
@@ -105,7 +69,8 @@ import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
+import MemberIdentity from '@/components/members/atoms/MemberIdentity.vue'
+import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
 import DepartmentBadge from '@/components/departments/atoms/DepartmentBadge.vue'
 import type { Member } from '@/types/members'
 import type { Department } from '@/types/departments'
@@ -146,13 +111,21 @@ function formatDate(dateString: string | null) {
 
 <style scoped>
 .table-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table-card :deep(.p-card-body) {
+  padding: 0;
+}
+
+.table-card :deep(.p-datatable-tbody > tr > td) {
+  padding-block: var(--jf-space-1-5);
 }
 
 .action-buttons {
   display: flex;
-  gap: 0.5rem;
-  justify-content: center;
+  gap: var(--jf-space-0-5);
+  justify-content: flex-end;
 }
 
 .dept-badges {
@@ -161,14 +134,34 @@ function formatDate(dateString: string | null) {
   gap: 0.25rem;
 }
 
-.alert-icon {
-  color: var(--orange-500);
-  font-size: 1rem;
+.alert-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--p-amber-800);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.app-dark .alert-hint {
+  color: var(--p-amber-300);
+}
+
+.alert-hint i {
+  font-size: 0.75rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .clickable-rows :deep(tbody tr) {
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--jf-duration);
 }
 
 .clickable-rows :deep(tbody tr:hover) {

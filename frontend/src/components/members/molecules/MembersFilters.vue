@@ -1,7 +1,7 @@
 <template>
   <Card class="filter-card">
     <template #content>
-      <div class="filter-grid">
+      <div id="member-filter-fields" class="filter-grid">
         <div class="filter-search-wrap" :class="{ 'filter-search-wrap--active': mobileSearchMode }">
           <IconField class="filter-search-field">
             <InputIcon class="pi pi-search" />
@@ -14,10 +14,20 @@
               @keydown.esc="emit('search-esc')"
             />
           </IconField>
+          <Button
+            v-if="isMobile && !mobileSearchMode"
+            :label="activeFilterCount ? `Filter (${activeFilterCount})` : 'Filter'"
+            icon="pi pi-filter"
+            :severity="activeFilterCount ? 'primary' : 'secondary'"
+            outlined
+            aria-controls="member-filter-fields"
+            :aria-expanded="filtersOpen"
+            @click="filtersOpen = !filtersOpen"
+          />
         </div>
 
         <Select
-          v-if="!mobileSearchMode"
+          v-if="showFields"
           v-model="localFilters.status"
           :options="statuses"
           option-label="name"
@@ -29,7 +39,7 @@
         />
 
         <Select
-          v-if="!mobileSearchMode"
+          v-if="showFields"
           v-model="localFilters.group"
           :options="groups"
           option-label="name"
@@ -41,7 +51,7 @@
         />
 
         <Select
-          v-if="!mobileSearchMode"
+          v-if="showFields"
           v-model="localFilters.gender"
           :options="genderOptions"
           option-label="label"
@@ -57,7 +67,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import Button from 'primevue/button'
+import { useMobile } from '@/composables/useMobile'
 import Card from 'primevue/card'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
@@ -96,6 +108,12 @@ watch(
   { deep: true },
 )
 
+const { isMobile } = useMobile()
+const filtersOpen = ref(false)
+const activeFilterCount = computed(() => [localFilters.status, localFilters.group, localFilters.gender].filter((value) => value !== null && value !== undefined && value !== '').length)
+// On phones the selects stay folded away so the list starts right below the search.
+const showFields = computed(() => !props.mobileSearchMode && (!isMobile.value || filtersOpen.value))
+
 function onFilterChange() {
   emit('update:filters', { ...localFilters })
   emit('filter-change')
@@ -103,8 +121,8 @@ function onFilterChange() {
 </script>
 
 <style scoped>
-.filter-card {
-  margin-bottom: 1.5rem;
+.filter-card :deep(.p-card-body) {
+  padding: var(--jf-space-2);
 }
 
 .filter-grid {
@@ -124,8 +142,8 @@ function onFilterChange() {
 }
 
 @media (max-width: 768px) {
-  .filter-card {
-    margin-bottom: 1rem;
+  .filter-card :deep(.p-card-body) {
+    padding: var(--jf-space-1-5);
   }
 
   .filter-grid {

@@ -2,22 +2,22 @@
   <div class="members-view">
     <OverviewHeader
       title="Mitglieder"
-      subtitle="Verwaltung der Jugendfeuerwehr-Mitglieder"
+      :subtitle="subtitle"
     >
       <template #actions>
         <Button
           v-if="canExport(exportAuth.user, 'export_member', departmentsStore.activeDepartmentId)"
-          label="Excel-Export"
-          icon="pi pi-file-excel"
-          severity="success"
+          label="Exportieren"
+          icon="pi pi-download"
+          severity="secondary"
           outlined
           :loading="membersStore.loading"
           @click="showExportDialog = true"
         />
         <Button
-          label="Mitglied hinzufügen"
+          v-if="!isMobile"
+          label="Mitglied anlegen"
           icon="pi pi-plus"
-          severity="primary"
           @click="router.push('/members/create')"
         />
       </template>
@@ -70,6 +70,10 @@
       @search-change="onFilterChange"
     />
 
+    <router-link v-if="isMobile && !isMobileSearchMode" to="/members/create" class="create-fab">
+      <i class="pi pi-plus" aria-hidden="true"></i>Anlegen
+    </router-link>
+
     <MemberExportDialog
       v-model="showExportDialog"
       :exporting="membersStore.loading"
@@ -90,7 +94,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
 import { canExport } from '@/utils/exportPermission'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -104,6 +108,7 @@ import type { MemberDeletionStrategy } from '@/types/inventory'
 import { useMembersTableState } from '@/composables/useMembersTableState'
 import { useMembersMobileSearch } from '@/composables/useMembersMobileSearch'
 import { useMembersStats } from '@/composables/useMembersStats'
+import { useMobile } from '@/composables/useMobile'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import MembersFilters from '@/components/members/molecules/MembersFilters.vue'
 import MembersStatsPanel from '@/components/members/molecules/MembersStatsPanel.vue'
@@ -128,6 +133,14 @@ let pendingDeleteMember: Member | null = null
 const { filters, lazyParams, loadData, onPage, onSort, onFilterChange } = useMembersTableState()
 const { isMobileSearchMode, onSearchFocus, closeMobileSearch } = useMembersMobileSearch()
 const { stats, statsLoading, statsExpanded, toggleStats } = useMembersStats()
+const { isMobile } = useMobile()
+
+const subtitle = computed(() => {
+  const count = membersStore.pagination.count
+  const department = departmentsStore.activeDepartment
+  const scope = department ? ` in ${department.code}` : ''
+  return membersStore.loading && !count ? 'Mitglieder werden geladen …' : `${count} ${count === 1 ? 'Mitglied' : 'Mitglieder'}${scope}`
+})
 
 onMounted(async () => {
   await Promise.all([membersStore.fetchStatuses(), membersStore.fetchGroups()])
@@ -234,15 +247,34 @@ const handleExportExcel = async (columns: string[]) => {
 
 <style scoped>
 .members-view {
-  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-2);
   max-width: 1400px;
   margin: 0 auto;
+  padding-bottom: var(--jf-space-6);
 }
 
-@media (max-width: 768px) {
-  .members-view {
-    padding: 1rem;
-  }
+.members-view :deep(.overview-header) {
+  margin-bottom: 0;
+}
+
+.create-fab {
+  position: fixed;
+  right: var(--jf-space-2);
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  z-index: 950;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: 56px;
+  padding: 0 var(--jf-space-3);
+  border-radius: 16px;
+  background: var(--jf-color-primary);
+  color: var(--jf-color-on-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+  box-shadow: var(--jf-shadow-lg);
 }
 </style>
 
