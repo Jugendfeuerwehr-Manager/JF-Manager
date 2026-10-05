@@ -1,0 +1,158 @@
+/*
+ * JF-Manager design tokens (DES-01).
+ *
+ * Colours come from the PrimeVue preset in src/theme/preset.ts; this file
+ * adds app-level tokens (spacing, type, elevation) and maps the PrimeVue 3
+ * variable names still used in many components onto the preset.
+ */
+
+:root {
+  /* Spacing: 8 px grid, with a 4 px half step for dense layouts */
+  --jf-space-0-5: 0.25rem;
+  --jf-space-1: 0.5rem;
+  --jf-space-2: 1rem;
+  --jf-space-3: 1.5rem;
+  --jf-space-4: 2rem;
+  --jf-space-5: 2.5rem;
+  --jf-space-6: 3rem;
+
+  /* Typography: system fonts only, no external downloads */
+  --jf-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --jf-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  --jf-text-xs: 0.75rem;
+  --jf-text-sm: 0.875rem;
+  --jf-text-md: 1rem;
+  --jf-text-lg: 1.125rem;
+  --jf-text-xl: 1.375rem;
+  --jf-text-2xl: 1.75rem;
+  --jf-leading-tight: 1.25;
+  --jf-leading-normal: 1.5;
+  --jf-weight-medium: 500;
+  --jf-weight-semibold: 600;
+  --jf-weight-bold: 700;
+
+  /* Shape and elevation */
+  --jf-radius-sm: var(--p-border-radius-sm);
+  --jf-radius-md: var(--p-border-radius-md);
+  --jf-radius-lg: var(--p-border-radius-lg);
+  --jf-shadow-sm: 0 1px 2px rgba(23, 32, 51, 0.06);
+  --jf-shadow-md: 0 2px 6px rgba(23, 32, 51, 0.08), 0 1px 2px rgba(23, 32, 51, 0.04);
+  --jf-shadow-lg: 0 12px 24px -8px rgba(23, 32, 51, 0.18);
+
+  /* Interaction */
+  --jf-touch-target: 2.75rem;
+  --jf-focus-ring: 2px solid var(--p-focus-ring-color);
+  --jf-duration: 0.15s;
+
+  /* Semantic surfaces */
+  --jf-color-ground: var(--p-surface-50);
+  --jf-color-card: var(--p-content-background);
+  --jf-color-border: var(--p-content-border-color);
+  --jf-color-text: var(--p-text-color);
+  --jf-color-text-muted: var(--p-text-muted-color);
+  --jf-color-primary: var(--p-primary-color);
+  --jf-color-on-primary: var(--p-primary-contrast-color);
+  --jf-color-selected: var(--p-highlight-background);
+  --jf-color-selected-text: var(--p-highlight-color);
+
+  /* PrimeVue 3 compatibility: names still used across the components */
+  --p-surface-ground: var(--jf-color-ground);
+  --surface-ground: var(--jf-color-ground);
+  --surface-card: var(--p-content-background);
+  --surface-section: var(--p-content-background);
+  --surface-overlay: var(--p-overlay-popover-background);
+  --surface-border: var(--p-content-border-color);
+  --surface-hover: var(--p-content-hover-background);
+  --surface-0: var(--p-surface-0);
+  --surface-50: var(--p-surface-50);
+  --surface-100: var(--p-surface-100);
+  --surface-200: var(--p-surface-200);
+  --surface-300: var(--p-surface-300);
+  --surface-400: var(--p-surface-400);
+  --surface-500: var(--p-surface-500);
+  --surface-600: var(--p-surface-600);
+  --surface-700: var(--p-surface-700);
+  --surface-800: var(--p-surface-800);
+  --surface-900: var(--p-surface-900);
+  --text-color: var(--p-text-color);
+  --text-color-secondary: var(--p-text-muted-color);
+  --primary-color: var(--p-primary-color);
+  --primary-color-text: var(--p-primary-contrast-color);
+  --primary-50: var(--p-primary-50);
+  --primary-100: var(--p-primary-100);
+  --primary-200: var(--p-primary-200);
+  --primary-300: var(--p-primary-300);
+  --primary-400: var(--p-primary-400);
+  --primary-500: var(--p-primary-500);
+  --primary-600: var(--p-primary-600);
+  --primary-700: var(--p-primary-700);
+  --primary-800: var(--p-primary-800);
+  --primary-900: var(--p-primary-900);
+  --highlight-bg: var(--p-highlight-background);
+  --highlight-text-color: var(--p-highlight-color);
+  --border-radius: var(--p-border-radius-md);
+  --font-family: var(--jf-font-sans);
+  --red-50: var(--p-red-50);
+  --red-100: var(--p-red-100);
+  --red-200: var(--p-red-200);
+  --red-300: var(--p-red-300);
+  --red-400: var(--p-red-400);
+  --red-500: var(--p-red-500);
+  --red-600: var(--p-red-600);
+  --red-700: var(--p-red-700);
+  --red-800: var(--p-red-800);
+  --red-900: var(--p-red-900);
+  --orange-50: var(--p-orange-50);
+  --orange-100: var(--p-orange-100);
+  --orange-200: var(--p-orange-200);
+  --orange-300: var(--p-orange-300);
+  --orange-400: var(--p-orange-400);
+  --orange-500: var(--p-orange-500);
+  --orange-600: var(--p-orange-600);
+  --orange-700: var(--p-orange-700);
+  --orange-800: var(--p-orange-800);
+  --orange-900: var(--p-orange-900);
+  --yellow-50: var(--p-yellow-50);
+  --yellow-100: var(--p-yellow-100);
+  --yellow-200: var(--p-yellow-200);
+  --yellow-300: var(--p-yellow-300);
+  --yellow-400: var(--p-yellow-400);
+  --yellow-500: var(--p-yellow-500);
+  --yellow-600: var(--p-yellow-600);
+  --yellow-700: var(--p-yellow-700);
+  --yellow-800: var(--p-yellow-800);
+  --yellow-900: var(--p-yellow-900);
+  --green-50: var(--p-green-50);
+  --green-100: var(--p-green-100);
+  --green-200: var(--p-green-200);
+  --green-300: var(--p-green-300);
+  --green-400: var(--p-green-400);
+  --green-500: var(--p-green-500);
+  --green-600: var(--p-green-600);
+  --green-700: var(--p-green-700);
+  --green-800: var(--p-green-800);
+  --green-900: var(--p-green-900);
+  --blue-50: var(--p-blue-50);
+  --blue-100: var(--p-blue-100);
+  --blue-200: var(--p-blue-200);
+  --blue-300: var(--p-blue-300);
+  --blue-400: var(--p-blue-400);
+  --blue-500: var(--p-blue-500);
+  --blue-600: var(--p-blue-600);
+  --blue-700: var(--p-blue-700);
+  --blue-800: var(--p-blue-800);
+  --blue-900: var(--p-blue-900);
+}
+
+.app-dark {
+  --jf-color-ground: var(--p-surface-950);
+  --jf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --jf-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --jf-shadow-lg: 0 12px 24px -8px rgba(0, 0, 0, 0.6);
+
+  /* Light tints used as selected/active backgrounds must stay dark here */
+  --primary-50: var(--p-highlight-background);
+  --primary-100: var(--p-highlight-focus-background);
+  --surface-50: var(--p-surface-800);
+  --surface-100: var(--p-surface-800);
+}

@@ -1,15 +1,16 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
-import Aura from '@primeuix/themes/aura'
 import ConfirmationService from 'primevue/confirmationservice'
 import ToastService from 'primevue/toastservice'
 import Tooltip from 'primevue/tooltip'
 
 import App from './App.vue'
 import router from './router'
+import { JfPreset } from './theme/preset'
 
 import 'primeicons/primeicons.css'
+import './assets/tokens.css'
 import './assets/styles.css'
 
 // Import German locale for PrimeVue
@@ -142,7 +143,7 @@ app.use(createPinia())
 app.use(router)
 app.use(PrimeVue, {
   theme: {
-    preset: Aura,
+    preset: JfPreset,
     options: {
       darkModeSelector: '.app-dark',
       cssLayer: false

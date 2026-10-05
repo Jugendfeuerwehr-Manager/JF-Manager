@@ -13,10 +13,43 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  background: var(--p-surface-ground);
-  color: var(--p-text-color);
-  line-height: 1.6;
+  font-family: var(--jf-font-sans);
+  font-size: var(--jf-text-md);
+  background: var(--jf-color-ground);
+  color: var(--jf-color-text);
+  line-height: var(--jf-leading-normal);
+}
+
+:focus-visible {
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Touch devices: controls reach at least 44 x 44 px */
+@media (pointer: coarse) {
+  .p-button:not(.p-button-sm),
+  .p-inputtext,
+  .p-select,
+  .p-multiselect,
+  .p-datepicker-input,
+  .p-togglebutton {
+    min-height: var(--jf-touch-target);
+  }
+
+  .p-button.p-button-icon-only:not(.p-button-sm) {
+    min-width: var(--jf-touch-target);
+  }
 }
 
 #app {
@@ -182,15 +215,15 @@ body {
 }
 
 .text-green-500 {
-  color: #22c55e;
+  color: var(--p-green-500);
 }
 
 .text-blue-500 {
-  color: #3b82f6;
+  color: var(--p-blue-500);
 }
 
 .text-orange-500 {
-  color: #f97316;
+  color: var(--p-orange-500);
 }
 
 /* Responsive utilities */
@@ -222,16 +255,17 @@ body {
 
 /* PrimeVue overrides */
 .p-button {
-  font-weight: 600;
+  font-weight: var(--jf-weight-semibold);
 }
 
 .p-datatable .p-datatable-thead > tr > th {
   background: var(--p-content-background);
-  font-weight: 600;
+  font-weight: var(--jf-weight-semibold);
 }
 
 .p-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--jf-color-border);
+  box-shadow: var(--jf-shadow-sm);
 }
 
 .flex-1 {
@@ -243,7 +277,7 @@ body {
   border: 1px solid var(--p-content-border-color);
   border-radius: var(--border-radius);
   background: var(--p-content-background);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--jf-shadow-sm);
   padding: 1rem;
   display: flex;
   flex-direction: column;
