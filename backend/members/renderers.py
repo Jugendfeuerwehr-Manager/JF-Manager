@@ -1,5 +1,7 @@
 # renderers.py
 from io import BytesIO
+from datetime import date
+from jf_manager_backend.safe_exports import append_safe_row
 
 from openpyxl import Workbook
 from rest_framework.renderers import BaseRenderer
@@ -62,7 +64,7 @@ class MemberExcelRenderer(BaseRenderer):
         ]
 
         headers = header_member + header_parent_1 + header_parent_2
-        sheet.append(headers)
+        append_safe_row(sheet, headers)
 
         # Write rows
         # for parent in data:
@@ -74,7 +76,7 @@ class MemberExcelRenderer(BaseRenderer):
             row = [
                 member["name"],
                 member["lastname"],
-                member["birthday"],
+                date.fromisoformat(member["birthday"]) if member["birthday"] else None,
                 member["email"],
                 member["street"],
                 member["zip_code"],
@@ -82,7 +84,7 @@ class MemberExcelRenderer(BaseRenderer):
                 member["phone"],
                 member["mobile"],
                 member["notes"],
-                member["joined"],
+                date.fromisoformat(member["joined"]) if member["joined"] else None,
                 member["identityCardNumber"],
                 can_swimm,
                 member["status"],
@@ -105,7 +107,7 @@ class MemberExcelRenderer(BaseRenderer):
                 if counter + 1 >= n_parents_to_render:
                     break
 
-            sheet.append(row)
+            append_safe_row(sheet, row)
         # Save workbook to BytesIO object
         output = BytesIO()
         workbook.save(output)

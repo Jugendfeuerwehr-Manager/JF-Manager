@@ -21,6 +21,7 @@ from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from jf_manager_backend.safe_exports import write_safe_cell
 from members.api_serializers import (
     AttachmentSerializer,
     EventSerializer,
@@ -34,6 +35,8 @@ from members.models import Attachment, Group, Member, Status
 
 class MemberActionPermissions(DepartmentRoleModelPermissions):
     def _required_permissions(self, request, view):
+        if view.action == "export_excel" and request.method in ("GET", "HEAD"):
+            return ["members.view_member", "members.export_member"]
         if view.action == "delete_with_strategy":
             return ["members.delete_member"]
         return super()._required_permissions(request, view)
@@ -508,7 +511,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 elif col_key == "gender":
                     value = {"male": "Männlich", "female": "Weiblich", "diverse": "Divers"}.get(member.gender, "")
                 elif col_key == "birthday":
-                    value = member.birthday.strftime("%d.%m.%Y") if member.birthday else ""
+                    value = member.birthday or ""
                 elif col_key == "age":
                     if member.birthday:
                         value = (
@@ -529,7 +532,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 elif col_key == "city":
                     value = member.city
                 elif col_key == "joined":
-                    value = member.joined.strftime("%d.%m.%Y") if member.joined else ""
+                    value = member.joined or ""
                 elif col_key == "status":
                     value = member.status.name if member.status else ""
                 elif col_key == "group":
@@ -579,7 +582,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 elif col_key == "parent2_city":
                     value = p2.city if p2 else ""
 
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                write_safe_cell(ws, row_idx, col_idx, value)
 
         # Auto-fit column widths (capped at 50)
         for col in ws.columns:

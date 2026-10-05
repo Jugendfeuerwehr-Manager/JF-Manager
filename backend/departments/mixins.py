@@ -65,7 +65,10 @@ class DepartmentScopeViewSetMixin:
         ):
             return qs
 
-        permission = DepartmentRoleModelPermissions()
+        permission = next(
+            permission for permission in self.get_permissions()
+            if isinstance(permission, DepartmentRoleModelPermissions)
+        )
         required = permission._required_permissions(self.request, self)
         if required is None:
             return qs.none()

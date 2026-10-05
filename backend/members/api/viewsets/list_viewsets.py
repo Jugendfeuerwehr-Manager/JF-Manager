@@ -1,3 +1,4 @@
+from jf_manager_backend.safe_exports import write_safe_cell
 """
 ViewSet for MemberList and MemberListEntry management.
 """
@@ -449,6 +450,16 @@ class MemberListViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request, pk=None):
         member_list = self.get_object()
+        from rest_framework.request import clone_request
+        from members.api.viewsets.parent_viewsets import ParentViewSet
+
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        parent_view.action = "list"
+        if DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
+            visible_parents = parent_view.get_queryset()
+        else:
+            visible_parents = parent_view.queryset.none()
 
         # Determine which columns to export
         columns_param = request.query_params.get("columns", "")
@@ -484,7 +495,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
 
         for row_idx, entry in enumerate(entries, start=2):
             member = entry.member
-            parents = list(member.parent_set.all()[:2])
+            parents = list(visible_parents.filter(children=member)[:2])
             p1 = parents[0] if len(parents) > 0 else None
             p2 = parents[1] if len(parents) > 1 else None
 
@@ -493,7 +504,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 if col_key == "list_checked":
                     value = "Ja" if entry.checked else "Nein"
                 elif col_key == "list_checked_at":
-                    value = entry.checked_at.astimezone().strftime("%d.%m.%Y %H:%M") if entry.checked_at else ""
+                    value = entry.checked_at or ""
                 elif col_key == "list_notes":
                     value = entry.notes or ""
                 elif col_key == "name":
@@ -503,7 +514,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 elif col_key == "gender":
                     value = {"male": "Männlich", "female": "Weiblich", "diverse": "Divers"}.get(member.gender, "")
                 elif col_key == "birthday":
-                    value = member.birthday.strftime("%d.%m.%Y") if member.birthday else ""
+                    value = member.birthday or ""
                 elif col_key == "age":
                     if member.birthday:
                         value = (
@@ -524,7 +535,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 elif col_key == "city":
                     value = member.city
                 elif col_key == "joined":
-                    value = member.joined.strftime("%d.%m.%Y") if member.joined else ""
+                    value = member.joined or ""
                 elif col_key == "status":
                     value = member.status.name if member.status else ""
                 elif col_key == "group":
@@ -574,7 +585,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 elif col_key == "parent2_city":
                     value = p2.city if p2 else ""
 
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                write_safe_cell(ws, row_idx, col_idx, value)
 
         # Auto-fit column widths (capped at 50)
         for col in ws.columns:

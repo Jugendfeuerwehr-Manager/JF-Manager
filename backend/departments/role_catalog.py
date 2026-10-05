@@ -34,7 +34,7 @@ PERMISSION_BLOCKS = {
         "members.add_memberlistentry",
         "members.change_memberlistentry",
     ),
-    "list_exporter": ("members.export_memberlist",),
+    "list_exporter": ("members.export_memberlist", "members.export_member"),
     "service_reader": ("servicebook.view_service", "servicebook.view_attendance"),
     "attendance_editor": (
         "servicebook.view_attendance",
@@ -168,6 +168,7 @@ ROLE_SPECS = (
             "task_editor",
             "organization_scope",
         ),
+        version=2,
     ),
     RoleSpec(
         "department_youth_director",
@@ -186,6 +187,7 @@ ROLE_SPECS = (
             "qualification_editor",
             "task_editor",
         ),
+        version=2,
     ),
     RoleSpec(
         "youth_leader",
