@@ -1,5 +1,6 @@
 """SEC-09.5b: no path besides bookings may change stock or booked movements."""
 
+from datetime import timedelta
 from io import StringIO
 from unittest import skipUnless
 
@@ -9,10 +10,11 @@ from django.core.exceptions import ValidationError
 from django.core.management import CommandError, call_command
 from django.db import DatabaseError, connection, transaction
 from django.db.models.deletion import ProtectedError
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from inventory.models import Item, Stock, StorageLocation, Transaction
+from inventory.models import Item, Stock, StockBookingRequest, StorageLocation, Transaction
 from inventory.opening_stock import book_opening_stock
 
 
@@ -118,3 +120,14 @@ class LedgerTriggerTests(TestCase):
         )
         self.assertEqual(Transaction.objects.clear_former_member_names(), 1)
         self.assertEqual(Transaction.objects.get().former_member_name, "")
+
+
+class BookingReplayRetentionTests(TestCase):
+    @override_settings(BOOKING_REPLAY_RETENTION_DAYS=30)
+    def test_purge_removes_only_expired_replay_responses(self):
+        user = get_user_model().objects.create_user(username="replay-user")
+        old = StockBookingRequest.objects.create(user=user, key="old", request_fingerprint="a", response_status=201)
+        StockBookingRequest.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=31))
+        recent = StockBookingRequest.objects.create(user=user, key="new", request_fingerprint="b", response_status=201)
+        call_command("purge_booking_requests", stdout=StringIO())
+        self.assertEqual(list(StockBookingRequest.objects.values_list("pk", flat=True)), [recent.pk])

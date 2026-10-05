@@ -32,6 +32,8 @@ if not DEBUG and not SECRET_KEY:
     raise Exception("DJANGO_SECRET_KEY must be set in production (DEBUG=False)")
 
 AUDIT_RETENTION_DAYS = max(1, int(os.environ.get("AUDIT_RETENTION_DAYS", "180")))
+# Replay window for booking idempotency keys; stored responses contain booking details.
+BOOKING_REPLAY_RETENTION_DAYS = max(1, int(os.environ.get("BOOKING_REPLAY_RETENTION_DAYS", "30")))
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 

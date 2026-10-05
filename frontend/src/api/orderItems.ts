@@ -3,6 +3,7 @@
  */
 
 import apiClient from './index'
+import { withIdempotencyKey } from './idempotency'
 import type {
   OrderItem,
   OrderItemCreate,
@@ -41,7 +42,9 @@ export const orderItemsApi = {
    * Update order item
    */
   update(id: number, data: OrderItemUpdate) {
-    return apiClient.patch<OrderItem>(`/order-items/${id}/`, data)
+    // Receiving goods books stock; repeat-safe like other bookings.
+    const url = `/order-items/${id}/`
+    return withIdempotencyKey('patch', url, data, headers => apiClient.patch<OrderItem>(url, data, { headers }))
   },
 
   /**
@@ -55,17 +58,19 @@ export const orderItemsApi = {
    * Update status of single order item
    */
   updateStatus(id: number, statusId: number, data?: Record<string, unknown>) {
-    return apiClient.post<OrderItem>(`/order-items/${id}/update_status/`, {
-      status: statusId,
-      ...data
-    })
+    const url = `/order-items/${id}/update_status/`
+    const body = { status: statusId, ...data }
+    return withIdempotencyKey('post', url, body, headers => apiClient.post<OrderItem>(url, body, { headers }))
   },
 
   /**
    * Bulk update status of multiple items
    */
   bulkUpdateStatus(data: BulkStatusUpdateRequest) {
-    return apiClient.post<BulkStatusUpdateResponse>('/order-items/bulk_update_status/', data)
+    const url = '/order-items/bulk_update_status/'
+    return withIdempotencyKey('post', url, data, headers =>
+      apiClient.post<BulkStatusUpdateResponse>(url, data, { headers }),
+    )
   },
 
   /**

@@ -5,6 +5,7 @@
  */
 
 import apiClient from './index'
+import { withIdempotencyKey } from './idempotency'
 import type {
   Category,
   CategoryCreate,
@@ -293,14 +294,16 @@ export const transactionsApi = {
    * Create new transaction
    */
   create(data: TransactionCreate) {
-    return apiClient.post<Transaction>('/inventory/transactions/', data)
+    const url = '/inventory/transactions/'
+    return withIdempotencyKey('post', url, data, headers => apiClient.post<Transaction>(url, data, { headers }))
   },
 
   /**
    * Issue multiple available items to one member atomically
    */
   batchLoan(data: BatchLoanCreate) {
-    return apiClient.post<BatchLoanResponse>('/inventory/transactions/batch-loan/', data)
+    const url = '/inventory/transactions/batch-loan/'
+    return withIdempotencyKey('post', url, data, headers => apiClient.post<BatchLoanResponse>(url, data, { headers }))
   },
 
   /**
