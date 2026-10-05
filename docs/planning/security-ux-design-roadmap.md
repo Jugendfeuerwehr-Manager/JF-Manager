@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-05.5b korrigiert veraltete anonyme Vorschauerwartung. |
+| Letzter Checkpoint | 05.10.2026: SEC-06.3a Ruff-Befund in `settings.py` behoben; Backend-Ruff vollständig grün. |
 | Aktuelles Paket | SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-07 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `4cd89bc` (SEC-08.3); SEC-05.5b ist dieser Commit. |
+| Letzter Roadmap-Commit | `7593376` (SEC-05.5b); SEC-06.3a ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | Ruff-Befund SEC-06.3a beheben, danach SEC-07-Anmeldung und SEC-09-Rest. |
+| Nächster konkreter Schritt | SEC-07-Detailblock (Sitzungen, CSRF, MFA, OIDC) mit Teilschritten anlegen, dann SEC-07.1; danach SEC-09.5b. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -795,6 +795,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-06.1`: Pflichtschlüssel validieren, expliziten Schlüsselring und Installations-/Compose-Konfiguration einführen.
   - `SEC-06.2`: Verschlüsseltes Sync-JSON-Feld mit Vorwärtsmigration und kontrollierter Umverschlüsselung für Sync/LDAP/OIDC implementieren.
   - `SEC-06.3`: Gebündelte Prüfungen für Start, Rohdatenbank, Migration, falsche Schlüssel und Rotation; Betriebsanleitung.
+    - `SEC-06.3a`: Schlüsselimport in `settings.py` an den Dateianfang verschieben (Ruff E402, CI-Lint); Verhalten unverändert.
 - **Inventar:** `FIELD_ENCRYPTION_KEY` hatte einen eingebauten konstanten Ersatz; `SyncJob.credentials` war JSON-Klartext. LDAP bind_password und OIDC client_secret sind bereits verschlüsselte Textfelder. Die Bibliothek toleriert nicht entschlüsselbare Werte; Rotation muss deshalb explizit validieren.
 - **Prüfungen:** 36/36 gebündelte Sync-/Verschlüsselungs-/Benutzersicherheitstests, Ruff und Migrationsabgleich bestanden. Migration, falscher Schlüssel und Rotationsrollback mit fiktiven Geheimnissen geprüft. CI erzeugt flüchtigen individuellen Testschlüssel.
 - **Risiken / Checkpoint:** Produktionsschlüssel und vorhandene verschlüsselte Daten nicht verändern. Bekannter Alt-Ersatzschlüssel nur aus Altinstallation explizit für einmalige Migration bereitstellen; nie als automatischer Fallback. `dump.rdb` bleibt unangetastet.
@@ -993,3 +994,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-08.3 | Übernahme durch Claude nach Abgleich von Roadmap, Git und uncommittetem Codex-Stand. Exportregressionen (Formel-/Typzellen, Exportrecht, Elternspalten, Audit, Aufbewahrung), Qualifikationsanhang-Vorschau, Exportanleitung und Importordnung ergänzt. | 9/9 gezielte Backendtests, Migrationsabgleich, Ruff (Exportdateien), Typecheck und 86/86 Frontendtests bestanden. Breiter Backendlauf 549/551: zwei exportfremde Befunde (SEC-05.5b-Testerwartung, `orders`-Discovery-Zirkelimport). | Dieser Commit: `test(SEC-08.3): accept safe export contract` | SEC-05.5b und SEC-06.3a, dann SEC-07. |
 
 | 05.10.2026 | SEC-05.5b | Anonyme signierte Vorschau fremder Listenanhänge antwortet seit SEC-05.1 mit 401 statt 404; Test erwartete noch 404. Erwartung an den Medienvertrag (401/403 wie `test_private_media`) angeglichen; abteilungsfremder angemeldeter Zugriff bleibt 404. | 40/40 Listen-/Medien-/Anhangtests und Ruff bestanden. | Dieser Commit: `test(SEC-05.5b): align list preview test with private media contract` | SEC-06.3a Ruff-Befund. |
+
+| 05.10.2026 | SEC-06.3a | Ruff E402 aus SEC-06.1 behoben: seiteneffektfreier `encryption_config`-Import an den Dateianfang. Start ohne Schlüssel scheitert weiterhin mit `ImproperlyConfigured`. | `ruff check .` vollständig bestanden; 54/54 Sync-/Verschlüsselungs-/Benutzersicherheits-/LDAP-Tests und `manage.py check` mit/ohne Schlüssel wie erwartet. | Dieser Commit: `style(SEC-06.3a): import encryption config at module top` | SEC-07-Detailblock. |

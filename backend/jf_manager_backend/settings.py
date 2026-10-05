@@ -15,6 +15,8 @@ from datetime import timedelta
 
 import environ
 
+from .encryption_config import encryption_keys
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -22,8 +24,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 # Explicit primary key and optional old keys for controlled rotation.
-from .encryption_config import encryption_keys
-
 FIELD_ENCRYPTION_KEY = encryption_keys(os.environ)
 
 # SECURITY WARNING: don't run with debug turned on in production!
