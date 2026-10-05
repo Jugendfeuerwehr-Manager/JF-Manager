@@ -170,3 +170,27 @@ class MFAPolicyTests(APITestCase):
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response["Location"], "https://jf.example.test/login?next=%2Fadmin%2F")
         self.assertEqual(self.client.post("/accounts/password_reset/", {"email": "x@example.test"}).status_code, 404)
+
+
+class LDAPLoginTests(APITestCase):
+    def test_ldap_login_needs_the_same_second_factor(self):
+        cache.clear()
+        user = User.objects.create_user(username="ldap-user", auth_source="ldap")
+        user.set_unusable_password()
+        user.save()
+        MFADevice.objects.create(user=user, secret=SECRET, confirmed_at="2026-01-01T00:00:00Z")
+
+        def ldap_authenticate(backend, request, username=None, password=None, **kwargs):
+            return user if (username, password) == ("ldap-user", "directory-secret") else None
+
+        with patch("users.ldap_backend.ConfigurableLDAPBackend.authenticate", ldap_authenticate):
+            client = csrf_client()
+            response = client.post(
+                "/api/v1/auth/session/login/", {"username": "ldap-user", "password": "directory-secret"}, format="json"
+            )
+            self.assertEqual(response.data, {"authenticated": False, "mfa_required": True})
+            code = mfa.totp_at(SECRET, mfa.current_step())
+            self.assertTrue(
+                client.post("/api/v1/auth/session/mfa/", {"code": code}, format="json").data["authenticated"]
+            )
+            self.assertEqual(client.get("/api/v1/users/me/").status_code, 200)
