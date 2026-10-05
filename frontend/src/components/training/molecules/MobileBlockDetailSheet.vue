@@ -41,7 +41,7 @@
             <div class="sheet-divider" />
 
             <!-- Rich content -->
-            <div v-if="block.content" class="sheet-content prose" v-html="sanitized" />
+            <SafeHtml v-if="block.content" class="sheet-content prose" :html="block.content" />
             <p v-else class="sheet-no-content">Kein Inhalt hinterlegt.</p>
 
             <!-- Nextcloud link -->
@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeHtml from '@/components/common/SafeHtml.vue'
 import { ref, computed, watch } from 'vue'
 import { trainingBlocksApi } from '@/api/training'
 import type { PlannerBlock, TrainingMedia } from '@/types/training'
@@ -187,18 +188,6 @@ const endTime = computed(() =>
     ? absMinToTime(props.sessionStartMin + props.block.start_offset_minutes + props.block.duration_minutes)
     : '',
 )
-
-// ── Content sanitization ─────────────────────────────────────────────────────
-const sanitized = computed(() => {
-  const html = props.block?.content ?? ''
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/\s(on\w+)=["'][^"']*["']/gi, '')
-    .replace(/\s(on\w+)=[^\s>]*/gi, '')
-    .replace(/href\s*=\s*["']?\s*javascript:/gi, 'href="about:blank"')
-})
 
 // ── Lightbox ─────────────────────────────────────────────────────────────────
 function openLightbox(idx: number) {

@@ -229,7 +229,7 @@
 
         <div class="detail-section">
           <h4>Nachricht</h4>
-          <div class="email-body" v-html="emailDetails?.body_html || currentEmail.body_html"></div>
+          <SafeHtml class="email-body" :html="emailDetails?.body_html || currentEmail.body_html" />
         </div>
 
         <Divider v-if="emailDetails?.recipients && emailDetails.recipients.length > 0" />
@@ -272,6 +272,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeHtml from '@/components/common/SafeHtml.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'

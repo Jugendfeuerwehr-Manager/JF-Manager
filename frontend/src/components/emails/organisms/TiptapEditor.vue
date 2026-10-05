@@ -99,7 +99,7 @@
       <div class="signature-divider">
         <span>Signatur</span>
       </div>
-      <div class="signature-content" v-html="signature"></div>
+      <SafeHtml class="signature-content" :html="signature" />
     </div>
 
     <!-- Template Variables -->
@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeHtml from '@/components/common/SafeHtml.vue'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'

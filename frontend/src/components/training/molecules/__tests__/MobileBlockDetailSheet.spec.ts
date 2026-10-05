@@ -41,7 +41,7 @@ describe('MobileBlockDetailSheet rich text', () => {
 
     const link = document.querySelector<HTMLAnchorElement>('.sheet-content a')
     expect(link).not.toBeNull()
-    expect(link?.getAttribute('href')).not.toMatch(/^javascript:/i)
+    expect(link?.getAttribute('href')).toBeNull()
     wrapper.unmount()
   })
 })

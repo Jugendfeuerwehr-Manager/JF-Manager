@@ -91,8 +91,7 @@
           <h3 class="block-detail-title">{{ block.title }}</h3>
           <span class="block-detail-duration text-color-secondary text-sm">{{ block.duration_minutes }} Min.</span>
         </div>
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="block.content" class="block-detail-content prose" v-html="block.content" />
+        <SafeHtml v-if="block.content" class="block-detail-content prose" :html="block.content" />
         <!-- Attached documents -->
         <div v-if="block.attachments && block.attachments.length" class="block-attachments">
           <p class="attachments-label">Anhänge:</p>
@@ -119,6 +118,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeHtml from '@/components/common/SafeHtml.vue'
 import { computed } from 'vue'
 import type { TrainingSessionHandout, TrainingBlock } from '@/types/training'
 
