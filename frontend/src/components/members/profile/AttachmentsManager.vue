@@ -188,12 +188,12 @@
           width="100%"
           preview
         />
-        <iframe 
+        <PrivateMedia pdf
           v-else-if="previewAttachment && isPDF(previewAttachment)"
           :src="previewAttachment.file_url || ''"
           width="100%"
           height="600px"
-        ></iframe>
+        ></PrivateMedia>
         <div v-else class="no-preview">
           <i class="pi pi-file"></i>
           <p>Keine Vorschau verfügbar</p>
@@ -210,6 +210,7 @@
 </template>
 
 <script setup lang="ts">
+import PrivateMedia from '@/components/common/PrivateMedia.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -221,7 +222,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import FileUpload from 'primevue/fileupload'
 import Card from 'primevue/card'
-import Image from 'primevue/image'
+import Image from '@/components/common/PrivateImage.vue'
 import ProgressSpinner from 'primevue/progressspinner'
 import { getApiErrorMessage } from '@/utils/apiError'
 

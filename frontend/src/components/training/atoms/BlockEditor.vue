@@ -130,6 +130,8 @@ import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
+import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import PrivateEditorImage from '@/components/common/PrivateEditorImage.vue'
 import Dropcursor from '@tiptap/extension-dropcursor'
 import Gapcursor from '@tiptap/extension-gapcursor'
 import Button from 'primevue/button'
@@ -179,7 +181,7 @@ const editor = useEditor({
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Link.configure({ openOnClick: false }),
     Placeholder.configure({ placeholder: props.placeholder }),
-    Image.configure({ inline: true, allowBase64: false }),
+    Image.extend({ addNodeView() { return VueNodeViewRenderer(PrivateEditorImage) } }).configure({ inline: true, allowBase64: false }),
     Dropcursor,
     Gapcursor,
   ],
@@ -245,11 +247,16 @@ async function onDrop(event: DragEvent) {
   if (!editor.value) return
   draggingOver.value = false
 
-  // Handle img HTML dragged from AssetPanel (sets text/plain = '<img src=... />')
-  const htmlContent = event.dataTransfer?.getData('text/plain')
-  if (htmlContent?.trimStart().startsWith('<img')) {
+  const imageData = event.dataTransfer?.getData('application/x-jf-training-image')
+  if (imageData) {
     event.preventDefault()
-    editor.value.chain().focus().insertContent(htmlContent).run()
+    try {
+      const image: unknown = JSON.parse(imageData)
+      if (image && typeof image === 'object' && 'src' in image && typeof image.src === 'string') {
+        const alt = 'alt' in image && typeof image.alt === 'string' ? image.alt : ''
+        editor.value.chain().focus().setImage({ src: image.src, alt }).run()
+      }
+    } catch { /* Ignore malformed drag payloads. */ }
     return
   }
 

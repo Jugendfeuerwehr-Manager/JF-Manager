@@ -27,7 +27,7 @@
         draggable="true"
         @dragstart="onMediaDragStart($event, item)"
       >
-        <img :src="item.url" :alt="item.original_filename" class="media-thumb" />
+        <PrivateMedia :src="item.url" :alt="item.original_filename" class="media-thumb" />
         <div class="media-info">
           <span class="media-name">{{ item.original_filename }}</span>
           <Button
@@ -63,7 +63,7 @@
       <div v-for="att in attachmentItems" :key="att.id" class="doc-item">
         <i :class="docIcon(att.mime_type)" class="doc-icon" />
         <div class="doc-info">
-          <a :href="att.file_url ?? '#'" target="_blank" rel="noopener" class="doc-name">{{ att.name }}</a>
+          <a :href="att.file_url ?? '#'" @click.prevent="att.file_url && downloadMedia(att.file_url, att.name)" target="_blank" rel="noopener" class="doc-name">{{ att.name }}</a>
           <span class="doc-size">{{ formatSize(att.file_size) }}</span>
         </div>
         <Button icon="pi pi-trash" severity="danger" text size="small" @click="removeAttachment(att.id)" />
@@ -83,6 +83,8 @@
 </template>
 
 <script setup lang="ts">
+import { downloadMedia } from '@/utils/privateMedia'
+import PrivateMedia from '@/components/common/PrivateMedia.vue'
 import { ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
@@ -163,7 +165,7 @@ async function removeMedia(mediaId: number) {
 }
 
 function onMediaDragStart(event: DragEvent, item: TrainingMedia) {
-  event.dataTransfer?.setData('text/plain', `<img src="${item.url}" alt="${item.original_filename}" />`)
+  event.dataTransfer?.setData('application/x-jf-training-image', JSON.stringify({ src: item.url, alt: item.original_filename }))
 }
 
 async function onDocSelected(event: Event) {

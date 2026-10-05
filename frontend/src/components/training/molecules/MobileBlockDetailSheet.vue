@@ -79,7 +79,7 @@
                     class="media-thumb-btn"
                     @click="openLightbox(idx)"
                   >
-                    <img
+                    <PrivateMedia
                       :src="item.url"
                       :alt="item.original_filename"
                       class="media-thumb"
@@ -111,7 +111,7 @@
         >
           <i class="pi pi-chevron-left" />
         </button>
-        <img
+        <PrivateMedia
           v-if="lightboxIdx !== null"
           :src="media[lightboxIdx]?.url"
           :alt="media[lightboxIdx]?.original_filename"
@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import PrivateMedia from '@/components/common/PrivateMedia.vue'
 import SafeHtml from '@/components/common/SafeHtml.vue'
 import { ref, computed, watch } from 'vue'
 import { trainingBlocksApi } from '@/api/training'

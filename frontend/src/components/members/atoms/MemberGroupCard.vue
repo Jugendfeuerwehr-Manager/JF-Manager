@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import Avatar from 'primevue/avatar'
+import Avatar from '@/components/common/PrivateAvatar.vue'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Tag from 'primevue/tag'

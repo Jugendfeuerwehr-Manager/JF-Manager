@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
+from urllib.parse import urlsplit
+import re
 
 # Swagger/OpenAPI documentation
 from drf_spectacular.views import (
@@ -77,6 +79,6 @@ urlpatterns = api_patterns + auth_patterns + health_patterns
 if settings.DEBUG:
     from django.conf.urls.static import static
 
-    urlpatterns += [re_path(r"^uploads/attachments/", deny_direct_attachments)]
+    media_path = urlsplit(settings.MEDIA_URL).path.lstrip("/")
+    urlpatterns += [re_path(r"^" + re.escape(media_path), deny_direct_attachments)]
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

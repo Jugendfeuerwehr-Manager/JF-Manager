@@ -97,7 +97,7 @@
           <p class="attachments-label">Anhänge:</p>
           <ul class="attachments-list">
             <li v-for="att in block.attachments" :key="att.id">
-              <a :href="att.file_url ?? '#'" target="_blank" rel="noopener" class="attachment-link">
+              <a :href="att.file_url ?? '#'" @click.prevent="att.file_url && downloadMedia(att.file_url, att.name)" target="_blank" rel="noopener" class="attachment-link">
                 <i class="pi pi-file-pdf" v-if="att.mime_type === 'application/pdf'" />
                 <i class="pi pi-file" v-else />
                 {{ att.name }}
@@ -118,6 +118,7 @@
 </template>
 
 <script setup lang="ts">
+import { downloadMedia } from '@/utils/privateMedia'
 import SafeHtml from '@/components/common/SafeHtml.vue'
 import { computed } from 'vue'
 import type { TrainingSessionHandout, TrainingBlock } from '@/types/training'

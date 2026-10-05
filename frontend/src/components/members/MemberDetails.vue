@@ -134,7 +134,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Member } from '@/types/api'
-import Avatar from 'primevue/avatar'
+import Avatar from '@/components/common/PrivateAvatar.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Chip from 'primevue/chip'

@@ -22,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import { mediaBlob } from '@/utils/privateMedia'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Button from 'primevue/button'
@@ -56,9 +57,7 @@ function isLightColor(hex: string): boolean {
 /** Fetches an image URL and returns a base64 data URL, or null on error. */
 async function fetchImageDataUrl(src: string): Promise<string | null> {
   try {
-    const resp = await fetch(src, { credentials: 'include' })
-    if (!resp.ok) return null
-    const blob = await resp.blob()
+    const blob = await mediaBlob(src)
     return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result as string)
