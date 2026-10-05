@@ -21,18 +21,22 @@ const search = ref('')
 interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean }
 const sections: { label: string; items: NavItem[] }[] = [
   { label: 'Überblick', items: [{ label: 'Dashboard', icon: 'pi pi-home', to: '/' }] },
-  { label: 'Jugendfeuerwehr', items: [
+  { label: 'Mitglieder', items: [
     { label: 'Mitglieder', icon: 'pi pi-users', to: '/members', permission: 'view_member' },
     { label: 'Eltern', icon: 'pi pi-user', to: '/parents', permission: 'view_parent' },
     { label: 'Gruppen', icon: 'pi pi-sitemap', to: '/groups', permission: 'view_group' },
     { label: 'Listen', icon: 'pi pi-list-check', to: '/lists', permission: 'view_memberlist' },
+  ] },
+  { label: 'Dienste', items: [
     { label: 'Dienstbuch', icon: 'pi pi-book', to: '/servicebook', permission: 'view_service' },
     { label: 'Ausbildung', icon: 'pi pi-calendar', to: '/training', permission: 'view_trainingsession' },
     { label: 'Qualifikationen', icon: 'pi pi-crown', to: '/qualifications', permission: 'view_qualification' },
   ] },
-  { label: 'Organisation', items: [
+  { label: 'Material', items: [
     { label: 'Inventar', icon: 'pi pi-box', to: '/inventory', permission: 'view_item' },
     { label: 'Bestellungen', icon: 'pi pi-shopping-cart', to: '/orders', permission: 'view_order' },
+  ] },
+  { label: 'Kommunikation', items: [
     { label: 'E-Mails schreiben', icon: 'pi pi-envelope', to: '/emails/compose', permission: 'view_emailmessage' },
     { label: 'E-Mail-Verlauf', icon: 'pi pi-history', to: '/emails/history', permission: 'view_emailmessage' },
   ] },
