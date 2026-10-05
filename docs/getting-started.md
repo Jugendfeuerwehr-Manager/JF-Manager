@@ -1,62 +1,100 @@
 # Getting Started
 
-## Prerequisites
+## Voraussetzungen
 
-- Python 3.10+
-- Node.js 22+
-- pipenv
-- Docker (optional, for production setup)
+- Python 3.10+ und pipenv
+- Node.js 20.19+ oder 22.12+
+- Redis (lokal, z. B. `brew install redis`) für Hintergrundaufgaben und Drosselung
+- Docker (optional, für den Produktionsweg)
 
-## Local Development Setup
+## Lokale Entwicklung
 
-### 1. Clone the Repository
+Oberfläche und API laufen im Browser unter **einer** Herkunft: Die App wird immer über `http://localhost:5173` geöffnet, Vite leitet `/api`, `/admin` und `/static` an Django auf Port 8000 weiter. Nur so funktionieren Sitzungs- und CSRF-Cookies. `http://localhost:8000` direkt im Browser ist nur für `/admin/` gedacht.
+
+### 1. Repository klonen
 
 ```bash
 git clone https://github.com/Jugendfeuerwehr-Manager/JF-Manager.git
 cd JF-Manager
 ```
 
-### 2. Backend Setup
+### 2. Backend einrichten
 
 ```bash
 cd backend
 pipenv install
-pipenv shell
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
+cp example.env .env
 ```
 
-The backend runs on http://localhost:8000. Django Admin is available at http://localhost:8000/admin/.
+In `backend/.env` für die lokale Entwicklung mindestens setzen:
 
-### 3. Frontend Setup
+```bash
+DEBUG=True
+DJANGO_SECRET_KEY=<zufälliger langer Wert>
+# Pflicht: Schlüssel für verschlüsselte Felder (MFA, LDAP/OIDC/Sync-Zugangsdaten)
+FIELD_ENCRYPTION_KEY=<Ausgabe des folgenden Befehls>
+```
+
+```bash
+pipenv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Den Schlüssel aufbewahren: Mit ihm verschlüsselte Daten sind ohne ihn nicht mehr lesbar. `backend/.env` ist in Git ignoriert und darf nicht eingecheckt werden. `pipenv run` sowie die VS-Code-Konfigurationen lesen die Datei automatisch.
+
+```bash
+pipenv run python manage.py migrate
+pipenv run python manage.py createsuperuser
+```
+
+Administratorkonten müssen beim ersten Login eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes.
+
+### 3. Frontend einrichten
 
 ```bash
 cd frontend
 npm install
-npm run dev
+cp .env.example .env
 ```
 
-The frontend runs on http://localhost:5173.
+`VITE_API_BASE_URL` bleibt `/api/v1`. Ein abweichender Backend-Port wird nur über `VITE_BACKEND_URL` gesetzt.
 
-### 4. Quick Start (Both)
+### 4. Starten
+
+**VS Code:** Startkonfiguration **„JF-Manager: Backend + Frontend“**. Sie startet Redis (oder nutzt ein laufendes), führt Migrationen aus, startet den RQ-Worker, Django und Vite und öffnet Chrome unter `http://localhost:5173`.
+
+**Terminal:**
 
 ```bash
 ./start-dev.sh
 ```
 
-## Environment Variables
+Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd frontend && npm run dev`, dann `http://localhost:5173` öffnen.
+
+**Mit Beispieldaten statt eigener Datenbank:** VS-Code-Konfiguration **„Demo: Backend + Frontend“** oder wie in der README beschrieben. Die Demo legt eine temporäre Datenbank mit eigenem Wegwerf-Schlüssel an.
+
+### Häufige Probleme
+
+| Symptom | Ursache und Abhilfe |
+|---------|---------------------|
+| Start bricht mit „FIELD_ENCRYPTION_KEY muss explizit gesetzt sein“ ab | Schlüssel in `backend/.env` eintragen (siehe oben). |
+| Login meldet „Gespeicherte Zugangsdaten können nicht entschlüsselt werden“ | Die Datenbank wurde mit einem anderen Schlüssel beschrieben. Den ursprünglichen Schlüssel eintragen; bei Schlüsselwechsel den alten in `FIELD_ENCRYPTION_PREVIOUS_KEYS` angeben. |
+| Login klappt, aber jede Anfrage ist sofort wieder abgemeldet | App nicht über `http://localhost:5173` geöffnet oder `DEBUG=True` fehlt (dann sind Cookies `Secure` und werden über http nicht gesendet). |
+| `npm run dev` liefert für `/api/...` HTML statt JSON | Veraltete `frontend/vite.config.js` vorhanden; maßgeblich ist nur `vite.config.ts`. |
+
+## Umgebungsvariablen
 
 ### Backend
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SECRET_KEY` | Django secret key | *required in production* |
-| `DEBUG` | Debug mode | `False` |
-| `DATABASE_URL` | Database connection string | `sqlite:///db.sqlite3` |
-| `ALLOWED_HOSTS` | Comma-separated hostnames | `localhost,127.0.0.1` |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated origins | `http://localhost:5173` (dev) |
-| `REDIS_URL` | Redis connection | `none` |
+| Variable | Bedeutung | Standard |
+|----------|-----------|----------|
+| `DJANGO_SECRET_KEY` | Django-Geheimnis | *Pflicht* |
+| `FIELD_ENCRYPTION_KEY` | Fernet-Schlüssel für verschlüsselte Felder | *Pflicht* |
+| `FIELD_ENCRYPTION_PREVIOUS_KEYS` | Kommagetrennte alte Schlüssel für die Rotation | leer |
+| `DEBUG` | Entwicklungsmodus; schaltet `Secure`-Cookies ab | `False` |
+| `SECURE_COOKIES` | Erzwingt `Secure`-Cookies unabhängig von `DEBUG` | `true` ohne `DEBUG` |
+| `ALLOWED_HOSTS` | Kommagetrennte Hostnamen | `localhost,127.0.0.1` |
+| `CSRF_TRUSTED_ORIGINS` | Vertrauenswürdige Herkünfte hinter einem Proxy | leer |
+| `REDIS_URL` | Redis-Verbindung | `none` |
 
 ### Frontend
 
@@ -82,7 +120,7 @@ For a quick Docker Compose based setup:
 
 ```bash
 cp backend/example.env .env
-# adjust required values in .env (especially DJANGO_SECRET_KEY and DB credentials)
+# adjust required values in .env (especially DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY and DB credentials)
 docker compose -f docker-compose.yml up -d --build
 ```
 

@@ -16,9 +16,12 @@ def main():
     parser.add_argument("--port", type=int, default=8011)
     args = parser.parse_args()
     directory = Path(tempfile.mkdtemp(prefix="jf-manager-demo-"))
+    from cryptography.fernet import Fernet
+
+    # Throwaway secrets: the demo never shares keys with the real database.
     os.environ.update({"DJANGO_SETTINGS_MODULE": "jf_manager_backend.demo_settings", "DEBUG": "True",
                        "DJANGO_SECRET_KEY": secrets.token_urlsafe(48), "JF_DEMO_DATABASE": str(directory / "demo.sqlite3"),
-                       "REDIS_URL": "none"})
+                       "FIELD_ENCRYPTION_KEY": Fernet.generate_key().decode(), "REDIS_URL": "none"})
     import django
     django.setup()
     from django.contrib.auth import get_user_model
@@ -76,7 +79,9 @@ def main():
     import json
     (directory / "login.json").write_text(json.dumps({"username": "demo", "password": password}))
     os.chmod(directory / "login.json", 0o600)
-    print(f"\nDemo-Datenbank: {directory}\nBenutzer: demo\nPasswort: {password}\nAPI: http://127.0.0.1:{args.port}/api/v1\n", flush=True)
+    print(f"\nDemo-Datenbank: {directory}\nBenutzer: demo\nPasswort: {password}\nAPI: http://127.0.0.1:{args.port}/api/v1\n"
+          "Hinweis: Das Demokonto ist Administrator. Beim ersten Login wird die Einrichtung einer\n"
+          "Authenticator-App (TOTP) verlangt.\n", flush=True)
     call_command("runserver", f"127.0.0.1:{args.port}", use_reloader=False)
 
 

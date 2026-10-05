@@ -66,7 +66,7 @@ npm ci
 VITE_BACKEND_URL=http://127.0.0.1:8011 npm run dev
 ```
 
-Anschließend `http://localhost:5173` öffnen. Die Demo lauscht nur lokal. Für die reguläre Entwicklung stehen [Startanleitung](docs/getting-started.md) und `./start-dev.sh` bereit.
+Anschließend `http://localhost:5173` öffnen. Die Demo lauscht nur lokal. Für die reguläre Entwicklung stehen [Startanleitung](docs/getting-started.md), `./start-dev.sh` und die VS-Code-Startkonfiguration „JF-Manager: Backend + Frontend“ bereit. In VS Code startet „Demo: Backend + Frontend“ die Demo samt Oberfläche. Das Demokonto ist Administrator und muss beim ersten Login eine Authenticator-App einrichten.
 
 ## Einstieg für das Team
 
@@ -86,7 +86,7 @@ Das [Benutzerhandbuch](docs/user-guide.md) erläutert alle Module mit praktische
 Das Backend verwendet Django 5 und Django REST Framework, das Frontend Vue 3, TypeScript und PrimeVue. PostgreSQL dient als Produktionsdatenbank, Redis als gemeinsamer Cache; Docker Compose stellt die Dienste bereit. Zugriffsrechte werden für Benutzer, Abteilungen und einzelne API-Routen geprüft. Dieses Update schließt insbesondere fremde Profiländerungen, Rechteausweitung über Benutzer-Routen und wiederverwendbare Passwort-Reset-Links. [Betriebs- und Migrationshinweise](docs/security-upgrade.md)
 
 ```sh
-cd backend && PIPENV_DONT_LOAD_ENV=1 DJANGO_SECRET_KEY=local-test-only-secret-key-32-chars REDIS_URL=none pipenv run python manage.py test api_tests users departments.tests servicebook.tests.test_attendance_board servicebook.tests.test_attendance_by_member servicebook.tests.test_attendance_race_condition notifications
+cd backend && PIPENV_DONT_LOAD_ENV=1 DJANGO_SECRET_KEY=local-test-only-secret-key-32-chars FIELD_ENCRYPTION_KEY=$(pipenv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") REDIS_URL=none pipenv run python manage.py test api_tests users departments.tests servicebook.tests.test_attendance_board servicebook.tests.test_attendance_by_member servicebook.tests.test_attendance_race_condition notifications
 cd ../frontend && npm run build && npm run test:unit -- --run
 ```
 

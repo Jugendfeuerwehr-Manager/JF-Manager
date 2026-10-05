@@ -1,8 +1,10 @@
 {
+    // Backend tasks run through pipenv, which loads backend/.env (secrets stay
+    // out of this file). See docs/getting-started.md.
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "npm: dev - frontend",
+            "label": "frontend: vite",
             "type": "shell",
             "command": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin/npm",
             "args": ["run", "dev"],
@@ -20,8 +22,8 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "^.*Local:.*$",
-                    "endsPattern": "^.*ready in.*$"
+                    "beginsPattern": "^.*VITE.*$",
+                    "endsPattern": "^.*Local:.*$"
                 }
             },
             "options": {
@@ -39,15 +41,17 @@
         {
             "label": "redis: start locally",
             "type": "shell",
-            "command": "redis-server --port 6379 --loglevel notice",
+            // Reuses a running Redis; otherwise starts one without persistence,
+            // so no dump.rdb lands in the repository.
+            "command": "if redis-cli -p 6379 ping >/dev/null 2>&1; then echo 'Ready to accept connections (already running)'; tail -f /dev/null; else redis-server --port 6379 --save '' --appendonly no --loglevel notice; fi",
             "isBackground": true,
             "problemMatcher": {
                 "owner": "redis",
                 "pattern": { "regexp": "^$" },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "^.*Ready to accept connections.*$",
-                    "endsPattern": "^.*$"
+                    "beginsPattern": "^.*$",
+                    "endsPattern": "^.*Ready to accept connections.*$"
                 }
             },
             "options": {
@@ -56,7 +60,7 @@
                     "args": ["-c"]
                 },
                 "env": {
-                    "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
                 }
             },
             "presentation": {
@@ -66,11 +70,35 @@
             }
         },
         {
-            "label": "rq: worker - backend",
+            "label": "backend: migrate",
+            "type": "shell",
+            "command": "pipenv run python manage.py migrate",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                },
+                "env": {
+                    "DEBUG": "True",
+                    "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "silent",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "backend: worker",
             "type": "shell",
             "command": "pipenv run python manage.py rqworker default",
             "isBackground": true,
-            "dependsOn": ["redis: start locally"],
+            "dependsOn": ["redis: start locally", "backend: migrate"],
+            "dependsOrder": "sequence",
             "problemMatcher": {
                 "owner": "rq",
                 "pattern": { "regexp": "^$" },
@@ -87,10 +115,9 @@
                     "args": ["-c"]
                 },
                 "env": {
+                    "DEBUG": "True",
                     "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
-                    "DJANGO_SECRET_KEY": "ABCdefGheiasdjkn13njkasndk1n3kjnkjansd",
-                    "REDIS_URL": "redis://localhost:6379",
-                    "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
                 }
             },
             "presentation": {
