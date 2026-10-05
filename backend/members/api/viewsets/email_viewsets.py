@@ -93,45 +93,19 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         create_serializer = EmailMessageCreateSerializer(data=request.data, context={"request": request})
         create_serializer.is_valid(raise_exception=True)
 
-        # Create email message
-        email_message = create_serializer.save()
-
-        # Handle file attachments
-        ALLOWED_CONTENT_TYPES = {
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-            "image/svg+xml",
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/plain",
-            "text/csv",
-        }
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+        from jf_manager_backend.upload_safety import validate_batch
 
         files = request.FILES.getlist("attachments")
-        for f in files:
-            if f.content_type not in ALLOWED_CONTENT_TYPES:
-                email_message.delete()
-                return Response(
-                    {"error": f'Dateityp "{f.content_type}" ist nicht erlaubt für "{f.name}".'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if f.size > MAX_FILE_SIZE:
-                email_message.delete()
-                return Response(
-                    {"error": f'Datei "{f.name}" ist zu groß (max. 10 MB).'}, status=status.HTTP_400_BAD_REQUEST
-                )
+        content_types = validate_batch(files)
+        # Validate the entire batch before creating the message or storing any file.
+        email_message = create_serializer.save()
+        for f, content_type in zip(files, content_types):
             EmailAttachment.objects.create(
                 email_message=email_message,
                 file=f,
                 original_filename=f.name,
                 file_size=f.size,
-                content_type=f.content_type or "",
+                content_type=content_type,
             )
 
         try:

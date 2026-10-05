@@ -1,6 +1,6 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 
 from .utils import get_attachment_file_path
 
@@ -44,7 +44,13 @@ class Attachment(models.Model):
     def __str__(self):
         return self.name
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        if self.file and not self.file._committed:
+            from jf_manager_backend.upload_safety import validate_upload, validate_owner_capacity
+
+            validate_upload(self.file)
+            validate_owner_capacity(self.content_object, self.file, exclude_attachment=self.pk)
         # Set file metadata
         if self.file:
             self.file_size = self.file.size

@@ -8,6 +8,11 @@ class PrivateAvatarField(serializers.ImageField):
         self.kind = kind
         super().__init__(*args, **kwargs)
 
+    def to_internal_value(self, data):
+        from .upload_safety import clean_avatar
+
+        return clean_avatar(super().to_internal_value(data))
+
     def to_representation(self, value):
         if not value:
             return None

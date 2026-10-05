@@ -140,6 +140,10 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
         if image_file.size > 20 * 1024 * 1024:
             return Response({"detail": "Bild zu groß (max 20 MB)."}, status=status.HTTP_400_BAD_REQUEST)
 
+        from jf_manager_backend.upload_safety import validate_upload
+
+        validate_upload(image_file, image_only=True)
+
         # ── Resize / optimise before saving ──────────────────────────────────
         original_name = image_file.name
         try:
@@ -149,7 +153,7 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
             content_type = "image/jpeg" if new_name.endswith(".jpg") else "image/png"
             image_file = InMemoryUploadedFile(buf, "file", new_name, content_type, buf.getbuffer().nbytes, None)
         except Exception:
-            image_file.seek(0)  # fall back to original
+            return Response({"detail": "Bild konnte nicht verarbeitet werden."}, status=status.HTTP_400_BAD_REQUEST)
 
         ct = ContentType.objects.get_for_model(block)
         media = TrainingMedia.objects.create(

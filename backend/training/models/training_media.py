@@ -3,7 +3,7 @@ import uuid
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 
 
 def training_media_upload_path(instance, filename):
@@ -45,6 +45,15 @@ class TrainingMedia(models.Model):
         verbose_name="Hochgeladen von",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        if self.file and not self.file._committed:
+            from jf_manager_backend.upload_safety import validate_upload, validate_owner_capacity
+
+            validate_upload(self.file, image_only=True)
+            validate_owner_capacity(self.content_object, self.file, exclude_media=self.pk)
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.original_filename or str(self.file)
