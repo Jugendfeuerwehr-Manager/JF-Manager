@@ -196,6 +196,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Session Serializer auf JSON setzen (robuster, verhindert Pickle Probleme)
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
+# Browser sessions: host-only cookies, never readable by scripts. Secure by
+# default; only an explicit development override may disable it.
+_SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "false" if DEBUG else "true").lower() in ("true", "1", "yes")
+SESSION_COOKIE_SECURE = _SECURE_COOKIES
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_DOMAIN = None
+# The SPA reads the CSRF cookie and returns it as X-CSRFToken.
+CSRF_COOKIE_SECURE = _SECURE_COOKIES
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_DOMAIN = None
+
 AUTHENTICATION_BACKENDS = (
     "users.ldap_backend.ConfigurableLDAPBackend",
     "users.oidc_backend.JFManagerOIDCBackend",

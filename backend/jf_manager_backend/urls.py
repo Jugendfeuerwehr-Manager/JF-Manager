@@ -28,6 +28,7 @@ from users.oidc_views import (
     OIDCPublicConfigView,
     OIDCTokenExchangeView,
 )
+from users.session_views import SessionLoginView, SessionLogoutView, SessionStatusView
 
 # Import custom email admin
 from .api_views import AppSettingsView, PublicBrandingView
@@ -41,6 +42,10 @@ api_patterns = [
     path("api/v1/", include(api.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("api-token-auth/", SecureObtainAuthToken.as_view()),
+    # Browser session endpoints
+    path("api/v1/auth/session/", SessionStatusView.as_view(), name="session-status"),
+    path("api/v1/auth/session/login/", SessionLoginView.as_view(), name="session-login"),
+    path("api/v1/auth/session/logout/", SessionLogoutView.as_view(), name="session-logout"),
     # JWT Authentication endpoints
     path("api/v1/auth/login/", SecureTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
