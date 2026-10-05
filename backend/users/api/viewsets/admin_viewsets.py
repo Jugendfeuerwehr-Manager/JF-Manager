@@ -17,6 +17,7 @@ from users.api.serializers.admin_serializers import (
     AuthGroupWriteSerializer,
     PermissionSerializer,
 )
+from users.step_up import StepUpForWrites
 
 User = get_user_model()
 
@@ -144,7 +145,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     """Admin-only viewset for managing users, groups, and permissions."""
 
     queryset = User.objects.prefetch_related("groups", "user_permissions").order_by("username")
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminUser, StepUpForWrites]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering_fields = ["username", "email", "date_joined", "last_login", "is_active"]
@@ -183,7 +184,7 @@ class AuthGroupViewSet(viewsets.ModelViewSet):
     """Admin-only viewset for managing Django auth groups and their permissions."""
 
     queryset = Group.objects.prefetch_related("permissions", "user_set").order_by("name")
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminUser, StepUpForWrites]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ["name"]
@@ -200,7 +201,7 @@ class AuthGroupViewSet(viewsets.ModelViewSet):
 class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only viewset listing available Django permissions with descriptions."""
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminUser, StepUpForWrites]
     serializer_class = PermissionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "codename"]

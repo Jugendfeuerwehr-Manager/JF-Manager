@@ -32,11 +32,21 @@ Normale Konten bleiben lange angemeldet. Konten mit verpflichtender Zwei-Faktor-
 
 Werte außerhalb des Bereichs werden auf die Grenze gesetzt. Erhält ein Konto während einer Sitzung Administrationsrechte, gilt spätestens nach fünf Minuten das kurze Profil. Liegt die Anmeldung dann schon länger als 8 Stunden zurück, endet die Sitzung. Die Oberfläche warnt zwei Minuten vor dem Ablauf. Statusabfragen verlängern die Sitzung nicht.
 
+## Bestätigung für rechteerweiternde Aktionen (Step-up)
+
+Folgende Aktionen verlangen eine höchstens fünf Minuten alte Bestätigung mit Passwort und, falls eingerichtet, zweitem Faktor. Eine frische Anmeldung zählt ebenfalls als Bestätigung.
+
+- Schreibzugriffe auf Benutzer-, Gruppen-, Abteilungsrollen-, Rollenvorlagen- und Abteilungsverwaltung (`/api/v1/admin/…`, `/api/v1/departments/`)
+- Änderungen an E-Mail-, LDAP- und OIDC-Einstellungen sowie an LDAP-/OIDC-Zuordnungen
+- MFA einrichten, Wiederherstellungscodes erneuern, MFA deaktivieren
+- XLSX-Exporte von Mitgliedern und Listen (abgewiesene Versuche erscheinen im Exportaudit mit 403)
+
+Die Oberfläche zeigt dafür einen Dialog und wiederholt die Aktion nach der Bestätigung automatisch. SSO-Konten ohne eigenes MFA melden sich zur Bestätigung erneut beim Provider an. Passwortwechsel verlangt ohnehin das bisherige Passwort.
+
 ## Zwei-Faktor-Anmeldung (TOTP)
 
 Verpflichtend für Superuser, Staff (Django-Admin), Konten mit Rechten zur Benutzer-, Gruppen-, Rollen-, Abteilungs- oder Sicherheitseinstellungsverwaltung sowie die Rollenvorlagen Jugendwart, Abteilungsjugendwart und Systemadministration. Solche Konten erreichen nach dem Login nur die Einrichtung im Profil, bis MFA aktiv ist. Alle anderen Konten können MFA freiwillig einrichten.
 
-- Einrichtung, neue Wiederherstellungscodes und Deaktivierung verlangen eine höchstens fünf Minuten alte Bestätigung mit Passwort und gegebenenfalls Code.
 - Jeder TOTP-Code gilt nur einmal. Die zehn Wiederherstellungscodes gelten jeweils einmal und werden nur gehasht gespeichert.
 - Das TOTP-Geheimnis ist mit dem Feldschlüssel verschlüsselt. `rotate_field_encryption` schließt es ein (siehe [encryption-rotation.md](encryption-rotation.md)).
 

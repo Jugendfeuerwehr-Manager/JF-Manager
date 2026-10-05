@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from settings_manager.models import OIDCConfig, OIDCGroupMapping
+from users.step_up import StepUpForWrites
 
 from ..serializers import OIDCGroupMappingSerializer
 
@@ -24,7 +25,7 @@ class OIDCGroupMappingViewSet(viewsets.ViewSet):
         DELETE /api/v1/oidc-group-mappings/{id}/ — delete a mapping
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StepUpForWrites]
 
     def _check_permission(self, user):
         if user.is_superuser:

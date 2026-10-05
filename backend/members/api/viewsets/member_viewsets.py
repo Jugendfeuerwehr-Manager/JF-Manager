@@ -16,12 +16,12 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from jf_manager_backend.renderers import PassthroughRenderer
 from jf_manager_backend.safe_exports import write_safe_cell
 from members.api_serializers import (
     AttachmentSerializer,
@@ -32,6 +32,7 @@ from members.api_serializers import (
     ParentSerializer,
 )
 from members.models import Attachment, Group, Member, Status
+from users.step_up import StepUpForExports
 
 
 class MemberActionPermissions(DepartmentRoleModelPermissions):
@@ -99,16 +100,6 @@ MEMBER_EXPORT_DEFAULT_COLUMNS = [
 ]
 
 
-class PassthroughRenderer(BaseRenderer):
-    """Return data as-is for binary responses."""
-
-    media_type = "*/*"
-    format = "binary"
-
-    def render(self, data, accepted_media_type=None, renderer_context=None):
-        return data
-
-
 @extend_schema_view(
     list=extend_schema(
         summary="List all members",
@@ -137,7 +128,7 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
     queryset = Member.objects.select_related("status", "group", "storage_location").prefetch_related(
         "parent_set", "departments"
     )
-    permission_classes = [IsAuthenticated, MemberActionPermissions]
+    permission_classes = [IsAuthenticated, MemberActionPermissions, StepUpForExports]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "group", "canSwimm", "gender"]
     search_fields = ["name", "lastname", "email", "identityCardNumber"]

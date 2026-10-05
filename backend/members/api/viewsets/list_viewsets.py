@@ -19,11 +19,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from jf_manager_backend.renderers import PassthroughRenderer
 from jf_manager_backend.safe_exports import write_safe_cell
 from members.api.serializers.list_serializers import (
     CreateFromEventTypeInputSerializer,
@@ -39,17 +39,7 @@ from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_E
 from members.api_serializers import AttachmentSerializer
 from members.models import Attachment, Event, EventType, Member, MemberList, MemberListEntry
 from members.services.legacy_list_resolution import pending_resolution_data, resolve_legacy_list
-
-
-class PassthroughRenderer(BaseRenderer):
-    """Return data as-is for binary responses."""
-
-    media_type = "*/*"
-    format = "binary"
-
-    def render(self, data, accepted_media_type=None, renderer_context=None):
-        return data
-
+from users.step_up import StepUpForExports
 
 LIST_EXTRA_COLUMNS = {
     "list_checked": "Anwesend",
@@ -108,7 +98,7 @@ class MemberListRolePermissions(DepartmentRoleModelPermissions):
 )
 class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
     queryset = MemberList.objects.all()
-    permission_classes = [IsAuthenticated, MemberListRolePermissions]
+    permission_classes = [IsAuthenticated, MemberListRolePermissions, StepUpForExports]
 
     def destroy(self, request, *args, **kwargs):
         member_list = self.get_object()

@@ -4,8 +4,7 @@ from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers, status
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
@@ -14,24 +13,12 @@ from users import mfa
 from users.mfa_policy import mfa_required
 from users.models import MFADevice, MFARecoveryCode
 from users.session_auth import SessionAuthentication
+from users.step_up import RecentReauthentication
 
 
 class MFAThrottle(UserRateThrottle):
     scope = "mfa"
     rate = "5/min"
-
-
-class RecentReauthentication(BasePermission):
-    """Security changes need a confirmation that is at most five minutes old."""
-
-    message = "Bitte bestätigen Sie die Änderung erneut mit Ihren Anmeldedaten."
-    code = "reauthentication_required"
-
-    def has_permission(self, request, view):
-        if not mfa.recently_reauthenticated(request):
-            # The code must reach the client so it can ask for confirmation.
-            raise PermissionDenied({"detail": self.message, "code": self.code})
-        return True
 
 
 class SessionUserView(APIView):

@@ -49,4 +49,29 @@ describe('session API client', () => {
     await expect(client.get('/members/')).rejects.toBeInstanceOf(AxiosError)
     expect(listener).toHaveBeenCalledWith('mfa_setup_required')
   })
+
+  it('asks once for step-up confirmation and repeats the request', async () => {
+    const { default: client, setStepUpHandler } = await import('../index')
+    const handler = vi.fn().mockResolvedValue(true)
+    setStepUpHandler(handler)
+    let calls = 0
+    client.defaults.adapter = async config => {
+      calls += 1
+      if (calls === 1) return failing(403, { code: 'reauthentication_required' })(config)
+      return { status: 201, statusText: 'Created', data: 'saved', headers: new AxiosHeaders(), config }
+    }
+    expect((await client.post('/admin/groups/', {})).data).toBe('saved')
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(calls).toBe(2)
+  })
+
+  it('reads the step-up code from download error blobs and stops when cancelled', async () => {
+    const { default: client, setStepUpHandler } = await import('../index')
+    const handler = vi.fn().mockResolvedValue(false)
+    setStepUpHandler(handler)
+    const body = new Blob([JSON.stringify({ code: 'reauthentication_required' })], { type: 'application/json' })
+    client.defaults.adapter = failing(403, body as unknown as Record<string, unknown>)
+    await expect(client.get('/members/export-excel/', { responseType: 'blob' })).rejects.toBeInstanceOf(AxiosError)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
 })

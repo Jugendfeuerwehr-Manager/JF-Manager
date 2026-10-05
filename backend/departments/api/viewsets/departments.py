@@ -4,6 +4,7 @@ from rest_framework import filters, permissions, viewsets
 from departments.api.filters import DepartmentFilter
 from departments.api.serializers.department import DepartmentSerializer
 from departments.models import Department
+from users.step_up import StepUpForWrites
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -15,7 +16,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = DepartmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, StepUpForWrites]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = DepartmentFilter
     search_fields = ["name", "code"]

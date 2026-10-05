@@ -4,6 +4,7 @@ from rest_framework import filters, permissions, viewsets
 from departments.api.serializers.department import UserDepartmentRoleSerializer
 from departments.models import UserDepartmentRole
 from users.api.permissions import IsAdminUser
+from users.step_up import StepUpForWrites
 
 
 class UserDepartmentRoleViewSet(viewsets.ModelViewSet):
@@ -12,7 +13,7 @@ class UserDepartmentRoleViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = UserDepartmentRoleSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser, StepUpForWrites]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["user", "department"]
     ordering = ["department__name", "user__username"]

@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from departments.api.serializers.role_template import RoleTemplateReadSerializer
 from departments.models import RoleTemplate
 from departments.role_comparison import compare_role_template
+from users.step_up import StepUpForWrites
 
 
 class StaleRoleComparison(APIException):
@@ -35,7 +36,7 @@ class CanManageRoleTemplates(permissions.BasePermission):
 
 class RoleTemplateViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = RoleTemplateReadSerializer
-    permission_classes = [permissions.IsAuthenticated, CanManageRoleTemplates]
+    permission_classes = [permissions.IsAuthenticated, CanManageRoleTemplates, StepUpForWrites]
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):

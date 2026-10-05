@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from settings_manager.models import LDAPConfig, LDAPDepartmentRoleMapping
+from users.step_up import StepUpForWrites
 
 from ..serializers import LDAPDepartmentRoleMappingSerializer
 
@@ -20,7 +21,7 @@ class LDAPDepartmentMappingViewSet(viewsets.ViewSet):
     delete: DELETE /api/v1/ldap-department-mappings/{id}/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StepUpForWrites]
 
     def _check_perm(self, user):
         if user.is_superuser:

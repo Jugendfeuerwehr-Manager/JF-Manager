@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
-import Password from 'primevue/password'
 import Tag from 'primevue/tag'
 import { authApi, type MFASetup, type MFAStatus } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
@@ -22,14 +20,6 @@ const setup = ref<MFASetup | null>(null)
 const confirmCode = ref('')
 const recoveryCodes = ref<string[]>([])
 
-// Re-authentication: security changes need a confirmation at most 5 minutes old.
-const reauthVisible = ref(false)
-const reauthPassword = ref('')
-const reauthCode = ref('')
-const reauthError = ref('')
-let pendingAction: (() => Promise<void>) | null = null
-
-const usesPassword = computed(() => auth.user?.auth_source !== 'oidc')
 const groupedSecret = computed(() => setup.value?.secret.match(/.{1,4}/g)?.join(' ') ?? '')
 
 function errorCode(err: unknown): string | undefined {
@@ -54,41 +44,13 @@ async function run(action: () => Promise<void>) {
   try {
     await action()
   } catch (err) {
-    if (errorCode(err) === 'reauthentication_required') {
-      pendingAction = action
-      reauthPassword.value = ''
-      reauthCode.value = ''
-      reauthError.value = ''
-      reauthVisible.value = true
-    } else {
-      error.value = getApiErrorMessage(err, 'Die Aktion konnte nicht abgeschlossen werden.')
-    }
+    // The global step-up dialog already asked; a remaining 403 means it was cancelled.
+    error.value = errorCode(err) === 'reauthentication_required'
+      ? 'Die Bestätigung wurde abgebrochen. Die Änderung wurde nicht gespeichert.'
+      : getApiErrorMessage(err, 'Die Aktion konnte nicht abgeschlossen werden.')
   } finally {
     busy.value = false
   }
-}
-
-async function confirmIdentity() {
-  reauthError.value = ''
-  try {
-    await authApi.reauthenticate({
-      password: usesPassword.value ? reauthPassword.value : undefined,
-      code: status.value?.enabled ? reauthCode.value.trim() : undefined,
-    })
-  } catch (err) {
-    if (errorCode(err) === 'sso_reauthentication_required') {
-      reauthError.value = 'Bitte melde dich ab und erneut über SSO an, um diese Änderung vorzunehmen.'
-    } else {
-      reauthError.value = getApiErrorMessage(err, 'Bestätigung fehlgeschlagen.')
-    }
-    return
-  } finally {
-    reauthPassword.value = ''
-  }
-  reauthVisible.value = false
-  const action = pendingAction
-  pendingAction = null
-  if (action) await run(action)
 }
 
 function startSetup() {
@@ -213,24 +175,6 @@ onMounted(async () => {
     <Message v-if="error" severity="error" role="alert">{{ error }}</Message>
     <Message v-if="success" severity="success" role="status">{{ success }}</Message>
 
-    <Dialog v-model:visible="reauthVisible" modal header="Änderung bestätigen" :style="{ width: 'min(28rem, 92vw)' }">
-      <form class="reauth-form" @submit.prevent="confirmIdentity">
-        <p class="hint">Aus Sicherheitsgründen bitte erneut bestätigen. Die Bestätigung gilt fünf Minuten.</p>
-        <div v-if="usesPassword" class="field">
-          <label for="reauth-password">Passwort</label>
-          <Password input-id="reauth-password" v-model="reauthPassword" :feedback="false" toggle-mask autocomplete="current-password" required />
-        </div>
-        <div v-if="status?.enabled" class="field">
-          <label for="reauth-code">Code aus der Authenticator-App oder Wiederherstellungscode</label>
-          <InputText id="reauth-code" v-model="reauthCode" autocomplete="one-time-code" required />
-        </div>
-        <Message v-if="reauthError" severity="error" role="alert">{{ reauthError }}</Message>
-        <div class="actions">
-          <Button type="submit" label="Bestätigen" icon="pi pi-check" />
-          <Button type="button" label="Abbrechen" severity="secondary" text @click="reauthVisible = false" />
-        </div>
-      </form>
-    </Dialog>
   </section>
 </template>
 
@@ -246,7 +190,5 @@ onMounted(async () => {
 .secret { display: block; margin-top: .4rem; font-size: 1.05rem; letter-spacing: .08em; word-break: break-all; }
 .codes { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .5rem; }
 .codes code { font-size: 1rem; }
-.reauth-form, .field { display: flex; flex-direction: column; gap: .75rem; }
-.field :deep(.p-password), .field :deep(input) { width: 100%; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

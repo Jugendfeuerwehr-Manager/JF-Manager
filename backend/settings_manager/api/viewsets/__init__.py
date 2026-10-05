@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from settings_manager.models import LDAPConfig, OIDCConfig
 from users.ldap_tls import apply_ldap_tls_options
+from users.step_up import StepUpForWrites
 
 from ..serializers import (
     AllSettingsSerializer,
@@ -280,7 +281,7 @@ class SettingsViewSet(viewsets.ViewSet):
         description="Get email/SMTP configuration settings",
         responses={200: EmailSettingsSerializer},
     )
-    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated, StepUpForWrites])
     def email(self, request):
         """GET/PATCH /api/v1/settings/email/"""
         if request.method == "GET":
@@ -402,7 +403,7 @@ class SettingsViewSet(viewsets.ViewSet):
         description="Get LDAP authentication and group sync configuration",
         responses={200: LDAPSettingsSerializer},
     )
-    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated, StepUpForWrites])
     def ldap(self, request):
         """GET/PATCH /api/v1/settings/ldap/"""
         if request.method == "GET":
@@ -573,7 +574,7 @@ class SettingsViewSet(viewsets.ViewSet):
         description="Get OpenID Connect authentication configuration",
         responses={200: OIDCSettingsSerializer},
     )
-    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated, StepUpForWrites])
     def oidc(self, request):
         """GET/PATCH /api/v1/settings/oidc/"""
         if request.method == "GET":

@@ -25,6 +25,41 @@ export function onSessionProblem(listener: SessionProblemListener): () => void {
   return () => sessionListeners.delete(listener)
 }
 
+type StepUpHandler = () => Promise<boolean>
+let stepUpHandler: StepUpHandler | null = null
+let pendingStepUp: Promise<boolean> | null = null
+
+/**
+ * Registered by the global confirmation dialog. Actions that widen access answer
+ * 403 `reauthentication_required`; after a successful confirmation the request
+ * is sent once more.
+ */
+export function setStepUpHandler(handler: StepUpHandler | null): void {
+  stepUpHandler = handler
+}
+
+function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(blob)
+  })
+}
+
+async function errorCode(data: unknown): Promise<string | undefined> {
+  // Download requests receive their error body as Blob.
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
+    try {
+      return (JSON.parse(await blobText(data)) as { code?: string }).code
+    } catch {
+      return undefined
+    }
+  }
+  return (data as { code?: string } | undefined)?.code
+}
+
 // Request interceptor - add the active department filter.
 //
 // The active department is intentionally attached to most GET requests so the
@@ -59,14 +94,25 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ code?: string }>) => {
+  async (error: AxiosError) => {
     const status = error.response?.status
-    const url = error.config?.url ?? ''
+    const config = error.config as (InternalAxiosRequestConfig & { _stepUpRetried?: boolean }) | undefined
+    const url = config?.url ?? ''
     // Login, MFA and status calls report their own outcome to the caller.
     if (status === 401 && !url.startsWith('/auth/session')) {
       sessionListeners.forEach(listener => listener('expired'))
-    } else if (status === 403 && error.response?.data?.code === 'mfa_setup_required') {
-      sessionListeners.forEach(listener => listener('mfa_setup_required'))
+    } else if (status === 403) {
+      const code = await errorCode(error.response?.data)
+      if (code === 'mfa_setup_required') {
+        sessionListeners.forEach(listener => listener('mfa_setup_required'))
+      } else if (code === 'reauthentication_required' && stepUpHandler && config && !config._stepUpRetried) {
+        // Parallel requests share one confirmation dialog.
+        pendingStepUp ??= stepUpHandler().finally(() => { pendingStepUp = null })
+        if (await pendingStepUp) {
+          config._stepUpRetried = true
+          return apiClient(config)
+        }
+      }
     }
     return Promise.reject(error)
   }
