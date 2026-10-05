@@ -1,3 +1,4 @@
+from jf_manager_backend.export_audit import ExportAuditMixin
 """
 MemberViewSet — CRUD + custom statistics/export actions.
 """
@@ -132,7 +133,7 @@ class PassthroughRenderer(BaseRenderer):
         responses={204: None, 409: None},
     ),
 )
-class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
+class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Member.objects.select_related("status", "group", "storage_location").prefetch_related(
         "parent_set", "departments"
     )
@@ -474,6 +475,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Apply the same filters as the list view
         qs = self.filter_queryset(self.get_queryset())
+        self.export_department_ids = sorted(set(qs.values_list("departments__id", flat=True)) - {None})
         parent_view = ParentViewSet()
         parent_view.request = clone_request(request, "GET")
         parent_view.action = "list"

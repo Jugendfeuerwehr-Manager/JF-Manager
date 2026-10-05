@@ -74,6 +74,7 @@
             @click="handlePdf"
           />
           <Button
+            v-if="canExport(exportAuth.user, 'export_memberlist', store.currentList.department)"
             icon="pi pi-file-excel"
             label="Excel"
             outlined
@@ -308,6 +309,8 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+import { canExport } from '@/utils/exportPermission'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
@@ -331,6 +334,7 @@ import { useGroupsStore } from '@/stores/groups'
 import { useListPdf } from '@/composables/useListPdf'
 import type { Member } from '@/types/members'
 
+const exportAuth = useAuthStore()
 // ── Route & stores ────────────────────────────────────────────────────────
 const route = useRoute()
 const router = useRouter()

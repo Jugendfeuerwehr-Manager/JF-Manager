@@ -1,3 +1,4 @@
+from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.safe_exports import write_safe_cell
 """
 ViewSet for MemberList and MemberListEntry management.
@@ -105,7 +106,7 @@ class MemberListRolePermissions(DepartmentRoleModelPermissions):
     partial_update=extend_schema(summary="Partially update a member list"),
     destroy=extend_schema(summary="Delete a member list"),
 )
-class MemberListViewSet(viewsets.ModelViewSet):
+class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
     queryset = MemberList.objects.all()
     permission_classes = [IsAuthenticated, MemberListRolePermissions]
 
@@ -450,6 +451,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request, pk=None):
         member_list = self.get_object()
+        self.export_department_ids = [member_list.department_id] if member_list.department_id else []
         from rest_framework.request import clone_request
         from members.api.viewsets.parent_viewsets import ParentViewSet
 

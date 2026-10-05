@@ -6,6 +6,7 @@
     >
       <template #actions>
         <Button
+          v-if="canExport(exportAuth.user, 'export_member', departmentsStore.activeDepartmentId)"
           label="Excel-Export"
           icon="pi pi-file-excel"
           severity="success"
@@ -87,6 +88,8 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+import { canExport } from '@/utils/exportPermission'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
@@ -109,6 +112,7 @@ import MembersList from '@/components/members/organisms/MembersList.vue'
 import MemberExportDialog from '@/components/members/molecules/MemberExportDialog.vue'
 import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
 
+const exportAuth = useAuthStore()
 const router = useRouter()
 const membersStore = useMembersStore()
 const departmentsStore = useDepartmentsStore()

@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-08.1 sichere XLSX-Zellen, typisierte Daten und explizites Exportrecht implementiert. |
+| Letzter Checkpoint | 05.10.2026: SEC-08.2 ergänzt Exportaudit, Aufbewahrungsbefehl und UI-Exportrechte. |
 | Aktuelles Paket | SEC-03 bis SEC-06 abgeschlossen; SEC-07, SEC-08 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `97931a5` (SEC-08.0); SEC-08.1 ist dieser Commit. |
+| Letzter Roadmap-Commit | `dcac481` (SEC-08.1); SEC-08.2 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | SEC-08 sichere Tabellenexporte, danach SEC-07-Anmeldung und SEC-09-Rest. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -540,7 +540,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
-| SEC-08 | in Arbeit | Codex | SEC-08.1 Zelltypen und Exportrechte implementiert; Audit und gebündelte Abnahme folgen. |
+| SEC-08 | in Arbeit | Codex | SEC-08.1/2 Zellen, Rechte, Audit und UI implementiert; Sammelabnahme folgt. |
 | SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b idempotent; SEC-09.5a Mitgliedslöschung gesichert, SEC-09.5b/c offen. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
@@ -811,7 +811,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-08.3`: Gebündelte Formel-/Typ-/Rechte-/Auditabnahme einschließlich angrenzender Qualifikationsanhänge.
 - **Inventar:** Mitglieder- und Listenaktion sowie alter MemberExcelRenderer verwenden openpyxl; Strings werden bisher automatisch als Formel erkannt. Mitgliederexport erlaubt bisher bloßes Leserecht. Listenexport liest Elternspalten bisher ohne separate Elternsicht.
 - **Prüfungen / Checkpoint:** Code-/Git-Abgleich bestanden. Tests auf Nutzerwunsch am Paketende. Keine echten Daten exportieren; `dump.rdb` unangetastet.
-- **Nächster Schritt:** SEC-08.2 Audits und UI-Rechte.
+- **Nächster Schritt:** SEC-08.3 gebündelte Exportabnahme.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -985,3 +985,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-08.0 | Drei XLSX-Pfade, fehlendes Mitgliederexportrecht und Elternspalten inventarisiert; Typ-/Rechte-/Auditvertrag definiert. | Code-/Git-Abgleich bestanden; Tests am Paketende. | Dieser Commit: `docs(SEC-08.0): define safe export contract` | SEC-08.1 Textzellen und Exportrechte. |
 
 | 05.10.2026 | SEC-08.1 | Gemeinsame explizite String-Zellen in drei XLSX-Schreibern; Datums-/Zahltypen bleiben erhalten. Mitgliederexport verlangt eigenes Recht, Aktionsfilter nutzt konkreten Permission-Vertrag. Elternspalten in Listen eingeschränkt; Leitungsvorlagen Version 2 bieten Exportrecht ohne automatische Gruppenänderung. | Migrationsdatei erzeugt, Diff geprüft; Tests am Paketende nicht ausgeführt. | Dieser Commit: `fix(SEC-08.1): write safe typed exports with explicit permissions` | SEC-08.2 Audit/UI. |
+
+| 05.10.2026 | SEC-08.2 | Erfolgreiche/abgewiesene XLSX-Aktionen protokollieren reine Sicherheitsmetadaten; Exportantworten no-store. Konfigurierbare 180-Tage-Aufbewahrung mit Löschbefehl. UI zeigt Excel-Aktion nach Exportrecht. | Migrationsdatei erzeugt und Diff geprüft; Tests/Typecheck am Paketende nicht ausgeführt. | Dieser Commit: `feat(SEC-08.2): audit exports and expose permission guards` | SEC-08.3 Sammelabnahme. |

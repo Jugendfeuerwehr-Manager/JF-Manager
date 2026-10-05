@@ -1,6 +1,7 @@
 from .attachment import Attachment
 from .email_message import EmailAttachment, EmailMessage, EmailRecipient
 from .event import Event, EventType
+from .export_audit import ExportAudit
 from .group import Group
 from .member import Member
 from .member_list import MemberList, MemberListEntry, MemberListLegacyTarget
@@ -15,6 +16,7 @@ __all__ = [
     "EmailRecipient",
     "Event",
     "EventType",
+    "ExportAudit",
     "Group",
     "Member",
     "MemberList",

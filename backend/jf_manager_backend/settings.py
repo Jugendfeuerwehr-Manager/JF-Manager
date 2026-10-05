@@ -32,6 +32,8 @@ DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 if not DEBUG and not SECRET_KEY:
     raise Exception("DJANGO_SECRET_KEY must be set in production (DEBUG=False)")
 
+AUDIT_RETENTION_DAYS = max(1, int(os.environ.get("AUDIT_RETENTION_DAYS", "180")))
+
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # Nginx forwards the original scheme when TLS terminates at a reverse proxy.
