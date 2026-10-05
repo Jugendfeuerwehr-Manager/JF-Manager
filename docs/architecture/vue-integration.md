@@ -35,41 +35,21 @@ flowchart TD
 
 ## API Client
 
-The base API client (`api/index.ts`) handles JWT auth, token refresh, and CORS automatically:
+The base API client (`api/index.ts`) uses the browser session cookie set by the backend. The SPA never sees an access token:
 
 ```typescript
-import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
-
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  withCredentials: true,           // HttpOnly session cookie
+  xsrfCookieName: 'csrftoken',     // Django CSRF cookie …
+  xsrfHeaderName: 'X-CSRFToken',   // … returned as header on writes
 })
-
-// Request interceptor: attach Bearer token
-apiClient.interceptors.request.use((config) => {
-  const authStore = useAuthStore()
-  if (authStore.accessToken) {
-    config.headers.Authorization = `Bearer ${authStore.accessToken}`
-  }
-  return config
-})
-
-// Response interceptor: auto-refresh on 401
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401 && !error.config._retry) {
-      error.config._retry = true
-      const authStore = useAuthStore()
-      await authStore.refreshAccessToken()
-      error.config.headers.Authorization = `Bearer ${authStore.accessToken}`
-      return apiClient(error.config)
-    }
-    return Promise.reject(error)
-  }
-)
 ```
+
+- SPA and API must share one origin (production: Nginx proxies `/api`; development: Vite proxies `/api`, `/admin`, `/static` to `VITE_BACKEND_URL`).
+- A `401` outside `/auth/session/*` reports an expired session to the auth store, which clears all state and reloads `/login`.
+- A `403` with `code: "mfa_setup_required"` sends the user to the MFA setup in the profile.
+- Login: `POST /auth/session/login/`, optionally followed by `POST /auth/session/mfa/`; status via `GET /auth/session/`; logout via `POST /auth/session/logout/`.
 
 ## API Endpoint Pattern
 

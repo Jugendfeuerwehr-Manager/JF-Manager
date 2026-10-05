@@ -85,7 +85,7 @@ class MFAEnrolmentTests(APITestCase):
         with patch("users.mfa.time.time", return_value=start + 301):
             response = self.client.post("/api/v1/auth/mfa/setup/")
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.data["detail"].code, "reauthentication_required")
+        self.assertEqual(response.json()["code"], "reauthentication_required")
 
     def test_totp_codes_cannot_be_replayed(self):
         secret, _codes = self.enrol()

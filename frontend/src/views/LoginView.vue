@@ -18,9 +18,32 @@
     <section class="login-panel" aria-labelledby="login-heading">
       <div class="login-form-wrap">
         <p class="eyebrow">{{ branding?.slug || 'Willkommen zurück' }}</p>
-        <h2 id="login-heading">Anmelden</h2>
-        <p class="login-description">Melde dich mit deinem Zugang an.</p>
-        <form class="login-form" :aria-busy="loading || oidcLoading" @submit.prevent="handleLogin">
+        <h2 id="login-heading">{{ mfaStep ? 'Bestätigung' : 'Anmelden' }}</h2>
+        <p class="login-description">{{ mfaStep ? (useRecoveryCode ? 'Gib einen deiner Wiederherstellungscodes ein.' : 'Gib den sechsstelligen Code aus deiner Authenticator-App ein.') : 'Melde dich mit deinem Zugang an.' }}</p>
+        <form v-if="mfaStep" class="login-form" :aria-busy="loading" @submit.prevent="handleMfa">
+          <Message v-if="error" id="login-error" severity="error" role="alert">{{ error }}</Message>
+          <div class="field">
+            <label for="mfa-code">{{ useRecoveryCode ? 'Wiederherstellungscode' : 'Bestätigungscode' }}</label>
+            <InputText
+              id="mfa-code"
+              v-model="mfaCode"
+              name="one-time-code"
+              :autocomplete="useRecoveryCode ? 'off' : 'one-time-code'"
+              :inputmode="useRecoveryCode ? 'text' : 'numeric'"
+              autocapitalize="none"
+              :spellcheck="false"
+              required
+              autofocus
+              :invalid="!!error"
+              :aria-describedby="error ? 'login-error' : undefined"
+            />
+          </div>
+          <Button type="submit" label="Bestätigen" icon="pi pi-check" :loading="loading" />
+          <button type="button" class="text-link" @click="toggleRecoveryCode">{{ useRecoveryCode ? 'Authenticator-Code verwenden' : 'Wiederherstellungscode verwenden' }}</button>
+          <button type="button" class="text-link" @click="restartLogin">Abbrechen und neu anmelden</button>
+        </form>
+        <form v-else class="login-form" :aria-busy="loading || oidcLoading" @submit.prevent="handleLogin">
+          <Message v-if="info" severity="info" role="status">{{ info }}</Message>
           <Message v-if="error" id="login-error" severity="error" role="alert">{{ error }}</Message>
           <template v-if="oidcConfig?.enabled">
             <Button type="button" :label="`Mit ${oidcConfig.provider_name} anmelden`" icon="pi pi-sign-in" :loading="oidcLoading" :disabled="loading" @click="handleOIDCLogin" />
@@ -59,6 +82,8 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { hardNavigate, isServerPath, safeReturnPath } from '@/utils/navigation'
+import type { SessionStatus } from '@/api/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -70,9 +95,15 @@ const oidcConfig = ref<OIDCPublicConfig | null>(null)
 const oidcLoading = ref(false)
 const showLocalLogin = ref(false)
 const branding = ref<PublicBranding | null>(null)
+const mfaStep = ref(false)
+const mfaCode = ref('')
+const useRecoveryCode = ref(false)
+const info = ref(router.currentRoute.value.query.expired ? 'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.' : '')
 
 // Optional branding and SSO discovery must not delay local sign-in.
 onMounted(() => {
+  // Returning from SSO with a pending second factor, or after a reload mid-login.
+  if (authStore.mfaPending) mfaStep.value = true
   void oidcApi.getPublicConfig().then(response => { oidcConfig.value = response.data }).catch(() => {})
   void brandingApi.getPublicBranding().then(response => {
     branding.value = response.data
@@ -81,8 +112,44 @@ onMounted(() => {
 })
 
 function returnPath() {
-  const next = router.currentRoute.value.query.next
-  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') && !next.startsWith('/login') ? next : '/'
+  return safeReturnPath(router.currentRoute.value.query.next)
+}
+
+async function finish(status: SessionStatus) {
+  if (status.mfa_required && !status.authenticated) {
+    mfaStep.value = true
+    return
+  }
+  const target = status.mfa_setup_required ? '/profile?mfa=setup' : returnPath()
+  if (isServerPath(target)) hardNavigate(target)
+  else await router.replace(target)
+}
+
+function toggleRecoveryCode() {
+  useRecoveryCode.value = !useRecoveryCode.value
+  mfaCode.value = ''
+  error.value = ''
+}
+
+async function restartLogin() {
+  await authStore.logout()
+}
+
+async function handleMfa() {
+  if (loading.value || !mfaCode.value.trim()) return
+  loading.value = true
+  error.value = ''
+  try {
+    await finish(await authStore.verifyMfa(mfaCode.value.trim()))
+  } catch (err) {
+    mfaCode.value = ''
+    error.value = getApiErrorMessage(err, 'Der Code ist ungültig.')
+    // An expired or exhausted attempt has to restart with the password.
+    const code = (err as { response?: { data?: { code?: string } } }).response?.data?.code
+    if (code === 'mfa_login_expired') mfaStep.value = false
+  } finally {
+    loading.value = false
+  }
 }
 
 async function handleOIDCLogin() {
@@ -106,8 +173,9 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
   try {
-    await authStore.login(username.value.trim(), password.value)
-    await router.replace(returnPath())
+    const status = await authStore.login(username.value.trim(), password.value)
+    password.value = ''
+    await finish(status)
   } catch (err) {
     error.value = getApiErrorMessage(err, 'Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.')
   } finally {

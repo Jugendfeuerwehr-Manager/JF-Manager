@@ -62,7 +62,8 @@ The frontend runs on http://localhost:5173.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8000/api/v1` |
+| `VITE_API_BASE_URL` | API-Pfad im Browser; muss dieselbe Herkunft wie die Oberfläche haben (Sitzungs-/CSRF-Cookies) | `/api/v1` |
+| `VITE_BACKEND_URL` | Nur Entwicklung: Ziel des Vite-Proxys für `/api`, `/admin`, `/static` | `http://localhost:8000` |
 
 ## Endpoints
 

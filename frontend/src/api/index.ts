@@ -1,14 +1,31 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
-// Create axios instance
+/**
+ * Browser sessions use an HttpOnly cookie set by the backend; the SPA never
+ * sees an access token. Frontend and API must share one origin so the CSRF
+ * cookie can be returned as header (axios does this for same-origin requests).
+ */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
 })
 
-// Request interceptor - Add auth token and active department filter.
+export type SessionProblem = 'expired' | 'mfa_setup_required'
+type SessionProblemListener = (problem: SessionProblem) => void
+const sessionListeners = new Set<SessionProblemListener>()
+
+/** The auth store subscribes here; avoids an import cycle with Pinia. */
+export function onSessionProblem(listener: SessionProblemListener): () => void {
+  sessionListeners.add(listener)
+  return () => sessionListeners.delete(listener)
+}
+
+// Request interceptor - add the active department filter.
 //
 // The active department is intentionally attached to most GET requests so the
 // backend can resolve department-scoped permissions and default context.
@@ -16,12 +33,6 @@ const apiClient = axios.create({
 // parameter as an active-context hint, not as a hard exclusion of department=NULL.
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Get token from localStorage directly to avoid Pinia initialization issues
-    const token = localStorage.getItem('accessToken')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-
     // Inject active department as query param for scoped list endpoints.
     // Only inject on GET requests to avoid interfering with write operations.
     // Skip the /departments/ endpoint itself and /admin/ routes.
@@ -31,7 +42,8 @@ apiClient.interceptors.request.use(
       config.method?.toLowerCase() === 'get' &&
       config.url &&
       !config.url.startsWith('/departments') &&
-      !config.url.startsWith('/admin/')
+      !config.url.startsWith('/admin/') &&
+      !config.url.startsWith('/auth/')
     ) {
       config.params = {
         ...config.params,
@@ -45,52 +57,18 @@ apiClient.interceptors.request.use(
   (error: AxiosError) => Promise.reject(error)
 )
 
-// Share a refresh operation so concurrent requests do not reuse a rotated token.
-let refreshPromise: Promise<string> | null = null
-
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
-    if (
-      error.response?.status !== 401 || !originalRequest || originalRequest._retry ||
-      originalRequest.url?.startsWith('/auth/')
-    ) return Promise.reject(error)
-
-    originalRequest._retry = true
-    const refreshToken = localStorage.getItem('refreshToken')
-    if (!refreshToken) return Promise.reject(error)
-
-    try {
-      const currentAccess = localStorage.getItem('accessToken')
-      // A different request may already have completed the refresh.
-      if (currentAccess && originalRequest.headers.Authorization !== `Bearer ${currentAccess}`) {
-        originalRequest.headers.Authorization = `Bearer ${currentAccess}`
-        return apiClient(originalRequest)
-      }
-      if (!refreshPromise) {
-        refreshPromise = axios.post(`${apiClient.defaults.baseURL}/auth/refresh/`, { refresh: refreshToken })
-          .then((response) => {
-            // Logout or a different login must not be undone by an in-flight response.
-            if (localStorage.getItem('refreshToken') !== refreshToken) {
-              throw new Error('Anmeldung wurde zwischenzeitlich geändert.')
-            }
-            localStorage.setItem('accessToken', response.data.access)
-            if (response.data.refresh) localStorage.setItem('refreshToken', response.data.refresh)
-            return response.data.access as string
-          })
-          .finally(() => { refreshPromise = null })
-      }
-      originalRequest.headers.Authorization = `Bearer ${await refreshPromise}`
-      return apiClient(originalRequest)
-    } catch (refreshError) {
-      if (localStorage.getItem('refreshToken') === refreshToken) {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        window.location.href = '/login'
-      }
-      return Promise.reject(refreshError)
+  (error: AxiosError<{ code?: string }>) => {
+    const status = error.response?.status
+    const url = error.config?.url ?? ''
+    // Login, MFA and status calls report their own outcome to the caller.
+    if (status === 401 && !url.startsWith('/auth/session')) {
+      sessionListeners.forEach(listener => listener('expired'))
+    } else if (status === 403 && error.response?.data?.code === 'mfa_setup_required') {
+      sessionListeners.forEach(listener => listener('mfa_setup_required'))
     }
+    return Promise.reject(error)
   }
 )
 

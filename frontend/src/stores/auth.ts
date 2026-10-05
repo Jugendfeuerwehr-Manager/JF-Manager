@@ -1,22 +1,29 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authApi } from '@/api/auth'
+import { authApi, type SessionStatus } from '@/api/auth'
+import { onSessionProblem } from '@/api'
 import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import router from '@/router'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { hardNavigate } from '@/utils/navigation'
 import { useDepartmentsStore } from '@/stores/departments'
+
+// Credentials from the former JWT login; removed on every start.
+const LEGACY_STORAGE_KEYS = ['accessToken', 'refreshToken']
 
 export const useAuthStore = defineStore('auth', () => {
   // State
-  const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
-  const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))
+  const session = ref<SessionStatus | null>(null)
   const user = ref<UserInfo | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  let initializing: Promise<void> | null = null
 
   // Getters
-  const isAuthenticated = computed(() => !!accessToken.value)
+  const isAuthenticated = computed(() => !!session.value?.authenticated && !!user.value)
+  const mfaPending = computed(() => !!session.value?.mfa_required && !session.value.authenticated)
+  const mfaSetupRequired = computed(() => !!session.value?.authenticated && !!session.value.mfa_setup_required)
   const userFullName = computed(() => user.value?.full_name || '')
 
   /**
@@ -87,30 +94,49 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Actions
+  async function applySession(status: SessionStatus) {
+    session.value = status
+    if (status.authenticated) {
+      if (!user.value) await fetchUser()
+    } else {
+      user.value = null
+    }
+    return status
+  }
+
+  /** Password step; resolves with `mfa_required` when a code must follow. */
   async function login(username: string, password: string) {
     loading.value = true
     error.value = null
-
     try {
       const response = await authApi.login({ username, password })
-
-      accessToken.value = response.data.access
-      refreshToken.value = response.data.refresh
-
-      // Store tokens in localStorage
-      localStorage.setItem('accessToken', response.data.access)
-      localStorage.setItem('refreshToken', response.data.refresh)
-
-      // Fetch user data
-      await fetchUser()
-
-      return true
+      return await applySession(response.data)
     } catch (err) {
-      error.value = getApiErrorMessage(err, 'Login failed')
+      error.value = getApiErrorMessage(err, 'Anmeldung fehlgeschlagen.')
       throw err
     } finally {
       loading.value = false
     }
+  }
+
+  async function verifyMfa(code: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await authApi.verifyMfa(code)
+      return await applySession(response.data)
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Der Code ist ungültig.')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Reads the session state without counting as user activity. */
+  async function refreshSession() {
+    const response = await authApi.session()
+    return applySession(response.data)
   }
 
   async function fetchUser() {
@@ -136,26 +162,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function refreshAccessToken() {
-    if (!refreshToken.value) {
-      throw new Error('No refresh token available')
-    }
-
-    try {
-      const response = await authApi.refresh(refreshToken.value)
-      accessToken.value = response.data.access
-      localStorage.setItem('accessToken', response.data.access)
-      if (response.data.refresh) {
-        refreshToken.value = response.data.refresh
-        localStorage.setItem('refreshToken', response.data.refresh)
-      }
-    } catch (err) {
-      // Refresh failed, logout
-      logout()
-      throw err
-    }
-  }
-
   async function updateProfile(data: Partial<UserInfo>) {
     try {
       const response = await userApi.updateProfile(data)
@@ -167,64 +173,69 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    accessToken.value = null
-    refreshToken.value = null
+  function clearLocalState() {
+    session.value = null
     user.value = null
+    useDepartmentsStore().clearDepartments()
+    sessionStorage.removeItem('oidc_return_url')
+  }
 
-    const departmentsStore = useDepartmentsStore()
-    departmentsStore.clearDepartments()
+  /** Ends the server session, then reloads so no store keeps previous data. */
+  async function logout() {
+    try {
+      await authApi.logout()
+    } catch {
+      // The local state is discarded regardless; the session expires server-side.
+    }
+    clearLocalState()
+    hardNavigate('/login')
+  }
 
-    authApi.logout()
-    router.push('/login')
+  function handleSessionExpired() {
+    if (!session.value?.authenticated) return
+    clearLocalState()
+    hardNavigate('/login?expired=1')
   }
 
   /**
-   * Initiate an OIDC login by redirecting the browser to the IdP.
-   * Saves the intended destination URL in sessionStorage so the callback
-   * view can restore it after a successful login.
+   * Initiate an OIDC login by redirecting the browser to the IdP. The backend
+   * keeps state, nonce, PKCE verifier and return path in the session.
    */
   async function loginWithOidc(next?: string) {
     const { oidcApi } = await import('@/api/oidc')
     const targetNext = next || router.currentRoute.value.fullPath || '/'
-    sessionStorage.setItem('oidc_return_url', targetNext)
     const response = await oidcApi.getLoginUrl(targetNext)
     window.location.href = response.data.authorization_url
   }
 
-  /**
-   * Store OIDC-issued JWT tokens (called from OIDCCallbackView after exchange).
-   * Triggers the same user-fetch flow as a normal login.
-   */
-  async function setOIDCTokens(access: string, refresh: string) {
-    accessToken.value = access
-    refreshToken.value = refresh
-    localStorage.setItem('accessToken', access)
-    localStorage.setItem('refreshToken', refresh)
-    await fetchUser()
-  }
-
-  // Initialize - Check if tokens exist and fetch user
-  async function initialize() {
-    if (accessToken.value) {
-      try {
-        await fetchUser()
-      } catch {
-        // Token invalid, logout
-        logout()
-      }
+  /** Loads session and user once; the router guard awaits this before deciding. */
+  function initialize() {
+    if (!initializing) {
+      LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
+      onSessionProblem(problem => {
+        if (problem === 'expired') handleSessionExpired()
+        else if (session.value) {
+          session.value = { ...session.value, mfa_setup_required: true }
+          void router.push({ path: '/profile', query: { mfa: 'setup' } })
+        }
+      })
+      initializing = refreshSession().then(() => undefined).catch(() => {
+        session.value = { authenticated: false }
+      })
     }
+    return initializing
   }
 
   return {
     // State
-    accessToken,
-    refreshToken,
+    session,
     user,
     loading,
     error,
     // Getters
     isAuthenticated,
+    mfaPending,
+    mfaSetupRequired,
     userFullName,
     permissions,
     isOrgWide,
@@ -235,12 +246,13 @@ export const useAuthStore = defineStore('auth', () => {
     canAccessModule,
     // Actions
     login,
+    verifyMfa,
+    refreshSession,
     fetchUser,
-    refreshAccessToken,
     updateProfile,
     logout,
+    handleSessionExpired,
     initialize,
     loginWithOidc,
-    setOIDCTokens,
   }
 })

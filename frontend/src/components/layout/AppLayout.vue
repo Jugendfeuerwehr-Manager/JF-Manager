@@ -28,6 +28,7 @@
       <Button label="Abmelden" icon="pi pi-sign-out" severity="secondary" outlined @click="handleLogout" />
     </Drawer>
     <Menu ref="userMenu" :model="userMenuItems" popup />
+    <ConfirmDialog group="session-timeout" />
   </div>
 </template>
 <script setup lang="ts">
@@ -42,11 +43,14 @@ import ModuleNavigation from './ModuleNavigation.vue'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import Menu from 'primevue/menu'
+import ConfirmDialog from 'primevue/confirmdialog'
+import { useSessionTimeout } from '@/composables/useSessionTimeout'
 import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()
+useSessionTimeout()
 const { websiteTitle } = useAppSettings()
 const { themeMode, setMode } = useTheme()
 const userMenu = ref()
@@ -64,7 +68,7 @@ function cycleTheme() {
   setMode(modes[(modes.indexOf(themeMode.value) + 1) % modes.length]!)
 }
 function toggleUserMenu(event: Event) { userMenu.value.toggle(event) }
-function handleLogout() { navigationVisible.value = false; authStore.logout() }
+function handleLogout() { navigationVisible.value = false; void authStore.logout() }
 function handleResize() { isMobile.value = window.innerWidth < 1024; if (!isMobile.value) navigationVisible.value = false }
 watch(() => route.path, () => { navigationVisible.value = false })
 onMounted(() => { window.addEventListener('resize', handleResize) })

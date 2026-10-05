@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
@@ -27,7 +28,10 @@ class RecentReauthentication(BasePermission):
     code = "reauthentication_required"
 
     def has_permission(self, request, view):
-        return mfa.recently_reauthenticated(request)
+        if not mfa.recently_reauthenticated(request):
+            # The code must reach the client so it can ask for confirmation.
+            raise PermissionDenied({"detail": self.message, "code": self.code})
+        return True
 
 
 class SessionUserView(APIView):

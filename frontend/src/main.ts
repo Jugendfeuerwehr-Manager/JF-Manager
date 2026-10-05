@@ -158,7 +158,7 @@ app.directive('tooltip', Tooltip)
 // Initialize auth store
 import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
-authStore.initialize()
+void authStore.initialize()
 
 // Initialize theme
 import { useTheme } from './composables/useTheme'

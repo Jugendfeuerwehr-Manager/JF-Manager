@@ -20,9 +20,6 @@ declare module '@/types/api' {
   export type EventType = ApiTypes.EventType
 
   export type LoginRequest = { username: string; password: string }
-  export type LoginResponse = ApiTypes.TokenObtainPair
-  export type TokenRefreshRequest = { refresh: string }
-  export type TokenRefreshResponse = { access: string }
 
   export type UserInfo = ApiTypes.UserInfo
   export type AppSettings = { [k: string]: unknown }

@@ -1,5 +1,5 @@
 import apiClient from './index'
-import type { LoginRequest, LoginResponse, TokenRefreshResponse } from '@/types/api'
+import type { LoginRequest } from '@/types/api'
 
 export interface PasswordResetRequest {
   email: string
@@ -22,33 +22,85 @@ export interface MessageResponse {
   message: string
 }
 
+export interface SessionStatus {
+  authenticated: boolean
+  /** Password (or SSO) accepted; the second factor is still missing. */
+  mfa_required?: boolean
+  /** Signed in, but the account must set up MFA before using the app. */
+  mfa_setup_required?: boolean
+  idle_expires_at?: string
+  absolute_expires_at?: string
+  idle_timeout_seconds?: number
+}
+
+export interface MFAStatus {
+  enabled: boolean
+  setup_pending: boolean
+  recovery_codes_remaining: number
+  required: boolean
+}
+
+export interface MFASetup {
+  secret: string
+  otpauth_uri: string
+}
+
+export interface ReauthenticateRequest {
+  password?: string
+  code?: string
+}
+
 export const authApi = {
-  async login(credentials: LoginRequest) {
-    return apiClient.post<LoginResponse>('/auth/login/', credentials)
+  /** Also sets the CSRF cookie needed for all following writes. */
+  session() {
+    return apiClient.get<SessionStatus>('/auth/session/')
   },
 
-  async refresh(refreshToken: string) {
-    return apiClient.post<TokenRefreshResponse>('/auth/refresh/', { refresh: refreshToken })
+  login(credentials: LoginRequest) {
+    return apiClient.post<SessionStatus>('/auth/session/login/', credentials)
   },
 
-  async verify(token: string) {
-    return apiClient.post('/auth/verify/', { token })
+  verifyMfa(code: string) {
+    return apiClient.post<SessionStatus>('/auth/session/mfa/', { code })
   },
 
   logout() {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
+    return apiClient.post<SessionStatus>('/auth/session/logout/')
   },
 
-  async requestPasswordReset(email: string) {
+  reauthenticate(data: ReauthenticateRequest) {
+    return apiClient.post<{ reauthenticated: boolean }>('/auth/reauthenticate/', data)
+  },
+
+  mfaStatus() {
+    return apiClient.get<MFAStatus>('/auth/mfa/')
+  },
+
+  mfaSetup() {
+    return apiClient.post<MFASetup>('/auth/mfa/setup/')
+  },
+
+  mfaConfirm(code: string) {
+    return apiClient.post<MFAStatus & { recovery_codes: string[] }>('/auth/mfa/confirm/', { code })
+  },
+
+  mfaRecoveryCodes() {
+    return apiClient.post<{ recovery_codes: string[] }>('/auth/mfa/recovery-codes/')
+  },
+
+  mfaDisable() {
+    return apiClient.post<MFAStatus>('/auth/mfa/disable/')
+  },
+
+  requestPasswordReset(email: string) {
     return apiClient.post<MessageResponse>('/users/request_password_reset/', { email })
   },
 
-  async resetPassword(data: PasswordResetConfirm) {
+  resetPassword(data: PasswordResetConfirm) {
     return apiClient.post<MessageResponse>('/users/reset_password/', data)
   },
 
-  async changePassword(data: PasswordChange) {
+  changePassword(data: PasswordChange) {
     return apiClient.post<MessageResponse>('/users/change_password/', data)
   }
 }

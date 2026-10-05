@@ -111,7 +111,7 @@ const userMenuItems = computed<MenuItem[]>(() => [
   {
     label: 'Abmelden',
     icon: 'pi pi-sign-out',
-    command: () => authStore.logout()
+    command: () => void authStore.logout()
   }
 ])
 

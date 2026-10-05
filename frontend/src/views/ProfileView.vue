@@ -68,6 +68,9 @@
 
           <Divider />
 
+          <MfaSettings :setup-requested="route.query.mfa === 'setup'" />
+          <Divider />
+
           <DeviceSettings />
           <Divider />
 
@@ -173,7 +176,10 @@ import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import { userApi } from '@/api/user'
 import DeviceSettings from '@/components/DeviceSettings.vue'
+import MfaSettings from '@/components/MfaSettings.vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const toast = useToast()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()

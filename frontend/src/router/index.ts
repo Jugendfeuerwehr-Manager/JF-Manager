@@ -378,11 +378,15 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const settingsStore = useSettingsStore()
   const requiresAuth = to.meta.requiresAuth !== false
+  await authStore.initialize()
 
   if (requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
+    next(to.fullPath === '/' ? '/login' : { path: '/login', query: { next: to.fullPath } })
   } else if (to.path === '/login' && authStore.isAuthenticated) {
     next('/')
+  } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
+    // Accounts with mandatory MFA can only reach the setup until it is done.
+    next({ path: '/profile', query: { mfa: 'setup' } })
   } else if (to.meta.requiresStaff && authStore.isAuthenticated && !authStore.isOrgWide) {
     // Non-staff user trying to access a staff-only route → redirect to dashboard
     next('/')

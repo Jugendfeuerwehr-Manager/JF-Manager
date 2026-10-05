@@ -18,7 +18,7 @@
         <div class="text-sm line-height-3">
 
           <p class="font-semibold mb-1 mt-0">Anmeldeprozess</p>
-          <p class="mb-3">Benutzer klickt auf "Mit SSO anmelden" → wird zum Identity Provider weitergeleitet → kehrt nach erfolgreichem Login zurück. JF-Manager nutzt den <strong>Authorization Code Flow</strong> (PKCE-kompatibel).</p>
+          <p class="mb-3">Benutzer klickt auf "Mit SSO anmelden" → wird zum Identity Provider weitergeleitet → kehrt nach erfolgreichem Login zurück. JF-Manager nutzt den <strong>Authorization Code Flow</strong> mit PKCE (S256).</p>
 
           <p class="font-semibold mb-1">Nextcloud als OIDC-Provider einrichten</p>
           <ol class="mb-3 pl-3">
@@ -193,6 +193,14 @@
         label="Lokalen Login ausblenden"
         field-id="oidc_hide_local_login"
         help-text="Benutzername/Passwort-Formular standardmäßig auf der Login-Seite verstecken"
+        :disabled="!canEdit"
+      />
+
+      <SettingsCheckbox
+        v-model="formData.trust_provider_mfa"
+        label="MFA des Providers anerkennen"
+        field-id="oidc_trust_provider_mfa"
+        help-text="Nur aktivieren, wenn der Provider einen zweiten Faktor erzwingt und im ID-Token per 'amr' bestätigt. Sonst verlangt JF-Manager für MFA-pflichtige Konten zusätzlich den eigenen zweiten Faktor."
         :disabled="!canEdit"
       />
 
@@ -416,6 +424,7 @@ const formData = reactive<OIDCSettings>({
   admin_group: '',
   require_group_mapping: false,
   hide_local_login: false,
+  trust_provider_mfa: false,
 })
 
 const originalData = ref<OIDCSettings | null>(null)

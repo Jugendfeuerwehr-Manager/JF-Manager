@@ -21,20 +21,6 @@ export interface LoginRequest {
   password: string
 }
 
-export interface LoginResponse {
-  access: string
-  refresh: string
-}
-
-export interface TokenRefreshRequest {
-  refresh: string
-}
-
-export interface TokenRefreshResponse {
-  access: string
-  refresh?: string
-}
-
 // ── User profile ─────────────────────────────────────────────────────────────
 
 export interface UserGroup {

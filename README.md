@@ -63,7 +63,7 @@ Benutzername und zufälliges Demopasswort erscheinen im Terminal. In einem zweit
 ```sh
 cd frontend
 npm ci
-VITE_API_BASE_URL=http://127.0.0.1:8011/api/v1 npm run dev
+VITE_BACKEND_URL=http://127.0.0.1:8011 npm run dev
 ```
 
 Anschließend `http://localhost:5173` öffnen. Die Demo lauscht nur lokal. Für die reguläre Entwicklung stehen [Startanleitung](docs/getting-started.md) und `./start-dev.sh` bereit.
