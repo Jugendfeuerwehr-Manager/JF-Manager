@@ -9,7 +9,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Feld | Aktueller Stand |
 | --- | --- |
 | Letzter Checkpoint | 05.10.2026: SEC-07.8 Abnahme; SEC-07 abgeschlossen. |
-| Aktuelles Paket | SEC-03 bis SEC-08 abgeschlossen; SEC-09-Rest offen. |
+| Aktuelles Paket | SEC-03 bis SEC-08 abgeschlossen; SEC-09-Rest offen. Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
-| DES-01 | offen | — | Designsystem und fünf Referenzansichten. |
+| DES-01 | in Arbeit | Claude (Design-Session) | DES-01.0 Vertrag und Inventar; nächster Schritt DES-01.1 Tokens/Preset. |
 | UX-01 | offen | — | Dashboard-Zusammenfassungen und Aufgaben. |
 | UX-02 | offen | — | Mitglieder-/Eltern-/Gruppenabläufe. |
 | UX-03 | offen | — | Listen- und Ereignisansichten. |
@@ -868,6 +868,33 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Nur SEC-09.5a-Dateien und Roadmap stagen; andere Änderungen bleiben unangetastet.
 - **Nächster konkreter Schritt:** `SEC-09.5b` direkte Bulk-/Bereinigungspfade prüfen, dann `SEC-09.5c` Clients und `SEC-09.6` PostgreSQL-Abnahme.
 
+### DES-01: Gemeinsames Designsystem
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Design-Session, parallel zur Sicherheits-Session). Arbeit im eigenen Worktree auf `wip/des-01`; jeder Teilschritt bleibt ein eigener Commit und wird per Rebase auf `feat/security-roles-training-operations` integriert. Keine Git-Schreiboperationen im gemeinsamen Checkout der Sicherheits-Session.
+- **Abhängigkeiten:** Keine fachlichen Abhängigkeiten zu SEC-07/09. Dateiverantwortung: `frontend/src/assets/`, `frontend/src/theme/`, `frontend/src/main.ts` (nur Theme-Konfiguration), `frontend/src/components/layout/`, neue gemeinsame Zustandskomponenten unter `frontend/src/components/common/`. SEC-07.6-Änderungen an `AppLayout.vue` (Sitzungsablauf-Dialog, Logout) bleiben funktional unverändert. UX-01 bis UX-08 und TRAIN-04 bauen auf den Tokens und Bausteinen auf; Daten- und Ablaufänderungen der Referenzansichten gehören zu UX-01/UX-02/UX-04/TRAIN-01.
+- **Ausgangsbefund (DES-01.0):** PrimeVue 4 mit unverändertem Aura-Preset (Primärfarbe Smaragd, Flächen Slate/Zink). 96 Vue-Dateien nutzen PrimeVue-3-Variablen (`--surface-card`, `--surface-border`, `--primary-color`, `--text-color`, `--text-color-secondary`, `--border-radius` u. a.), die Aura v4 nicht definiert; Hintergründe, Rahmen und Textfarben fallen dort auf Browser-Standards zurück, besonders sichtbar im Dunkelmodus. Rund 200 fest codierte Hexfarben, darunter Blau-/Lila-Verläufe im Dashboard. `Inter` ist als Schrift angegeben, wird aber nicht ausgeliefert. `AppSidebar.vue` ist ungenutzt. Topbar 70 px, Navigation 232 px; mobile Navigation zeigt den Abteilungskontext nur im Schubfach.
+- **Ziel und Abnahmekriterien:** Ein eigenes PrimeVue-Preset und eine Tokendatei sind die einzige Quelle für Farben (heller Grund `#F5F7FA`, weiße Inhaltsflächen, Schrift `#172033`, Feuerwehrrot `#B91C1C`), Typografie (Systemschriften), Abstände (8-px-Raster), Rundungen, Schatten und Fokus. Hell- und Dunkelmodus erfüllen WCAG-AA-Kontrast für Text und Bedienelemente. Altvariablen sind auf die neuen Tokens abgebildet, sodass bestehende Module ohne Einzelanpassung korrekt aussehen. Statusanzeigen kennzeichnen Zustände zusätzlich durch Text oder Symbol. Desktop: dauerhafte Navigation; mobil: vollständige Modulnavigation und sichtbarer Abteilungskontext. Touchflächen mindestens 44 × 44 px, sichtbarer Tastaturfokus, `prefers-reduced-motion` wird beachtet. Fünf Referenzansichten (Dashboard, Mitgliederliste, Formular, Übungsplaner, mobile Anwesenheit) sind bei 360/390/768/1440 px, im Dunkelmodus, per Tastatur und mit 200 % Zoom geprüft. Typecheck, Lint und Frontend-Suite bestehen.
+- **Teilschritte mit stabilen IDs:**
+  - `DES-01.0`: Iststand inventarisieren, Dateiverantwortung, Abnahme und Teilschritte festlegen.
+  - `DES-01.1`: Design-Tokens und eigenes PrimeVue-Preset (Farben hell/dunkel, Rundung, Fokus, Formularfelder, Schrift); Kompatibilitätsschicht für PrimeVue-3-Variablen; reduzierte Animationen; Kontrastprüfung als Unit-Test.
+  - `DES-01.2`: App-Shell: Topbar, dauerhafte Desktopnavigation, mobile Leiste mit sichtbarem Abteilungskontext, 44-px-Touchflächen, Fokuszustände; ungenutzte `AppSidebar.vue` entfernen.
+  - `DES-01.3`: Gemeinsame Bausteine: Seitenkopf mit einer Hauptaktion, Zustandsansicht (laden, leer, keine Rechte, Fehler mit Wiederholen) und Statusabzeichen mit Symbol und Text; Tests.
+  - `DES-01.4`: Visuelle Referenzentwürfe der fünf Referenzansichten erstellen und mit dem Nutzer abstimmen.
+  - `DES-01.5`: Referenzansichten Dashboard und Mitgliederliste visuell umstellen (ohne neue Datenabfragen; Platzhalterkennzahlen und Daten folgen in UX-01).
+  - `DES-01.6`: Referenzansichten Formular (Mitglied bearbeiten) und mobile Anwesenheit umstellen.
+  - `DES-01.7`: Übungsplaner auf Tokens umstellen (nur Darstellung; Bearbeitungslogik bleibt TRAIN-01).
+  - `DES-01.8`: Fest codierte Farben in übrigen Modulen durch Tokens ersetzen, soweit nicht fachlich (z. B. Gruppen-/Kategoriefarben).
+  - `DES-01.9`: Abnahme in Breiten, Dunkelmodus, Tastatur und Zoom; Screenshots als Nachweis; Paketabschluss.
+- **Letzter dauerhafter Checkpoint:** DES-01.0 mit diesem Commit.
+- **Branch:** `wip/des-01` (Worktree), Integration nach `feat/security-roles-training-operations`.
+- **Geänderte Dateien / Commit-Bezug:** DES-01.0: diese Roadmap; dieser Commit: `docs(DES-01.0): define design system contract`.
+- **Umgesetzte Teilschritte:** `DES-01.0`.
+- **Ausgeführte Prüfungen mit Ergebnis:** Code-/Git-Abgleich bestanden (Variablen- und Farbinventar per `grep`); keine Anwendungstests für Dokumentation.
+- **Offene Fehler / Risiken:** Parallele Sicherheits-Session ändert ebenfalls Roadmap-Kopf, Statustabelle und Journal; Konflikte beim Rebase nur in DES-01-Zeilen lösen. `frontend/vite.config.ts` ist im gemeinsamen Checkout uncommittiert geändert und gehört nicht zu DES-01. Visuelle Referenzentwürfe (DES-01.4) benötigen Nutzerfreigabe.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine. Fortsetzung im Worktree `../JF-Manager-des01`.
+- **Nächster konkreter Schritt:** `DES-01.1` Tokens, Preset und Kompatibilitätsschicht.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -1044,3 +1071,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-07.7c | Modell `UserSession` (Migration `users.0011`) ist 1:1 an Djangos Sitzungszeile gebunden und verschwindet mit Ablauf, Logout oder `clearsessions`. Gespeichert werden die auf 200 Zeichen gekürzte Browserkennung, die Anmeldezeit und die letzte Aktivität (Update höchstens alle 30 s), keine IP. API `/auth/devices/` (Liste mit Markierung des aktuellen Geräts), `…/<id>/revoke/` (auch das aktuelle Gerät), `…/revoke-others/`. Fremde Geräte ergeben 404. Profil zeigt „Angemeldete Geräte“ mit lesbarer Gerätebezeichnung. Betriebsanleitung: `clearsessions` täglich ausführen. | 6/6 neue Gerätetests (Liste/Markierung/Kürzung, fremdes Gerät abmelden, alle anderen, aktuelles Gerät, fremde Geräte, Logout und CSRF), breiter Backendlauf 587/587, Migrationsabgleich, Typecheck, 93/93 Frontendtests (neu: Gerätebezeichnung) und ESLint bestanden. `clearsessions` und `purge_export_audits` stehen noch nicht in `crontab.example` (Betriebsplan OPS-03). | Dieser Commit: `feat(SEC-07.7c): list and sign out signed-in devices` | SEC-07.8 Abnahme. |
 
 | 05.10.2026 | SEC-07.8 | Abnahme gegen den Vertrag: keine Tokens im Browser, sichere Cookies, CSRF für Login/Logout/Schreibzugriffe, serverseitiger Logout, Sitzungsprofile (30 d/90 d bzw. 8 h), TOTP mit Replay-Schutz, Einmal-Wiederherstellungscodes, MFA-Pflicht inkl. Django-Admin, Step-up ≤ 5 min, Geräteliste, OIDC mit Sitzungsbindung/PKCE/Einmalverwendung ohne Personendaten in URLs, JWT/Token entfernt und widerrufen. Ergänzend LDAP-Login mit MFA-Schritt als Regression. Verbleibende Grenzen im SEC-07-Detailblock. | 76/76 gebündelte Backendtests (neu: LDAP + MFA), breiter Backendlauf 587/587 (vor dem LDAP-Test), 93/93 Frontendtests und Vite-Produktionsbuild bestanden. Manueller Browserlauf, echter IdP und PostgreSQL-Lauf nicht ausgeführt. | Dieser Commit: `test(SEC-07.8): accept session, MFA and OIDC contract` | SEC-09.5b. |
+
+| 05.10.2026 | DES-01.0 | DES-01 parallel zur Sicherheitsarbeit übernommen. Aura-Preset, 96 Dateien mit undefinierten PrimeVue-3-Variablen, rund 200 feste Hexfarben, nicht ausgelieferte Schrift und ungenutzte Seitenleiste inventarisiert; Abnahme, Dateiverantwortung und Teilschritte DES-01.1 bis DES-01.9 festgelegt. | Code-/Git-Abgleich bestanden; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(DES-01.0): define design system contract` | DES-01.1 Tokens und Preset. |
