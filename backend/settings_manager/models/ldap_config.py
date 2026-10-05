@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from encrypted_model_fields.fields import EncryptedCharField
+from jf_manager_backend.encrypted_fields import StrictEncryptedCharField as EncryptedCharField
 
 
 class LDAPConfig(models.Model):

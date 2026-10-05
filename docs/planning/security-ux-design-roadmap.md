@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-06.1 entfernt Ersatzschlüssel; Start verlangt expliziten gültigen Schlüssel. |
+| Letzter Checkpoint | 05.10.2026: SEC-06.2 verschlüsselt Sync-JSON und ergänzt strikte LDAP/OIDC-Felder sowie Rotation. |
 | Aktuelles Paket | SEC-03 bis SEC-05 abgeschlossen; SEC-06 bis SEC-08 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-05 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `318e30e` (SEC-06.0); SEC-06.1 ist dieser Commit. |
+| Letzter Roadmap-Commit | `4bbaa94` (SEC-06.1); SEC-06.2 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | SEC-06 Schlüssel- und Zugangsdatenvertrag definieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -538,7 +538,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
-| SEC-06 | in Arbeit | Codex | SEC-06.1 Pflichtschlüssel und Installationskonfiguration implementiert; Datenmigration folgt. |
+| SEC-06 | in Arbeit | Codex | SEC-06.1/2 Schlüsselvertrag, Datenmigration und Rotation implementiert; gebündelte Abnahme folgt. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
 | SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b idempotent; SEC-09.5a Mitgliedslöschung gesichert, SEC-09.5b/c offen. |
@@ -796,7 +796,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Inventar:** `FIELD_ENCRYPTION_KEY` hatte einen eingebauten konstanten Ersatz; `SyncJob.credentials` war JSON-Klartext. LDAP bind_password und OIDC client_secret sind bereits verschlüsselte Textfelder. Die Bibliothek toleriert nicht entschlüsselbare Werte; Rotation muss deshalb explizit validieren.
 - **Prüfungen:** Code-/Git-Abgleich bestanden; Anwendungstests bis zum Implementierungsende zurückgestellt.
 - **Risiken / Checkpoint:** Produktionsschlüssel und vorhandene verschlüsselte Daten nicht verändern. Bekannter Alt-Ersatzschlüssel nur aus Altinstallation explizit für einmalige Migration bereitstellen; nie als automatischer Fallback. `dump.rdb` bleibt unangetastet.
-- **Nächster Schritt:** SEC-06.2 verschlüsselte Sync-Daten und Rotation.
+- **Nächster Schritt:** SEC-06.3 gebündelte Verschlüsselungsabnahme und Betriebsanleitung.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -960,3 +960,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-06.0 | Fernet-Konfiguration, LDAP/OIDC-Felder und unverschlüsselte Sync-Zugangsdaten inventarisiert; Pflichtschlüssel-, Migrations- und Rotationsvertrag mit IDs definiert. | Code-/Git-Abgleich bestanden; Tests bis Implementierungsende zurückgestellt. | Dieser Commit: `docs(SEC-06.0): define encryption migration contract` | SEC-06.1 Pflichtschlüssel. |
 
 | 05.10.2026 | SEC-06.1 | Expliziten gültigen Fernet-Primärschlüssel beim Start verpflichtend gemacht; optionale alte Schlüssel nur über Umgebung. Setup erzeugt individuellen Schlüssel; Compose verlangt ihn. | Code-Diff geprüft; Tests bis zum Paketende nicht ausgeführt. Lokale/produktive Schlüssel nicht verändert. | Dieser Commit: `fix(SEC-06.1): require explicit encryption keys` | SEC-06.2 verschlüsselte Sync-Daten. |
+
+| 05.10.2026 | SEC-06.2 | Sync-JSON als Fernet-Chiffre gespeichert; atomare Vorwärtsmigration. LDAP/OIDC verweigern unlesbare Chiffren. Rotationsbefehl validiert Rohdaten und verschlüsselt optional atomar mit Primärschlüssel neu, ohne Geheimnisausgabe. | Migrationsdateien erzeugt und Code-Diff geprüft; Anwendungstests bis SEC-06.3 zurückgestellt. Anwendungsdatenbank nicht migriert. | Dieser Commit: `feat(SEC-06.2): encrypt sync credentials and rotate stored secrets` | SEC-06.3 Sammelabnahme. |
