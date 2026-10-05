@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-03.7 prüft Listenmigration, Zugriff, Oberfläche und Listenschema; SEC-09.5a liegt in `a128036`. |
-| Aktuelles Paket | SEC-03 abgeschlossen; SEC-04 bis SEC-08 offen, SEC-09.5b/c und SEC-09.6 folgen. SEC-02.9 und SEC-01.57 bleiben offen. |
+| Letzter Checkpoint | 05.10.2026: SEC-04.0 erfasst HTML-Ein- und Ausgabepfade; SEC-03.7 liegt in `988c686`. |
+| Aktuelles Paket | SEC-03 abgeschlossen; SEC-04 mit Detailvertrag begonnen. SEC-05 bis SEC-08 offen, SEC-09.5b/c und SEC-09.6 folgen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `a128036` (SEC-09.5a); SEC-03.7 ist dieser Listen-Abnahme-Commit. |
+| Letzter Roadmap-Commit | `988c686` (SEC-03.7); SEC-04.0 ist dieser Planungs-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-04-Detailblock vor Paketbeginn ausfüllen und HTML-Pfade absichern; SEC-09.5b/c und SEC-02.9 fortsetzen. |
+| Nächster konkreter Schritt | SEC-04.1 Regressionen für E-Mail-Platzhalter, Signaturen, Trainings-Rich-Text und Vorschau ergänzen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -536,7 +536,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
-| SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
+| SEC-04 | in Arbeit | Codex | SEC-04.0 HTML-Pfade und Abnahme festgelegt; SEC-04.1 Regressionen folgen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
@@ -738,6 +738,25 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Keine.
 - **Nächster konkreter Schritt:** SEC-04 starten; SEC-02.9 nach SEC-09 und ROLE-01-Bereichsprüfung abschließend abnehmen.
 
+### SEC-04: Sichere HTML-Ausgabe und Rich Text
+
+- **Status:** in Arbeit; Pfade und Abnahme in `SEC-04.0` festgelegt.
+- **Verantwortlich:** Codex.
+- **Abhängigkeiten:** SEC-01/02 begrenzen Sichtbarkeit und Schreibzugriffe; SEC-05 schützt Anhänge. E-Mail- und Trainingsansichten behalten ihre fachlichen Abläufe. Die Serverbereinigung muss vor Versand und Speicherung wirken; die Browserbereinigung schützt auch vorhandene Inhalte.
+- **Ziel und Abnahme:** Personenbezogene Textplatzhalter werden als Text in HTML eingesetzt. Erlaubter Rich Text behält sichere Formatierung und Links, während Skripte, Eventattribute, gefährliche URLs, SVG/iframe und CSS-Ausführung entfernt werden. Jede dynamische HTML-Ausgabe im Frontend läuft über eine gemeinsame DOMPurify-Komponente; E-Mail-Vorschau führt keine Skripte im Anwendungskontext aus. Neue und bestehende Inhalte, Namen, Signaturen, E-Mail-Vorlagen und Ausbildungsbausteine sind mit fiktiven XSS-Eingaben geprüft.
+- **Inventar der relevanten Pfade:** `members/services/email_service.py` interpoliert Namen vor dem Mailversand ungefiltert und übernimmt Signaturen/Layouts mit `mark_safe`. `orders/notifications/template_service.py` übernimmt ebenfalls HTML in Layouts. Im Frontend verwenden `EmailComposeView`, `EmailHistoryView`, `TiptapEditor`, `TrainingHandout` und `MobileBlockDetailSheet` `v-html`; letztere nutzt eine Regex-Bereinigung. Serverseitige Trainings- und E-Mail-Serializer sind als Eingabepunkte zu prüfen.
+- **Teilschritte mit stabilen IDs:**
+  - `SEC-04.0`: HTML-Pfade, Abnahme, Abhängigkeiten und stabile IDs dokumentieren.
+  - `SEC-04.1`: Dauerhafte Regressionen für Textplatzhalter und gefährlichen Rich Text in Versand, Vorschau und Trainingsinhalten ergänzen; Ausgangsfehler festhalten.
+  - `SEC-04.2`: Serverseitige Allowlist-Bereinigung und kontextgerechtes Escaping für E-Mail, Layout, Signatur und Trainingsinhalte einführen; Altinhalte bei Auslieferung sicher behandeln.
+  - `SEC-04.3`: Gemeinsame DOMPurify-Ausgabe für alle dynamischen HTML-Flächen einschließlich mobiler und Handout-Ansicht; Regex-Bereinigung entfernen.
+  - `SEC-04.4`: E-Mail-Vorschau isolieren und HTML-Verträge mit gezielten Backend-/Frontend- und Altinhaltsfällen abnehmen.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Ausgeführte Prüfungen mit Ergebnis:** Pfad-/Codeinventar und Git-Abgleich bestanden; Anwendungstests für diesen reinen Planungsstand nicht ausgeführt.
+- **Offene Fehler / Risiken:** HTML-Bereinigungsbibliothek serverseitig noch nicht festgelegt; Frontend-DOMPurify ist nur transitive Abhängigkeit und muss direkt gebunden werden. Bestehende, gespeicherte Inhalte sind bis zur Bereinigung gefährlich; Vorschau bleibt unisoliert. Keine produktiven Daten oder Geheimnisse im Journal.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine; `dump.rdb` bleibt fremd/unversioniert.
+- **Nächster konkreter Schritt:** `SEC-04.1` rote Regressionen mit fiktiven XSS-Daten.
+
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
 - **Status:** in Arbeit; `SEC-09.4a/b` idempotent, `SEC-09.5a` Mitgliedslöschung gesichert, übrige Bulk-Pfade/Clients offen.
@@ -869,3 +888,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | ROLE-01.6c | Administrationsansicht mit Soll/Ist-Vergleich, Zuweisungszahlen, vollständiger Rechteauswahl, Metadatenänderung, Kopie und Archivierung an die Rollen-API gebunden. Schreibaktionen verlangen Bestätigung und senden den Vergleichs-Fingerprint; Konfliktfehler lassen Eingaben stehen. Navigation und paginierte Vorlagenliste ergänzt. | Vue-Typecheck und 7/7 gezielte Frontendtests bestanden; breite Frontend-Suite und manuelle Browserprüfung nicht ausgeführt. Diff-Check vor Commit. | Dieser Commit: `feat(ROLE-01.6c): add role administration view` | ROLE-01.7 Rechteabnahme und Rollenhandbuch; SEC-03.7-Schema prüfen. |
 | 05.10.2026 | SEC-09.5a | Mitgliedslöschung behält gebuchte Bewegungen und Lagerortbezüge; persönliche Lagerorte werden vor atomarer Löschung abgekoppelt, offene Bestände blockiert. Destruktive Buchungslöschung aus API und Dialog entfernt, Lagerort-Anonymisierung und Fehlermeldung angepasst. | 23/23 gezielte Backendtests, Frontend-Typecheck, Ruff und Diff-Check bestanden; breite Suite und PostgreSQL-Konkurrenz nicht ausgeführt. | Dieser Commit: `fix(SEC-09.5a): preserve stock history on member deletion` | SEC-09.5b Bulk-/Bereinigungspfade prüfen. |
 | 05.10.2026 | SEC-03.7 | Listen-API-Schema für Pflichtabteilung, Altlistenklärung, Ereignisanlage, unpaginierte Klärungsliste und Excel-Ausgabe korrigiert; kollidierenden Mitglied-/Listenschema-Namen getrennt. Listenmigration und Bedienvertrag gezielt abgenommen. | 42/42 Backend- und 8/8 Frontendtests, Migrationsabgleich, Ruff und gezielter Listenschema-Check bestanden. Globale Schema-Validierung meldet 102 Fehler außerhalb der Listenansicht; breite Suiten nicht ausgeführt. | Dieser Commit: `fix(SEC-03.7): verify list contract and schema` | SEC-04 beginnen; SEC-02.9 nach Abhängigkeiten abnehmen. |
+| 05.10.2026 | SEC-04.0 | HTML-Pfade für E-Mail, Signatur, Layout, Trainingsinhalte und fünf `v-html`-Flächen inventarisiert; Allowlist-, Browser- und Vorschauvertrag samt Teilschritten festgelegt. | Code-/Git-Abgleich bestanden; Anwendungstests für reine Planung nicht ausgeführt. Staged-Diff-Check vor Commit. | Dieser Commit: `docs(SEC-04.0): define rich text safety contract` | SEC-04.1 Regressionen ergänzen. |
