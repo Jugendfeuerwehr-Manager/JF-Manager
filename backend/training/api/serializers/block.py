@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from jf_manager_backend.html_safety import SanitizedHTMLField, sanitize_rich_html
 from members.models import Group
 from training.api.permissions import can_manage_training_department
 from training.models import TrainingBlock, TrainingMedia
@@ -32,6 +33,7 @@ class GroupMiniSerializer(serializers.ModelSerializer):
 
 
 class TrainingBlockSerializer(serializers.ModelSerializer):
+    content = SanitizedHTMLField(required=False, allow_blank=True)
     groups = GroupMiniSerializer(many=True, read_only=True)
     library_block_title = serializers.CharField(source="library_block.title", read_only=True, default=None)
     media = serializers.SerializerMethodField()
@@ -81,6 +83,7 @@ class TrainingBlockSerializer(serializers.ModelSerializer):
 
 
 class TrainingBlockCreateSerializer(serializers.ModelSerializer):
+    content = SanitizedHTMLField(required=False, allow_blank=True)
     group_ids = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(),
         source="groups",
@@ -112,7 +115,7 @@ class TrainingBlockCreateSerializer(serializers.ModelSerializer):
         # If library_block supplied with no content, copy content from it
         library_block = validated_data.get("library_block")
         if library_block and not validated_data.get("content"):
-            validated_data["content"] = library_block.content
+            validated_data["content"] = sanitize_rich_html(library_block.content)
         if library_block and not validated_data.get("color"):
             validated_data["color"] = library_block.color
         block = super().create(validated_data)

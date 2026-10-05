@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-04.2a sichert Mitglieds-E-Mail-HTML mit `nh3`; SEC-04.1b liegt in `d3a1500`. |
-| Aktuelles Paket | SEC-03 abgeschlossen; SEC-04.2a grün, SEC-04.2b/c und SEC-04.3/4 folgen. SEC-05 bis SEC-08 und SEC-09-Rest offen. |
+| Letzter Checkpoint | 05.10.2026: SEC-04.2b bereinigt Trainings- und Bibliotheksinhalte samt Import; SEC-04.2a liegt in `a0d0243`. |
+| Aktuelles Paket | SEC-03 abgeschlossen; SEC-04.2a/b grün, SEC-04.2c und SEC-04.3/4 folgen. SEC-05 bis SEC-08 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `d3a1500` (SEC-04.1b); SEC-04.2a ist dieser E-Mail-Commit. |
+| Letzter Roadmap-Commit | `a0d0243` (SEC-04.2a); SEC-04.2b ist dieser Trainings-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-04.2b Trainingsinhalte bei Eingabe/Ausgabe, danach SEC-04.2c Bestell-E-Mails und SEC-04.3 Browser-Bereinigung. |
+| Nächster konkreter Schritt | SEC-04.2c Bestell-E-Mails und Layouts, danach SEC-04.3 Browser-Bereinigung. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -536,7 +536,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
-| SEC-04 | in Arbeit | Codex | SEC-04.2a Mitglieds-E-Mail und alte Inhalte serverseitig bereinigt; Training, Bestellungen und Browserflächen folgen. |
+| SEC-04 | in Arbeit | Codex | SEC-04.2a/b E-Mail und Training serverseitig bereinigt; Bestellungen und Browserflächen folgen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
@@ -757,10 +757,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-04.3`: Gemeinsame DOMPurify-Ausgabe für alle dynamischen HTML-Flächen einschließlich mobiler und Handout-Ansicht; Regex-Bereinigung entfernen.
   - `SEC-04.4`: E-Mail-Vorschau isolieren und HTML-Verträge mit gezielten Backend-/Frontend- und Altinhaltsfällen abnehmen.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-04.1a: 0/2 neue E-Mail-Regressionen erwartungsgemäß fehlgeschlagen. SEC-04.1b: 0/1 Frontend-Regressionsfall erwartungsgemäß fehlgeschlagen. SEC-04.2a: 16/16 gezielte E-Mail-/Rechte-Tests und Ruff bestanden; breite Suite nicht ausgeführt.
-- **Offene Fehler / Risiken:** `nh3==0.3.7` ist direkt und gesperrt eingebunden. Die strenge Allowlist entfernt Layout-Styles und Bilder aus Mitglieder-E-Mails; fachliche Darstellung muss in SEC-04.4 geprüft werden. Training/Bestell-E-Mails und Browserflächen sind noch offen; alte E-Mail-Daten werden an API-/Versandgrenzen bereinigt. Keine produktiven Daten oder Geheimnisse im Journal.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-04.1a: 0/2 neue E-Mail-Regressionen erwartungsgemäß fehlgeschlagen. SEC-04.1b: 0/1 Frontend-Regressionsfall erwartungsgemäß fehlgeschlagen. SEC-04.2a: 16/16 gezielte E-Mail-/Rechte-Tests. SEC-04.2b: 30/30 angrenzende Trainingstests und anschließend 3/3 gezielte HTML-/Importtests bestanden; Ruff bestanden. Breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** `nh3==0.3.7` ist direkt eingebunden. Die strenge Allowlist entfernt Layout-Styles und Bilder aus Mitglieder-E-Mails; fachliche Darstellung muss in SEC-04.4 geprüft werden. Bestell-E-Mails und Browserflächen sind noch offen; alte E-Mail-/Trainingsdaten werden an API-/Versandgrenzen bereinigt. Keine produktiven Daten oder Geheimnisse im Journal.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine; `dump.rdb` bleibt fremd/unversioniert.
-- **Nächster konkreter Schritt:** SEC-04.2b Training, SEC-04.2c Bestell-E-Mails, danach SEC-04.3 Browserflächen.
+- **Nächster konkreter Schritt:** SEC-04.2c Bestell-E-Mails, danach SEC-04.3 Browserflächen.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -897,3 +897,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-04.1a | Fiktive XSS-Namen und aktiven E-Mail-Rich-Text samt Signatur als Regression aufgenommen. | 0/2 neue Tests erwartungsgemäß fehlgeschlagen: HTML-Name wird roh eingesetzt, Skript bleibt enthalten. Ruff und Diff-Check vor Commit; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-04.1a): expose unsafe email HTML rendering` | SEC-04.1b UI-/Trainingsregressionen. |
 | 05.10.2026 | SEC-04.1b | Mobiler Trainingsinhalt mit HTML-kodierter `javascript:`-URL als DOM-Regression ergänzt. | 0/1 neuer Frontendtest erwartungsgemäß fehlgeschlagen: Browser dekodiert den aktiven Link. Frontend-Typecheck und Diff-Check bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `test(SEC-04.1b): expose encoded training link` | SEC-04.2 und SEC-04.3 Bereinigung. |
 | 05.10.2026 | SEC-04.2a | `nh3`-Allowlist eingeführt; Namen vor E-Mail-HTML-Interpolation escaped, Body/Signatur/Layout und alte gespeicherte Nachrichten bei API-Ausgabe und Versand bereinigt. | 16/16 gezielte Backendtests und Ruff bestanden; breite Suite nicht ausgeführt. Strenge Allowlist entfernt Layout-Styles/Bilder, Darstellung in SEC-04.4 offen. | Dieser Commit: `fix(SEC-04.2a): sanitize member email HTML` | SEC-04.2b Trainingsinhalte. |
+| 05.10.2026 | SEC-04.2b | Trainingsblock- und Bibliotheksinhalt bei Eingabe/Ausgabe bereinigt; kopierte Altbausteine und föderierter Direktimport nutzen dieselbe Allowlist. Bibliotheksexport enthält wieder das deklarierte Medienfeld. | 30/30 angrenzende Trainingstests sowie 3/3 gezielte HTML-/Importtests und Ruff bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-04.2b): sanitize training rich text` | SEC-04.2c Bestell-E-Mails. |

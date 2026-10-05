@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from jf_manager_backend.html_safety import SanitizedHTMLField
 from training.models import LibraryBlock, LibraryBlockCategory, LibraryBlockTag, TrainingMedia
 
 
@@ -58,6 +59,7 @@ class LibraryBlockListSerializer(serializers.ModelSerializer):
 
 
 class LibraryBlockDetailSerializer(serializers.ModelSerializer):
+    content = SanitizedHTMLField(required=False, allow_blank=True)
     category = LibraryBlockCategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=LibraryBlockCategory.objects.all(),
@@ -127,6 +129,7 @@ class LibraryBlockDetailSerializer(serializers.ModelSerializer):
 class LibraryBlockExportSerializer(serializers.ModelSerializer):
     """Federation-ready export format."""
 
+    content = SanitizedHTMLField(read_only=True)
     category = serializers.CharField(source="category.name", default=None)
     tags = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
@@ -143,6 +146,7 @@ class LibraryBlockExportSerializer(serializers.ModelSerializer):
             "tags",
             "color",
             "nextcloud_folder_url",
+            "media",
         ]
 
     def get_tags(self, obj):

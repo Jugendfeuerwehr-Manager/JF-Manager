@@ -15,6 +15,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from jf_manager_backend.html_safety import sanitize_rich_html
 from jf_manager_backend.permissions import OrgWideWritePermission
 from members.models import Attachment
 from training.api.filters import LibraryBlockFilter
@@ -222,7 +223,7 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
             defaults = {
                 "title": item.get("title", ""),
                 "description": item.get("description", ""),
-                "content": item.get("content", ""),
+                "content": sanitize_rich_html(item.get("content", "")),
                 "default_duration_minutes": item.get("default_duration_minutes", 15),
                 "category": category,
                 "color": item.get("color", ""),
