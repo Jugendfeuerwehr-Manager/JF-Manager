@@ -1,8 +1,17 @@
+import re
+
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+DEFAULT_BRAND_COLOR = "#b91c1c"
+
+
+def _brand_color(value):
+    """Only a plain #rrggbb value reaches the unauthenticated login page."""
+    return value.lower() if isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value) else DEFAULT_BRAND_COLOR
 
 
 class PublicBrandingView(APIView):
@@ -16,7 +25,7 @@ class PublicBrandingView(APIView):
 
     @extend_schema(
         summary="Get public branding information",
-        description="Returns the app title, slug, and logo URL. No authentication required.",
+        description="Returns the app title, slug, logo URL and brand colour. No authentication required.",
     )
     def get(self, request):
         global_preferences = global_preferences_registry.manager()
@@ -25,6 +34,7 @@ class PublicBrandingView(APIView):
             "title": global_preferences.get("general__title") or "JF Manager",
             "slug": global_preferences.get("general__slug") or "",
             "logo_url": global_preferences.get("general__logo_url") or "",
+            "brand_color": _brand_color(global_preferences.get("general__brand_color")),
         }
 
         return Response(branding)

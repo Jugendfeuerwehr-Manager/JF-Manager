@@ -59,7 +59,7 @@ class SettingsViewSet(viewsets.ViewSet):
 
     # Mapping of category to preference prefix
     CATEGORY_MAPPINGS = {
-        "general": {"prefix": "general", "fields": ["title", "slug", "logo_url"]},
+        "general": {"prefix": "general", "fields": ["title", "slug", "logo_url", "brand_color"]},
         "email": {
             "prefix": "email",
             "fields": [

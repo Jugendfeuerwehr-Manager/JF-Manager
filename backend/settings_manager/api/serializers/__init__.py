@@ -34,6 +34,15 @@ class GeneralSettingsSerializer(serializers.Serializer):
     logo_url = serializers.URLField(
         required=False, allow_blank=True, help_text="Publicly accessible URL to the organisation logo"
     )
+    brand_color = serializers.RegexField(
+        r"^#[0-9a-fA-F]{6}$",
+        required=False,
+        help_text="Base colour of the interface as #rrggbb; accessible shades are derived in the browser",
+        error_messages={"invalid": "Bitte eine Farbe im Format #rrggbb angeben."},
+    )
+
+    def validate_brand_color(self, value):
+        return value.lower()
 
 
 class EmailSettingsSerializer(serializers.Serializer):

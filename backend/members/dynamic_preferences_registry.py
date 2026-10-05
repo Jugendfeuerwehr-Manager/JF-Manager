@@ -40,6 +40,16 @@ class SiteLogoUrl(StringPreference):
 
 
 @global_preferences_registry.register
+class SiteBrandColor(StringPreference):
+    section = general
+    name = "brand_color"
+    verbose_name = "Farbschema"
+    help_text = "Grundfarbe der Oberfläche als Hex-Wert (#rrggbb). Kontraststarke Abstufungen werden daraus abgeleitet."
+    default = "#b91c1c"
+    required = False
+
+
+@global_preferences_registry.register
 class MemberAlertThreshold(IntegerPreference):
     section = members
     name = "alert_threshold"
