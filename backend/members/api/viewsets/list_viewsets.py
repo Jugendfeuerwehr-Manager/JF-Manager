@@ -1,5 +1,3 @@
-from jf_manager_backend.export_audit import ExportAuditMixin
-from jf_manager_backend.safe_exports import write_safe_cell
 """
 ViewSet for MemberList and MemberListEntry management.
 """
@@ -24,7 +22,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
+from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from jf_manager_backend.safe_exports import write_safe_cell
 from members.api.serializers.list_serializers import (
     CreateFromEventTypeInputSerializer,
     LegacyListPendingSerializer,
@@ -453,6 +453,7 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
         member_list = self.get_object()
         self.export_department_ids = [member_list.department_id] if member_list.department_id else []
         from rest_framework.request import clone_request
+
         from members.api.viewsets.parent_viewsets import ParentViewSet
 
         parent_view = ParentViewSet()

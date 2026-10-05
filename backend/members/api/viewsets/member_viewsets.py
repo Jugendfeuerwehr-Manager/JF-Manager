@@ -1,4 +1,3 @@
-from jf_manager_backend.export_audit import ExportAuditMixin
 """
 MemberViewSet — CRUD + custom statistics/export actions.
 """
@@ -21,6 +20,7 @@ from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from jf_manager_backend.safe_exports import write_safe_cell
 from members.api_serializers import (
@@ -36,9 +36,9 @@ from members.models import Attachment, Group, Member, Status
 
 class MemberActionPermissions(DepartmentRoleModelPermissions):
     def _required_permissions(self, request, view):
-        if view.action == "export_excel" and request.method in ("GET", "HEAD"):
+        if getattr(view, "action", None) == "export_excel" and request.method in ("GET", "HEAD"):
             return ["members.view_member", "members.export_member"]
-        if view.action == "delete_with_strategy":
+        if getattr(view, "action", None) == "delete_with_strategy":
             return ["members.delete_member"]
         return super()._required_permissions(request, view)
 

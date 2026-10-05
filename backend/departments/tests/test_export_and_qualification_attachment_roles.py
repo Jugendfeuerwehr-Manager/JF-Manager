@@ -31,6 +31,7 @@ class ExportAndQualificationAttachmentRoleTests(APITestCase):
         group = Group.objects.create(name="Scoped member and qualification editor")
         group.permissions.add(
             Permission.objects.get(content_type__app_label="members", codename="view_member"),
+            Permission.objects.get(content_type__app_label="members", codename="export_member"),
             Permission.objects.get(content_type__app_label="qualifications", codename="view_qualification"),
             Permission.objects.get(content_type__app_label="qualifications", codename="add_qualification"),
             Permission.objects.get(content_type__app_label="qualifications", codename="change_qualification"),
@@ -42,7 +43,7 @@ class ExportAndQualificationAttachmentRoleTests(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_scoped_member_view_right_allows_scoped_export(self):
+    def test_scoped_member_export_right_allows_scoped_export(self):
         department_b = Department.objects.create(name="B", code="export-qualification-b")
         member_b = Member.objects.create(name="B", lastname="Member")
         member_b.departments.add(department_b)
@@ -81,6 +82,9 @@ class ExportAndQualificationAttachmentRoleTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(self.qualification.attachments.count(), 1)
+        preview = self.client.get(response.data["file_url"])
+        self.assertEqual(preview.status_code, 200)
+        preview.close()
 
         deleted = self.client.delete(
             f"/api/v1/qualifications/{self.qualification.pk}/attachments/{response.data['id']}/"
