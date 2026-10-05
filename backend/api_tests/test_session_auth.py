@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
@@ -47,7 +49,7 @@ class SessionAuthTests(APITestCase):
         self.client.cookies[settings.SESSION_COOKIE_NAME] = "attacker-chosen-session"
         response = self.login()
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, {"authenticated": True})
+        self.assertTrue(response.data["authenticated"])
         body = response.content.decode()
         for marker in ("access", "refresh", "token"):
             self.assertNotIn(marker, body)
@@ -57,7 +59,7 @@ class SessionAuthTests(APITestCase):
         self.assertTrue(cookie["secure"])
         self.assertEqual(cookie["samesite"], "Lax")
         self.assertEqual(cookie["domain"], "")
-        self.assertEqual(self.client.get(STATUS_URL).data, {"authenticated": True})
+        self.assertTrue(self.client.get(STATUS_URL).data["authenticated"])
         self.assertEqual(self.client.get("/api/v1/users/me/").status_code, 200)
 
     def test_wrong_and_inactive_credentials_are_generic(self):
@@ -104,3 +106,54 @@ class SessionAuthTests(APITestCase):
             )
         self.assertEqual(statuses[:20], [401] * 20)
         self.assertEqual(statuses[20], 429)
+
+
+@override_settings(SESSION_IDLE_TIMEOUT_SECONDS=1800, SESSION_MAX_AGE_SECONDS=43200)
+class SessionLifetimeTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        User.objects.create_user(username="lifetime-user", password=PASSWORD)
+        self.client = APIClient(enforce_csrf_checks=True)
+        self.now = 1_900_000_000
+        patcher = patch("users.session_policy.time.time", side_effect=lambda: self.now)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        token = self.client.get(STATUS_URL).cookies[settings.CSRF_COOKIE_NAME].value
+        response = self.client.post(
+            LOGIN_URL, {"username": "lifetime-user", "password": PASSWORD}, format="json", HTTP_X_CSRFTOKEN=token
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def me(self):
+        return self.client.get("/api/v1/users/me/").status_code
+
+    def test_status_reports_deadlines(self):
+        data = self.client.get(STATUS_URL).data
+        self.assertEqual(data["idle_timeout_seconds"], 1800)
+        self.assertEqual(data["idle_expires_at"], "2030-03-17T18:16:40+00:00")
+        self.assertEqual(data["absolute_expires_at"], "2030-03-18T05:46:40+00:00")
+
+    def test_idle_session_expires_and_is_deleted(self):
+        self.now += 1799
+        self.assertEqual(self.me(), 200)
+        self.now += 1799
+        self.assertEqual(self.me(), 200)
+        self.now += 1800
+        self.assertIn(self.me(), (401, 403))
+        self.assertFalse(Session.objects.exists())
+
+    def test_status_polling_does_not_extend_idle_time(self):
+        for _ in range(3):
+            self.now += 900
+            self.client.get(STATUS_URL)
+        self.assertIn(self.me(), (401, 403))
+
+    def test_absolute_lifetime_ends_active_session(self):
+        for _ in range(35):
+            self.now += 1200
+            self.assertEqual(self.me(), 200)
+        self.now += 1199
+        self.assertEqual(self.me(), 200)
+        self.now += 1
+        self.assertIn(self.me(), (401, 403))
+        self.assertEqual(self.client.get(STATUS_URL).data, {"authenticated": False})

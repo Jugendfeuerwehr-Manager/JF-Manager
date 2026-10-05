@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-07.1 Sitzungs-API mit CSRF, Rotation und serverseitigem Logout. |
+| Letzter Checkpoint | 05.10.2026: SEC-07.2 serverseitige Inaktivitäts- und Maximaldauer für Sitzungen. |
 | Aktuelles Paket | SEC-07 in Arbeit (Claude); SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-07, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `8c2240a` (SEC-07.0); SEC-07.1 ist dieser Commit. |
+| Letzter Roadmap-Commit | `a0d0edc` (SEC-07.1); SEC-07.2 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-07.2 Inaktivitäts- und Maximaldauer; danach SEC-07.3 bis SEC-07.8, anschließend SEC-09.5b. |
+| Nächster konkreter Schritt | SEC-07.3 TOTP und Wiederherstellungscodes; danach SEC-07.4 bis SEC-07.8, anschließend SEC-09.5b. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -539,7 +539,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
-| SEC-07 | in Arbeit | Claude | SEC-07.1 Sitzungs-API grün; nächster Schritt SEC-07.2 Sitzungsdauer. |
+| SEC-07 | in Arbeit | Claude | SEC-07.1/2 Sitzungs-API und Sitzungsdauer grün; nächster Schritt SEC-07.3 MFA-Grundlage. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b idempotent; SEC-09.5a Mitgliedslöschung gesichert, SEC-09.5b/c offen. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
@@ -818,9 +818,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-07.7`: JWT-/Token-Authentifizierung und Endpunkte entfernen, ausgegebene Tokens und Sitzungen widerrufen, Betriebsanleitung.
   - `SEC-07.8`: Gebündelte Abnahme (Logout, Ablauf, CSRF, MFA-Replay, Wiederherstellungscodes, OIDC-Bindung).
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen / Checkpoint:** SEC-07.0: Code-/Git-Abgleich bestanden. SEC-07.1: 7/7 neue Sitzungstests und 14/14 bestehende Benutzersicherheitstests, Ruff bestanden.
+- **Prüfungen / Checkpoint:** SEC-07.0: Code-/Git-Abgleich bestanden. SEC-07.1: 7/7 neue Sitzungstests und 14/14 bestehende Benutzersicherheitstests, Ruff bestanden. SEC-07.2: 51/51 Sitzungs-, Benutzersicherheits- und Admin-Benutzertests, Ruff bestanden.
 - **Risiken:** Frontend und API müssen produktiv unter derselben Herkunft laufen; Entwicklungsserver nutzen dieselbe Site (`localhost`) mit CORS-Credentials und vertrauenswürdigen CSRF-Ursprüngen. Externe API-Programme verlieren nach SEC-07.7 ihren Zugang (Produktentscheidung). Bis SEC-07.7 bestehen JWT und Sitzung parallel. `dump.rdb` bleibt unangetastet.
-- **Nächster Schritt:** `SEC-07.2` Sitzungsdauer.
+- **Nächster Schritt:** `SEC-07.3` MFA-Grundlage.
 
 ### SEC-08: Sichere Tabellenexporte
 
@@ -1021,3 +1021,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-07.0 | Authentifizierung inventarisiert (JWT/Token in `localStorage`, nur lokaler Logout, OIDC-Befunde, fehlendes MFA). Vertrag, Abnahme und Teilschritte SEC-07.1 bis SEC-07.8 festgelegt. | Code-/Git-Abgleich bestanden; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(SEC-07.0): define session, MFA and OIDC contract` | SEC-07.1 Sitzungs-API. |
 
 | 05.10.2026 | SEC-07.1 | `/api/v1/auth/session/` (Status + CSRF-Cookie), `…/login/` und `…/logout/` ergänzt. Login und Logout erzwingen CSRF trotz DRF-Exemption, `login()` rotiert Sitzung und CSRF-Token, Logout löscht die Serversitzung. Antworten ohne Tokens. Sitzungs-/CSRF-Cookies hostgebunden, `SameSite=Lax`, Session `HttpOnly`, standardmäßig `Secure` (Abschaltung nur über `SECURE_COOKIES`). Zusätzliche Drosselung je Benutzername (20/h) neben IP-Drosselung. | 7/7 neue Tests (CSRF-Pflicht, Rotation gegen vorgegebene Sitzung, Cookie-Attribute, generische Fehler, CSRF bei Schreibzugriff, Logout-Replay, Benutzernamen-Drosselung) und 14/14 `test_user_security`, Ruff bestanden. JWT-Endpunkte bleiben bis SEC-07.7 parallel. | Dieser Commit: `feat(SEC-07.1): add CSRF-protected session login and logout` | SEC-07.2 Sitzungsdauer. |
+
+| 05.10.2026 | SEC-07.2 | `SessionPolicyMiddleware` beendet Sitzungen serverseitig nach Inaktivität (Standard 30 min, Grenzen 5 min–4 h) und Maximaldauer (Standard 12 h, Grenzen 1–24 h); Werte über `SESSION_IDLE_TIMEOUT_SECONDS`/`SESSION_MAX_AGE_SECONDS`, später CFG-01. Statusabfrage liefert Ablaufzeiten und zählt nicht als Aktivität. Aktivität wird höchstens alle 30 s geschrieben. Gilt auch für Django-Admin-Sitzungen. | 4/4 neue Ablauftests (Ablaufzeiten, Inaktivität mit Löschung, Statusabfrage verlängert nicht, Maximaldauer trotz Aktivität) und 47/47 bestehende Sitzungs-/Benutzer-/Admin-Tests, Ruff bestanden. | Dieser Commit: `feat(SEC-07.2): enforce idle and absolute session lifetime` | SEC-07.3 MFA-Grundlage. |

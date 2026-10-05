@@ -115,6 +115,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "users.session_policy.SessionPolicyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "jf_manager_backend.email_middleware.EmailConfigMiddleware",
@@ -208,6 +209,21 @@ CSRF_COOKIE_SECURE = _SECURE_COOKIES
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_DOMAIN = None
+
+
+def _bounded_seconds(name, default, minimum, maximum):
+    try:
+        value = int(os.environ.get(name, default))
+    except ValueError as exc:
+        raise Exception(f"{name} muss eine ganze Zahl (Sekunden) sein.") from exc
+    return max(minimum, min(maximum, value))
+
+
+# Idle timeout 5 min to 4 h (default 30 min), absolute lifetime 1 h to 24 h
+# (default 12 h). Enforced server-side by users.session_policy.
+SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("SESSION_IDLE_TIMEOUT_SECONDS", 1800, 300, 14400)
+SESSION_MAX_AGE_SECONDS = _bounded_seconds("SESSION_MAX_AGE_SECONDS", 43200, 3600, 86400)
+SESSION_COOKIE_AGE = SESSION_MAX_AGE_SECONDS
 
 AUTHENTICATION_BACKENDS = (
     "users.ldap_backend.ConfigurableLDAPBackend",

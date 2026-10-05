@@ -6,6 +6,7 @@ anonymous login, so a foreign site cannot log a victim into another account.
 
 import hashlib
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -17,6 +18,7 @@ from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from users.auth_security import LoginThrottle
+from users.session_policy import isoformat, session_deadlines
 
 GENERIC_LOGIN_ERROR = "Benutzername oder Passwort ist falsch."
 
@@ -42,7 +44,14 @@ class SessionLoginSerializer(serializers.Serializer):
 
 def session_status(request):
     user = request.user
-    return {"authenticated": bool(user and user.is_authenticated)}
+    authenticated = bool(user and user.is_authenticated)
+    data = {"authenticated": authenticated}
+    deadlines = session_deadlines(request.session) if authenticated else None
+    if deadlines:
+        data["idle_expires_at"] = isoformat(deadlines["idle_expires_at"])
+        data["absolute_expires_at"] = isoformat(deadlines["absolute_expires_at"])
+        data["idle_timeout_seconds"] = settings.SESSION_IDLE_TIMEOUT_SECONDS
+    return data
 
 
 class SessionCsrfMixin:
