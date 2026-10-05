@@ -31,6 +31,8 @@ export interface SessionStatus {
   idle_expires_at?: string
   absolute_expires_at?: string
   idle_timeout_seconds?: number
+  /** Short session profile for accounts with mandatory MFA. */
+  privileged_session?: boolean
 }
 
 export interface MFAStatus {

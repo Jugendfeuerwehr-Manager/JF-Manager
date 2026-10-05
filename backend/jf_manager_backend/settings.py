@@ -216,10 +216,14 @@ def _bounded_seconds(name, default, minimum, maximum):
     return max(minimum, min(maximum, value))
 
 
-# Idle timeout 5 min to 4 h (default 30 min), absolute lifetime 1 h to 24 h
-# (default 12 h). Enforced server-side by users.session_policy.
-SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("SESSION_IDLE_TIMEOUT_SECONDS", 1800, 300, 14400)
-SESSION_MAX_AGE_SECONDS = _bounded_seconds("SESSION_MAX_AGE_SECONDS", 43200, 3600, 86400)
+# Ordinary accounts: long-running sessions (default 30 days idle, 90 days
+# absolute); actions that widen access need a fresh confirmation instead.
+# Accounts with mandatory MFA (admins, leadership): default 8 hours.
+# Enforced server-side by users.session_policy; values are clamped.
+SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("SESSION_IDLE_TIMEOUT_SECONDS", 30 * 86400, 300, 90 * 86400)
+SESSION_MAX_AGE_SECONDS = _bounded_seconds("SESSION_MAX_AGE_SECONDS", 90 * 86400, 3600, 365 * 86400)
+PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS", 8 * 3600, 300, 86400)
+PRIVILEGED_SESSION_MAX_AGE_SECONDS = _bounded_seconds("PRIVILEGED_SESSION_MAX_AGE_SECONDS", 8 * 3600, 3600, 7 * 86400)
 SESSION_COOKIE_AGE = SESSION_MAX_AGE_SECONDS
 
 AUTHENTICATION_BACKENDS = (

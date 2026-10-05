@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import nightwatchPlugin from 'vite-plugin-nightwatch'
@@ -8,16 +8,22 @@ import nightwatchPlugin from 'vite-plugin-nightwatch'
 // https://vite.dev/config/
 // Dev server proxy target. The SPA itself calls the relative /api/v1 so that
 // browser, SPA and API share one origin (session and CSRF cookies).
-const BACKEND = (() => {
+function backendOrigin(env: Record<string, string>) {
   try {
-    if (process.env.VITE_BACKEND_URL) return new URL(process.env.VITE_BACKEND_URL).origin
-    return process.env.VITE_API_BASE_URL
-      ? new URL(process.env.VITE_API_BASE_URL).origin  // legacy absolute value, e.g. http://localhost:8000
-      : 'http://localhost:8000'
+    if (env.VITE_BACKEND_URL) return new URL(env.VITE_BACKEND_URL).origin
+    // Legacy absolute API URL, e.g. http://localhost:8000/api/v1
+    if (env.VITE_API_BASE_URL?.startsWith('http')) return new URL(env.VITE_API_BASE_URL).origin
   } catch {
-    return 'http://localhost:8000'
+    // fall through to the default
   }
-})()
+  return 'http://localhost:8000'
+}
+
+// .env files and the shell environment; the shell wins.
+const BACKEND = backendOrigin({
+  ...loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), ''),
+  ...process.env,
+} as Record<string, string>)
 
 export default defineConfig({
   plugins: [

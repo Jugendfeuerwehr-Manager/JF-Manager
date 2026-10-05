@@ -21,12 +21,16 @@ Proxy- und CDN-Caches müssen keine Anmeldedaten enthalten. Falls doch, leeren.
 
 ## Sitzungsdauer
 
+Normale Konten bleiben lange angemeldet. Konten mit verpflichtender Zwei-Faktor-Anmeldung (siehe unten) erhalten eine kurze Sitzung. Aktionen, die Zugriffe erweitern, verlangen unabhängig davon eine frische Bestätigung.
+
 | Variable | Standard | Zulässiger Bereich |
 | --- | --- | --- |
-| `SESSION_IDLE_TIMEOUT_SECONDS` | 1800 (30 min Inaktivität) | 300–14400 |
-| `SESSION_MAX_AGE_SECONDS` | 43200 (12 h ab Anmeldung) | 3600–86400 |
+| `SESSION_IDLE_TIMEOUT_SECONDS` | 2592000 (30 Tage Inaktivität) | 300–7776000 |
+| `SESSION_MAX_AGE_SECONDS` | 7776000 (90 Tage ab Anmeldung) | 3600–31536000 |
+| `PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS` | 28800 (8 h Inaktivität) | 300–86400 |
+| `PRIVILEGED_SESSION_MAX_AGE_SECONDS` | 28800 (8 h ab Anmeldung) | 3600–604800 |
 
-Werte außerhalb des Bereichs werden auf die Grenze gesetzt. Die Oberfläche warnt zwei Minuten vor dem Ablauf. Statusabfragen verlängern die Sitzung nicht.
+Werte außerhalb des Bereichs werden auf die Grenze gesetzt. Erhält ein Konto während einer Sitzung Administrationsrechte, gilt spätestens nach fünf Minuten das kurze Profil. Liegt die Anmeldung dann schon länger als 8 Stunden zurück, endet die Sitzung. Die Oberfläche warnt zwei Minuten vor dem Ablauf. Statusabfragen verlängern die Sitzung nicht.
 
 ## Zwei-Faktor-Anmeldung (TOTP)
 

@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
 from django.core.cache import cache
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 
 User = get_user_model()
@@ -177,3 +178,67 @@ class LegacyCredentialRetirementTests(APITestCase):
         migration.retire_legacy_credentials(apps, SimpleNamespace(connection=connection))
         self.assertFalse(Session.objects.exists())
         self.assertNotIn("authtoken_token", connection.introspection.table_names())
+
+
+class SessionProfileTests(APITestCase):
+    """Long sessions for ordinary accounts, 8 hours for accounts with mandatory MFA."""
+
+    def setUp(self):
+        cache.clear()
+        self.now = 1_900_000_000
+        for target in ("users.session_policy.time.time", "users.mfa.time.time"):
+            patcher = patch(target, side_effect=lambda: self.now)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def admin_group(self):
+        from django.contrib.auth.models import Group, Permission
+
+        group = Group.objects.create(name="Synthetic account admins")
+        group.permissions.add(Permission.objects.get(content_type__app_label="users", codename="change_customuser"))
+        return group
+
+    def signed_in(self, user):
+        client = APIClient()
+        client.force_login(user)
+        return client
+
+    def test_defaults(self):
+        self.assertEqual(settings.SESSION_IDLE_TIMEOUT_SECONDS, 30 * 86400)
+        self.assertEqual(settings.SESSION_MAX_AGE_SECONDS, 90 * 86400)
+        self.assertEqual(settings.PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS, 8 * 3600)
+        self.assertEqual(settings.PRIVILEGED_SESSION_MAX_AGE_SECONDS, 8 * 3600)
+
+    def test_ordinary_account_keeps_a_long_running_session(self):
+        client = self.signed_in(User.objects.create_user(username="member-user"))
+        status = client.get(STATUS_URL).data
+        self.assertFalse(status["privileged_session"])
+        self.assertEqual(status["idle_timeout_seconds"], 30 * 86400)
+        self.now += 29 * 86400
+        self.assertEqual(client.get("/api/v1/users/me/").status_code, 200)
+        self.now += 29 * 86400
+        self.assertEqual(client.get("/api/v1/users/me/").status_code, 200)
+        # Stored expiry uses the real clock; it follows the 90-day absolute limit.
+        remaining = Session.objects.get().expire_date - timezone.now()
+        self.assertGreater(remaining.days, 88)
+
+    def test_privileged_account_session_ends_after_eight_hours(self):
+        user = User.objects.create_user(username="account-admin")
+        user.groups.add(self.admin_group())
+        client = self.signed_in(user)
+        self.assertTrue(client.get(STATUS_URL).data["privileged_session"])
+        for _ in range(7):
+            self.now += 3600
+            self.assertEqual(client.get("/api/v1/users/me/").status_code, 200)
+        self.now += 3600
+        self.assertEqual(client.get("/api/v1/users/me/").status_code, 401)
+
+    def test_promotion_during_a_session_switches_to_the_short_profile(self):
+        user = User.objects.create_user(username="promoted-user")
+        client = self.signed_in(user)
+        user.groups.add(self.admin_group())
+        self.now += 301
+        self.assertEqual(client.get("/api/v1/users/me/").status_code, 200)
+        self.assertTrue(client.get(STATUS_URL).data["privileged_session"])
+        self.now += 8 * 3600
+        self.assertEqual(client.get("/api/v1/users/me/").status_code, 401)

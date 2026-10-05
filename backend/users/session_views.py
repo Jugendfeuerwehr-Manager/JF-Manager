@@ -7,7 +7,6 @@ anonymous login, so a foreign site cannot log a victim into another account.
 import hashlib
 import time
 
-from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -21,7 +20,7 @@ from users.auth_security import LoginThrottle
 from users.mfa import mark_mfa_verified, verify_second_factor
 from users.mfa_policy import is_mfa_verified, mfa_state
 from users.session_auth import SessionAuthentication
-from users.session_policy import isoformat, session_deadlines
+from users.session_policy import PRIVILEGED_KEY, isoformat, lifetimes, session_deadlines
 
 GENERIC_LOGIN_ERROR = "Benutzername oder Passwort ist falsch."
 PENDING_KEY = "_mfa_pending_login"
@@ -67,7 +66,8 @@ def session_status(request):
     if deadlines:
         data["idle_expires_at"] = isoformat(deadlines["idle_expires_at"])
         data["absolute_expires_at"] = isoformat(deadlines["absolute_expires_at"])
-        data["idle_timeout_seconds"] = settings.SESSION_IDLE_TIMEOUT_SECONDS
+        data["idle_timeout_seconds"] = lifetimes(request.session)[0]
+        data["privileged_session"] = bool(request.session.get(PRIVILEGED_KEY))
     return data
 
 
