@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-04.4c mit 32 Backend- und fünf Frontendtests abgenommen; SEC-03 und SEC-04 abgeschlossen. |
+| Letzter Checkpoint | 05.10.2026: SEC-05.0 inventarisiert private Medienpfade; SEC-03 und SEC-04 abgeschlossen. |
 | Aktuelles Paket | SEC-03 und SEC-04 abgeschlossen; SEC-05 bis SEC-08 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 und SEC-04 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `88204e9` (SEC-04.4b); SEC-04.4c ist dieser Commit. |
+| Letzter Roadmap-Commit | `a03633f` (SEC-04.4c); SEC-05.0 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-05 Medieninventar und private Auslieferung. |
+| Nächster konkreter Schritt | SEC-05.1 Anhangvorschau an aktuelle Eigentümerrechte binden. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -537,7 +537,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
-| SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
+| SEC-05 | in Arbeit | Codex | SEC-05.0 Medienpfade inventarisiert; Objektprüfung, Clients und Uploadgrenzen folgen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
@@ -765,6 +765,24 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Keine; `dump.rdb` bleibt fremd/unversioniert.
 - **Nächster konkreter Schritt:** SEC-05 Medieninventar und private Auslieferung.
 
+### SEC-05: Private Medien und geprüfte Uploads
+
+- **Status / Verantwortlich:** in Arbeit / Codex.
+- **Abhängigkeiten:** SEC-01/02/03 definieren Objektbereiche; SEC-07 stellt Cookie-Sitzungen für direkte Bild-/Downloadanfragen bereit. Bis dahin müssen Clients private Ressourcen authentifiziert als Blob laden.
+- **Ziel und Abnahme:** Unauthentifizierte und fremde Nutzer erhalten keine privaten Bytes, auch mit bekannten Dateinamen oder weitergegebenen Vorschau-Links. Jeder Download erbt die aktuelle Objektberechtigung. Alle Antworten sind `private, no-store`, `nosniff`, aktive Dateitypen nur Download. Öffentliche Branding-URLs bleiben getrennte externe URLs. Uploads prüfen tatsächliches Format, Einzelgröße, Anzahl und Gesamtsumme vor dem ersten Schreibzugriff.
+- **Inventar:** Mitglieder-/Benutzeravatare, TrainingMedia, generische Anhänge und E-Mail-Anhänge liegen im gemeinsamen MEDIA_ROOT. Django DEBUG und zwei Nginx-Konfigurationen liefern bisher außer `/uploads/attachments/` alles öffentlich mit Cache aus. Signierte Vorschau erlaubt bei Nicht-Listen bisher anonymen Zugriff. Branding ist eine separate konfigurierbare URL, kein eigener Upload.
+- **Stabile Teilschritte:**
+  - `SEC-05.0`: Inventar, Abnahme und Abhängigkeiten festhalten.
+  - `SEC-05.1`: Signierte Anhangvorschau an aktuelle Eigentümerrechte binden; sichere Downloadantworten zentralisieren und Regressionen ergänzen.
+  - `SEC-05.2`: Private Endpunkte für Avatare, Trainingsmedien und Mailanhänge; Serializer liefern ausschließlich private API-URLs.
+  - `SEC-05.3`: Authentifizierte Medienclients anbinden; öffentliche Uploadauslieferung in Django/Nginx einschließlich Cachefreigaben schließen.
+  - `SEC-05.4`: Gemeinsame Inhalts-/Größenprüfung und atomare Anzahl-/Summengrenzen an Uploadpfaden.
+  - `SEC-05.5`: Gebündelte Medienabnahme und Upgradehinweise (Proxycache leeren, alte Links ungültig).
+- **Branch:** `feat/security-roles-training-operations`.
+- **Prüfungen:** Code-/Git-Abgleich bestanden; Anwendungstests für reine Planung nicht ausgeführt.
+- **Risiken / Checkpoint:** Bestehende direkte Bild-URLs benötigen Clientanpassung; Export-URLs dürfen keine Zugriffstokens enthalten. Keine produktiven Uploads verändern. `dump.rdb` bleibt unangetastet.
+- **Nächster Schritt:** SEC-05.1 Anhangvorschau.
+
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
 - **Status:** in Arbeit; `SEC-09.4a/b` idempotent, `SEC-09.5a` Mitgliedslöschung gesichert, übrige Bulk-Pfade/Clients offen.
@@ -911,3 +929,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-04.4b | Restriktive CSS-Attributgrammatik plus nh3-Eigenschaftsallowlist erhält Mailformatierung. Signaturserializer bereinigen Ein-/Ausgabe. Atomarer, wiederholbarer Altinhaltsbefehl mit Prüflauf für Signaturen, Nachrichten, Empfänger und Trainingsinhalte ergänzt. | 11/11 kombinierte HTML-/Migrationstests und Ruff bestanden; Migration auf Anwendungsdatenbank nicht ausgeführt. | Dieser Commit: `fix(SEC-04.4b): preserve safe layouts and migrate legacy HTML` | SEC-04.4c Paketabnahme. |
 
 | 05.10.2026 | SEC-04.4c | HTML-Paket mit Versand, Import, Altdaten, Vorschau und angrenzenden Trainings-/E-Mail-Fällen abgenommen. Bestehende Workflow-Testwerte an uppercase Statusvertrag angepasst. | 32/32 Backendtests, 5/5 Frontendtests und Typecheck bestanden. Manueller Browserlauf und produktive Altinhaltsmigration nicht ausgeführt. | Dieser Commit: `test(SEC-04.4c): accept HTML safety contract` | SEC-05 Medieninventar. |
+
+| 05.10.2026 | SEC-05.0 | Private Medien, öffentliche Django-/Nginx-Auslieferung, signierte Vorschau und Branding inventarisiert; Rechte-/Uploadvertrag samt stabilen Teilschritten definiert. | Code-/Git-Abgleich bestanden; Anwendungstests für Planung nicht ausgeführt. | Dieser Commit: `docs(SEC-05.0): define private media contract` | SEC-05.1 Anhangvorschau. |
