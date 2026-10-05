@@ -116,6 +116,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "users.session_policy.SessionPolicyMiddleware",
+    "users.mfa_policy.MFAPolicyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "jf_manager_backend.email_middleware.EmailConfigMiddleware",

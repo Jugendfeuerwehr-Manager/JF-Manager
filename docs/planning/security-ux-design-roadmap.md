@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-07.3 TOTP, Wiederherstellungscodes und erneute Bestätigung. |
+| Letzter Checkpoint | 05.10.2026: SEC-07.4 zweistufiger Login, MFA-Pflichtrichtlinie und zentraler Login für Admin-/Formularpfade. |
 | Aktuelles Paket | SEC-07 in Arbeit (Claude); SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-07, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `b0b6ec8` (SEC-07.2); SEC-07.3 ist dieser Commit. |
+| Letzter Roadmap-Commit | `acca238` (SEC-07.3); SEC-07.4 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-07.4 zweistufiger Login und MFA-Pflicht; danach SEC-07.5 bis SEC-07.8, anschließend SEC-09.5b. |
+| Nächster konkreter Schritt | SEC-07.5 OIDC mit Sitzungsbindung, PKCE und MFA-Regeln; danach SEC-07.6 bis SEC-07.8, anschließend SEC-09.5b. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -539,7 +539,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
-| SEC-07 | in Arbeit | Claude | SEC-07.1–07.3 Sitzung, Dauer und MFA-Grundlage grün; nächster Schritt SEC-07.4 MFA im Login. |
+| SEC-07 | in Arbeit | Claude | SEC-07.1–07.4 Sitzung, Dauer, MFA und Pflichtrichtlinie grün; nächster Schritt SEC-07.5 OIDC. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b idempotent; SEC-09.5a Mitgliedslöschung gesichert, SEC-09.5b/c offen. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
@@ -818,9 +818,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-07.7`: JWT-/Token-Authentifizierung und Endpunkte entfernen, ausgegebene Tokens und Sitzungen widerrufen, Betriebsanleitung.
   - `SEC-07.8`: Gebündelte Abnahme (Logout, Ablauf, CSRF, MFA-Replay, Wiederherstellungscodes, OIDC-Bindung).
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen / Checkpoint:** SEC-07.0: Code-/Git-Abgleich bestanden. SEC-07.1: 7/7 neue Sitzungstests und 14/14 bestehende Benutzersicherheitstests, Ruff bestanden. SEC-07.2: 51/51 Sitzungs-, Benutzersicherheits- und Admin-Benutzertests, Ruff bestanden. SEC-07.3: 58/58 MFA-, Sitzungs-, Benutzer- und Verschlüsselungstests, Migrationsabgleich und Ruff bestanden.
+- **Prüfungen / Checkpoint:** SEC-07.0: Code-/Git-Abgleich bestanden. SEC-07.1: 7/7 neue Sitzungstests und 14/14 bestehende Benutzersicherheitstests, Ruff bestanden. SEC-07.2: 51/51 Sitzungs-, Benutzersicherheits- und Admin-Benutzertests, Ruff bestanden. SEC-07.3: 58/58 MFA-, Sitzungs-, Benutzer- und Verschlüsselungstests, Migrationsabgleich und Ruff bestanden. SEC-07.4: 10/10 neue Login-/Richtlinientests und breiter Backendlauf 559/559 über explizite Module (`orders.tests` statt `orders`), Ruff bestanden.
 - **Risiken:** Frontend und API müssen produktiv unter derselben Herkunft laufen; Entwicklungsserver nutzen dieselbe Site (`localhost`) mit CORS-Credentials und vertrauenswürdigen CSRF-Ursprüngen. Externe API-Programme verlieren nach SEC-07.7 ihren Zugang (Produktentscheidung). Bis SEC-07.7 bestehen JWT und Sitzung parallel. `dump.rdb` bleibt unangetastet.
-- **Nächster Schritt:** `SEC-07.4` zweistufiger Login und MFA-Pflicht.
+- **Nächster Schritt:** `SEC-07.5` OIDC.
 
 ### SEC-08: Sichere Tabellenexporte
 
@@ -1025,3 +1025,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-07.2 | `SessionPolicyMiddleware` beendet Sitzungen serverseitig nach Inaktivität (Standard 30 min, Grenzen 5 min–4 h) und Maximaldauer (Standard 12 h, Grenzen 1–24 h); Werte über `SESSION_IDLE_TIMEOUT_SECONDS`/`SESSION_MAX_AGE_SECONDS`, später CFG-01. Statusabfrage liefert Ablaufzeiten und zählt nicht als Aktivität. Aktivität wird höchstens alle 30 s geschrieben. Gilt auch für Django-Admin-Sitzungen. | 4/4 neue Ablauftests (Ablaufzeiten, Inaktivität mit Löschung, Statusabfrage verlängert nicht, Maximaldauer trotz Aktivität) und 47/47 bestehende Sitzungs-/Benutzer-/Admin-Tests, Ruff bestanden. | Dieser Commit: `feat(SEC-07.2): enforce idle and absolute session lifetime` | SEC-07.3 MFA-Grundlage. |
 
 | 05.10.2026 | SEC-07.3 | TOTP nach RFC 6238 ohne neue Abhängigkeit (SHA-1, 6 Ziffern, 30 s, ±1 Schritt) mit gesperrter Replay-Prüfung je Benutzer. Geheimnis über `StrictEncryptedCharField`, in Schlüsselrotation aufgenommen. Zehn einmalige Wiederherstellungscodes (60 Bit) nur als gesalzener SHA-256-Wert. Endpunkte für Status, Einrichtung, Bestätigung, Codeerneuerung, Deaktivierung und erneute Bestätigung (Passwort und, falls eingerichtet, zweiter Faktor; SSO-Konten ohne MFA müssen sich neu anmelden). Einrichtung, Codeerneuerung und Deaktivierung verlangen Bestätigung ≤ 5 min; jeder Login zählt als Bestätigung. Passwortwechsel behält die aktuelle Sitzung und beendet alle anderen. Migration `users.0009`. | 11/11 neue MFA-Tests (RFC-Testvektoren, verschlüsselte Ablage, gehashte Codes, falscher Code, Bestätigungsalter, Replay, Einmalcodes, Passwort+Faktor, CSRF, Passwortwechsel) und 47/47 angrenzende Tests, `makemigrations --check` und Ruff bestanden. MFA wird noch nicht beim Login verlangt (SEC-07.4). | Dieser Commit: `feat(SEC-07.3): add TOTP enrolment, recovery codes and reauthentication` | SEC-07.4 MFA im Login und Pflichtrichtlinie. |
+
+| 05.10.2026 | SEC-07.4 | Login mit eingerichtetem Authenticator parkt den Benutzer in einer rotierten, nicht angemeldeten Sitzung; `/auth/session/mfa/` schließt mit TOTP oder Wiederherstellungscode ab (CSRF, 5 Versuche, 5 min). Pflicht für Superuser, Staff, Konto-/Rollen-/Abteilungs-/Sicherheitseinstellungsrechte (global oder abteilungsbezogen) und Rollenvorlagen Jugendwart, Abteilungsjugendwart, Systemadministration. `MFAPolicyMiddleware`: Sitzungen ohne zweiten Faktor bei vorhandenem Authenticator werden beendet; Pflichtkonten ohne Authenticator erreichen nur Einrichtung, Status, Profil und Logout. Deaktivierung bei Pflicht gesperrt. Django-Admin-, `/accounts/login/`- und `/api-auth/login/`-Formulare leiten auf den zentralen Login (sicheres relatives `next`); übrige ungenutzte `django.contrib.auth`-Formularpfade entfernt. | 10/10 neue Tests (kein Zugriff nach Passwort allein, TOTP-Abschluss mit CSRF-Rotation, Wiederherstellungscode einmalig, CSRF, Versuchsgrenze, Ablauf, Sitzung ohne Faktor beendet, Pflichtermittlung global/abteilungsbezogen/Rollenvorlage/Staff, Einrichtungssperre inkl. Admin, Formular-Umleitung). Breiter Backendlauf 559/559 und Ruff bestanden. Bis SEC-07.7 umgehen JWT-Anmeldungen die MFA-Pflicht weiterhin. | Dieser Commit: `feat(SEC-07.4): require second factor at login for privileged accounts` | SEC-07.5 OIDC. |

@@ -11,6 +11,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from users import mfa
+from users.mfa_policy import mfa_required
 from users.models import MFADevice, MFARecoveryCode
 
 
@@ -40,6 +41,7 @@ def mfa_status(user):
         "enabled": bool(device and device.is_confirmed),
         "setup_pending": bool(device and not device.is_confirmed),
         "recovery_codes_remaining": MFARecoveryCode.objects.filter(user=user, used_at__isnull=True).count(),
+        "required": mfa_required(user),
     }
 
 
@@ -104,6 +106,11 @@ class MFADisableView(SessionUserView):
     permission_classes = [IsAuthenticated, RecentReauthentication]
 
     def post(self, request):
+        if mfa_required(request.user):
+            return Response(
+                {"detail": "MFA ist für die Rollen dieses Kontos verpflichtend.", "code": "mfa_mandatory"},
+                status=status.HTTP_409_CONFLICT,
+            )
         with transaction.atomic():
             MFADevice.objects.filter(user=request.user).delete()
             MFARecoveryCode.objects.filter(user=request.user).delete()

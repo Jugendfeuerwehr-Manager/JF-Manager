@@ -1,9 +1,11 @@
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
 from django.contrib import admin
+from django.http import HttpResponseRedirect
 from django.urls import include, path, re_path
+from django.utils.http import url_has_allowed_host_and_scheme
 
 # Swagger/OpenAPI documentation
 from drf_spectacular.views import (
@@ -36,7 +38,7 @@ from users.oidc_views import (
     OIDCPublicConfigView,
     OIDCTokenExchangeView,
 )
-from users.session_views import SessionLoginView, SessionLogoutView, SessionStatusView
+from users.session_views import SessionLoginView, SessionLogoutView, SessionMFAView, SessionStatusView
 
 # Import custom email admin
 from .api_views import AppSettingsView, PublicBrandingView
@@ -48,12 +50,12 @@ api_patterns = [
     path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
     path("api/v1/push/", include("notifications.urls")),
     path("api/v1/", include(api.urls)),
-    path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("api-token-auth/", SecureObtainAuthToken.as_view()),
     # Browser session endpoints
     path("api/v1/auth/session/", SessionStatusView.as_view(), name="session-status"),
     path("api/v1/auth/session/login/", SessionLoginView.as_view(), name="session-login"),
     path("api/v1/auth/session/logout/", SessionLogoutView.as_view(), name="session-logout"),
+    path("api/v1/auth/session/mfa/", SessionMFAView.as_view(), name="session-mfa"),
     path("api/v1/auth/reauthenticate/", ReauthenticateView.as_view(), name="reauthenticate"),
     path("api/v1/auth/mfa/", MFAStatusView.as_view(), name="mfa-status"),
     path("api/v1/auth/mfa/setup/", MFASetupView.as_view(), name="mfa-setup"),
@@ -81,10 +83,22 @@ api_patterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
+
+def central_login_redirect(request, extra_context=None):
+    """Every login form uses the SPA so throttling and MFA apply uniformly."""
+    next_path = request.GET.get("next", "/admin/")
+    if not url_has_allowed_host_and_scheme(next_path, allowed_hosts=None) or not next_path.startswith("/"):
+        next_path = "/admin/"
+    return HttpResponseRedirect(f"{settings.FRONTEND_URL.rstrip('/')}/login?{urlencode({'next': next_path})}")
+
+
+admin.site.login = central_login_redirect
+
 # Authentication & Admin URLs
 auth_patterns = [
     path("admin/", admin.site.urls),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("accounts/login/", central_login_redirect),
+    path("api-auth/login/", central_login_redirect),
 ]
 
 # Health check URLs
