@@ -106,6 +106,7 @@ class SettingsViewSet(viewsets.ViewSet):
         "admin_group",
         "require_group_mapping",
         "hide_local_login",
+        "trust_provider_mfa",
     ]
 
     def _get_category_settings(self, category):

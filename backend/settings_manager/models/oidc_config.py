@@ -109,6 +109,16 @@ class OIDCConfig(models.Model):
         ),
     )
 
+    trust_provider_mfa = models.BooleanField(
+        default=False,
+        verbose_name="MFA des Providers anerkennen",
+        help_text=(
+            "Nur aktivieren, wenn der Provider einen zweiten Faktor erzwingt und dies im ID-Token "
+            "per 'amr'-Claim (z. B. 'mfa', 'otp', 'hwk') bestätigt. Sonst verlangt JF-Manager "
+            "für MFA-pflichtige Konten zusätzlich den eigenen zweiten Faktor."
+        ),
+    )
+
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

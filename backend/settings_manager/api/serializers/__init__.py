@@ -204,6 +204,7 @@ class OIDCSettingsSerializer(serializers.Serializer):
     admin_group = serializers.CharField(required=False, allow_blank=True, max_length=255)
     require_group_mapping = serializers.BooleanField(required=False)
     hide_local_login = serializers.BooleanField(required=False)
+    trust_provider_mfa = serializers.BooleanField(required=False)
 
 
 class OIDCDiscoveryResultSerializer(serializers.Serializer):

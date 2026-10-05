@@ -36,7 +36,6 @@ from users.oidc_views import (
     OIDCCallbackView,
     OIDCLoginView,
     OIDCPublicConfigView,
-    OIDCTokenExchangeView,
 )
 from users.session_views import SessionLoginView, SessionLogoutView, SessionMFAView, SessionStatusView
 
@@ -70,7 +69,6 @@ api_patterns = [
     path("api/v1/auth/oidc/public-config/", OIDCPublicConfigView.as_view(), name="oidc-public-config"),
     path("api/v1/auth/oidc/login/", OIDCLoginView.as_view(), name="oidc-login"),
     path("api/v1/auth/oidc/callback/", OIDCCallbackView.as_view(), name="oidc-callback"),
-    path("api/v1/auth/oidc/exchange/", OIDCTokenExchangeView.as_view(), name="oidc-exchange"),
     # User info
     path("api/v1/userinfo/", AppSettingsView.as_view(), name="userinfo"),
     # App settings
