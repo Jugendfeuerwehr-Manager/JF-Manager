@@ -138,7 +138,10 @@ class MemberListDepartmentScopeTests(APITestCase):
             url = preview_url(self.attachment_b)
             self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
             self.client.force_authenticate(user=None)
-            self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
+            self.assertIn(
+                self.client.get(url).status_code,
+                (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+            )
 
     def test_unassigned_legacy_list_is_hidden_from_non_superusers(self):
         legacy = MemberList.objects.create(name="Legacy unresolved")

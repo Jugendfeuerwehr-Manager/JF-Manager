@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-08.3 Exportabnahme; SEC-08 abgeschlossen. |
+| Letzter Checkpoint | 05.10.2026: SEC-05.5b korrigiert veraltete anonyme Vorschauerwartung. |
 | Aktuelles Paket | SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-07 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `4ca9dee` (SEC-08.2); SEC-08.3 ist dieser Commit. |
+| Letzter Roadmap-Commit | `4cd89bc` (SEC-08.3); SEC-05.5b ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | Veraltete Testerwartung SEC-05.5b und Ruff-Befund SEC-06.3a beheben, danach SEC-07-Anmeldung und SEC-09-Rest. |
+| Nächster konkreter Schritt | Ruff-Befund SEC-06.3a beheben, danach SEC-07-Anmeldung und SEC-09-Rest. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -779,6 +779,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-05.4`: Gemeinsame Inhalts-/Größenprüfung und atomare Anzahl-/Summengrenzen an Uploadpfaden.
   - `SEC-05.5`: Gebündelte Medienabnahme und Upgradehinweise (Proxycache leeren, alte Links ungültig).
     - `SEC-05.5a`: Qualifikations-/Sonderaufgabenanhänge ebenfalls über ihre Eigentümeransichten autorisieren; beim Exportquercheck ergänzend gefunden.
+    - `SEC-05.5b`: Veraltete SEC-03-Erwartung (anonyme signierte Listenvorschau 404) an den SEC-05-Vertrag 401/403 angleichen; im breiten Lauf zu SEC-08.3 gefunden, keine Codeänderung.
 - **Branch:** `feat/security-roles-training-operations`.
 - **Prüfungen:** Gebündelt 40/43 Backendtests bestanden, drei E-Mail-Fälle korrigiert (Fehlerformat und echter PNG-Fixture), gezielter Nachlauf 8/8 bestanden. Typecheck sowie 5/5 bestehende und 3/3 neue Frontendtests bestanden; Ruff bestanden. Kein weiterer breiter Wiederholungslauf. Nginx-Laufzeit-/Browserprüfung nicht ausgeführt.
 - **Risiken / Checkpoint:** Upgrade nach `docs/operations/private-media-upgrade.md`: Proxy-/CDN-Caches löschen und eigene Upload-Aliase sperren. Bestandsdateien bleiben an Ort und Stelle; neue Uploads werden geprüft. Benutzeravatar-Speicherung von veralteter StringIO-/image-Implementierung auf validierte Normalisierung korrigiert. Quoten sperren Eigentümerzeilen; PostgreSQL-Konkurrenzprüfung gemeinsam mit SEC-09 offen. `dump.rdb` bleibt unangetastet.
@@ -990,3 +991,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-08.2 | Erfolgreiche/abgewiesene XLSX-Aktionen protokollieren reine Sicherheitsmetadaten; Exportantworten no-store. Konfigurierbare 180-Tage-Aufbewahrung mit Löschbefehl. UI zeigt Excel-Aktion nach Exportrecht. | Migrationsdatei erzeugt und Diff geprüft; Tests/Typecheck am Paketende nicht ausgeführt. | Dieser Commit: `feat(SEC-08.2): audit exports and expose permission guards` | SEC-08.3 Sammelabnahme. |
 
 | 05.10.2026 | SEC-08.3 | Übernahme durch Claude nach Abgleich von Roadmap, Git und uncommittetem Codex-Stand. Exportregressionen (Formel-/Typzellen, Exportrecht, Elternspalten, Audit, Aufbewahrung), Qualifikationsanhang-Vorschau, Exportanleitung und Importordnung ergänzt. | 9/9 gezielte Backendtests, Migrationsabgleich, Ruff (Exportdateien), Typecheck und 86/86 Frontendtests bestanden. Breiter Backendlauf 549/551: zwei exportfremde Befunde (SEC-05.5b-Testerwartung, `orders`-Discovery-Zirkelimport). | Dieser Commit: `test(SEC-08.3): accept safe export contract` | SEC-05.5b und SEC-06.3a, dann SEC-07. |
+
+| 05.10.2026 | SEC-05.5b | Anonyme signierte Vorschau fremder Listenanhänge antwortet seit SEC-05.1 mit 401 statt 404; Test erwartete noch 404. Erwartung an den Medienvertrag (401/403 wie `test_private_media`) angeglichen; abteilungsfremder angemeldeter Zugriff bleibt 404. | 40/40 Listen-/Medien-/Anhangtests und Ruff bestanden. | Dieser Commit: `test(SEC-05.5b): align list preview test with private media contract` | SEC-06.3a Ruff-Befund. |
