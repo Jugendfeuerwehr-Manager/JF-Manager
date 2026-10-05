@@ -12,6 +12,7 @@ Subclasses mozilla_django_oidc.auth.OIDCAuthenticationBackend to:
 
 import logging
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
@@ -25,6 +26,12 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
     Returns None from authenticate() when OIDC is disabled so Django falls
     through to the next backend (ModelBackend / local login).
     """
+
+    def __init__(self, *args, **kwargs):
+        # Django instantiates every backend for each permission check. Provider
+        # settings, including the encrypted client secret, are read only while a
+        # login is actually processed (get_settings), never eagerly here.
+        self.UserModel = get_user_model()
 
     # ---------------------------------------------------------------------------
     # Config helpers
@@ -64,6 +71,10 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
     # ---------------------------------------------------------------------------
 
     def authenticate(self, request, **kwargs):
+        # Only the OIDC callback supplies verified claims; password logins pass
+        # through without touching the OIDC configuration or its secret.
+        if not getattr(request, "_oidc_claims", None):
+            return None
         config = self._get_config()
         if not config or not config.enabled:
             logger.debug("OIDC is disabled — skipping JFManagerOIDCBackend")

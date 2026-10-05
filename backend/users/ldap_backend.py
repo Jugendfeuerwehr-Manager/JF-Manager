@@ -1,9 +1,14 @@
+import logging
+
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django_auth_ldap.backend import LDAPBackend
 from django_auth_ldap.config import ActiveDirectoryGroupType, GroupOfNamesType, LDAPSearch
 
 from settings_manager.models import LDAPConfig
 from users.ldap_tls import apply_ldap_tls_options
+
+logger = logging.getLogger("users.ldap_backend")
 
 
 def _set_setting(name, value):
@@ -18,7 +23,8 @@ class ConfigurableLDAPBackend(LDAPBackend):
     """
 
     def _active_config(self):
-        return LDAPConfig.objects.order_by("id").first()
+        # The bind password is decrypted only once LDAP is known to be enabled.
+        return LDAPConfig.objects.order_by("id").defer("bind_password").first()
 
     def _configure_runtime(self):
         config = self._active_config()
@@ -26,6 +32,13 @@ class ConfigurableLDAPBackend(LDAPBackend):
             return False
 
         if not config.server_uri or not config.user_search_base_dn or not config.user_search_filter:
+            return False
+
+        try:
+            bind_password = config.bind_password or ""
+        except ImproperlyConfigured:
+            # Fail closed for LDAP only; local accounts must still be able to sign in.
+            logger.error("LDAP-Anmeldung deaktiviert: Bind-Passwort ist mit dem Schlüsselring nicht lesbar.")
             return False
 
         try:
@@ -41,7 +54,7 @@ class ConfigurableLDAPBackend(LDAPBackend):
         _set_setting("AUTH_LDAP_SERVER_URI", config.server_uri)
         _set_setting("AUTH_LDAP_START_TLS", config.start_tls)
         _set_setting("AUTH_LDAP_BIND_DN", config.bind_dn)
-        _set_setting("AUTH_LDAP_BIND_PASSWORD", config.bind_password or "")
+        _set_setting("AUTH_LDAP_BIND_PASSWORD", bind_password)
         _set_setting("AUTH_LDAP_ALWAYS_UPDATE_USER", True)
 
         _set_setting(

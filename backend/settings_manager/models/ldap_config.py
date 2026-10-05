@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models, transaction
 
 from jf_manager_backend.encrypted_fields import StrictEncryptedCharField as EncryptedCharField
 
@@ -122,4 +122,9 @@ class LDAPConfig(models.Model):
         config = cls.objects.order_by("id").first()
         if config:
             return config
-        return cls.objects.create()
+        # Parallel first requests race to create the singleton; the loser reads it.
+        try:
+            with transaction.atomic():
+                return cls.objects.create(pk=1)
+        except (IntegrityError, ValidationError):
+            return cls.objects.get(pk=1)

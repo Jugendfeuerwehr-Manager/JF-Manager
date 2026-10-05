@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-09.5c Buchungs-Clients senden stabile Idempotenzkennungen; Aufbewahrung gespeicherter Antworten. |
+| Letzter Checkpoint | 05.10.2026: SEC-06.4 unlesbare Identitätsanbieter-Geheimnisse brechen lokale Anmeldung und Rechteprüfungen nicht mehr. |
 | Aktuelles Paket | SEC-03 bis SEC-08 abgeschlossen; SEC-09-Rest offen. Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `c849fa0` (DES-01.6, Design-Session); SEC-09.5c ist dieser Commit. |
+| Letzter Roadmap-Commit | `b763ec0` (SEC-09.5c); SEC-06.4 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-09.6 PostgreSQL-Abnahme (Konkurrenz, Rollback, Wiederholung); danach SEC-06.4. |
+| Nächster konkreter Schritt | SEC-09.6 Deadlock-Fix für parallele Sammelausgaben und PostgreSQL-Abnahme. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -801,6 +801,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-06.2`: Verschlüsseltes Sync-JSON-Feld mit Vorwärtsmigration und kontrollierter Umverschlüsselung für Sync/LDAP/OIDC implementieren.
   - `SEC-06.3`: Gebündelte Prüfungen für Start, Rohdatenbank, Migration, falsche Schlüssel und Rotation; Betriebsanleitung.
     - `SEC-06.3a`: Schlüsselimport in `settings.py` an den Dateianfang verschieben (Ruff E402, CI-Lint); Verhalten unverändert.
+    - `SEC-06.4`: Anmelde-Backends lesen Konfiguration und Geheimnisse nur bei tatsächlicher LDAP-/OIDC-Anmeldung; unlesbare Geheimnisse deaktivieren nur den betroffenen Anbieter; Einzelkonfigurationen werden wettlaufsicher angelegt. Gefunden durch Design-Session (lokaler Login 500) und SEC-09.6-PostgreSQL-Lauf.
 - **Inventar:** `FIELD_ENCRYPTION_KEY` hatte einen eingebauten konstanten Ersatz; `SyncJob.credentials` war JSON-Klartext. LDAP bind_password und OIDC client_secret sind bereits verschlüsselte Textfelder. Die Bibliothek toleriert nicht entschlüsselbare Werte; Rotation muss deshalb explizit validieren.
 - **Prüfungen:** 36/36 gebündelte Sync-/Verschlüsselungs-/Benutzersicherheitstests, Ruff und Migrationsabgleich bestanden. Migration, falscher Schlüssel und Rotationsrollback mit fiktiven Geheimnissen geprüft. CI erzeugt flüchtigen individuellen Testschlüssel.
 - **Risiken / Checkpoint:** Produktionsschlüssel und vorhandene verschlüsselte Daten nicht verändern. Bekannter Alt-Ersatzschlüssel nur aus Altinstallation explizit für einmalige Migration bereitstellen; nie als automatischer Fallback. `dump.rdb` bleibt unangetastet.
@@ -1116,3 +1117,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | DES-01.6b | Einstellung „Farbschema“: `general__brand_color` (dynamic_preferences, keine Migration, Standard `#b91c1c`), Serializer akzeptiert nur `#rrggbb` und speichert klein; öffentliches Branding liefert nur geprüfte Werte, sonst den Standard. Neuer Baustein `ColorSchemePicker` (fünf Schemata, eigene Farbe per Farbwähler/Hex, Vorschau hell/dunkel, Hinweis bei Kontrastanpassung) in den allgemeinen Einstellungen; Farbe wird erst nach erfolgreichem Speichern angewendet. Verfrühte Erfolgsmeldung im Formular entfernt (Rückmeldung kommt nach Serverantwort aus `GeneralSection`). CFG-01-Katalog um Farbschema ergänzt. | 6/6 Backend- und 4/4 neue Frontendtests, Ruff, Typecheck, ESLint und 155/155 Frontendtests bestanden; Sichtprüfung gegen Mock. Kein Lauf gegen echtes Backend mit Konto. | Dieser Commit: `feat(DES-01.6b): let administrators choose the colour scheme` | DES-01.7 Mitglied-Detail und Formular. |
 
 | 05.10.2026 | SEC-09.5c | Oberfläche: `withIdempotencyKey` vergibt je identischer Anfrage (Methode, Pfad, Inhalt) eine Kennung, die bis zu einer eindeutigen Serverantwort gleich bleibt. Nach Netzfehler, Timeout oder 5xx wird sie wiederverwendet, nach Erfolg oder 4xx erneuert; parallele Doppelklicks teilen sie. Angebunden: Einzelbuchung, Sammelausgabe, Änderung/Status/Sammelstatus von Bestellpositionen (Wareneingang). Backend: `BOOKING_REPLAY_RETENTION_DAYS` (30) und `purge_booking_requests`. Betriebsanleitung `docs/operations/inventory-ledger.md`. | 4/4 neue Frontend-Idempotenztests, 159/159 Frontendtests gesamt, Typecheck, ESLint; 1 neuer Aufbewahrungstest, 23/23 Ledger-/Bestelltests und Ruff bestanden. Manueller Browserlauf nicht ausgeführt. | Dieser Commit: `feat(SEC-09.5c): send stable idempotency keys from booking clients` | SEC-09.6 PostgreSQL-Abnahme. |
+
+| 05.10.2026 | SEC-06.4 | Ursache: Django instanziiert für jede Rechteprüfung alle Anmelde-Backends; das OIDC-Backend las im Konstruktor die Konfiguration samt Entschlüsselung des Client-Secrets, und beide Backends lasen ihre Geheimnisse auch bei normalen Passwort-Logins. Folge: zusätzliche Abfragen je Rechteprüfung, und bei unlesbarer Chiffre 500 für alle Anfragen bzw. Logins. Korrektur: OIDC-Backend liest Konfiguration nur bei vorliegenden, bereits verifizierten Claims; LDAP lädt das Bind-Passwort erst bei aktivem, vollständigem LDAP und deaktiviert bei unlesbarer Chiffre nur LDAP (Protokoll ohne Geheimnis); öffentliche OIDC-Konfiguration liest das Secret nicht; `get_or_create_default` für OIDC/LDAP fängt parallele Erstanlage ab. | 5/5 neue Resilienztests (Rechteprüfung ohne Konfigurationszugriff, LDAP-Chiffre unlesbar aktiv/inaktiv, OIDC-Chiffre unlesbar, Singleton-Wettlauf) und 56/56 angrenzende OIDC-/LDAP-/MFA-/Benutzertests, Ruff bestanden. | Dieser Commit: `fix(SEC-06.4): keep local sign-in working when provider secrets are unreadable` | SEC-09.6. |

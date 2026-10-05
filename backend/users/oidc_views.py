@@ -243,7 +243,12 @@ class OIDCPublicConfigView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        config = _get_oidc_config()
+        # Public fields only; the client secret is not even decrypted here.
+        from settings_manager.models import OIDCConfig
+
+        config = OIDCConfig.objects.filter(pk=1).only("enabled", "provider_name", "hide_local_login").first()
+        if config is None:
+            return Response({"enabled": False, "provider_name": "SSO", "hide_local_login": False})
         return Response(
             {
                 "enabled": config.enabled,
