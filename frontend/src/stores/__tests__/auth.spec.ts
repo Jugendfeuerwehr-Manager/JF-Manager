@@ -5,6 +5,7 @@ import { authApi } from '@/api/auth'
 import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import { hardNavigate } from '@/utils/navigation'
+import router from '@/router'
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 
 const mockFetchDepartments = vi.fn().mockResolvedValue(undefined)
@@ -14,9 +15,11 @@ const mockClearDepartments = vi.fn()
 // Mock API modules
 vi.mock('@/api/auth')
 vi.mock('@/api/user')
+const mockRoute = vi.hoisted(() => ({ value: { path: '/' } }))
 vi.mock('@/router', () => ({
   default: {
-    push: vi.fn()
+    push: vi.fn(),
+    currentRoute: mockRoute,
   }
 }))
 vi.mock('@/utils/navigation', () => ({ hardNavigate: vi.fn() }))
@@ -298,6 +301,42 @@ describe('Auth Store', () => {
         expect(store.user).toBeNull()
         expect(hardNavigate).toHaveBeenCalledTimes(1)
         expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1')
+      })
+    })
+
+    describe('mandatory MFA setup', () => {
+      async function signedInStore() {
+        vi.mocked(authApi.session).mockResolvedValue(createMockAxiosResponse({ authenticated: true }))
+        vi.mocked(userApi.me).mockResolvedValue(createMockAxiosResponse(createMockUser({ is_staff: true })))
+        const store = useAuthStore()
+        await store.initialize()
+        return store
+      }
+
+      async function failWithSetupRequired(times: number) {
+        const { default: client } = await import('@/api')
+        const { AxiosError, AxiosHeaders } = await import('axios')
+        client.defaults.adapter = async config => {
+          throw new AxiosError('forbidden', 'ERR_BAD_REQUEST', config, undefined, {
+            status: 403, statusText: 'Forbidden', data: { code: 'mfa_setup_required' }, headers: new AxiosHeaders(), config,
+          })
+        }
+        for (let index = 0; index < times; index += 1) await client.get('/members/').catch(() => undefined)
+      }
+
+      it('redirects to the setup only once for many rejected requests', async () => {
+        mockRoute.value = { path: '/members' }
+        const store = await signedInStore()
+        await failWithSetupRequired(5)
+        expect(store.mfaSetupRequired).toBe(true)
+        expect(router.push).toHaveBeenCalledTimes(1)
+      })
+
+      it('does not redirect again from the setup page', async () => {
+        mockRoute.value = { path: '/profile' }
+        await signedInStore()
+        await failWithSetupRequired(3)
+        expect(router.push).not.toHaveBeenCalled()
       })
     })
   })

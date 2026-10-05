@@ -396,8 +396,9 @@ router.beforeEach(async (to, from, next) => {
     // Missing permission for this route → redirect to dashboard
     next('/')
   } else {
-    // Load settings if authenticated and not already loaded
-    if (authStore.isAuthenticated && !settingsStore.general) {
+    // Load settings if authenticated and not already loaded. Accounts that must
+    // still set up MFA get 403 for everything except the setup itself.
+    if (authStore.isAuthenticated && !authStore.mfaSetupRequired && !settingsStore.general) {
       try {
         await settingsStore.fetchPermissions()
         if (settingsStore.canViewCategory('general')) {

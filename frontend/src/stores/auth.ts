@@ -11,6 +11,8 @@ import { useDepartmentsStore } from '@/stores/departments'
 
 // Credentials from the former JWT login; removed on every start.
 const LEGACY_STORAGE_KEYS = ['accessToken', 'refreshToken']
+// Only the most recently initialised store reacts to session problems (HMR, tests).
+let unsubscribeSessionProblems: (() => void) | null = null
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -212,11 +214,17 @@ export const useAuthStore = defineStore('auth', () => {
   function initialize() {
     if (!initializing) {
       LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
-      onSessionProblem(problem => {
+      unsubscribeSessionProblems?.()
+      unsubscribeSessionProblems = onSessionProblem(problem => {
         if (problem === 'expired') handleSessionExpired()
         else if (session.value) {
+          // Several requests may report this at once; redirect only once and
+          // never from the setup page itself (that would loop via the guard).
+          const alreadyKnown = session.value.mfa_setup_required
           session.value = { ...session.value, mfa_setup_required: true }
-          void router.push({ path: '/profile', query: { mfa: 'setup' } })
+          if (!alreadyKnown && router.currentRoute.value.path !== '/profile') {
+            void router.push({ path: '/profile', query: { mfa: 'setup' } })
+          }
         }
       })
       initializing = refreshSession().then(() => undefined).catch(() => {
