@@ -3,7 +3,7 @@
     <Toolbar class="topbar-menubar">
       <template #start>
         <router-link class="logo" to="/">
-          <i class="pi pi-shield"></i>
+          <span class="brand-mark" aria-hidden="true"><i class="pi pi-shield"></i></span>
           <span class="logo-text">{{ websiteTitle }}</span>
         </router-link>
       </template>
@@ -57,7 +57,7 @@
               size="normal"
             />
             <div class="user-info">
-              <span class="user-name">{{ authStore.user?.first_name || 'User' }}</span>
+              <span class="user-name">{{ authStore.user?.first_name || 'Benutzer' }}</span>
             </div>
             <i class="pi pi-angle-down"></i>
           </button>
@@ -127,61 +127,66 @@ const toggleUserMenu = (event: Event) => {
   left: 0;
   right: 0;
   z-index: 1000;
-  height: 70px;
-  background: var(--p-menu-background);
-  border-bottom: 1px solid var(--p-menu-border-color);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  height: 64px;
+  background: var(--jf-color-card);
+  border-bottom: 1px solid var(--jf-color-border);
 }
 
 .topbar-menubar {
   height: 100%;
   border: none;
+  border-radius: 0;
   background: transparent;
-  padding: 0 1.5rem;
+  padding: 0 var(--jf-space-3);
   width: 100%;
-  margin: 0 auto;
-}
-
-:deep(.p-menubar-root-list) {
-  gap: 0.25rem;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  cursor: pointer;
+  gap: var(--jf-space-1-5);
+  min-height: var(--jf-touch-target);
+  border-radius: var(--jf-radius-md);
   text-decoration: none;
-  gap: 0.75rem;
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 1.5rem;
+  color: var(--jf-color-text);
+  font-weight: var(--jf-weight-bold);
+  font-size: var(--jf-text-lg);
+  letter-spacing: -0.01em;
 }
 
-.logo i {
-  font-size: 2rem;
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-primary);
+  color: var(--jf-color-on-primary);
+  box-shadow: var(--jf-shadow-sm);
 }
 
-.logo-text {
-  display: inline;
+.brand-mark i {
+  font-size: 1.1rem;
 }
 
 .topbar-end {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--jf-space-1-5);
 }
 
 .theme-toggle {
   display: flex;
   align-items: center;
-  gap: 0.1rem;
-  border: 1px solid var(--p-content-border-color);
-  border-radius: var(--p-border-radius-md);
-  padding: 0.1rem;
+  gap: 2px;
+  border: 1px solid var(--jf-color-border);
+  border-radius: 999px;
+  padding: 2px;
 }
 
 .theme-btn-active {
-  background: var(--p-primary-50) !important;
+  background: var(--jf-color-selected) !important;
+  color: var(--jf-color-selected-text) !important;
 }
 
 .user-profile {
@@ -190,11 +195,12 @@ const toggleUserMenu = (event: Event) => {
   font: inherit;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-radius: var(--border-radius);
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  padding: var(--jf-space-0-5) var(--jf-space-1-5) var(--jf-space-0-5) var(--jf-space-0-5);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color var(--jf-duration);
 }
 
 .user-profile:hover {
@@ -202,31 +208,30 @@ const toggleUserMenu = (event: Event) => {
 }
 
 .user-avatar {
-  background: var(--primary-color);
-  color: white;
-  font-weight: 600;
+  background: var(--jf-color-text);
+  color: var(--jf-color-card);
+  font-weight: var(--jf-weight-semibold);
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  color: var(--text-color);
+  color: var(--jf-color-text);
 }
 
 .user-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-  line-height: 1.2;
+  font-weight: var(--jf-weight-semibold);
+  font-size: var(--jf-text-sm);
+  line-height: var(--jf-leading-tight);
 }
 
 .user-profile i {
-  color: var(--text-color-secondary);
-  margin-left: 0.5rem;
+  color: var(--jf-color-text-muted);
 }
 
 :deep(.user-menu) {
-  margin-top: 0.5rem;
+  margin-top: var(--jf-space-1);
 }
 
 @media print {

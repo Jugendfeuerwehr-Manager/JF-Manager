@@ -50,18 +50,21 @@ const visibleSections = computed(() => sections.map(section => ({ ...section, it
 function isActive(target: string) { return route.path === target || (target !== '/' && route.path.startsWith(`${target}/`)) }
 </script>
 <style scoped>
-.module-navigation { padding: 1rem .8rem; }
-.nav-search { display: flex; align-items: center; gap: .6rem; padding: .7rem; border: 1px solid var(--surface-border); border-radius: 8px; color: var(--text-color-secondary); margin-bottom: 1.5rem; }
-.nav-search input { background: transparent; border: 0; color: var(--text-color); width: 100%; min-width: 0; font: inherit; font-size: .85rem; }
-.nav-search:focus-within { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+.module-navigation { padding: var(--jf-space-2) var(--jf-space-1-5); }
+.nav-search { display: flex; align-items: center; gap: var(--jf-space-1); min-height: var(--jf-touch-target); padding: 0 var(--jf-space-1-5); border: 1px solid var(--p-form-field-border-color); border-radius: var(--jf-radius-md); background: var(--p-form-field-background); color: var(--jf-color-text-muted); margin-bottom: var(--jf-space-3); }
+.nav-search input { background: transparent; border: 0; color: var(--jf-color-text); width: 100%; min-width: 0; font: inherit; font-size: var(--jf-text-sm); }
+.nav-search input::placeholder { color: var(--p-form-field-placeholder-color); }
+.nav-search:focus-within { outline: var(--jf-focus-ring); outline-offset: 2px; }
 .nav-search input:focus { outline: 0; }
-.nav-section + .nav-section { margin-top: 1.3rem; }
-h2 { margin: 0 .7rem .5rem; color: var(--text-color-secondary); text-transform: uppercase; font-size: .67rem; letter-spacing: .1em; font-weight: 700; }
-.nav-link { display: flex; align-items: center; gap: .7rem; min-height: 42px; padding: .6rem .7rem; border-radius: 7px; text-decoration: none; color: var(--text-color); font-size: .86rem; border-left: 3px solid transparent; }
-.nav-link i { width: 18px; color: var(--text-color-secondary); }
+.nav-section + .nav-section { margin-top: var(--jf-space-3); }
+h2 { margin: 0 var(--jf-space-1-5) var(--jf-space-1); color: var(--jf-color-text-muted); text-transform: uppercase; font-size: var(--jf-text-xs); letter-spacing: 0.08em; font-weight: var(--jf-weight-bold); }
+.nav-link { position: relative; display: flex; align-items: center; gap: var(--jf-space-1-5); min-height: var(--jf-touch-target); padding: 0 var(--jf-space-1-5); border-radius: var(--jf-radius-md); text-decoration: none; color: var(--jf-color-text); font-size: var(--jf-text-sm); font-weight: var(--jf-weight-medium); transition: background-color var(--jf-duration); }
+.nav-link + .nav-link { margin-top: 2px; }
+.nav-link i { width: 18px; text-align: center; color: var(--jf-color-text-muted); }
 .nav-link:hover { background: var(--surface-hover); }
-.nav-link.active { background: var(--primary-50, #fff0f1); color: var(--primary-color); border-left-color: var(--primary-color); font-weight: 650; }
-.nav-link.active i { color: inherit; }
-.nav-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
-.nav-empty { color: var(--text-color-secondary); font-size: .85rem; padding: .5rem; }
+.nav-link.active { background: var(--jf-color-selected); color: var(--jf-color-selected-text); font-weight: var(--jf-weight-semibold); }
+.nav-link.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--jf-color-primary); }
+.nav-link.active i { color: var(--jf-color-primary); }
+.nav-link:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; }
+.nav-empty { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); padding: var(--jf-space-1); }
 </style>

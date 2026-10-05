@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
-| DES-01 | in Arbeit | Claude (Design-Session) | DES-01.1 Preset, Tokens und Kompatibilitätsschicht; nächster Schritt DES-01.2 App-Shell. |
+| DES-01 | in Arbeit | Claude (Design-Session) | DES-01.2 App-Shell mit mobilem Abteilungskontext; nächster Schritt DES-01.3 Zustandsbausteine. |
 | UX-01 | offen | — | Dashboard-Zusammenfassungen und Aufgaben. |
 | UX-02 | offen | — | Mitglieder-/Eltern-/Gruppenabläufe. |
 | UX-03 | offen | — | Listen- und Ereignisansichten. |
@@ -886,14 +886,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `DES-01.7`: Übungsplaner auf Tokens umstellen (nur Darstellung; Bearbeitungslogik bleibt TRAIN-01).
   - `DES-01.8`: Fest codierte Farben in übrigen Modulen durch Tokens ersetzen, soweit nicht fachlich (z. B. Gruppen-/Kategoriefarben).
   - `DES-01.9`: Abnahme in Breiten, Dunkelmodus, Tastatur und Zoom; Screenshots als Nachweis; Paketabschluss.
-- **Letzter dauerhafter Checkpoint:** DES-01.0 `fb855cd`; DES-01.1 mit diesem Commit.
+- **Letzter dauerhafter Checkpoint:** DES-01.1 `7643cfb`; DES-01.2 mit diesem Commit.
 - **Branch:** `wip/des-01` (Worktree), Integration nach `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** DES-01.0 `fb855cd` (Roadmap). DES-01.1: `frontend/src/theme/{palette,contrast,preset}.ts`, `frontend/src/theme/__tests__/theme.spec.ts`, `frontend/src/assets/tokens.css`, `frontend/src/assets/styles.css`, `frontend/src/main.ts`; dieser Commit: `feat(DES-01.1): add design tokens and Feuerwehr preset`.
-- **Umgesetzte Teilschritte:** `DES-01.0`, `DES-01.1`.
-- **Ausgeführte Prüfungen mit Ergebnis:** DES-01.0: Code-/Git-Abgleich bestanden. DES-01.1: 17/17 Theme-Tests (WCAG-AA-Kontrast für Text, Primärfarbe und Schrift auf Primärfarbe in Hell/Dunkel, 3:1-Rahmen für Formularfelder, Presetwerte, Altvariablen, keine externen Schriften), Typecheck, ESLint, Produktionsbuild und 106/106 Frontendtests bestanden. Visueller Browserlauf nicht ausgeführt (folgt in DES-01.9).
+- **Geänderte Dateien / Commit-Bezug:** DES-01.0 `fb855cd` (Roadmap). DES-01.1: `frontend/src/theme/{palette,contrast,preset}.ts`, `frontend/src/theme/__tests__/theme.spec.ts`, `frontend/src/assets/tokens.css`, `frontend/src/assets/styles.css`, `frontend/src/main.ts` in `7643cfb`. DES-01.2: `frontend/src/components/layout/{AppLayout,AppTopbar,ModuleNavigation}.vue`, neuer `AppLayout.spec.ts`, entfernte `AppSidebar.vue`, `frontend/src/components/departments/atoms/DepartmentSwitcher.vue` (kompakte Anzeige), `tokens.css` (`--jf-space-1-5`); dieser Commit: `feat(DES-01.2): rebuild app shell with visible department context`.
+- **Umgesetzte Teilschritte:** `DES-01.0` bis `DES-01.2`.
+- **Ausgeführte Prüfungen mit Ergebnis:** DES-01.0: Code-/Git-Abgleich bestanden. DES-01.1: 17/17 Theme-Tests (WCAG-AA-Kontrast für Text, Primärfarbe und Schrift auf Primärfarbe in Hell/Dunkel, 3:1-Rahmen für Formularfelder, Presetwerte, Altvariablen, keine externen Schriften), Typecheck, ESLint, Produktionsbuild und 106/106 Frontendtests bestanden. DES-01.2: 3/3 neue Layouttests (mobiler Abteilungskontext, dauerhafte Desktopnavigation, erhaltene Sitzungsablaufwarnung und Sprunglink), Typecheck, ESLint, Produktionsbuild und 109/109 Frontendtests bestanden. Sichtprüfung per Headless-Chrome gegen einen lokalen Mock mit fiktiven Daten (nur im temporären Arbeitsverzeichnis, nicht versioniert): Login hell/dunkel 1440 px, Mitgliederliste 1440 px hell/dunkel sowie 390/360 px, Dashboard 360 px. Kein Lauf gegen das echte Backend; Tastatur- und Zoomprüfung folgen in DES-01.9.
 - **Offene Fehler / Risiken:** Die Kompatibilitätsschicht korrigiert Altvariablen global; Komponenten, die helle Primitive wie `--surface-900` als Textfarbe oder feste Hexfarben verwenden, bleiben im Dunkelmodus bis DES-01.8 teils unpassend. Der Kontrasttest der Formularrahmen führte zu einer dunkleren Neutralstufe 400 (`#7d8899`). Parallele Sicherheits-Session ändert ebenfalls Roadmap-Kopf, Statustabelle und Journal; Konflikte beim Rebase nur in DES-01-Zeilen lösen. `frontend/vite.config.ts` ist im gemeinsamen Checkout uncommittiert geändert und gehört nicht zu DES-01. Visuelle Referenzentwürfe (DES-01.4) benötigen Nutzerfreigabe.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine. Fortsetzung im Worktree `../JF-Manager-des01`.
-- **Nächster konkreter Schritt:** `DES-01.2` App-Shell.
+- **Nächster konkreter Schritt:** `DES-01.3` Zustandsbausteine, danach `DES-01.4` Referenzentwürfe zur Nutzerabstimmung.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -1075,3 +1075,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | DES-01.0 | DES-01 parallel zur Sicherheitsarbeit übernommen. Aura-Preset, 96 Dateien mit undefinierten PrimeVue-3-Variablen, rund 200 feste Hexfarben, nicht ausgelieferte Schrift und ungenutzte Seitenleiste inventarisiert; Abnahme, Dateiverantwortung und Teilschritte DES-01.1 bis DES-01.9 festgelegt. | Code-/Git-Abgleich bestanden; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(DES-01.0): define design system contract` | DES-01.1 Tokens und Preset. |
 
 | 05.10.2026 | DES-01.1 | Eigenes PrimeVue-Preset (Feuerwehrrot `#B91C1C`, neutrale Skala mit Grund `#F5F7FA` und Text `#172033`, 8/12-px-Rundungen, 2-px-Fokusring) aus einer gemeinsamen Palette. `tokens.css` mit Abstands-, Schrift-, Schatten- und Interaktionstokens; PrimeVue-3-Variablen und `--p-surface-ground` auf das Preset abgebildet. Systemschriften statt nicht ausgelieferter `Inter`, globale Fokusanzeige, `prefers-reduced-motion`, 44-px-Bedienelemente bei Touch. | 17/17 Theme-Tests inkl. WCAG-Kontrast, Typecheck, ESLint, Produktionsbuild und 106/106 Frontendtests bestanden. Visueller Browserlauf nicht ausgeführt. | Dieser Commit: `feat(DES-01.1): add design tokens and Feuerwehr preset` | DES-01.2 App-Shell. |
+
+| 05.10.2026 | DES-01.2 | App-Shell auf Tokens umgestellt: 64-px-Topbar mit Markenzeichen, 248-px-Navigation mit 44-px-Einträgen und deutlichem Aktivzustand, Suchfeld als Formularfeld. Mobil ersetzt der Abteilungswechsler den Titel in der Leiste (Kürzel zuerst, voller Name per `aria-label`); Modulknopf als 44-px-Symbol, untere Leiste mit größerer Schrift. Sitzungsablaufwarnung, Logout und Sprunglink unverändert erhalten. Ungenutzte `AppSidebar.vue` entfernt. | 3/3 neue Layouttests, Typecheck, ESLint, Build und 109/109 Frontendtests bestanden. Sichtprüfung gegen lokalen Mock bei 1440/390/360 px hell und dunkel; kein Lauf gegen echtes Backend. | Dieser Commit: `feat(DES-01.2): rebuild app shell with visible department context` | DES-01.3 Zustandsbausteine. |
