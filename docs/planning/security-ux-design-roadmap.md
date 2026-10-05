@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-04.4b erhält sichere Mailformatierung und ergänzt atomare Altinhaltsbereinigung. |
-| Aktuelles Paket | SEC-03 abgeschlossen; SEC-04 bis SEC-04.4b implementiert; SEC-04.4c Paketabnahme folgt. SEC-05 bis SEC-08 und SEC-09-Rest offen. |
-| Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 05.10.2026: SEC-04.4c mit 32 Backend- und fünf Frontendtests abgenommen; SEC-03 und SEC-04 abgeschlossen. |
+| Aktuelles Paket | SEC-03 und SEC-04 abgeschlossen; SEC-05 bis SEC-08 und SEC-09-Rest offen. |
+| Umsetzungsstatus | EXEC-01, SEC-03 und SEC-04 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `1d30cab` (SEC-04.4a); SEC-04.4b ist dieser Commit. |
+| Letzter Roadmap-Commit | `88204e9` (SEC-04.4b); SEC-04.4c ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-04.4c gebündelte HTML-Paketabnahme. |
+| Nächster konkreter Schritt | SEC-05 Medieninventar und private Auslieferung. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -536,7 +536,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
-| SEC-04 | in Arbeit | Codex | HTML-Verträge und Altinhaltsbefehl implementiert; Paketabnahme offen. |
+| SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
@@ -740,7 +740,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-04: Sichere HTML-Ausgabe und Rich Text
 
-- **Status:** in Arbeit; Pfade und Abnahme in `SEC-04.0` festgelegt.
+- **Status:** abgeschlossen in `SEC-04.4c`; produktive Altinhaltsbereinigung beim Update ausführen.
 - **Verantwortlich:** Codex.
 - **Abhängigkeiten:** SEC-01/02 begrenzen Sichtbarkeit und Schreibzugriffe; SEC-05 schützt Anhänge. E-Mail- und Trainingsansichten behalten ihre fachlichen Abläufe. Die Serverbereinigung muss vor Versand und Speicherung wirken; die Browserbereinigung schützt auch vorhandene Inhalte.
 - **Ziel und Abnahme:** Personenbezogene Textplatzhalter werden als Text in HTML eingesetzt. Erlaubter Rich Text behält sichere Formatierung und Links, während Skripte, Eventattribute, gefährliche URLs, SVG/iframe und CSS-Ausführung entfernt werden. Jede dynamische HTML-Ausgabe im Frontend läuft über eine gemeinsame DOMPurify-Komponente; E-Mail-Vorschau führt keine Skripte im Anwendungskontext aus. Neue und bestehende Inhalte, Namen, Signaturen, E-Mail-Vorlagen und Ausbildungsbausteine sind mit fiktiven XSS-Eingaben geprüft.
@@ -760,10 +760,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
     - `SEC-04.4b`: Sichere Layoutformatierung erhalten und persistente Altinhalte kontrolliert migrieren.
     - `SEC-04.4c`: Gebündelte Paketabnahme einschließlich Vorschau und Altdaten.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-04.1a: 0/2 neue E-Mail-Regressionen erwartungsgemäß fehlgeschlagen. SEC-04.1b: 0/1 Frontend-Regressionsfall erwartungsgemäß fehlgeschlagen. SEC-04.2a: 16/16 gezielte E-Mail-/Rechte-Tests. SEC-04.2b: 30/30 angrenzende Trainingstests und anschließend 3/3 gezielte HTML-/Importtests bestanden; Ruff bestanden. SEC-04.2c: 10/11 kombinierte Tests bestanden; bestehender Workflowtest wegen Klein-/Großschreibung der Statuscodes fehlgeschlagen, alle drei neuen HTML-Tests bestanden. Breite Suite nicht ausgeführt.
+- **Ausgeführte Prüfungen mit Ergebnis:** SEC-04.4c: 32/32 gebündelte Backendtests, 5/5 Frontendtests und Typecheck bestanden. Bestehende Workflow-Testwerte an die bereits verwendeten Großbuchstaben angepasst. Manueller Browserlauf nicht ausgeführt. SEC-04.1a: 0/2 neue E-Mail-Regressionen erwartungsgemäß fehlgeschlagen. SEC-04.1b: 0/1 Frontend-Regressionsfall erwartungsgemäß fehlgeschlagen. SEC-04.2a: 16/16 gezielte E-Mail-/Rechte-Tests. SEC-04.2b: 30/30 angrenzende Trainingstests und anschließend 3/3 gezielte HTML-/Importtests bestanden; Ruff bestanden. SEC-04.2c: 10/11 kombinierte Tests bestanden; bestehender Workflowtest wegen Klein-/Großschreibung der Statuscodes fehlgeschlagen, alle drei neuen HTML-Tests bestanden. Breite Suite nicht ausgeführt.
 - **Offene Fehler / Risiken:** `nh3==0.3.7` ist direkt eingebunden. Die Allowlist erhält sichere Inline-Typografie, Tabellen und HTTP(S)-Bilder im Versand; Stylesheets, Funktionswerte und Positionierung entfallen. Browseransichten entfernen Bilder; Vorschauen blockieren externe Ressourcen per CSP. Alte E-Mail-/Trainingsdaten werden an API-/Versandgrenzen bereinigt. Vor Produktivupdate Datenbank sichern, dann `python manage.py sanitize_legacy_html` prüfen und `python manage.py sanitize_legacy_html --apply` ausführen. Der Befehl sperrt betroffene Zeilen, läuft atomar/idempotent und protokolliert nur Zähler; Rückkehr zum Original erfordert Backup. Vorlagenquelltext bleibt editierbar und wird erst nach dem Rendern bereinigt. Lokale Anwendungsdatenbank nicht migriert. Keine produktiven Daten oder Geheimnisse im Journal.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine; `dump.rdb` bleibt fremd/unversioniert.
-- **Nächster konkreter Schritt:** SEC-04.4c gebündelte HTML-Paketabnahme.
+- **Nächster konkreter Schritt:** SEC-05 Medieninventar und private Auslieferung.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -909,3 +909,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-04.4a | Gemeinsame iframe-Vorschau mit leerer Sandbox, ohne Referrer und restriktiver CSP für Mailentwurf und Smartphone-Vorlagenvorschau. Vorhandene Skript-/Same-Origin-Freigabe entfernt. | 2/2 gezielte Vorschautests und Typecheck bestanden; echter Browserlauf und breite Suite nicht ausgeführt. | Dieser Commit: `fix(SEC-04.4a): isolate email preview frames` | SEC-04.4b Layout und Altinhalte. |
 
 | 05.10.2026 | SEC-04.4b | Restriktive CSS-Attributgrammatik plus nh3-Eigenschaftsallowlist erhält Mailformatierung. Signaturserializer bereinigen Ein-/Ausgabe. Atomarer, wiederholbarer Altinhaltsbefehl mit Prüflauf für Signaturen, Nachrichten, Empfänger und Trainingsinhalte ergänzt. | 11/11 kombinierte HTML-/Migrationstests und Ruff bestanden; Migration auf Anwendungsdatenbank nicht ausgeführt. | Dieser Commit: `fix(SEC-04.4b): preserve safe layouts and migrate legacy HTML` | SEC-04.4c Paketabnahme. |
+
+| 05.10.2026 | SEC-04.4c | HTML-Paket mit Versand, Import, Altdaten, Vorschau und angrenzenden Trainings-/E-Mail-Fällen abgenommen. Bestehende Workflow-Testwerte an uppercase Statusvertrag angepasst. | 32/32 Backendtests, 5/5 Frontendtests und Typecheck bestanden. Manueller Browserlauf und produktive Altinhaltsmigration nicht ausgeführt. | Dieser Commit: `test(SEC-04.4c): accept HTML safety contract` | SEC-05 Medieninventar. |

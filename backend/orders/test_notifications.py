@@ -30,8 +30,8 @@ class NotificationSystemTests(TestCase):
 
         # Test getting available transitions
         transitions = OrderWorkflowService.get_available_transitions(mock_status)
-        self.assertIn("ordered", transitions)
-        self.assertIn("cancelled", transitions)
+        self.assertIn("ORDERED", transitions)
+        self.assertIn("CANCELLED", transitions)
 
     def test_template_caching(self):
         """Test template caching functionality."""
