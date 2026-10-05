@@ -1,11 +1,11 @@
 from django.core import signing
-from django.http import FileResponse, Http404
+from django.http import Http404
 from django.urls import reverse
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 
-from members.api.serializers.list_serializers import can_write_list_department
-from members.models import Attachment, MemberList
+from jf_manager_backend.private_media import private_file_response
+from members.models import Attachment
 
 SALT = "jf-attachment-preview-v1"
 
@@ -16,7 +16,7 @@ def preview_url(attachment):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def attachment_preview(request, pk, token):
     try:
         signed_id, file_name = signing.loads(token, salt=SALT, max_age=300)
@@ -25,21 +25,16 @@ def attachment_preview(request, pk, token):
             raise Http404
     except (signing.BadSignature, signing.SignatureExpired, Attachment.DoesNotExist, ValueError) as exc:
         raise Http404 from exc
-    owner = attachment.content_object
-    if owner is None:
+    from members.api.viewsets.attachment_viewsets import AttachmentViewSet
+
+    view = AttachmentViewSet()
+    view.request = request
+    view.action = "retrieve"
+    view.kwargs = {"pk": pk}
+    if not view.get_queryset().filter(pk=pk).exists():
         raise Http404
-    if isinstance(owner, MemberList) and (
-        not request.user.is_authenticated
-        or (owner.department_id is None and not request.user.is_superuser)
-        or (owner.department_id is not None and not can_write_list_department(request.user, owner.department, "view"))
-    ):
-        raise Http404
-    response = FileResponse(attachment.file.open("rb"), content_type=attachment.mime_type or "application/octet-stream")
-    response["Cache-Control"] = "private, no-store"
-    response["Referrer-Policy"] = "no-referrer"
-    response["Content-Security-Policy"] = "sandbox"
-    response["X-Content-Type-Options"] = "nosniff"
-    return response
+    return private_file_response(attachment.file, filename=attachment.name)
+
 
 
 def deny_direct_attachments(request):

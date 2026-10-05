@@ -75,9 +75,9 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     @extend_schema(summary="Download attachment file")
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
-        from django.http import FileResponse
+        from jf_manager_backend.private_media import private_file_response
 
         attachment = self.get_object()
         if attachment.file:
-            return FileResponse(attachment.file.open("rb"), as_attachment=True, filename=attachment.name)
+            return private_file_response(attachment.file, download=True, filename=attachment.name)
         return Response({"detail": "No file attached"}, status=404)

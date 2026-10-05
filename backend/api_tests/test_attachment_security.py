@@ -96,9 +96,27 @@ class AttachmentSecurityTests(APITestCase):
             self.assertNotIn("/uploads/", data["file_url"])
             self.assertEqual(self.client.get(self.own_attachment.file.url).status_code, 404)
             self.client.force_authenticate(None)
+            self.assertIn(self.client.get(data["file_url"]).status_code, (401, 403))
+            self.client.force_authenticate(self.user)
             response = self.client.get(data["file_url"])
             self.assertEqual(response.status_code, 200)
             self.assertEqual(b"".join(response.streaming_content), b"fictitious document")
             self.assertEqual(response["Cache-Control"], "private, no-store")
             forged = data["file_url"].replace(f"/{self.own_attachment.pk}/", f"/{self.foreign_attachment.pk}/")
             self.assertEqual(self.client.get(forged).status_code, 404)
+
+    def test_shared_preview_rechecks_current_owner_scope_and_forces_active_download(self):
+        from members.attachment_links import preview_url
+
+        with tempfile.TemporaryDirectory() as root, override_settings(MEDIA_ROOT=root):
+            self.own_attachment.file.save("active.svg", ContentFile(b'<svg onload="alert(1)"></svg>'))
+            self.own_attachment.mime_type = "image/png"
+            self.own_attachment.save()
+            url = preview_url(self.own_attachment)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response["Content-Disposition"].startswith("attachment;"))
+            self.assertEqual(response["Content-Type"], "application/octet-stream")
+            response.close()
+            self.member.departments.set([self.foreign_department])
+            self.assertEqual(self.client.get(url).status_code, 404)
