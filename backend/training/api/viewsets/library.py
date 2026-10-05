@@ -9,11 +9,9 @@ from django.db.models import Count, Max
 from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image as PilImage
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from jf_manager_backend.html_safety import sanitize_rich_html
 from jf_manager_backend.permissions import OrgWideWritePermission
@@ -63,7 +61,6 @@ def _resize_and_optimise(original_file, filename: str):
 
 
 class LibraryBlockCategoryViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageLibrary, OrgWideWritePermission]
     queryset = LibraryBlockCategory.objects.all()
     serializer_class = LibraryBlockCategorySerializer
@@ -72,7 +69,6 @@ class LibraryBlockCategoryViewSet(viewsets.ModelViewSet):
 
 
 class LibraryBlockTagViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageLibrary, OrgWideWritePermission]
     queryset = LibraryBlockTag.objects.all()
     serializer_class = LibraryBlockTagSerializer
@@ -81,7 +77,6 @@ class LibraryBlockTagViewSet(viewsets.ModelViewSet):
 
 
 class LibraryBlockViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageLibrary]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = LibraryBlockFilter

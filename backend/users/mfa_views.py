@@ -4,7 +4,6 @@ from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers, status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -14,6 +13,7 @@ from rest_framework.views import APIView
 from users import mfa
 from users.mfa_policy import mfa_required
 from users.models import MFADevice, MFARecoveryCode
+from users.session_auth import SessionAuthentication
 
 
 class MFAThrottle(UserRateThrottle):

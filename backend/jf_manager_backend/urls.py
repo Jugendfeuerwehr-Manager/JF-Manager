@@ -14,14 +14,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-# API URLs
-from rest_framework_simplejwt.views import (
-    TokenRefreshView,
-    TokenVerifyView,
-)
-
 from members.attachment_links import attachment_preview, deny_direct_attachments
-from users.auth_security import SecureObtainAuthToken, SecureTokenObtainPairView
 from users.mfa_views import (
     MFAConfirmView,
     MFADisableView,
@@ -49,7 +42,6 @@ api_patterns = [
     path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
     path("api/v1/push/", include("notifications.urls")),
     path("api/v1/", include(api.urls)),
-    path("api-token-auth/", SecureObtainAuthToken.as_view()),
     # Browser session endpoints
     path("api/v1/auth/session/", SessionStatusView.as_view(), name="session-status"),
     path("api/v1/auth/session/login/", SessionLoginView.as_view(), name="session-login"),
@@ -61,10 +53,6 @@ api_patterns = [
     path("api/v1/auth/mfa/confirm/", MFAConfirmView.as_view(), name="mfa-confirm"),
     path("api/v1/auth/mfa/recovery-codes/", MFARecoveryCodesView.as_view(), name="mfa-recovery-codes"),
     path("api/v1/auth/mfa/disable/", MFADisableView.as_view(), name="mfa-disable"),
-    # JWT Authentication endpoints
-    path("api/v1/auth/login/", SecureTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/v1/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("api/v1/auth/verify/", TokenVerifyView.as_view(), name="token_verify"),
     # OIDC Authentication endpoints
     path("api/v1/auth/oidc/public-config/", OIDCPublicConfigView.as_view(), name="oidc-public-config"),
     path("api/v1/auth/oidc/login/", OIDCLoginView.as_view(), name="oidc-login"),

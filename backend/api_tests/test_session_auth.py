@@ -157,3 +157,23 @@ class SessionLifetimeTests(APITestCase):
         self.now += 1
         self.assertIn(self.me(), (401, 403))
         self.assertEqual(self.client.get(STATUS_URL).data, {"authenticated": False})
+
+
+class LegacyCredentialRetirementTests(APITestCase):
+    def test_migration_ends_existing_sessions_and_drops_token_tables(self):
+        from importlib import import_module
+        from types import SimpleNamespace
+
+        from django.apps import apps
+        from django.db import connection
+
+        migration = import_module("users.migrations.0010_retire_legacy_tokens")
+        User.objects.create_user(username="legacy-session", password=PASSWORD)
+        self.client.login(username="legacy-session", password=PASSWORD)
+        with connection.cursor() as cursor:
+            cursor.execute("CREATE TABLE authtoken_token (key varchar(40) PRIMARY KEY, user_id integer)")
+            cursor.execute("INSERT INTO authtoken_token VALUES ('0123456789abcdef', 1)")
+        self.assertEqual(Session.objects.count(), 1)
+        migration.retire_legacy_credentials(apps, SimpleNamespace(connection=connection))
+        self.assertFalse(Session.objects.exists())
+        self.assertNotIn("authtoken_token", connection.introspection.table_names())

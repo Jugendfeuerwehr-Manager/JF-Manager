@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
-from datetime import timedelta
 
 import environ
 
@@ -82,9 +81,6 @@ INSTALLED_APPS = [
     "guardian",
     "mptt",
     "rest_framework",
-    "rest_framework.authtoken",
-    "rest_framework_simplejwt",
-    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "django_filters",
     "import_export",
@@ -251,10 +247,9 @@ OIDC_RP_CLIENT_ID = ""  # populated at runtime from DB
 OIDC_RP_CLIENT_SECRET = ""  # populated at runtime from DB
 
 REST_FRAMEWORK = {
+    # Browser sessions only; JWT and DRF tokens were retired in SEC-07.7.
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        "users.session_auth.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "jf_manager_backend.permissions.CustomDefaultPermissions",
@@ -272,26 +267,6 @@ REST_FRAMEWORK = {
 # Password reset links expire after one hour.
 PASSWORD_RESET_TIMEOUT = 3600
 
-# JWT Settings
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": True,
-    "CHECK_REVOKE_TOKEN": True,
-    "TOKEN_REFRESH_SERIALIZER": "users.auth_security.SecureTokenRefreshSerializer",
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
-    "VERIFYING_KEY": None,
-    "AUDIENCE": None,
-    "ISSUER": None,
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-}
-
 # drf-spectacular settings for API documentation
 SPECTACULAR_SETTINGS = {
     "TITLE": "JF-Manager API",
@@ -301,9 +276,7 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": "/api/v1/",
     "COMPONENT_SPLIT_REQUEST": True,
     "SERVE_AUTHENTICATION": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        "users.session_auth.SessionAuthentication",
     ],
     "SWAGGER_UI_SETTINGS": {
         "deepLinking": True,

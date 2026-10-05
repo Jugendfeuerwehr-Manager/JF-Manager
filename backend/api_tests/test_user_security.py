@@ -6,9 +6,7 @@ from django.core.cache import cache
 from django.test import override_settings
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-from rest_framework.authtoken.models import Token
-from rest_framework.test import APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.test import APIClient, APITestCase
 
 from users.tokens import password_reset_token
 
@@ -73,18 +71,17 @@ class UserSecurityTests(APITestCase):
         }
 
     def test_reset_token_is_single_use_and_revokes_all_credentials(self):
+        browser = APIClient()
+        browser.force_login(self.user)
+        self.user.refresh_from_db()
         token = password_reset_token.make_token(self.user)
-        jwt = RefreshToken.for_user(self.user)
-        access = str(jwt.access_token)
-        legacy = Token.objects.create(user=self.user)
+        self.assertEqual(browser.get("/api/v1/users/me/").status_code, 200)
         self.client.force_authenticate(None)
         response = self.client.post("/api/v1/users/reset_password/", self.reset_payload(token))
         self.assertEqual(response.status_code, 200, response.data)
-        self.assertFalse(Token.objects.filter(pk=legacy.pk).exists())
         self.assertEqual(self.client.post("/api/v1/users/reset_password/", self.reset_payload(token)).status_code, 400)
-        self.assertEqual(self.client.post("/api/v1/auth/refresh/", {"refresh": str(jwt)}).status_code, 401)
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
-        self.assertEqual(self.client.get("/api/v1/users/me/").status_code, 401)
+        # Existing sessions are bound to the old password hash.
+        self.assertEqual(browser.get("/api/v1/users/me/").status_code, 401)
 
     def test_reset_token_expires_when_email_changes(self):
         token = password_reset_token.make_token(self.user)
@@ -99,13 +96,19 @@ class UserSecurityTests(APITestCase):
         self.client.force_authenticate(None)
         self.assertEqual(self.client.post("/api/v1/users/reset_password/", self.reset_payload(token)).status_code, 400)
 
-    def test_refresh_rotation_rejects_replay(self):
-        token = str(RefreshToken.for_user(self.user))
+    def test_legacy_token_logins_are_removed(self):
         self.client.force_authenticate(None)
-        response = self.client.post("/api/v1/auth/refresh/", {"refresh": token})
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("refresh", response.data)
-        self.assertEqual(self.client.post("/api/v1/auth/refresh/", {"refresh": token}).status_code, 401)
+        for path in ("/api/v1/auth/login/", "/api/v1/auth/refresh/", "/api/v1/auth/verify/", "/api-token-auth/"):
+            response = self.client.post(path, {"username": "leader", "password": "Old-safe-river-42!"})
+            self.assertEqual(response.status_code, 404, path)
+
+    def test_bearer_and_token_headers_are_ignored(self):
+        client = APIClient()
+        for header in ("Bearer forged.jwt.value", "Token 0123456789abcdef"):
+            client.credentials(HTTP_AUTHORIZATION=header)
+            response = client.get("/api/v1/users/me/")
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response["WWW-Authenticate"], 'Session realm="api"')
 
     def test_duplicate_email_reset_request_is_generic(self):
         User.objects.create_user(username="duplicate", email=self.user.email)
@@ -114,13 +117,10 @@ class UserSecurityTests(APITestCase):
 
     def test_login_attempts_are_limited(self):
         self.client.force_authenticate(None)
+        url = "/api/v1/auth/session/login/"
         for _ in range(10):
-            self.assertEqual(
-                self.client.post("/api/v1/auth/login/", {"username": "missing", "password": "wrong"}).status_code, 401
-            )
-        self.assertEqual(
-            self.client.post("/api/v1/auth/login/", {"username": "missing", "password": "wrong"}).status_code, 429
-        )
+            self.assertEqual(self.client.post(url, {"username": "missing", "password": "wrong"}).status_code, 401)
+        self.assertEqual(self.client.post(url, {"username": "missing", "password": "wrong"}).status_code, 429)
 
     def test_oidc_unverified_email_cannot_claim_account(self):
         from django.core.exceptions import PermissionDenied

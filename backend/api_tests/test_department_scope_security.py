@@ -31,15 +31,15 @@ class DepartmentScopeSecurityTests(APITestCase):
         role = UserDepartmentRole.objects.create(user=self.user, department=self.allowed_department)
         role.groups.add(role_group)
 
-        token_response = self.client.post(
-            "/api/v1/auth/login/",
+        login_response = self.client.post(
+            "/api/v1/auth/session/login/",
             {"username": "dept_user", "password": "dept-user-password-123!"},
             format="json",
         )
-        self.assertEqual(token_response.status_code, status.HTTP_200_OK)
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}")
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(login_response.data["authenticated"])
 
-    def test_department_scoped_token_cannot_request_foreign_department(self):
+    def test_department_scoped_session_cannot_request_foreign_department(self):
         allowed_response = self.client.get(f"/api/v1/members/?department={self.allowed_department.id}")
         self.assertEqual(allowed_response.status_code, status.HTTP_200_OK)
 

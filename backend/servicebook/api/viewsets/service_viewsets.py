@@ -4,11 +4,9 @@ from django.core.cache import cache
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
@@ -35,7 +33,6 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     - Statistics endpoints for attendance summaries
     """
 
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     queryset = Service.objects.all()  # Base queryset for router registration
     serializer_class = ServiceDetailSerializer  # Default serializer

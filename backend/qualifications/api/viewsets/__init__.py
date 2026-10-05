@@ -9,13 +9,11 @@ from dateutil.relativedelta import relativedelta
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions, OrgWideWritePermission
@@ -127,7 +125,6 @@ class QualificationTypeViewSet(viewsets.ModelViewSet):
     """ViewSet for QualificationType"""
 
     queryset = QualificationType.objects.all().order_by("name")
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions, OrgWideWritePermission]
     filterset_fields = ["expires"]
     search_fields = ["name", "description"]
@@ -143,7 +140,6 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Qualifications with custom actions"""
 
     queryset = Qualification.objects.select_related("member", "user", "type").prefetch_related("attachments")
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, PersonDepartmentRoleModelPermissions]
     filterset_class = QualificationFilter
     search_fields = [
@@ -298,7 +294,6 @@ class SpecialTaskTypeViewSet(viewsets.ModelViewSet):
 
     queryset = SpecialTaskType.objects.all().order_by("name")
     serializer_class = SpecialTaskTypeSerializer
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions, OrgWideWritePermission]
     search_fields = ["name", "description"]
     ordering_fields = ["name"]
@@ -308,7 +303,6 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Special Tasks with custom actions"""
 
     queryset = SpecialTask.objects.select_related("member", "user", "task").prefetch_related("attachments")
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated, PersonDepartmentRoleModelPermissions]
     filterset_class = SpecialTaskFilter
     search_fields = ["member__first_name", "member__last_name", "user__first_name", "user__last_name", "task__name"]

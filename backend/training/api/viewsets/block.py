@@ -7,11 +7,9 @@ from django.contrib.contenttypes.models import ContentType
 from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image as PilImage
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from members.models import Attachment
 from training.api.filters import TrainingBlockFilter
@@ -62,7 +60,6 @@ def _resize_and_optimise(original_file, filename: str):
 
 
 class TrainingBlockViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageTraining]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = TrainingBlockFilter

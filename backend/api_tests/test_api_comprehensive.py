@@ -41,12 +41,10 @@ class BaseAPITestCase(APITestCase):
 
         self.client = APIClient()
 
-    def get_jwt_token(self, username, password):
-        """Helper to obtain JWT token"""
-        response = self.client.post("/api/v1/auth/login/", {"username": username, "password": password})
-        if response.status_code == 200:
-            return response.data.get("access")
-        return None
+    def session_login(self, username, password):
+        """Helper to sign in through the browser session endpoint"""
+        response = self.client.post("/api/v1/auth/session/login/", {"username": username, "password": password})
+        return response.status_code == 200 and response.data["authenticated"]
 
     def authenticate_user(self, user, password="user123!"):
         """Helper to authenticate a user"""
@@ -73,18 +71,14 @@ class AuthenticationTests(BaseAPITestCase):
         response = self.client.get("/api/v1/users/")
         self.assertIn(response.status_code, [401, 403])
 
-    def test_jwt_authentication_success(self):
-        """JWT authentication should work correctly"""
-        token = self.get_jwt_token("admin", "admin123!")
-        self.assertIsNotNone(token)
-
-        # Use token for authenticated request
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    def test_session_login_success(self):
+        """Session login should authenticate following requests"""
+        self.assertTrue(self.session_login("admin", "admin123!"))
         response = self.client.get("/api/v1/users/me/")
         self.assertEqual(response.status_code, 200)
 
     def test_jwt_authentication_invalid_token(self):
-        """Invalid JWT token should be rejected"""
+        """Bearer tokens are no longer accepted"""
         self.client.credentials(HTTP_AUTHORIZATION="Bearer invalid_token")
         response = self.client.get("/api/v1/users/me/")
         self.assertIn(response.status_code, [401, 403])

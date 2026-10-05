@@ -141,7 +141,7 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
     """
     Verify the id_token JWT signature using the provider's JWKS and return claims.
 
-    Uses PyJWT (already available via djangorestframework-simplejwt) so we do
+    Uses PyJWT (installed as dependency of the API stack) so we do
     not rely on mozilla-django-oidc's internal URL resolution or settings access.
     """
     import jwt as pyjwt

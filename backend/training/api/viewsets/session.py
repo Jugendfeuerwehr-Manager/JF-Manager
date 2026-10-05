@@ -5,10 +5,8 @@ import datetime
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from training.api.filters import TrainingSessionFilter
@@ -27,7 +25,6 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
     CRUD for training sessions + handout + generate_series actions.
     """
 
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageTraining]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = TrainingSessionFilter

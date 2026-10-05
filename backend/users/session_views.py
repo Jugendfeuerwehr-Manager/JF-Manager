@@ -12,7 +12,6 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import serializers, status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
@@ -21,6 +20,7 @@ from rest_framework.views import APIView
 from users.auth_security import LoginThrottle
 from users.mfa import mark_mfa_verified, verify_second_factor
 from users.mfa_policy import is_mfa_verified, mfa_state
+from users.session_auth import SessionAuthentication
 from users.session_policy import isoformat, session_deadlines
 
 GENERIC_LOGIN_ERROR = "Benutzername oder Passwort ist falsch."
