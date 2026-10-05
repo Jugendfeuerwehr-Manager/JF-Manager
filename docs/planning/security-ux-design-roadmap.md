@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-06.3 mit 36 Tests abgenommen; SEC-03 bis SEC-06 abgeschlossen. |
+| Letzter Checkpoint | 05.10.2026: SEC-05.5a ergänzt Qualifikations-Anhangseigentümer; Nachprüfung mit SEC-08. |
 | Aktuelles Paket | SEC-03 bis SEC-06 abgeschlossen; SEC-07, SEC-08 und SEC-09-Rest offen. |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `7c297cb` (SEC-06.2); SEC-06.3 ist dieser Commit. |
+| Letzter Roadmap-Commit | `195dca5` (SEC-06.3); SEC-05.5a ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | SEC-08 sichere Tabellenexporte, danach SEC-07-Anmeldung und SEC-09-Rest. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -778,6 +778,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-05.3`: Authentifizierte Medienclients anbinden; öffentliche Uploadauslieferung in Django/Nginx einschließlich Cachefreigaben schließen.
   - `SEC-05.4`: Gemeinsame Inhalts-/Größenprüfung und atomare Anzahl-/Summengrenzen an Uploadpfaden.
   - `SEC-05.5`: Gebündelte Medienabnahme und Upgradehinweise (Proxycache leeren, alte Links ungültig).
+    - `SEC-05.5a`: Qualifikations-/Sonderaufgabenanhänge ebenfalls über ihre Eigentümeransichten autorisieren; beim Exportquercheck ergänzend gefunden.
 - **Branch:** `feat/security-roles-training-operations`.
 - **Prüfungen:** Gebündelt 40/43 Backendtests bestanden, drei E-Mail-Fälle korrigiert (Fehlerformat und echter PNG-Fixture), gezielter Nachlauf 8/8 bestanden. Typecheck sowie 5/5 bestehende und 3/3 neue Frontendtests bestanden; Ruff bestanden. Kein weiterer breiter Wiederholungslauf. Nginx-Laufzeit-/Browserprüfung nicht ausgeführt.
 - **Risiken / Checkpoint:** Upgrade nach `docs/operations/private-media-upgrade.md`: Proxy-/CDN-Caches löschen und eigene Upload-Aliase sperren. Bestandsdateien bleiben an Ort und Stelle; neue Uploads werden geprüft. Benutzeravatar-Speicherung von veralteter StringIO-/image-Implementierung auf validierte Normalisierung korrigiert. Quoten sperren Eigentümerzeilen; PostgreSQL-Konkurrenzprüfung gemeinsam mit SEC-09 offen. `dump.rdb` bleibt unangetastet.
@@ -964,3 +965,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-06.2 | Sync-JSON als Fernet-Chiffre gespeichert; atomare Vorwärtsmigration. LDAP/OIDC verweigern unlesbare Chiffren. Rotationsbefehl validiert Rohdaten und verschlüsselt optional atomar mit Primärschlüssel neu, ohne Geheimnisausgabe. | Migrationsdateien erzeugt und Code-Diff geprüft; Anwendungstests bis SEC-06.3 zurückgestellt. Anwendungsdatenbank nicht migriert. | Dieser Commit: `feat(SEC-06.2): encrypt sync credentials and rotate stored secrets` | SEC-06.3 Sammelabnahme. |
 
 | 05.10.2026 | SEC-06.3 | Rohdatenbank-, falscher-Schlüssel-, Altbestands- und atomare Rotationstests; Betriebsanleitung und flüchtiger CI-Schlüssel ergänzt. | 36/36 gebündelte Backendtests, Ruff und Migrationsabgleich bestanden. Produktive Datenmigration/Schlüssel-/Anbieterrotation nicht ausgeführt. | Dieser Commit: `test(SEC-06.3): verify encryption migration and rotation` | SEC-08 Exporte, danach SEC-07 und SEC-09-Rest. |
+
+| 05.10.2026 | SEC-05.5a | Exportquercheck identifiziert Qualifikationen/Sonderaufgaben als zusätzliche Anhangseigentümer. Private Anhangansicht nutzt nun auch deren bestehende Bereichs-/Fachrechte. | Code-Diff geprüft; Tests mit SEC-08-Abnahme gebündelt, noch nicht ausgeführt. | Dieser Commit: `fix(SEC-05.5a): authorize qualification attachment owners` | SEC-08 Exportvertrag. |

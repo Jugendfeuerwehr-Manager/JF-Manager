@@ -40,6 +40,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         from members.api.viewsets.list_viewsets import MemberListViewSet
         from members.api.viewsets.member_viewsets import MemberViewSet
+        from qualifications.api.viewsets import QualificationViewSet, SpecialTaskViewSet
         from training.api.viewsets.block import TrainingBlockViewSet
         from training.api.viewsets.library import LibraryBlockViewSet
 
@@ -47,7 +48,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         # Unknown/deleted owners fail closed, including for list and download.
         allowed = Q(pk__in=[])
         owner_request = clone_request(self.request, self.request.method if self.request.method in SAFE_METHODS else "PATCH")
-        for view_class in (MemberViewSet, MemberListViewSet, TrainingBlockViewSet, LibraryBlockViewSet):
+        for view_class in (MemberViewSet, MemberListViewSet, TrainingBlockViewSet, LibraryBlockViewSet, QualificationViewSet, SpecialTaskViewSet):
             owner_view = view_class()
             owner_view.request = owner_request
             owner_view.action = "list" if self.request.method in SAFE_METHODS else "partial_update"
