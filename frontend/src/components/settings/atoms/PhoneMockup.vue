@@ -13,11 +13,7 @@
           </div>
         </div>
         <div class="email-content">
-          <iframe
-            class="preview-iframe"
-            sandbox="allow-same-origin allow-scripts"
-            :srcdoc="htmlContent"
-          ></iframe>
+          <SafeEmailPreview class="preview-iframe" :html="htmlContent" />
         </div>
       </div>
       <div class="phone-home-bar"></div>
@@ -26,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeEmailPreview from '@/components/common/SafeEmailPreview.vue'
 interface Props {
   subject?: string
   htmlContent: string
