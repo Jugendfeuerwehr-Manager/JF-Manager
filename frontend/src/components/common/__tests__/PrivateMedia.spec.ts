@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PrivateMedia from '../PrivateMedia.vue'
+import PrivateAvatar from '../PrivateAvatar.vue'
 import { privateMediaPath } from '@/utils/privateMedia'
 import api from '@/api'
 
@@ -32,5 +33,17 @@ describe('private media clients', () => {
     await flushPromises()
     expect(wrapper.find('img').attributes('src')).toBeUndefined()
     wrapper.unmount()
+  })
+
+  it('renders an avatar with an authorized image and falls back to its label', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: new Blob(['image'], { type: 'image/png' }) })
+    URL.createObjectURL = vi.fn(() => 'blob:avatar-test')
+    URL.revokeObjectURL = vi.fn()
+    const withImage = mount(PrivateAvatar, { props: { image: '/api/v1/private-media/members/1/' } })
+    await flushPromises()
+    expect(withImage.find('img').attributes('src')).toBe('blob:avatar-test')
+    const withLabel = mount(PrivateAvatar, { props: { image: null }, attrs: { label: 'LW' } })
+    expect(withLabel.text()).toBe('LW')
+    withImage.unmount()
   })
 })
