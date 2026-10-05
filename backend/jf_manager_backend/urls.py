@@ -20,6 +20,14 @@ from rest_framework_simplejwt.views import (
 
 from members.attachment_links import attachment_preview, deny_direct_attachments
 from users.auth_security import SecureObtainAuthToken, SecureTokenObtainPairView
+from users.mfa_views import (
+    MFAConfirmView,
+    MFADisableView,
+    MFARecoveryCodesView,
+    MFASetupView,
+    MFAStatusView,
+    ReauthenticateView,
+)
 
 # OIDC auth views
 from users.oidc_views import (
@@ -46,6 +54,12 @@ api_patterns = [
     path("api/v1/auth/session/", SessionStatusView.as_view(), name="session-status"),
     path("api/v1/auth/session/login/", SessionLoginView.as_view(), name="session-login"),
     path("api/v1/auth/session/logout/", SessionLogoutView.as_view(), name="session-logout"),
+    path("api/v1/auth/reauthenticate/", ReauthenticateView.as_view(), name="reauthenticate"),
+    path("api/v1/auth/mfa/", MFAStatusView.as_view(), name="mfa-status"),
+    path("api/v1/auth/mfa/setup/", MFASetupView.as_view(), name="mfa-setup"),
+    path("api/v1/auth/mfa/confirm/", MFAConfirmView.as_view(), name="mfa-confirm"),
+    path("api/v1/auth/mfa/recovery-codes/", MFARecoveryCodesView.as_view(), name="mfa-recovery-codes"),
+    path("api/v1/auth/mfa/disable/", MFADisableView.as_view(), name="mfa-disable"),
     # JWT Authentication endpoints
     path("api/v1/auth/login/", SecureTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

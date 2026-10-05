@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
@@ -9,6 +9,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, mixins, status, viewsets
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -258,5 +259,8 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
         # Set new password
         request.user.set_password(serializer.validated_data["new_password"])
         request.user.save()
+        # Keep this browser signed in; every other session ends with the old hash.
+        if isinstance(request.successful_authenticator, SessionAuthentication):
+            update_session_auth_hash(request._request, request.user)
 
         return Response({"message": "Password has been changed successfully."}, status=status.HTTP_200_OK)

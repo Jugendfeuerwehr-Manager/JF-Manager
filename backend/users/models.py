@@ -3,6 +3,8 @@ from django.db import models
 from django.urls import reverse
 from phonenumber_field.modelfields import PhoneNumberField
 
+from jf_manager_backend.encrypted_fields import StrictEncryptedCharField
+
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -92,3 +94,36 @@ class CustomUser(AbstractUser):
 
             self.avatar = clean_avatar(self.avatar)
         super().save(*args, **kwargs)
+
+
+class MFADevice(models.Model):
+    """TOTP authenticator of one user; the shared secret is stored encrypted."""
+
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="mfa_device")
+    secret = StrictEncryptedCharField(max_length=64)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    # Highest accepted TOTP time step; codes at or below it are replays.
+    last_used_step = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "MFA-Gerät"
+        verbose_name_plural = "MFA-Geräte"
+
+    @property
+    def is_confirmed(self):
+        return self.confirmed_at is not None
+
+
+class MFARecoveryCode(models.Model):
+    """One-time recovery code; only a salted SHA-256 digest is stored."""
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="mfa_recovery_codes")
+    salt = models.CharField(max_length=32)
+    code_hash = models.CharField(max_length=64)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "MFA-Wiederherstellungscode"
+        verbose_name_plural = "MFA-Wiederherstellungscodes"

@@ -10,8 +10,13 @@ from jf_manager_backend.encrypted_fields import decrypt_secret
 
 
 class Command(BaseCommand):
-    help = "Prüft Schlüsselring; --apply verschlüsselt Sync-/LDAP-/OIDC-Zugangsdaten atomar neu."
-    targets = (("external_sync", "SyncJob", "credentials"), ("settings_manager", "LDAPConfig", "bind_password"), ("settings_manager", "OIDCConfig", "client_secret"))
+    help = "Prüft Schlüsselring; --apply verschlüsselt Sync-/LDAP-/OIDC-Zugangsdaten und MFA-Geheimnisse atomar neu."
+    targets = (
+        ("external_sync", "SyncJob", "credentials"),
+        ("settings_manager", "LDAPConfig", "bind_password"),
+        ("settings_manager", "OIDCConfig", "client_secret"),
+        ("users", "MFADevice", "secret"),
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("--apply", action="store_true")
@@ -48,5 +53,7 @@ class Command(BaseCommand):
                         count += 1
         except Exception as exc:
             # Do not expose values, provider errors or key material in command output.
-            raise CommandError("Umverschlüsselung abgebrochen; Schlüsselring und Datenformat prüfen. Keine Änderungen übernommen.") from exc
+            raise CommandError(
+                "Umverschlüsselung abgebrochen; Schlüsselring und Datenformat prüfen. Keine Änderungen übernommen."
+            ) from exc
         self.stdout.write(f"{count} Geheimnisfelder {'umverschlüsselt' if options['apply'] else 'geprüft'}.")

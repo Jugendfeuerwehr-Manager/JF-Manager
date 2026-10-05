@@ -12,6 +12,8 @@ from django.contrib.auth import logout
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
+from users.mfa import REAUTH_KEY
+
 STARTED_KEY = "_session_started_at"
 ACTIVITY_KEY = "_session_last_activity"
 # Avoid a session write on every request; idle expiry may lag by this much.
@@ -31,6 +33,8 @@ def start_session_clock(sender, request, user, **kwargs):
     now = int(time.time())
     request.session[STARTED_KEY] = now
     request.session[ACTIVITY_KEY] = now
+    # A completed login counts as a fresh confirmation for security changes.
+    request.session[REAUTH_KEY] = now
 
 
 def session_deadlines(session):
