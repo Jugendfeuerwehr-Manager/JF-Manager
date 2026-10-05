@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from departments.api.serializers.department import UserDepartmentRoleMiniSerializer
 from departments.models import Department
+from jf_manager_backend.html_safety import SanitizedHTMLField
 
 User = get_user_model()
 
@@ -25,6 +26,7 @@ class GroupSerializer(serializers.ModelSerializer):
 class UserInfoSerializer(serializers.ModelSerializer):
     """Complete user information including permissions"""
 
+    email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     permissions = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
     avatar_url = serializers.SerializerMethodField()

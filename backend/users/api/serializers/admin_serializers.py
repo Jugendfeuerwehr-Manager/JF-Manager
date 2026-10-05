@@ -4,6 +4,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
+from jf_manager_backend.html_safety import SanitizedHTMLField
+
 User = get_user_model()
 
 
@@ -98,6 +100,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
 
 
 class AdminUserDetailSerializer(serializers.ModelSerializer):
+    email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     groups = AuthGroupListSerializer(many=True, read_only=True)
     permissions = serializers.SerializerMethodField()
@@ -141,6 +144,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
 
 
 class AdminUserWriteSerializer(serializers.ModelSerializer):
+    email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, min_length=8, allow_blank=True)
     group_ids = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(),

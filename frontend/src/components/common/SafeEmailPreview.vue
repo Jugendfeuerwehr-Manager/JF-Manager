@@ -16,7 +16,7 @@ const documentHtml = computed(() => `<!doctype html><html lang="de"><head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'">
 <style>body { font-family: sans-serif; overflow-wrap: anywhere; padding: 12px; } table { max-width: 100%; }</style>
-</head><body>${sanitizeRichHtml(props.html)}</body></html>`)
+</head><body>${sanitizeRichHtml(props.html, true)}</body></html>`)
 </script>
 
 <style scoped>
