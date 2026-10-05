@@ -47,6 +47,23 @@ class OrderReceiptTest(APITestCase):
         self.assertEqual(retry.status_code, 200, retry.data)
         self.assertEqual(Transaction.objects.filter(transaction_type="IN").count(), 1)
 
+    def test_receipt_idempotency_key_replays_and_rejects_changed_location(self):
+        url = f"/api/v1/order-items/{self.line.pk}/update_status/"
+        headers = {"HTTP_IDEMPOTENCY_KEY": "order-receipt-test-1"}
+        payload = {"status": self.received.pk, "receipt_location": self.location.pk}
+
+        first = self.client.post(url, payload, format="json", **headers)
+        replay = self.client.post(url, payload, format="json", **headers)
+        other = StorageLocation.objects.create(name="Anderes Lager")
+        changed = self.client.post(url, {**payload, "receipt_location": other.pk}, format="json", **headers)
+
+        self.assertEqual(first.status_code, 200, first.data)
+        self.assertEqual(replay.status_code, 200, replay.data)
+        self.assertEqual(replay.data, first.data)
+        self.assertEqual(changed.status_code, 409)
+        self.assertEqual(Transaction.objects.filter(transaction_type="IN").count(), 1)
+        self.assertEqual(Stock.objects.get(item_variant=self.variant, location=self.location).quantity, 2)
+
     def test_receipt_requires_location_and_unambiguous_variant(self):
         url = f"/api/v1/order-items/{self.line.pk}/update_status/"
         response = self.client.post(url, {"status": self.received.pk})
@@ -103,6 +120,40 @@ class OrderReceiptTest(APITestCase):
         self.assertEqual(Stock.objects.get(item_variant=self.variant, location=self.location).quantity, 3)
         self.assertEqual(Transaction.objects.filter(transaction_type="IN").count(), 2)
 
+    def test_bulk_receipt_key_replays_same_positions(self):
+        second = OrderItem.objects.create(
+            order=self.order, item=self.orderable, size="M", quantity=1, status=self.ordered
+        )
+        url = "/api/v1/order-items/bulk_update_status/"
+        payload = {
+            "item_ids": [self.line.pk, second.pk],
+            "status": self.received.pk,
+            "receipt_location": self.location.pk,
+        }
+        headers = {"HTTP_IDEMPOTENCY_KEY": "bulk-receipt-test-1"}
+
+        first = self.client.post(url, payload, format="json", **headers)
+        replay = self.client.post(url, payload, format="json", **headers)
+
+        self.assertEqual(first.status_code, 200, first.data)
+        self.assertEqual(replay.status_code, 200, replay.data)
+        self.assertEqual(replay.data, first.data)
+        self.assertEqual(Transaction.objects.filter(transaction_type="IN").count(), 2)
+        self.assertEqual(Stock.objects.get(item_variant=self.variant, location=self.location).quantity, 3)
+
+    def test_patch_receipt_key_replays_without_second_booking(self):
+        url = f"/api/v1/order-items/{self.line.pk}/"
+        headers = {"HTTP_IDEMPOTENCY_KEY": "patch-receipt-test-1"}
+        payload = {"status": self.received.pk, "receipt_location": self.location.pk}
+
+        first = self.client.patch(url, payload, format="json", **headers)
+        replay = self.client.patch(url, payload, format="json", **headers)
+
+        self.assertEqual(first.status_code, 200, first.data)
+        self.assertEqual(replay.status_code, 200, replay.data)
+        self.assertEqual(replay.data, first.data)
+        self.assertEqual(Transaction.objects.filter(transaction_type="IN").count(), 1)
+
     def test_delivery_can_create_member_loan_once(self):
         self.client.post(
             f"/api/v1/order-items/{self.line.pk}/update_status/",
@@ -124,6 +175,25 @@ class OrderReceiptTest(APITestCase):
         retry = self.client.post(url, {"status": delivered.pk, "create_loan": True}, format="json")
         self.assertEqual(retry.status_code, 200, retry.data)
         self.assertEqual(Transaction.objects.filter(transaction_type="LOAN").count(), 1)
+
+    def test_delivery_loan_key_replays_without_second_movement(self):
+        self.client.post(
+            f"/api/v1/order-items/{self.line.pk}/update_status/",
+            {"status": self.received.pk, "receipt_location": self.location.pk},
+        )
+        delivered = OrderStatus.objects.get(code="DELIVERED")
+        url = f"/api/v1/order-items/{self.line.pk}/update_status/"
+        payload = {"status": delivered.pk, "create_loan": True}
+        headers = {"HTTP_IDEMPOTENCY_KEY": "delivery-loan-test-1"}
+
+        first = self.client.post(url, payload, format="json", **headers)
+        replay = self.client.post(url, payload, format="json", **headers)
+
+        self.assertEqual(first.status_code, 200, first.data)
+        self.assertEqual(replay.status_code, 200, replay.data)
+        self.assertEqual(replay.data, first.data)
+        self.assertEqual(Transaction.objects.filter(transaction_type="LOAN").count(), 1)
+        self.assertEqual(Stock.objects.get(item_variant=self.variant, location=self.location).quantity, 0)
 
     def test_delivery_without_confirmation_does_not_create_loan(self):
         self.client.post(

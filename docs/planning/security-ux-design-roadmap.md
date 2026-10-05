@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 04.10.2026: ROLE-01.6b schützt Rollenänderung, Rechteübernahme, Kopie und Archivierung mit Adminrechten und Fingerprint; SEC-09.4a liegt in `2899380`. SEC-03.7-Schema bleibt offen. |
-| Aktuelles Paket | ROLE-01.6b abgeschlossen; ROLE-01.6c Administrationsansicht und SEC-09.4b Bestellabläufe folgen. SEC-03.7-Abnahme wegen Schema offen; SEC-02.9 und SEC-01.57 offen. |
+| Letzter Checkpoint | 05.10.2026: SEC-09.4b sichert Bestell-Wareneingang und Ausleihe mit Idempotenzkennung; ROLE-01.6b liegt in `187706f`. SEC-03.7-Schema und ROLE-01.6c-Frontend bleiben offen. |
+| Aktuelles Paket | SEC-09.4b abgeschlossen; SEC-09.5 direkte Bulk-Pfade und Clients folgen. SEC-03.7-Abnahme wegen Schema offen; ROLE-01.6c, SEC-02.9 und SEC-01.57 offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `2899380` (SEC-09.4a); ROLE-01.6b ist dieser API-Commit. |
+| Letzter Roadmap-Commit | `187706f` (ROLE-01.6b); SEC-09.4b ist dieser Bestell-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | ROLE-01.6c Administrationsansicht; SEC-09.4b Bestellbuchungen und SEC-03.7-Schemaabnahme parallel. |
+| Nächster konkreter Schritt | SEC-09.5 direkte Buchungs-/Löschpfade und Clients absichern; ROLE-01.6c und SEC-03.7-Schema fortsetzen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -541,7 +541,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
-| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a direkte/Sammelbuchungen idempotent; SEC-09.4b Bestellbuchungen. |
+| SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b Inventar- und Bestellbuchungen idempotent; SEC-09.5 direkte Pfade/Clients. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b Lese-/Schreib-API geprüft; ROLE-01.6c Administrationsansicht. SEC-01/02-Bereichsprüfung bleibt Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
@@ -740,7 +740,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
-- **Status:** in Arbeit; `SEC-09.4a` direkte und Sammelbuchungen idempotent, Bestellabläufe offen.
+- **Status:** in Arbeit; `SEC-09.4a/b` Inventar- und Bestellbuchungen mit Kennung idempotent, direkte Bulk-Pfade/Clients offen.
 - **Verantwortlich:** Codex (Integrationsagent); Bestandsmodell, API und aufrufende Dienste werden in getrennten Teilschritten geprüft.
 - **Abhängigkeiten:** SEC-01-Rechtevertrag und SEC-02-Ziel- und Sammelprüfung für Inventar, Bestellungen und Mitglieder. UX-05 baut auf dem gesicherten Buchungsvertrag auf. PostgreSQL ist für die verbindliche Konkurrenzprüfung erforderlich; SQLite-Prüfungen decken diesen Fall nicht gleichwertig ab.
 - **Ziel und Abnahme:** Eine fachliche Bestandsbewegung wird genau einmal gebucht. Gespeicherte Buchungen können nicht still geändert oder gelöscht werden; Korrekturen erzeugen nachvollziehbare Gegenbuchungen. Bestand je Artikel oder Variante und Lagerort ist eindeutig und nie negativ. Parallele Buchungen verlieren keine Änderungen. Wiederholte API-Aufrufe mit derselben Idempotenzkennung erzeugen keine zweite Bewegung; dieselbe Kennung mit anderem Inhalt wird abgewiesen. Mehrteilige Ausgaben, Rückgaben und Bestelleingänge sind vollständig atomar. Rechte und tatsächliche Quell-/Zielabteilungen bleiben geprüft; PostgreSQL-Konkurrenz-, Rollback- und Wiederholungsfälle bestehen.
@@ -754,14 +754,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
     - `SEC-09.4b`: Bestell-Wareneingang und daraus folgende Ausgabe auf denselben Kennungsvertrag bringen; Wiederholungs-/Konfliktfälle und Rollback prüfen.
   - `SEC-09.5`: Direkte Bestandsänderungen außerhalb des Buchungsdienstes schließen und Inventar-, Bestell-, Leih- und Mitgliedschaftsabläufe auf den gemeinsamen Vertrag umstellen.
   - `SEC-09.6`: PostgreSQL-Konkurrenz, Rollback, Rechte, Zielabteilungen und Bedien-/API-Vertrag abnehmen; verbleibende Betriebsgrenzen dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-09.3 `7564cc3`; `SEC-09.4a` wird mit diesem Backend-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** SEC-09.4a `2899380`; `SEC-09.4b` wird mit diesem Bestell-Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`, SEC-09.1 `45022d2`, SEC-09.2 `cd2aadc`, SEC-09.3 `7564cc3`; SEC-09.4a Idempotenzmodell/-service, Migration `0015`, Inventar-API, Tests und dieser Checkpoint in diesem Commit.
-- **Umgesetzte Teilschritte:** `SEC-09.0` bis `SEC-09.3` und `SEC-09.4a`.
-- **Ausgeführte Prüfungen mit Ergebnis:** 22/22 gezielte Buchungs-/Inventar-API-Tests bestanden; Migrationsabgleich und Ruff bestanden. PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt; Staged-Diff-Check vor Commit.
-- **Offene Fehler / Risiken:** Die Idempotenzkennung ist derzeit optional, damit bestehende Aufrufer weiterarbeiten; SEC-09.5 muss schreibende Clients anbinden. Gespeicherte Antworten enthalten dieselben Daten wie die ursprüngliche API-Antwort und brauchen einen Aufbewahrungsvertrag. Bestellbuchungen erhalten den Kennungsvertrag in `SEC-09.4b`. Migration `0014` verweigert Dubletten anderer Installationen bis zur fachlichen Bereinigung. Modellschutz erfasst keine `QuerySet.update/delete`-Aufrufe; Mitglieder-Löschstrategien bleiben SEC-09.5. PostgreSQL-Konkurrenztest fehlt bis `SEC-09.6`. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
+- **Geänderte Dateien / Commit-Bezug:** SEC-09.0 `9e2395d`, SEC-09.1 `45022d2`, SEC-09.2 `cd2aadc`, SEC-09.3 `7564cc3`, SEC-09.4a `2899380`; SEC-09.4b Bestellstatus-API, Tests und dieser Checkpoint in diesem Commit.
+- **Umgesetzte Teilschritte:** `SEC-09.0` bis `SEC-09.3` und `SEC-09.4a/b`.
+- **Ausgeführte Prüfungen mit Ergebnis:** 15/15 Bestell-Wareneingangs-/Ausleih-Tests und 36/36 kombinierte Bestell-/Inventarbuchungs-Tests bestanden; Ruff und Diff-Check vor Commit. PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** Die Idempotenzkennung ist derzeit optional, damit bestehende Aufrufer weiterarbeiten; SEC-09.5 muss schreibende Clients anbinden. Gespeicherte Antworten enthalten dieselben Daten wie die ursprüngliche API-Antwort und brauchen einen Aufbewahrungsvertrag. Migration `0014` verweigert Dubletten anderer Installationen bis zur fachlichen Bereinigung. Modellschutz erfasst keine `QuerySet.update/delete`-Aufrufe; Mitglieder-Löschstrategien bleiben SEC-09.5. PostgreSQL-Konkurrenztest fehlt bis `SEC-09.6`. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
 - **Laufende Prozesse und sichere Fortsetzung:** SEC-03.6-Oberfläche und ROLE-01.5-Gruppenzuordnung werden parallel in anderen Dateien bearbeitet. Git-Staging und Commits erfolgen nur durch den Integrationsagenten.
-- **Nächster konkreter Schritt:** `SEC-09.4b` Bestell-Wareneingang und Ausgabe unter Idempotenzkennung; danach `SEC-09.5` direkte Bulk-Pfade und Clientaufrufe schließen.
+- **Nächster konkreter Schritt:** `SEC-09.5` direkte Bulk-Pfade, Mitglieder-Löschstrategien und Clientaufrufe schließen; danach PostgreSQL-Abnahme.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -862,3 +862,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 04.10.2026 | ROLE-01.6a | Lesende Rollen-API mit globalem `view_roletemplate`-Recht, Vorlagen-/Gruppenmetadaten, Soll/Ist-Rechten, Abweichungen, Zuweisungszahlen und Versions-Fingerprint ergänzt. Staff oder nur abteilungsgebundenes Recht reichen nicht; PATCH bleibt 405. SEC-09.4 vor Implementierung in direkte/Sammelbuchungen und Bestellabläufe unterteilt. | 21/21 kombinierte API-/Zuordnungs-/Seed-Tests und Ruff check/format bestanden; breite Suite nicht ausgeführt. Staged-Diff-Check vor Commit. | Dieser Commit: `feat(ROLE-01.6a): expose read-only role comparisons` | ROLE-01.6b bestätigte Änderungen. |
 | 04.10.2026 | SEC-09.4a | Transaktionale Buchungskennung für einzelne Inventarbewegungen und Sammelausgaben ergänzt. Gleiche Kennung und Inhalt spielen die gespeicherte Antwort wieder ab; anderer Inhalt erhält 409. Fehlerhafte Aufrufe reservieren die Kennung nicht; Wiederholung prüft aktuelle Buchungssicht. | 22/22 gezielte Buchungs-/Inventar-API-Tests, Migrationsabgleich, Ruff und Diff-Check bestanden. PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt. | Dieser Commit: `feat(SEC-09.4a): make inventory booking requests idempotent` | SEC-09.4b Bestellbuchungen; SEC-09.5 Clients anbinden. |
 | 04.10.2026 | ROLE-01.6b | PATCH für Metadaten und Aktionen für bestätigte vollständige Rechteübernahme, Duplikat und Archivierung ergänzt. Jede Mutation verlangt aktionsbezogene Adminrechte und aktuellen Compare-Fingerprint; Scope/Schlüssel sind gesperrt, eigene Gruppen können nicht verändert werden. | 26/26 kombinierte Rollen-HTTP-/Seed-/Zuordnungstests, Ruff und Diff-Check bestanden; breite Suite nicht ausgeführt. Bestehende Rechte bleiben bei Archivierung wirksam. | Dieser Commit: `feat(ROLE-01.6b): guard role template mutations` | ROLE-01.6c Administrationsansicht. |
+| 05.10.2026 | SEC-09.4b | Einzel-/Sammelstatus und PATCH/PUT für Bestellpositionen verwenden den dauerhaften Buchungskennungsvertrag. Wiederholte Wareneingänge und Ausgabe erzeugen keine zweite Bewegung; abweichender Inhalt liefert 409. Statusbenachrichtigung wird erst nach erfolgreichem Commit ausgelöst. | 15/15 Bestelltests und 36/36 kombinierte Bestell-/Inventarbuchungstests bestanden; Ruff und Diff-Check vor Commit. PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt. | Dieser Commit: `feat(SEC-09.4b): make order stock changes idempotent` | SEC-09.5 direkte Pfade und Clients schließen. |

@@ -10,6 +10,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from inventory.services.booking_idempotency import run_idempotent_booking
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from orders.api.filters import OrderItemFilter
 from orders.api.serializers import (
@@ -81,8 +82,22 @@ class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             return OrderItemUpdateSerializer
         return OrderItemSerializer
 
+    def update(self, request, *args, **kwargs):
+        return run_idempotent_booking(
+            request,
+            lambda: super(OrderItemViewSet, self).update(request, *args, **kwargs),
+            replay_allowed=lambda data: self.get_queryset().filter(pk=self.kwargs["pk"]).exists(),
+        )
+
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, OrderItemRolePermissions])
     def update_status(self, request, pk=None):
+        return run_idempotent_booking(
+            request,
+            lambda: self._update_status_impl(request),
+            replay_allowed=lambda data: self.get_queryset().filter(pk=self.kwargs["pk"]).exists(),
+        )
+
+    def _update_status_impl(self, request):
         """Update status of a single order item"""
         order_item = self.get_object()
         status_id = request.data.get("status")
@@ -115,8 +130,10 @@ class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
             # Send notification if status changed
             if old_status != new_status:
-                OrderNotificationService.send_status_update_notification(
-                    order_item, old_status, new_status, request.user, request
+                transaction.on_commit(
+                    lambda: OrderNotificationService.send_status_update_notification(
+                        order_item, old_status, new_status, request.user, request
+                    )
                 )
 
             return Response(OrderItemSerializer(order_item).data)
@@ -125,6 +142,16 @@ class OrderItemViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], permission_classes=[permissions.IsAuthenticated, OrderItemRolePermissions])
     def bulk_update_status(self, request):
+        return run_idempotent_booking(
+            request,
+            lambda: self._bulk_update_status_impl(request),
+            replay_allowed=lambda data: (
+                self.get_queryset().filter(pk__in=data.get("updated_ids", [])).count()
+                == len(data.get("updated_ids", []))
+            ),
+        )
+
+    def _bulk_update_status_impl(self, request):
         """Update status for multiple order items"""
         item_ids = request.data.get("item_ids", [])
         status_id = request.data.get("status")
