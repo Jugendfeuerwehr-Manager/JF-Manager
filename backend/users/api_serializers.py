@@ -1,5 +1,3 @@
-from jf_manager_backend.private_media import private_media_url
-from jf_manager_backend.media_fields import PrivateAvatarField
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
@@ -9,6 +7,8 @@ from rest_framework import serializers
 from departments.api.serializers.department import UserDepartmentRoleMiniSerializer
 from departments.models import Department
 from jf_manager_backend.html_safety import SanitizedHTMLField
+from jf_manager_backend.media_fields import PrivateAvatarField
+from jf_manager_backend.private_media import private_media_url
 
 User = get_user_model()
 

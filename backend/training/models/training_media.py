@@ -49,7 +49,7 @@ class TrainingMedia(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self.file and not self.file._committed:
-            from jf_manager_backend.upload_safety import validate_upload, validate_owner_capacity
+            from jf_manager_backend.upload_safety import validate_owner_capacity, validate_upload
 
             validate_upload(self.file, image_only=True)
             validate_owner_capacity(self.content_object, self.file, exclude_media=self.pk)

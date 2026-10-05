@@ -1,8 +1,9 @@
+import re
+from urllib.parse import urlsplit
+
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
-from urllib.parse import urlsplit
-import re
 
 # Swagger/OpenAPI documentation
 from drf_spectacular.views import (
@@ -30,8 +31,8 @@ from users.oidc_views import (
 
 # Import custom email admin
 from .api_views import AppSettingsView, PublicBrandingView
-from .rest_urls import api
 from .private_media import private_media
+from .rest_urls import api
 
 api_patterns = [
     path("api/v1/private-media/<str:kind>/<int:pk>/", private_media, name="private-media"),

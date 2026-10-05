@@ -67,7 +67,9 @@ class EmailAttachmentTests(APITestCase):
     def test_send_email_with_multiple_attachments(self):
         """Sending an email with multiple file attachments should succeed."""
         pdf = self._make_file("doc.pdf")
-        img = self._make_file("photo.png", b"\x89PNG\r\n\x1a\n", "image/png")
+        from api_tests.test_private_media import image_file
+
+        img = image_file()
         response = self.client.post(
             self.send_url,
             {

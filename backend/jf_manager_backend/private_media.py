@@ -91,9 +91,8 @@ def private_media(request, kind, pk):
         if isinstance(owner, TrainingBlock):
             authorized_owner(TrainingBlockViewSet, request, owner.pk)
             user = request.user
-            if not (user.is_superuser or user.has_perm("departments.can_access_all_departments")):
-                if not user.department_roles.filter(department_id=owner.session.department_id).exists():
-                    raise Http404
+            if not (user.is_superuser or user.has_perm("departments.can_access_all_departments")) and not user.department_roles.filter(department_id=owner.session.department_id).exists():
+                raise Http404
         elif isinstance(owner, LibraryBlock):
             authorized_owner(LibraryBlockViewSet, request, owner.pk)
         else:

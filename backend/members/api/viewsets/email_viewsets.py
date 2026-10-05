@@ -5,6 +5,7 @@ API viewsets for email messaging system.
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -96,10 +97,13 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         from jf_manager_backend.upload_safety import validate_batch
 
         files = request.FILES.getlist("attachments")
-        content_types = validate_batch(files)
+        try:
+            content_types = validate_batch(files)
+        except ValidationError as exc:
+            return Response({"error": str(exc.detail["file"])}, status=status.HTTP_400_BAD_REQUEST)
         # Validate the entire batch before creating the message or storing any file.
         email_message = create_serializer.save()
-        for f, content_type in zip(files, content_types):
+        for f, content_type in zip(files, content_types, strict=True):
             EmailAttachment.objects.create(
                 email_message=email_message,
                 file=f,

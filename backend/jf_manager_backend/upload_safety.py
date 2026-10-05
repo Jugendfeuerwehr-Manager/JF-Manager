@@ -5,8 +5,8 @@ import warnings
 import zipfile
 from pathlib import Path
 
-from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 from rest_framework.exceptions import ValidationError
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -16,7 +16,7 @@ MAX_OWNER_FILES = 20
 
 def validate_upload(upload, *, image_only=False):
     if upload.size > MAX_FILE_BYTES or upload.size == 0:
-        raise ValidationError({"file": "Dateien müssen zwischen 1 Byte und 10 MB groß sein."})
+        raise ValidationError({"file": "Datei ist leer oder zu groß (max. 10 MB)."})
     extension = Path(upload.name).suffix.lower()
     try:
         upload.seek(0)
@@ -54,7 +54,7 @@ def validate_upload(upload, *, image_only=False):
             return "text/plain" if extension == ".txt" else "text/csv"
         raise ValueError("Dateiformat nicht erlaubt oder Inhalt passt nicht zur Endung")
     except (ValueError, OSError, SyntaxError, zipfile.BadZipFile, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise ValidationError({"file": "Ungültiger Dateiinhalt. Erlaubt: Bilder, PDF, Word, Excel, UTF-8-Text/CSV."}) from exc
+        raise ValidationError({"file": "Dateiformat nicht erlaubt oder Dateiinhalt ungültig. Erlaubt: Bilder, PDF, Word, Excel, UTF-8-Text/CSV."}) from exc
     finally:
         upload.seek(0)
 
@@ -78,6 +78,7 @@ def validate_batch(files):
 def validate_owner_capacity(owner, incoming, *, exclude_attachment=None, exclude_media=None):
     """Called within atomic save; lock the shared owner before counting both collections."""
     from django.contrib.contenttypes.models import ContentType
+
     from members.models import Attachment
     from training.models import TrainingMedia
 

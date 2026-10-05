@@ -1,11 +1,7 @@
-import io
-
 from django.contrib.auth.models import AbstractUser
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import models
 from django.urls import reverse
 from phonenumber_field.modelfields import PhoneNumberField
-from PIL import Image as Img
 
 
 # Create your models here.
@@ -91,18 +87,8 @@ class CustomUser(AbstractUser):
     """
 
     def save(self, *args, **kwargs):
-        if self.avatar:
-            img = Img.open(io.StringIO.StringIO(self.avatar.read()))
-            if img.mode != "RGB":
-                img = img.convert("RGB")
+        if self.avatar and not self.avatar._committed:
+            from jf_manager_backend.upload_safety import clean_avatar
 
-            new_width = 500
-            img.thumbnail((new_width, new_width * self.image.height / self.image.width), Img.ANTIALIAS)
-
-            output = io.StringIO.StringIO()
-            img.save(output, format="JPEG", quality=70)
-            output.seek(0)
-            self.image = InMemoryUploadedFile(
-                output, "ImageField", "{}.jpg".format(self.image.name.split(".")[0]), "image/jpeg", output.len, None
-            )
+            self.avatar = clean_avatar(self.avatar)
         super().save(*args, **kwargs)

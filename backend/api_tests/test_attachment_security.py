@@ -89,7 +89,7 @@ class AttachmentSecurityTests(APITestCase):
 
     def test_attachment_preview_uses_short_signed_link_and_blocks_raw_path(self):
         with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
-            self.own_attachment.file.save("example.pdf", ContentFile(b"fictitious document"))
+            self.own_attachment.file.save("example.pdf", ContentFile(b"%PDF-1.4 fictitious document"))
             data = self.client.get(f"/api/v1/attachments/{self.own_attachment.pk}/").data
             self.assertIn("/api/v1/attachment-preview/", data["file_url"])
             self.assertEqual(data["file"], data["file_url"])
@@ -100,7 +100,7 @@ class AttachmentSecurityTests(APITestCase):
             self.client.force_authenticate(self.user)
             response = self.client.get(data["file_url"])
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(b"".join(response.streaming_content), b"fictitious document")
+            self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 fictitious document")
             self.assertEqual(response["Cache-Control"], "private, no-store")
             forged = data["file_url"].replace(f"/{self.own_attachment.pk}/", f"/{self.foreign_attachment.pk}/")
             self.assertEqual(self.client.get(forged).status_code, 404)
@@ -109,7 +109,9 @@ class AttachmentSecurityTests(APITestCase):
         from members.attachment_links import preview_url
 
         with tempfile.TemporaryDirectory() as root, override_settings(MEDIA_ROOT=root):
-            self.own_attachment.file.save("active.svg", ContentFile(b'<svg onload="alert(1)"></svg>'))
+            # Legacy file bypasses the new upload validation deliberately.
+            storage = self.own_attachment.file.storage
+            self.own_attachment.file.name = storage.save("active.svg", ContentFile(b'<svg onload="alert(1)"></svg>'))
             self.own_attachment.mime_type = "image/png"
             self.own_attachment.save()
             url = preview_url(self.own_attachment)

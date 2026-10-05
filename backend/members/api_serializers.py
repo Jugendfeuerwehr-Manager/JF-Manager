@@ -1,8 +1,9 @@
-from jf_manager_backend.private_media import private_media_url
-from jf_manager_backend.media_fields import PrivateAvatarField
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
+
+from jf_manager_backend.media_fields import PrivateAvatarField
+from jf_manager_backend.private_media import private_media_url
 
 from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 

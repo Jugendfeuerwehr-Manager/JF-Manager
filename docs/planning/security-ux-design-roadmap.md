@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-05.4 implementiert zentrale Inhaltsprüfung, Bildnormalisierung und gesperrte Objektquoten. |
-| Aktuelles Paket | SEC-03 und SEC-04 abgeschlossen; SEC-05 bis SEC-08 und SEC-09-Rest offen. |
-| Umsetzungsstatus | EXEC-01, SEC-03 und SEC-04 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 05.10.2026: SEC-05.5 Medienpaket abgenommen; nächste Implementierung SEC-06. |
+| Aktuelles Paket | SEC-03 bis SEC-05 abgeschlossen; SEC-06 bis SEC-08 und SEC-09-Rest offen. |
+| Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-05 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `22235c6` (SEC-05.3); SEC-05.4 ist dieser Commit. |
+| Letzter Roadmap-Commit | `056f619` (SEC-05.4); SEC-05.5 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-05.5 gebündelte Medienabnahme und Upgradehinweise. |
+| Nächster konkreter Schritt | SEC-06 Schlüssel- und Zugangsdatenvertrag definieren. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -537,7 +537,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
-| SEC-05 | in Arbeit | Codex | SEC-05.1–4 implementiert; gebündelte Backend-/Frontend-Abnahme folgt. |
+| SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
 | SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
 | SEC-08 | offen | — | Formelübernahme in dauerhaftem Exporttest reproduzieren. |
@@ -767,7 +767,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-05: Private Medien und geprüfte Uploads
 
-- **Status / Verantwortlich:** in Arbeit / Codex.
+- **Status / Verantwortlich:** abgeschlossen / Codex.
 - **Abhängigkeiten:** SEC-01/02/03 definieren Objektbereiche; SEC-07 stellt Cookie-Sitzungen für direkte Bild-/Downloadanfragen bereit. Bis dahin müssen Clients private Ressourcen authentifiziert als Blob laden.
 - **Ziel und Abnahme:** Unauthentifizierte und fremde Nutzer erhalten keine privaten Bytes, auch mit bekannten Dateinamen oder weitergegebenen Vorschau-Links. Jeder Download erbt die aktuelle Objektberechtigung. Alle Antworten sind `private, no-store`, `nosniff`, aktive Dateitypen nur Download. Öffentliche Branding-URLs bleiben getrennte externe URLs. Uploads prüfen tatsächliches Format, Einzelgröße, Anzahl und Gesamtsumme vor dem ersten Schreibzugriff.
 - **Inventar:** Mitglieder-/Benutzeravatare, TrainingMedia, generische Anhänge und E-Mail-Anhänge liegen im gemeinsamen MEDIA_ROOT. Django DEBUG und zwei Nginx-Konfigurationen liefern bisher außer `/uploads/attachments/` alles öffentlich mit Cache aus. Signierte Vorschau erlaubt bei Nicht-Listen bisher anonymen Zugriff. Branding ist eine separate konfigurierbare URL, kein eigener Upload.
@@ -779,9 +779,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-05.4`: Gemeinsame Inhalts-/Größenprüfung und atomare Anzahl-/Summengrenzen an Uploadpfaden.
   - `SEC-05.5`: Gebündelte Medienabnahme und Upgradehinweise (Proxycache leeren, alte Links ungültig).
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen:** Code-/Git-Abgleich bestanden; Anwendungstests für reine Planung nicht ausgeführt.
-- **Risiken / Checkpoint:** Bestehende direkte Bild-URLs benötigen Clientanpassung; Export-URLs dürfen keine Zugriffstokens enthalten. Keine produktiven Uploads verändern. `dump.rdb` bleibt unangetastet.
-- **Nächster Schritt:** SEC-05.5 gebündelte Medienabnahme und Upgradehinweise.
+- **Prüfungen:** Gebündelt 40/43 Backendtests bestanden, drei E-Mail-Fälle korrigiert (Fehlerformat und echter PNG-Fixture), gezielter Nachlauf 8/8 bestanden. Typecheck sowie 5/5 bestehende und 3/3 neue Frontendtests bestanden; Ruff bestanden. Kein weiterer breiter Wiederholungslauf. Nginx-Laufzeit-/Browserprüfung nicht ausgeführt.
+- **Risiken / Checkpoint:** Upgrade nach `docs/operations/private-media-upgrade.md`: Proxy-/CDN-Caches löschen und eigene Upload-Aliase sperren. Bestandsdateien bleiben an Ort und Stelle; neue Uploads werden geprüft. Benutzeravatar-Speicherung von veralteter StringIO-/image-Implementierung auf validierte Normalisierung korrigiert. Quoten sperren Eigentümerzeilen; PostgreSQL-Konkurrenzprüfung gemeinsam mit SEC-09 offen. `dump.rdb` bleibt unangetastet.
+- **Nächster Schritt:** SEC-06 Schlüssel- und Zugangsdatenvertrag definieren.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -939,3 +939,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-05.3 | Avatare, Trainingsbilder, Editor, Anhangvorschau/-download und PDF-Bilder laden private Bytes authentifiziert. Blob-URLs werden verworfen; fremde URLs erhalten keine API-Zugangsdaten. Django/Nginx liefern Uploadpfade nicht mehr öffentlich aus. | Code-Diff geprüft; Tests/Typecheck auf Nutzerwunsch am Implementierungsende, noch nicht ausgeführt. | Dieser Commit: `fix(SEC-05.3): authenticate media clients and block public uploads` | SEC-05.4 Uploadprüfung; danach gebündelte Abnahme. |
 
 | 05.10.2026 | SEC-05.4 | Uploadprüfung für Bilder, PDF, Office und UTF-8-Text/CSV; aktive SVG/HTML abgewiesen. Avatare normalisiert, Trainingsbilder ohne unsicheren Original-Fallback. Modellpfade sperren Eigentümer für 20-Dateien-/50-MB-Quota, Einzelgrenze 10 MB. Mailbatch vor erster Speicherung geprüft. | Code-Diff geprüft; Anwendungstests/Typecheck gemäß Nutzerwunsch bis zur anschließenden Sammelabnahme zurückgestellt. | Dieser Commit: `fix(SEC-05.4): validate upload contents and owner limits` | SEC-05.5 Sammelabnahme und notwendige Korrekturen. |
+
+| 05.10.2026 | SEC-05.5 | Private Medienabnahme mit Bereichswechsel, anonymen Zugriffen, Mailinhaber, Quota, MIME-Fälschung und Client-Credentialgrenze. Benutzeravatar-Speicherung repariert; Upgrade-/Cacheanleitung ergänzt. | 40/43 gebündelte Backendtests bestanden; nach drei Korrekturen gezielt E-Mail 8/8 bestanden. Typecheck, 5+3 Frontendtests und Ruff bestanden. Nginx-/Browserlauf und PostgreSQL-Quotenkonkurrenz nicht ausgeführt. | Dieser Commit: `test(SEC-05.5): accept private media boundaries` | SEC-06 Schlüssel/Zugangsdaten. |
