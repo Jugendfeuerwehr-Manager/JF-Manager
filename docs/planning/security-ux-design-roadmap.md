@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-09.5a erhält Buchungshistorie bei Mitgliedslöschung; ROLE-01.6c liegt in `aa52c4f`. SEC-03.7-Schema bleibt offen. |
-| Aktuelles Paket | SEC-09.5a abgeschlossen; SEC-09.5b/c und ROLE-01.7 folgen. SEC-03.7-Schema, SEC-02.9 und SEC-01.57 bleiben offen. |
+| Letzter Checkpoint | 05.10.2026: SEC-03.7 prüft Listenmigration, Zugriff, Oberfläche und Listenschema; SEC-09.5a liegt in `a128036`. |
+| Aktuelles Paket | SEC-03 abgeschlossen; SEC-04 bis SEC-08 offen, SEC-09.5b/c und SEC-09.6 folgen. SEC-02.9 und SEC-01.57 bleiben offen. |
 | Umsetzungsstatus | EXEC-01 abgeschlossen; SEC-01, SEC-02, SEC-03, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `aa52c4f` (ROLE-01.6c); SEC-09.5a ist dieser Mitgliedslösch-Commit. |
+| Letzter Roadmap-Commit | `a128036` (SEC-09.5a); SEC-03.7 ist dieser Listen-Abnahme-Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-09.5b übrige Bulk-/Bereinigungspfade prüfen, danach SEC-09.5c Clients; ROLE-01.7 und SEC-03.7-Schema fortsetzen. |
+| Nächster konkreter Schritt | SEC-04-Detailblock vor Paketbeginn ausfüllen und HTML-Pfade absichern; SEC-09.5b/c und SEC-02.9 fortsetzen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -535,7 +535,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
-| SEC-03 | in Arbeit | Codex (Integrationsagent) | SEC-03.6 Pflichtabteilung in normaler Oberfläche geprüft; SEC-03.7 Paketabnahme und SEC-02.9-Rest. |
+| SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | offen | — | HTML-Ein-/Ausgabepfade und gemeinsame Bereinigung erfassen. |
 | SEC-05 | offen | — | Medieninventar und private Auslieferungsverträge erstellen. |
 | SEC-06 | offen | — | Schlüssel- und Zugangsdatenmigration ausarbeiten. |
@@ -714,7 +714,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-03: Mitgliederlisten nach Abteilung
 
-- **Status:** in Arbeit; `SEC-03.6` normale Listenoberfläche geprüft, Paketabnahme ausstehend.
+- **Status:** abgeschlossen; `SEC-03.7` Migration, Zugriff, Oberfläche und Listenschema gezielt abgenommen.
 - **Verantwortlich:** Codex (Integrationsagent); Listenänderungen bleiben einem Bearbeiter zugeordnet.
 - **Abhängigkeiten:** SEC-01-Rechtevertrag und SEC-02-Zielprüfung; generische Anhänge erben die Eigentümerberechtigung. SEC-08 behandelt zusätzlich sichere Tabellenzellen, SEC-05 private Dateiauslieferung.
 - **Ziel und Abnahme:** Jede neue Liste hat genau eine gültige Abteilung; Einträge gehören ihr an. Abteilungsrollen sehen und ändern ausschließlich dort berechtigte Listen, Einträge, Exporte und Anhänge; ein Queryparameter erweitert nie den Bereich. Gemischte Altdaten werden nach eindeutigem Eigentümer aufgeteilt, Checkstände und Notizen bleiben erhalten. Mehrdeutige Mitgliedschaften, leere Listen, Beschreibungen und Anhänge bleiben bis zu expliziter Superuser-Zuordnung für normale Nutzer verborgen. Migration ist prüfbar und wiederaufnehmbar. A/B- und Organisations-Positivfälle sowie Altbestandsfälle bestehen.
@@ -729,14 +729,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
     - `SEC-03.5b`: Superuser-Oberfläche mit Sicht auf offene Inhalte, Zielwahl, Einzelbestätigung und Abschluss.
   - `SEC-03.6`: Frontend-Anlage und -Bearbeitung mit erforderlicher Abteilung sowie sicheren Fehlerzuständen anpassen.
   - `SEC-03.7`: Migrations- und Zugriffssuite, Schema- und Bedienvertrag prüfen; SEC-03-Abnahme und SEC-02.9-Restprüfung dokumentieren.
-- **Letzter dauerhafter Checkpoint:** SEC-03.5b `f5da4fd`; SEC-03.6 wird mit diesem Frontend-Commit integriert.
+- **Letzter dauerhafter Checkpoint:** SEC-03.6 `9318e31`; SEC-03.7 wird mit diesem Abnahme-Commit integriert.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Geänderte Dateien / Commit-Bezug:** SEC-03.0 `b537459`, SEC-03.1 `21d049d`, SEC-03.2 `17f7be9`, SEC-03.3 `1618398`, SEC-03.4 `1f71e52`, SEC-03.5a `5c5ddb3`, SEC-03.5b `f5da4fd`; SEC-03.6 Listenmaske, Typvertrag, Tests und dieser Checkpoint in diesem Commit.
-- **Umgesetzte Teilschritte:** `SEC-03.0` bis `SEC-03.6`; Gesamtprüfung offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** SEC-03.5a: 9/9 Klärungstests und 59/59 kombinierte Backendtests bestanden. SEC-03.5b/03.6: Vue-Typecheck und 8/8 gezielte Frontendtests bestanden; breite Frontend-Suite nicht ausgeführt. Diff-Check vor Commit.
-- **Offene Fehler / Risiken:** Nullable Abteilung bleibt für ungeklärte Altbestände. Die UI zeigt nur Metadaten der Anhänge, keine Dateivorschau; SEC-05 behandelt allgemeine Medienauslieferung. Der Rückwärtslauf der Datenmigration `0029` ist No-op: Ursprungszustand erfordert Backup/Restore. `members.export_memberlist` ist im ROLE-01.4-Seed ausdrücklich nur den Leitungsrollen zugeordnet. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
-- **Laufende Prozesse und sichere Fortsetzung:** Keine SEC-03.6-Prozesse nach Testlauf; ROLE-01.6a und SEC-09.4 liegen in getrennten Backenddateien. Git-Staging und Commits erfolgen nur durch den Integrationsagenten.
-- **Nächster konkreter Schritt:** `SEC-03.7` Migrations-/Zugriffssuite, Schema-/Bedienvertrag und SEC-02.9-Restprüfung abnehmen.
+- **Geänderte Dateien / Commit-Bezug:** SEC-03.0 `b537459`, SEC-03.1 `21d049d`, SEC-03.2 `17f7be9`, SEC-03.3 `1618398`, SEC-03.4 `1f71e52`, SEC-03.5a `5c5ddb3`, SEC-03.5b `f5da4fd`, SEC-03.6 `9318e31`; SEC-03.7 Schemaannotationen und dieser Checkpoint in diesem Commit.
+- **Umgesetzte Teilschritte:** `SEC-03.0` bis `SEC-03.7`.
+- **Ausgeführte Prüfungen mit Ergebnis:** 42/42 Listen-/Migrationstests und 8/8 gezielte Frontendtests bestanden. `makemigrations --check --dry-run` und Ruff bestanden. Erzeugter Listenschema-Vertrag für Pflichtabteilung, Klärungs- und Ereignisanlage, unpaginierte Klärungsliste und binären Export bestanden; keine List-Viewset-Warnungen. Die globale Schema-Validierung meldet weiterhin 102 Fehler in anderen API-Bereichen und gilt nicht als bestanden. Breite Frontend-/Backend-Suite nicht ausgeführt.
+- **Offene Fehler / Risiken:** Nullable Abteilung bleibt für ungeklärte Altbestände. UI zeigt nur Anhangmetadaten; SEC-05 behandelt private Dateiauslieferung. Rückwärtslauf von Migration `0029` ist No-op; Ursprung erfordert Backup/Restore. `members.export_memberlist` ist im ROLE-01.4-Seed nur Leitungsrollen zugeordnet. Globale Schemafehler gehören zur abschließenden API-/Betriebsabnahme. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine.
+- **Nächster konkreter Schritt:** SEC-04 starten; SEC-02.9 nach SEC-09 und ROLE-01-Bereichsprüfung abschließend abnehmen.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -868,3 +868,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-09.4b | Einzel-/Sammelstatus und PATCH/PUT für Bestellpositionen verwenden den dauerhaften Buchungskennungsvertrag. Wiederholte Wareneingänge und Ausgabe erzeugen keine zweite Bewegung; abweichender Inhalt liefert 409. Statusbenachrichtigung wird erst nach erfolgreichem Commit ausgelöst. | 15/15 Bestelltests und 36/36 kombinierte Bestell-/Inventarbuchungstests bestanden; Ruff und Diff-Check vor Commit. PostgreSQL-Konkurrenztest und breite Suite nicht ausgeführt. | Dieser Commit: `feat(SEC-09.4b): make order stock changes idempotent` | SEC-09.5 direkte Pfade und Clients schließen. |
 | 05.10.2026 | ROLE-01.6c | Administrationsansicht mit Soll/Ist-Vergleich, Zuweisungszahlen, vollständiger Rechteauswahl, Metadatenänderung, Kopie und Archivierung an die Rollen-API gebunden. Schreibaktionen verlangen Bestätigung und senden den Vergleichs-Fingerprint; Konfliktfehler lassen Eingaben stehen. Navigation und paginierte Vorlagenliste ergänzt. | Vue-Typecheck und 7/7 gezielte Frontendtests bestanden; breite Frontend-Suite und manuelle Browserprüfung nicht ausgeführt. Diff-Check vor Commit. | Dieser Commit: `feat(ROLE-01.6c): add role administration view` | ROLE-01.7 Rechteabnahme und Rollenhandbuch; SEC-03.7-Schema prüfen. |
 | 05.10.2026 | SEC-09.5a | Mitgliedslöschung behält gebuchte Bewegungen und Lagerortbezüge; persönliche Lagerorte werden vor atomarer Löschung abgekoppelt, offene Bestände blockiert. Destruktive Buchungslöschung aus API und Dialog entfernt, Lagerort-Anonymisierung und Fehlermeldung angepasst. | 23/23 gezielte Backendtests, Frontend-Typecheck, Ruff und Diff-Check bestanden; breite Suite und PostgreSQL-Konkurrenz nicht ausgeführt. | Dieser Commit: `fix(SEC-09.5a): preserve stock history on member deletion` | SEC-09.5b Bulk-/Bereinigungspfade prüfen. |
+| 05.10.2026 | SEC-03.7 | Listen-API-Schema für Pflichtabteilung, Altlistenklärung, Ereignisanlage, unpaginierte Klärungsliste und Excel-Ausgabe korrigiert; kollidierenden Mitglied-/Listenschema-Namen getrennt. Listenmigration und Bedienvertrag gezielt abgenommen. | 42/42 Backend- und 8/8 Frontendtests, Migrationsabgleich, Ruff und gezielter Listenschema-Check bestanden. Globale Schema-Validierung meldet 102 Fehler außerhalb der Listenansicht; breite Suiten nicht ausgeführt. | Dieser Commit: `fix(SEC-03.7): verify list contract and schema` | SEC-04 beginnen; SEC-02.9 nach Abhängigkeiten abnehmen. |

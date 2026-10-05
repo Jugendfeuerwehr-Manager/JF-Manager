@@ -161,3 +161,42 @@ class ResolveLegacyListInputSerializer(serializers.Serializer):
             if len(values) != len(set(values)):
                 raise serializers.ValidationError({key: "IDs dürfen nicht doppelt vorkommen."})
         return attrs
+
+
+class LegacyListEntryInfoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    member_id = serializers.IntegerField()
+    member_name = serializers.CharField()
+    department_ids = serializers.ListField(child=serializers.IntegerField())
+    checked = serializers.BooleanField()
+    checked_at = serializers.DateTimeField(allow_null=True)
+    notes = serializers.CharField(allow_blank=True)
+    added_at = serializers.DateTimeField()
+
+
+class LegacyListAttachmentInfoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    file_size = serializers.IntegerField()
+    mime_type = serializers.CharField()
+
+
+class LegacyListTargetInfoSerializer(serializers.Serializer):
+    department = serializers.IntegerField()
+    list_id = serializers.IntegerField()
+
+
+class LegacyListPendingSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    entries = LegacyListEntryInfoSerializer(many=True)
+    attachments = LegacyListAttachmentInfoSerializer(many=True)
+    targets = LegacyListTargetInfoSerializer(many=True)
+
+
+class LegacyListResolutionResultSerializer(serializers.Serializer):
+    target_list_id = serializers.IntegerField()
+    complete = serializers.BooleanField()
+    pending = LegacyListPendingSerializer(allow_null=True)

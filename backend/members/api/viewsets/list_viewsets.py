@@ -25,6 +25,8 @@ from rest_framework.response import Response
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from members.api.serializers.list_serializers import (
     CreateFromEventTypeInputSerializer,
+    LegacyListPendingSerializer,
+    LegacyListResolutionResultSerializer,
     MemberListCreateUpdateSerializer,
     MemberListDetailSerializer,
     MemberListSerializer,
@@ -119,11 +121,18 @@ class MemberListViewSet(viewsets.ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
-    @action(detail=False, methods=["get"], url_path="pending-resolution")
+    @extend_schema(responses=LegacyListPendingSerializer(many=True))
+    @action(detail=False, methods=["get"], url_path="pending-resolution", pagination_class=None)
     def pending_resolution(self, request):
         sources = MemberList.objects.filter(department__isnull=True, legacy_resolved_at__isnull=True).order_by("pk")
         return Response([pending_resolution_data(source) for source in sources])
 
+    @extend_schema(responses=LegacyListPendingSerializer, methods=["GET"])
+    @extend_schema(
+        request=ResolveLegacyListInputSerializer,
+        responses=LegacyListResolutionResultSerializer,
+        methods=["POST"],
+    )
     @action(detail=True, methods=["get", "post"], url_path="resolve-legacy")
     def resolve_legacy(self, request, pk=None):
         source = get_object_or_404(MemberList, pk=pk, department__isnull=True, legacy_resolved_at__isnull=True)
@@ -231,6 +240,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
         serializer = AttachmentSerializer(attachment, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(parameters=[OpenApiParameter("attachment_id", OpenApiTypes.INT, location=OpenApiParameter.PATH)])
     @action(detail=True, methods=["delete"], url_path="attachments/(?P<attachment_id>[^/.]+)")
     def delete_attachment(self, request, pk=None, attachment_id=None):
         """Delete an attachment from a member list."""
@@ -356,6 +366,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
             return Response({"error": "Eintrag nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
         return Response({"notes": notes})
 
+    @extend_schema(request=CreateFromEventTypeInputSerializer, responses={201: MemberListSerializer})
     @action(detail=False, methods=["post"], url_path="create_from_event_type")
     def create_from_event_type(self, request):
         """
@@ -433,6 +444,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 ),
             ),
         ],
+        responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
     )
     @action(detail=True, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request, pk=None):

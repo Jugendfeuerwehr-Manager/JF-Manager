@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
 
 from .models import Attachment, Event, EventType, Group, Member, Parent, Status
@@ -73,6 +74,7 @@ def visible_parent_data(member, context, root_instance):
     return context["_visible_parent_data_by_member"].get(member.pk, [])
 
 
+@extend_schema_serializer(component_name="MemberSummary")
 class MemberListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for list views"""
 
@@ -109,6 +111,7 @@ class MemberListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "has_alert"]
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_avatar_url(self, obj):
         if obj.avatar:
             request = self.context.get("request")
@@ -116,9 +119,11 @@ class MemberListSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.avatar.url)
         return None
 
+    @extend_schema_field(ParentSerializer(many=True))
     def get_parents(self, obj):
         return visible_parent_data(obj, self.context, self.root.instance)
 
+    @extend_schema_field(serializers.BooleanField())
     def get_has_alert(self, obj):
         try:
             from servicebook.selectors import get_attandance_alert_by_member
