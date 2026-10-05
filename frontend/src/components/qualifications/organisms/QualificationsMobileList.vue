@@ -64,16 +64,14 @@
       </template>
 
       <template #empty>
-        <div class="mobile-list-empty">
-          <i class="pi pi-certificate"></i>
-          <p>Keine Qualifikationen gefunden</p>
-        </div>
+        <StateView kind="empty" title="Keine Qualifikationen gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
       </template>
     </ResponsiveList>
   </div>
 </template>
 
 <script setup lang="ts">
+import StateView from '@/components/common/StateView.vue'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import type { Qualification } from '@/types/qualifications'

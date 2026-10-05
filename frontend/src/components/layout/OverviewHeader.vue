@@ -38,75 +38,76 @@ const eyebrowText = computed(() => props.eyebrow?.toUpperCase())
 <style scoped>
 .overview-header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding: 0.25rem 0 1.5rem;
-  border-bottom: 1px solid var(--surface-border);
-  margin-bottom: 1.5rem;
+  gap: var(--jf-space-3);
+  padding: var(--jf-space-0-5) 0 var(--jf-space-3);
+  margin-bottom: var(--jf-space-3);
 }
 
 .overview-header__info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--jf-space-0-5);
 }
 
 .overview-header__eyebrow {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-color-secondary);
+  color: var(--jf-color-primary);
 }
 
 .overview-header__title-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--jf-space-1-5);
   flex-wrap: wrap;
 }
 
 .overview-header__title {
   margin: 0;
-  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
-  font-weight: 700;
-  color: var(--text-color);
+  font-size: clamp(var(--jf-text-xl), 1.2rem + 1vw, var(--jf-text-2xl));
+  line-height: var(--jf-leading-tight);
+  font-weight: var(--jf-weight-bold);
+  letter-spacing: -0.015em;
+  color: var(--jf-color-text);
 }
 
 .overview-header__subtitle {
   margin: 0;
-  color: var(--text-color-secondary);
-  font-size: 1rem;
+  color: var(--jf-color-text-muted);
+  font-size: var(--jf-text-md);
 }
 
 .overview-header__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: var(--jf-space-1);
+  margin-top: var(--jf-space-1);
 }
 
 .overview-header__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.5rem;
-  min-width: 220px;
+  gap: var(--jf-space-1);
 }
 
 @media (max-width: 768px) {
   .overview-header {
     flex-direction: column;
-    gap: 1rem;
-    border-bottom: none;
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
+    align-items: stretch;
+    gap: var(--jf-space-2);
+    padding-bottom: var(--jf-space-1);
+    margin-bottom: var(--jf-space-2);
   }
 
   .overview-header__actions {
-    width: 100%;
     justify-content: flex-start;
   }
 }

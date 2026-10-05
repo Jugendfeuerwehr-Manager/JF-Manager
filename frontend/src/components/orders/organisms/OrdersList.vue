@@ -183,16 +183,14 @@
         </template>
 
         <template #empty>
-          <div class="mobile-list-empty">
-            <i class="pi pi-shopping-cart"></i>
-            <p>Keine Bestellungen gefunden</p>
-          </div>
+          <StateView kind="empty" title="Keine Bestellungen gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
         </template>
       </ResponsiveList>
     </div>
 </template>
 
 <script setup lang="ts">
+import StateView from '@/components/common/StateView.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'

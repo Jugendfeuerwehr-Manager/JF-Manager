@@ -72,16 +72,14 @@
       </template>
 
       <template #empty>
-        <div class="mobile-list-empty">
-          <i class="pi pi-briefcase"></i>
-          <p>Keine Sonderaufgaben gefunden</p>
-        </div>
+        <StateView kind="empty" title="Keine Sonderaufgaben gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
       </template>
     </ResponsiveList>
   </div>
 </template>
 
 <script setup lang="ts">
+import StateView from '@/components/common/StateView.vue'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import type { SpecialTask } from '@/types/qualifications'

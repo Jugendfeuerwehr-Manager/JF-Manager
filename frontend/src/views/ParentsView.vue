@@ -119,10 +119,7 @@
         />
       </template>
       <template #empty>
-        <div class="mobile-list-empty">
-          <i class="pi pi-user"></i>
-          <p>Keine Eltern gefunden</p>
-        </div>
+        <StateView kind="empty" title="Keine Eltern gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
       </template>
     </ResponsiveList>
 
@@ -131,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'

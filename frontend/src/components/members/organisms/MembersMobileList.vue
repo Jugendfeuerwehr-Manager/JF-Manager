@@ -66,15 +66,13 @@
     </template>
 
     <template #empty>
-      <div class="mobile-list-empty">
-        <i class="pi pi-users"></i>
-        <p>Keine Mitglieder gefunden</p>
-      </div>
+      <StateView kind="empty" title="Keine Mitglieder gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
     </template>
   </ResponsiveList>
 </template>
 
 <script setup lang="ts">
+import StateView from '@/components/common/StateView.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
