@@ -32,14 +32,17 @@ if [ ! -f .env ]; then
     POSTGRES_PW=$(openssl rand -base64 32)
     DJANGO_SECRET=$(openssl rand -base64 50)
     ADMIN_PW=$(openssl rand -base64 16)
+    FIELD_KEY=$(openssl rand -base64 32 | tr '+/' '-_')
     
     # Update .env with generated passwords (macOS compatible)
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|POSTGRES_PASSWORD=CHANGE_ME_TO_STRONG_PASSWORD|POSTGRES_PASSWORD=$POSTGRES_PW|g" .env
+        sed -i '' "s|FIELD_ENCRYPTION_KEY=CHANGE_ME_TO_FERNET_KEY|FIELD_ENCRYPTION_KEY=$FIELD_KEY|g" .env
         sed -i '' "s|DJANGO_SECRET_KEY=CHANGE_ME_TO_RANDOM_50_CHARS|DJANGO_SECRET_KEY=$DJANGO_SECRET|g" .env
         sed -i '' "s|DJANGO_ADMIN_PASSWORD=CHANGE_ME_TO_STRONG_PASSWORD|DJANGO_ADMIN_PASSWORD=$ADMIN_PW|g" .env
     else
         sed -i "s|POSTGRES_PASSWORD=CHANGE_ME_TO_STRONG_PASSWORD|POSTGRES_PASSWORD=$POSTGRES_PW|g" .env
+        sed -i "s|FIELD_ENCRYPTION_KEY=CHANGE_ME_TO_FERNET_KEY|FIELD_ENCRYPTION_KEY=$FIELD_KEY|g" .env
         sed -i "s|DJANGO_SECRET_KEY=CHANGE_ME_TO_RANDOM_50_CHARS|DJANGO_SECRET_KEY=$DJANGO_SECRET|g" .env
         sed -i "s|DJANGO_ADMIN_PASSWORD=CHANGE_ME_TO_STRONG_PASSWORD|DJANGO_ADMIN_PASSWORD=$ADMIN_PW|g" .env
     fi

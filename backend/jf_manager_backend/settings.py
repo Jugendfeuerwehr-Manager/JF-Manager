@@ -21,11 +21,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
-# Encryption key for encrypted model fields (Fernet-compatible key)
-FIELD_ENCRYPTION_KEY = os.environ.get(
-    "FIELD_ENCRYPTION_KEY",
-    "6nezABVCRB5Yn3ztsae1jkqg3THUUul-OWww-ZHqYc8=",
-)
+# Explicit primary key and optional old keys for controlled rotation.
+from .encryption_config import encryption_keys
+
+FIELD_ENCRYPTION_KEY = encryption_keys(os.environ)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
