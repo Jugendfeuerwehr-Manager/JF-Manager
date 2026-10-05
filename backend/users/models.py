@@ -127,3 +127,23 @@ class MFARecoveryCode(models.Model):
     class Meta:
         verbose_name = "MFA-Wiederherstellungscode"
         verbose_name_plural = "MFA-Wiederherstellungscodes"
+
+
+class UserSession(models.Model):
+    """Signed-in device shown in the profile so a user can end it remotely.
+
+    Linked to Django's session row: when the session expires, is cleared or is
+    logged out, this entry disappears with it. Only a shortened browser
+    description is kept, no IP address.
+    """
+
+    session = models.OneToOneField("sessions.Session", on_delete=models.CASCADE, related_name="device")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="device_sessions")
+    user_agent = models.CharField(max_length=200, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField()
+
+    class Meta:
+        verbose_name = "Angemeldetes Gerät"
+        verbose_name_plural = "Angemeldete Geräte"
+        ordering = ["-last_seen_at"]

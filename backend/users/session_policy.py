@@ -15,6 +15,7 @@ from django.contrib.auth import logout
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
+from users.devices import touch_device
 from users.mfa import REAUTH_KEY
 from users.mfa_policy import mfa_required
 
@@ -107,3 +108,4 @@ class SessionPolicyMiddleware:
             return
         if now - session[ACTIVITY_KEY] >= ACTIVITY_WRITE_INTERVAL:
             session[ACTIVITY_KEY] = now
+            touch_device(session.session_key)

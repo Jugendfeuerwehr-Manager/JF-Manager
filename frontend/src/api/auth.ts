@@ -47,6 +47,19 @@ export interface MFASetup {
   otpauth_uri: string
 }
 
+export interface DeviceSession {
+  id: number
+  user_agent: string
+  created_at: string
+  last_seen_at: string
+  current: boolean
+}
+
+export interface DeviceRevokeResult {
+  revoked: number
+  current: boolean
+}
+
 export interface ReauthenticateRequest {
   password?: string
   code?: string
@@ -92,6 +105,18 @@ export const authApi = {
 
   mfaDisable() {
     return apiClient.post<MFAStatus>('/auth/mfa/disable/')
+  },
+
+  devices() {
+    return apiClient.get<DeviceSession[]>('/auth/devices/')
+  },
+
+  revokeDevice(id: number) {
+    return apiClient.post<DeviceRevokeResult>(`/auth/devices/${id}/revoke/`)
+  },
+
+  revokeOtherDevices() {
+    return apiClient.post<DeviceRevokeResult>('/auth/devices/revoke-others/')
   },
 
   requestPasswordReset(email: string) {

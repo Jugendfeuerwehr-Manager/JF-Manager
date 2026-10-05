@@ -71,6 +71,9 @@
           <MfaSettings :setup-requested="route.query.mfa === 'setup'" />
           <Divider />
 
+          <SessionDevices />
+          <Divider />
+
           <DeviceSettings />
           <Divider />
 
@@ -177,6 +180,7 @@ import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import { userApi } from '@/api/user'
 import DeviceSettings from '@/components/DeviceSettings.vue'
 import MfaSettings from '@/components/MfaSettings.vue'
+import SessionDevices from '@/components/security/SessionDevices.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()

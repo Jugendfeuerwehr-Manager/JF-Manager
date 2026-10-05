@@ -32,6 +32,12 @@ Normale Konten bleiben lange angemeldet. Konten mit verpflichtender Zwei-Faktor-
 
 Werte außerhalb des Bereichs werden auf die Grenze gesetzt. Erhält ein Konto während einer Sitzung Administrationsrechte, gilt spätestens nach fünf Minuten das kurze Profil. Liegt die Anmeldung dann schon länger als 8 Stunden zurück, endet die Sitzung. Die Oberfläche warnt zwei Minuten vor dem Ablauf. Statusabfragen verlängern die Sitzung nicht.
 
+## Angemeldete Geräte
+
+Im Profil sieht jede Person ihre aktiven Sitzungen (gekürzte Browserkennung, Anmeldezeit, letzte Aktivität). Sie kann einzelne Geräte oder alle anderen abmelden. Gespeichert wird keine IP-Adresse. Einträge verschwinden mit der zugehörigen Sitzung.
+
+`python manage.py clearsessions` täglich ausführen. Der Befehl entfernt abgelaufene Sitzungen und damit auch deren Geräteeinträge. Bei 90-tägigen Sitzungen wächst die Tabelle sonst unnötig.
+
 ## Bestätigung für rechteerweiternde Aktionen (Step-up)
 
 Folgende Aktionen verlangen eine höchstens fünf Minuten alte Bestätigung mit Passwort und, falls eingerichtet, zweitem Faktor. Eine frische Anmeldung zählt ebenfalls als Bestätigung.

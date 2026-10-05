@@ -15,6 +15,7 @@ from drf_spectacular.views import (
 )
 
 from members.attachment_links import attachment_preview, deny_direct_attachments
+from users.device_views import DeviceListView, DeviceRevokeOthersView, DeviceRevokeView
 from users.mfa_views import (
     MFAConfirmView,
     MFADisableView,
@@ -48,6 +49,9 @@ api_patterns = [
     path("api/v1/auth/session/logout/", SessionLogoutView.as_view(), name="session-logout"),
     path("api/v1/auth/session/mfa/", SessionMFAView.as_view(), name="session-mfa"),
     path("api/v1/auth/reauthenticate/", ReauthenticateView.as_view(), name="reauthenticate"),
+    path("api/v1/auth/devices/", DeviceListView.as_view(), name="devices"),
+    path("api/v1/auth/devices/revoke-others/", DeviceRevokeOthersView.as_view(), name="devices-revoke-others"),
+    path("api/v1/auth/devices/<int:pk>/revoke/", DeviceRevokeView.as_view(), name="device-revoke"),
     path("api/v1/auth/mfa/", MFAStatusView.as_view(), name="mfa-status"),
     path("api/v1/auth/mfa/setup/", MFASetupView.as_view(), name="mfa-setup"),
     path("api/v1/auth/mfa/confirm/", MFAConfirmView.as_view(), name="mfa-confirm"),
