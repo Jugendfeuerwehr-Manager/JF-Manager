@@ -13,6 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from jf_manager_backend.html_safety import sanitize_rich_html
 from orders.models import EmailTemplate
 
 from ..permissions import CanChangeSettings
@@ -462,7 +463,7 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
 
         try:
             # Render HTML
-            html_content = Template(html_template).render(Context(sample_data))
+            html_content = sanitize_rich_html(Template(html_template).render(Context(sample_data)))
         except Exception as e:
             errors.append(f"HTML template error: {e!s}")
             html_content = ""
