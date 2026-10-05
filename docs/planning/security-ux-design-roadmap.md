@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 05.10.2026: SEC-06.3a Ruff-Befund in `settings.py` behoben; Backend-Ruff vollständig grün. |
-| Aktuelles Paket | SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-07 und SEC-09-Rest offen. |
-| Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Letzter Checkpoint | 05.10.2026: SEC-07.0 Sitzungs-, MFA- und OIDC-Vertrag festgelegt. |
+| Aktuelles Paket | SEC-07 in Arbeit (Claude); SEC-09-Rest offen. |
+| Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-06 und SEC-08 abgeschlossen; SEC-01, SEC-02, SEC-07, SEC-09 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `7593376` (SEC-05.5b); SEC-06.3a ist dieser Commit. |
+| Letzter Roadmap-Commit | `f1f44e6` (SEC-06.3a); SEC-07.0 ist dieser Commit. |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-07-Detailblock (Sitzungen, CSRF, MFA, OIDC) mit Teilschritten anlegen, dann SEC-07.1; danach SEC-09.5b. |
+| Nächster konkreter Schritt | SEC-07.1 Sitzungs-API; danach SEC-07.2 bis SEC-07.8, anschließend SEC-09.5b. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -539,7 +539,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
-| SEC-07 | offen | — | Sitzungs-, MFA- und OIDC-Verträge implementierbar aufteilen. |
+| SEC-07 | in Arbeit | Claude | SEC-07.0 Vertrag und Teilschritte; nächster Schritt SEC-07.1 Sitzungs-API. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | in Arbeit | Codex (Integrationsagent) | SEC-09.4a/b idempotent; SEC-09.5a Mitgliedslöschung gesichert, SEC-09.5b/c offen. |
 | SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
@@ -801,6 +801,27 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Risiken / Checkpoint:** Produktionsschlüssel und vorhandene verschlüsselte Daten nicht verändern. Bekannter Alt-Ersatzschlüssel nur aus Altinstallation explizit für einmalige Migration bereitstellen; nie als automatischer Fallback. `dump.rdb` bleibt unangetastet.
 - **Nächster Schritt:** SEC-08 Exportvertrag; Produktivupdate nach `docs/operations/encryption-rotation.md` einschließlich Anbieter-Zugangsdatenrotation.
 
+### SEC-07: Cookie-Sitzungen, MFA und OIDC
+
+- **Status / Verantwortlich:** in Arbeit / Claude.
+- **Abhängigkeiten:** SEC-01 (Rechte), SEC-05 (private Medien laden bisher per Bearer-Header als Blob), SEC-06 (Fernet-Schlüsselring für MFA-Geheimnisse). CFG-01 macht Sitzungsdauern später im Interface konfigurierbar; bis dahin Umgebungswerte mit serverseitigen Grenzen. ROLE-02 baut auf der MFA-Pflicht für delegierende Leitungsrollen auf.
+- **Inventar:** DRF authentifiziert per SimpleJWT, klassischem Token und Session. Frontend hält Access-/Refresh-JWT in `localStorage`, Logout löscht nur lokal. `/api-token-auth/`, `/auth/login|refresh|verify/` geben Tokens aus. OIDC: State/Nonce nur im Cache (nicht browsergebunden), kein PKCE, `get`+`delete` nicht atomar, Authorize-/Token-Endpunkte aus Discovery ungeprüft, Algorithmus aus Tokenkopf, `next` ungeprüft, E-Mail/Name/Gruppen und Ausnahmetexte in Redirect-URLs, Callback übergibt JWTs per Austauschcode. Kein MFA. Django-Admin-Login ohne zusätzliche Prüfung.
+- **Abnahme:** Browser erhalten keine Zugangstokens; Anmeldung über `Secure`/`HttpOnly`/`SameSite=Lax`-Sitzungscookie mit Sitzungsrotation. Login, Logout und alle zustandsändernden Anfragen verlangen CSRF. Logout invalidiert serverseitig. 30 Minuten Inaktivität und 12 Stunden Maximaldauer (Umgebung, innerhalb fester Grenzen); Status nennt Ablaufzeiten. TOTP mit Replay-Schutz und einmaligen, gehashten Wiederherstellungscodes; Geheimnis verschlüsselt. MFA verpflichtend für Superuser, Staff, delegierende Leitungsrollen und administrative Rechte; ohne Nachweis nur Einrichtung möglich. Sicherheitsänderungen verlangen Bestätigung ≤ 5 Minuten. Lokaler Login, LDAP, OIDC und Django-Admin unterliegen denselben Regeln; Provider-MFA nur bei ausdrücklicher Konfiguration. OIDC mit sitzungsgebundenem State, PKCE S256, atomarer Einmalverwendung, geprüften HTTPS-Endpunkten am Issuer-Host, fester Algorithmus-Allowlist, relativem `next` und ohne personenbezogene Diagnosedaten in URLs. JWT-/Token-Zugänge abgeschaltet, bestehende Tokens und Sitzungen widerrufen.
+- **Stabile Teilschritte:**
+  - `SEC-07.0`: Inventar, Vertrag, Abhängigkeiten und Teilschritte festhalten.
+  - `SEC-07.1`: Sitzungs-API (CSRF-Cookie/Status, Login, serverseitiger Logout), sichere Cookie-Einstellungen, Sitzungsrotation und Drosselung samt Regressionen.
+  - `SEC-07.2`: Inaktivitäts- und Maximaldauer serverseitig erzwingen; Ablaufzeiten im Status.
+  - `SEC-07.3`: TOTP-/Wiederherstellungscode-Modell, Einrichtung, Bestätigung, Deaktivierung und erneute Bestätigung (≤ 5 Minuten).
+  - `SEC-07.4`: Zweistufiger Login, MFA-Pflichtrichtlinie und gleiche Regeln für Django-Admin.
+  - `SEC-07.5`: OIDC browsergebunden mit PKCE, atomarer Einmalverwendung, geprüften Endpunkten, Sitzung statt Token und ohne personenbezogene Redirect-Diagnose.
+  - `SEC-07.6`: Frontend auf Cookie-Sitzung, CSRF, MFA-Schritt, MFA-Einrichtung, Ablaufhinweis, serverseitigen Logout und Store-Leerung umstellen.
+  - `SEC-07.7`: JWT-/Token-Authentifizierung und Endpunkte entfernen, ausgegebene Tokens und Sitzungen widerrufen, Betriebsanleitung.
+  - `SEC-07.8`: Gebündelte Abnahme (Logout, Ablauf, CSRF, MFA-Replay, Wiederherstellungscodes, OIDC-Bindung).
+- **Branch:** `feat/security-roles-training-operations`.
+- **Prüfungen / Checkpoint:** SEC-07.0: Code-/Git-Abgleich bestanden; keine Anwendungstests für Dokumentation.
+- **Risiken:** Frontend und API müssen produktiv unter derselben Herkunft laufen; Entwicklungsserver nutzen dieselbe Site (`localhost`) mit CORS-Credentials und vertrauenswürdigen CSRF-Ursprüngen. Externe API-Programme verlieren nach SEC-07.7 ihren Zugang (Produktentscheidung). Bis SEC-07.7 bestehen JWT und Sitzung parallel. `dump.rdb` bleibt unangetastet.
+- **Nächster Schritt:** `SEC-07.1` Sitzungs-API.
+
 ### SEC-08: Sichere Tabellenexporte
 
 - **Status / Verantwortlich:** abgeschlossen / Codex (SEC-08.0–08.2), Claude (SEC-08.3).
@@ -996,3 +1017,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-05.5b | Anonyme signierte Vorschau fremder Listenanhänge antwortet seit SEC-05.1 mit 401 statt 404; Test erwartete noch 404. Erwartung an den Medienvertrag (401/403 wie `test_private_media`) angeglichen; abteilungsfremder angemeldeter Zugriff bleibt 404. | 40/40 Listen-/Medien-/Anhangtests und Ruff bestanden. | Dieser Commit: `test(SEC-05.5b): align list preview test with private media contract` | SEC-06.3a Ruff-Befund. |
 
 | 05.10.2026 | SEC-06.3a | Ruff E402 aus SEC-06.1 behoben: seiteneffektfreier `encryption_config`-Import an den Dateianfang. Start ohne Schlüssel scheitert weiterhin mit `ImproperlyConfigured`. | `ruff check .` vollständig bestanden; 54/54 Sync-/Verschlüsselungs-/Benutzersicherheits-/LDAP-Tests und `manage.py check` mit/ohne Schlüssel wie erwartet. | Dieser Commit: `style(SEC-06.3a): import encryption config at module top` | SEC-07-Detailblock. |
+
+| 05.10.2026 | SEC-07.0 | Authentifizierung inventarisiert (JWT/Token in `localStorage`, nur lokaler Logout, OIDC-Befunde, fehlendes MFA). Vertrag, Abnahme und Teilschritte SEC-07.1 bis SEC-07.8 festgelegt. | Code-/Git-Abgleich bestanden; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(SEC-07.0): define session, MFA and OIDC contract` | SEC-07.1 Sitzungs-API. |
