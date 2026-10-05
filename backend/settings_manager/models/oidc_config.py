@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+
 from jf_manager_backend.encrypted_fields import StrictEncryptedCharField as EncryptedCharField
 
 

@@ -65,6 +65,15 @@ jobs:
       - name: Install test tools
         run: pip install coverage
 
+      - name: Generate ephemeral test encryption key
+        run: |
+          python - <<'PYKEY'
+          import os
+          from cryptography.fernet import Fernet
+          with open(os.environ["GITHUB_ENV"], "a") as environment:
+              environment.write("FIELD_ENCRYPTION_KEY=" + Fernet.generate_key().decode() + "\n")
+          PYKEY
+
       - name: Run tests with coverage
         working-directory: backend
         run: |
