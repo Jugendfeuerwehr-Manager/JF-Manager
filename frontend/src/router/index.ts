@@ -318,6 +318,12 @@ const router = createRouter({
           meta: { requiresStaff: true }
         },
         {
+          path: 'role-templates',
+          name: 'role-templates',
+          component: () => import('@/views/RoleTemplatesAdminView.vue'),
+          meta: { requiresPerm: 'departments.view_roletemplate' }
+        },
+        {
           path: 'departments',
           redirect: '/users'
         },

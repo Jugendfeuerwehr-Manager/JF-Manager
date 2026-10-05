@@ -39,6 +39,7 @@ const sections: { label: string; items: NavItem[] }[] = [
   { label: 'Verwaltung', items: [
     { label: 'Protokoll', icon: 'pi pi-list', to: '/log', admin: true },
     { label: 'Benutzerverwaltung', icon: 'pi pi-shield', to: '/users', admin: true },
+    { label: 'Rollenvorlagen', icon: 'pi pi-id-card', to: '/role-templates', permission: 'view_roletemplate' },
     { label: 'Einstellungen', icon: 'pi pi-cog', to: '/settings', admin: true },
   ] },
 ]
