@@ -11,12 +11,15 @@ export interface GeneralSettings {
   title: string
   slug: string
   logo_url: string
+  /** Base colour as #rrggbb; accessible shades are derived in the browser. */
+  brand_color?: string
 }
 
 export interface PublicBranding {
   title: string
   slug: string
   logo_url: string
+  brand_color?: string
 }
 
 export interface EmailSettings {

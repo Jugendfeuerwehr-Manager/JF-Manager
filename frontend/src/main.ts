@@ -8,6 +8,8 @@ import Tooltip from 'primevue/tooltip'
 import App from './App.vue'
 import router from './router'
 import { JfPreset } from './theme/preset'
+import { applyBrandColor, applyRememberedBrandColor } from './theme/applyBrand'
+import { brandingApi } from './api/branding'
 
 import 'primeicons/primeicons.css'
 import './assets/tokens.css'
@@ -151,6 +153,10 @@ app.use(PrimeVue, {
   },
   locale: deLocale
 })
+// Organisation colour: remembered value first (no flash), then the server value.
+applyRememberedBrandColor()
+void brandingApi.getPublicBranding().then(response => applyBrandColor(response.data.brand_color)).catch(() => {})
+
 app.use(ConfirmationService)
 app.use(ToastService)
 app.directive('tooltip', Tooltip)
