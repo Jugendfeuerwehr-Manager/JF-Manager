@@ -69,7 +69,7 @@ describe('ListsView department-aware forms', () => {
     listsStore.createList.mockRejectedValueOnce({ response: { data: { department: 'Keine Schreibberechtigung für diese Abteilung.' } } })
     const wrapper = render()
     await flushPromises()
-    const setup = (wrapper.vm as any).$.setupState
+    const setup = (wrapper.vm as unknown as { $: { setupState: { openCreateDialog: () => Promise<void> } & Record<string, unknown> } }).$.setupState
     await setup.openCreateDialog()
     await nextTick()
     expect(wrapper.get('.dialog').attributes('data-visible')).toBe('true')
