@@ -8,7 +8,7 @@
         <span class="kpi-tile__value" :aria-busy="loading || undefined">{{ loading ? '…' : tile.failed ? '–' : tile.value }}</span>
         <span class="kpi-tile__meta">
           <StatusBadge v-if="tile.failed" label="Nicht geladen" severity="danger" />
-          <StatusBadge v-else-if="tile.warning" :label="tile.warning" severity="warning" />
+          <StatusBadge v-else-if="tile.warning" :label="tile.warning" :severity="tile.warningSeverity ?? 'warning'" />
           <span v-else>{{ tile.meta }}</span>
           <span class="kpi-tile__cta">Öffnen<i class="pi pi-arrow-right" aria-hidden="true"></i></span>
         </span>
@@ -22,7 +22,40 @@
     </div>
 
     <div class="dashboard-columns">
-      <section v-if="authStore.canAccessModule('view_service')" class="dashboard-card dashboard-card--wide" aria-labelledby="attendance-title">
+      <section class="dashboard-card dashboard-card--wide dashboard-card--flush" aria-labelledby="tasks-title">
+        <header class="dashboard-card__header">
+          <h2 id="tasks-title">Als Nächstes</h2>
+          <StatusBadge v-if="summary" :label="tasks.length ? `${tasks.length} offen` : 'Nichts offen'" :severity="tasks.length ? 'neutral' : 'success'" />
+        </header>
+        <StateView v-if="loading" kind="loading" title="Aufgaben werden geladen …" />
+        <StateView v-else-if="failedSources.includes('summary')" kind="error" message="Die Übersicht konnte nicht geladen werden." @retry="loadStats" />
+        <StateView v-else-if="tasks.length === 0" kind="empty" title="Nichts offen" message="Für deinen Bereich steht gerade nichts an." />
+        <ul v-else class="task-list">
+          <li v-for="task in tasks" :key="task.key" class="task">
+            <span class="task__icon" :class="`task__icon--${task.tone}`" aria-hidden="true"><i :class="task.icon"></i></span>
+            <span class="task__text">
+              <span class="task__title">{{ task.title }}</span>
+              <span class="task__meta">{{ task.meta }}</span>
+            </span>
+            <router-link :to="task.to" class="task__action" :aria-label="`${task.action}: ${task.title}`">{{ task.action }}</router-link>
+          </li>
+        </ul>
+      </section>
+
+      <section class="dashboard-card" aria-labelledby="shortcuts-title">
+        <header class="dashboard-card__header">
+          <h2 id="shortcuts-title">Schnellzugriff</h2>
+        </header>
+        <StateView v-if="visibleModuleTiles.length === 0" kind="forbidden" message="Für dein Konto sind noch keine Module freigegeben." />
+        <nav v-else class="shortcut-grid" aria-labelledby="shortcuts-title">
+          <router-link v-for="tile in visibleModuleTiles" :key="tile.route" :to="tile.route" class="shortcut">
+            <i :class="tile.icon" aria-hidden="true"></i>
+            <span>{{ tile.label }}</span>
+          </router-link>
+        </nav>
+      </section>
+
+      <section v-if="authStore.canAccessModule('view_service')" class="dashboard-card dashboard-card--full" aria-labelledby="attendance-title">
         <header class="dashboard-card__header">
           <h2 id="attendance-title">Teilnahme der letzten 12 Monate</h2>
           <router-link to="/servicebook" class="dashboard-link">Dienstbuch<i class="pi pi-arrow-right" aria-hidden="true"></i></router-link>
@@ -61,18 +94,6 @@
         </div>
       </section>
 
-      <section class="dashboard-card" aria-labelledby="shortcuts-title">
-        <header class="dashboard-card__header">
-          <h2 id="shortcuts-title">Schnellzugriff</h2>
-        </header>
-        <StateView v-if="visibleModuleTiles.length === 0" kind="forbidden" message="Für dein Konto sind noch keine Module freigegeben." />
-        <nav v-else class="shortcut-grid" aria-labelledby="shortcuts-title">
-          <router-link v-for="tile in visibleModuleTiles" :key="tile.route" :to="tile.route" class="shortcut">
-            <i :class="tile.icon" aria-hidden="true"></i>
-            <span>{{ tile.label }}</span>
-          </router-link>
-        </nav>
-      </section>
     </div>
   </div>
 </template>
@@ -82,15 +103,23 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
-import { useMembersStore } from '@/stores/members'
-import { useParentsStore } from '@/stores/parents'
-import { useQualificationsStore } from '@/stores/qualifications'
 import { useServicebookStore } from '@/stores/servicebook'
+import { dashboardApi, type DashboardSummary } from '@/api/dashboard'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
-type StatSource = 'member' | 'parent' | 'qualification' | 'service'
+type StatSource = 'summary' | 'service'
+
+interface DashboardTask {
+  key: string
+  title: string
+  meta: string
+  action: string
+  to: string
+  icon: string
+  tone: 'primary' | 'warning' | 'info' | 'neutral'
+}
 
 interface ModuleTile {
   label: string
@@ -111,20 +140,12 @@ interface ServiceTrendData {
 
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()
-const membersStore = useMembersStore()
-const parentsStore = useParentsStore()
-const qualificationsStore = useQualificationsStore()
 const servicebookStore = useServicebookStore()
 
 const loading = ref(true)
 const chartScroll = ref<HTMLElement | null>(null)
 const failedSources = ref<StatSource[]>([])
-const stats = ref({
-  totalMembers: 0,
-  totalParents: 0,
-  totalQualifications: 0,
-  expiringQualifications: 0
-})
+const summary = ref<DashboardSummary | null>(null)
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -139,19 +160,81 @@ const eyebrow = computed(() => {
   return department ? `${today} · ${department.code}` : today
 })
 
-const kpiTiles = computed(() => {
-  const tiles = []
-  if (authStore.canAccessModule('view_member')) {
-    tiles.push({ key: 'member', label: 'Mitglieder', icon: 'pi pi-users', to: '/members', value: stats.value.totalMembers, meta: 'im aktuellen Bereich', warning: '', failed: failedSources.value.includes('member') })
+interface KpiTile {
+  key: string
+  label: string
+  icon: string
+  to: string
+  value: number
+  meta: string
+  warning: string
+  warningSeverity?: 'warning' | 'danger'
+  failed: boolean
+}
+
+// Tiles follow the module rights; their numbers come from one counts-only summary (UX-01.1).
+const kpiTiles = computed<KpiTile[]>(() => {
+  const failed = failedSources.value.includes('summary')
+  const data = summary.value
+  const visible = (perm: string, section: keyof DashboardSummary) =>
+    authStore.canAccessModule(perm) && (failed || loading.value || data?.[section] != null)
+  const tiles: KpiTile[] = []
+  if (visible('view_member', 'members')) {
+    const parents = data?.parents?.total
+    tiles.push({ key: 'member', label: 'Mitglieder', icon: 'pi pi-users', to: '/members', value: data?.members?.total ?? 0, meta: parents != null ? `${parents} Elternkontakte` : 'im aktuellen Bereich', warning: '', failed })
   }
-  if (authStore.canAccessModule('view_parent')) {
-    tiles.push({ key: 'parent', label: 'Eltern', icon: 'pi pi-user', to: '/parents', value: stats.value.totalParents, meta: 'hinterlegte Kontakte', warning: '', failed: failedSources.value.includes('parent') })
+  if (visible('view_qualification', 'qualifications')) {
+    const expired = data?.qualifications?.expired ?? 0
+    tiles.push({ key: 'qualification', label: 'Qualifikationen laufen ab', icon: 'pi pi-crown', to: '/qualifications', value: data?.qualifications?.expiring['30'] ?? 0, meta: 'in den nächsten 30 Tagen', warning: expired ? `${expired} abgelaufen` : '', warningSeverity: 'danger', failed })
   }
-  if (authStore.canAccessModule('view_qualification')) {
-    const expiring = stats.value.expiringQualifications
-    tiles.push({ key: 'qualification', label: 'Qualifikationen', icon: 'pi pi-crown', to: '/qualifications', value: stats.value.totalQualifications, meta: 'keine laufen bald ab', warning: expiring > 0 ? `${expiring} laufen bald ab` : '', failed: failedSources.value.includes('qualification') })
+  if (visible('view_order', 'orders')) {
+    tiles.push({ key: 'order', label: 'Offene Bestellungen', icon: 'pi pi-shopping-cart', to: '/orders', value: data?.orders?.open ?? 0, meta: 'noch nicht vollständig ausgegeben', warning: '', failed })
+  }
+  if (visible('view_memberlist', 'lists')) {
+    tiles.push({ key: 'list', label: 'Offene Listen', icon: 'pi pi-list-check', to: '/lists', value: data?.lists?.open ?? 0, meta: 'mit nicht abgehakten Einträgen', warning: '', failed })
   }
   return tiles
+})
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+
+// "Als Nächstes": derived from the same counts, each with one action into a filtered view.
+const tasks = computed<DashboardTask[]>(() => {
+  const data = summary.value
+  if (!data) return []
+  const result: DashboardTask[] = []
+  const next = data.services?.next
+  if (next) {
+    const start = new Date(next.start)
+    const isToday = start.toDateString() === new Date().toDateString()
+    const when = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(start)
+    result.push({
+      key: 'service',
+      title: isToday ? `Heute: ${next.topic || 'Dienst'}` : `Nächster Dienst: ${next.topic || 'ohne Thema'}`,
+      meta: [when, next.place].filter(Boolean).join(' · '),
+      action: isToday ? 'Anwesenheit erfassen' : 'Dienst öffnen',
+      to: isToday ? `/servicebook/${next.id}/attendance` : `/servicebook/${next.id}/edit`,
+      icon: 'pi pi-calendar',
+      tone: 'primary'
+    })
+  }
+  const qualifications = data.qualifications
+  if (qualifications?.expired) {
+    result.push({ key: 'expired', title: `${plural(qualifications.expired, 'Qualifikation', 'Qualifikationen')} abgelaufen`, meta: 'Noch nicht verlängert', action: 'Prüfen', to: '/qualifications?view=expired', icon: 'pi pi-exclamation-triangle', tone: 'warning' })
+  }
+  if (qualifications?.expiring['30']) {
+    result.push({ key: 'expiring', title: `${plural(qualifications.expiring['30'], 'Qualifikation läuft', 'Qualifikationen laufen')} bald ab`, meta: 'In den nächsten 30 Tagen', action: 'Ansehen', to: '/qualifications', icon: 'pi pi-clock', tone: 'warning' })
+  }
+  if (qualifications?.without_evidence) {
+    result.push({ key: 'evidence', title: `${plural(qualifications.without_evidence, 'Qualifikation', 'Qualifikationen')} ohne Nachweis`, meta: 'Nachweis hochladen oder prüfen', action: 'Ergänzen', to: '/qualifications?view=missing', icon: 'pi pi-file', tone: 'neutral' })
+  }
+  if (data.orders?.open) {
+    result.push({ key: 'orders', title: `${plural(data.orders.open, 'Bestellung', 'Bestellungen')} offen`, meta: 'Mindestens eine Position noch nicht ausgegeben', action: 'Öffnen', to: '/orders', icon: 'pi pi-shopping-cart', tone: 'info' })
+  }
+  if (data.lists?.open) {
+    result.push({ key: 'lists', title: `${plural(data.lists.open, 'Liste', 'Listen')} mit offenen Einträgen`, meta: 'Noch nicht alle abgehakt', action: 'Öffnen', to: '/lists', icon: 'pi pi-list-check', tone: 'neutral' })
+  }
+  return result
 })
 
 const moduleTiles: ModuleTile[] = [
@@ -218,21 +301,13 @@ const maxServiceTotal = computed(() => {
 
 async function loadStats() {
   loading.value = true
-  const requests: [StatSource, () => Promise<unknown>][] = []
-  if (authStore.canAccessModule('view_member')) requests.push(['member', () => membersStore.fetchMembers()])
-  if (authStore.canAccessModule('view_parent')) requests.push(['parent', () => parentsStore.fetchParents()])
-  if (authStore.canAccessModule('view_qualification')) requests.push(['qualification', () => qualificationsStore.fetchStatistics()])
+  const requests: [StatSource, () => Promise<unknown>][] = [
+    ['summary', async () => { summary.value = (await dashboardApi.summary()).data }]
+  ]
   if (authStore.canAccessModule('view_service')) requests.push(['service', () => servicebookStore.fetchChartData()])
 
   const results = await Promise.allSettled(requests.map(([, request]) => request()))
   failedSources.value = requests.filter((_, index) => results[index]!.status === 'rejected').map(([source]) => source)
-
-  stats.value = {
-    totalMembers: membersStore.pagination.count,
-    totalParents: parentsStore.pagination.count,
-    totalQualifications: qualificationsStore.statistics?.total_qualifications || 0,
-    expiringQualifications: qualificationsStore.statistics?.expiring_qualifications || 0
-  }
   loading.value = false
   // Most recent services first in view on narrow screens
   await nextTick()
@@ -353,6 +428,58 @@ onMounted(loadStats)
   border: 1px solid var(--jf-color-border);
   border-radius: var(--jf-radius-lg);
   box-shadow: var(--jf-shadow-sm);
+}
+
+.dashboard-card--flush { padding: 0; gap: 0; overflow: hidden; }
+.dashboard-card--flush > .dashboard-card__header { padding: var(--jf-space-3) var(--jf-space-3) var(--jf-space-2); }
+.dashboard-card--flush > .state-view { margin: 0 var(--jf-space-3) var(--jf-space-3); }
+.dashboard-card--full { flex-basis: 100%; }
+
+.task-list { margin: 0; padding: 0; list-style: none; }
+.task {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-2);
+  padding: var(--jf-space-2) var(--jf-space-3);
+  border-top: 1px solid var(--jf-color-border);
+}
+.task__icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+  color: var(--jf-color-text-muted);
+}
+.task__icon--primary { background: var(--jf-color-selected); color: var(--jf-color-selected-text); }
+.task__icon--warning { background: var(--p-amber-100); color: var(--p-amber-800); }
+.task__icon--info { background: var(--p-sky-100); color: var(--p-sky-800); }
+.app-dark .task__icon--warning { background: color-mix(in srgb, var(--p-amber-400) 18%, transparent); color: var(--p-amber-300); }
+.app-dark .task__icon--info { background: color-mix(in srgb, var(--p-sky-400) 18%, transparent); color: var(--p-sky-300); }
+.task__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.task__title { font-weight: var(--jf-weight-semibold); }
+.task__meta { font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
+.task__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--jf-touch-target);
+  padding: 0 var(--jf-space-2);
+  border: 1px solid var(--p-form-field-border-color);
+  border-radius: var(--jf-radius-md);
+  color: var(--jf-color-text);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.task__action:hover { background: var(--p-content-hover-background); }
+.task__action:focus-visible { outline: var(--jf-focus-ring); outline-offset: 2px; }
+@media (max-width: 560px) {
+  .task { flex-wrap: wrap; padding: var(--jf-space-2); }
+  .task__text { flex-basis: calc(100% - 40px - var(--jf-space-2)); }
+  .task__action { margin-left: calc(40px + var(--jf-space-2)); }
 }
 
 .dashboard-card--wide {

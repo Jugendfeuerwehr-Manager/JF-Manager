@@ -1,20 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import DashboardView from '../DashboardView.vue'
+import type { DashboardSummary } from '@/api/dashboard'
 
-const { auth, members, parents, qualifications, servicebook } = vi.hoisted(() => ({
+const { auth, servicebook, summary } = vi.hoisted(() => ({
   auth: { user: { first_name: 'Alex' }, canAccessModule: vi.fn((_perm: string) => true) },
-  members: { fetchMembers: vi.fn(), pagination: { count: 48 } },
-  parents: { fetchParents: vi.fn(), pagination: { count: 31 } },
-  qualifications: { fetchStatistics: vi.fn(), statistics: { total_qualifications: 12, expiring_qualifications: 2 } },
   servicebook: { fetchChartData: vi.fn(), chartLoading: false, chartData: null },
+  summary: vi.fn(),
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => ({ activeDepartment: { code: 'NORD' } }) }))
-vi.mock('@/stores/members', () => ({ useMembersStore: () => members }))
-vi.mock('@/stores/parents', () => ({ useParentsStore: () => parents }))
-vi.mock('@/stores/qualifications', () => ({ useQualificationsStore: () => qualifications }))
 vi.mock('@/stores/servicebook', () => ({ useServicebookStore: () => servicebook }))
+vi.mock('@/api/dashboard', () => ({ dashboardApi: { summary } }))
+
+const today = new Date()
+today.setHours(18, 0, 0, 0)
+const full: DashboardSummary = {
+  members: { total: 48 },
+  parents: { total: 31 },
+  qualifications: { expired: 1, expiring: { 30: 2, 60: 4, 90: 5 }, without_evidence: 3 },
+  services: { upcoming_days: 14, upcoming: 2, next: { id: 7, start: today.toISOString(), topic: 'Stationsausbildung', place: 'Gerätehaus' } },
+  orders: { open: 0 },
+  lists: { open: 2 },
+}
 
 function render() {
   return mount(DashboardView, { global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
@@ -24,45 +32,53 @@ describe('DashboardView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     auth.canAccessModule.mockImplementation(() => true)
-    members.fetchMembers.mockResolvedValue([])
-    parents.fetchParents.mockResolvedValue([])
-    qualifications.fetchStatistics.mockResolvedValue(null)
+    summary.mockResolvedValue({ data: full })
     servicebook.fetchChartData.mockResolvedValue(null)
   })
 
-  it('links every key figure to its module and shows no placeholders', async () => {
+  it('loads counts from one summary and links every key figure', async () => {
     const wrapper = render()
     await flushPromises()
+    expect(summary).toHaveBeenCalledTimes(1)
     const tiles = wrapper.findAll('.kpi-tile')
-    expect(tiles.map(t => t.attributes('href'))).toEqual(['/members', '/parents', '/qualifications'])
+    expect(tiles.map((t) => t.attributes('href'))).toEqual(['/members', '/qualifications', '/orders', '/lists'])
     expect(tiles[0]!.text()).toContain('48')
-    expect(tiles[2]!.text()).toContain('2 laufen bald ab')
-    expect(wrapper.text()).not.toContain('Inventar-')
-    expect(wrapper.find('.kpi-tile__value').text()).not.toBe('-')
+    expect(tiles[0]!.text()).toContain('31 Elternkontakte')
+    expect(tiles[1]!.text()).toContain('1 abgelaufen')
     expect(wrapper.text()).toContain('NORD')
   })
 
-  it('only shows figures and loads data the user may see', async () => {
-    auth.canAccessModule.mockImplementation((perm: string) => perm === 'view_member')
+  it('lists next tasks with one action each and skips empty ones', async () => {
     const wrapper = render()
     await flushPromises()
-    expect(wrapper.findAll('.kpi-tile').map(t => t.attributes('href'))).toEqual(['/members'])
-    expect(parents.fetchParents).not.toHaveBeenCalled()
+    const tasks = wrapper.findAll('.task')
+    expect(tasks.map((t) => t.get('.task__action').attributes('href'))).toEqual([
+      '/servicebook/7/attendance', '/qualifications?view=expired', '/qualifications', '/qualifications?view=missing', '/lists',
+    ])
+    expect(tasks[0]!.text()).toContain('Heute: Stationsausbildung')
+    expect(wrapper.get('.task-list').text()).not.toContain('Bestellung')
+  })
+
+  it('hides figures of modules without access', async () => {
+    auth.canAccessModule.mockImplementation((perm: string) => perm === 'view_member')
+    summary.mockResolvedValue({ data: { ...full, qualifications: null, orders: null, lists: null, services: null } })
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.findAll('.kpi-tile').map((t) => t.attributes('href'))).toEqual(['/members'])
     expect(servicebook.fetchChartData).not.toHaveBeenCalled()
   })
 
-  it('marks a failed source instead of showing a misleading zero and retries', async () => {
-    parents.fetchParents.mockRejectedValueOnce(new Error('offline'))
+  it('marks a failed summary instead of showing misleading zeros and retries', async () => {
+    summary.mockRejectedValueOnce(new Error('offline'))
     const wrapper = render()
     await flushPromises()
-    const parentTile = wrapper.findAll('.kpi-tile')[1]!
-    expect(parentTile.text()).toContain('Nicht geladen')
-    expect(parentTile.find('.kpi-tile__value').text()).toBe('–')
-    const notice = wrapper.get('.dashboard-notice')
-    expect(notice.attributes('role')).toBe('alert')
-    await notice.get('button').trigger('click')
+    const tile = wrapper.findAll('.kpi-tile')[0]!
+    expect(tile.text()).toContain('Nicht geladen')
+    expect(tile.find('.kpi-tile__value').text()).toBe('–')
+    await wrapper.get('.dashboard-notice button').trigger('click')
     await flushPromises()
-    expect(parents.fetchParents).toHaveBeenCalledTimes(2)
+    expect(summary).toHaveBeenCalledTimes(2)
     expect(wrapper.find('.dashboard-notice').exists()).toBe(false)
+    expect(wrapper.findAll('.task')).toHaveLength(5)
   })
 })
