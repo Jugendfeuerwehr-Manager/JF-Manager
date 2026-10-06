@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.4 Bedienung und Verlassensschutz geprüft. |
+| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.5a geprüft: 644 PostgreSQL-15- und 203 Frontendtests grün. |
 | Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | TRAIN-Integration (31996e4 übernommen; dieser Commit). |
+| Letzter Roadmap-Commit | TRAIN-Integration (3558df0 übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | TRAIN-Commits integrieren, dann TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf abnehmen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
-| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.4 Undo/Redo, Tastatur und Verlassensschutz grün; nächster Schritt TRAIN-01.5. |
+| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.5a Vorschauaktionen grün; Integration koordinieren, dann TRAIN-01.5b Status-/Dienstvertrag. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
@@ -921,14 +921,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `TRAIN-01.3`: Lokaler Planentwurf für Anlage, Bearbeitung, Entfernung und Verschiebung; eine Speicheranfrage, Fehler-/Konflikterhalt.
   - `TRAIN-01.4`: Rückgängig/Wiederholen, Verlassenswarnung und explizite Tastatur-/Formularaktionen ohne automatischen Tausch.
   - `TRAIN-01.5`: Status-/Dienstvertrag mit TRAIN-03, ausdrückliche Vorschau für Tauschen/Nachfolgende verschieben; gebündelte Paketabnahme.
-- **Letzter dauerhafter Checkpoint:** TRAIN-01.4, dieser Commit.
+    - `TRAIN-01.5a`: Tauschen/Nachfolgende verschieben nur über benannte Aktionen mit vollständiger, zeitlich gültiger Vorschau; gemeinsam rückgängig.
+    - `TRAIN-01.5b`: Statusmigration und stabile Dienstverknüpfung gemeinsam mit TRAIN-03 (Entwürfe ohne regulären Dienst; ausdrückliche Änderungen nach Beginn, historische Anwesenheiten erhalten).
+    - `TRAIN-01.5c`: Gebündelte fachliche und Browser-/Touch-Abnahme nach Integration und Statusvertrag.
+- **Letzter dauerhafter Checkpoint:** TRAIN-01.5a, dieser Commit.
 - **Branch:** Integration auf `feat/security-roles-training-operations`; isolierter detached Worktree `/private/tmp/jf-manager-train` bei `d89c90b`, keine konkurrierenden Git-Schreiboperationen im gemeinsamen Checkout.
-- **Geänderte Dateien / Commit-Bezug:** Trainings-Backend, Planer-Store, API/Typen, Trainingsformulare und Planer-Bedienlogik, neue Tests; `10335ef`, `4d2e276`, `26e3098`, dieser Commit: `feat(TRAIN-01.3): stage complete training drafts and retain conflicts`. API-Dokumentation: `docs/planning/training-plan-api.md`.
-- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.4.
-- **Prüfungen:** Backend: 48/48 SQLite und 50/50 PostgreSQL-15-Tests einschließlich Konkurrenzfällen bestanden. Frontend: zehn Storetests, zwei Tastatur- und zwei Planer-Gesten-/Verlassensschutztests, 198/198 Gesamt-Tests, Typecheck und gezieltes ESLint bestanden. Browserlauf nicht ausgeführt.
-- **Offene Fehler / Risiken:** Status-/Dienstvertrag und ausdrückliche Vorschauaktionen noch offen; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
-- **Laufende Prozesse und sichere Fortsetzung:** Vollständige Backendtests auf Wegwerf-PostgreSQL-15-Container `jf-train-test-pg15`, Port 55437; Log `/private/tmp/train-backend-tests.log`. Nach Prüfung Container entfernen. Keine Änderungen an lokalen Anwendungsdaten.
-- **Nächster konkreter Schritt:** TRAIN-01.5 ausdrückliche Vorschauaktionen und Status-/Dienstvertrag mit TRAIN-03.
+- **Geänderte Dateien / Commit-Bezug:** Trainings-Backend, Planer-Store, API/Typen, Trainingsformulare/-aktionen und Planer-Bedienlogik, neue Tests; `10335ef`, `4d2e276`, `26e3098`, `4de5e64`, `31996e4`, dieser Commit: `feat(TRAIN-01.5a): preview explicit swaps and following block shifts`. API-Dokumentation: `docs/planning/training-plan-api.md`.
+- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.4 und TRAIN-01.5a; Paket bleibt in Arbeit.
+- **Prüfungen:** Backend: 48/48 gezielte SQLite-, 50/50 gezielte PostgreSQL-15- und 644/644 Gesamt-Tests auf PostgreSQL 15 bestanden (explizite Modulliste einschließlich `training`, keine übersprungenen Tests). Frontend: 203/203 Gesamt-Tests, Typecheck, gezieltes ESLint und Produktionsbuild bestanden. Migrationsabgleich, Ruff und Diff-Check bestanden. Manueller Browser-/Touchlauf nicht ausgeführt. Backend-Testumgebung Python 3.12; neuere SEC-10.6-Laufzeit nach Integration erneut abgleichen.
+- **Offene Fehler / Risiken:** Status-/Dienstvertrag noch offen; direkte Django-Admin-Änderungen erhöhen derzeit keine Planversion und benötigen vor Paketabnahme einen eigenen Versions-/Zeitprüfungsvertrag; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
+- **Laufende Prozesse und sichere Fortsetzung:** Prüfungen abgeschlossen; Wegwerf-PostgreSQL-15-Container `jf-train-test-pg15` wird nach Sicherung entfernt. Logs `/private/tmp/train-backend-tests.log` und `/private/tmp/train-frontend-build.log`. Keine Änderungen an lokalen Anwendungsdaten. Isolierter Worktree bleibt als wiederaufnehmbarer Checkpoint bestehen.
+- **Nächster konkreter Schritt:** Alle sechs TRAIN-Teilschritt-Commits durch den abgestimmten Integrationsagenten auf `feat/security-roles-training-operations` integrieren (Roadmap-Konflikte mit allen SEC-/DES-Einträgen erhalten). Danach TRAIN-01.5b mit TRAIN-03 übernehmen; Admin-Vertrag und Browser-/Touchabnahme in TRAIN-01.5c, TRAIN-02–04 bleiben offen.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1257,3 +1260,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-01.3 | Planer lädt einen gemeinsamen Serverstand und hält Terminmetadaten, Blockanlage/-inhalt/-entfernung sowie Positionen/Gruppen lokal. Speichern sendet genau einen vollständigen Plan mit erwarteter Version; Fehler und Konflikte erhalten den Entwurf. Serverstand ist vergleichbar und nur nach ausdrücklicher Bestätigung verwerfend ladbar. Neue lokale Blöcke haben temporäre IDs; Medien benötigen erst einen gespeicherten Block. Vorlageninhalt wird vor lokaler Übernahme kopiert, Wiederholungsregel beim Bearbeiten erhalten. | 6/6 neue Storetests, 190/190 Frontendtests, Typecheck und gezieltes ESLint bestanden. Erster Werkzeugstart nutzte veraltetes System-Node und scheiterte; mit explizitem Node 24 bestanden. Browserlauf nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.3): stage complete training drafts and retain conflicts` | TRAIN-01.4. |
 
 | 06.10.2026 | TRAIN-01.4 | Lokale Undo/Redo-Historie (bis 50 Schritte, gesamtes Ziehen ein Schritt), Schutz vor Router-/Terminwechsel und Browser-Verlassen. Baustein ohne Ziehen anlegbar, focusierbare benannte Kacheln: Pfeile verschieben, Alt+Pfeile ändern Dauer, Shift in Ein-Minuten-Schritten, Enter öffnet Formular; Gruppen im Formular. Terminrahmen bestimmt Raster und Verschiebe-/Größengrenzen. Automatischen Überlappungstausch entfernt; bestehende Blöcke bleiben an ihrem Ort. | 14/14 gezielte Store-/Tastatur-/Planertests, 198/198 Gesamt-Frontendtests, Typecheck, gezieltes ESLint und Diff-Check bestanden. Vollständige Backend-Suite läuft auf PostgreSQL 15; Browser-/Touchprüfung nicht ausgeführt. Trailing-Whitespace aus TRAIN-01.3 korrigiert. | Dieser Commit: `feat(TRAIN-01.4): add draft history keyboard controls and leave protection` | TRAIN-01.5. |
+
+| 06.10.2026 | TRAIN-01.5a | Benannte Planaktionen Tauschen/Nachfolgende verschieben zeigen vollständige Vorschau mit Bausteinen, alten/neuen Zeiten und Gruppen. Ungültige Zeitlagen blockieren Übernahme; gemeinsame Blöcke und betroffene Gruppen werden ausdrücklich gezeigt. Übernahme ist ein lokaler, gemeinsam rückgängig machbarer Schritt. Wiederaufnehmbarer Checkpoint für Integration und Restabnahme; SEC-/UX-Arbeitsstand im gemeinsamen Checkout bleibt unberührt. | 203/203 Frontendtests, Typecheck, gezieltes ESLint, Produktionsbuild sowie 644/644 Backendtests auf isoliertem PostgreSQL 15 bestanden. Neuer Dialogtest zunächst wegen falschem Slot-/Button-Testdouble fehlgeschlagen; nach Korrektur des Doubles bestanden. Manueller Browser-/Touchlauf und Paketabnahme nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.5a): preview explicit swaps and following block shifts` | Koordinierte Integration, dann TRAIN-01.5b/TRAIN-03. |

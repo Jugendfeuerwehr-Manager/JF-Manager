@@ -30,9 +30,10 @@
           v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
           @click="toggleNav"
         />
-        <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings" @click="plannerStore.undo()" />
-        <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings" @click="plannerStore.redo()" />
+        <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.undo()" />
+        <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.redo()" />
         <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
+        <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
         <Button
@@ -48,7 +49,7 @@
           icon="pi pi-save"
           label="Speichern"
           :loading="plannerStore.saving || saving"
-          :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings"
+          :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings || showPlanAction"
           @click="saveAll"
         />
       </div>
@@ -184,6 +185,8 @@
       </Transition>
     </div>
 
+    <PlanActionDialog v-model:visible="showPlanAction" :duration="sessionDuration" />
+
     <!-- Session settings dialog -->
     <Dialog
       v-model:visible="showSessionSettings"
@@ -217,6 +220,7 @@ import Dialog from 'primevue/dialog'
 import TrainingBlockTile from '../molecules/TrainingBlockTile.vue'
 import LibraryBlockPicker from '../molecules/LibraryBlockPicker.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
+import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove } from '@/types/training'
@@ -244,6 +248,7 @@ const plannerScroll = ref<HTMLElement | null>(null)
 const showLibraryPicker = ref(false)
 const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
+const showPlanAction = ref(false)
 const editingBlock = ref<PlannerBlock | null>(null)
 const saving = ref(false)
 const saveFailed = ref(false)
@@ -471,6 +476,7 @@ let dragOccurred = false
 
 function openEdit(block: PlannerBlock) {
   if (dragOccurred || plannerStore.saving) return
+  plannerStore.selectBlock(block.id)
   editingBlock.value = block
   showEditDialog.value = true
 }
@@ -576,6 +582,7 @@ watch(() => props.sessionId, async (id) => {
   showEditDialog.value = false
   showSessionSettings.value = false
   editingBlock.value = null
+  showPlanAction.value = false
   saveFailed.value = false
   plannerStore.reset()
   try { await plannerStore.loadBlocks(id) }
