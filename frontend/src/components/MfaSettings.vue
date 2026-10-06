@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import QRCode from 'qrcode'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
@@ -20,7 +21,21 @@ const setup = ref<MFASetup | null>(null)
 const confirmCode = ref('')
 const recoveryCodes = ref<string[]>([])
 
+const qrCode = ref('')
+
 const groupedSecret = computed(() => setup.value?.secret.match(/.{1,4}/g)?.join(' ') ?? '')
+
+// Rendered locally: the TOTP secret must never be sent to a third-party QR service.
+watch(setup, async (value) => {
+  qrCode.value = ''
+  if (!value) return
+  try {
+    const svg = await QRCode.toString(value.otpauth_uri, { type: 'svg', errorCorrectionLevel: 'M', margin: 4 })
+    if (setup.value === value) qrCode.value = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  } catch {
+    // The manual key and app link below remain usable.
+  }
+})
 
 function errorCode(err: unknown): string | undefined {
   return (err as { response?: { data?: { code?: string } } }).response?.data?.code
@@ -131,7 +146,15 @@ onMounted(async () => {
       <div v-if="setup" class="setup-box">
         <ol>
           <li>
-            Öffne deine Authenticator-App und füge ein Konto hinzu.
+            Öffne deine Authenticator-App, füge ein Konto hinzu und scanne diesen QR-Code.
+            <img
+              v-if="qrCode"
+              :src="qrCode"
+              class="qr-code"
+              width="200"
+              height="200"
+              alt="QR-Code zum Einrichten der Authenticator-App"
+            />
             <a :href="setup.otpauth_uri" class="app-link">Auf diesem Gerät direkt in der App öffnen</a>
           </li>
           <li>
@@ -186,6 +209,7 @@ onMounted(async () => {
 .actions :deep(.p-button), .inline-form :deep(.p-button), .inline-form :deep(input) { min-height: 44px; }
 .setup-box, .codes-box { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; border: 1px solid var(--surface-border, #d9dee5); border-radius: 8px; }
 .setup-box ol { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
+.qr-code { display: block; width: 200px; height: 200px; margin: .75rem 0 .25rem; background: #fff; border-radius: 8px; }
 .app-link { display: inline-block; margin-left: .25rem; color: var(--primary-color); }
 .secret { display: block; margin-top: .4rem; font-size: 1.05rem; letter-spacing: .08em; word-break: break-all; }
 .codes { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .5rem; }
