@@ -2,15 +2,15 @@
 
 from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import DEFAULT_DB_ALIAS, transaction
 
 from departments.models import RoleTemplate
 from departments.role_catalog import ROLE_SPECS
 
 
-def _permission_map(required_names):
+def _permission_map(required_names, database=DEFAULT_DB_ALIAS):
     result = {}
-    for permission in Permission.objects.select_related("content_type"):
+    for permission in Permission.objects.using(database).select_related("content_type"):
         name = f"{permission.content_type.app_label}.{permission.codename}"
         if name not in required_names:
             continue
@@ -58,24 +58,30 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action="store_true", help="Nur Soll/Ist-Plan ausgeben, nichts anlegen.")
+        parser.add_argument("--database", default=DEFAULT_DB_ALIAS)
 
-    @transaction.atomic
     def handle(self, *args, **options):
+        with transaction.atomic(using=options["database"]):
+            return self.seed(options)
+
+    def seed(self, options):
+        database = options["database"]
         keys = [spec.key for spec in ROLE_SPECS]
         names = [spec.group_name for spec in ROLE_SPECS]
         if len(set(keys)) != len(keys) or len(set(names)) != len(names):
             raise CommandError("Doppelte Schlüssel oder Gruppennamen im Rollenkatalog.")
 
         required_names = {name for spec in ROLE_SPECS for name in spec.permissions}
-        permission_map = _permission_map(required_names)
+        permission_map = _permission_map(required_names, database)
         missing_permissions = sorted(required_names - permission_map.keys())
         if missing_permissions:
             raise CommandError(f"Fehlende Django-Permissions: {', '.join(missing_permissions)}")
 
         templates = {
-            template.key: template for template in RoleTemplate.objects.select_related("group").filter(key__in=keys)
+            template.key: template
+            for template in RoleTemplate.objects.using(database).select_related("group").filter(key__in=keys)
         }
-        group_names = {group.name: group for group in Group.objects.filter(name__in=names)}
+        group_names = {group.name: group for group in Group.objects.using(database).filter(name__in=names)}
         collisions = []
         changes = []
         for spec in ROLE_SPECS:
@@ -102,9 +108,9 @@ class Command(BaseCommand):
             return
 
         for spec in changes:
-            group = Group.objects.create(name=spec.group_name)
+            group = Group.objects.using(database).create(name=spec.group_name)
             group.permissions.set([permission_map[name] for name in spec.permissions])
-            RoleTemplate.objects.create(
+            RoleTemplate.objects.using(database).create(
                 key=spec.key,
                 group=group,
                 name=spec.name,
