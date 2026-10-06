@@ -246,8 +246,17 @@ export interface TrainingSessionList {
   recurrence_rule: RecurrenceRule | null
 }
 
+export interface PlanWarning {
+  code: 'group' | 'instructor' | 'location' | 'material'
+  message: string
+  blocks: string[]
+  other_session: { id: number; title: string } | null
+}
+
 export interface TrainingSessionDetail {
   status: TrainingStatus
+  publish_justification?: string
+  publish_warnings?: string[]
   id: number
   revision: number
   title: string
@@ -277,6 +286,7 @@ export interface TrainingSessionDetail {
 
 export interface TrainingSessionCreate {
   status?: TrainingStatus
+  publish_justification?: string
   confirm_service_change?: boolean
   title: string
   description?: string

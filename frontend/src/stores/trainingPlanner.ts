@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { libraryApi, trainingSessionsApi } from '@/api/training'
 import type {
-  GroupMini, InstructorMini, PlannerBlock, TrainingBlock, TrainingBlockCreate, TrainingBlockMove,
+  GroupMini, InstructorMini, PlanWarning, PlannerBlock, TrainingBlock, TrainingBlockCreate, TrainingBlockMove,
   TrainingPlanDraft, TrainingSessionCreate, TrainingSessionDetail,
 } from '@/types/training'
 
@@ -96,7 +96,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
       status: s.status, title: s.title, description: s.description, date: s.date,
       start_time: s.start_time, end_time: s.end_time, location: s.location,
       notes: s.notes, department: s.department, group_ids: s.groups.map((g) => g.id),
-      recurrence_rule: s.recurrence_rule,
+      recurrence_rule: s.recurrence_rule, publish_justification: s.publish_justification ?? '',
     }
   }
 
@@ -259,6 +259,40 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     }
   }
 
+  // Planning warnings of the current local draft (TRAIN-02); never saves anything.
+  const warnings = ref<Array<PlanWarning & { blockIds: number[] }>>([])
+  const checking = ref(false)
+  const checkError = ref<string | null>(null)
+  let checkGeneration = 0
+
+  async function checkDraft() {
+    if (!session.value || !sessionId.value || session.value.can_manage_plan === false) return
+    const current = ++checkGeneration
+    const payload = draft()
+    const order = blocks.value.map((b) => b.id)
+    checking.value = true
+    try {
+      const response = await trainingSessionsApi.checkPlan(sessionId.value, payload)
+      if (current !== checkGeneration) return
+      warnings.value = response.data.warnings.map((warning) => ({
+        ...warning,
+        // Saved blocks are referenced by id, unsaved ones by their position in the draft.
+        blockIds: warning.blocks
+          .map((ref) => (ref.startsWith('neu-') ? order[Number(ref.slice(4))] : Number(ref)))
+          .filter((id): id is number => typeof id === 'number' && !Number.isNaN(id)),
+      }))
+      checkError.value = null
+    } catch (e: unknown) {
+      if (current !== checkGeneration) return
+      const status = (e as { response?: { status?: number } }).response?.status
+      checkError.value = status === 400
+        ? 'Der Entwurf enthält ungültige Angaben; Prüfung nach Korrektur erneut ausführen.'
+        : 'Prüfung nicht möglich. Verbindung prüfen.'
+    } finally {
+      if (current === checkGeneration) checking.value = false
+    }
+  }
+
   async function removeBlock(id: number) {
     assertEditable()
     mutate(() => {
@@ -277,6 +311,10 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
 
   function reset() {
     generation++
+    checkGeneration++
+    warnings.value = []
+    checking.value = false
+    checkError.value = null
     sessionId.value = null
     session.value = null
     blocks.value = []
@@ -299,5 +337,6 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     canUndo, canRedo, undo, redo, beginGesture, endGesture,
     loadBlocks, addBlock, updateBlockContent, stageSession, stageMove, savePendingMoves,
     removeBlock, discardForServerVersion, selectBlock, setDragging, reset,
+    warnings, checking, checkError, checkDraft,
   }
 })

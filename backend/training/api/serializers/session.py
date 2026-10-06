@@ -106,6 +106,8 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "original_date",
             "recurrence_rule",
             "department",
+            "publish_justification",
+            "publish_warnings",
             "linked_service_id",
             "linked_service_start",
             "requires_service_confirmation",
@@ -115,7 +117,15 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["series_uuid", "original_date", "revision", "created_by", "created_at", "updated_at"]
+        read_only_fields = [
+            "series_uuid",
+            "original_date",
+            "publish_warnings",
+            "revision",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -157,6 +167,24 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
         series_parent = attrs.get("series_parent", getattr(self.instance, "series_parent", None))
         if series_parent is not None and series_parent.department_id != department_id:
             raise serializers.ValidationError({"series_parent": "Die Serie gehört zu einer anderen Abteilung."})
+        if self.instance is not None and not self.context.get("complete_plan"):
+            # Single status changes check the saved plan; the plan endpoint checks the draft.
+            from copy import copy
+
+            from training.conflicts import require_publish_justification, saved_blocks
+
+            candidate = copy(self.instance)
+            for key, value in attrs.items():
+                if key != "groups":
+                    setattr(candidate, key, value)
+            require_publish_justification(
+                candidate,
+                self.instance.status == TrainingSession.Status.PUBLISHED,
+                groups,
+                saved_blocks(candidate),
+                request.user,
+                attrs,
+            )
         return attrs
 
     def create(self, validated_data):

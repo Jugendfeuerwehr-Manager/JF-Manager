@@ -3,9 +3,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useTrainingPlannerStore } from '../trainingPlanner'
 import type { TrainingSessionDetail, TrainingBlock } from '@/types/training'
 
-const api = vi.hoisted(() => ({ plan: vi.fn(), savePlan: vi.fn(), getLibrary: vi.fn() }))
+const api = vi.hoisted(() => ({ plan: vi.fn(), savePlan: vi.fn(), getLibrary: vi.fn(), checkPlan: vi.fn() }))
 vi.mock('@/api/training', () => ({
-  trainingSessionsApi: { plan: api.plan, savePlan: api.savePlan },
+  trainingSessionsApi: { plan: api.plan, savePlan: api.savePlan, checkPlan: api.checkPlan },
   libraryApi: { get: api.getLibrary },
 }))
 
@@ -239,5 +239,21 @@ describe('unsaved draft history', () => {
     })
     expect(sent).not.toHaveProperty('instructors')
     store.undo()
+  })
+
+  it('checks the local draft and maps saved and new block references to planner ids', async () => {
+    const store = useTrainingPlannerStore()
+    await store.loadBlocks(1)
+    const added = await store.addBlock({ title: 'Neu', session: 1, start_offset_minutes: 0 })
+    api.checkPlan.mockResolvedValue({ data: { warnings: [
+      { code: 'group', message: 'Gruppenüberschneidung', blocks: ['1', 'neu-2'], other_session: null },
+    ] } })
+    await store.checkDraft()
+    expect(api.checkPlan.mock.calls[0]![1].blocks).toHaveLength(3)
+    expect(store.warnings[0]!.blockIds).toEqual([1, added!.id])
+    expect(store.isDirty).toBe(true)
+    api.checkPlan.mockRejectedValue({ response: { status: 400 } })
+    await store.checkDraft()
+    expect(store.checkError).toContain('ungültige Angaben')
   })
 })

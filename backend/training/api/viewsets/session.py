@@ -14,7 +14,7 @@ from departments.mixins import DepartmentScopeViewSetMixin
 from inventory.models import Item
 from training.api.filters import TrainingSessionFilter
 from training.api.permissions import CanManageTraining, can_manage_training_department, filter_training_queryset
-from training.api.plan import PlanInputSerializer, advance_revision, lock_sessions, save_plan
+from training.api.plan import PlanInputSerializer, advance_revision, lock_sessions, prepare_plan, save_plan
 from training.api.serializers import (
     TrainingSessionCreateSerializer,
     TrainingSessionDetailSerializer,
@@ -23,6 +23,7 @@ from training.api.serializers import (
 )
 from training.api.serializers.block import InstructorMiniSerializer
 from training.api.serializers.template import CopyToDateSerializer, SaveAsTemplateSerializer, TrainingTemplateSerializer
+from training.conflicts import draft_blocks, find_conflicts, saved_blocks
 from training.copying import copied_files, copy_session, eligible_instructors, session_to_template
 from training.models import TrainingSession
 from training.series import (
@@ -38,6 +39,8 @@ from training.series import (
 from training.workflow import service_is_documented, sync_linked_service
 
 SERIES_ACTIONS = {"generate_series", "propagate_series"}
+# Read-only checks of a posted draft never lock the plan row.
+UNLOCKED_ACTIONS = SERIES_ACTIONS | {"check_plan"}
 
 
 class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
@@ -61,7 +64,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
     def get_object(self):
         session = super().get_object()
         # Series actions lock the series root before any occurrence.
-        if self.request.method in ("POST", "PUT", "PATCH", "DELETE") and self.action not in SERIES_ACTIONS:
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE") and self.action not in UNLOCKED_ACTIONS:
             locked = lock_sessions([session.pk])
             if not locked:
                 raise NotFound()
@@ -284,3 +287,26 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
                 for item in items
             ]
         )
+
+    @action(detail=True, methods=["get"])
+    def conflicts(self, request, pk=None):
+        """Planning warnings of the saved plan (planners only)."""
+        session = self._planning_session()
+        groups = {group.pk: group.name for group in session.groups.all()}
+        return Response({"warnings": find_conflicts(session, groups, saved_blocks(session), request.user)})
+
+    @action(detail=True, methods=["post"])
+    def check_plan(self, request, pk=None):
+        """Validate an unsaved complete draft and return its planning warnings; nothing is saved."""
+        session = self._planning_session()
+        payload = PlanInputSerializer(data={"expected_revision": session.revision, **request.data})
+        payload.is_valid(raise_exception=True)
+        data = dict(payload.validated_data)
+        # Checking is no change: documented services need no confirmation here.
+        data["session"] = {**data["session"], "confirm_service_change": True}
+        session_serializer, candidate, prepared, _ = prepare_plan(session, data, self.get_serializer_context())
+        groups = session_serializer.validated_data.get("groups")
+        if groups is None:
+            groups = list(session.groups.all())
+        names = {group.pk: group.name for group in groups}
+        return Response({"warnings": find_conflicts(candidate, names, draft_blocks(prepared), request.user)})

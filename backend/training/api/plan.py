@@ -38,9 +38,8 @@ def delete_plan_blocks(blocks):
     blocks.delete()
 
 
-@transaction.atomic
-def save_plan(session, data, context, sync_service):
-    """Caller has locked the session and checked the expected revision."""
+def prepare_plan(session, data, context):
+    """Validate a complete draft against the prospective session without saving."""
     context = {**context, "complete_plan": True}
     session_serializer = TrainingSessionCreateSerializer(session, data=data["session"], context=context)
     session_serializer.is_valid(raise_exception=True)
@@ -74,6 +73,25 @@ def save_plan(session, data, context, sync_service):
         except serializers.ValidationError as exc:
             raise serializers.ValidationError({"blocks": {index: exc.detail}}) from exc
         prepared.append(serializer)
+    return session_serializer, candidate, prepared, retained
+
+
+@transaction.atomic
+def save_plan(session, data, context, sync_service):
+    """Caller has locked the session and checked the expected revision."""
+    from training.conflicts import draft_blocks, require_publish_justification
+
+    was_published = session.status == TrainingSession.Status.PUBLISHED
+    session_serializer, candidate, prepared, retained = prepare_plan(session, data, context)
+    groups = session_serializer.validated_data.get("groups")
+    require_publish_justification(
+        candidate,
+        was_published,
+        groups if groups is not None else list(session.groups.all()),
+        draft_blocks(prepared),
+        context["request"].user,
+        session_serializer.validated_data,
+    )
 
     session = session_serializer.save()
     with copied_files() as files:

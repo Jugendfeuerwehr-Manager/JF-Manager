@@ -82,6 +82,11 @@ class TrainingSession(models.Model):
     series_uuid = models.UUIDField(null=True, blank=True, db_index=True, editable=False)
     original_date = models.DateField(null=True, blank=True, editable=False)
     series_baseline_hash = models.CharField(max_length=64, blank=True, editable=False)
+    # Documented when publishing despite planning warnings (TRAIN-02).
+    publish_justification = models.TextField(blank=True, verbose_name="Begründung der Veröffentlichung")
+    publish_warnings = models.JSONField(
+        default=list, blank=True, editable=False, verbose_name="Warnungen bei Veröffentlichung"
+    )
     revision = models.PositiveBigIntegerField(default=1, editable=False, verbose_name="Planversion")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

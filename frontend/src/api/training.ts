@@ -14,6 +14,7 @@ import type {
   LibraryImportResult,
   MaterialOption,
   PaginatedResponse,
+  PlanWarning,
   PropagationPreview,
   SeriesPreview,
   SeriesWindow,
@@ -63,6 +64,9 @@ export const trainingSessionsApi = {
   },
   generateSeries(id: number, data: SeriesWindow & { preview_token: string }) {
     return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`, data)
+  },
+  checkPlan(id: number, data: TrainingPlanDraft) {
+    return apiClient.post<{ warnings: PlanWarning[] }>(`/training/sessions/${id}/check_plan/`, data)
   },
   instructorOptions(id: number) {
     return apiClient.get<InstructorMini[]>(`/training/sessions/${id}/instructor_options/`)

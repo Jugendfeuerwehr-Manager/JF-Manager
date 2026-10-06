@@ -84,6 +84,14 @@
       <Button label="Serverstand laden und Entwurf verwerfen" severity="secondary" @click="discardForServerVersion" />
     </details>
 
+    <PlanWarningsPanel v-if="canManage && session" @focus-block="focusBlock" />
+    <PublishJustificationDialog
+      v-model:visible="showJustification"
+      :warnings="plannerStore.warnings.map((w) => w.message)"
+      :initial="session?.publish_justification"
+      @confirm="(text) => plannerStore.stageSession({ status: 'published', publish_justification: text })"
+    />
+
     <!-- ── Main planner ────────────────────────────────────────────── -->
     <div class="planner-container" :inert="plannerStore.saving || plannerStore.loading">
 
@@ -245,6 +253,8 @@ import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import SeriesDialog from '../molecules/SeriesDialog.vue'
 import SessionCopyDialog from '../molecules/SessionCopyDialog.vue'
+import PlanWarningsPanel from '../molecules/PlanWarningsPanel.vue'
+import PublishJustificationDialog from '../molecules/PublishJustificationDialog.vue'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
 import { useToast } from 'primevue/usetoast'
@@ -278,6 +288,7 @@ const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
 const showSeries = ref(false)
 const showCopy = ref(false)
+const showJustification = ref(false)
 const copyMode = ref<'copy' | 'template'>('copy')
 const moreMenu = ref<InstanceType<typeof Menu> | null>(null)
 const toast = useToast()
@@ -572,9 +583,36 @@ function discardForServerVersion() {
   }
 }
 
-function stageStatus(status: TrainingStatus) {
-  if (plannerStore.session) plannerStore.stageSession({ status })
+async function stageStatus(status: TrainingStatus) {
+  if (!plannerStore.session) return
+  if (status === 'published') {
+    // Publishing despite planning warnings needs a stored justification.
+    await plannerStore.checkDraft()
+    if (plannerStore.warnings.length) {
+      showJustification.value = true
+      return
+    }
+  }
+  plannerStore.stageSession({ status })
 }
+
+function focusBlock(id: number) {
+  plannerStore.selectBlock(id)
+  void nextTick(() => document.querySelector<HTMLElement>(`[data-block-id="${id}"]`)?.focus())
+}
+
+// Re-check the local draft shortly after every change (warnings only, nothing is saved).
+let checkTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => [plannerStore.session, plannerStore.blocks],
+  () => {
+    clearTimeout(checkTimer)
+    if (!canManage.value || !plannerStore.session) return
+    checkTimer = setTimeout(() => { void plannerStore.checkDraft() }, 700)
+  },
+  { deep: true },
+)
+onBeforeUnmount(() => clearTimeout(checkTimer))
 
 async function saveAll() {
   const confirmed = !!session.value?.requires_service_confirmation

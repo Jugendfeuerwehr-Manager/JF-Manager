@@ -73,3 +73,15 @@ Jeder Baustein im Planvertrag kann zusätzlich `kind` (`block`, `station`, `tran
 - `materials` ersetzt beim Speichern die Positionen des Bausteins vollständig; ausgelassen (Einzel-PATCH) bleiben sie unverändert.
 
 Serie, Kopie, Vorlage und „dieser und folgende“ übernehmen Art, Ort, Lernziel, Sicherheitshinweise, Ausbilder und Material als eigene Datensätze. Beim Anlegen aus einer Vorlage werden nur Ausbilder übernommen, die weiterhin eine Rolle in der Abteilung haben. Materialänderungen gelten im Fingerabdruck als Ablaufänderung.
+
+### Planungswarnungen und Veröffentlichung
+
+`POST .../sessions/{id}/check_plan/` nimmt einen vollständigen, ungespeicherten Entwurf (`session`, `blocks` wie beim Speichern) und liefert `warnings` ohne Änderung; ungültige Entwürfe werden wie beim Speichern mit HTTP 400 abgewiesen. `GET .../sessions/{id}/conflicts/` prüft den gespeicherten Plan. Beide nur für Planer der Abteilung. Jede Warnung: `code` (`group`, `instructor`, `location`, `material`), `message`, `blocks` (gespeicherte IDs bzw. `neu-<Position>` für ungespeicherte Bausteine) und `other_session` (nur bei sichtbaren fremden Übungen).
+
+- Gruppen: zeitlich überlappende Bausteine mit gemeinsamer Gruppe; Bausteine ohne Gruppen gelten für alle Gruppen.
+- Ausbilder: dieselbe Person gleichzeitig in zwei Bausteinen oder in einer anderen Übung desselben Tages.
+- Ort: gleiche normalisierte Ortsangabe (Groß-/Kleinschreibung, Leerraum) gleichzeitig in dieser oder einer anderen Übung.
+- Material: an jedem Bausteinbeginn gleichzeitiger Bedarf eines Artikels/einer Variante über alle nicht abgesagten Übungen des Tages gegen Bestand außerhalb von Mitgliederlagerorten (Artikel ohne Variante: einschließlich aller Varianten). Rechnerisch, keine Reservierung; Freitextbedarf wird nicht gezählt.
+- Übungen, die die Person nicht planen darf, erscheinen nur als „einer anderen Übung (nicht sichtbar)“ ohne Titel oder ID.
+
+Warnungen blockieren das Speichern nicht. Der Übergang zu `published` (Planvertrag oder Einzeländerung) verlangt bei Warnungen `publish_justification`; sonst HTTP 400 mit `publish_justification` und den Warntexten unter `warnings`. Gespeichert werden Begründung und Warntexte (`publish_warnings`, schreibgeschützt). Weitere Speicherungen einer bereits veröffentlichten Übung fragen nicht erneut. Ungültige Zeiten und fehlende Rechte blockieren weiterhin.
