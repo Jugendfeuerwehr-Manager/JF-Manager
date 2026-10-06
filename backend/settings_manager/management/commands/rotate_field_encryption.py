@@ -6,7 +6,7 @@ from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
-from jf_manager_backend.encrypted_fields import decrypt_secret
+from jf_manager_backend.encrypted_fields import crypter, decrypt_secret
 
 
 class Command(BaseCommand):
@@ -16,6 +16,7 @@ class Command(BaseCommand):
         ("settings_manager", "LDAPConfig", "bind_password"),
         ("settings_manager", "OIDCConfig", "client_secret"),
         ("users", "MFADevice", "secret"),
+        ("dynamic_preferences", "GlobalPreferenceModel", "raw_value"),
     )
 
     def add_arguments(self, parser):
@@ -29,7 +30,10 @@ class Command(BaseCommand):
                 model = apps.get_model(app, name)
                 field = model._meta.get_field(field_name)
                 # Serialize against concurrent administrative changes.
-                ids = list(model.objects.select_for_update().values_list("pk", flat=True))
+                queryset = model.objects.select_for_update()
+                if field_name == "raw_value":
+                    queryset = queryset.filter(section="email", name="email_host_password")
+                ids = list(queryset.values_list("pk", flat=True))
                 table = connection.ops.quote_name(model._meta.db_table)
                 column = connection.ops.quote_name(field.column)
                 pk_column = connection.ops.quote_name(model._meta.pk.column)
@@ -48,7 +52,11 @@ class Command(BaseCommand):
                         else:
                             value = decrypt_secret(raw)
                         if options["apply"]:
-                            prepared = field.get_db_prep_save(value, connection)
+                            prepared = (
+                                crypter().encrypt(value.encode("utf-8")).decode("ascii")
+                                if field_name == "raw_value"
+                                else field.get_db_prep_save(value, connection)
+                            )
                             cursor.execute(f"UPDATE {table} SET {column} = %s WHERE {pk_column} = %s", [prepared, pk])
                         count += 1
         except Exception as exc:
@@ -56,4 +64,9 @@ class Command(BaseCommand):
             raise CommandError(
                 "Umverschlüsselung abgebrochen; Schlüsselring und Datenformat prüfen. Keine Änderungen übernommen."
             ) from exc
+        if options["apply"]:
+            from dynamic_preferences.registries import global_preferences_registry
+
+            manager = global_preferences_registry.manager()
+            transaction.on_commit(lambda: manager.cache.delete(manager.get_cache_key("email", "email_host_password")))
         self.stdout.write(f"{count} Geheimnisfelder {'umverschlüsselt' if options['apply'] else 'geprüft'}.")

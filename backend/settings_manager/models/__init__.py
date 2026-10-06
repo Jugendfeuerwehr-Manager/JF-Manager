@@ -8,6 +8,7 @@ from .ldap_mappings import LDAPDepartmentRoleMapping
 from .oidc_config import OIDCConfig
 from .oidc_mappings import OIDCGroupMapping
 from .settings_category import SettingsCategory
+from .settings_write_lock import SettingsWriteLock
 
 __all__ = [
     "LDAPConfig",
@@ -15,4 +16,5 @@ __all__ = [
     "OIDCConfig",
     "OIDCGroupMapping",
     "SettingsCategory",
+    "SettingsWriteLock",
 ]

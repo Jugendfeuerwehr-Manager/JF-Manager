@@ -3,8 +3,10 @@ ViewSets for Settings API
 """
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
+from rest_framework import serializers as drf_serializers
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -112,7 +114,6 @@ class SettingsViewSet(viewsets.ViewSet):
 
     def _get_category_settings(self, category):
         """Helper to retrieve settings for a specific category"""
-        global_preferences = global_preferences_registry.manager()
         mapping = self.CATEGORY_MAPPINGS.get(category)
 
         if not mapping:
@@ -121,40 +122,57 @@ class SettingsViewSet(viewsets.ViewSet):
         settings = {}
         prefix = mapping["prefix"]
 
-        for field in mapping["fields"]:
-            pref_key = f"{prefix}__{field}"
-            try:
-                value = global_preferences.get(pref_key)
-                settings[field] = value
-            except Exception:
-                # If preference doesn't exist, skip it
-                pass
+        from dynamic_preferences.models import GlobalPreferenceModel
 
+        for field in mapping["fields"]:
+            preference = global_preferences_registry.get(section=prefix, name=field)
+            row = GlobalPreferenceModel.objects.filter(section=prefix, name=field).first()
+            settings[field] = preference.serializer.deserialize(row.raw_value) if row else preference.default
+        if category == "email":
+            settings["has_email_host_password"] = bool(settings.get("email_host_password"))
         return settings
 
     def _save_category_settings(self, category, data):
-        """Helper to save settings for a specific category"""
-        global_preferences = global_preferences_registry.manager()
-        mapping = self.CATEGORY_MAPPINGS.get(category)
+        from dynamic_preferences.models import GlobalPreferenceModel
 
-        if not mapping:
-            return False
-
-        prefix = mapping["prefix"]
-
+        prefix = self.CATEGORY_MAPPINGS[category]["prefix"]
+        manager = global_preferences_registry.manager()
         for field, value in data.items():
-            if field in mapping["fields"]:
-                pref_key = f"{prefix}__{field}"
-                try:
-                    # Handle time fields - convert to string format
-                    if hasattr(value, "strftime"):
-                        value = value.strftime("%H:%M")
-                    global_preferences[pref_key] = value
-                except Exception as e:
-                    # Log error but continue
-                    print(f"Error saving {pref_key}: {e}")
-
+            if field not in self.CATEGORY_MAPPINGS[category]["fields"]:
+                continue
+            if hasattr(value, "strftime"):
+                value = value.strftime("%H:%M")
+            preference = global_preferences_registry.get(section=prefix, name=field)
+            raw_value = preference.serializer.serialize(value)
+            GlobalPreferenceModel.objects.bulk_create(
+                [GlobalPreferenceModel(section=prefix, name=field, raw_value=raw_value)], ignore_conflicts=True
+            )
+            GlobalPreferenceModel.objects.filter(section=prefix, name=field).update(raw_value=raw_value)
+            cache_key = manager.get_cache_key(prefix, field)
+            transaction.on_commit(lambda key=cache_key: manager.cache.delete(key))
         return True
+
+    def _patch_preferences(self, request, category, serializer_class):
+        from settings_manager.models import SettingsWriteLock
+
+        with transaction.atomic():
+            SettingsWriteLock.objects.get_or_create(category=category)
+            SettingsWriteLock.objects.select_for_update().get(category=category)
+            writable = {name for name, field in serializer_class().fields.items() if not field.read_only}
+            unknown = set(request.data) - writable
+            if unknown:
+                raise drf_serializers.ValidationError(
+                    {name: "Unbekanntes oder schreibgeschütztes Feld." for name in unknown}
+                )
+            current = self._get_category_settings(category)
+            merged = {name: value for name, value in current.items() if name in writable}
+            merged.update(request.data)
+            serializer = serializer_class(data=merged)
+            serializer.is_valid(raise_exception=True)
+            self._save_category_settings(category, {name: serializer.validated_data[name] for name in request.data})
+            # Never let a failed write populate preference caches with partial state.
+            result = self._get_category_settings(category)
+        return Response(serializer_class(result).data)
 
     def _check_category_permission(self, user, category, permission_type="view"):
         """Check if user has permission for a specific category"""
@@ -266,11 +284,7 @@ class SettingsViewSet(viewsets.ViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            serializer = GeneralSettingsSerializer(data=request.data, partial=True)
-            if serializer.is_valid():
-                self._save_category_settings("general", serializer.validated_data)
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self._patch_preferences(request, "general", GeneralSettingsSerializer)
 
     @extend_schema(
         summary="Get email settings",
@@ -296,11 +310,7 @@ class SettingsViewSet(viewsets.ViewSet):
                     {"detail": "You do not have permission to change email settings."}, status=status.HTTP_403_FORBIDDEN
                 )
 
-            serializer = EmailSettingsSerializer(data=request.data, partial=True)
-            if serializer.is_valid():
-                self._save_category_settings("email", serializer.validated_data)
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self._patch_preferences(request, "email", EmailSettingsSerializer)
 
     @extend_schema(
         summary="Get member settings",
@@ -327,11 +337,7 @@ class SettingsViewSet(viewsets.ViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            serializer = MemberSettingsSerializer(data=request.data, partial=True)
-            if serializer.is_valid():
-                self._save_category_settings("member", serializer.validated_data)
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self._patch_preferences(request, "member", MemberSettingsSerializer)
 
     @extend_schema(
         summary="Get service settings",
@@ -358,11 +364,7 @@ class SettingsViewSet(viewsets.ViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            serializer = ServiceSettingsSerializer(data=request.data, partial=True)
-            if serializer.is_valid():
-                self._save_category_settings("service", serializer.validated_data)
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self._patch_preferences(request, "service", ServiceSettingsSerializer)
 
     @extend_schema(
         summary="Get order settings",
@@ -388,11 +390,7 @@ class SettingsViewSet(viewsets.ViewSet):
                     {"detail": "You do not have permission to change order settings."}, status=status.HTTP_403_FORBIDDEN
                 )
 
-            serializer = OrderSettingsSerializer(data=request.data, partial=True)
-            if serializer.is_valid():
-                self._save_category_settings("order", serializer.validated_data)
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self._patch_preferences(request, "order", OrderSettingsSerializer)
 
     @extend_schema(
         summary="Get LDAP settings",

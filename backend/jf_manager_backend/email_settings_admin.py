@@ -22,7 +22,7 @@ class EmailSettingsForm(forms.Form):
     email_host_password = forms.CharField(
         label="SMTP Passwort",
         required=False,
-        widget=forms.PasswordInput(render_value=True),
+        widget=forms.PasswordInput(render_value=False),
         help_text="Passwort für die Authentifizierung beim SMTP-Server",
     )
     email_use_tls = forms.BooleanField(
@@ -78,6 +78,8 @@ class EmailSettingsAdmin(admin.ModelAdmin):
             if form.is_valid():
                 # Save values to dynamic preferences
                 for field_name, value in form.cleaned_data.items():
+                    if field_name == "email_host_password" and not value:
+                        continue
                     pref_key = f"email__{field_name}"
                     global_preferences[pref_key] = value
 
@@ -92,7 +94,7 @@ class EmailSettingsAdmin(admin.ModelAdmin):
                 "email_host": global_preferences.get("email__email_host"),
                 "email_port": global_preferences.get("email__email_port"),
                 "email_host_user": global_preferences.get("email__email_host_user"),
-                "email_host_password": global_preferences.get("email__email_host_password"),
+                "email_host_password": "",
                 "email_use_tls": global_preferences.get("email__email_use_tls"),
                 "email_use_ssl": global_preferences.get("email__email_use_ssl"),
                 "default_from_email": global_preferences.get("email__default_from_email"),

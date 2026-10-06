@@ -28,8 +28,7 @@ class EmailConfigMiddleware(MiddlewareMixin):
 
         # Only set values if they're provided in preferences
         email_host = global_preferences.get("email__email_host")
-        if email_host:
-            settings.EMAIL_HOST = email_host
+        settings.EMAIL_HOST = email_host
 
         # Port is stored as integer
         email_port = global_preferences.get("email__email_port")
@@ -42,12 +41,10 @@ class EmailConfigMiddleware(MiddlewareMixin):
 
         # Auth settings
         email_host_user = global_preferences.get("email__email_host_user")
-        if email_host_user:
-            settings.EMAIL_HOST_USER = email_host_user
+        settings.EMAIL_HOST_USER = email_host_user
 
         email_host_password = global_preferences.get("email__email_host_password")
-        if email_host_password:
-            settings.EMAIL_HOST_PASSWORD = email_host_password
+        settings.EMAIL_HOST_PASSWORD = email_host_password
 
         # From email
         default_from_email = global_preferences.get("email__default_from_email")

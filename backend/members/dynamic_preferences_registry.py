@@ -143,6 +143,9 @@ class EmailHostUser(StringPreference):
 
 @global_preferences_registry.register
 class EmailHostPassword(StringPreference):
+    from settings_manager.secret_preferences import EncryptedPreferenceSerializer
+
+    serializer = EncryptedPreferenceSerializer
     section = email
     name = "email_host_password"
     verbose_name = "SMTP Passwort"
@@ -150,10 +153,10 @@ class EmailHostPassword(StringPreference):
     default = ""
     required = False
     field_kwargs = {
-        "widget": forms.PasswordInput(render_value=True),
+        "widget": forms.PasswordInput(render_value=False),
     }
     field_kwargs = {
-        "widget": forms.PasswordInput(render_value=True),
+        "widget": forms.PasswordInput(render_value=False),
     }
 
 
