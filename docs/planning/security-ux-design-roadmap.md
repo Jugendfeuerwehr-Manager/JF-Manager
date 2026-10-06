@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-07.8b QR-Code in der MFA-Einrichtung ergänzt (Nutzerbefund). |
-| Aktuelles Paket | SEC-03 bis SEC-08 abgeschlossen; SEC-09-Rest offen. Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
+| Letzter Checkpoint | 06.10.2026: SEC-10.0 Abhängigkeitsinventar und Teilschritte festgelegt. |
+| Aktuelles Paket | SEC-10 in Arbeit (Claude). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-09 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-07.8b` (dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-10.0` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-10 Versions-/Abhängigkeitsprüfung (Django 5.2 LTS) und Produktionsprüfungen; danach Restabnahmen SEC-01.57 und SEC-02.9. |
+| Nächster konkreter Schritt | SEC-10.1 Backend-Abhängigkeiten (Django 5.2 LTS); danach SEC-10.2 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -545,7 +545,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
-| SEC-10 | offen | — | Versions-/Abhängigkeitsprüfung und Produktionschecks. |
+| SEC-10 | in Arbeit | Claude | SEC-10.0 Inventar und Teilschritte; nächster Schritt SEC-10.1 Backend-Abhängigkeiten. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
@@ -876,6 +876,26 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Keine; Wegwerf-PostgreSQL-Cluster nach der Abnahme gestoppt.
 - **Nächster konkreter Schritt:** keiner im Paket. Betriebsplan (OPS-03) muss `purge_booking_requests` aufnehmen; Abnahme gegen PostgreSQL 15 der Produktion mit OPS-Tests wiederholen.
 
+### SEC-10: Unterstützte Versionen, Abhängigkeiten und Produktionsprüfungen
+
+- **Status / Verantwortlich:** in Arbeit / Claude.
+- **Abhängigkeiten:** SEC-07.7 (JWT abgeschaltet; `djangorestframework-simplejwt` nur noch Lieferant von PyJWT für OIDC). SEC-09 (PostgreSQL-Abnahmeverfahren für den Gesamtlauf). OPS-01 bis OPS-04 übernehmen Betriebsdurchführung; SEC-10 liefert Vorgaben und automatisierte Prüfungen. Python 3.10 (Dockerfile, CI, Pipfile) erreicht im Oktober 2026 das Supportende; Laufzeitwechsel ist eigener Teilschritt, weil Django 6.x Python ≥ 3.12 verlangt.
+- **Inventar (06.10.2026):** Lockdatei mit Django 5.0.14. `pip-audit` gegen die Lockdatei: 11 Pakete mit bekannten Lücken – Django (12), Pillow 10.0.1 (16), PyJWT 2.12.1 (15), aiohttp (14), urllib3 1.26.20 (7, durch Pin `~=1.26.18`), sqlparse (5), cryptography (4), DRF 3.14.0 (3), pyasn1 (3), tablib 3.5.0 (1), multidict (1). Mehrere Pakete per `~=` auf alten Minor-Versionen festgehalten (u. a. django-import-export 3.3, django-guardian 2.4, django-mptt 0.15, django-filter 24.3, django-phonenumber-field 7.1). `npm audit`: 65 Befunde (6 kritisch, 40 hoch), überwiegend Test-/Lint-Werkzeuge (vitest, nightwatch, chromedriver), aber auch Laufzeitpakete (vue, axios, @tiptap/core, prosemirror-view) und Vite.
+- **Abnahme:** Django auf aktueller 5.2-LTS-Patchversion; alle Laufzeitabhängigkeiten kompatibel und gelockt; `pip-audit` gegen die Lockdatei ohne Befund oder mit begründeter, befristeter Ausnahme. `djangorestframework-simplejwt` entfernt, PyJWT direkt deklariert. `npm audit --omit=dev` ohne Befund; Entwicklungswerkzeuge ohne kritische Befunde oder begründet. Volle Backend-Suite auf SQLite und PostgreSQL, Frontendtests, Typecheck, Build und Migrationsabgleich grün. `manage.py check --deploy` mit Produktionsumgebung ohne Warnung; restriktive Sicherheitsheader und CSP (zuerst Report-Only); TLS-/Proxy-Vertrauen ausdrücklich konfigurierbar. Rate-Limits und OIDC-Einmalmarken nutzen in Produktion verpflichtend einen gemeinsamen Cache. CI führt Abhängigkeits- und Deploy-Prüfungen automatisch aus.
+- **Stabile Teilschritte:**
+  - `SEC-10.0`: Inventar, Abnahme, Abhängigkeiten und Teilschritte festhalten.
+  - `SEC-10.1`: Backend-Abhängigkeiten: Django 5.2 LTS und sicherheitsrelevante Aktualisierungen, simplejwt entfernen, Lockdatei neu erzeugen, Kompatibilitätsanpassungen, Volllauf SQLite und PostgreSQL.
+  - `SEC-10.2`: Frontend-Abhängigkeiten nach `npm audit` aktualisieren; Laufzeitpakete zuerst, dann Werkzeuge.
+  - `SEC-10.3`: Produktionsvorgaben: `check --deploy`, Sicherheitsheader, CSP Report-Only, Proxy-/TLS-Vertrauen.
+  - `SEC-10.4`: Gemeinsamer Cache für Rate-Limits und OIDC-Einmalmarke in Produktion erzwingen.
+  - `SEC-10.5`: CI-Prüfungen (`pip-audit`, `npm audit`, `check --deploy`).
+  - `SEC-10.6`: Python-Laufzeit von 3.10 auf eine unterstützte Version (Dockerfile, CI, Pipfile).
+  - `SEC-10.7`: Gebündelte Abnahme.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation.
+- **Risiken:** Major-Sprünge (django-import-export 3→4, django-guardian 2→3, Pillow 10→12, urllib3 1→2, DRF 3.14→3.17) können Verhalten ändern; jede Anpassung durch Tests belegen. Produktionsdatenbank und `dump.rdb` nicht anfassen.
+- **Nächster Schritt:** SEC-10.1.
+
 ### DES-01: Gemeinsames Designsystem
 
 - **Status:** in Arbeit.
@@ -1129,3 +1149,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 05.10.2026 | SEC-03.7a | ESLint-Fehler `no-explicit-any` in `ListsView.spec.ts` (SEC-03-Test) durch typisierten Zugriff ersetzt; gemeldet von der Design-Session. | ESLint über `frontend/src` ohne Befund, 2/2 ListsView-Tests, Typecheck bestanden. | Dieser Commit: `test(SEC-03.7a): type list view test setup state` | SEC-10. |
 
 | 06.10.2026 | SEC-07.8b | Nutzerbefund: MFA-Einrichtung zeigte keinen QR-Code; er war nie implementiert (nur App-Link und manueller Schlüssel). `MfaSettings.vue` erzeugt den QR-Code aus `otpauth_uri` lokal mit der Bibliothek `qrcode` als SVG-Data-URI auf weißem Grund (auch im Dunkelmodus scanbar); das Geheimnis wird an keinen externen Dienst gesendet. Link und Schlüssel bleiben als Alternative, Fehler beim Erzeugen blenden nur den QR-Code aus. Beim Installieren meldet `npm audit` 65 vorbestehende Befunde (6 kritisch) → SEC-10. | 1 neuer Komponententest (QR als lokales SVG, kein Netzwerkaufruf, Ausblenden bei Abbruch), 162/162 Frontendtests, Typecheck, ESLint und Produktionsbuild bestanden. Scan mit echter Authenticator-App nicht ausgeführt. | Dieser Commit: `feat(SEC-07.8b): show a QR code for authenticator setup` | SEC-10. |
+
+| 06.10.2026 | SEC-10.0 | SEC-10 übernommen. `pip-audit` gegen die Lockdatei: 11 Pakete mit bekannten Lücken (Django 5.0.14, Pillow 10.0.1, PyJWT, aiohttp, urllib3 1.26 u. a.); `npm audit`: 65 Befunde (6 kritisch). Abnahme und Teilschritte SEC-10.1 bis SEC-10.7 festgelegt, Python-3.10-Supportende als eigener Teilschritt. | Code-/Git-Abgleich und Audit ausgeführt; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(SEC-10.0): define dependency and production check contract` | SEC-10.1. |
