@@ -5,7 +5,7 @@
 
 # app.env keys that describe the target host and are kept on restore. All
 # other keys (secret key, encryption keys, e-mail, web push …) come from the backup.
-RESTORE_HOST_KEYS=(ALLOWED_HOSTS CSRF_TRUSTED_ORIGINS FRONTEND_URL DEBUG TIME_ZONE)
+RESTORE_HOST_KEYS=(ALLOWED_HOSTS CSRF_TRUSTED_ORIGINS FRONTEND_URL WEBAUTHN_RP_ID WEBAUTHN_ORIGINS DEBUG TIME_ZONE)
 
 _restore_merge_env() { # backup-app.env -> new app.env
     local src=$1 tmp key

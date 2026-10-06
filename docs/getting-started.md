@@ -99,6 +99,8 @@ Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd fron
 | `ALLOWED_HOSTS` | Kommagetrennte Hostnamen | `localhost,127.0.0.1` |
 | `CSRF_TRUSTED_ORIGINS` | Vertrauenswürdige Herkünfte hinter einem Proxy | leer |
 | `REDIS_URL` | Redis-Verbindung | `none` |
+| `FRONTEND_URL` | Öffentliche Adresse der Oberfläche; Grundlage für SSO-Weiterleitungen und Passkeys | `http://localhost:5173` |
+| `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS` | Abweichende Passkey-RP-ID bzw. erlaubte Herkünfte ([session-auth.md](operations/session-auth.md#passkeys-domain-und-https)) | aus `FRONTEND_URL` |
 
 ### Frontend
 

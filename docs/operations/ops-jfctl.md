@@ -20,7 +20,8 @@ Ohne Argument öffnet `sudo jfctl` ein Menü. Jeder Menüpunkt ruft denselben Un
 | `jfctl config set KEY WERT` | Ändert eine Betriebsangabe (`JF_DOMAIN`, `JF_TLS`, `JF_BACKUP_*` …) oder einen Infrastrukturwert der Anwendung (`EMAIL_*`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` …); Schlüssel nur über `config edit` |
 | `jfctl config edit` | Bearbeitet `app.env` im Editor; Syntaxprüfung vor dem Speichern |
 | `jfctl admin bootstrap` | Legt das erste Administrationskonto an, sofern noch keines existiert |
-| `jfctl admin recover --user NAME [--reset-mfa]` | Setzt Passwort zurück, entfernt bei Bedarf MFA-Gerät und Wiederherstellungscodes und beendet alle Sitzungen des Kontos |
+| `jfctl admin recover --user NAME [--reset-mfa]` | Setzt Passwort zurück, entfernt bei Bedarf Authenticator-App, Passkeys und Wiederherstellungscodes und beendet alle Sitzungen des Kontos |
+| `jfctl admin reset-mfa --user NAME` | Setzt nur die Zwei-Faktor-Anmeldung zurück (Authenticator-App, Passkeys, Wiederherstellungscodes) und beendet alle Sitzungen; einziger Weg für Superuser, Staff und Konten mit MFA-Pflicht ([session-auth.md](session-auth.md#zwei-faktor-anmeldung-zurücksetzen)) |
 | `jfctl workers hold \| release \| status` | Hintergrundaufträge anhalten oder freigeben |
 | `jfctl maintenance list \| run AUFGABE` | Wiederkehrende Wartung ([Wartungsplan](#wartungsplan)) |
 | `jfctl migrate legacy-compose --from VERZ.` | Übernahme einer alten Compose-Installation ([ops-migration.md](ops-migration.md)) |

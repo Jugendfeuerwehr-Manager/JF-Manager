@@ -27,7 +27,7 @@ Ergebnis und letzte erfolgreiche Sicherung stehen in `/var/lib/jf-manager/state/
 2. **Ausdrückliche Bestätigung:** Instanzname eintippen (oder `--confirm` in Skripten). Es gibt keinen Countdown.
 3. **Ist-Zustand sichern** (Sicherung der Art `pre-restore`).
 4. **Vorbereiten:** Dump in die temporäre Datenbank `jf_manager_restore` einspielen und prüfen.
-5. **Aktivieren:** Datenbanken umbenennen (bisherige bleibt als `jf_manager_before_restore`), Uploads tauschen (bisherige als `uploads.before-restore`), Anwendungsschlüssel aus der Sicherung übernehmen. Hostbezogene Werte (`ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `FRONTEND_URL`, `TIME_ZONE`, `DEBUG`) bleiben die des Zielsystems.
+5. **Aktivieren:** Datenbanken umbenennen (bisherige bleibt als `jf_manager_before_restore`), Uploads tauschen (bisherige als `uploads.before-restore`), Anwendungsschlüssel aus der Sicherung übernehmen. Hostbezogene Werte (`ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `FRONTEND_URL`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS`, `TIME_ZONE`, `DEBUG`) bleiben die des Zielsystems. Bei geänderter Domain funktionieren registrierte Passkeys nicht mehr (siehe [session-auth.md](session-auth.md#passkeys-domain-und-https)).
 6. Migrationen auf den installierten Stand, **alle Sitzungen verworfen**, Redis geleert.
 7. **Worker bleiben angehalten**, damit wartende Versand-, Synchronisations- und Push-Aufträge aus der Sicherung nicht ungeprüft laufen. Nach Prüfung: `jfctl workers release`.
 

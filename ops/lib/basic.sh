@@ -141,7 +141,7 @@ cmd_config() {
                 printf -v "$key" '%s' "$value"
                 config_validate || die "$EX_USAGE" "Ungültige Angabe, nichts geändert."
                 conf_save
-            elif [[ $key =~ ^(EMAIL_|DEFAULT_FROM_EMAIL|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|FRONTEND_URL|WEB_PUSH_|SECURE_|TRUST_PROXY_SSL_HEADER|AUDIT_|SESSION_|LOG_) ]]; then
+            elif [[ $key =~ ^(EMAIL_|DEFAULT_FROM_EMAIL|ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS|FRONTEND_URL|WEB_PUSH_|WEBAUTHN_|SECURE_|TRUST_PROXY_SSL_HEADER|AUDIT_|SESSION_|LOG_) ]]; then
                 kv_set "$JF_APP_ENV" "$key" "$value"
             else
                 die "$EX_USAGE" "$key ist nicht über jfctl änderbar. Schlüssel: jfctl config edit (fachliche Einstellungen: Weboberfläche)."

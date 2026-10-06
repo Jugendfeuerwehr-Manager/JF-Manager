@@ -49,14 +49,42 @@ Folgende Aktionen verlangen eine höchstens fünf Minuten alte Bestätigung mit 
 
 Die Oberfläche zeigt dafür einen Dialog und wiederholt die Aktion nach der Bestätigung automatisch. SSO-Konten ohne eigenes MFA melden sich zur Bestätigung erneut beim Provider an. Passwortwechsel verlangt ohnehin das bisherige Passwort.
 
-## Zwei-Faktor-Anmeldung (TOTP)
+## Zwei-Faktor-Anmeldung (Passkey oder Authenticator-App)
+
+Als zweiter Faktor nach Passwort bzw. SSO dienen **Passkeys** (WebAuthn: Fingerabdruck, Gesichtserkennung, Geräte-PIN, Sicherheitsschlüssel, Passwortmanager) und/oder eine **Authenticator-App** (TOTP). Beides lässt sich im Profil parallel einrichten; ein Konto kann bis zu zehn Passkeys haben.
 
 Verpflichtend für Superuser, Staff (Django-Admin), Konten mit Rechten zur Benutzer-, Gruppen-, Rollen-, Abteilungs- oder Sicherheitseinstellungsverwaltung sowie die Rollenvorlagen Jugendwart, Abteilungsjugendwart und Systemadministration. Solche Konten erreichen nach dem Login nur die Einrichtung im Profil, bis MFA aktiv ist. Alle anderen Konten können MFA freiwillig einrichten.
 
-- Jeder TOTP-Code gilt nur einmal. Die zehn Wiederherstellungscodes gelten jeweils einmal und werden nur gehasht gespeichert.
-- Das TOTP-Geheimnis ist mit dem Feldschlüssel verschlüsselt. `rotate_field_encryption` schließt es ein (siehe [encryption-rotation.md](encryption-rotation.md)).
+- Jeder TOTP-Code gilt nur einmal. Die zehn Wiederherstellungscodes werden mit dem ersten Faktor ausgegeben, gelten jeweils einmal (auch für Konten nur mit Passkeys) und werden nur gehasht gespeichert.
+- Das TOTP-Geheimnis ist mit dem Feldschlüssel verschlüsselt. `rotate_field_encryption` schließt es ein (siehe [encryption-rotation.md](encryption-rotation.md)). Von Passkeys speichert JF-Manager nur den öffentlichen Schlüssel und den Signaturzähler; ein Zähler, der nicht steigt, deutet auf einen kopierten Schlüssel und wird abgelehnt. Eine Attestierung (Gerätemodell) wird nicht abgefragt.
+- Der letzte zweite Faktor eines Kontos mit verpflichtender MFA lässt sich nicht entfernen; zuerst einen weiteren einrichten.
 
-**Verlorener Authenticator ohne Wiederherstellungscode:** Eine Systemadministration entfernt im Django-Admin oder per Shell den Eintrag *MFA-Gerät* des Kontos. Danach richtet die Person MFA beim nächsten Login neu ein. Den Vorgang dokumentieren.
+### Passkeys: Domain und HTTPS
+
+Passkeys sind an die Adresse der Oberfläche gebunden. Relying-Party-ID und erlaubte Herkunft ergeben sich aus `FRONTEND_URL` (z. B. `https://jf.example.org` → RP-ID `jf.example.org`). Abweichend setzbar:
+
+| Variable | Wirkung |
+| --- | --- |
+| `WEBAUTHN_RP_ID` | RP-ID, z. B. `example.org`, damit Passkeys auf allen Subdomains gelten |
+| `WEBAUTHN_ORIGINS` | Kommagetrennte erlaubte Herkünfte, z. B. `https://jf.example.org,https://www.jf.example.org` |
+
+Browser erlauben Passkeys nur über HTTPS (Ausnahme `http://localhost` für die Entwicklung). **Ändert sich die Domain, funktionieren bestehende Passkeys nicht mehr**; betroffene Personen melden sich mit Authenticator-App oder Wiederherstellungscode an oder ihre MFA wird zurückgesetzt (siehe unten).
+
+### Zwei-Faktor-Anmeldung zurücksetzen
+
+Für Personen, die Passkey, App und Wiederherstellungscodes verloren haben. Das Zurücksetzen entfernt Authenticator-App, alle Passkeys und Wiederherstellungscodes und beendet alle Sitzungen des Kontos; bei der nächsten Anmeldung wird MFA neu eingerichtet (bei Pflichtkonten ist bis dahin nur die Einrichtung erreichbar). Vorher die Identität der Person auf einem anderen Weg prüfen.
+
+- **Weboberfläche (normale Konten):** Superuser öffnen *Administration → Benutzer*, wählen das Konto und nutzen *Zwei-Faktor-Anmeldung zurücksetzen* (mit Bestätigung und Step-up).
+- **Konsole (alle Konten, einzig für Administrationskonten):** Für Superuser, Staff und alle Konten mit verpflichtender MFA lehnt die Oberfläche das Zurücksetzen ab, damit eine übernommene Admin-Sitzung anderen Admins nicht den zweiten Faktor entziehen kann. Auf dem Server:
+
+  ```sh
+  sudo jfctl admin reset-mfa --user NAME       # nur zweiter Faktor
+  sudo jfctl admin recover --user NAME --reset-mfa   # zusätzlich neues Passwort
+  ```
+
+  Ohne `jfctl` (Entwicklung): `python manage.py reset_mfa --user NAME`.
+
+Jedes Zurücksetzen wird im Logger `security.mfa` mit Konto-ID, ausführender Konto-ID und Kanal (`console`, `admin-ui`) protokolliert, ohne Namen.
 
 ## Django-Admin
 
