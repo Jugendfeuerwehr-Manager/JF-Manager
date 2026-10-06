@@ -247,7 +247,6 @@ function buildDefault(): AdminUserWrite & { password?: string } {
     dsgvo_internal: false,
     dsgvo_external: false,
     email_signature: '',
-    theme_mode: '',
     group_ids: [],
     password: '',
   }
@@ -270,7 +269,6 @@ function fromUser(u: AdminUserDetail): AdminUserWrite & { password?: string } {
     dsgvo_internal: u.dsgvo_internal ?? false,
     dsgvo_external: u.dsgvo_external ?? false,
     email_signature: u.email_signature ?? '',
-    theme_mode: u.theme_mode ?? '',
     group_ids: u.groups.map((g) => g.id),
     password: '',
   }
