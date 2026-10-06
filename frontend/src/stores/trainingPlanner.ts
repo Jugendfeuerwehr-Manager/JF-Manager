@@ -1,195 +1,219 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { trainingBlocksApi } from '@/api/training'
-import type { PlannerBlock, TrainingBlock, TrainingBlockCreate, TrainingBlockMove } from '@/types/training'
+import { libraryApi, trainingSessionsApi } from '@/api/training'
+import type {
+  GroupMini, PlannerBlock, TrainingBlock, TrainingBlockCreate, TrainingBlockMove,
+  TrainingPlanDraft, TrainingSessionCreate, TrainingSessionDetail,
+} from '@/types/training'
 
 export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
-  // ── State ────────────────────────────────────────────────────────────────
   const sessionId = ref<number | null>(null)
+  const session = ref<TrainingSessionDetail | null>(null)
   const blocks = ref<PlannerBlock[]>([])
   const selectedBlockId = ref<number | null>(null)
   const draggingBlockId = ref<number | null>(null)
   const loading = ref(false)
   const saving = ref(false)
   const error = ref<string | null>(null)
-  /** Tracks unsaved position/duration changes for batch save. */
+  const conflict = ref<TrainingSessionDetail | null>(null)
   const pendingMoves = ref<Map<number, TrainingBlockMove>>(new Map())
+  const baseline = ref('')
+  let nextLocalId = -1
+  let generation = 0
 
-  // ── Getters ──────────────────────────────────────────────────────────────
-  const isDirty = computed(() => pendingMoves.value.size > 0)
-  const selectedBlock = computed(() =>
-    blocks.value.find((b) => b.id === selectedBlockId.value) ?? null
-  )
+  const isDirty = computed(() => !!session.value && JSON.stringify(draft()) !== baseline.value)
+  const selectedBlock = computed(() => blocks.value.find((b) => b.id === selectedBlockId.value) ?? null)
 
-  function blocksByGroup(groupId: number | null): PlannerBlock[] {
-    if (groupId === null) {
-      // All-group blocks (empty groups array)
-      return blocks.value.filter((b) => b.allGroups)
-    }
-    return blocks.value.filter(
-      (b) => !b.allGroups && b.groupIds.includes(groupId)
-    )
+  function normalize(b: TrainingBlock): PlannerBlock {
+    const groups = b.groups ?? []
+    return { ...b, groups, groupIds: groups.map((g) => g.id), allGroups: groups.length === 0 }
   }
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+  function metadata(): TrainingSessionCreate {
+    const s = session.value!
+    return {
+      title: s.title, description: s.description, date: s.date,
+      start_time: s.start_time, end_time: s.end_time, location: s.location,
+      notes: s.notes, department: s.department, group_ids: s.groups.map((g) => g.id),
+      recurrence_rule: s.recurrence_rule,
+    }
+  }
+
+  function draft(): TrainingPlanDraft {
+    return {
+      expected_revision: session.value?.revision ?? 1,
+      session: session.value ? metadata() : {} as TrainingSessionCreate,
+      blocks: blocks.value.map((b) => ({
+        ...(b.id > 0 ? { id: b.id } : {}), session: b.session,
+        title: b.title, content: b.content, group_ids: b.groupIds,
+        library_block: b.library_block, duration_minutes: b.duration_minutes,
+        start_offset_minutes: b.start_offset_minutes, position_order: b.position_order,
+        color: b.color, nextcloud_folder_url: b.nextcloud_folder_url,
+      })),
+    }
+  }
+
+  function accept(data: TrainingSessionDetail) {
+    session.value = data
+    sessionId.value = data.id
+    blocks.value = data.blocks.map(normalize)
+    baseline.value = JSON.stringify(draft())
+    pendingMoves.value.clear()
+    conflict.value = null
+    error.value = null
+    selectedBlockId.value = null
+  }
+
+  function assertEditable() {
+    if (!session.value || loading.value || saving.value) throw new Error('Der Plan wird gerade geladen oder gespeichert.')
+  }
+
+  function groupsFor(ids: number[], choices: GroupMini[] = []): GroupMini[] {
+    const known = [...(session.value?.groups ?? []), ...blocks.value.flatMap((b) => b.groups), ...choices]
+    return ids.map((id) => known.find((g) => g.id === id) ?? { id, name: `Gruppe ${id}` })
+  }
+
+  function blocksByGroup(groupId: number | null): PlannerBlock[] {
+    return blocks.value.filter((b) => groupId === null ? b.allGroups : !b.allGroups && b.groupIds.includes(groupId))
+  }
+
   async function loadBlocks(sid: number) {
-    sessionId.value = sid
+    const requestGeneration = ++generation
     loading.value = true
     error.value = null
     try {
-      const response = await trainingBlocksApi.list({ session: sid, limit: 1000 })
-      blocks.value = response.data.results.map(normalizeToPlannerBlock)
-      pendingMoves.value.clear()
-    } catch (e: unknown) {
-      error.value = 'Fehler beim Laden der Blöcke'
+      const response = await trainingSessionsApi.plan(sid)
+      if (requestGeneration === generation) accept(response.data)
+    } catch (e) {
+      if (requestGeneration === generation) error.value = 'Fehler beim Laden des Plans'
       throw e
     } finally {
-      loading.value = false
+      if (requestGeneration === generation) loading.value = false
     }
   }
 
   async function addBlock(data: TrainingBlockCreate) {
-    saving.value = true
-    error.value = null
-    try {
-      const response = await trainingBlocksApi.create(data)
-      blocks.value = [...blocks.value, normalizeToPlannerBlock(response.data)]
-      return response.data
-    } catch (e: unknown) {
-      error.value = 'Fehler beim Hinzufügen des Blocks'
-      throw e
-    } finally {
-      saving.value = false
+    assertEditable()
+    const requestGeneration = generation
+    let content = data.content ?? ''
+    let color = data.color ?? ''
+    if (data.library_block && !content) {
+      const source = await libraryApi.get(data.library_block)
+      content = source.data.content
+      color ||= source.data.color
     }
+    if (requestGeneration !== generation) return
+    assertEditable()
+    const b: TrainingBlock = {
+      id: nextLocalId--, session: sessionId.value!, title: data.title, content,
+      groups: groupsFor(data.group_ids ?? []), library_block: data.library_block ?? null,
+      library_block_title: null, duration_minutes: data.duration_minutes ?? 15,
+      start_offset_minutes: data.start_offset_minutes ?? 0, position_order: data.position_order ?? 0,
+      color, nextcloud_folder_url: data.nextcloud_folder_url ?? '',
+      created_at: '', updated_at: '', media: [], attachments: [],
+    }
+    blocks.value.push(normalize(b))
+    return b
   }
 
   async function updateBlockContent(id: number, data: Partial<TrainingBlockCreate>) {
-    saving.value = true
-    error.value = null
-    try {
-      const response = await trainingBlocksApi.update(id, data)
-      const idx = blocks.value.findIndex((b) => b.id === id)
-      if (idx !== -1) {
-        blocks.value[idx] = normalizeToPlannerBlock(response.data)
-      }
-      return response.data
-    } catch (e: unknown) {
-      error.value = 'Fehler beim Speichern des Blocks'
-      throw e
-    } finally {
-      saving.value = false
+    assertEditable()
+    const b = blocks.value.find((b) => b.id === id)
+    if (!b) return
+    const { group_ids, session: _targetSession, ...content } = data
+    Object.assign(b, content)
+    if (group_ids) {
+      b.groups = groupsFor(group_ids)
+      b.groupIds = group_ids
+      b.allGroups = group_ids.length === 0
     }
+    return b
   }
 
-  /**
-   * Stage a position change locally (during drag/resize).
-   * Does NOT save to backend — call savePendingMoves() afterwards.
-   */
+  function stageSession(data: TrainingSessionCreate, choices: GroupMini[] = []) {
+    assertEditable()
+    const { group_ids, ...values } = data
+    Object.assign(session.value!, values)
+    if (group_ids) session.value!.groups = groupsFor(group_ids, choices)
+  }
+
   function stageMove(id: number, move: TrainingBlockMove) {
-    const block = blocks.value.find((b) => b.id === id)
-    if (!block) return
-
-    // Apply optimistically
-    if (move.start_offset_minutes !== undefined) block.start_offset_minutes = move.start_offset_minutes
-    if (move.duration_minutes !== undefined) block.duration_minutes = move.duration_minutes
-    if (move.position_order !== undefined) block.position_order = move.position_order
+    if (saving.value || loading.value) return
+    const b = blocks.value.find((b) => b.id === id)
+    if (!b) return
+    if (move.start_offset_minutes !== undefined) b.start_offset_minutes = move.start_offset_minutes
+    if (move.duration_minutes !== undefined) b.duration_minutes = move.duration_minutes
+    if (move.position_order !== undefined) b.position_order = move.position_order
     if (move.groups !== undefined) {
-      block.groupIds = move.groups
-      block.allGroups = move.groups.length === 0
+      b.groups = groupsFor(move.groups)
+      b.groupIds = move.groups
+      b.allGroups = move.groups.length === 0
     }
-
-    // Merge into pending
-    const existing = pendingMoves.value.get(id) ?? {}
-    pendingMoves.value.set(id, { ...existing, ...move })
+    pendingMoves.value.set(id, { ...pendingMoves.value.get(id), ...move })
   }
 
-  /** Save all staged moves to the backend in parallel. */
   async function savePendingMoves() {
-    if (pendingMoves.value.size === 0) return
+    if (!isDirty.value || saving.value || loading.value || !sessionId.value) return
+    const requestGeneration = generation
+    const payload = draft()
     saving.value = true
     error.value = null
-    const moves = new Map(pendingMoves.value)
-    pendingMoves.value.clear()
     try {
-      await Promise.all(
-        Array.from(moves.entries()).map(([id, move]) =>
-          trainingBlocksApi.move(id, move)
-        )
-      )
+      const response = await trainingSessionsApi.savePlan(sessionId.value, payload)
+      if (requestGeneration === generation) accept(response.data)
     } catch (e: unknown) {
-      error.value = 'Fehler beim Speichern der Positionen'
-      // Re-stage failed moves
-      moves.forEach((move, id) => pendingMoves.value.set(id, move))
+      if (requestGeneration === generation) {
+        const response = (e as { response?: { status: number; data?: { current?: TrainingSessionDetail; [key: string]: unknown } } }).response
+        if (response?.status === 409 && response.data?.current) {
+          conflict.value = response.data.current
+          error.value = 'Der Serverplan wurde geändert. Dein Entwurf bleibt erhalten.'
+        } else {
+          const messages = (value: unknown): string[] => typeof value === 'string' ? [value]
+            : value && typeof value === 'object' ? Object.values(value).flatMap(messages) : []
+          const detail = response?.status === 400 ? messages(response.data).slice(0, 8).join(' ') : ''
+          error.value = detail ? `Plan nicht gespeichert: ${detail}`
+            : 'Plan nicht gespeichert. Bitte Verbindung und Berechtigung prüfen und erneut versuchen.'
+        }
+      }
       throw e
     } finally {
-      saving.value = false
+      if (requestGeneration === generation) saving.value = false
     }
   }
 
   async function removeBlock(id: number) {
-    loading.value = true
-    error.value = null
-    try {
-      await trainingBlocksApi.delete(id)
-      blocks.value = blocks.value.filter((b) => b.id !== id)
-      pendingMoves.value.delete(id)
-      if (selectedBlockId.value === id) selectedBlockId.value = null
-    } catch (e: unknown) {
-      error.value = 'Fehler beim Löschen des Blocks'
-      throw e
-    } finally {
-      loading.value = false
-    }
+    assertEditable()
+    blocks.value = blocks.value.filter((b) => b.id !== id)
+    pendingMoves.value.delete(id)
+    if (selectedBlockId.value === id) selectedBlockId.value = null
   }
 
-  function selectBlock(id: number | null) {
-    selectedBlockId.value = id
+  function discardForServerVersion() {
+    if (conflict.value && !saving.value) accept(conflict.value)
   }
 
-  function setDragging(id: number | null) {
-    draggingBlockId.value = id
-  }
+  function selectBlock(id: number | null) { selectedBlockId.value = id }
+  function setDragging(id: number | null) { draggingBlockId.value = id }
 
   function reset() {
+    generation++
     sessionId.value = null
+    session.value = null
     blocks.value = []
+    baseline.value = ''
     selectedBlockId.value = null
     draggingBlockId.value = null
     pendingMoves.value.clear()
+    conflict.value = null
     error.value = null
-  }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  function normalizeToPlannerBlock(b: TrainingBlock): PlannerBlock {
-    const groups = b.groups ?? []
-    return {
-      ...b,
-      groups,
-      groupIds: groups.map((g) => g.id),
-      allGroups: groups.length === 0,
-    }
+    loading.value = false
+    saving.value = false
   }
 
   return {
-    sessionId,
-    blocks,
-    selectedBlockId,
-    draggingBlockId,
-    pendingMoves,
-    loading,
-    saving,
-    error,
-    isDirty,
-    selectedBlock,
-    blocksByGroup,
-    loadBlocks,
-    addBlock,
-    updateBlockContent,
-    stageMove,
-    savePendingMoves,
-    removeBlock,
-    selectBlock,
-    setDragging,
-    reset,
+    sessionId, session, blocks, selectedBlockId, draggingBlockId, pendingMoves,
+    loading, saving, error, conflict, isDirty, selectedBlock, blocksByGroup,
+    loadBlocks, addBlock, updateBlockContent, stageSession, stageMove, savePendingMoves,
+    removeBlock, discardForServerVersion, selectBlock, setDragging, reset,
   }
 })

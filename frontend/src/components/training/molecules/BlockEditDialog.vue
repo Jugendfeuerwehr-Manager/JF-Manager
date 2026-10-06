@@ -39,7 +39,7 @@
           <BlockEditor
             v-model="form.content"
             block-type="training"
-            :block-id="block.id"
+            :block-id="block.id > 0 ? block.id : null"
             min-height="260px"
           />
         </div>
@@ -47,7 +47,8 @@
 
       <!-- Asset panel -->
       <div class="edit-panel">
-        <AssetPanel block-type="training" :block-id="block.id" />
+        <AssetPanel v-if="block.id > 0" block-type="training" :block-id="block.id" />
+        <p v-else role="status">Speichere den Plan zuerst, um Bilder und Anhänge hinzuzufügen.</p>
       </div>
     </div>
 
@@ -87,7 +88,7 @@
         />
       </div>
       <Button label="Abbrechen" severity="secondary" outlined @click="emit('update:visible', false)" />
-      <Button label="Speichern" icon="pi pi-check" :loading="saving" @click="save" />
+      <Button label="Übernehmen" icon="pi pi-check" :loading="saving" :disabled="plannerStore.saving" @click="save" />
     </template>
   </Dialog>
 </template>
@@ -133,8 +134,8 @@ const form = ref({
   nextcloud_folder_url: '',
 })
 
-watch(() => props.block, (b) => {
-  if (b) {
+watch(() => [props.block, props.visible] as const, ([b, visible]) => {
+  if (b && visible) {
     form.value = {
       title: b.title,
       content: b.content ?? '',
@@ -153,6 +154,8 @@ async function save() {
     await plannerStore.updateBlockContent(props.block.id, form.value)
     emit('saved', props.block.id)
     emit('update:visible', false)
+  } catch {
+    toast.add({ severity: 'error', summary: 'Nicht übernommen', detail: 'Bitte warte, bis der Plan gespeichert ist.', life: 4000 })
   } finally {
     saving.value = false
   }

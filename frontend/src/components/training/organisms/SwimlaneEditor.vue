@@ -28,13 +28,14 @@
           v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
           @click="toggleNav"
         />
-        <Button icon="pi pi-cog" severity="secondary" text aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
+        <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
         <Button
           :icon="showLibraryPicker ? 'pi pi-times' : 'pi pi-book'"
           :label="showLibraryPicker ? 'Bibliothek schließen' : 'Bibliothek'"
           severity="secondary"
           :outlined="!showLibraryPicker"
+          :disabled="plannerStore.saving || plannerStore.loading"
           :aria-expanded="showLibraryPicker"
           @click="showLibraryPicker = !showLibraryPicker"
         />
@@ -42,14 +43,27 @@
           icon="pi pi-save"
           label="Speichern"
           :loading="plannerStore.saving || saving"
-          :disabled="!isDirty"
+          :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings"
           @click="saveAll"
         />
       </div>
     </header>
 
+    <p v-if="plannerStore.error" role="alert">{{ plannerStore.error }}</p>
+    <details v-if="plannerStore.conflict" class="plan-conflict" open>
+      <summary>Serverstand vergleichen · Version {{ plannerStore.conflict.revision }}</summary>
+      <p>Dein Entwurf bleibt im Planer erhalten. Der Server enthält:</p>
+      <p>{{ plannerStore.conflict.title }} · {{ plannerStore.conflict.date }} · {{ formatTimeRange(plannerStore.conflict.start_time, plannerStore.conflict.end_time) }}</p>
+      <ul>
+        <li v-for="block in plannerStore.conflict.blocks" :key="block.id">
+          {{ block.title }} · ab Minute {{ block.start_offset_minutes }} · {{ block.duration_minutes }} Minuten
+        </li>
+      </ul>
+      <Button label="Serverstand laden und Entwurf verwerfen" severity="secondary" @click="discardForServerVersion" />
+    </details>
+
     <!-- ── Main planner ────────────────────────────────────────────── -->
-    <div class="planner-container">
+    <div class="planner-container" :inert="plannerStore.saving || plannerStore.loading">
 
       <!-- Scrollable area: headers + grid -->
       <div class="planner-scroll" ref="plannerScroll">
@@ -174,7 +188,8 @@
       <TrainingSessionForm
         v-if="session"
         :initial-data="(session as TrainingSessionDetail)"
-        @success="onSessionSaved"
+        draft-only
+        @draft="onSessionDraft"
         @cancel="showSessionSettings = false"
       />
     </Dialog>
@@ -198,8 +213,7 @@ import LibraryBlockPicker from '../molecules/LibraryBlockPicker.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import { useTrainingStore } from '@/stores/training'
-import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail } from '@/types/training'
+import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini } from '@/types/training'
 import interact from 'interactjs'
 import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
@@ -210,7 +224,6 @@ const props = defineProps<Props>()
 const router = useRouter()
 
 const plannerStore = useTrainingPlannerStore()
-const trainingStore = useTrainingStore()
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const MINUTE_PX = 4      // px per minute → 240 min × 4 = 960 px total
@@ -239,7 +252,7 @@ const creating = ref<{
 const blocks = computed(() => plannerStore.blocks)
 const selectedBlockId = computed(() => plannerStore.selectedBlockId)
 const isDirty = computed(() => plannerStore.isDirty)
-const session = computed(() => trainingStore.currentSession as TrainingSessionDetail | null)
+const session = computed(() => plannerStore.session)
 const totalHeightPx = computed(() => DISPLAY_MIN * MINUTE_PX)
 
 // ── Session start time (minutes from midnight) ─────────────────────────────
@@ -328,7 +341,7 @@ const createPreviewStyle = computed(() => ({
 
 function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | null) {
   if ((event.target as HTMLElement).closest('.block-tile')) return
-  if (event.button !== 0) return
+  if (event.button !== 0 || plannerStore.saving || plannerStore.loading) return
   event.preventDefault()
 
   const laneEl = event.currentTarget as HTMLElement
@@ -398,6 +411,7 @@ function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | n
 // ── Drag-from-library-picker ───────────────────────────────────────────────
 async function onLaneDrop(event: DragEvent, groupId: number | null) {
   event.preventDefault()
+  if (plannerStore.saving || plannerStore.loading) return
   const blockId = event.dataTransfer?.getData('application/x-library-block-id')
   if (!blockId) return
 
@@ -453,9 +467,16 @@ function openEdit(block: PlannerBlock) {
 
 function onBlockSaved(_blockId: number) { /* store updated */ }
 
-async function onSessionSaved(_sessionId: number) {
+function onSessionDraft(data: TrainingSessionCreate, choices: GroupMini[]) {
+  plannerStore.stageSession(data, choices)
   showSessionSettings.value = false
-  await trainingStore.fetchSession(props.sessionId)
+}
+
+function discardForServerVersion() {
+  if (window.confirm('Lokale Änderungen verwerfen und den aktuellen Serverstand laden?')) {
+    plannerStore.discardForServerVersion()
+    saveFailed.value = false
+  }
 }
 
 async function saveAll() {
@@ -467,8 +488,7 @@ async function saveAll() {
 }
 
 const pendingLabel = computed(() => {
-  const count = plannerStore.pendingMoves.size
-  return count === 1 ? '1 ungespeicherte Änderung' : `${count} ungespeicherte Änderungen`
+  return 'Ungespeicherter Planentwurf'
 })
 
 const laneSummary = computed(() => {
@@ -506,10 +526,8 @@ function getLaneKeyAtClientX(clientX: number): string | null {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    plannerStore.loadBlocks(props.sessionId),
-    trainingStore.fetchSession(props.sessionId),
-  ])
+  try { await plannerStore.loadBlocks(props.sessionId) }
+  catch { return }
   await nextTick()
   setupInteract()
 })
@@ -644,6 +662,7 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
 
 <style scoped>
 /* ── Outer shell ──────────────────────────────────────────────────────── */
+.plan-conflict { padding: var(--jf-space-2); overflow: auto; max-height: 240px; }
 .swimlane-editor {
   display: flex;
   flex-direction: column;

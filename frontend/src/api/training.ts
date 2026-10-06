@@ -16,6 +16,7 @@ import type {
   TrainingBlockCreate,
   TrainingBlockMove,
   TrainingMedia,
+  TrainingPlanDraft,
   TrainingSessionCreate,
   TrainingSessionDetail,
   TrainingSessionHandout,
@@ -26,6 +27,12 @@ import type {
 // ─── Session API ──────────────────────────────────────────────────────────────
 
 export const trainingSessionsApi = {
+  plan(id: number) {
+    return apiClient.get<TrainingSessionDetail>(`/training/sessions/${id}/plan/`)
+  },
+  savePlan(id: number, data: TrainingPlanDraft) {
+    return apiClient.put<TrainingSessionDetail>(`/training/sessions/${id}/plan/`, data)
+  },
   list(params?: Record<string, unknown>) {
     return apiClient.get<PaginatedResponse<TrainingSessionList>>('/training/sessions/', { params })
   },

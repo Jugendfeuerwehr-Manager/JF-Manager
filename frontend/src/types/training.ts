@@ -198,6 +198,7 @@ export interface TrainingSessionList {
 
 export interface TrainingSessionDetail {
   id: number
+  revision: number
   title: string
   description: string
   date: string
@@ -267,4 +268,11 @@ export interface PaginatedResponse<T> {
   next: string | null
   previous: string | null
   results: T[]
+}
+
+// A complete writable snapshot; existing block IDs retain their media/attachments.
+export interface TrainingPlanDraft {
+  expected_revision: number
+  session: TrainingSessionCreate
+  blocks: Array<TrainingBlockCreate & { id?: number }>
 }

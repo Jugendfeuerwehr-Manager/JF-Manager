@@ -79,7 +79,7 @@
     <div class="form-actions">
       <Button label="Abbrechen" severity="secondary" outlined @click="emit('cancel')" />
       <Button
-        :label="initialData ? 'Speichern' : 'Erstellen'"
+        :label="draftOnly ? 'Übernehmen' : initialData ? 'Speichern' : 'Erstellen'"
         icon="pi pi-check"
         :loading="saving"
         @click="submit"
@@ -117,11 +117,13 @@ interface SessionFormData {
 interface Props {
   /** Provide TrainingSessionDetail when editing an existing session */
   initialData?: TrainingSessionDetail | null
+  draftOnly?: boolean
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   success: [sessionId: number]
+  draft: [data: TrainingSessionCreate, choices: { id: number; name: string }[]]
   cancel: []
 }>()
 
@@ -196,8 +198,11 @@ function populateForm(data: Partial<TrainingSessionDetail>) {
     location: data.location ?? '',
     notes: data.notes ?? '',
     group_ids: data.groups?.map((g) => g.id) ?? [],
-    recurrence_rule: null,
+    recurrence_rule: data.recurrence_rule ?? null,
   }
+  hasRecurrence.value = !!data.recurrence_rule
+  recurrenceRule.value = data.recurrence_rule ? { ...data.recurrence_rule } : { frequency: 'WEEKLY', end_date: '' }
+  recurrenceEndDate.value = data.recurrence_rule?.end_date ? parseIsoDateToLocalDate(data.recurrence_rule.end_date) : null
   formDate.value = data.date ? parseIsoDateToLocalDate(data.date) : null
 }
 
@@ -220,7 +225,9 @@ async function submit() {
       recurrence_rule: hasRecurrence.value ? recurrenceRule.value : null,
     }
 
-    if (props.initialData?.id) {
+    if (props.draftOnly) {
+      emit('draft', payload, groups.value)
+    } else if (props.initialData?.id) {
       await trainingStore.updateSession(props.initialData.id, payload)
       emit('success', props.initialData.id)
     } else {
