@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.3 lokaler Entwurf und Fehler-/Konflikterhalt geprüft. |
+| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.4 Bedienung und Verlassensschutz geprüft. |
 | Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | TRAIN-Integration (4de5e64 übernommen; dieser Commit). |
+| Letzter Roadmap-Commit | TRAIN-Integration (31996e4 übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | TRAIN-Commits integrieren, dann TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf abnehmen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
-| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.3 lokaler Planentwurf und einzelne atomare Speicheranfrage grün; nächster Schritt TRAIN-01.4. |
+| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.4 Undo/Redo, Tastatur und Verlassensschutz grün; nächster Schritt TRAIN-01.5. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
@@ -921,14 +921,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `TRAIN-01.3`: Lokaler Planentwurf für Anlage, Bearbeitung, Entfernung und Verschiebung; eine Speicheranfrage, Fehler-/Konflikterhalt.
   - `TRAIN-01.4`: Rückgängig/Wiederholen, Verlassenswarnung und explizite Tastatur-/Formularaktionen ohne automatischen Tausch.
   - `TRAIN-01.5`: Status-/Dienstvertrag mit TRAIN-03, ausdrückliche Vorschau für Tauschen/Nachfolgende verschieben; gebündelte Paketabnahme.
-- **Letzter dauerhafter Checkpoint:** TRAIN-01.3, dieser Commit.
+- **Letzter dauerhafter Checkpoint:** TRAIN-01.4, dieser Commit.
 - **Branch:** Integration auf `feat/security-roles-training-operations`; isolierter detached Worktree `/private/tmp/jf-manager-train` bei `d89c90b`, keine konkurrierenden Git-Schreiboperationen im gemeinsamen Checkout.
 - **Geänderte Dateien / Commit-Bezug:** Trainings-Backend, Planer-Store, API/Typen, Trainingsformulare und Planer-Bedienlogik, neue Tests; `10335ef`, `4d2e276`, `26e3098`, dieser Commit: `feat(TRAIN-01.3): stage complete training drafts and retain conflicts`. API-Dokumentation: `docs/planning/training-plan-api.md`.
-- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.3.
-- **Prüfungen:** Backend: 48/48 SQLite und 50/50 PostgreSQL-15-Tests einschließlich Konkurrenzfällen bestanden. Frontend: sechs neue Storetests, 190/190 Gesamt-Tests, Typecheck und gezieltes ESLint bestanden. Browserlauf nicht ausgeführt.
-- **Offene Fehler / Risiken:** Undo/Redo, Verlassensschutz und ausdrückliche Vorschauaktionen noch offen; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
-- **Laufende Prozesse und sichere Fortsetzung:** Keine TRAIN-Dienste; Tests ausschließlich auf Wegwerf-Testdatenbanken.
-- **Nächster konkreter Schritt:** TRAIN-01.4 Undo/Redo, Verlassensschutz und Tastatur; automatischen Tausch entfernen.
+- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.4.
+- **Prüfungen:** Backend: 48/48 SQLite und 50/50 PostgreSQL-15-Tests einschließlich Konkurrenzfällen bestanden. Frontend: zehn Storetests, zwei Tastatur- und zwei Planer-Gesten-/Verlassensschutztests, 198/198 Gesamt-Tests, Typecheck und gezieltes ESLint bestanden. Browserlauf nicht ausgeführt.
+- **Offene Fehler / Risiken:** Status-/Dienstvertrag und ausdrückliche Vorschauaktionen noch offen; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
+- **Laufende Prozesse und sichere Fortsetzung:** Vollständige Backendtests auf Wegwerf-PostgreSQL-15-Container `jf-train-test-pg15`, Port 55437; Log `/private/tmp/train-backend-tests.log`. Nach Prüfung Container entfernen. Keine Änderungen an lokalen Anwendungsdaten.
+- **Nächster konkreter Schritt:** TRAIN-01.5 ausdrückliche Vorschauaktionen und Status-/Dienstvertrag mit TRAIN-03.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1255,3 +1255,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-01.2 | Vollständiger GET/PUT-Planvertrag mit Pflichtversion, atomarer Metadaten-/Block-/Gruppenspeicherung, Erhalt bestehender IDs und Medien, expliziter Entfernung und Konfliktantwort mit aktuellem Serverstand. Alle bisherigen Termin-/Blockschreibwege sperren dieselbe Terminzeile und erhöhen Versionen; Zielwechsel sperren sortiert und erhöhen beide Versionen. API-Vertrag dokumentiert. | 48/48 gezielte Tests auf SQLite, 50/50 auf isoliertem PostgreSQL 15 einschließlich gleichzeitiger Planentwürfe (200/409) und Einzelverschiebungen (keine verlorenen Versionsinkremente) bestanden. Ruff und Diff-Check bestanden. PostgreSQL-Erststart wegen fehlender Docker-Settings-Umgebung fehlgeschlagen, mit expliziten temporären Testsettings bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.2): save complete training plans atomically with revision checks` | TRAIN-01.3. |
 
 | 06.10.2026 | TRAIN-01.3 | Planer lädt einen gemeinsamen Serverstand und hält Terminmetadaten, Blockanlage/-inhalt/-entfernung sowie Positionen/Gruppen lokal. Speichern sendet genau einen vollständigen Plan mit erwarteter Version; Fehler und Konflikte erhalten den Entwurf. Serverstand ist vergleichbar und nur nach ausdrücklicher Bestätigung verwerfend ladbar. Neue lokale Blöcke haben temporäre IDs; Medien benötigen erst einen gespeicherten Block. Vorlageninhalt wird vor lokaler Übernahme kopiert, Wiederholungsregel beim Bearbeiten erhalten. | 6/6 neue Storetests, 190/190 Frontendtests, Typecheck und gezieltes ESLint bestanden. Erster Werkzeugstart nutzte veraltetes System-Node und scheiterte; mit explizitem Node 24 bestanden. Browserlauf nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.3): stage complete training drafts and retain conflicts` | TRAIN-01.4. |
+
+| 06.10.2026 | TRAIN-01.4 | Lokale Undo/Redo-Historie (bis 50 Schritte, gesamtes Ziehen ein Schritt), Schutz vor Router-/Terminwechsel und Browser-Verlassen. Baustein ohne Ziehen anlegbar, focusierbare benannte Kacheln: Pfeile verschieben, Alt+Pfeile ändern Dauer, Shift in Ein-Minuten-Schritten, Enter öffnet Formular; Gruppen im Formular. Terminrahmen bestimmt Raster und Verschiebe-/Größengrenzen. Automatischen Überlappungstausch entfernt; bestehende Blöcke bleiben an ihrem Ort. | 14/14 gezielte Store-/Tastatur-/Planertests, 198/198 Gesamt-Frontendtests, Typecheck, gezieltes ESLint und Diff-Check bestanden. Vollständige Backend-Suite läuft auf PostgreSQL 15; Browser-/Touchprüfung nicht ausgeführt. Trailing-Whitespace aus TRAIN-01.3 korrigiert. | Dieser Commit: `feat(TRAIN-01.4): add draft history keyboard controls and leave protection` | TRAIN-01.5. |

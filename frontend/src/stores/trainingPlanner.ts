@@ -6,6 +6,12 @@ import type {
   TrainingPlanDraft, TrainingSessionCreate, TrainingSessionDetail,
 } from '@/types/training'
 
+interface DraftSnapshot {
+  session: TrainingSessionDetail | null
+  blocks: PlannerBlock[]
+  moves: Array<[number, TrainingBlockMove]>
+}
+
 export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   const sessionId = ref<number | null>(null)
   const session = ref<TrainingSessionDetail | null>(null)
@@ -20,6 +26,61 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   const baseline = ref('')
   let nextLocalId = -1
   let generation = 0
+  const past = ref<DraftSnapshot[]>([])
+  const future = ref<DraftSnapshot[]>([])
+  let gestureStart: DraftSnapshot | null = null
+  const canUndo = computed(() => past.value.length > 0 && !saving.value && !loading.value)
+  const canRedo = computed(() => future.value.length > 0 && !saving.value && !loading.value)
+
+  function snapshot(): DraftSnapshot {
+    return JSON.parse(JSON.stringify({ session: session.value, blocks: blocks.value,
+      moves: Array.from(pendingMoves.value.entries()) }))
+  }
+
+  function restore(value: DraftSnapshot) {
+    const copy: DraftSnapshot = JSON.parse(JSON.stringify(value))
+    session.value = copy.session
+    blocks.value = copy.blocks
+    pendingMoves.value = new Map(copy.moves)
+    if (!blocks.value.some((b) => b.id === selectedBlockId.value)) selectedBlockId.value = null
+  }
+
+  function remember(previous: DraftSnapshot) {
+    // A pointer gesture can contain hundreds of updates but is one undo step.
+    if (JSON.stringify(previous) === JSON.stringify(snapshot())) return
+    past.value = [...past.value.slice(-49), previous]
+    future.value = []
+  }
+
+  function mutate(action: () => void) {
+    const previous = gestureStart ? null : snapshot()
+    action()
+    if (previous) remember(previous)
+  }
+
+  function beginGesture() {
+    if (!saving.value && !loading.value && !gestureStart) gestureStart = snapshot()
+  }
+
+  function endGesture() {
+    if (gestureStart) remember(gestureStart)
+    gestureStart = null
+  }
+
+  function undo() {
+    if (!canUndo.value) return
+    endGesture()
+    const previous = past.value.pop()!
+    future.value.push(snapshot())
+    restore(previous)
+  }
+
+  function redo() {
+    if (!canRedo.value) return
+    const next = future.value.pop()!
+    past.value.push(snapshot())
+    restore(next)
+  }
 
   const isDirty = computed(() => !!session.value && JSON.stringify(draft()) !== baseline.value)
   const selectedBlock = computed(() => blocks.value.find((b) => b.id === selectedBlockId.value) ?? null)
@@ -62,6 +123,9 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     conflict.value = null
     error.value = null
     selectedBlockId.value = null
+    past.value = []
+    future.value = []
+    gestureStart = null
   }
 
   function assertEditable() {
@@ -112,7 +176,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
       color, nextcloud_folder_url: data.nextcloud_folder_url ?? '',
       created_at: '', updated_at: '', media: [], attachments: [],
     }
-    blocks.value.push(normalize(b))
+    mutate(() => { blocks.value.push(normalize(b)) })
     return b
   }
 
@@ -121,35 +185,41 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     const b = blocks.value.find((b) => b.id === id)
     if (!b) return
     const { group_ids, session: _targetSession, ...content } = data
-    Object.assign(b, content)
-    if (group_ids) {
-      b.groups = groupsFor(group_ids)
-      b.groupIds = group_ids
-      b.allGroups = group_ids.length === 0
-    }
+    mutate(() => {
+      Object.assign(b, content)
+      if (group_ids) {
+        b.groups = groupsFor(group_ids)
+        b.groupIds = group_ids
+        b.allGroups = group_ids.length === 0
+      }
+    })
     return b
   }
 
   function stageSession(data: TrainingSessionCreate, choices: GroupMini[] = []) {
     assertEditable()
     const { group_ids, ...values } = data
-    Object.assign(session.value!, values)
-    if (group_ids) session.value!.groups = groupsFor(group_ids, choices)
+    mutate(() => {
+      Object.assign(session.value!, values)
+      if (group_ids) session.value!.groups = groupsFor(group_ids, choices)
+    })
   }
 
   function stageMove(id: number, move: TrainingBlockMove) {
     if (saving.value || loading.value) return
     const b = blocks.value.find((b) => b.id === id)
     if (!b) return
-    if (move.start_offset_minutes !== undefined) b.start_offset_minutes = move.start_offset_minutes
-    if (move.duration_minutes !== undefined) b.duration_minutes = move.duration_minutes
-    if (move.position_order !== undefined) b.position_order = move.position_order
-    if (move.groups !== undefined) {
-      b.groups = groupsFor(move.groups)
-      b.groupIds = move.groups
-      b.allGroups = move.groups.length === 0
-    }
-    pendingMoves.value.set(id, { ...pendingMoves.value.get(id), ...move })
+    mutate(() => {
+      if (move.start_offset_minutes !== undefined) b.start_offset_minutes = move.start_offset_minutes
+      if (move.duration_minutes !== undefined) b.duration_minutes = move.duration_minutes
+      if (move.position_order !== undefined) b.position_order = move.position_order
+      if (move.groups !== undefined) {
+        b.groups = groupsFor(move.groups)
+        b.groupIds = move.groups
+        b.allGroups = move.groups.length === 0
+      }
+      pendingMoves.value.set(id, { ...pendingMoves.value.get(id), ...move })
+    })
   }
 
   async function savePendingMoves() {
@@ -183,9 +253,11 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
 
   async function removeBlock(id: number) {
     assertEditable()
-    blocks.value = blocks.value.filter((b) => b.id !== id)
-    pendingMoves.value.delete(id)
-    if (selectedBlockId.value === id) selectedBlockId.value = null
+    mutate(() => {
+      blocks.value = blocks.value.filter((b) => b.id !== id)
+      pendingMoves.value.delete(id)
+      if (selectedBlockId.value === id) selectedBlockId.value = null
+    })
   }
 
   function discardForServerVersion() {
@@ -208,11 +280,15 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     error.value = null
     loading.value = false
     saving.value = false
+    past.value = []
+    future.value = []
+    gestureStart = null
   }
 
   return {
     sessionId, session, blocks, selectedBlockId, draggingBlockId, pendingMoves,
     loading, saving, error, conflict, isDirty, selectedBlock, blocksByGroup,
+    canUndo, canRedo, undo, redo, beginGesture, endGesture,
     loadBlocks, addBlock, updateBlockContent, stageSession, stageMove, savePendingMoves,
     removeBlock, discardForServerVersion, selectBlock, setDragging, reset,
   }

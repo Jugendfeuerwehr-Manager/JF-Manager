@@ -1,5 +1,5 @@
 <template>
-  <div class="swimlane-editor">
+  <div class="swimlane-editor" @keydown="onEditorKeydown">
 
     <!-- ── Header ──────────────────────────────────────────────────── -->
     <header class="editor-head">
@@ -15,7 +15,9 @@
       </div>
       <div class="editor-head__actions">
         <span class="save-hint" :class="{ 'save-hint--dirty': isDirty, 'save-hint--error': saveFailed }" role="status">
-          <template v-if="saveFailed"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Nicht gespeichert</template>
+          <template v-if="plannerStore.loading">Plan lädt …</template>
+          <template v-else-if="plannerStore.saving">Speichert …</template>
+          <template v-else-if="saveFailed"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Nicht gespeichert</template>
           <template v-else-if="isDirty"><i class="pi pi-pencil" aria-hidden="true"></i>{{ pendingLabel }}</template>
           <template v-else><i class="pi pi-check" aria-hidden="true"></i>Alles gespeichert</template>
         </span>
@@ -28,6 +30,9 @@
           v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
           @click="toggleNav"
         />
+        <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings" @click="plannerStore.undo()" />
+        <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings" @click="plannerStore.redo()" />
+        <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
         <Button
@@ -163,6 +168,7 @@
                 :selected="selectedBlockId === block.id"
                 @click="openEdit(block)"
                 @edit="openEdit(block)"
+                @move="onKeyboardMove"
                 @remove="plannerStore.removeBlock($event)"
               />
             </div>
@@ -204,8 +210,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import TrainingBlockTile from '../molecules/TrainingBlockTile.vue'
@@ -213,7 +219,7 @@ import LibraryBlockPicker from '../molecules/LibraryBlockPicker.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini } from '@/types/training'
+import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove } from '@/types/training'
 import interact from 'interactjs'
 import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
@@ -227,7 +233,11 @@ const plannerStore = useTrainingPlannerStore()
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const MINUTE_PX = 4      // px per minute → 240 min × 4 = 960 px total
-const DISPLAY_MIN = 240  // 4 hours
+const sessionDuration = computed(() => {
+  const minutes = (value: string) => value.split(':').reduce((sum, part, index) => sum + Number(part) * [60, 1, 1 / 60][index]!, 0)
+  const s = plannerStore.session
+  return s ? Math.max(1, Math.floor(minutes(s.end_time) - minutes(s.start_time))) : 240
+})
 
 // ── Refs ───────────────────────────────────────────────────────────────────
 const plannerScroll = ref<HTMLElement | null>(null)
@@ -253,7 +263,7 @@ const blocks = computed(() => plannerStore.blocks)
 const selectedBlockId = computed(() => plannerStore.selectedBlockId)
 const isDirty = computed(() => plannerStore.isDirty)
 const session = computed(() => plannerStore.session)
-const totalHeightPx = computed(() => DISPLAY_MIN * MINUTE_PX)
+const totalHeightPx = computed(() => sessionDuration.value * MINUTE_PX)
 
 // ── Session start time (minutes from midnight) ─────────────────────────────
 const sessionStartMin = computed(() => {
@@ -266,7 +276,7 @@ const sessionStartMin = computed(() => {
 // ── Time ticks ─────────────────────────────────────────────────────────────
 const timeTicks = computed(() => {
   const ticks: { offsetMin: number; px: number; displayTime: string; labeled: boolean; major: boolean }[] = []
-  for (let offset = 0; offset <= DISPLAY_MIN; offset += 5) {
+  for (let offset = 0; offset <= sessionDuration.value; offset += 5) {
     const abs = sessionStartMin.value + offset
     const hh = Math.floor(abs / 60) % 24
     const mm = abs % 60
@@ -324,12 +334,12 @@ function snapPx(px: number): number {
 
 const createTopPx = computed(() => {
   if (!creating.value) return 0
-  return Math.max(0, snapPx(Math.min(creating.value.startPx, creating.value.currentPx)))
+  return Math.min((sessionDuration.value - 1) * MINUTE_PX, Math.max(0, snapPx(Math.min(creating.value.startPx, creating.value.currentPx))))
 })
 
 const createHeightPx = computed(() => {
   if (!creating.value) return 5 * MINUTE_PX
-  return Math.max(5 * MINUTE_PX, snapPx(Math.abs(creating.value.currentPx - creating.value.startPx)))
+  return Math.min(totalHeightPx.value - createTopPx.value, Math.max(5 * MINUTE_PX, snapPx(Math.abs(creating.value.currentPx - creating.value.startPx))))
 })
 
 const createDuration = computed(() => Math.round(createHeightPx.value / MINUTE_PX))
@@ -379,7 +389,7 @@ function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | n
       creating.value = null
       return
     }
-    const startOffset = Math.round(createTopPx.value / MINUTE_PX / 5) * 5
+    const startOffset = Math.round(createTopPx.value / MINUTE_PX)
     const duration = createDuration.value
     const gId = creating.value.groupId
     creating.value = null
@@ -417,14 +427,14 @@ async function onLaneDrop(event: DragEvent, groupId: number | null) {
 
   const title = event.dataTransfer?.getData('application/x-library-block-title') ?? ''
   const durationStr = event.dataTransfer?.getData('application/x-library-block-duration') ?? '15'
-  const duration = parseInt(durationStr) || 15
+  const duration = Math.min(sessionDuration.value, parseInt(durationStr) || 15)
   const colorStr = event.dataTransfer?.getData('application/x-library-block-color') ?? ''
 
   const laneEl = event.currentTarget as HTMLElement
   // getBoundingClientRect().top is viewport-relative and already accounts for the
   // scroll offset of .planner-scroll; adding scrollTop again would double-count it.
   const offsetPx = event.clientY - laneEl.getBoundingClientRect().top
-  const startOffset = Math.min(DISPLAY_MIN - 5, Math.max(0, Math.round(offsetPx / MINUTE_PX / 5) * 5))
+  const startOffset = Math.min(sessionDuration.value - duration, Math.max(0, Math.round(offsetPx / MINUTE_PX / 5) * 5))
 
   await plannerStore.addBlock({
     title,
@@ -446,7 +456,7 @@ async function addFromLibrary(libraryBlock: LibraryBlockList) {
     content: '',
     session: props.sessionId,
     library_block: libraryBlock.id,
-    duration_minutes: libraryBlock.default_duration_minutes ?? 15,
+    duration_minutes: Math.min(sessionDuration.value, libraryBlock.default_duration_minutes ?? 15),
     start_offset_minutes: 0,
     position_order: blocks.value.length,
     color: libraryBlock.color ?? '',
@@ -460,9 +470,32 @@ async function addFromLibrary(libraryBlock: LibraryBlockList) {
 let dragOccurred = false
 
 function openEdit(block: PlannerBlock) {
-  if (dragOccurred) return
+  if (dragOccurred || plannerStore.saving) return
   editingBlock.value = block
   showEditDialog.value = true
+}
+
+async function createBlock() {
+  const added = await plannerStore.addBlock({ session: props.sessionId, title: 'Neuer Baustein', duration_minutes: Math.min(15, sessionDuration.value) })
+  if (added) openEdit(plannerStore.blocks.find((b) => b.id === added.id)!)
+}
+
+function onKeyboardMove(id: number, values: TrainingBlockMove) {
+  const block = blocks.value.find((b) => b.id === id)
+  if (!block) return
+  if (values.start_offset_minutes !== undefined) values.start_offset_minutes = Math.max(0, Math.min(sessionDuration.value - block.duration_minutes, values.start_offset_minutes))
+  if (values.duration_minutes !== undefined) values.duration_minutes = Math.max(1, Math.min(sessionDuration.value - block.start_offset_minutes, values.duration_minutes))
+  plannerStore.stageMove(id, values)
+}
+
+function onEditorKeydown(event: KeyboardEvent) {
+  const target = event.target as HTMLElement
+  if (target.closest('input, textarea, [contenteditable="true"]') || showEditDialog.value || showSessionSettings.value) return
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+    event.preventDefault()
+    if (event.shiftKey) plannerStore.redo()
+    else plannerStore.undo()
+  }
 }
 
 function onBlockSaved(_blockId: number) { /* store updated */ }
@@ -525,15 +558,35 @@ function getLaneKeyAtClientX(clientX: number): string | null {
   return null
 }
 
-onMounted(async () => {
-  try { await plannerStore.loadBlocks(props.sessionId) }
+function hasUnsavedChanges() {
+  return plannerStore.isDirty || plannerStore.saving || showEditDialog.value || showSessionSettings.value
+}
+function confirmLeave() {
+  return !hasUnsavedChanges() || window.confirm('Ungespeicherte Planänderungen gehen verloren. Seite trotzdem verlassen?')
+}
+function beforeUnload(event: BeforeUnloadEvent) {
+  if (!hasUnsavedChanges()) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+onBeforeRouteLeave(confirmLeave)
+onBeforeRouteUpdate(confirmLeave)
+onMounted(() => window.addEventListener('beforeunload', beforeUnload))
+watch(() => props.sessionId, async (id) => {
+  showEditDialog.value = false
+  showSessionSettings.value = false
+  editingBlock.value = null
+  saveFailed.value = false
+  plannerStore.reset()
+  try { await plannerStore.loadBlocks(id) }
   catch { return }
   await nextTick()
-  setupInteract()
-})
-
+  if (plannerStore.sessionId === id) setupInteract()
+}, { immediate: true })
 onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
   interact('.block-tile').unset()
+  plannerStore.reset()
 })
 
 function setupInteract() {
@@ -542,10 +595,8 @@ function setupInteract() {
       listeners: {
         start(event) {
           dragOccurred = false
+          plannerStore.beginGesture()
           const blockId = parseInt(event.target.dataset.blockId)
-          const block = blocks.value.find((b) => b.id === blockId)
-          // Remember start position for swap detection
-          event.target.dataset.originalStart = String(block?.start_offset_minutes ?? 0)
           event.target.dataset.currentTop = event.target.style.top || '0'
           event.target.classList.add('dragging')
           plannerStore.selectBlock(blockId)
@@ -554,7 +605,8 @@ function setupInteract() {
           dragOccurred = true
           const blockId = parseInt(event.target.dataset.blockId)
           const prev = parseFloat(event.target.dataset.currentTop ?? '0')
-          const rawTop = Math.max(0, prev + event.dy)
+          const block = blocks.value.find((b) => b.id === blockId)
+          const rawTop = Math.min(Math.max(0, sessionDuration.value - (block?.duration_minutes ?? 1)) * MINUTE_PX, Math.max(0, prev + event.dy))
           event.target.dataset.currentTop = String(rawTop)
           // 1-minute snap
           const snapped = Math.round(rawTop / MINUTE_PX) * MINUTE_PX
@@ -567,9 +619,7 @@ function setupInteract() {
         end(event) {
           event.target.classList.remove('dragging')
           if (dragOccurred) {
-            // Swap detection runs after the reactive update settles
             const blockId = parseInt(event.target.dataset.blockId)
-            const originalStart = parseInt(event.target.dataset.originalStart ?? '0')
             // Apply cross-lane change if block was dragged to a different lane
             const targetLaneKey = event.target.dataset.targetLane
             if (targetLaneKey !== undefined) {
@@ -582,12 +632,11 @@ function setupInteract() {
                 }
               }
             }
-            swapIfOverlapping(blockId, originalStart)
             // Keep the flag true long enough to swallow the synthetic click event
             setTimeout(() => { dragOccurred = false }, 150)
           }
+          plannerStore.endGesture()
           delete event.target.dataset.currentTop
-          delete event.target.dataset.originalStart
           delete event.target.dataset.targetLane
         },
       },
@@ -597,6 +646,7 @@ function setupInteract() {
       listeners: {
         start(event) {
           dragOccurred = false
+          plannerStore.beginGesture()
           // Capture initial height to avoid fighting Vue's reactive :style binding
           event.target.dataset.currentHeight = String(event.target.offsetHeight)
         },
@@ -605,7 +655,9 @@ function setupInteract() {
           const blockId = parseInt(event.target.dataset.blockId)
           // Accumulate delta manually (event.deltaRect.bottom = change in bottom edge)
           const prev = parseFloat(event.target.dataset.currentHeight ?? String(MINUTE_PX * 15))
-          const rawHeight = Math.max(MINUTE_PX, prev + event.deltaRect.bottom)
+          const block = blocks.value.find((b) => b.id === blockId)
+          const available = Math.max(1, sessionDuration.value - (block?.start_offset_minutes ?? 0)) * MINUTE_PX
+          const rawHeight = Math.min(available, Math.max(MINUTE_PX, prev + event.deltaRect.bottom))
           event.target.dataset.currentHeight = String(rawHeight)
           // Snap to 1-minute increments
           const snapped = Math.max(MINUTE_PX, Math.round(rawHeight / MINUTE_PX) * MINUTE_PX)
@@ -614,50 +666,13 @@ function setupInteract() {
         },
         end(event) {
           if (dragOccurred) setTimeout(() => { dragOccurred = false }, 150)
+          plannerStore.endGesture()
           delete event.target.dataset.currentHeight
         },
       },
     })
 }
 
-/**
- * After a drag ends: if the dragged block overlaps another block in the same lane
- * by more than 40% of the smaller block’s duration, swap them.
- */
-function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
-  const dragged = blocks.value.find((b) => b.id === draggedId)
-  if (!dragged) return
-
-  const dStart = dragged.start_offset_minutes ?? 0
-  const dEnd = dStart + dragged.duration_minutes
-
-  // Find which lane the dragged block lives in
-  const lane = visibleLanes.value.find((l) => l.blocks.some((b) => b.id === draggedId))
-  if (!lane) return
-
-  let bestOverlap = 0
-  let bestBlock: (typeof lane.blocks)[number] | null = null
-
-  for (const other of lane.blocks) {
-    if (other.id === draggedId) continue
-    const oStart = other.start_offset_minutes ?? 0
-    const oEnd = oStart + other.duration_minutes
-    const overlap = Math.max(0, Math.min(dEnd, oEnd) - Math.max(dStart, oStart))
-    if (overlap > bestOverlap) {
-      bestOverlap = overlap
-      bestBlock = other
-    }
-  }
-
-  if (!bestBlock) return
-  const smaller = Math.min(dragged.duration_minutes, bestBlock.duration_minutes)
-  if (bestOverlap < smaller * 0.4) return
-
-  // Swap: send the displaced block to where the dragged block started
-  plannerStore.stageMove(bestBlock.id, { start_offset_minutes: draggedOriginalStart })
-  const otherEl = document.querySelector(`[data-block-id="${bestBlock.id}"]`) as HTMLElement | null
-  if (otherEl) otherEl.style.top = `${draggedOriginalStart * MINUTE_PX}px`
-}
 </script>
 
 <style scoped>

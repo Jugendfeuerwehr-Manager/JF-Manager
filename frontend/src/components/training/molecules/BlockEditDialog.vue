@@ -30,6 +30,11 @@
         </div>
 
         <div class="field mb-3">
+          <label for="block-groups">Gruppen (leer = alle Gruppen)</label>
+          <MultiSelect input-id="block-groups" v-model="form.group_ids" :options="groupChoices" option-label="name" option-value="id" />
+        </div>
+
+        <div class="field mb-3">
           <label>Nextcloud-Ordner-URL</label>
           <InputText v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
         </div>
@@ -98,6 +103,7 @@ import { ref, watch, computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
+import MultiSelect from 'primevue/multiselect'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import BlockEditor from '../atoms/BlockEditor.vue'
@@ -123,6 +129,10 @@ const toast = useToast()
 const saving = ref(false)
 const savingToLibrary = ref(false)
 
+const groupChoices = computed(() => Array.from(new Map([
+  ...(plannerStore.session?.groups ?? []), ...plannerStore.blocks.flatMap((b) => b.groups),
+].map((g) => [g.id, g])).values()))
+
 const isAlreadyInLibrary = computed(() => props.block?.library_block != null)
 
 const form = ref({
@@ -131,6 +141,7 @@ const form = ref({
   duration_minutes: 15,
   start_offset_minutes: 0,
   color: '',
+  group_ids: [] as number[],
   nextcloud_folder_url: '',
 })
 
@@ -142,6 +153,7 @@ watch(() => [props.block, props.visible] as const, ([b, visible]) => {
       duration_minutes: b.duration_minutes,
       start_offset_minutes: b.start_offset_minutes ?? 0,
       color: b.color ?? '',
+      group_ids: [...b.groupIds],
       nextcloud_folder_url: b.nextcloud_folder_url ?? '',
     }
   }

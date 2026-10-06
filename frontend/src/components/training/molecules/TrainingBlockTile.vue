@@ -1,6 +1,10 @@
 <template>
   <div class="block-tile"
     :data-block-id="block.id"
+    tabindex="0"
+    role="group"
+    :aria-label="`${block.title}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.`"
+    @keydown="onKeydown"
     :style="tileStyle"
     :class="{ selected: selected, dragging: isDragging }"
     @click.stop="emit('click', block)"
@@ -8,8 +12,8 @@
     <div class="tile-header">
       <span class="tile-title">{{ block.title }}</span>
       <div class="tile-actions">
-        <Button icon="pi pi-pencil" text size="small" @click.stop="emit('edit', block)" />
-        <Button icon="pi pi-trash" text size="small" severity="danger" @click.stop="emit('remove', block.id)" />
+        <Button icon="pi pi-pencil" text size="small" :aria-label="`${block.title} bearbeiten`" @click.stop="emit('edit', block)" />
+        <Button icon="pi pi-trash" text size="small" severity="danger" :aria-label="`${block.title} entfernen`" @click.stop="emit('remove', block.id)" />
       </div>
     </div>
     <div class="tile-duration">
@@ -23,7 +27,7 @@
 import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import BlockDurationBadge from '../atoms/BlockDurationBadge.vue'
-import type { PlannerBlock } from '@/types/training'
+import type { PlannerBlock, TrainingBlockMove } from '@/types/training'
 
 interface Props {
   block: PlannerBlock
@@ -37,7 +41,22 @@ const emit = defineEmits<{
   click: [block: PlannerBlock]
   edit: [block: PlannerBlock]
   remove: [id: number]
+  move: [id: number, values: TrainingBlockMove]
 }>()
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.target !== event.currentTarget) return
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    emit('edit', props.block)
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    const delta = (event.key === 'ArrowDown' ? 1 : -1) * (event.shiftKey ? 1 : 5)
+    emit('move', props.block.id, event.altKey
+      ? { duration_minutes: props.block.duration_minutes + delta }
+      : { start_offset_minutes: props.block.start_offset_minutes + delta })
+  }
+}
 
 const isDragging = ref(false)
 
@@ -84,7 +103,7 @@ const tileStyle = computed(() => ({
   white-space: nowrap;
 }
 .tile-actions { display: flex; gap: 0; opacity: 0; transition: opacity 0.1s; }
-.block-tile:hover .tile-actions { opacity: 1; }
+.block-tile:is(:hover, :focus-within) .tile-actions { opacity: 1; }
 .tile-duration { margin-top: 2px; }
 
 .resize-handle {
