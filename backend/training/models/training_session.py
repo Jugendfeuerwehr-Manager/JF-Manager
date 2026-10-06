@@ -69,6 +69,7 @@ class TrainingSession(models.Model):
         verbose_name="Abteilung",
         related_name="training_sessions",
     )
+    revision = models.PositiveBigIntegerField(default=1, editable=False, verbose_name="Planversion")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

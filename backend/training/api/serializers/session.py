@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from members.models import Group
 from training.api.permissions import can_manage_training_department
+from training.api.validation import validate_block_times, validate_session_times
 from training.models import TrainingSession
 
 from .block import GroupMiniSerializer, TrainingBlockSerializer
@@ -20,6 +21,7 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
         model = TrainingSession
         fields = [
             "id",
+            "revision",
             "title",
             "date",
             "start_time",
@@ -68,6 +70,7 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
         model = TrainingSession
         fields = [
             "id",
+            "revision",
             "title",
             "description",
             "date",
@@ -88,10 +91,17 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_by", "created_at", "updated_at"]
+        read_only_fields = ["revision", "created_by", "created_at", "updated_at"]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        start = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        end = attrs.get("end_time", getattr(self.instance, "end_time", None))
+        if start is not None and end is not None:
+            duration = validate_session_times(start, end)
+            if self.instance is not None and not self.context.get("complete_plan"):
+                for block in self.instance.blocks.all():
+                    validate_block_times(block.start_offset_minutes, block.duration_minutes, duration)
         request = self.context.get("request")
         if request is None:
             return attrs
@@ -155,6 +165,7 @@ class TrainingSessionHandoutSerializer(serializers.ModelSerializer):
         model = TrainingSession
         fields = [
             "id",
+            "revision",
             "title",
             "description",
             "date",

@@ -5,12 +5,19 @@ from rest_framework import serializers
 from jf_manager_backend.html_safety import SanitizedHTMLField, sanitize_rich_html
 from members.models import Group
 from training.api.permissions import can_manage_training_department
+from training.api.validation import validate_block_times, validate_session_times
 from training.models import TrainingBlock, TrainingMedia
 
 from .library_block import TrainingMediaSerializer
 
 
 def validate_block_target(serializer, attrs):
+    session = attrs.get("session", getattr(serializer.instance, "session", None))
+    if session is not None:
+        duration = validate_session_times(session.start_time, session.end_time)
+        offset = attrs.get("start_offset_minutes", getattr(serializer.instance, "start_offset_minutes", 0))
+        length = attrs.get("duration_minutes", getattr(serializer.instance, "duration_minutes", 15))
+        validate_block_times(offset, length, duration)
     request = serializer.context.get("request")
     if request is None:
         return attrs
