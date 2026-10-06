@@ -18,7 +18,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
 | Letzter Roadmap-Commit | `SEC-02.9` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | TRAIN: TRAIN-02.0 Vertrag (Stationen, Rotation, Ressourcen) im Detailblock festlegen, dann umsetzen; danach TRAIN-04. Parallel ROLE/UX: jeweiligen Checkpoint beachten. |
+| Nächster konkreter Schritt | TRAIN: TRAIN-02.1 Stationsfelder, Ausbilder und Material im Planvertrag; danach 02.2–02.4, TRAIN-04. Parallel ROLE/UX: jeweiligen Checkpoint beachten. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -553,7 +553,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-02 | in Prüfung | Codex | ROLE-02.1–4 umgesetzt; API-/Quellentests und 222 Frontendtests bestanden. Gemeinsame Abnahme ROLE-01.7b folgt. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | abgeschlossen | Codex (TRAIN-Session) | TRAIN-01.0–01.5c integriert; 41 TRAIN-Tests auf PostgreSQL 15, Frontend-/Browser-/PDFabnahme bestanden. TRAIN-02–04 bleiben eigene Pakete. |
-| TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
+| TRAIN-02 | in Arbeit | Claude (TRAIN-Session) | TRAIN-02.0 Vertrag festgelegt; als Nächstes TRAIN-02.1 Stationsfelder, Ausbilder, Material im Planvertrag. |
 | TRAIN-03 | abgeschlossen | Claude (TRAIN-Session, Übernahme von Codex) | TRAIN-03.0–03.4 integriert (`21736e5`, `b78e31e`, `3a6331b`, `331a2dc`, Abnahme in diesem Commit). Ressourcenfelder aus TRAIN-02 werden dort in die gemeinsame Kopierlogik aufgenommen. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
 | DES-01 | in Arbeit | Claude (Design-Session) | DES-01.10b Planer-Raster, Bausteine und Bibliothek auf Tokens; offen DES-01.11 (Konsistenz, mit UX-01–08), DES-01.12 sowie Nutzerabnahme. |
@@ -975,6 +975,26 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **TRAIN-01.5b-Prüfung:** 35 Backendtests bestanden (2 PostgreSQL-only übersprungen), 214/214 Frontendtests, Typecheck, gezieltes ESLint, Migrationsabgleich und Diff-Check bestanden. Zwei neue Historientests zunächst wegen veralteter Testinstanz fehlgeschlagen; nach `refresh_from_db()` im Veröffentlichungshelper bestanden. Browser-/Touchlauf noch nicht ausgeführt. SEC-/ROLE-/Export-Commits, die während der Umsetzung erschienen, bleiben erhalten; ausschließlich TRAIN-bezogene Dateien stagen.
 
 - **TRAIN-01.5c-Abnahme:** 41/41 TRAIN-Backendtests auf PostgreSQL 15, 227/227 Frontendtests, Typecheck, gezieltes ESLint, Produktionsbuild und Ruff bestanden. Browser: veröffentlichen/speichern, Formularinhalt/Zeit, Tastatur/Undo, echter Versionskonflikt mit erhaltenem Entwurf, Serverstand, Handout/PDF, 390-Pixel-Durchführung/Bearbeitungsformular sowie reine Lesedetails bestanden. PDF mit PDFKit visuell geprüft. Gesamter PostgreSQL-Lauf: 700 Tests, ein ROLE-Test fehlgeschlagen (`UserDepartmentRoleAdminTest.test_staff_can_list_roles`), alle TRAIN-Tests bestanden. Zwischenstände: fremder doppelter Inventory-Import blockierte zunächst Build; nach fremder Korrektur bestanden. Eigener Calendar-Parsingfehler vor Commit korrigiert; Typecheck/ESLint anschließend bestanden.
+
+### TRAIN-02: Stationen, Rotation und Ressourcen
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (TRAIN-Session; Nutzerauftrag 06.10.2026: TRAIN-01 bis 04 vollständig). Fremde ROLE-/UX-/Inventar-Änderungen bleiben unberührt.
+- **Abhängigkeiten:** TRAIN-01 atomarer Plan-/Versions-/Statusvertrag, TRAIN-03 gemeinsame Kopierlogik (Serie, Kopie, Vorlage, „dieser und folgende“), ROLE-01.7a tatsächliche Abteilungsrechte. Inventar (Artikel, Varianten, Bestände, Lagerorte) wird nur gelesen; Buchungen bleiben im Inventar (SEC-09). Dienstbuch-Personal (Benutzerkonten mit Abteilungsrolle) ist die Quelle für Ausbilder.
+- **Ziel und Abnahme:** Bausteine haben eine Art (Baustein, Station, Wechsel, Pause, freie Runde), Ort, Lernziel, Sicherheitshinweise, Ausbilder und Materialbedarf (Inventarartikel/-variante mit Menge oder Freitext); Ablauf bleibt der Inhalt, Dauer die Bausteindauer. Alles wird im atomaren Planvertrag gespeichert und von Serie, Kopie, Vorlage und Übertragung unabhängig übernommen. Ausbilder nur aktive Konten mit Rolle in der Übungsabteilung; Material nur Artikel der Übungsabteilung oder ohne Abteilung, Variante passend zum Artikel. Rotationsassistent fragt Gruppen, Stationen, Reihenfolge, Stationsdauer, Wechselzeit und optionale Pause ab, zeigt den vollständigen Ablauf (Runden × Gruppen) vor Übernahme und übernimmt als ein rückgängig machbarer Entwurfsschritt; ungleiche Anzahlen erzeugen ausdrücklich gekennzeichnete freie Runden statt Mehrfachbelegung; Rahmenüberschreitung blockiert die Übernahme. Konfliktprüfung (gespeicherter Plan und ungespeicherter Entwurf) meldet überlappende Gruppen, Ausbilder (auch in anderen Übungen desselben Tages), gleiche Orte und rechnerischen Materialmangel (gleichzeitiger Bedarf über alle nicht abgesagten Übungen gegen Bestand außerhalb von Mitgliederlagerorten). Nicht sichtbare fremde Übungen erscheinen nur anonymisiert. Konflikte sind Warnungen; Veröffentlichung trotz Warnungen verlangt eine gespeicherte Begründung, ungültige Zeit-/Rechteangaben blockieren weiter. Materialbedarf verändert weder Bestand noch Verfügbarkeit.
+- **Dateiverantwortung:** `backend/training/` (Modelle, Migrationen, Planvertrag, Kopierlogik, Konfliktprüfung, Tests), Frontend-Trainings-API/Typen/Store, Bausteinformular, Planer-Prüfbereich, Rotationsassistent und Trainingsdokumentation. Keine Inventar-/Dienstbuch-/Rollendateien ändern.
+- **Teilschritte mit stabilen IDs:**
+  - `TRAIN-02.0`: Vertrag, Abnahme und Wiederaufnahme festhalten.
+  - `TRAIN-02.1`: Stationsfelder, Ausbilder und Materialbedarf im Modell und Planvertrag mit Ziel-/Rechteprüfung; Auswahl-Endpunkte; Kopie/Serie/Vorlage/Übertragung übernehmen alles unabhängig; Bausteinformular im Frontend.
+  - `TRAIN-02.2`: Konfliktprüfung für gespeicherte Pläne und Entwürfe (Gruppen, Ausbilder, Orte, Material, Anonymisierung); Veröffentlichung mit Begründung; Prüfbereich im Planer.
+  - `TRAIN-02.3`: Rotationsassistent mit vollständiger Vorschau, freien Runden, Wechselzeiten und Pausen; Übernahme als ein Entwurfsschritt.
+  - `TRAIN-02.4`: Regressionen auf PostgreSQL 15, Browserprüfung und Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** TRAIN-02.0, dieser Commit.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Prüfungen:** Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests für diesen Dokumentationsschritt nicht ausgeführt.
+- **Offene Fehler / Risiken:** „Gepflegte Ressourcenorte“ gibt es bisher nicht als eigene Liste; Ortskonflikte vergleichen normalisierte Ortsangaben an Bausteinen (Groß-/Kleinschreibung, Leerraum). Verfügbarkeit ist rechnerisch (Bestand ohne Mitgliederlagerorte), keine Reservierung. Spitzenbedarf wird an Bausteinbeginnen bestimmt.
+- **Laufende Prozesse:** Wegwerf-PostgreSQL 15 (55438), synthetischer Django-Testserver 18081 und Vite 15183 (Scratchpad).
+- **Nächster konkreter Schritt:** TRAIN-02.1 Modell und Planvertrag.
 
 ### TRAIN-03: Vorlagen und sichere Serien
 
@@ -1425,3 +1445,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-03.3 | Ganze Übungen als Vorlage speichern und unabhängig als Entwurf übernehmen, Übungen auf anderes Datum kopieren; Bibliotheksbausteine übernehmen eigene Bild-/Anhangkopien. Alle Kopien sind von späteren Änderungen/Löschungen der Quelle unabhängig. Vorlagenrechte nur für Planer der Abteilung; private Medien/Anhänge über schreibgeschützte Vorlagen-Eigentümersicht. Planer-Menü „Weitere Aktionen“, Kalender „Vorlagen“. | 61/61 Trainingstests auf PostgreSQL 15 und 85 zugehörige Regressionen, Migrationsabgleich, Ruff, Typecheck, ESLint bestanden. Frontend 258/262: 4 fremde `MemberEditView`-Tests fehlgeschlagen (uncommittete UX-Änderung). Nachtrag: Alt-Serientest aus `api_tests` war seit TRAIN-03.1 fehlgeschlagen (nicht ausgeführt) und ist jetzt angepasst. Planertest benötigte ToastService. In `3a6331b` abgeschnittener Rest der TRAIN-03.1-Prüfzeile im Detailblock wiederhergestellt. | Dieser Commit: `feat(TRAIN-03.3): save templates and copy exercises with independent files` | TRAIN-03.4. |
 
 | 06.10.2026 | TRAIN-03.4 | Paketabnahme TRAIN-03 im Browser mit synthetischen Daten (Planerrolle ohne Staff): Monatsserie mit Monatsanker, Vorschau/Anlage, Kalender nur mit echten Terminen, „dieser und folgende“ mit konkreten Änderungen, Vorlage, Kopie, Vorlagenübernahme, 390 Pixel. Zwei Bedienbefunde behoben. TRAIN-03 abgeschlossen. | Browserabnahme bestanden. Gesamtbackend PostgreSQL 15: 809 Tests, alle bestanden außer fremdem Importzyklus `orders.api` (Discovery-Fehler). Frontend 264/264, Typecheck und Produktionsbuild bestanden. Erste Browserläufe scheiterten an Skript-Selektoren bzw. wiederverwendeten Daten; mit frischer Datenbank bestanden. | Dieser Commit: `test(TRAIN-03.4): accept series, templates and copies in the browser` | TRAIN-02.0. |
+
+| 06.10.2026 | TRAIN-02.0 | Vertrag für Stationen (Art, Ort, Lernziel, Sicherheit, Ausbilder, Material), Rotationsassistent mit freien Runden, Konfliktprüfung (Gruppen, Ausbilder, Orte, Material, Anonymisierung) und Veröffentlichung mit Begründung festgelegt; Teilschritte TRAIN-02.1–02.4. | Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(TRAIN-02.0): define stations, rotation and resource warnings` | TRAIN-02.1. |
