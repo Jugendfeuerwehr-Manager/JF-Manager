@@ -71,6 +71,9 @@ class TrainingTemplateBlock(PlanBlockFields):
         related_name="template_blocks",
         verbose_name="Bibliotheksblock (Herkunft)",
     )
+    instructors = models.ManyToManyField(
+        "users.CustomUser", blank=True, related_name="instructed_training_template_blocks", verbose_name="Ausbilder"
+    )
 
     def __str__(self):
         return f"{self.title} @ {self.template}"

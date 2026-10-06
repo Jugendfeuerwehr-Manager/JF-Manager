@@ -14,7 +14,15 @@ from rest_framework import serializers
 from training.api.permissions import can_manage_training_department
 from training.api.plan import advance_revision, delete_plan_blocks
 from training.api.validation import validate_block_times, validate_session_times
-from training.copying import BLOCK_FIELDS, SESSION_FIELDS, copied_files, copy_block, copy_session, snapshot_hash
+from training.copying import (
+    BLOCK_FIELDS,
+    SESSION_FIELDS,
+    copied_files,
+    copy_block,
+    copy_session,
+    resources,
+    snapshot_hash,
+)
 from training.models import TrainingSession
 from training.workflow import linked_service, service_is_documented, sync_linked_service
 
@@ -219,6 +227,7 @@ def comparable(session):
             **{name: getattr(block, name) for name in BLOCK_FIELDS if name != "content"},
             "content": re.sub(r'src="[^"]*"', "", block.content),
             "groups": sorted(block.groups.values_list("pk", flat=True)),
+            **resources(block),
         }
         for block in session.blocks.order_by("start_offset_minutes", "position_order", "pk")
     ]

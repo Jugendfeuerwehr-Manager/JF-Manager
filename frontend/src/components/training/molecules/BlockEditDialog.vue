@@ -9,9 +9,20 @@
     <div v-if="block" class="block-edit-layout">
       <!-- Main editor -->
       <div class="edit-main">
+        <div class="field-row field-row--two mb-3">
+          <div class="field">
+            <label for="block-title">Titel</label>
+            <InputText id="block-title" v-model="form.title" class="w-full" />
+          </div>
+          <div class="field">
+            <label for="block-kind">Art</label>
+            <Select input-id="block-kind" v-model="form.kind" :options="kindOptions" option-label="label" option-value="value" />
+          </div>
+        </div>
+
         <div class="field mb-3">
-          <label for="block-title">Titel</label>
-          <InputText id="block-title" v-model="form.title" class="w-full" />
+          <label for="block-location">Ort</label>
+          <InputText id="block-location" v-model="form.location" class="w-full" placeholder="z. B. Übungshof, Hydrant Nord" />
         </div>
 
         <div class="field-row mb-3">
@@ -34,13 +45,30 @@
           <MultiSelect input-id="block-groups" v-model="form.group_ids" :options="groupChoices" option-label="name" option-value="id" />
         </div>
 
+        <div v-if="form.kind === 'station' || form.kind === 'block'" class="field-row field-row--two mb-3">
+          <div class="field">
+            <label for="block-objective">Lernziel</label>
+            <Textarea id="block-objective" v-model="form.learning_objective" rows="2" auto-resize />
+          </div>
+          <div class="field">
+            <label for="block-safety">Sicherheitshinweise</label>
+            <Textarea id="block-safety" v-model="form.safety_notes" rows="2" auto-resize />
+          </div>
+        </div>
+
+        <BlockResourcesFields
+          v-model:instructors="form.instructors"
+          v-model:materials="form.materials"
+          :session-id="plannerStore.sessionId"
+        />
+
         <div class="field mb-3">
           <label for="block-folder">Nextcloud-Ordner-URL</label>
           <InputText id="block-folder" v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
         </div>
 
         <div class="field">
-          <label>Inhalt</label>
+          <label>{{ form.kind === 'station' ? 'Ablauf' : 'Inhalt' }}</label>
           <BlockEditor
             v-model="form.content"
             block-type="training"
@@ -104,13 +132,16 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import MultiSelect from 'primevue/multiselect'
+import Select from 'primevue/select'
+import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import BlockEditor from '../atoms/BlockEditor.vue'
 import AssetPanel from './AssetPanel.vue'
+import BlockResourcesFields from './BlockResourcesFields.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import { useLibraryStore } from '@/stores/library'
-import type { PlannerBlock } from '@/types/training'
+import { BLOCK_KIND_LABELS, type BlockKind, type BlockMaterial, type InstructorMini, type PlannerBlock } from '@/types/training'
 
 interface Props {
   visible: boolean
@@ -143,7 +174,15 @@ const form = ref({
   color: '',
   group_ids: [] as number[],
   nextcloud_folder_url: '',
+  kind: 'block' as BlockKind,
+  location: '',
+  learning_objective: '',
+  safety_notes: '',
+  instructors: [] as InstructorMini[],
+  materials: [] as BlockMaterial[],
 })
+
+const kindOptions = (Object.entries(BLOCK_KIND_LABELS) as Array<[BlockKind, string]>).map(([value, label]) => ({ value, label }))
 
 watch(() => [props.block, props.visible] as const, ([b, visible]) => {
   if (b && visible) {
@@ -155,6 +194,12 @@ watch(() => [props.block, props.visible] as const, ([b, visible]) => {
       color: b.color ?? '',
       group_ids: [...b.groupIds],
       nextcloud_folder_url: b.nextcloud_folder_url ?? '',
+      kind: b.kind ?? 'block',
+      location: b.location ?? '',
+      learning_objective: b.learning_objective ?? '',
+      safety_notes: b.safety_notes ?? '',
+      instructors: [...(b.instructors ?? [])],
+      materials: (b.materials ?? []).map((m) => ({ ...m })),
     }
   }
 }, { immediate: true })
@@ -163,7 +208,8 @@ async function save() {
   if (!props.block) return
   saving.value = true
   try {
-    await plannerStore.updateBlockContent(props.block.id, form.value)
+    const materials = form.value.materials.filter((m) => m.item || m.label.trim())
+    await plannerStore.updateBlockContent(props.block.id, { ...form.value, materials })
     emit('saved', props.block.id)
     emit('update:visible', false)
   } catch {
@@ -224,6 +270,7 @@ async function updateLibraryBlock() {
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field label { font-size: 0.875rem; font-weight: 500; color: var(--text-color-secondary); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.field-row--two { grid-template-columns: 2fr 1fr; }
 
 .color-input { width: 2.5rem; height: 2rem; border: none; background: none; cursor: pointer; }
 

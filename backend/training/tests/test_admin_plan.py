@@ -36,6 +36,7 @@ class AdminPlanTests(TestCase):
         data = {
             "session": self.session.pk,
             "title": "Block",
+            "kind": "block",
             "duration_minutes": 30,
             "start_offset_minutes": 0,
             "position_order": 0,

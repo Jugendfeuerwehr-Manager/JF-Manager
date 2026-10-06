@@ -131,11 +131,48 @@ export interface LibraryBlockUsageSession {
 
 // ─── Training Block ───────────────────────────────────────────────────────────
 
+export type BlockKind = 'block' | 'station' | 'transition' | 'break' | 'free'
+
+export const BLOCK_KIND_LABELS: Record<BlockKind, string> = {
+  block: 'Baustein',
+  station: 'Station',
+  transition: 'Wechsel',
+  break: 'Pause',
+  free: 'Freie Runde',
+}
+
+export interface InstructorMini {
+  id: number
+  name: string
+}
+
+// Planned material need: inventory item/variant or free text. Never books stock.
+export interface BlockMaterial {
+  id?: number
+  item: number | null
+  variant: number | null
+  quantity: number
+  label: string
+}
+
+export interface MaterialOption {
+  id: number
+  name: string
+  unit: string
+  variants: Array<{ id: number; label: string }>
+}
+
 export interface TrainingBlock {
   id: number
   title: string
   content: string
   session: number
+  kind?: BlockKind
+  location?: string
+  learning_objective?: string
+  safety_notes?: string
+  instructors?: InstructorMini[]
+  materials?: BlockMaterial[]
   groups: GroupMini[]
   library_block: number | null
   library_block_title: string | null
@@ -154,6 +191,12 @@ export interface TrainingBlockCreate {
   title: string
   content?: string
   session: number
+  kind?: BlockKind
+  location?: string
+  learning_objective?: string
+  safety_notes?: string
+  instructor_ids?: number[]
+  materials?: BlockMaterial[]
   group_ids?: number[]
   library_block?: number | null
   duration_minutes?: number

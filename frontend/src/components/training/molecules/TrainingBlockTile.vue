@@ -3,14 +3,14 @@
     :data-block-id="block.id"
     tabindex="0"
     role="group"
-    :aria-label="`${block.title}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. ${readOnly ? 'Enter: Details ansehen.' : 'Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.'}`"
+    :aria-label="`${kindLabel ? kindLabel + ': ' : ''}${block.title}${block.location ? ', ' + block.location : ''}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. ${readOnly ? 'Enter: Details ansehen.' : 'Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.'}`"
     @keydown="onKeydown"
     :style="tileStyle"
     :class="{ selected: selected, dragging: isDragging, 'read-only': readOnly }"
     @click.stop="emit('click', block)"
   >
     <span class="tile-title">{{ block.title }}</span>
-    <span class="tile-meta">{{ durationLabel }}</span>
+    <span class="tile-meta">{{ [kindLabel, durationLabel, block.location].filter(Boolean).join(' · ') }}</span>
     <div v-if="!readOnly" class="tile-actions">
       <Button icon="pi pi-pencil" text size="small" severity="secondary" :aria-label="`${block.title} bearbeiten`" @click.stop="emit('edit', block)" />
       <Button icon="pi pi-trash" text size="small" severity="danger" :aria-label="`${block.title} entfernen`" @click.stop="emit('remove', block.id)" />
@@ -24,7 +24,7 @@ import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import { formatDuration } from '../utils/duration'
 import { safeBlockColor } from '../utils/blockColor'
-import type { PlannerBlock, TrainingBlockMove } from '@/types/training'
+import { BLOCK_KIND_LABELS, type PlannerBlock, type TrainingBlockMove } from '@/types/training'
 
 interface Props {
   block: PlannerBlock
@@ -58,6 +58,8 @@ function onKeydown(event: KeyboardEvent) {
 
 const isDragging = ref(false)
 const durationLabel = computed(() => formatDuration(props.block.duration_minutes))
+// Plain blocks stay unlabeled; stations, transitions, breaks and free rounds are named.
+const kindLabel = computed(() => (props.block.kind && props.block.kind !== 'block' ? BLOCK_KIND_LABELS[props.block.kind] : ''))
 
 const tileStyle = computed(() => {
   const color = safeBlockColor(props.block.color)

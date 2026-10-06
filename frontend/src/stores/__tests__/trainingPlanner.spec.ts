@@ -218,4 +218,26 @@ describe('unsaved draft history', () => {
     store.stageMove(1, { start_offset_minutes: 5 })
     expect(store.blocks[1]!.start_offset_minutes).toBe(0)
   })
+
+  it('stages station fields, instructors and materials and sends them as one complete plan', async () => {
+    const store = useTrainingPlannerStore()
+    await store.loadBlocks(1)
+    await store.updateBlockContent(1, {
+      kind: 'station', location: 'Hydrant Nord', learning_objective: 'Kuppeln', safety_notes: 'Handschuhe',
+      instructors: [{ id: 7, name: 'Alex Ausbilder' }],
+      materials: [{ item: 3, variant: null, quantity: 2, label: 'C-Schlauch' }, { item: null, variant: null, quantity: 1, label: 'Kreide' }],
+    })
+    expect(store.isDirty).toBe(true)
+    expect(store.blocks[0]!.instructors).toEqual([{ id: 7, name: 'Alex Ausbilder' }])
+    api.savePlan.mockResolvedValue({ data: { ...plan(), revision: 2 } })
+    await store.savePendingMoves()
+    const sent = api.savePlan.mock.calls[0]![1].blocks[0]
+    expect(sent).toMatchObject({
+      id: 1, kind: 'station', location: 'Hydrant Nord', learning_objective: 'Kuppeln', safety_notes: 'Handschuhe',
+      instructor_ids: [7],
+      materials: [{ item: 3, variant: null, quantity: 2, label: 'C-Schlauch' }, { item: null, variant: null, quantity: 1, label: 'Kreide' }],
+    })
+    expect(sent).not.toHaveProperty('instructors')
+    store.undo()
+  })
 })

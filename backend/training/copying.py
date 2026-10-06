@@ -11,7 +11,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from jf_manager_backend.html_safety import sanitize_rich_html
 from members.models import Attachment
-from training.models import TrainingBlock, TrainingMedia, TrainingSession, TrainingTemplate, TrainingTemplateBlock
+from training.models import (
+    TrainingBlock,
+    TrainingBlockMaterial,
+    TrainingMedia,
+    TrainingSession,
+    TrainingTemplate,
+    TrainingTemplateBlock,
+)
 
 SESSION_FIELDS = ("title", "description", "start_time", "end_time", "location", "notes", "department_id")
 BLOCK_FIELDS = (
@@ -23,7 +30,20 @@ BLOCK_FIELDS = (
     "color",
     "nextcloud_folder_url",
     "library_block_id",
+    "kind",
+    "location",
+    "learning_objective",
+    "safety_notes",
 )
+MATERIAL_FIELDS = ("item_id", "variant_id", "quantity", "label")
+
+
+def resources(block):
+    """Instructors and material needs as comparable plain data."""
+    return {
+        "instructors": sorted(block.instructors.values_list("pk", flat=True)),
+        "materials": [list(row) for row in block.materials.order_by("pk").values_list(*MATERIAL_FIELDS)],
+    }
 
 
 def owned_files(block):
@@ -48,6 +68,7 @@ def snapshot_hash(session):
             {
                 **{name: getattr(block, name) for name in BLOCK_FIELDS},
                 "groups": sorted(block.groups.values_list("pk", flat=True)),
+                **resources(block),
                 **owned_files(block),
             }
         )
@@ -110,8 +131,17 @@ def copy_owned_files(source, target, user, created, *, referenced_only=False):
     target.save(update_fields=["content"])
 
 
+def eligible_instructors(users, department_id):
+    """Active accounts with a role in the exercise department (same pool as service staff)."""
+    users = users.filter(is_active=True)
+    if department_id is None:
+        return users
+    return users.filter(department_roles__department_id=department_id).distinct()
+
+
 def copy_block(source, user, created, *, model=TrainingBlock, department_id=None, **parent):
-    """Independent copy of a planned or template block into ``parent`` (session= or template=)."""
+    """Independent copy of a planned or template block into ``parent`` (session= or template=).
+    With ``department_id`` only groups and instructors of that department are carried over."""
     block = model.objects.create(
         **parent,
         **{
@@ -121,6 +151,15 @@ def copy_block(source, user, created, *, model=TrainingBlock, department_id=None
     )
     groups = source.groups.all()
     block.groups.set(groups.filter(department_id=department_id) if department_id is not None else groups)
+    instructors = source.instructors.all()
+    block.instructors.set(
+        eligible_instructors(instructors, department_id) if department_id is not None else instructors
+    )
+    owner = "block" if model is TrainingBlock else "template_block"
+    TrainingBlockMaterial.objects.bulk_create(
+        TrainingBlockMaterial(**{owner: block}, **{name: getattr(row, name) for name in MATERIAL_FIELDS})
+        for row in source.materials.order_by("pk")
+    )
     copy_owned_files(source, block, user, created)
     return block
 

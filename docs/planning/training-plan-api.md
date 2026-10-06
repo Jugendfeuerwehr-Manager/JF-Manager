@@ -63,3 +63,13 @@ Alle Übernahmen erzeugen eigenständige Stände: Inhalte werden kopiert und ber
 - `GET /api/v1/training/template-blocks/`: schreibgeschützte Eigentümersicht; regelt den Zugriff auf Vorlagenbilder (`private-media`) und -anhänge (`attachments`).
 
 Bausteine aus der Bibliothek (`library_block` bei neuen Bausteinen, auch im vollständigen Planvertrag) erhalten beim Anlegen eigene Kopien der im Inhalt referenzierten Bibliotheksbilder und aller Bibliotheksanhänge. Die Referenz `library_block` bleibt nur als Herkunftsangabe erhalten; Bibliotheksänderungen wirken nicht automatisch auf geplante Übungen. Bei einem Fehler innerhalb der Kopieraktion werden bereits geschriebene Kopien entfernt.
+
+## Stationen, Ausbilder und Material (TRAIN-02)
+
+Jeder Baustein im Planvertrag kann zusätzlich `kind` (`block`, `station`, `transition` = Wechsel, `break` = Pause, `free` = freie Runde), `location`, `learning_objective`, `safety_notes`, `instructor_ids` und `materials` enthalten. Bei Stationen ist `content` der Ablauf und `duration_minutes` die Stationsdauer. Lesend liefern Bausteine `instructors` (`id`, `name`) und `materials` (`id`, `item`, `variant`, `quantity`, `label`).
+
+- Ausbilder: nur aktive Konten mit Rolle in der Übungsabteilung (gleicher Personenkreis wie Dienstbuch-Personal). `GET .../sessions/{id}/instructor_options/` liefert diese Auswahl minimal (`id`, `name`), nur für Planer der Abteilung.
+- Material: `{item?, variant?, quantity ≥ 1, label?}`. Eine Variante bestimmt ihren Artikel; ein abweichender Artikel ist ungültig. Ohne Artikel ist `label` Pflicht (Freitextbedarf); mit Artikel wird `label` aus Artikel/Variante übernommen und bleibt als Anzeigename erhalten, auch wenn der Artikel später entfernt wird. Erlaubt sind Artikel der Übungsabteilung und abteilungsübergreifende Artikel. Höchstens 50 Positionen je Baustein. `GET .../sessions/{id}/material_options/?search=` liefert höchstens 30 Artikel mit Varianten, nur für Planer. Materialbedarf bucht, reserviert oder ändert keinen Bestand.
+- `materials` ersetzt beim Speichern die Positionen des Bausteins vollständig; ausgelassen (Einzel-PATCH) bleiben sie unverändert.
+
+Serie, Kopie, Vorlage und „dieser und folgende“ übernehmen Art, Ort, Lernziel, Sicherheitshinweise, Ausbilder und Material als eigene Datensätze. Beim Anlegen aus einer Vorlage werden nur Ausbilder übernommen, die weiterhin eine Rolle in der Abteilung haben. Materialänderungen gelten im Fingerabdruck als Ablaufänderung.

@@ -4,11 +4,13 @@ from rest_framework import serializers
 
 from training.models import TrainingTemplate, TrainingTemplateBlock
 
-from .block import GroupMiniSerializer
+from .block import GroupMiniSerializer, InstructorMiniSerializer, MaterialSerializer
 
 
 class TrainingTemplateBlockSerializer(serializers.ModelSerializer):
     groups = GroupMiniSerializer(many=True, read_only=True)
+    instructors = InstructorMiniSerializer(many=True, read_only=True)
+    materials = MaterialSerializer(many=True, read_only=True)
 
     class Meta:
         model = TrainingTemplateBlock
@@ -16,6 +18,12 @@ class TrainingTemplateBlockSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "content",
+            "kind",
+            "location",
+            "learning_objective",
+            "safety_notes",
+            "instructors",
+            "materials",
             "groups",
             "duration_minutes",
             "start_offset_minutes",

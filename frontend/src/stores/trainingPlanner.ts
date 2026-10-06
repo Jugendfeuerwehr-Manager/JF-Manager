@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { libraryApi, trainingSessionsApi } from '@/api/training'
 import type {
-  GroupMini, PlannerBlock, TrainingBlock, TrainingBlockCreate, TrainingBlockMove,
+  GroupMini, InstructorMini, PlannerBlock, TrainingBlock, TrainingBlockCreate, TrainingBlockMove,
   TrainingPlanDraft, TrainingSessionCreate, TrainingSessionDetail,
 } from '@/types/training'
 
@@ -110,6 +110,9 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
         library_block: b.library_block, duration_minutes: b.duration_minutes,
         start_offset_minutes: b.start_offset_minutes, position_order: b.position_order,
         color: b.color, nextcloud_folder_url: b.nextcloud_folder_url,
+        kind: b.kind ?? 'block', location: b.location ?? '', learning_objective: b.learning_objective ?? '',
+        safety_notes: b.safety_notes ?? '', instructor_ids: (b.instructors ?? []).map((i) => i.id),
+        materials: (b.materials ?? []).map(({ item, variant, quantity, label }) => ({ item, variant, quantity, label })),
       })),
     }
   }
@@ -175,17 +178,20 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
       library_block_title: null, duration_minutes: data.duration_minutes ?? 15,
       start_offset_minutes: data.start_offset_minutes ?? 0, position_order: data.position_order ?? 0,
       color, nextcloud_folder_url: data.nextcloud_folder_url ?? '',
+      kind: data.kind ?? 'block', location: data.location ?? '', learning_objective: data.learning_objective ?? '',
+      safety_notes: data.safety_notes ?? '', instructors: [], materials: data.materials ?? [],
       created_at: '', updated_at: '', media: [], attachments: [],
     }
     mutate(() => { blocks.value.push(normalize(b)) })
     return b
   }
 
-  async function updateBlockContent(id: number, data: Partial<TrainingBlockCreate>) {
+  // Instructors are passed with their names so the draft can show them before saving.
+  async function updateBlockContent(id: number, data: Partial<TrainingBlockCreate> & { instructors?: InstructorMini[] }) {
     assertEditable()
     const b = blocks.value.find((b) => b.id === id)
     if (!b) return
-    const { group_ids, session: _targetSession, ...content } = data
+    const { group_ids, instructor_ids: _ids, session: _targetSession, ...content } = data
     mutate(() => {
       Object.assign(b, content)
       if (group_ids) {

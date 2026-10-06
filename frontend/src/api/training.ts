@@ -2,6 +2,7 @@ import apiClient from './index'
 import type {
   BlockAttachment,
   GenerateSeriesResult,
+  InstructorMini,
   LibraryBlockCategory,
   LibraryBlockCreate,
   LibraryBlockDetail,
@@ -11,6 +12,7 @@ import type {
   LibraryBlockUpdate,
   LibraryBlockUsageSession,
   LibraryImportResult,
+  MaterialOption,
   PaginatedResponse,
   PropagationPreview,
   SeriesPreview,
@@ -61,6 +63,12 @@ export const trainingSessionsApi = {
   },
   generateSeries(id: number, data: SeriesWindow & { preview_token: string }) {
     return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`, data)
+  },
+  instructorOptions(id: number) {
+    return apiClient.get<InstructorMini[]>(`/training/sessions/${id}/instructor_options/`)
+  },
+  materialOptions(id: number, search = '') {
+    return apiClient.get<MaterialOption[]>(`/training/sessions/${id}/material_options/`, { params: search ? { search } : {} })
   },
   saveAsTemplate(id: number, data: { title?: string }) {
     return apiClient.post<TrainingTemplate>(`/training/sessions/${id}/save_as_template/`, data)

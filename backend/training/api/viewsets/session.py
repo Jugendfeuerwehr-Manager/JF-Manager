@@ -1,16 +1,19 @@
 """ViewSet for TrainingSession."""
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from inventory.models import Item
 from training.api.filters import TrainingSessionFilter
-from training.api.permissions import CanManageTraining, filter_training_queryset
+from training.api.permissions import CanManageTraining, can_manage_training_department, filter_training_queryset
 from training.api.plan import PlanInputSerializer, advance_revision, lock_sessions, save_plan
 from training.api.serializers import (
     TrainingSessionCreateSerializer,
@@ -18,8 +21,9 @@ from training.api.serializers import (
     TrainingSessionHandoutSerializer,
     TrainingSessionListSerializer,
 )
+from training.api.serializers.block import InstructorMiniSerializer
 from training.api.serializers.template import CopyToDateSerializer, SaveAsTemplateSerializer, TrainingTemplateSerializer
-from training.copying import copied_files, copy_session, session_to_template
+from training.copying import copied_files, copy_session, eligible_instructors, session_to_template
 from training.models import TrainingSession
 from training.series import (
     PropagationInputSerializer,
@@ -75,6 +79,8 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
             "groups",
             "blocks__groups",
             "blocks__library_block",
+            "blocks__instructors",
+            "blocks__materials",
         )
         self.queryset = qs
         return filter_training_queryset(self.request, super().get_queryset())
@@ -241,4 +247,40 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
         return Response(
             TrainingSessionDetailSerializer(copy, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
+        )
+
+    def _planning_session(self):
+        session = self.get_object()
+        if not can_manage_training_department(self.request.user, session.department_id):
+            raise PermissionDenied("Nur Planer dieser Übungsabteilung.")
+        return session
+
+    @action(detail=True, methods=["get"])
+    def instructor_options(self, request, pk=None):
+        """Minimal list: active accounts with a role in the exercise department."""
+        session = self._planning_session()
+        users = eligible_instructors(get_user_model().objects.all(), session.department_id).order_by(
+            "last_name", "first_name", "username"
+        )
+        return Response(InstructorMiniSerializer(users[:500], many=True).data)
+
+    @action(detail=True, methods=["get"])
+    def material_options(self, request, pk=None):
+        """Minimal item lookup (department items and shared items) for material needs."""
+        session = self._planning_session()
+        items = Item.objects.filter(Q(department_id=session.department_id) | Q(department__isnull=True))
+        search = request.query_params.get("search", "").strip()
+        if search:
+            items = items.filter(name__icontains=search)
+        items = items.prefetch_related("variants").order_by("name", "pk")[:30]
+        return Response(
+            [
+                {
+                    "id": item.pk,
+                    "name": item.name or f"Artikel #{item.pk}",
+                    "unit": item.base_unit,
+                    "variants": [{"id": variant.pk, "label": str(variant)} for variant in item.variants.all()],
+                }
+                for item in items
+            ]
         )
