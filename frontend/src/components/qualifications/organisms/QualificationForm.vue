@@ -21,6 +21,8 @@ interface Props {
   qualificationId?: number
   initialData?: Qualification
   defaultMemberId?: number  // Pre-set member when creating from member profile
+  /** Renewal (UX-06.3): new record for the same person and type; the old one stays as history. */
+  renewFrom?: Qualification
 }
 
 const props = defineProps<Props>()
@@ -146,7 +148,22 @@ onMounted(async () => {
       validityMonths.value = monthsDiff
     }
   }
-  // Priority 3: New qualification - pre-set member if creating from member profile
+  // Priority 3: Renewal - same person, type and issuer, acquired today, expiry recalculated
+  else if (props.renewFrom) {
+    const source = props.renewFrom
+    formData.value = {
+      type: source.type,
+      member: source.member,
+      user: source.user,
+      date_acquired: toISODateString(new Date()),
+      date_expires: null,
+      issued_by: source.issued_by,
+      note: ''
+    }
+    assignmentTarget.value = source.member ? 'member' : 'user'
+    autoCalculateExpiry.value = !!qualificationsStore.qualificationTypes.find(t => t.id === source.type)?.expires
+  }
+  // Priority 4: New qualification - pre-set member if creating from member profile
   else if (props.defaultMemberId) {
     formData.value.member = props.defaultMemberId
     assignmentTarget.value = 'member'
@@ -159,7 +176,7 @@ onMounted(async () => {
 // Computed properties for dropdowns
 const qualificationTypeOptions = computed(() => 
   qualificationsStore.qualificationTypes.map(type => ({
-    label: `${type.name} [G]`,
+    label: type.name,
     value: type.id
   }))
 )

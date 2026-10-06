@@ -2,16 +2,17 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQualificationsStore } from '@/stores/qualifications'
+import { qualificationsApi } from '@/api/qualifications'
 import AttachmentsSection from '@/components/qualifications/organisms/AttachmentsSection.vue'
-import Card from 'primevue/card'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
+import StateView from '@/components/common/StateView.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
-import Divider from 'primevue/divider'
-import Message from 'primevue/message'
-import Skeleton from 'primevue/skeleton'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { formatDate, qualificationStatus } from '@/components/qualifications/utils/qualificationStatus'
+import type { Qualification } from '@/types/qualifications'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,24 +24,33 @@ const qualificationId = computed(() => Number(route.params.id))
 const qualification = computed(() => qualificationsStore.currentQualification)
 const loading = computed(() => qualificationsStore.loadingDetail)
 const loadError = ref<string | null>(null)
+const status = computed(() => (qualification.value ? qualificationStatus(qualification.value) : null))
 
-function getStatusSeverity(): 'success' | 'warn' | 'danger' {
-  if (!qualification.value) return 'success'
-  if (qualification.value.is_expired) return 'danger'
-  if (qualification.value.expires_soon) return 'warn'
-  return 'success'
-}
+// Verlauf: all records of the same type for the same person, newest first.
+const history = ref<Qualification[]>([])
+const historyFailed = ref(false)
+const latest = computed(() => history.value[0] ?? null)
+const supersededBy = computed(() =>
+  latest.value && qualification.value && latest.value.id !== qualification.value.id ? latest.value : null
+)
+const canRenew = computed(() => Boolean(qualification.value?.date_expires) && !supersededBy.value)
 
-function getStatusLabel(): string {
-  if (!qualification.value) return ''
-  if (qualification.value.is_expired) return 'Abgelaufen'
-  if (qualification.value.expires_soon) return 'Läuft bald ab'
-  return 'Gültig'
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return '-'
-  return new Date(value).toLocaleDateString('de-DE')
+async function loadHistory() {
+  const current = qualification.value
+  history.value = []
+  historyFailed.value = false
+  if (!current) return
+  try {
+    const response = await qualificationsApi.list({
+      type: current.type,
+      ...(current.member ? { member: current.member } : { user: current.user ?? undefined }),
+      ordering: '-date_acquired',
+      page_size: 50
+    })
+    history.value = response.data.results
+  } catch {
+    historyFailed.value = true
+  }
 }
 
 async function loadQualification() {
@@ -48,11 +58,10 @@ async function loadQualification() {
     loadError.value = 'Ungültige Qualifikation.'
     return
   }
-
   loadError.value = null
-
   try {
     await qualificationsStore.fetchQualification(qualificationId.value)
+    await loadHistory()
   } catch (error) {
     loadError.value = getApiErrorMessage(error, 'Die Qualifikation konnte nicht geladen werden.')
   }
@@ -63,9 +72,11 @@ function navigateBack() {
 }
 
 function navigateToEdit() {
-  if (qualificationId.value) {
-    router.push(`/qualifications/${qualificationId.value}/edit`)
-  }
+  router.push(`/qualifications/${qualificationId.value}/edit`)
+}
+
+function renew() {
+  router.push({ path: '/qualifications/create', query: { renew: String(qualificationId.value) } })
 }
 
 function handleDelete() {
@@ -102,196 +113,147 @@ function handleDelete() {
 
 onMounted(loadQualification)
 
-watch(
-  () => route.params.id,
-  () => {
-    loadQualification()
-  }
-)
+watch(() => route.params.id, loadQualification)
 </script>
 
 <template>
-  <div>
-    <div class="qualification-detail">
-      <div class="detail-header">
-        <Button
-          label="Zur Übersicht"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          outlined
-          @click="navigateBack"
-        />
+  <div class="qualification-detail">
+    <nav class="breadcrumb" aria-label="Brotkrumen">
+      <router-link to="/qualifications"><i class="pi pi-arrow-left" aria-hidden="true"></i>Qualifikationen</router-link>
+    </nav>
 
-        <div class="header-actions" v-if="qualification">
-          <Button label="Bearbeiten" icon="pi pi-pencil" @click="navigateToEdit" />
-          <Button
-            label="Löschen"
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            @click="handleDelete"
-          />
-        </div>
+    <StateView v-if="loadError" kind="error" :message="loadError" @retry="loadQualification" />
+    <StateView v-else-if="loading && !qualification" kind="loading" />
+
+    <template v-else-if="qualification">
+      <OverviewHeader :title="qualification.type_name" :subtitle="qualification.person_name">
+        <template #badge>
+          <StatusBadge v-if="status" v-bind="status" />
+        </template>
+        <template #actions>
+          <Button label="Löschen" icon="pi pi-trash" severity="danger" text @click="handleDelete" />
+          <Button label="Bearbeiten" icon="pi pi-pencil" :severity="canRenew ? 'secondary' : undefined" :outlined="canRenew" @click="navigateToEdit" />
+          <Button v-if="canRenew" label="Verlängern" icon="pi pi-replay" @click="renew" />
+        </template>
+      </OverviewHeader>
+
+      <div v-if="supersededBy" class="notice" role="status">
+        <i class="pi pi-history" aria-hidden="true"></i>
+        <span>
+          Verlängert am {{ formatDate(supersededBy.date_acquired) }}.
+          <router-link :to="`/qualifications/${supersededBy.id}`">Aktuellen Eintrag öffnen</router-link>
+        </span>
       </div>
 
-      <Message v-if="loadError" severity="error" :closable="false" class="mb-4">
-        {{ loadError }}
-      </Message>
+      <div class="detail-layout">
+        <section class="card" aria-labelledby="facts-title">
+          <h2 id="facts-title" class="card-title">Angaben</h2>
+          <dl class="facts">
+            <div><dt>Erworben am</dt><dd>{{ formatDate(qualification.date_acquired) }}</dd></div>
+            <div><dt>Gültig bis</dt><dd>{{ qualification.date_expires ? formatDate(qualification.date_expires) : 'unbefristet' }}</dd></div>
+            <div><dt>Ausgestellt von</dt><dd>{{ qualification.issued_by || '–' }}</dd></div>
+            <div v-if="qualification.user_name"><dt>Benutzerkonto</dt><dd>{{ qualification.user_name }}</dd></div>
+          </dl>
+          <h3 class="subhead">Notizen</h3>
+          <p v-if="qualification.note" class="note">{{ qualification.note }}</p>
+          <p v-else class="muted">Keine Notizen hinterlegt.</p>
+        </section>
 
-      <Card v-if="loading" class="mb-4">
-      <template #content>
-        <div class="skeleton-grid">
-          <Skeleton height="2rem" width="60%" />
-          <Skeleton height="1.5rem" width="40%" />
-          <div class="detail-grid">
-            <Skeleton height="1.5rem" width="100%" v-for="index in 6" :key="index" />
-          </div>
-        </div>
-      </template>
-    </Card>
+        <section class="card" aria-labelledby="history-title">
+          <h2 id="history-title" class="card-title">Verlauf</h2>
+          <StateView v-if="historyFailed" kind="error" title="Verlauf nicht geladen" message="" @retry="loadHistory" />
+          <ol v-else class="history">
+            <li v-for="entry in history" :key="entry.id" :aria-current="entry.id === qualification.id ? 'true' : undefined">
+              <router-link :to="`/qualifications/${entry.id}`" class="history__link">
+                <span class="history__dates">
+                  <strong>{{ formatDate(entry.date_acquired) }}</strong>
+                  <span>bis {{ entry.date_expires ? formatDate(entry.date_expires) : 'unbefristet' }}</span>
+                </span>
+                <StatusBadge v-if="entry.id !== latest?.id" label="Verlängert" severity="neutral" icon="pi pi-history" />
+                <StatusBadge v-else v-bind="qualificationStatus(entry)" />
+              </router-link>
+            </li>
+          </ol>
+        </section>
+      </div>
 
-    <Card v-else-if="qualification" class="mb-4">
-      <template #title>
-        <div class="title-bar">
-          <div>
-            <h2 class="title">{{ qualification.type_name }}</h2>
-            <p class="subtitle">{{ qualification.person_name }}</p>
-          </div>
-          <Tag :severity="getStatusSeverity()" :value="getStatusLabel()" />
-        </div>
-      </template>
-      <template #content>
-        <div class="detail-grid">
-          <div class="detail-row">
-            <span class="detail-label">Erworben am</span>
-            <span class="detail-value">{{ formatDate(qualification.date_acquired) }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Gültig bis</span>
-            <span class="detail-value">{{ formatDate(qualification.date_expires) }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Ausgestellt von</span>
-            <span class="detail-value">{{ qualification.issued_by || '-' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Zugewiesen an Benutzer</span>
-            <span class="detail-value">{{ qualification.user_name || '-' }}</span>
-          </div>
-        </div>
-
-        <Divider />
-
-        <div>
-          <h3>Notizen</h3>
-          <p class="note" v-if="qualification.note">{{ qualification.note }}</p>
-          <p class="note empty" v-else>Keine Notizen hinterlegt.</p>
-        </div>
-      </template>
-    </Card>
-
-    <AttachmentsSection
-      v-if="qualification"
-      :source-id="qualification.id"
-      source-type="qualification"
-      :initial-attachments="qualification.attachments || []"
-    />
-    </div>
-
+      <AttachmentsSection
+        :source-id="qualification.id"
+        source-type="qualification"
+        :initial-attachments="qualification.attachments || []"
+      />
+    </template>
   </div>
 </template>
 
 <style scoped>
 .qualification-detail {
-  padding: 1.5rem;
-  max-width: 900px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--jf-space-2);
+  max-width: 1040px;
 }
+.qualification-detail :deep(.overview-header) { margin-bottom: 0; }
 
-.detail-header {
-  display: flex;
-  justify-content: space-between;
+.breadcrumb a {
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--jf-space-0-5);
+  min-height: var(--jf-touch-target);
+  color: var(--jf-color-primary);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
 }
 
-.header-actions {
+.notice {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.title-bar {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: var(--jf-space-1);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-card);
 }
 
-.title {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.subtitle {
-  margin: 0;
-  color: var(--text-color-secondary);
-}
-
-.detail-grid {
+.detail-layout {
   display: grid;
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--jf-space-2);
 }
 
-.detail-row {
+.card {
+  padding: var(--jf-space-3);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  background: var(--jf-color-card);
+  box-shadow: var(--jf-shadow-sm);
+}
+.card-title { margin: 0 0 var(--jf-space-2); font-size: var(--jf-text-lg); }
+.subhead { margin: var(--jf-space-3) 0 var(--jf-space-1); font-size: var(--jf-text-md); }
+
+.facts { margin: 0; display: grid; gap: var(--jf-space-1-5); }
+.facts div { display: flex; justify-content: space-between; gap: var(--jf-space-2); padding-bottom: var(--jf-space-1); border-bottom: 1px solid var(--jf-color-border); }
+.facts dt { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); }
+.facts dd { margin: 0; font-weight: var(--jf-weight-semibold); text-align: right; }
+.note { margin: 0; white-space: pre-line; }
+.muted { margin: 0; color: var(--jf-color-text-muted); }
+
+.history { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--jf-space-1); }
+.history__link {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--surface-border);
+  justify-content: space-between;
+  gap: var(--jf-space-1-5);
+  min-height: var(--jf-touch-target);
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  color: var(--jf-color-text);
+  text-decoration: none;
 }
-
-.detail-row:last-child {
-  border-bottom: none;
-}
-
-.detail-label {
-  font-weight: 600;
-  color: var(--text-color-secondary);
-}
-
-.detail-value {
-  color: var(--text-color);
-}
-
-.note {
-  margin: 0;
-  white-space: pre-line;
-}
-
-.note.empty {
-  color: var(--text-color-secondary);
-  font-style: italic;
-}
-
-.skeleton-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-@media (max-width: 768px) {
-  .qualification-detail {
-    padding: 1rem;
-  }
-
-  .detail-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-}
+.history__link:hover { background: var(--p-content-hover-background); }
+.history li[aria-current='true'] .history__link { border-color: var(--jf-color-primary); background: var(--jf-color-selected); }
+.history__dates { display: flex; flex-direction: column; font-size: var(--jf-text-sm); }
+.history__dates span { color: var(--jf-color-text-muted); }
 </style>
