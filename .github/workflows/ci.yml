@@ -34,10 +34,16 @@ jobs:
           --health-retries 5
 
     env:
+      # docker_settings reads DATABASE_URL; the default settings would use SQLite
+      # and skip the PostgreSQL-only ledger and concurrency tests.
+      DJANGO_SETTINGS_MODULE: jf_manager_backend.docker_settings
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_jf_manager
       DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
       DEBUG: "True"
       ALLOWED_HOSTS: localhost,127.0.0.1
+      STATIC_ROOT: /tmp/jf-static
+      MEDIA_ROOT: /tmp/jf-media
+      REDIS_URL: none
 
     steps:
       - name: Checkout repository
@@ -74,10 +80,17 @@ jobs:
               environment.write("FIELD_ENCRYPTION_KEY=" + Fernet.generate_key().decode() + "\n")
           PYKEY
 
+      - name: Check for missing migrations
+        working-directory: backend
+        run: python manage.py makemigrations --check --dry-run
+
       - name: Run tests with coverage
         working-directory: backend
         run: |
-          coverage run manage.py test api_tests --verbosity=2
+          coverage run manage.py test --noinput --verbosity=2 \
+            api_tests users departments.tests external_sync.tests inventory.tests \
+            servicebook.tests training.tests notifications orders.tests members \
+            qualifications settings_manager
           coverage xml -o coverage.xml
 
       - name: Upload coverage report
@@ -107,6 +120,41 @@ jobs:
       - name: Run ruff
         working-directory: backend
         run: ruff check . --output-format=github
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Audit backend lockfile
+        working-directory: backend
+        run: |
+          pip install pipenv==2026.5.2 pip-audit==2.10.1
+          pipenv requirements > /tmp/requirements.txt
+          pip-audit --requirement /tmp/requirements.txt --no-deps --disable-pip --strict
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Shipped packages must be clean; build and test tools may only carry
+      # findings below "critical" until upstream fixes exist (see SEC-10).
+      - name: Audit frontend runtime dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=low
+
+      - name: Audit frontend tooling
+        working-directory: frontend
+        run: npm audit --audit-level=critical
 
   test-frontend:
     name: Frontend Tests & Lint
