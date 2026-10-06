@@ -10,6 +10,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | --- | --- |
 | Letzter Checkpoint | 06.10.2026: ROLE-02.1 Rechte, Freigabe und Herkunftsmodell implementiert; 31 gezielte Tests bestanden. Parallel erscheinende TRAIN-Änderungen bleiben fremd und unberührt. |
 | TRAIN-Checkpoint | 06.10.2026: TRAIN-01.0–01.5a einzeln integriert; TRAIN-01.5b Status-/Dienstvertrag einschließlich Kalender, Planer, mobiler Bearbeitungszugang, Handout und Dienstbuch umgesetzt. 35 Backendtests (2 PostgreSQL-only übersprungen), 214 Frontendtests, Typecheck, ESLint und Migrationsabgleich bestanden. |
+| OPS-Checkpoint | 06.10.2026: OPS-01.0 Detailblock angelegt; Umsetzung auf `feat/ops-stable-operations` (Nutzerwunsch, parallele Agents). Nächster Schritt OPS-01.1. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. Einziger Bearbeiter und Integrationsagent. TRAIN-Stand bleibt erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
@@ -565,11 +566,11 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | UX-06 | offen | — | Qualifikationen und Nachweise. |
 | UX-07 | offen | — | E-Mail-Prüfung, Auftrag und Versandstatus. |
 | UX-08 | offen | — | Sync-Vorschau und Profileinstellungen. |
-| OPS-01 | offen | — | Gemeinsamen Installationskern und Adapter festlegen. |
-| OPS-02 | offen | — | Assistent mit vollständiger Vorabprüfung. |
-| OPS-03 | offen | — | Einheitliche Host-CLI mit Menü und Unterbefehlen. |
-| OPS-04 | offen | — | Konsistente Backups, Restore und Releasewechsel. |
-| OPS-05 | offen | — | Altvarianten und Migrationspfade konsolidieren. |
+| OPS-01 | in Arbeit | Claude (OPS-Session) | OPS-01.0 Detailblock; nächster Schritt OPS-01.1 Produktions-Compose. Branch `feat/ops-stable-operations`. |
+| OPS-02 | in Arbeit | Claude (OPS-Session) | Teilschritte im gemeinsamen OPS-Detailblock; OPS-02.1 offen. |
+| OPS-03 | in Arbeit | Claude (OPS-Session) | Teilschritte im gemeinsamen OPS-Detailblock; OPS-03.1 offen. |
+| OPS-04 | in Arbeit | Claude (OPS-Session) | Teilschritte im gemeinsamen OPS-Detailblock; OPS-04.1 offen. |
+| OPS-05 | in Arbeit | Claude (OPS-Session) | Teilschritte im gemeinsamen OPS-Detailblock; OPS-05.1 offen. |
 | DOC-01 | offen | — | Nach Funktionsabschluss vollständige bebilderte Dokumentation. |
 
 ### EXEC-01: aktueller Detailstand
@@ -1019,6 +1020,50 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Keine. Fortsetzung im Worktree `../JF-Manager-des01`.
 - **Nächster konkreter Schritt:** Nutzerabnahme der umgebauten Abläufe (Mitglied, Formular, Listen, Anwesenheit, Dienstbuch, Planer) im echten Betrieb; danach `DES-01.10b` und `DES-01.11`. In DES-01.11 zusätzlich: Einstellungskarten (`SettingsCategoryCard`, `SettingsTextField`) auf Tokens und Formularabstände bringen.
 
+### OPS-01 bis OPS-05: Stabiler Betrieb (gemeinsamer Detailblock)
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (OPS-Session, Cloud). Einziger Bearbeiter der Dateien unter `ops/`, der Betriebsdateien im Projektwurzelverzeichnis (`setup.sh`, `deploy.sh`, `healthcheck.sh`, `validate.sh`, `Makefile`, `crontab.example`, Compose-Dateien), `portainer/`, `systemd/`, `backend/Dockerfile`, `backend/docker-entrypoint.sh`, `backend/uwsgi.ini`, `frontend/Dockerfile`, `.github/workflows/` sowie `docs/deployment/` und `docs/operations/ops-*.md`. Kein Python- oder Vue-Fachcode.
+- **Branch:** `feat/ops-stable-operations`, abgezweigt von `feat/security-roles-training-operations` bei `0618215`. Abweichung von 5.1 Nr. 1 auf ausdrücklichen Nutzerwunsch (06.10.2026), weil parallel lokale Agents im gemeinsamen Checkout arbeiten. Integration in den gemeinsamen Branch erfolgt als eigener Schritt; Konflikte nur in OPS-Zeilen, Kopfübersicht und Journal erwartet.
+- **Abhängigkeiten:** SEC-06 (Pflichtschlüssel `FIELD_ENCRYPTION_KEY`, Rotation), SEC-07 (Cookie-Sitzungen, `clearsessions`), SEC-08/09 (`purge_export_audits`, `purge_booking_requests`), SEC-10 (HTTPS-Pflicht, Redis-Pflicht, `check --deploy` beim Start, Python 3.12). CFG-01 ist offen; OPS fragt deshalb nur Infrastrukturwerte ab und überlässt fachliche Einstellungen der Weboberfläche. Die lesende Statusanzeige in der Weboberfläche benötigt Backend/Frontend-Code und bleibt bis zur Abstimmung mit den Fach-Sessions offen (`OPS-03.4`).
+- **Ziel und Abnahmekriterien:**
+  - Ein Installationskern (`ops/`) mit Compose- und systemd-Adapter; Proxmox-LXC ruft im Container exakt den nativen Kern auf.
+  - Gleiches Verzeichnis- und Konfigurationslayout in beiden Wegen: `/etc/jf-manager/jfctl.conf` (Betrieb), `/etc/jf-manager/app.env` (Anwendung, 0600), `/var/lib/jf-manager/` (Daten, Uploads, Status), `/var/backups/jf-manager/` (Restic-Repository), `/var/log/jf-manager/`.
+  - Produktion nutzt versionsgebundene Images bzw. Releasepakete mit Manifest und Prüfsummen; kein `git pull`, kein Build beliebiger Branches auf dem Produktionssystem.
+  - PostgreSQL 17 in beiden Wegen (Debian 13 liefert 17); ältere Installationen über logischen Export/Import.
+  - `jfctl` mit Menü und Unterbefehlen aus 4.3, Sperrdatei für verändernde Befehle, dokumentierte Rückgabecodes, bereinigte Logs; funktioniert ohne laufende Webanwendung.
+  - Wiederkehrende Wartung (`clearsessions`, `purge_export_audits`, `purge_booking_requests`, `run_due_sync_jobs`, Erinnerungen) und Backups als systemd-Timer für beide Wege.
+  - Backup: Restic, Datenbankdump, Uploads, Konfiguration, Schlüssel, Versionsmanifest; Wartungsfenster stoppt Web und Worker; Fehler ergeben nie einen Erfolgsstatus; Aufbewahrung 7/4/6.
+  - Restore: Integrität, Entschlüsselung, Version und Speicher vor jeder Änderung prüfen; ausdrückliche Bestätigung; Sicherung des Ist-Zustands; Vorbereiten in Temporärdatenbank, dann Umschalten; Sitzungen verwerfen; Worker bleiben angehalten, bis Wartendes geprüft ist.
+  - Update: Ziel prüfen, Artefakte verifizieren, Wartungsmodus und Backup, Migration, Prüfung, erst dann Freigabe; Rollback berücksichtigt Datenbankschema.
+  - Installationsassistent mit Standard-/Expertenmodus, vollständiger Vorabprüfung, Zusammenfassung vor Änderungen, geschützter Antwortdatei, Wiederaufnahme.
+  - Altvarianten (Portainer, Synology, Compose V1, `setup.sh`/`deploy.sh`/`Makefile`-Betrieb) aus der aktiven Navigation, mit Verweis auf Nachfolger und automatisierter Altinstallations-Übernahme.
+  - Pipeline: Shell-Prüfung und Tests des Betriebswerkzeugs in CI, Releasepaket mit Manifest/Prüfsummen/Herkunftsnachweis, Deploy-Workflow über `jfctl update`.
+  - Nachweis: echte Compose-Installation, Backup, Verifikation, Restore auf leerem Ziel und Update im Testsystem. Debian-13-nativ und Proxmox-LXC so weit prüfen wie ohne echte Zielplattform möglich; echte Proxmox-Abnahme bleibt bis zu einem Lauf auf Proxmox VE 9 offen (5.4 „Betrieb“).
+- **Teilschritte mit stabilen IDs:**
+  - `OPS-01.0`: Detailblock, Abnahme, Dateiverantwortung und Teilschritte festhalten.
+  - `OPS-01.1`: Produktions-Compose (`ops/compose/`): versionsgebundene Images, PostgreSQL 17, RQ-Worker, Push-Worker, gemeinsames Datenlayout, keine Standardpasswörter, optionales Caddy-HTTPS; Container-Einstieg mit abschaltbarer Migration; uWSGI fest versioniert.
+  - `OPS-01.2`: Nativer Kern Debian 13 (`ops/native/`): Releasepaket-Bau, Python-Umgebung je Release, systemd-Dienste für Web und Worker, Nginx mit derselben Konfiguration wie das Frontend-Image, optionales Caddy-HTTPS.
+  - `OPS-03.1`: `jfctl`-Kern: Konfiguration, Sperre, Rückgabecodes, bereinigtes Log, Adapter, `status`, `doctor`, `start|stop|restart`, `logs`, `config`, `admin bootstrap|recover`, Menü.
+  - `OPS-03.2`: Wartungsplan als systemd-Timer für beide Wege (`jfctl maintenance`).
+  - `OPS-04.1`: `jfctl backup create|list|verify` mit Restic, Wartungsfenster, Manifest, Aufbewahrung, Statusdatei.
+  - `OPS-04.2`: `jfctl restore` mit Vorabprüfung, Bestätigung, Sicherheitskopie, Vorbereiten/Aktivieren, Sitzungs- und Workerbehandlung.
+  - `OPS-04.3`: `jfctl update --version` mit Artefaktprüfung, Wartungsmodus, Backup, Migration, Prüfung, Freigabe und Rollback.
+  - `OPS-02.1`: `jfctl install`: Assistent, Vorabprüfung, Antwortdatei, Wiederaufnahme, Bootstrap-Konto.
+  - `OPS-01.3`: Proxmox-Host-Komponente: unprivilegierter Debian-13-LXC, darin nativer Kern.
+  - `OPS-03.3`: Pipeline: CI-Prüfung des Betriebswerkzeugs, Releasepaket mit Manifest/Prüfsummen/Attestierung, Deploy-Workflow über `jfctl`.
+  - `OPS-03.4`: Lesende Betriebsstatus-Anzeige in der Weboberfläche (Backend/Frontend; offen, Abstimmung nötig).
+  - `OPS-05.1`: Übernahme von Altinstallationen (`jfctl migrate legacy-compose`), PostgreSQL-Versionswechsel per logischem Export.
+  - `OPS-05.2`: Altvarianten entfernen bzw. auf Nachfolger verweisen; Dokumentationsnavigation; tote Konfiguration (`Pipfile` im Wurzelverzeichnis, `frontend/conf.d/locations/`).
+  - `OPS-01.9`: Gebündelte Abnahme (Compose-Ende-zu-Ende, nativer Kern im Debian-13-Container, Grenzen).
+- **Letzter dauerhafter Checkpoint:** OPS-01.0 mit diesem Commit.
+- **Geänderte Dateien / Commit-Bezug:** OPS-01.0: diese Roadmap; dieser Commit.
+- **Umgesetzte Teilschritte:** `OPS-01.0`.
+- **Ausgeführte Prüfungen mit Ergebnis:** OPS-01.0: Abgleich von Roadmap, Git-Stand (`0618215`) und Betriebsdateien ausgeführt. Befunde: Compose enthält keinen RQ-Worker (Sync-Aufträge werden nie abgearbeitet), Standardpasswort `changeme`, Compose-V1-Aufrufe in allen Skripten, `deploy.sh` baut lokal und „rollt zurück“ durch Stoppen, Restore nach 10-s-Countdown, Backup nur PostgreSQL ohne Uploads/Schlüssel, Containerstart migriert unabhängig von `DJANGO_MANAGEPY_MIGRATE`, Port 80 ohne TLS trotz HTTPS-Pflicht, `deploy.yml` mit `git pull`, uWSGI unversioniert. Anwendungstests nicht ausgeführt (nur Dokumentation).
+- **Offene Fehler / Risiken:** Debian 13 liefert Python 3.13, Image und CI nutzen 3.12; nativer Weg muss mit 3.13 geprüft werden. Kein echter Proxmox-Host verfügbar. Docker-Hub-Abrufe dieser Umgebung sind ratenbegrenzt.
+- **Laufende Prozesse und sichere Fortsetzung:** keine.
+- **Nächster konkreter Schritt:** `OPS-01.1`.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -1309,3 +1354,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | ROLE-02.1 | Explizite Zuweisungs-/Delegationsrechte und Katalogversionen, Einstellungsrechte für Systemadministration, administrative Freigabe an konkrete Gruppenpermissions gebunden und Herkunftsmodell mit konservativer lokaler Altdatenübernahme ergänzt. Seed erweitert vorhandene Gruppen weiterhin nicht. | 31/31 gezielte Tests und Ruff bestanden; erster Werkzeugstart ohne explizite Testumgebung fehlgeschlagen, Wiederholung bestanden. Anwendungsmigration und breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-02.1): bind delegation approval to permissions and preserve assignment sources` | ROLE-02.2. |
 
 | 06.10.2026 | TRAIN-01.5b | Sechs TRAIN-Commits einzeln integriert. Statusmigration übernimmt verknüpfte Alttermine veröffentlicht; Entwürfe ohne Dienst. Veröffentlichungen behalten eine stabile Dienstidentität; Abschluss/Absage und dokumentierte Löschfälle erhalten Anwesenheiten. Bestätigung für Änderungen nach Beginn/Dokumentation, Abteilungswechsel dann blockiert. Frontend-Statusaktionen im atomaren Planentwurf; Statusanzeigen in Kalender, Planer, Mobile, Handout und Dienstbuch; Version und Dienstlink, ausdrücklicher mobiler Bearbeitungszugang sowie erhaltene Formularfehler. | 35 Backendtests bestanden (2 PostgreSQL-only übersprungen), 214/214 Frontendtests, Typecheck, gezieltes ESLint, Migrationsabgleich und Diff-Check bestanden. Browser-/Touchlauf nicht ausgeführt. Historientestaufbauten zunächst fehlgeschlagen, nach Aktualisierung der Testinstanz bestanden. | Dieser Commit: `feat(TRAIN-01.5b): connect training status and stable services to the frontend` | TRAIN-01.5c Admin-/Browserabnahme. |
+| 06.10.2026 | OPS-01.0 | OPS-01 bis OPS-05 übernommen, gemeinsamer Detailblock mit Abnahme, Dateiverantwortung und stabilen Teilschritten. Eigener Branch `feat/ops-stable-operations` auf Nutzerwunsch. Betriebsbefunde (fehlender RQ-Worker, Standardpasswort, Compose V1, Countdown-Restore, Backup ohne Uploads/Schlüssel, ungesteuerte Startmigration, kein TLS, `git pull` im Deploy) festgehalten. | Abgleich mit Git und Dateien ausgeführt; Anwendungstests nicht ausgeführt (nur Dokumentation). | Dieser Commit: `docs(OPS-01.0): plan stable operations packages` | OPS-01.1. |
