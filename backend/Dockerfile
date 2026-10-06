@@ -26,16 +26,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip install --no-cache-dir pipenv uwsgi mysqlclient psycopg2-binary
-
 WORKDIR /app
 
 # Copy dependency files
-COPY Pipfile Pipfile.lock ./
+COPY Pipfile Pipfile.lock requirements-server.txt ./
 
-# Install dependencies
-RUN pipenv install --deploy --system && \
+# Install pinned application servers, then the locked application dependencies
+RUN pip install --no-cache-dir --require-hashes -r requirements-server.txt && \
+    pip install --no-cache-dir pipenv==2026.5.2 && \
+    pipenv install --deploy --system && \
     pip uninstall -y pipenv
 
 # --- Final stage ---
