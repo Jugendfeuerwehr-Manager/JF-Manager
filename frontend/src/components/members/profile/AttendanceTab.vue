@@ -119,7 +119,7 @@ const getDayName = (dateString: string): string => {
 const getAttendanceRateSeverity = (): string => {
   if (!attendanceRate.value) return 'info'
   if (attendanceRate.value >= 80) return 'success'
-  if (attendanceRate.value >= 60) return 'warning'
+  if (attendanceRate.value >= 60) return 'warn'
   return 'danger'
 }
 

@@ -81,7 +81,7 @@
                 icon="pi pi-times-circle"
                 text
                 size="small"
-                severity="warning"
+                severity="warn"
                 @click.stop="confirmEndTask(slotProps.data)"
                 v-tooltip.top="'Beenden'"
               />

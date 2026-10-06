@@ -61,7 +61,7 @@
               <Tag
                 v-else-if="user.is_staff"
                 value="Staff"
-                severity="warning"
+                severity="warn"
                 class="text-xs"
               />
               <Tag
@@ -135,7 +135,7 @@
           v-if="selectedUserDetail.is_active"
           icon="pi pi-ban"
           label="Deaktivieren"
-          severity="warning"
+          severity="warn"
           :disabled="selectedUserId === usersStore.currentUser?.id"
           text
           size="small"

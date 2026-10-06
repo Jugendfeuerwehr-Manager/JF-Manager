@@ -252,4 +252,5 @@ export interface DropdownOption {
 
 export type QualificationStatus = 'valid' | 'expiring' | 'expired'
 export type SpecialTaskStatus = 'active' | 'ended'
-export type BadgeSeverity = 'success' | 'warning' | 'danger' | 'info' | 'secondary'
+/** PrimeVue 4 severities; the warning tone is called `warn`. */
+export type BadgeSeverity = 'success' | 'warn' | 'danger' | 'info' | 'secondary'

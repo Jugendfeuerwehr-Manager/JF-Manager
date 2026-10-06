@@ -11,7 +11,7 @@
           v-if="canClearFormerMemberNames"
           label="Ehemalige Mitgliedsnamen löschen (DSGVO)"
           icon="pi pi-shield"
-          severity="warning"
+          severity="warn"
           outlined
           size="small"
           :loading="clearingNames"
@@ -265,7 +265,7 @@ function confirmClearFormerMemberNames() {
     icon: 'pi pi-shield',
     acceptLabel: 'Ja, Namen löschen',
     rejectLabel: 'Abbrechen',
-    acceptClass: 'p-button-warning',
+    acceptClass: 'p-button-warn',
     accept: async () => {
       clearingNames.value = true
       try {

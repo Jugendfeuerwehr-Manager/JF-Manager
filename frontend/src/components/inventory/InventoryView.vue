@@ -6,7 +6,7 @@
     >
       <template #meta>
         <Tag severity="info" :value="`${totalStock} Artikel insgesamt`" />
-        <Tag severity="warning" :value="`${itemsOnLoan} ausgeliehen`" />
+        <Tag severity="warn" :value="`${itemsOnLoan} ausgeliehen`" />
       </template>
       <template #actions>
         <Button

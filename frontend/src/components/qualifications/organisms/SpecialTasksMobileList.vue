@@ -126,8 +126,8 @@ function getStatusLabel(task: SpecialTask): string {
   return task.is_active ? 'Aktiv' : 'Beendet'
 }
 
-function getStatusSeverity(task: SpecialTask): 'success' | 'warning' {
-  return task.is_active ? 'success' : 'warning'
+function getStatusSeverity(task: SpecialTask): 'success' | 'warn' {
+  return task.is_active ? 'success' : 'warn'
 }
 </script>
 

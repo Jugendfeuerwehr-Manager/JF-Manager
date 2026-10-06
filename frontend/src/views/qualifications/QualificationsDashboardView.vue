@@ -541,7 +541,7 @@ function handleEndSpecialTask(id: number) {
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Beenden',
     rejectLabel: 'Abbrechen',
-    acceptClass: 'p-button-warning',
+    acceptClass: 'p-button-warn',
     accept: async () => {
       try {
         await qualificationsStore.endSpecialTask(id)

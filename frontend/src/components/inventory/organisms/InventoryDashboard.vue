@@ -148,7 +148,7 @@
           <div v-if="lowStockItems.length > 0" class="low-stock-items">
             <div v-for="item in lowStockItems" :key="item.id" class="low-stock-item">
               <span class="item-name">{{ item.variant_display || item.item_name }}</span>
-              <Badge :value="item.quantity" severity="warning" />
+              <Badge :value="item.quantity" severity="warn" />
             </div>
           </div>
           <div v-else class="empty-state success">

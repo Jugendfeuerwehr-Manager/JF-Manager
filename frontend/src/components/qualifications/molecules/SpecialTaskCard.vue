@@ -52,7 +52,7 @@
             label="Beenden"
             size="small"
             text
-            severity="warning"
+            severity="warn"
             @click="emit('end', specialTask.id)"
           />
           <Button

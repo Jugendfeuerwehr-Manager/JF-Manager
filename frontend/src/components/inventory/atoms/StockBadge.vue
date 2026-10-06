@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const severityClass = computed(() => {
   if (props.quantity === 0) return 'danger'
-  if (props.quantity <= props.lowThreshold) return 'warning'
+  if (props.quantity <= props.lowThreshold) return 'warn'
   return 'success'
 })
 </script>

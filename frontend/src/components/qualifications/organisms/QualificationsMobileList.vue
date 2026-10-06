@@ -121,9 +121,9 @@ function getStatusLabel(qualification: Qualification): string {
   return 'Gültig'
 }
 
-function getStatusSeverity(qualification: Qualification): 'success' | 'warning' | 'danger' {
+function getStatusSeverity(qualification: Qualification): 'success' | 'warn' | 'danger' {
   if (qualification.is_expired) return 'danger'
-  if (qualification.expires_soon) return 'warning'
+  if (qualification.expires_soon) return 'warn'
   return 'success'
 }
 </script>

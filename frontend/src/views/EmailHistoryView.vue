@@ -121,7 +121,7 @@
                   icon="pi pi-refresh"
                   rounded
                   text
-                  severity="warning"
+                  severity="warn"
                   @click="resendEmail(data)"
                   :title="'Fehlgeschlagene erneut senden'"
                 />
@@ -248,7 +248,7 @@
               <template #body="{ data }">
                 <Tag
                   :value="data.status === 'sent' ? 'Gesendet' : data.status === 'failed' ? 'Fehlgeschlagen' : 'Ausstehend'"
-                  :severity="data.status === 'sent' ? 'success' : data.status === 'failed' ? 'danger' : 'warning'"
+                  :severity="data.status === 'sent' ? 'success' : data.status === 'failed' ? 'danger' : 'warn'"
                 />
               </template>
             </Column>
@@ -263,7 +263,7 @@
           label="Fehlgeschlagene erneut senden"
           icon="pi pi-refresh"
           @click="resendEmail(currentEmail)"
-          severity="warning"
+          severity="warn"
         />
         <Button label="Schließen" @click="showDetailDialog = false" />
       </template>
@@ -456,7 +456,7 @@ const getStatusSeverity = (status: string) => {
     case 'failed':
       return 'danger'
     case 'partial':
-      return 'warning'
+      return 'warn'
     case 'sending':
       return 'info'
     default:

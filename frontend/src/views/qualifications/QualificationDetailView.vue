@@ -24,10 +24,10 @@ const qualification = computed(() => qualificationsStore.currentQualification)
 const loading = computed(() => qualificationsStore.loadingDetail)
 const loadError = ref<string | null>(null)
 
-function getStatusSeverity(): 'success' | 'warning' | 'danger' {
+function getStatusSeverity(): 'success' | 'warn' | 'danger' {
   if (!qualification.value) return 'success'
   if (qualification.value.is_expired) return 'danger'
-  if (qualification.value.expires_soon) return 'warning'
+  if (qualification.value.expires_soon) return 'warn'
   return 'success'
 }
 

@@ -33,8 +33,8 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleDateString('de-DE')
 }
 
-function getStatusSeverity(task: SpecialTask): 'success' | 'warning' {
-  return task.is_active ? 'success' : 'warning'
+function getStatusSeverity(task: SpecialTask): 'success' | 'warn' {
+  return task.is_active ? 'success' : 'warn'
 }
 
 function getStatusLabel(task: SpecialTask): string {
