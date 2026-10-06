@@ -95,6 +95,19 @@
                 <p v-if="errors.birthday" class="field__error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.birthday }}</p>
               </div>
 
+              <div v-if="duplicates.length" class="duplicate-notice" role="status">
+                <i class="pi pi-users" aria-hidden="true"></i>
+                <div>
+                  <strong>Möglicherweise schon angelegt</strong>
+                  <p>Gleicher Name und gleiches Geburtsdatum:
+                    <template v-for="(duplicate, index) in duplicates" :key="duplicate.id">
+                      <router-link :to="`/members/${duplicate.id}`">{{ duplicate.name }}</router-link><span v-if="index < duplicates.length - 1">, </span>
+                    </template>.
+                    Speichern bleibt möglich, etwa bei Zwillingen.
+                  </p>
+                </div>
+              </div>
+
               <div class="field">
                 <label for="gender">Geschlecht</label>
                 <Select
@@ -376,7 +389,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick, toRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
@@ -399,6 +412,7 @@ import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
 import Dialog from 'primevue/dialog'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { parseFlexibleDate, formatDateGerman } from '@/utils/dateParsing'
+import { useMemberDuplicates } from '@/composables/useMemberDuplicates'
 
 const route = useRoute()
 const router = useRouter()
@@ -470,6 +484,12 @@ const departmentOptions = computed(() =>
 )
 
 /** Department assignments of existing members are changed by organisation-wide administrators only. */
+const { duplicates } = useMemberDuplicates(
+  toRef(formData, 'name'),
+  toRef(formData, 'lastname'),
+  toRef(formData, 'birthday'),
+  computed(() => !isEditMode.value)
+)
 const canChangeDepartments = computed(() => !isEditMode.value || authStore.isOrgWide)
 const departmentNames = computed(() => formData.departments
   .map((id) => departmentsStore.departments.find((d) => d.id === id))
@@ -835,6 +855,18 @@ onBeforeUnmount(closeCamera)
 </script>
 
 <style scoped>
+.duplicate-notice {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+}
+.duplicate-notice i { margin-top: 3px; color: var(--jf-color-text-muted); }
+.duplicate-notice p { margin: 2px 0 0; font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
+
 .member-edit {
   display: flex;
   flex-direction: column;

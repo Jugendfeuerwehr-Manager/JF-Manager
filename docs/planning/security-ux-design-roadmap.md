@@ -558,7 +558,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
 | DES-01 | in Arbeit | Claude (Design-Session) | DES-01.10b Planer-Raster, Bausteine und Bibliothek auf Tokens; offen DES-01.11 (Konsistenz, mit UX-01–08), DES-01.12 sowie Nutzerabnahme. |
 | UX-01 | umgesetzt, Nutzerabnahme offen | Claude (Design-Session) | UX-01.1/2: Zusammenfassungsendpunkt, Kennzahlen und „Als Nächstes“ ohne Personenlisten; 257 Frontendtests grün. |
-| UX-02 | in Arbeit | Claude (Design-Session) | UX-02.1 Personenauswahlen bereinigt; als Nächstes UX-02.2. |
+| UX-02 | in Arbeit | Claude (Design-Session) | UX-02.1 Personenauswahlen, UX-02.2a Dublettenwarnung; als Nächstes UX-02.2b Eltern/Gruppen. |
 | UX-03 | geplant | Claude (Design-Session) | Teilschritte UX-03.1/2 festgelegt. |
 | UX-04 | geplant | Claude (Design-Session) | UX-04.1 festgelegt; Grundlage DES-01.8. |
 | UX-05 | geplant | Claude (Design-Session) | UX-05.1 festgelegt; Grundlage SEC-09, DES-01.13a. |
@@ -1070,6 +1070,8 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `UX-01.2`: Dashboard „Nächste Aufgaben“ und Kennzahlen aus dem Endpunkt, Links in gefilterte Ansichten; keine Personenlisten nur zum Zählen.
   - `UX-02.1`: Personenauswahlen ohne `AnonymousUser`/inaktive Konten.
   - `UX-02.2`: Dublettenwarnung beim Anlegen (Name und Geburtsdatum), Eltern- und Gruppenansichten nach Konsistenzvertrag.
+    - `UX-02.2a`: Dublettenwarnung beim Anlegen.
+    - `UX-02.2b`: Eltern- und Gruppenansichten nach Konsistenzvertrag.
   - `UX-02.3`: Gespeicherte Filter/Spalten je Benutzer und Abteilung (ohne Suchtexte).
   - `UX-04.1`: Dienstbuch: offene Personen und Speicher-/Abgleichzustand über alle Einstiege; Statusbezeichnungen vereinheitlicht.
   - `UX-03.1`: Listenübersicht nach Konsistenzvertrag, Vorschau von Sammelaktionen.
@@ -1079,10 +1081,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `UX-07.2`: Versandauftrag im Hintergrund mit Idempotenzschlüssel, Teilergebnissen und Wiederholung nur fehlgeschlagener Zustellungen.
   - `UX-08.1`: Sync: Änderungsvorschau, Konflikte, Laufhistorie.
   - `UX-08.2`: Profil: Sitzungen, MFA und gerätebezogene Push-Einstellungen.
-- **Letzter dauerhafter Checkpoint:** UX-02.1 (dieser Commit); UX-01.2 `ca45526`, UX-01.1 `b38b87c`, UX-06.3 `b88d0f8`, UX-06.2 `f2c0470`, UX-06.1 `f57c6e4`, DES-01.11c `fcb4a1f`, Plan `d8afeae`.
+- **Letzter dauerhafter Checkpoint:** UX-02.2a (dieser Commit); UX-02.1 `59c9c07`, UX-01.2 `ca45526`, UX-01.1 `b38b87c`, UX-06.3 `b88d0f8`, UX-06.2 `f2c0470`, UX-06.1 `f57c6e4`, DES-01.11c `fcb4a1f`, Plan `d8afeae`.
 - **Ausgeführte Prüfungen mit Ergebnis:** Bestandsaufnahme: Qualifikationen, Listen, Gruppen, Protokoll, Eltern-Bearbeitung, Ausbildung und Verwaltung nutzen weder `OverviewHeader` noch `StateView` noch `StatusBadge`; feste Farben vor allem in `views` (153), `components/training` (47, überwiegend Handout/Druck), `members` (34), `admin` (29), `settings` (26). Backend kennt nur ein festes 30-Tage-Ablauffenster.
 - **Offene Fehler / Risiken:** Pakete mit Backend-Anteil (UX-01.1, UX-02.3, UX-03.2, UX-05.1, UX-07.2) berühren Dateien paralleler Sitzungen; vor Beginn `git status` auf fremde Änderungen prüfen.
-- **Nächster konkreter Schritt:** `UX-02.2` Dublettenwarnung, Eltern- und Gruppenansichten nach Konsistenzvertrag.
+- **Nächster konkreter Schritt:** `UX-02.2b` Eltern- und Gruppenansichten nach Konsistenzvertrag.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -1364,6 +1366,8 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | UX-01.2 | Dashboard nach Referenzentwurf auf den Zusammenfassungsendpunkt umgestellt: Vorher wurden vollständige Mitglieder- und Elternlisten sowie die Qualifikationsstatistik geladen, nur um zu zählen; jetzt eine Anfrage nur mit Zählern (plus Teilnahmediagramm wie bisher). Kacheln: Mitglieder (mit Elternkontakten), „Qualifikationen laufen ab“ (30 Tage, abgelaufene als Gefahrenabzeichen), offene Bestellungen, offene Listen; Kacheln erscheinen nach Modulrecht und verschwinden, wenn der Server den Abschnitt nicht liefert. Neue Karte „Als Nächstes“: heutiger/nächster Dienst („Anwesenheit erfassen“ bzw. „Dienst öffnen“), abgelaufene, bald ablaufende und nachweislose Qualifikationen, offene Bestellungen und Listen, jeweils mit einer Aktion in die passende gefilterte Ansicht (`/qualifications?view=expired|missing`); leer „Nichts offen“, Fehler mit Wiederholen. Mobil steht die Aktion unter dem Text. | 4 Tests ersetzt/neu (eine Zusammenfassung, Kacheln verlinkt, Aufgaben mit je einer Aktion, Rechte, Fehler und Wiederholen), 257/257 Frontendtests, Theme-Ratsche und ESLint bestanden; Sichtprüfung gegen Mock 1440 px hell, 390 px dunkel. Kein Lauf gegen echtes Backend. | Dieser Commit: `feat(UX-01.2): drive the dashboard from the summary with next tasks` | UX-02.1. |
 
 | 06.10.2026 | UX-02.1 | Gefundener Fehler: `UserViewSet` hatte kein Filterset; das von Qualifikations- und Sonderaufgabenformularen gesendete `is_active=true` wurde ignoriert, inaktive Konten und das django-guardian-Systemkonto `AnonymousUser` erschienen in Personenauswahlen. Jetzt `filterset_fields = ["is_active"]` und `AnonymousUser` grundsätzlich ausgeschlossen (nie eine auswählbare Person). Dienstformular lädt für „Leitung“ ebenfalls nur aktive Konten; bereits eingetragene, inzwischen inaktive Leitungen bleiben mit „(inaktiv)“ sichtbar statt als namenlose ID. Admin-Benutzerverwaltung (eigener Endpunkt) unverändert. Hinweis für SEC: Die Benutzerliste ist für jedes angemeldete Konto lesbar; Umfang der ausgelieferten Felder nicht Teil dieses Schritts. | 2 neue Backendtests plus Benutzer-/Admin-Sicherheitstests 43/43 auf SQLite, Ruff; 1 neuer Frontendtest, Dienstbuch-/Ansichtstests und ESLint bestanden. | Dieser Commit: `fix(UX-02.1): keep system and inactive accounts out of person pickers` | UX-02.2. |
+
+| 06.10.2026 | UX-02.2a | Dublettenwarnung beim Anlegen eines Mitglieds: Sobald Vorname, Nachname und Geburtsdatum ausgefüllt sind, prüft `useMemberDuplicates` (verzögert, nur beim Anlegen) über die normale, bereichsbeschränkte Mitgliederliste und nennt exakte Treffer (Groß-/Kleinschreibung und Leerzeichen egal) als Links. Hinweis als `role=status`, Speichern bleibt möglich (z. B. Zwillinge); fehlgeschlagene Prüfung bleibt still. Backend: Mitgliederliste filtert zusätzlich nach exaktem `birthday`. Es werden nur Mitglieder genannt, die die Person ohnehin sehen darf; Dubletten in fremden Abteilungen bleiben bewusst unerkannt. Teilschritt UX-02.2 in 02.2a/02.2b geteilt. | 1 Backendtest (SQLite) und 2 neue Frontendtests, Composable-/Formulartests 11/11, Typecheck eigener Dateien, ESLint und Ruff bestanden. | Dieser Commit: `feat(UX-02.2a): warn about possible duplicates when creating a member` | UX-02.2b. |
 
 | 06.10.2026 | SEC-01.57a | Übernahme von SEC-01, SEC-02 und ROLE-01 durch Claude nach Abschluss von SEC-10 (Nutzerauftrag). Endpunktinventar: `AttendanceViewSet` nutzte DRFs `DjangoModelPermissions` – GET ohne Leserecht, Zieldienste nach bloßer Abteilungszuordnung, Abteilungsrollen (in `department_roles`, nicht `user.groups`) wirkungslos. Folgen: Nur-Dienst-Leserecht in B zeigte Anwesenheiten aus B; Leitungen mit Abteilungsrolle konnten über diese API nichts erfassen. Neu `AttendanceRolePermissions` (Objektprüfung an der Dienstabteilung, Sammelerfassung mit `change_attendance` wie das Anwesenheitsboard), Zieldienste nur aus Abteilungen mit Schreibrecht. Bestehender API-Test, der das Leck abbildete, erhält `view_attendance`. Ausgelieferte Rollen koppeln `view_service` bereits mit `view_attendance`. | 9 neue HTTP-Regressionen (6 vorher rot), 58/58 angrenzende Anwesenheits-/API-Tests, Ruff bestanden. | Dieser Commit: `fix(SEC-01.57a): scope the attendance API to department roles` | SEC-01.57b. |
 

@@ -131,7 +131,7 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
     )
     permission_classes = [IsAuthenticated, MemberActionPermissions, StepUpForExports]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "group", "canSwimm", "gender"]
+    filterset_fields = ["status", "group", "canSwimm", "gender", "birthday"]
     search_fields = ["name", "lastname", "email", "identityCardNumber"]
     ordering_fields = ["name", "lastname", "birthday", "joined"]
     ordering = ["lastname", "name"]
