@@ -15,11 +15,22 @@
     <Message v-if="notice" severity="success" :closable="false">{{ notice }}</Message>
     <div v-if="loading && !preview" role="status">Vorschau lädt …</div>
     <template v-else-if="preview">
-      <p class="series-panel__summary" role="status">
-        {{ preview.counts.new }} neu · {{ preview.counts.preserved }} vorhanden ·
-        {{ preview.counts.skipped }} ausgelassen · {{ preview.counts.conflict }} Konflikte
-        <span class="series-panel__muted">({{ formatDate(preview.window_start) }} – {{ formatDate(preview.window_end) }}, {{ frequencyLabel }})</span>
-      </p>
+      <div class="series-panel__bar">
+        <p class="series-panel__summary" role="status">
+          {{ preview.counts.new }} neu · {{ preview.counts.preserved }} vorhanden ·
+          {{ preview.counts.skipped }} ausgelassen · {{ preview.counts.conflict }} Konflikte
+          <span class="series-panel__muted">({{ formatDate(preview.window_start) }} – {{ formatDate(preview.window_end) }}, {{ frequencyLabel }})</span>
+        </p>
+        <div class="series-panel__actions">
+          <Button
+            :label="preview?.counts.new ? `${preview.counts.new} Termine anlegen` : 'Keine neuen Termine'"
+            icon="pi pi-check"
+            :disabled="!preview || !preview.counts.new || loading || saving"
+            :loading="saving"
+            @click="generate"
+          />
+        </div>
+      </div>
       <div class="series-panel__table">
         <table>
           <caption class="sr-only">Vorschau aller Vorkommen</caption>
@@ -43,15 +54,6 @@
         </table>
       </div>
     </template>
-    <div class="series-panel__actions">
-      <Button
-        :label="preview?.counts.new ? `${preview.counts.new} Termine anlegen` : 'Keine neuen Termine'"
-        icon="pi pi-check"
-        :disabled="!preview || !preview.counts.new || loading || saving"
-        :loading="saving"
-        @click="generate"
-      />
-    </div>
   </div>
 </template>
 
@@ -132,9 +134,11 @@ async function generate() {
       window_end: preview.value.window_end,
       preview_token: preview.value.preview_token,
     })
-    notice.value = `${data.created} Termine angelegt.`
     emit('generated', data.created)
+    // Show the result together with the refreshed preview, never next to the stale one.
+    preview.value = null
     await load()
+    notice.value = `${data.created} Termine angelegt.`
   } catch (e: unknown) {
     const response = (e as { response?: { status?: number; data?: { preview?: SeriesPreview } } }).response
     if (response?.status === 409 && response.data?.preview) {

@@ -26,3 +26,23 @@ Die Teststeuerung für den PDF-Download meldete einen Timeout, obwohl Chrome die
 - Frontendtests, Typecheck, gezieltes ESLint und Produktionsbuild: siehe aktuellen Roadmap-Checkpoint.
 - Ein vorheriger Backend-Gesamtlauf: 700 Tests, ein fehlgeschlagener ROLE-Test (`UserDepartmentRoleAdminTest.test_staff_can_list_roles`). Alle TRAIN-Tests im Lauf bestanden. Der gleichzeitig geänderte ROLE-Stand ist getrennt erneut abzunehmen.
 - Seriengenerierung und virtuelle Kalendertermine werden erst in TRAIN-03 ersetzt; Stationen-/Ressourcenwarnungen und Nachbereitung gehören zu TRAIN-02/04. Die TRAIN-01-Abnahme stellt deren Fertigstellung nicht dar.
+
+# TRAIN-03.4: Browserabnahme Serien, Vorlagen und Kopien
+
+Geprüft am 06.10.2026 mit frisch migrierter synthetischer SQLite-Datenbank und Mediendateien im Sitzungs-Scratchpad, separatem Django-Testserver (18081) und Vite (15183; 15173 war durch eine andere Sitzung belegt). Chrome headless über `playwright-core` (Systemchrome, kein Browser-Download), 1440 × 900 und 390 × 844 CSS-Pixel. Testkonto mit Standardrolle „Übungsplanung“ (ohne Staff/Superuser), eine synthetische Abteilung, zwei Gruppen; keine Anwendungsechtdaten.
+
+| Ablauf | Ergebnis |
+| --- | --- |
+| Monatsserie ab 31.10. im Planer „Serie“ prüfen | bestanden: vollständige Vorschau 30.11., 31.12., 31.01., 28.02. (Monatsanker), „4 neu“, nichts angelegt |
+| Fehlende Termine anlegen | bestanden: 4 Entwürfe; erneute Vorschau „0 neu · 4 vorhanden“; Datenbank enthält genau 4 Vorkommen mit eigenem ursprünglichem Datum |
+| Kalender | bestanden: nur gespeicherte Termine; ein Vorkommen öffnet seinen eigenen Plan (`/sessions/2/plan`), nicht den Ursprung |
+| Vorkommen bearbeiten (Titel, 18:30–20:30), speichern, „Dieser und folgende“ | bestanden: 3 Folgetermine „Wird geändert“ mit konkreten Titel-/Zeitänderungen; Hauptaktion ohne Scrollen sichtbar |
+| Übertragen | bestanden: danach „3 unverändert“, früherer Termin und Ursprung unverändert |
+| Als Vorlage speichern / auf anderes Datum kopieren | bestanden: Erfolgsmeldung; Kopie öffnet als Entwurf Version 1 |
+| Kalender „Vorlagen“ → Übung anlegen | bestanden: neuer Entwurf mit Vorlagennamen geöffnet |
+| 390 Pixel | bestanden: Dokumentbreite 390; Seriendialog 366 Pixel breit, Felder und Hauptaktion bedienbar |
+| Konsole | keine Trainingsfehler. 403 beim globalen Vorladen der Mitgliedsstatus für eine reine Trainingsrolle (Members-Store, nicht TRAIN) |
+
+Befunde während der Abnahme und behoben: Die Erfolgsmeldung erschien vor dem Neuladen der Vorschau und stand kurz neben der veralteten Vorschau; Meldung jetzt erst nach aktualisierter Vorschau. Die Hauptaktion lag bei langer Vorschau unterhalb des sichtbaren Dialogbereichs; sie steht jetzt neben der Zusammenfassung über der scrollbaren Tabelle.
+
+Grenzen: Abweichende/historische Termine und 409-Konflikte sind in Backend- und Komponententests abgedeckt, im Browser nicht gesondert erzeugt. Kein echter Touch-Hardwarelauf.

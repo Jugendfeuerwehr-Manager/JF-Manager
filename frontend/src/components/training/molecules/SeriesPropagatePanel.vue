@@ -9,10 +9,21 @@
     <Message v-if="notice" severity="success" :closable="false">{{ notice }}</Message>
     <div v-if="loading && !preview" role="status">Vorschau lädt …</div>
     <template v-else-if="preview">
-      <p class="series-panel__summary" role="status">
-        {{ preview.counts.update }} werden geändert · {{ preview.counts.deviating }} abweichend erhalten ·
-        {{ preview.counts.history }} historisch · {{ preview.counts.unchanged }} unverändert · {{ preview.counts.conflict }} Konflikte
-      </p>
+      <div class="series-panel__bar">
+        <p class="series-panel__summary" role="status">
+          {{ preview.counts.update }} werden geändert · {{ preview.counts.deviating }} abweichend erhalten ·
+          {{ preview.counts.history }} historisch · {{ preview.counts.unchanged }} unverändert · {{ preview.counts.conflict }} Konflikte
+        </p>
+        <div class="series-panel__actions">
+          <Button
+            :label="preview?.counts.update ? `${preview.counts.update} Folgetermine ändern` : 'Keine Folgetermine zu ändern'"
+            icon="pi pi-check"
+            :disabled="!preview || !preview.counts.update || loading || saving"
+            :loading="saving"
+            @click="apply"
+          />
+        </div>
+      </div>
       <div class="series-panel__table">
         <table>
           <caption class="sr-only">Vorschau der folgenden Termine</caption>
@@ -44,15 +55,6 @@
         </table>
       </div>
     </template>
-    <div class="series-panel__actions">
-      <Button
-        :label="preview?.counts.update ? `${preview.counts.update} Folgetermine ändern` : 'Keine Folgetermine zu ändern'"
-        icon="pi pi-check"
-        :disabled="!preview || !preview.counts.update || loading || saving"
-        :loading="saving"
-        @click="apply"
-      />
-    </div>
   </div>
 </template>
 
@@ -124,10 +126,11 @@ async function apply() {
       include_deviating: included.value,
       preview_token: preview.value.preview_token,
     })
-    notice.value = `${data.updated} Folgetermine geändert.`
     emit('propagated', data.updated)
     included.value = []
+    preview.value = null
     await load()
+    notice.value = `${data.updated} Folgetermine geändert.`
   } catch (e: unknown) {
     const response = (e as { response?: { status?: number; data?: { preview?: PropagationPreview } } }).response
     if (response?.status === 409 && response.data?.preview) {
