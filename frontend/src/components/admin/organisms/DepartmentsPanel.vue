@@ -233,7 +233,6 @@
       </div>
     </Dialog>
 
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -258,7 +257,6 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import ProgressSpinner from 'primevue/progressspinner'

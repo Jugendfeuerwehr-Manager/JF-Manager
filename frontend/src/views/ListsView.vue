@@ -215,8 +215,6 @@
       </template>
     </Dialog>
 
-    <ConfirmDialog />
-    <Toast />
   </div>
 </template>
 
@@ -227,7 +225,6 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -235,7 +232,6 @@ import Message from 'primevue/message'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
-import Toast from 'primevue/toast'
 import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useAuthStore } from '@/stores/auth'

@@ -103,7 +103,6 @@
     </Dialog>
 
     <!-- Delete confirm -->
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -115,7 +114,6 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Paginator from 'primevue/paginator'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import LibraryBlockCard from '../molecules/LibraryBlockCard.vue'
