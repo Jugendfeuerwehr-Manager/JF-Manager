@@ -8,7 +8,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: ROLE-02.3 lokale/LDAP-/OIDC-Quellen getrennt, Entzug und Altverwaltung geprüft; 68 gezielte Tests bestanden. |
+| Letzter Checkpoint | 06.10.2026: ROLE-01.7a Trainings-/Bestellbereichsrechte und veröffentlichte Lesesicht; 52 gezielte Tests bestanden (2 PostgreSQL-only übersprungen). |
 | TRAIN-Checkpoint | 06.10.2026: TRAIN-01.0–01.5a einzeln integriert; TRAIN-01.5b Status-/Dienstvertrag einschließlich Kalender, Planer, mobiler Bearbeitungszugang, Handout und Dienstbuch umgesetzt. 35 Backendtests (2 PostgreSQL-only übersprungen), 214 Frontendtests, Typecheck, ESLint und Migrationsabgleich bestanden. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
@@ -549,7 +549,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-08 | abgeschlossen, Nachbesserung SEC-08.4/5 integriert | Claude / Codex (Nachbesserung) | SEC-08.4/5: 10/10 Backendtests, 194/194 Frontendtests, Typecheck, ESLint, Ruff und Build bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
-| ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
+| ROLE-01 | in Arbeit | Codex (ROLE-Session) | ROLE-01.7a Trainings-/Bestellbereichsrechte geprüft; vollständige Rollenabnahme und Handbuch folgen. |
 | ROLE-02 | in Arbeit | Codex | ROLE-02.1–3 Rechte, Freigabe, API und getrennte Quellen; 68 gezielte Tests bestanden. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5b integriert; Status-/Dienstvertrag im Frontend umgesetzt. Nächster Schritt: TRAIN-01.5c Admin-/Browserabnahme. |
@@ -631,15 +631,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `ROLE-02.2`: Atomare Zuweisungs-API mit Wirkungsvorschau, Fingerprint, Herkunftserklärung, Selbst-/Privilegienschutz, MFA/Step-up und administrativen Identitätsrechten.
   - `ROLE-02.3`: LDAP/OIDC auf getrennte Quellen umstellen; Mappingänderung/-entzug erhält unabhängige lokale Rollen; Altverwaltung an Quellenmodell anbinden.
   - `ROLE-02.4`: Zuweisungsoberfläche, Freigabe, lesbare Wirkung und erweiterte technische Ansicht; Fehler-/Konfliktzustände erhalten Eingaben.
+  - `ROLE-01.7c`: Inventar-/Bestellrollen erhalten eine auf erforderliche Namen/IDs begrenzte Mitgliederauswahl; Bestell-Wareneingänge mit eigenem Bestellrecht und tatsächlichem Artikel-/Lagerbereich, ohne allgemeines Inventarschreibrecht.
   - `ROLE-01.7b`: Vollständige Einzel-/Kombinationsabnahme, Seed/Migrationsprüfung und Rollenhandbuch; ROLE-01/02 abschließen nach bestandenen Prüfungen.
-- **Letzter dauerhafter Checkpoint:** ROLE-02.3 in diesem Commit; ROLE-02.1 `d1b7cba`, ROLE-02.2 `7e52f03`.
+- **Letzter dauerhafter Checkpoint:** ROLE-01.7a in diesem Commit; ROLE-02.1 `d1b7cba`, ROLE-02.2 `7e52f03`, ROLE-02.3 `0565af6`.
 - **Branch:** `feat/security-roles-training-operations` (sauberer Ausgangsstand bei `7c3e80c`).
 - **Geänderte Dateien / Commit-Bezug:** Dieser Detailblock und Wiederaufnahmeübersicht.
-- **Umgesetzte Teilschritte:** Planung und ROLE-02.1–3.
+- **Umgesetzte Teilschritte:** Planung, ROLE-02.1–3 und ROLE-01.7a.
 - **Ausgeführte Prüfungen mit Ergebnis:** ROLE-02.1: 31/31 Freigabe-/API-/Seed-/Zuordnungstests auf isolierter SQLite-Testdatenbank sowie Ruff bestanden. Erster Werkzeugstart fehlgeschlagen wegen fehlender Testumgebung; mit expliziten fiktiven Schlüsseln/Testsettings bestanden. ROLE-02.2: 42/42 Zuweisungs-/Identitätstests bestanden. Erste Läufe fehlgeschlagen (Fehlerformat bei unbekannten Feldern; Testsession hatte noch frische Bestätigung), korrigiert und Wiederholung bestanden. ROLE-02.3: 68/68 Quellen-/Zuweisungs-/Identitäts-/Anmeldesicherheitstests bestanden. Erstlauf mit falschem Testimport fehlgeschlagen, korrigiert und bestanden. Keine Anwendungsmigration ausgeführt.
-- **Offene Fehler / Risiken:** Trainings-/Bestell-Sonderrechte bleiben ROLE-01.7a. LDAP/OIDC verwenden ausschließlich gebundene Rollenvorlagen; alte unmarkierte Gruppen gelten konservativ als lokal und werden nicht erraten. Nicht gebundene Alt-Mappings müssen ausdrücklich mit ROLE-01.5 zugeordnet werden. Rohe LDAP-Gruppenspiegelung ist abgeschaltet, weil sie unabhängige lokale Gruppen ersetzt. Authentifizierter echter IdP-Lauf bleibt Betreiberintegration.
+- **Offene Fehler / Risiken:** Operative Fachrollenprüfung bleibt ROLE-01.7c/b. LDAP/OIDC verwenden ausschließlich gebundene Rollenvorlagen; alte unmarkierte Gruppen gelten konservativ als lokal und werden nicht erraten. Nicht gebundene Alt-Mappings müssen ausdrücklich mit ROLE-01.5 zugeordnet werden. Rohe LDAP-Gruppenspiegelung ist abgeschaltet, weil sie unabhängige lokale Gruppen ersetzt. Authentifizierter echter IdP-Lauf bleibt Betreiberintegration.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Nach Planung sind parallel fremde TRAIN-Änderungen erschienen; ausschließlich eigene ROLE-Dateien und Roadmapänderungen stagen. Alte unmarkierte Gruppenbindungen werden durch Migration konservativ als lokal erhalten.
-- **Nächster konkreter Schritt:** ROLE-01.7a Bereichsvertrag, dann ROLE-02.4 Oberfläche.
+- **Nächster konkreter Schritt:** ROLE-02.4 Oberfläche; operative Fachrollenauswahl/-eingänge (ROLE-01.7c) und Gesamtprüfung ROLE-01.7b.
 
 ### SEC-01: aktueller Detailstand
 
@@ -1313,3 +1314,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | ROLE-02.2 | Atomare Zuweisungs-API mit Personen-/Bereichs-/Rollenauswahl, Wirkungsvorschau, aktuellem Fingerprint und Quellenanzeige. Delegation prüft reale Abteilung und Freigabe; Selbstzuweisung, privilegierte Ziele und Organisationsrollen sind begrenzt. Identitäts-APIs nutzen globale Modellrechte statt Staff-Bypass; Notfallkonten bleiben Superuserverwaltung. | 42/42 gezielte Tests bestanden. Erste Läufe wegen Fehlerformat und Testsession-Annahme fehlgeschlagen, korrigiert und bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-02.2): review and apply scoped role assignments atomically` | ROLE-02.3. |
 
 | 06.10.2026 | ROLE-02.3 | LDAP/OIDC projizieren getrennte Quellen auf Django-Gruppen; Entzug und Mappinglöschung entfernen nur eigene Quellen. Lokale sowie weitere externe Zuweisungen bleiben erhalten. Altverwaltung ändert lokale Quellen, Mapping-API akzeptiert gebundene aktive Rollen passenden Bereichs. Rohe LDAP-Spiegelung verhindert. Archivierung behält bestehende externe Rechte, verhindert neue Zuweisungen. | 68/68 gezielte Tests und Ruff bestanden; falscher Testimport zunächst fehlgeschlagen, korrigiert und bestanden. Echter LDAP-/OIDC-Anbieter und Anwendungsmigration nicht ausgeführt. | Dieser Commit: `fix(ROLE-02.3): preserve independent local and external role sources` | ROLE-01.7a, ROLE-02.4. |
+
+| 06.10.2026 | ROLE-01.7a | Trainings-/Bestell-Sonderrechte auf tatsächliche Abteilungen erweitert; Zielanlage nutzt dieselben Rechte. Trainingslesesicht verlangt Fachrecht und zeigt Entwürfe nur Planern im jeweiligen Bereich; Bausteine, Handouts und direkte Planabrufe folgen derselben Sicht. Normale Standardrollen erhalten keine impliziten Modelllöschrechte. TRAIN-Statusvertrag aus paralleler Sitzung genutzt, ausschließlich eigene Scope-Hunks integriert. | 52/52 gezielte Rollen-/Training-/Bestelltests bestanden (2 PostgreSQL-only übersprungen), Ruff bestanden. Erstläufe wegen fehlerhafter automatischer Importänderung und fehlendem Pflichtstatus im Bestelltest fehlgeschlagen; korrigiert und bestanden. | Dieser Commit: `fix(ROLE-01.7a): enforce scoped training and ordering capabilities` | ROLE-02.4, ROLE-01.7c/b. |

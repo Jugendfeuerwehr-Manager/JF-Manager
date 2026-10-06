@@ -12,7 +12,7 @@ from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from training.api.filters import TrainingSessionFilter
-from training.api.permissions import CanManageTraining
+from training.api.permissions import CanManageTraining, filter_training_queryset
 from training.api.plan import PlanInputSerializer, advance_revision, lock_sessions, save_plan
 from training.api.serializers import (
     TrainingSessionCreateSerializer,
@@ -64,7 +64,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
             "blocks__library_block",
         )
         self.queryset = qs
-        return super().get_queryset()
+        return filter_training_queryset(self.request, super().get_queryset())
 
     _sync_linked_servicebook_entry = staticmethod(sync_linked_service)
 

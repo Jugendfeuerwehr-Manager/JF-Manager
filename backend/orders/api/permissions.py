@@ -4,19 +4,20 @@ Custom permissions for Orders API
 
 from rest_framework import permissions
 
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 
-class CanManageOrders(permissions.BasePermission):
+
+class CanManageOrders(DepartmentRoleModelPermissions):
     """
     Permission to manage orders (create, update, delete)
     """
 
-    def has_permission(self, request, view):
-        # Read permissions for authenticated users
+    def _required_permissions(self, request, view):
         if request.method in permissions.SAFE_METHODS:
-            return request.user and request.user.is_authenticated
-
-        # Write permissions require specific permission
-        return request.user and request.user.has_perm("orders.can_manage_orders")
+            return []
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            return ["orders.can_manage_orders"]
+        return None
 
 
 class CanChangeOrderStatus(permissions.BasePermission):

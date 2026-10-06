@@ -7,6 +7,7 @@ from django.db.models import Count
 from rest_framework import serializers
 
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from orders.api.permissions import CanManageOrders
 from orders.models import Order
 
 from .order_item import OrderItemCreateSerializer, OrderItemMinimalSerializer, OrderItemSerializer
@@ -23,7 +24,9 @@ def validate_order_target(serializer, attrs):
     view = serializer.context.get("view")
     if request is not None and view is not None:
         candidate = Order(department=department)
-        if not DepartmentRoleModelPermissions().has_object_permission(request, view, candidate):
+        if not DepartmentRoleModelPermissions().has_object_permission(
+            request, view, candidate
+        ) or not CanManageOrders().has_object_permission(request, view, candidate):
             raise serializers.ValidationError({"department": "Keine Schreibberechtigung für die Bestellabteilung."})
     return attrs
 

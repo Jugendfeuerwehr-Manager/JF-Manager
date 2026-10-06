@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from members.models import Attachment
 from training.api.filters import TrainingBlockFilter
-from training.api.permissions import CanManageTraining
+from training.api.permissions import CanManageTraining, filter_training_queryset
 from training.api.plan import advance_revision, lock_sessions
 from training.api.serializers import (
     TrainingBlockCreateSerializer,
@@ -128,7 +128,8 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         advance_revision(session)
 
     def get_queryset(self):
-        return TrainingBlock.objects.select_related("session", "library_block").prefetch_related("groups")
+        queryset = TrainingBlock.objects.select_related("session", "library_block").prefetch_related("groups")
+        return filter_training_queryset(self.request, queryset, "session__")
 
     def get_serializer_class(self):
         if self.action in ["create"]:
