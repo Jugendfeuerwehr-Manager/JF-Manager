@@ -4,22 +4,26 @@ import io
 import os
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image as PilImage
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from members.models import Attachment
 from training.api.filters import TrainingBlockFilter
 from training.api.permissions import CanManageTraining
+from training.api.plan import advance_revision, lock_sessions
 from training.api.serializers import (
     TrainingBlockCreateSerializer,
     TrainingBlockMoveSerializer,
     TrainingBlockSerializer,
     TrainingMediaSerializer,
 )
+from training.api.serializers.block import validate_block_target
 from training.models import TrainingBlock, TrainingMedia
 
 # ── Image processing helper ───────────────────────────────────────────────────
@@ -66,6 +70,53 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
     ordering_fields = ["start_offset_minutes", "position_order", "title"]
     ordering = ["start_offset_minutes", "position_order"]
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            with transaction.atomic():
+                return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self):
+        block = super().get_object()
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            ids = {block.session_id}
+            target = self.request.data.get("session")
+            if str(target).isdigit():
+                ids.add(int(target))
+            lock_sessions(ids)
+            try:
+                block.refresh_from_db()
+            except TrainingBlock.DoesNotExist as exc:
+                raise NotFound() from exc
+            if block.session_id not in ids:
+                exc = APIException("Die Übungszuordnung wurde inzwischen geändert. Bitte erneut versuchen.")
+                exc.status_code = 409
+                raise exc
+            self.check_object_permissions(self.request, block)
+        return block
+
+    def perform_create(self, serializer):
+        locked = lock_sessions([serializer.validated_data["session"].pk])
+        if not locked:
+            raise NotFound()
+        session = locked[0]
+        serializer.validated_data["session"] = session
+        validate_block_target(serializer, serializer.validated_data)
+        serializer.save()
+        advance_revision(session)
+
+    def perform_update(self, serializer):
+        previous_session = serializer.instance.session
+        block = serializer.save()
+        advance_revision(previous_session)
+        if block.session_id != previous_session.pk:
+            advance_revision(block.session)
+
+    def perform_destroy(self, instance):
+        session = instance.session
+        instance.delete()
+        advance_revision(session)
+
     def get_queryset(self):
         return TrainingBlock.objects.select_related("session", "library_block").prefetch_related("groups")
 
@@ -94,7 +145,7 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         block = self.get_object()
         serializer = TrainingBlockMoveSerializer(block, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        self.perform_update(serializer)
         return Response(TrainingBlockSerializer(block, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser])

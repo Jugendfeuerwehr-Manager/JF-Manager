@@ -2,15 +2,18 @@
 
 import datetime
 
+from django.db import transaction
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from training.api.filters import TrainingSessionFilter
 from training.api.permissions import CanManageTraining
+from training.api.plan import PlanInputSerializer, advance_revision, lock_sessions, save_plan
 from training.api.serializers import (
     TrainingSessionCreateSerializer,
     TrainingSessionDetailSerializer,
@@ -31,6 +34,22 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
     ordering_fields = ["date", "start_time", "title"]
     ordering = ["date", "start_time"]
     queryset = TrainingSession.objects.all()  # required by mixin; overridden in get_queryset
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            with transaction.atomic():
+                return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self):
+        session = super().get_object()
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            locked = lock_sessions([session.pk])
+            if not locked:
+                raise NotFound()
+            session = locked[0]
+            self.check_object_permissions(self.request, session)
+        return session
 
     def get_queryset(self):
         qs = TrainingSession.objects.select_related(
@@ -92,6 +111,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
 
     def perform_update(self, serializer):
         session = serializer.save()
+        advance_revision(session)
         self._sync_linked_servicebook_entry(session)
 
     def destroy(self, request, *args, **kwargs):
@@ -124,6 +144,28 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
         if self.action == "handout":
             return TrainingSessionHandoutSerializer
         return TrainingSessionDetailSerializer
+
+    @action(detail=True, methods=["get", "put"])
+    def plan(self, request, pk=None):
+        """Read/replace the full plan. Omitted existing blocks are removed."""
+        session = self.get_object()
+        if request.method == "GET":
+            return Response(TrainingSessionDetailSerializer(session, context=self.get_serializer_context()).data)
+        payload = PlanInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        if payload.validated_data["expected_revision"] != session.revision:
+            return Response(
+                {
+                    "code": "plan_revision_conflict",
+                    "detail": "Der Plan wurde inzwischen geändert. Lokalen Entwurf vergleichen.",
+                    "current": TrainingSessionDetailSerializer(session, context=self.get_serializer_context()).data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        session = save_plan(
+            session, payload.validated_data, self.get_serializer_context(), self._sync_linked_servicebook_entry
+        )
+        return Response(TrainingSessionDetailSerializer(session, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["get"])
     def handout(self, request, pk=None):

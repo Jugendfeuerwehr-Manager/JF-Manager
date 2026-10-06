@@ -68,4 +68,4 @@ class PlanTimeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         detail = self.client.get(f"/api/v1/training/sessions/{self.session.pk}/")
-        self.assertEqual(detail.data["revision"], 1)
+        self.assertEqual(detail.data["revision"], 2)

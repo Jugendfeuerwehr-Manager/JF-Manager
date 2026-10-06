@@ -8,13 +8,13 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.1 Zeitprüfung und Planversion geprüft. |
+| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.2 atomare Plan-API auf PostgreSQL 15 geprüft. |
 | Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | TRAIN-Integration (4d2e276 übernommen; dieser Commit). |
+| Letzter Roadmap-Commit | TRAIN-Integration (26e3098 übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | TRAIN-Commits integrieren, dann TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf abnehmen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
-| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.1 Planversion und Zeitprüfung grün; nächster Schritt TRAIN-01.2. |
+| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.2 atomare Plan-API und Versionsprüfung auf PostgreSQL 15 grün; nächster Schritt TRAIN-01.3. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
@@ -921,14 +921,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `TRAIN-01.3`: Lokaler Planentwurf für Anlage, Bearbeitung, Entfernung und Verschiebung; eine Speicheranfrage, Fehler-/Konflikterhalt.
   - `TRAIN-01.4`: Rückgängig/Wiederholen, Verlassenswarnung und explizite Tastatur-/Formularaktionen ohne automatischen Tausch.
   - `TRAIN-01.5`: Status-/Dienstvertrag mit TRAIN-03, ausdrückliche Vorschau für Tauschen/Nachfolgende verschieben; gebündelte Paketabnahme.
-- **Letzter dauerhafter Checkpoint:** TRAIN-01.1, dieser Commit.
+- **Letzter dauerhafter Checkpoint:** TRAIN-01.2, dieser Commit.
 - **Branch:** Integration auf `feat/security-roles-training-operations`; isolierter detached Worktree `/private/tmp/jf-manager-train` bei `d89c90b`, keine konkurrierenden Git-Schreiboperationen im gemeinsamen Checkout.
 - **Geänderte Dateien / Commit-Bezug:** Roadmap; dieser Commit: `docs(TRAIN-01.0): define atomic planner implementation contract`.
-- **Umgesetzte Teilschritte:** TRAIN-01.0 und TRAIN-01.1.
+- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.2.
 - **Prüfungen:** Code-/Git-Abgleich bestanden. Anwendungstests für Planungsänderung nicht ausgeführt.
 - **Offene Fehler / Risiken:** Bestehender Planer speichert Einzeländerungen parallel, Inhaltsänderungen sofort; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine TRAIN-Dienste; Tests ausschließlich auf Wegwerf-Testdatenbanken.
-- **Nächster konkreter Schritt:** TRAIN-01.2 atomarer Plan-Endpunkt und Versionserhöhung auch bei Einzeländerungen.
+- **Nächster konkreter Schritt:** TRAIN-01.3 lokalen Entwurf mit einer Speicheranfrage anbinden.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1251,3 +1251,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-01.0 | Manifest und Roadmap mit Code/Git abgeglichen; TRAIN-01 mit Abnahme, Abhängigkeiten, Dateiverantwortung und IDs übernommen. Isolierter Arbeitsstand schützt laufende SEC-/UX-Arbeit; Integration auf gemeinsamen Branch bleibt eigener koordinierter Schritt. | Code-/Git-Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(TRAIN-01.0): define atomic planner implementation contract` | TRAIN-01.1. |
 
 | 06.10.2026 | TRAIN-01.1 | Planversion mit verlustfreier Feldmigration und Ausgabe in Listen/Details/Handout ergänzt. Gemeinsame Zeitprüfung für Termin, Block-Anlage, Block-Änderung und Bewegung; Terminverkürzung kann vorhandene Blöcke nicht außerhalb des Rahmens lassen. | 31/31 Zeit-/Trainings-/Zielrelationstests, Migrationsabgleich und Ruff bestanden. Erster Testlauf fehlgeschlagen wegen inkorrekter Testannahme (neuer Block hat 15 statt 30 Minuten); Fixture korrigiert und Wiederholung bestanden. Breite Suite und PostgreSQL nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.1): validate training time frames and expose plan revisions` | TRAIN-01.2. |
+
+| 06.10.2026 | TRAIN-01.2 | Vollständiger GET/PUT-Planvertrag mit Pflichtversion, atomarer Metadaten-/Block-/Gruppenspeicherung, Erhalt bestehender IDs und Medien, expliziter Entfernung und Konfliktantwort mit aktuellem Serverstand. Alle bisherigen Termin-/Blockschreibwege sperren dieselbe Terminzeile und erhöhen Versionen; Zielwechsel sperren sortiert und erhöhen beide Versionen. API-Vertrag dokumentiert. | 48/48 gezielte Tests auf SQLite, 50/50 auf isoliertem PostgreSQL 15 einschließlich gleichzeitiger Planentwürfe (200/409) und Einzelverschiebungen (keine verlorenen Versionsinkremente) bestanden. Ruff und Diff-Check bestanden. PostgreSQL-Erststart wegen fehlender Docker-Settings-Umgebung fehlgeschlagen, mit expliziten temporären Testsettings bestanden. Breite Suite nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.2): save complete training plans atomically with revision checks` | TRAIN-01.3. |
