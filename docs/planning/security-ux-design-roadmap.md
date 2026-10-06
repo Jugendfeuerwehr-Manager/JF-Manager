@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.0 Abhängigkeitsinventar und Teilschritte festgelegt. |
+| Letzter Checkpoint | 06.10.2026: SEC-10.1 Backend auf Django 5.2 LTS ohne bekannte Abhängigkeitslücken. |
 | Aktuelles Paket | SEC-10 in Arbeit (Claude). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-09 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-10.0` (dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-10.1` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-10.1 Backend-Abhängigkeiten (Django 5.2 LTS); danach SEC-10.2 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
+| Nächster konkreter Schritt | SEC-10.2 Frontend-Abhängigkeiten; danach SEC-10.3 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -545,7 +545,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
-| SEC-10 | in Arbeit | Claude | SEC-10.0 Inventar und Teilschritte; nächster Schritt SEC-10.1 Backend-Abhängigkeiten. |
+| SEC-10 | in Arbeit | Claude | SEC-10.1 Django 5.2.17 LTS, Backend ohne bekannte Lücken, 611/611 auf SQLite und PostgreSQL; nächster Schritt SEC-10.2 Frontend. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
@@ -830,7 +830,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
     - `SEC-07.8b`: QR-Code für die Authenticator-Einrichtung lokal im Browser erzeugen (Nutzerbefund: bisher nur Link und Schlüssel).
 - **Branch:** `feat/security-roles-training-operations`.
 - **Prüfungen / Checkpoint:** SEC-07.0: Code-/Git-Abgleich bestanden. SEC-07.1: 7/7 neue Sitzungstests und 14/14 bestehende Benutzersicherheitstests, Ruff bestanden. SEC-07.2: 51/51 Sitzungs-, Benutzersicherheits- und Admin-Benutzertests, Ruff bestanden. SEC-07.3: 58/58 MFA-, Sitzungs-, Benutzer- und Verschlüsselungstests, Migrationsabgleich und Ruff bestanden. SEC-07.4: 10/10 neue Login-/Richtlinientests und breiter Backendlauf 559/559 über explizite Module (`orders.tests` statt `orders`), Ruff bestanden. SEC-07.5: 11/11 neue OIDC-Tests, 1/1 bestehender OIDC-Redirecttest, 34/34 Benutzer-/Einstellungs-/LDAP-Tests, Migrationsabgleich und Ruff bestanden. SEC-07.6: Vue-Typecheck, 89/89 Frontendtests, ESLint geänderter Dateien, 43/43 Sitzungs-/MFA-/OIDC-Backendtests und Ruff bestanden; manueller Browserlauf nicht ausgeführt. SEC-07.7: breiter Backendlauf 572/572, Migrationsabgleich und Ruff bestanden. SEC-07.7a: 63/63 Sitzungs-/MFA-/OIDC-/Benutzertests, Typecheck, 89/89 Frontendtests und Ruff bestanden. SEC-07.7b: breiter Backendlauf 581/581, Typecheck, 91/91 Frontendtests, ESLint und Ruff bestanden. SEC-07.7c: breiter Backendlauf 587/587, Migrationsabgleich, Typecheck, 93/93 Frontendtests, ESLint und Ruff bestanden. SEC-07.8: 76/76 gebündelte Sitzungs-/MFA-/LDAP-/OIDC-/Step-up-/Geräte-/Benutzertests, 93/93 Frontendtests und Vite-Produktionsbuild bestanden; manueller Browser-/IdP-Lauf nicht ausgeführt. SEC-07.8b: 1 neuer Komponententest, 162/162 Frontendtests, Typecheck, ESLint und Build bestanden; Scan mit echter Authenticator-App nicht ausgeführt.
-- **Risiken / Grenzen nach Abnahme:** Oberfläche und API müssen dieselbe Herkunft haben (Entwicklung über Vite-Proxy). Externe API-Programme haben keinen Zugang mehr (Produktentscheidung). Paket `djangorestframework-simplejwt` bleibt bis SEC-10 im Pipfile (PyJWT für OIDC). Rate-Limits und OIDC-Einmalmarke nutzen den Django-Cache; ohne Redis gelten sie nur je Prozess (SEC-10). OpenAPI-Schema und generierte Frontend-Typen sind nicht neu erzeugt. Kein manueller Browser- oder echter IdP-Lauf. `clearsessions` und `purge_export_audits` fehlen in `crontab.example` (OPS-03). Künftige rechteerweiternde Endpunkte (ROLE-02 Delegation, CFG-01) müssen `StepUpForWrites` übernehmen. Verlorener Authenticator ohne Wiederherstellungscode erfordert manuelles Entfernen durch die Systemadministration. `dump.rdb` bleibt unangetastet.
+- **Risiken / Grenzen nach Abnahme:** Oberfläche und API müssen dieselbe Herkunft haben (Entwicklung über Vite-Proxy). Externe API-Programme haben keinen Zugang mehr (Produktentscheidung). Paket `djangorestframework-simplejwt` blieb bis SEC-10 im Pipfile (PyJWT für OIDC); mit SEC-10.1 entfernt, PyJWT direkt deklariert. Rate-Limits und OIDC-Einmalmarke nutzen den Django-Cache; ohne Redis gelten sie nur je Prozess (SEC-10). OpenAPI-Schema und generierte Frontend-Typen sind nicht neu erzeugt. Kein manueller Browser- oder echter IdP-Lauf. `clearsessions` und `purge_export_audits` fehlen in `crontab.example` (OPS-03). Künftige rechteerweiternde Endpunkte (ROLE-02 Delegation, CFG-01) müssen `StepUpForWrites` übernehmen. Verlorener Authenticator ohne Wiederherstellungscode erfordert manuelles Entfernen durch die Systemadministration. `dump.rdb` bleibt unangetastet.
 - **Nächster Schritt:** keiner im Paket; Folgearbeiten siehe Grenzen.
 
 ### SEC-08: Sichere Tabellenexporte
@@ -892,9 +892,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-10.6`: Python-Laufzeit von 3.10 auf eine unterstützte Version (Dockerfile, CI, Pipfile).
   - `SEC-10.7`: Gebündelte Abnahme.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation.
+- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation. SEC-10.1: `pip-audit` gegen neue Lockdatei ohne Befund; volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14; `check`, Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build nicht ausgeführt.
 - **Risiken:** Major-Sprünge (django-import-export 3→4, django-guardian 2→3, Pillow 10→12, urllib3 1→2, DRF 3.14→3.17) können Verhalten ändern; jede Anpassung durch Tests belegen. Produktionsdatenbank und `dump.rdb` nicht anfassen.
-- **Nächster Schritt:** SEC-10.1.
+- **Nächster Schritt:** SEC-10.2 Frontend-Abhängigkeiten.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1151,3 +1151,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | SEC-07.8b | Nutzerbefund: MFA-Einrichtung zeigte keinen QR-Code; er war nie implementiert (nur App-Link und manueller Schlüssel). `MfaSettings.vue` erzeugt den QR-Code aus `otpauth_uri` lokal mit der Bibliothek `qrcode` als SVG-Data-URI auf weißem Grund (auch im Dunkelmodus scanbar); das Geheimnis wird an keinen externen Dienst gesendet. Link und Schlüssel bleiben als Alternative, Fehler beim Erzeugen blenden nur den QR-Code aus. Beim Installieren meldet `npm audit` 65 vorbestehende Befunde (6 kritisch) → SEC-10. | 1 neuer Komponententest (QR als lokales SVG, kein Netzwerkaufruf, Ausblenden bei Abbruch), 162/162 Frontendtests, Typecheck, ESLint und Produktionsbuild bestanden. Scan mit echter Authenticator-App nicht ausgeführt. | Dieser Commit: `feat(SEC-07.8b): show a QR code for authenticator setup` | SEC-10. |
 
 | 06.10.2026 | SEC-10.0 | SEC-10 übernommen. `pip-audit` gegen die Lockdatei: 11 Pakete mit bekannten Lücken (Django 5.0.14, Pillow 10.0.1, PyJWT, aiohttp, urllib3 1.26 u. a.); `npm audit`: 65 Befunde (6 kritisch). Abnahme und Teilschritte SEC-10.1 bis SEC-10.7 festgelegt, Python-3.10-Supportende als eigener Teilschritt. | Code-/Git-Abgleich und Audit ausgeführt; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(SEC-10.0): define dependency and production check contract` | SEC-10.1. |
+
+| 06.10.2026 | SEC-10.1 | Pipfile: Django `~=5.2.17` (LTS), DRF 3.17.2, Pillow 12.3, urllib3 2.8 (Pin auf 1.26 aufgehoben), django-import-export 4.4, django-guardian 3.5, django-filter 25.2, django-phonenumber-field 8.5, django-redis 6.0, django-mptt 0.18, django-colorfield 0.14, django-environ 0.14, django-dynamic-preferences 1.17, dj-database-url 3.1. `djangorestframework-simplejwt` entfernt, `pyjwt[crypto]~=2.15` direkt (OIDC). Lockdatei neu erzeugt; transitiv u. a. PyJWT 2.15.1, aiohttp 3.14.4, cryptography 50.0.2, sqlparse 0.6.0, tablib 3.10.0. Keine Codeanpassung nötig; Python bleibt 3.10 (SEC-10.6). Lokale Pipenv-Umgebung synchronisiert und bereinigt. | `pip-audit` ohne Befund (vorher 11 Pakete). Volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14 (Wegwerf-Cluster), `check` (nur vorbestehende W342), Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build und Lauf mit echtem Konto nicht ausgeführt. | Dieser Commit: `build(SEC-10.1): move backend to Django 5.2 LTS and patched dependencies` | SEC-10.2. |
