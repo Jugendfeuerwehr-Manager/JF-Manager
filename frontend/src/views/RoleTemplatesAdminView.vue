@@ -15,7 +15,7 @@
         <template #title>Vorlagen</template>
         <template #content>
           <button v-for="row in templates" :key="row.id" class="role-row" :class="{ selected: selected?.id === row.id }" @click="selectTemplate(row.id)">
-            <span><strong>{{ row.name }}</strong><small>{{ row.key }} · {{ scopeName(row.scope) }}</small></span>
+            <span><strong>{{ row.name }}</strong><small>{{ scopeName(row.scope) }}</small></span>
             <Tag v-if="row.is_archived" value="Archiviert" severity="secondary" />
           </button>
         </template>
@@ -29,7 +29,7 @@
           <Message v-if="detailError" severity="error" :closable="false" class="mb-3">{{ detailError }}</Message>
           <div v-if="detailLoading" class="flex justify-content-center p-5"><ProgressSpinner /></div>
           <template v-else-if="comparison">
-            <p class="text-color-secondary">{{ selected.key }} · {{ scopeName(selected.scope) }} · Gruppe: {{ selected.group?.name || 'nicht gebunden' }}</p>
+            <p class="text-color-secondary">{{ scopeName(selected.scope) }} · {{ selected.description }}</p>
 
             <section class="counts" aria-label="Zuweisungszahlen">
               <div v-for="entry in countItems" :key="entry.key"><strong>{{ comparison.assignment_counts[entry.key] }}</strong><span>{{ entry.label }}</span></div>
@@ -37,43 +37,41 @@
 
             <section class="compare-grid">
               <div><h2>Fehlende Rechte <Tag :value="String(comparison.missing_permissions?.length ?? '—')" :severity="comparison.missing_permissions?.length ? 'danger' : 'success'" /></h2>
-                <ul v-if="comparison.missing_permissions?.length"><li v-for="permission in comparison.missing_permissions" :key="permission"><code>{{ permission }}</code></li></ul>
+                <ul v-if="comparison.missing_permissions?.length"><li v-for="permission in comparison.missing_permissions" :key="permission">{{ permissionLabel(permission) }}</li></ul>
                 <p v-else class="text-color-secondary">Keine</p>
               </div>
               <div><h2>Zusätzliche Rechte <Tag :value="String(comparison.extra_permissions?.length ?? '—')" :severity="comparison.extra_permissions?.length ? 'warn' : 'success'" /></h2>
-                <ul v-if="comparison.extra_permissions?.length"><li v-for="permission in comparison.extra_permissions" :key="permission"><code>{{ permission }}</code></li></ul>
+                <ul v-if="comparison.extra_permissions?.length"><li v-for="permission in comparison.extra_permissions" :key="permission">{{ permissionLabel(permission) }}</li></ul>
                 <p v-else class="text-color-secondary">Keine</p>
               </div>
             </section>
-            <section v-if="comparison.metadata_differences && Object.keys(comparison.metadata_differences).length" class="mb-3">
-              <h2>Metadaten weichen vom Katalog ab</h2>
+            <details v-if="comparison.metadata_differences && Object.keys(comparison.metadata_differences).length" class="mb-3">
+              <summary>Erweiterter Vergleich der Rollenbeschreibung</summary>
               <ul><li v-for="(diff, field) in comparison.metadata_differences" :key="field"><code>{{ field }}</code>: {{ String(diff.actual) }} → {{ String(diff.expected) }}</li></ul>
-            </section>
-
-            <details class="mb-3"><summary>Rechte vollständig prüfen ({{ comparison.actual_permissions.length }})</summary>
-              <div v-if="canChangePermissions && !selected.is_archived" class="permission-add">
-                <InputText v-model="permissionToAdd" aria-label="Berechtigung hinzufügen" placeholder="app_label.codename" @keydown.enter.prevent="addPermission" />
-                <Button label="Recht hinzufügen" severity="secondary" :disabled="!permissionToAdd.trim() || saving" @click="addPermission" />
-              </div>
-              <Message v-if="permissionError" severity="error" :closable="false">{{ permissionError }}</Message>
-              <div class="permission-list"><label v-for="permission in availablePermissions" :key="permission" class="permission-option">
-                <input v-model="selectedPermissions" type="checkbox" :value="permission" :disabled="!canChangePermissions || selected.is_archived" /> <code>{{ permission }}</code>
-              </label></div>
-              <p class="text-color-secondary">Beim Übernehmen wird die komplette Rechteauswahl ersetzt. Nicht aufgeführte Rechte werden entzogen.</p>
-              <Button v-if="canChangePermissions" label="Auswahl prüfen und übernehmen" icon="pi pi-check" :disabled="selected.is_archived || !comparison.group || saving" @click="applyPermissions" />
             </details>
 
+            <section class="mb-3">
+              <h2>Was darf diese Rolle?</h2>
+              <p v-if="catalogLoading" role="status">Rechte werden geladen …</p>
+              <PermissionPicker v-model="selectedPermissions" :permissions="editorCatalog" :disabled="!canChangePermissions || selected.is_archived || catalogLoading || saving" />
+              <p>Änderungen gelten erst nach der Bestätigung. Sie wirken dann auf alle bestehenden Zuweisungen dieser Rolle.</p>
+              <Button v-if="canChangePermissions" label="Auswahl prüfen und übernehmen" icon="pi pi-check" :disabled="selected.is_archived || !comparison.group || saving || catalogLoading" @click="applyPermissions" />
+              <details><summary>Erweiterte Rollendaten</summary><p>{{ selected.key }} · Gruppe: {{ selected.group?.name || 'nicht gebunden' }}</p></details>
+            </section>
+
             <section v-if="selected.scope === 'department' && selected.is_delegable" class="mb-3">
-              <h2>Delegationsfreigabe</h2>
-              <p>{{ selected.delegation_approved ? 'Diese Rechteauswahl ist zur Delegation freigegeben.' : 'Keine aktuelle Freigabe. Änderungen an Rechten erfordern eine erneute Freigabe.' }}</p>
-              <Button v-if="canApproveDelegation" :label="selected.delegation_approved ? 'Freigabe zurücknehmen' : 'Delegation freigeben'" :disabled="selected.is_archived || saving" @click="setDelegation" />
+              <h2>Zuweisung durch Abteilungsleitungen</h2>
+              <p>Nach deiner Freigabe dürfen berechtigte Abteilungsleitungen diese Rolle anderen Personen ihrer Abteilung geben. Sie können dadurch keine Rechte der Rolle verändern.</p>
+              <p>{{ selected.delegation_approved ? 'Abteilungsleitungen dürfen diese Rolle zuweisen.' : 'Noch nicht freigegeben. Nach einer Rechteänderung musst du die Rolle erneut prüfen und freigeben.' }}</p>
+              <Button v-if="canApproveDelegation" :label="selected.delegation_approved ? 'Freigabe zurücknehmen' : 'Für Abteilungsleitungen freigeben'" :disabled="selected.is_archived || saving" @click="setDelegation" />
             </section>
             <section class="metadata-form">
-              <h2>Metadaten</h2>
+              <h2>Rollenbeschreibung</h2>
               <label for="role-name">Anzeigename</label><InputText id="role-name" v-model="form.name" :disabled="!canChangeMetadata || selected.is_archived" />
               <label for="role-description">Beschreibung</label><Textarea id="role-description" v-model="form.description" rows="3" :disabled="!canChangeMetadata || selected.is_archived" />
-              <label class="check-line"><input v-model="form.is_delegable" type="checkbox" :disabled="!canChangeMetadata || selected.is_archived" /> Delegierbar</label>
-              <Button v-if="canChangeMetadata" label="Metadaten speichern" icon="pi pi-save" :disabled="selected.is_archived || !metadataChanged" :loading="saving" @click="saveMetadata" />
+              <label class="check-line"><input :checked="selected.scope === 'department' && form.is_delegable" @change="form.is_delegable = ($event.target as HTMLInputElement).checked" type="checkbox" :disabled="!canChangeMetadata || selected.is_archived || selected.scope !== 'department'" /> Abteilungsleitungen dürfen diese Rolle nach Freigabe zuweisen</label>
+              <p class="text-color-secondary">Diese Option bereitet die Rolle für die Zuweisung durch Leitungen vor. Anschließend muss die Systemadministration die konkrete Rechteauswahl freigeben. Organisationsrollen weist nur die Systemadministration zu. Rollen mit Verwaltungs-, Lösch- oder Anonymisierungsrechten können nicht für Leitungen freigegeben werden.</p>
+              <Button v-if="canChangeMetadata" label="Beschreibung speichern" icon="pi pi-save" :disabled="selected.is_archived || !metadataChanged" :loading="saving" @click="saveMetadata" />
             </section>
 
             <div class="actions">
@@ -93,13 +91,13 @@
         <template v-if="creating">
           <label for="new-role-scope">Bereich</label>
           <select id="new-role-scope" v-model="newRoleScope"><option value="department">Abteilung</option><option value="organization">Organisation</option></select>
-          <label for="new-role-permissions">Fachliche Rechte</label>
-          <input id="new-role-permissions" v-model="permissionSearch" placeholder="Rechte suchen" />
+          <h2>Was darf diese Rolle?</h2>
           <p v-if="catalogLoading" role="status">Berechtigungen werden geladen …</p>
-          <div class="new-permission-list"><label v-for="permission in filteredCatalog" :key="permission.full_codename" class="permission-option"><input type="checkbox" v-model="newRolePermissions" :value="permission.full_codename" /> {{ catalogLabel(permission) }}</label></div>
+          <PermissionPicker v-model="newRolePermissions" :permissions="creationCatalog" :disabled="catalogLoading || saving" />
           <p v-if="newRoleScope === 'organization'">Organisationssicht wird automatisch ergänzt; Fachrechte bitte ausdrücklich auswählen.</p>
         </template>
-        <label class="check-line"><input v-model="duplicateForm.is_delegable" type="checkbox" :disabled="creating && newRoleScope === 'organization'" /> Delegierbar</label>
+        <label class="check-line"><input :checked="(creating ? newRoleScope : selected?.scope) === 'department' && duplicateForm.is_delegable" @change="duplicateForm.is_delegable = ($event.target as HTMLInputElement).checked" type="checkbox" :disabled="(creating ? newRoleScope : selected?.scope) !== 'department'" /> Abteilungsleitungen dürfen diese Rolle nach Freigabe zuweisen</label>
+              <p class="text-color-secondary">Diese Option bereitet die Rolle für die Zuweisung durch Leitungen vor. Anschließend muss die Systemadministration die konkrete Rechteauswahl freigeben. Organisationsrollen weist nur die Systemadministration zu. Rollen mit Verwaltungs-, Lösch- oder Anonymisierungsrechten können nicht für Leitungen freigegeben werden.</p>
         <details><summary>Erweiterte Ansicht</summary><label for="duplicate-key">Technischer Schlüssel (optional)</label><InputText id="duplicate-key" v-model="duplicateForm.key" pattern="[a-z][a-z0-9_]+" placeholder="Wird automatisch erzeugt" /></details>
         <p class="text-color-secondary">{{ creating ? 'Die ausgewählten Rechte werden in einer neuen Gruppe angelegt.' : 'Die Rechte der Quellgruppe werden kopiert.' }} Die neue Rolle erhält keine Zuweisungen und keine Delegationsfreigabe.</p>
         <div class="actions"><Button label="Abbrechen" severity="secondary" type="button" @click="duplicateVisible = false" /><Button :label="creating ? 'Rolle anlegen' : 'Kopie anlegen'" type="submit" :loading="saving" :disabled="catalogLoading" /></div>
@@ -113,6 +111,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { roleTemplatesApi } from '@/api/role-templates'
 import { getApiErrorMessage } from '@/utils/apiError'
+import PermissionPicker from '@/components/roles/PermissionPicker.vue'
 import { permissionLabel } from '@/utils/permissionLabels'
 import type { RoleTemplate, RoleTemplateComparison } from '@/types/role-templates'
 import Button from 'primevue/button'
@@ -138,17 +137,17 @@ const duplicateVisible = ref(false)
 const creating = ref(false)
 const newRoleScope = ref<'department' | 'organization'>('department')
 const newRolePermissions = ref<string[]>([])
-const permissionSearch = ref('')
 const permissionCatalog = ref<{ full_codename: string; name: string }[]>([])
 const catalogLoading = ref(false)
-function catalogLabel(permission: { full_codename: string; name: string }) {
-  const label = permissionLabel(permission.full_codename)
-  return label.startsWith('Weitere Berechtigung') ? permission.name : label
-}
-const filteredCatalog = computed(() => permissionCatalog.value.filter(permission => permission.full_codename !== 'departments.can_access_all_departments' && catalogLabel(permission).toLocaleLowerCase().includes(permissionSearch.value.toLocaleLowerCase())))
 const selectedPermissions = ref<string[]>([])
-const permissionToAdd = ref('')
-const permissionError = ref('')
+const creationCatalog = computed(() => permissionCatalog.value.filter(permission => permission.full_codename !== 'departments.can_access_all_departments'))
+const editorCatalog = computed(() => {
+  const catalog = new Map(permissionCatalog.value.map(permission => [permission.full_codename, permission]))
+  for (const code of [...(comparison.value?.actual_permissions ?? []), ...(comparison.value?.expected_permissions ?? []), ...selectedPermissions.value]) {
+    if (!catalog.has(code)) catalog.set(code, { full_codename: code, name: permissionLabel(code) })
+  }
+  return [...catalog.values()]
+})
 const form = reactive({ name: '', description: '', is_delegable: false })
 const duplicateForm = reactive({ key: '', name: '', description: '', is_delegable: false })
 watch(newRoleScope, scope => { if (scope === 'organization') duplicateForm.is_delegable = false })
@@ -158,7 +157,6 @@ const canChangeMetadata = computed(() => auth.hasPerm('departments.change_rolete
 const canChangePermissions = computed(() => canChangeMetadata.value && auth.hasPerm('auth.change_group'))
 const canDuplicate = computed(() => auth.hasPerm('departments.add_roletemplate') && auth.hasPerm('auth.add_group'))
 const metadataChanged = computed(() => !!selected.value && (form.name !== selected.value.name || form.description !== selected.value.description || form.is_delegable !== selected.value.is_delegable))
-const availablePermissions = computed(() => [...new Set([...(comparison.value?.actual_permissions ?? []), ...(comparison.value?.expected_permissions ?? []), ...selectedPermissions.value])].sort())
 const countItems = [
   { key: 'global_users', label: 'Konten' }, { key: 'staff_users', label: 'Staff' }, { key: 'department_roles', label: 'Abteilungsrollen' },
   { key: 'ldap_mappings', label: 'LDAP-Zuordnungen' }, { key: 'oidc_mappings', label: 'OIDC-Zuordnungen' },
@@ -166,16 +164,6 @@ const countItems = [
 
 function scopeName(scope: RoleTemplate['scope']) { return ({ organization: 'Organisation', department: 'Abteilung', both: 'Beide Bereiche' })[scope] }
 function unwrapList(data: RoleTemplate[] | { results: RoleTemplate[] }) { return Array.isArray(data) ? data : data.results }
-function addPermission() {
-  const permission = permissionToAdd.value.trim()
-  if (!/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/.test(permission)) {
-    permissionError.value = 'Bitte ein Recht im Format app_label.codename eingeben.'
-    return
-  }
-  permissionError.value = ''
-  if (!selectedPermissions.value.includes(permission)) selectedPermissions.value.push(permission)
-  permissionToAdd.value = ''
-}
 function syncForm(template: RoleTemplate) {
   form.name = template.name
   form.description = template.description
@@ -205,8 +193,6 @@ async function loadTemplates(keepId?: number) {
 async function selectTemplate(id: number) {
   detailLoading.value = true
   detailError.value = ''
-  permissionError.value = ''
-  permissionToAdd.value = ''
   comparison.value = null
   try {
     const result = (await roleTemplatesApi.compare(id)).data
@@ -220,7 +206,7 @@ async function selectTemplate(id: number) {
 }
 async function saveMetadata() {
   if (!selected.value || !comparison.value || !metadataChanged.value) return
-  if (!window.confirm(`Metadaten von „${selected.value.name}“ speichern?`)) return
+  if (!window.confirm(`Beschreibung von „${selected.value.name}“ speichern?`)) return
   saving.value = true; detailError.value = ''
   try {
     await roleTemplatesApi.update(selected.value.id, { fingerprint: comparison.value.fingerprint, ...form })
@@ -242,7 +228,7 @@ async function applyPermissions() {
 async function setDelegation() {
   if (!selected.value || !comparison.value) return
   const approved = !selected.value.delegation_approved
-  if (!window.confirm(`${approved ? 'Delegation freigeben' : 'Freigabe zurücknehmen'} für „${selected.value.name}“ mit der angezeigten Rechteauswahl?`)) return
+  if (!window.confirm(`${approved ? 'Für Abteilungsleitungen freigeben' : 'Freigabe zurücknehmen'} für „${selected.value.name}“ mit der angezeigten Rechteauswahl?`)) return
   saving.value = true; detailError.value = ''
   try {
     await roleTemplatesApi.delegation(selected.value.id, comparison.value.fingerprint, approved)
@@ -272,7 +258,10 @@ function openDuplicate() {
 }
 async function openCreate() {
   creating.value = true; duplicateError.value = ''; duplicateForm.key = ''; duplicateForm.name = ''; duplicateForm.description = ''; duplicateForm.is_delegable = false
-  newRoleScope.value = 'department'; newRolePermissions.value = []; permissionSearch.value = ''; duplicateVisible.value = true
+  newRoleScope.value = 'department'; newRolePermissions.value = []; duplicateVisible.value = true
+  await loadPermissionCatalog()
+}
+async function loadPermissionCatalog() {
   catalogLoading.value = true
   try {
     const rows: typeof permissionCatalog.value = []
@@ -284,7 +273,11 @@ async function openCreate() {
       offset += data.results.length
     }
     permissionCatalog.value = rows
-  } catch (error) { duplicateError.value = getApiErrorMessage(error, 'Berechtigungen konnten nicht geladen werden.') }
+  } catch (error) {
+    const message = getApiErrorMessage(error, 'Berechtigungen konnten nicht geladen werden. Bestehende Rechte bleiben erhalten.')
+    if (creating.value) duplicateError.value = message
+    else detailError.value = message
+  }
   finally { catalogLoading.value = false }
 }
 async function duplicateTemplate() {
@@ -301,7 +294,7 @@ async function duplicateTemplate() {
   } catch (error) { duplicateError.value = getApiErrorMessage(error, 'Vorlage konnte nicht kopiert werden. Eingaben bleiben erhalten.') }
   finally { saving.value = false }
 }
-onMounted(() => { void loadTemplates() })
+onMounted(() => { void loadTemplates(); if (canChangePermissions.value || canDuplicate.value) void loadPermissionCatalog() })
 </script>
 
 <style scoped>
@@ -313,9 +306,7 @@ onMounted(() => { void loadTemplates() })
 .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem,1fr)); gap: .5rem; margin: 1rem 0; }
 .counts div { display: grid; padding: .75rem; border-radius: 8px; background: var(--surface-ground); }.counts strong { font-size: 1.3rem; }.counts span { color: var(--text-color-secondary); font-size: .85rem; }
 .compare-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }.compare-grid h2 { display: flex; align-items: center; gap: .5rem; }
-.permission-list { max-height: 20rem; overflow: auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(19rem,1fr)); gap: .35rem; margin: 1rem 0; }.permission-option { display: flex; gap: .5rem; align-items: center; overflow-wrap: anywhere; }
-.permission-add { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
-.new-permission-list { max-height: 18rem; overflow: auto; display: grid; gap: .5rem; }select, #new-role-permissions { min-height: 44px; padding: .5rem; font: inherit; background: var(--surface-card); color: var(--text-color); border: 1px solid var(--surface-border); }
+select { min-height: 44px; padding: .5rem; font: inherit; background: var(--surface-card); color: var(--text-color); border: 1px solid var(--surface-border); }
 .metadata-form { display: grid; gap: .6rem; max-width: 42rem; margin-top: 1.5rem; }.metadata-form h2 { margin-bottom: 0; }.check-line { display: flex; align-items: center; gap: .5rem; }
 .actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
 @media(max-width: 850px) { .role-layout { grid-template-columns: 1fr; } .compare-grid { grid-template-columns: 1fr; } }

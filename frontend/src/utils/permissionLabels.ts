@@ -12,6 +12,17 @@ const models: Record<string, string> = {
   'orders.order': 'Bestellungen', 'orders.orderitem': 'Bestellpositionen', 'orders.orderableitem': 'Bestellkatalog',
   'users.customuser': 'Konten', 'auth.group': 'Berechtigungsgruppen', 'departments.department': 'Abteilungen',
   'departments.userdepartmentrole': 'Abteilungszuordnungen', 'departments.roletemplate': 'Rollenvorlagen',
+  'members.attachment': 'Mitgliederanhänge', 'members.emailattachment': 'Nachrichtenanhänge', 'members.emailrecipient': 'Nachrichtenempfänger',
+  'members.event': 'Mitgliederereignisse', 'members.eventtype': 'Ereignisarten', 'members.status': 'Mitgliedsstatus', 'members.exportaudit': 'Exportnachweise',
+  'servicebook.staffattendance': 'Betreueranwesenheiten',
+  'training.trainingblockmaterial': 'Übungsmaterial', 'training.trainingmedia': 'Übungsanhänge', 'training.trainingtemplate': 'Übungsvorlagen', 'training.trainingtemplateblock': 'Vorlagenbausteine',
+  'orders.orderstatus': 'Bestellstatus', 'orders.orderitemstatushistory': 'Bestellstatusverlauf', 'orders.emailtemplate': 'Bestell-E-Mail-Vorlagen', 'orders.emaillayouttemplate': 'E-Mail-Layouts',
+  'orders.notificationpreference': 'Bestellbenachrichtigungen', 'orders.notificationlog': 'Benachrichtigungsverlauf',
+  'settings_manager.ldapconfig': 'LDAP-Anbindung', 'settings_manager.ldapdepartmentrolemapping': 'LDAP-Rollenzuordnung',
+  'settings_manager.oidcconfig': 'OIDC-Anmeldung', 'settings_manager.oidcgroupmapping': 'OIDC-Rollenzuordnung', 'settings_manager.settingscategory': 'Einstellungskategorien',
+  'external_sync.syncjob': 'Datenabgleich', 'external_sync.syncbinding': 'Abgleich-Zuordnungen', 'external_sync.syncrun': 'Abgleichverlauf',
+  'auth.permission': 'Einzelne Berechtigungen', 'users.usersession': 'Anmeldesitzungen',
+  'notifications.pushsubscription': 'Push-Anmeldungen', 'notifications.pushdelivery': 'Push-Zustellungen',
 }
 const special: Record<string, string> = {
   '*': 'Alle Rechte des Notfallkontos',
@@ -22,6 +33,8 @@ const special: Record<string, string> = {
   'departments.can_delegate_department_leadership': 'Abteilungsleitungen zuweisen',
   'training.can_manage_training': 'Übungen und Pläne bearbeiten',
   'training.can_manage_library': 'Gemeinsame Bibliothek pflegen',
+  'inventory.clear_former_member_names': 'Namen ehemaliger Mitglieder anonymisieren',
+  'external_sync.run_syncjob': 'Datenabgleich ausführen', 'external_sync.test_syncjob': 'Abgleichverbindung prüfen', 'external_sync.garbage_collect_syncjob': 'Abgleichdaten bereinigen',
   'inventory.can_rent': 'Material ausgeben und zurücknehmen',
   'orders.can_manage_orders': 'Bestellungen verwalten', 'orders.can_change_order_status': 'Bestellstatus ändern',
   'orders.can_receive_order': 'Bestell-Wareneingänge buchen',
@@ -32,6 +45,13 @@ const special: Record<string, string> = {
 export function permissionLabel(name: string): string {
   if (special[name]) return special[name]
   const [app, code = ''] = name.split('.')
+  if (app === 'settings_manager') {
+    const setting = /^(view|change)_(email|general|ldap|member|oidc|order|service)_settings$/.exec(code)
+    if (setting) {
+      const area: Record<string, string> = { email: 'E-Mail-Einstellungen', general: 'Allgemeine Einstellungen', ldap: 'LDAP-Einstellungen', member: 'Mitgliedereinstellungen', oidc: 'OIDC-Einstellungen', order: 'Bestelleinstellungen', service: 'Dienstbucheinstellungen' }
+      return `${area[setting[2]!]} ${setting[1] === 'view' ? 'ansehen' : 'ändern'}`
+    }
+  }
   const match = /^(view|add|change|delete|export)_(.+)$/.exec(code)
   if (match) {
     const label = models[`${app}.${match[2]}`]

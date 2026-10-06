@@ -52,8 +52,8 @@ describe('RoleTemplatesAdminView', () => {
     await flushPromises()
     await wrapper.get('#duplicate-name').setValue('Neue Betreuung')
     await wrapper.get('#new-role-scope').setValue('department')
-    await wrapper.get('.new-permission-list input').setValue(true)
-    expect(wrapper.text()).toContain('Mitglieder ansehen')
+    await wrapper.get('form').get('.permission-row input').setValue(true)
+    expect(wrapper.get('form').text()).toContain('Mitglieder Ansehen')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Neue Betreuung', key: undefined, scope: 'department', permissions: ['members.view_member'] }))
@@ -84,11 +84,15 @@ describe('RoleTemplatesAdminView', () => {
     wrapper.unmount()
   })
 
-  it('adds another qualified permission and sends the full selection with the comparison fingerprint', async () => {
+  it('selects readable tasks from the catalog and sends the full selection with its fingerprint', async () => {
+    permissions.mockResolvedValue({ data: { results: [
+      { full_codename: 'members.view_member', name: 'Can view member' },
+      { full_codename: 'orders.view_order', name: 'Can view order' },
+    ], next: null } })
     const wrapper = render()
     await flushPromises()
-    await wrapper.get('[aria-label="Berechtigung hinzufügen"]').setValue('orders.view_order')
-    await button(wrapper, 'Recht hinzufügen').trigger('click')
+    const row = wrapper.findAll('.permission-row').find(row => row.text().includes('Bestellungen'))!
+    await row.get('input').setValue(true)
     await button(wrapper, 'Auswahl prüfen und übernehmen').trigger('click')
     await flushPromises()
     expect(applyPermissions).toHaveBeenCalledWith(1, {
@@ -102,7 +106,7 @@ describe('RoleTemplatesAdminView', () => {
     const wrapper = render()
     await flushPromises()
     await wrapper.get('#role-name').setValue('Neue Leitung')
-    await button(wrapper, 'Metadaten speichern').trigger('click')
+    await button(wrapper, 'Beschreibung speichern').trigger('click')
     await flushPromises()
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({ fingerprint: 'current-fingerprint', name: 'Neue Leitung' }))
     expect(wrapper.text()).toContain('Vergleich veraltet.')
@@ -115,10 +119,20 @@ describe('RoleTemplatesAdminView', () => {
     delegation.mockResolvedValue({ data: template })
     const wrapper = render()
     await flushPromises()
-    await button(wrapper, 'Delegation freigeben').trigger('click')
+    await button(wrapper, 'Für Abteilungsleitungen freigeben').trigger('click')
     await flushPromises()
     expect(delegation).toHaveBeenCalledWith(1, 'current-fingerprint', true)
     wrapper.unmount()
+  })
+
+  it('explains assignment by department leaders without presenting organisation roles as delegable', async () => {
+    const wrapper = render()
+    await flushPromises()
+    const checkbox = wrapper.get('.metadata-form input[type="checkbox"]')
+    expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+    expect(checkbox.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Anschließend muss die Systemadministration die konkrete Rechteauswahl freigeben')
+    expect(wrapper.text()).toContain('Organisationsrollen weist nur die Systemadministration zu')
   })
 
   it('requires confirmation for archive and duplicate actions', async () => {

@@ -15,27 +15,29 @@ Unter **Warum darf diese Person das?** zeigt die Anwendung Rollen, Bereiche, Rec
 
 ## Delegation freigeben
 
-In **Rollenvorlagen** (`/role-templates`) prüft die Systemadministration Beschreibung, Bereich und tatsächliche Berechtigungen. Eine delegierbare Abteilungsrolle benötigt eine ausdrückliche **Delegation freigeben**-Aktion. Die Freigabe gilt für genau die aktuelle Gruppe, ihren Bereich und ihre Rechte. Änderungen, auch über die technische Gruppenverwaltung, machen die Freigabe unwirksam. Organisations-, administrative und anonymisierende beziehungsweise löschende Rollen werden nicht als untergeordnete Fachrolle freigegeben.
+In **Rollenvorlagen** (`/role-templates`) prüft die Systemadministration Beschreibung, Bereich und tatsächliche Berechtigungen. Die Option **Abteilungsleitungen dürfen diese Rolle nach Freigabe zuweisen** bedeutet: Berechtigte Leitungen können diese Rolle an andere Personen ihrer Abteilung vergeben, ohne deren Rechte verändern zu dürfen. Das Aktivieren der Option allein erteilt noch keine Freigabe. Eine dafür vorgesehene Abteilungsrolle benötigt eine ausdrückliche **Für Abteilungsleitungen freigeben**-Aktion. Die Freigabe gilt für genau die aktuelle Gruppe, ihren Bereich und ihre Rechte. Änderungen, auch über die technische Gruppenverwaltung, machen die Freigabe unwirksam. Organisations-, administrative und anonymisierende beziehungsweise löschende Rollen werden nicht als untergeordnete Fachrolle freigegeben.
 
 Der Jugendwart kann Abteilungsjugendwarte und freigegebene untergeordnete Rollen zuweisen. Der Abteilungsjugendwart kann freigegebene Fachrollen seiner Abteilung zuweisen. Organisationsrollen einschließlich Jugendwart und Systemadministration vergibt ausschließlich die Systemadministration. Jugendleiter und Betreuer besitzen selbst kein Delegationsrecht.
 
 ## Eine neue Rolle anlegen oder eine Vorlage nutzen
 
-In **Rollenvorlagen** **Neue Rolle** wählen. Anzeigename, Beschreibung und Bereich eintragen, Rechte über die lesbare Suche auswählen und **Rolle anlegen** bestätigen. Für eine Organisationsrolle ergänzt die Anwendung die Organisationssicht; die Fachrechte werden ausdrücklich gewählt. Der technische Schlüssel wird automatisch erzeugt und bleibt unter **Erweiterte Ansicht** optional anpassbar.
+In **Rollenvorlagen** **Neue Rolle** wählen. Anzeigename, Beschreibung und Bereich eintragen, Rechte in den Aufgabenbereichen auswählen. **Alle ansehen** oder **Alle anlegen und bearbeiten** wählt die passenden Rechte eines Bereichs gemeinsam; Löschen und Sonderaktionen bleiben getrennt. Einzelne Aufgaben können weiterhin angepasst werden. Die Suche findet vertraute Begriffe wie Mitglieder oder Bestellungen. Anschließend die Auswahl prüfen und **Rolle anlegen** bestätigen. Für eine Organisationsrolle ergänzt die Anwendung die Organisationssicht; die Fachrechte werden ausdrücklich gewählt. Der technische Schlüssel wird automatisch erzeugt und bleibt unter **Erweiterte Ansicht** optional anpassbar.
 
-![Lesbare Rechteauswahl für eine neue fiktive Rolle](../images/roles-create.png)
+![Gebündelte Rechteauswahl nach Aufgabenbereichen](../images/roles-permission-picker.png)
 
-*Neue Rollen brauchen einen Anzeigenamen und einen Bereich. Der technische Schlüssel wird automatisch erzeugt.*
+*Die Sammelauswahl setzt Lese- und Bearbeitungsrechte. Löschen und Sonderaktionen bleiben getrennt. Das Beispiel zeigt einen ungespeicherten Entwurf mit fiktiven Daten.*
 
 Die neu angelegte Rolle erscheint sofort in der Vorlagenliste. Die Zuweisungszahlen zeigen, dass dadurch noch niemand Rechte erhalten hat.
-
-![Angelegte fiktive Rolle ohne Zuweisungen](../images/roles-created.png)
 
 Für eine Rolle mit ähnlichen Aufgaben die bestehende Vorlage auswählen und **Vorlage kopieren** wählen. Name und Beschreibung anpassen und **Kopie anlegen** bestätigen. Die neue Rolle übernimmt die aktuellen Gruppenrechte und den Bereich, erhält aber keine Personen- oder Abteilungszuweisungen und keine Delegationsfreigabe. Mehrere Kopien können ohne technische Namenskonflikte angelegt werden. Anschließend die Rechte prüfen und bei Bedarf anpassen, danach delegierbare Abteilungsrollen ausdrücklich freigeben.
 
 ![Wirkungsvorschau für eine fiktive Betreuerzuweisung](../images/roles-assignment-review.png)
 
 *Vor der Speicherung zeigt die Wirkungsvorschau Person, Abteilung und hinzukommende Rechte. Die Abbildung verwendet ausschließlich fiktive Daten.*
+
+## Rechte einer bestehenden Rolle ändern
+
+Eine Vorlage auswählen und unter **Was darf diese Rolle?** die Aufgaben anpassen. Anlegen und Bearbeiten ergänzt das Ansehen; beim Abschalten der Bearbeitung bleibt vorhandenes Ansehen erhalten. Teilweise ausgewählte Rechte werden gekennzeichnet. Zusätzliche Rechte bleiben erhalten und können in **Erweiterte Ansicht** einzeln geprüft werden. **Auswahl prüfen und übernehmen** bestätigt die gesamte Auswahl für alle bisherigen Zuweisungen. Technische Gruppennamen stehen unter **Erweiterte Rollendaten**.
 
 ## Entfernen und Herkunft verstehen
 
