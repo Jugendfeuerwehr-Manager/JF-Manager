@@ -43,6 +43,13 @@ ad_preflight() {
         err "Docker Compose V2 (docker compose) fehlt; Compose V1 (docker-compose) wird nicht unterstützt"; failed=1
     fi
     if docker info >/dev/null 2>&1; then ok "Docker-Dienst läuft"; else err "Docker-Dienst nicht erreichbar"; failed=1; fi
+    local net owner
+    while read -r net; do
+        owner=$(docker network inspect -f '{{index .Labels "com.docker.compose.project"}}' "$net" 2>/dev/null || true)
+        if [ "$owner" != "$JF_COMPOSE_PROJECT" ] && docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}' "$net" 2>/dev/null | grep -qw -- "$JF_EDGE_SUBNET"; then
+            err "Docker-Netz $net nutzt bereits $JF_EDGE_SUBNET (anderes Subnetz: JF_EDGE_SUBNET, Expertenmodus)"; failed=1
+        fi
+    done < <(docker network ls -q 2>/dev/null)
     return $failed
 }
 
@@ -60,6 +67,7 @@ ad_render() {
         echo "JF_APP_ENV=$(kv_quote "$JF_APP_ENV")"
         echo "JF_TRUSTED_PROXIES_FILE=$(kv_quote "$JF_TRUSTED_PROXIES")"
         echo "JF_POSTGRES_MAJOR=$(kv_quote "$JF_POSTGRES_MAJOR")"
+        echo "JF_EDGE_SUBNET=$(kv_quote "$JF_EDGE_SUBNET")"
         echo "JF_DOMAIN=$(kv_quote "${JF_DOMAIN:-localhost}")"
         echo "JF_ACME_EMAIL=$(kv_quote "${JF_ACME_EMAIL:-admin@${JF_DOMAIN:-localhost}}")"
         if [ "$JF_TLS" = caddy ]; then echo "JF_HTTP_BIND=127.0.0.1:8080"; else echo "JF_HTTP_BIND=$(kv_quote "$JF_HTTP_BIND")"; fi
@@ -67,10 +75,11 @@ ad_render() {
     } >"$tmp"
     mv -f "$tmp" "$JF_COMPOSE_ENV"
     render_trusted_proxies compose
-    mkdir -p "$JF_DATA_DIR"/{uploads,postgres,redis,caddy}
-    # uploads belong to the container user django (uid 1000, gid 2000)
-    chown 1000:2000 "$JF_DATA_DIR/uploads" 2>/dev/null || true
-    chmod 750 "$JF_DATA_DIR/uploads"
+    mkdir -p "$JF_DATA_DIR"/{uploads,static,postgres,redis,caddy}
+    # uploads and collected static files belong to the container user django
+    # (uid 1000, gid 2000); nginx reads static files (world-readable).
+    chown 1000:2000 "$JF_DATA_DIR/uploads" "$JF_DATA_DIR/static" 2>/dev/null || true
+    chmod 750 "$JF_DATA_DIR/uploads"; chmod 755 "$JF_DATA_DIR/static"
 }
 
 _images_for_version() { # -> backend and frontend reference for compose.env
@@ -178,11 +187,9 @@ ad_fetch_release() { # version -> pulls images (pinned by digest when the manife
     docker tag "$f" "$JF_FRONTEND_IMAGE:${version#v}"
 }
 
-ad_activate_release() { # version -> render + recreate containers with the new images
-    JF_VERSION=$1
-    ad_render
-    dc up -d --no-deps --no-start backend worker push-worker frontend >/dev/null
-}
+# The caller switched /opt/jf-manager/current; containers are recreated with
+# the new images on the next "up" because compose.env changed.
+ad_activate_release() { JF_VERSION=$1; ad_render; }
 
 ad_running_version() { kv_get "$JF_COMPOSE_ENV" JF_VERSION || true; }
 

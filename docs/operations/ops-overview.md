@@ -33,6 +33,7 @@ Nginx verwendet in beiden Wegen dieselbe Konfiguration aus `frontend/nginx.conf`
 | `/opt/jf-manager/releases/<version>/` | Entpacktes Releasepaket (`ops/`, nativ zusätzlich `backend/`, `frontend/`, `venv/`) | root |
 | `/opt/jf-manager/current` | Verweis auf die aktive Version | root |
 | `/var/lib/jf-manager/uploads/` | Private Medien und Anhänge | Anwendung |
+| `/var/lib/jf-manager/static/` | Von `collectstatic` erzeugte statische Dateien (Admin, API-Dokumentation) | Anwendung, für Nginx lesbar |
 | `/var/lib/jf-manager/postgres/`, `redis/`, `caddy/` | Datenbank-, Redis- und Zertifikatsdaten (Compose) | Container |
 | `/var/lib/jf-manager/state/` | Status von Installation, letzter Sicherung, Update und Workerfreigabe | root |
 | `/var/backups/jf-manager/restic/` | Standardziel des Restic-Repositorys (besser: zweites Gerät oder entfernter Speicher) | root |
@@ -60,6 +61,8 @@ Datenbank und Redis liegen in einem internen Netz ohne Außenverbindung. Backend
 
 - **Integriert (`tls=caddy`):** Caddy beantwortet Port 80/443 für die konfigurierte Domain, holt Zertifikate selbst und überschreibt `X-Forwarded-Proto`. Nginx ist nur lokal erreichbar.
 - **Vorhandener Reverse Proxy (`tls=proxy`):** Nginx wird an die konfigurierte Adresse gebunden (z. B. `192.168.1.5:8080`). `trusted-proxies.conf` enthält nur die angegebenen Proxyadressen; von allen anderen Absendern wird ein mitgeschicktes `X-Forwarded-Proto` ignoriert. Der Proxy muss den Header selbst setzen und Port 8080 darf nicht öffentlich erreichbar sein (siehe [production-security.md](production-security.md)).
+
+Im Compose-Weg liegt das Netz `edge` auf einem festen Subnetz (`JF_EDGE_SUBNET`, Standard `172.30.83.0/24`, im Expertenmodus änderbar). Nginx vertraut diesem Subnetz bei integriertem HTTPS (Caddy) und dann, wenn der Reverse Proxy auf demselben Host läuft (`127.0.0.1`): Verbindungen auf einen veröffentlichten Port kommen dort über `docker-proxy` von der Gateway-Adresse des Netzes.
 
 Das Frontend-Image vertraut ohne eingebundene Datei weiterhin jedem Absender (bisheriges Verhalten für eigene Setups).
 

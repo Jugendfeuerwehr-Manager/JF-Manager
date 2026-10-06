@@ -107,12 +107,15 @@ render_trusted_proxies() {
         if [ "$JF_TLS" = caddy ]; then
             echo "127.0.0.1/32 1;"
             echo "::1/128 1;"
-            # Compose: Caddy reaches nginx over the edge network; nginx listens only on 127.0.0.1.
-            [ "$1" = compose ] && { echo "10.0.0.0/8 1;"; echo "172.16.0.0/12 1;"; echo "192.168.0.0/16 1;"; }
+            # Compose: Caddy reaches nginx over the edge network.
+            [ "$1" = compose ] && echo "$JF_EDGE_SUBNET 1;"
         else
             for addr in $JF_TRUSTED_PROXY_ADDRS; do
                 [[ $addr =~ ^[0-9a-fA-F:.]+(/[0-9]{1,3})?$ ]] || die "$EX_USAGE" "Ungültige Proxyadresse: $addr"
                 echo "$addr 1;"
+                # Compose: a proxy on this host reaches the published port via
+                # docker-proxy, i.e. from the gateway of the edge network.
+                if [ "$1" = compose ] && [[ $addr =~ ^(127\.|::1) ]]; then echo "$JF_EDGE_SUBNET 1;"; fi
             done
         fi
     } >"$tmp"

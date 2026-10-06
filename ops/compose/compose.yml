@@ -84,7 +84,9 @@ services:
       retries: 3
       start_period: 60s
     volumes:
-      - static:/static
+      # Bind mounts with fixed owners (jfctl): a shared named volume would be
+      # initialised by whichever image mounts it first.
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/static:/static
       - ${JF_DATA_DIR:-/var/lib/jf-manager}/uploads:/uploads
     tmpfs:
       - /tmp
@@ -120,7 +122,7 @@ services:
     ports:
       - "${JF_HTTP_BIND:-127.0.0.1:8080}:8080"
     volumes:
-      - static:/static:ro
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/static:/static:ro
       - ${JF_TRUSTED_PROXIES_FILE:-/etc/jf-manager/trusted-proxies.conf}:/etc/nginx/trusted-proxies.conf:ro
     restart: unless-stopped
     networks:
@@ -153,7 +155,9 @@ services:
 networks:
   internal:
     internal: true
-  edge: {}
-
-volumes:
-  static: {}
+  # Fixed subnet: nginx trusts X-Forwarded-Proto from it (Caddy, and a
+  # reverse proxy on this host whose traffic arrives via the gateway).
+  edge:
+    ipam:
+      config:
+        - subnet: ${JF_EDGE_SUBNET:-172.30.83.0/24}
