@@ -1,76 +1,56 @@
 <template>
-  <div class="service-list-item" >
-    <!-- Header Row: Icon + Topic -->
-    <div class="item-header">
-      
-      <h3 class="service-title">{{ service.topic || 'Kein Thema' }}</h3>
-      <Tag
-        v-if="service.has_events"
-        severity="warn"
-        icon="pi pi-exclamation-triangle"
-        class="mr-2"
+  <article class="service-row" :aria-labelledby="`service-${service.id}-title`">
+    <span class="date-tile" aria-hidden="true">
+      <span class="date-tile__weekday">{{ weekday }}</span>
+      <span class="date-tile__day">{{ day }}</span>
+      <span class="date-tile__month">{{ month }}</span>
+    </span>
+
+    <div class="service-row__text">
+      <h3 :id="`service-${service.id}-title`" class="service-row__title">
+        <span class="visually-hidden">{{ fullDate }}: </span>{{ service.topic || 'Dienst ohne Thema' }}
+      </h3>
+      <p class="service-row__meta">{{ [timeRange, service.place].filter(Boolean).join(' · ') }}</p>
+      <div class="service-row__badges">
+        <StatusBadge v-if="attendanceTotal" severity="success" icon="pi pi-users" :label="attendanceLabel" />
+        <StatusBadge v-else-if="isStarted" severity="warning" icon="pi pi-user-plus" label="Anwesenheit offen" />
+        <StatusBadge v-if="service.has_events" severity="info" icon="pi pi-flag" label="Besonderheiten" />
+        <span v-if="operationsManagerNames" class="service-row__managers"><i class="pi pi-user" aria-hidden="true"></i>{{ operationsManagerNames }}</span>
+      </div>
+    </div>
+
+    <div v-if="showActions" class="service-row__actions">
+      <router-link
+        v-if="isStarted"
+        :to="{ name: 'service-attendance', params: { id: service.id } }"
+        class="row-action row-action--primary"
+        :aria-label="`Anwesenheit für ${service.topic || 'Dienst'} am ${fullDate} erfassen`"
+      ><i class="pi pi-check-square" aria-hidden="true"></i><span>Anwesenheit</span></router-link>
+      <Button
+        v-if="service.training_session"
+        icon="pi pi-calendar"
+        text
+        severity="secondary"
+        :aria-label="`Übungsplan zu ${service.topic || 'Dienst'} öffnen`"
+        v-tooltip.top="'Zur Übung'"
+        @click="$emit('open-training', service.training_session)"
+      />
+      <Button
+        icon="pi pi-pencil"
+        text
+        severity="secondary"
+        :aria-label="`${service.topic || 'Dienst'} am ${fullDate} bearbeiten`"
+        v-tooltip.top="'Bearbeiten'"
+        @click="$emit('edit', service.id)"
       />
     </div>
-
-    <!-- Details Row: Date, Place, Manager, Attendance, Actions -->
-    <div class="item-details">
-      <!-- Date Column -->
-      <div class="col-date">
-        <ServiceDateDisplay :start="service.start" :end="service.end" />
-      </div>
-
-      <!-- Place Column -->
-      <div class="col-place">
-        <div v-if="service.place" class="service-meta">
-          <i class="pi pi-map-marker"></i>
-          <span>{{ service.place }}</span>
-        </div>
-      </div>
-
-      <!-- Operations Manager Column -->
-      <div class="col-manager">
-        <div v-if="service.operations_manager && service.operations_manager.length > 0" class="service-meta">
-          <i class="pi pi-user"></i>
-          <span>{{ operationsManagerNames }}</span>
-        </div>
-      </div>
-
-      <!-- Attendance Stats Column -->
-      <div class="col-attendance">
-        <AttendanceStatsDisplay 
-          v-if="service.attendance_summary"
-          :summary="service.attendance_summary" 
-        />
-      </div>
-
-      <!-- Actions Column -->
-      <div v-if="showActions" class="col-actions">
-        <Button
-          v-if="service.training_session"
-          label="Zur Übung"
-          icon="pi pi-calendar"
-          text
-          size="small"
-          @click="$emit('open-training', service.training_session)"
-        />
-        <Button
-          label="Bearbeiten"
-          icon="pi pi-pencil"
-          outlined
-          size="small"
-          @click="$emit('edit', service.id)"
-        />
-      </div>
-    </div>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
-import ServiceDateDisplay from '../atoms/ServiceDateDisplay.vue'
-import AttendanceStatsDisplay from './AttendanceStatsDisplay.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import type { Service } from '@/types/servicebook'
 
 interface Props {
@@ -90,145 +70,171 @@ const props = withDefaults(defineProps<Props>(), {
 
 defineEmits<Emits>()
 
+const start = computed(() => new Date(props.service.start))
+const end = computed(() => new Date(props.service.end))
+const weekday = computed(() => start.value.toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', ''))
+const day = computed(() => start.value.toLocaleDateString('de-DE', { day: '2-digit' }))
+const month = computed(() => start.value.toLocaleDateString('de-DE', { month: 'short' }).replace('.', ''))
+const fullDate = computed(() => start.value.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }))
+const time = (d: Date) => d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+const timeRange = computed(() => `${time(start.value)}–${time(end.value)}`)
+
+/** Attendance can be taken from the start day on; future services only offer editing. */
+const isStarted = computed(() => {
+  const endOfToday = new Date()
+  endOfToday.setHours(23, 59, 59, 999)
+  return start.value <= endOfToday
+})
+
+const attendanceTotal = computed(() => {
+  const summary = props.service.attendance_summary
+  return summary ? summary.present + summary.excused + summary.absent : 0
+})
+
+const attendanceLabel = computed(() => {
+  const s = props.service.attendance_summary
+  return `${s.present} anwesend · ${s.excused} entschuldigt · ${s.absent} ${s.absent === 1 ? 'fehlt' : 'fehlen'}`
+})
+
 const operationsManagerNames = computed(() => {
   return props.service.operations_manager?.map((m) => m.full_name).join(', ') || ''
 })
 </script>
 
 <style scoped>
+.service-row {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+}
 
-.service-list-item {
+.date-tile {
+  flex: none;
   display: flex;
   flex-direction: column;
-  padding: 0.85rem 0.25rem;
-  border-bottom: 1px solid var(--p-menu-border-color);
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 60px;
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+  line-height: 1.1;
 }
 
-/* Header Row: Icon + Topic */
-.item-header {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 0.5rem;
+.date-tile__weekday,
+.date-tile__month {
+  font-size: 0.6875rem;
+  font-weight: var(--jf-weight-bold);
+  text-transform: uppercase;
 }
 
-.service-title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-color);
+.date-tile__weekday {
+  color: var(--jf-color-primary);
+}
+
+.date-tile__month {
+  color: var(--jf-color-text-muted);
+}
+
+.date-tile__day {
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-bold);
+}
+
+.service-row__text {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* Details Row: Grid layout for aligned columns */
-.item-details {
-  display: grid;
-  grid-template-columns: 180px 1.4fr 1.4fr 140px auto;
-  gap: 0.75rem 1rem;
+.service-row__title {
+  margin: 0;
+  font-size: var(--jf-text-md);
+  font-weight: var(--jf-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.service-row__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
+}
+
+.service-row__badges {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: var(--jf-space-0-5) var(--jf-space-1);
+  margin-top: 2px;
 }
 
-.col-date {
-  font-size: 0.9rem;
+.service-row__managers {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
 }
 
-.col-place,
-.col-manager {
-  overflow: hidden;
-}
-
-.service-meta {
+.service-row__actions {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  color: var(--text-color-secondary);
-  font-size: 0.9rem;
+  gap: var(--jf-space-0-5);
+}
+
+.row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  padding: 0 var(--jf-space-2);
+  border-radius: var(--jf-radius-md);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+}
+
+.row-action--primary {
+  border: 1px solid var(--jf-color-primary);
+  color: var(--jf-color-primary);
+}
+
+.row-action--primary:hover {
+  background: var(--jf-color-selected);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
   white-space: nowrap;
-  overflow: hidden;
 }
 
-.service-meta span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.service-meta i {
-  color: var(--primary-color);
-  flex-shrink: 0;
-}
-
-.col-attendance {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.col-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-/* Mobile responsive - stack vertically */
-@media (max-width: 1024px) {
-  .item-details {
-    grid-template-columns: 160px 1fr 1fr;
-    grid-template-areas:
-      "date attendance attendance"
-      "place place manager"
-      "actions actions actions";
-    align-items: flex-start;
+@media (max-width: 767px) {
+  .service-row {
+    flex-wrap: wrap;
+    padding: var(--jf-space-1-5);
   }
 
-  .col-date {
-    grid-area: date;
+  .service-row__text {
+    flex-basis: calc(100% - 64px);
   }
 
-  .col-attendance {
-    grid-area: attendance;
+  .service-row__actions {
+    flex: 1 1 100%;
     justify-content: flex-end;
   }
 
-  .col-place {
-    grid-area: place;
-  }
-
-  .col-manager {
-    grid-area: manager;
-  }
-
-  .col-actions {
-    grid-area: actions;
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 768px) {
-  .service-list-item {
-    padding: 0.75rem 0;
-  }
-
-  .item-details {
-    grid-template-columns: 150px 1fr;
-    grid-template-areas:
-      "date attendance"
-      "place manager"
-      "actions actions";
-    row-gap: 0.65rem;
-  }
-
-  .col-attendance {
-    justify-content: flex-end;
-  }
-
-  .col-place,
-  .col-manager {
-    min-height: 28px;
-  }
-
-  .col-actions {
-    justify-content: flex-end;
+  .row-action--primary {
+    flex: 1;
+    justify-content: center;
   }
 }
 </style>
