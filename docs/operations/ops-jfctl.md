@@ -57,3 +57,20 @@ Alle Aktionen landen in `/var/log/jf-manager/jfctl.log`. Registrierte Geheimniss
 ## Keine Root-Steuerung aus der Webanwendung
 
 Die Webanwendung erhält weder Docker-Socket noch Root-Rechte. Für eine spätere lesende Statusanzeige schreibt `jfctl` `/var/lib/jf-manager/state/ops-status.json` (Instanz, Modus, Version, Workerzustand, letzte Sicherung).
+
+## Wartungsplan
+
+`jfctl install` richtet auf dem Host systemd-Timer ein; sie gelten für beide Betriebswege und ersetzen `crontab.example`. Jeder Timer ruft `jfctl maintenance run <aufgabe>` auf.
+
+| Aufgabe | Zeitplan | Befehl | Standard |
+| --- | --- | --- | --- |
+| `sessions` | täglich 03:10 | `clearsessions` | an |
+| `export-audits` | täglich 03:20 | `purge_export_audits` | an |
+| `booking-requests` | täglich 03:30 | `purge_booking_requests` | an |
+| `sync-due` | alle 5 Minuten | `run_due_sync_jobs` | an |
+| `order-reminders` | montags 07:00 | `send_pending_reminders` | aus (verschickt E-Mails) |
+| Sicherung | `JF_BACKUP_SCHEDULE`, Standard täglich 02:30 | `jfctl backup create --scheduled` | an |
+
+- `jfctl maintenance list` zeigt Aufgaben und Zustand, `enable`/`disable` schaltet einzelne Aufgaben, `run` führt sie sofort aus.
+- Läuft gerade ein Update, eine Wiederherstellung oder eine Sicherung, überspringt die Wartung ihren Lauf ohne Fehler; der nächste Lauf holt ihn nach. `sync-due` pausiert zusätzlich, solange Worker angehalten sind.
+- Ergebnisse stehen im Journal: `journalctl -u 'jf-manager-maint@*' -u jf-manager-backup`.
