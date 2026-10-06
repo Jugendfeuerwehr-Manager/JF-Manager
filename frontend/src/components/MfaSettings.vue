@@ -5,9 +5,10 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
-import { authApi, type MFASetup, type MFAStatus } from '@/api/auth'
+import { authApi, type MFASetup, type MFAStatus, type Passkey } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { createPasskey, passkeyErrorMessage, passkeysSupported } from '@/utils/webauthn'
 
 const props = defineProps<{ setupRequested?: boolean }>()
 
@@ -22,6 +23,17 @@ const confirmCode = ref('')
 const recoveryCodes = ref<string[]>([])
 
 const qrCode = ref('')
+const passkeyName = ref('')
+const canUsePasskeys = passkeysSupported()
+const passkeys = computed<Passkey[]>(() => status.value?.passkeys ?? [])
+/** Mandatory MFA keeps at least one factor; the server enforces the same rule. */
+const factorCount = computed(() => (status.value?.totp_enabled ? 1 : 0) + passkeys.value.length)
+const canRemoveFactor = computed(() => !status.value?.required || factorCount.value > 1)
+
+const dateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' })
+function formatDate(value: string | null) {
+  return value ? dateFormat.format(new Date(value)) : 'noch nie'
+}
 
 const groupedSecret = computed(() => setup.value?.secret.match(/.{1,4}/g)?.join(' ') ?? '')
 
@@ -62,7 +74,7 @@ async function run(action: () => Promise<void>) {
     // The global step-up dialog already asked; a remaining 403 means it was cancelled.
     error.value = errorCode(err) === 'reauthentication_required'
       ? 'Die Bestätigung wurde abgebrochen. Die Änderung wurde nicht gespeichert.'
-      : getApiErrorMessage(err, 'Die Aktion konnte nicht abgeschlossen werden.')
+      : passkeyErrorMessage(err) ?? getApiErrorMessage(err, 'Die Aktion konnte nicht abgeschlossen werden.')
   } finally {
     busy.value = false
   }
@@ -81,9 +93,36 @@ function confirmSetup() {
     recoveryCodes.value = response.data.recovery_codes
     setup.value = null
     status.value = response.data
-    success.value = 'Zwei-Faktor-Anmeldung ist aktiv.'
+    success.value = 'Die Authenticator-App ist eingerichtet.'
     // Lifts a mandatory-setup restriction for this session.
     await auth.refreshSession()
+  })
+}
+
+function addPasskey() {
+  return run(async () => {
+    const options = (await authApi.passkeyRegisterOptions()).data
+    const credential = await createPasskey(options)
+    const response = await authApi.passkeyRegister(credential, passkeyName.value.trim())
+    status.value = response.data
+    recoveryCodes.value = response.data.recovery_codes
+    passkeyName.value = ''
+    success.value = 'Der Passkey wurde hinzugefügt.'
+    await auth.refreshSession()
+  })
+}
+
+function removePasskey(passkey: Passkey) {
+  return run(async () => {
+    status.value = (await authApi.passkeyRemove(passkey.id)).data
+    success.value = `Passkey „${passkey.name}“ wurde entfernt.`
+  })
+}
+
+function removeTotp() {
+  return run(async () => {
+    status.value = (await authApi.mfaTotpRemove()).data
+    success.value = 'Die Authenticator-App wurde entfernt.'
   })
 }
 
@@ -98,7 +137,7 @@ function disableMfa() {
   return run(async () => {
     status.value = (await authApi.mfaDisable()).data
     recoveryCodes.value = []
-    success.value = 'Zwei-Faktor-Anmeldung wurde deaktiviert.'
+    success.value = 'Zwei-Faktor-Anmeldung wurde deaktiviert; Authenticator-App und Passkeys sind entfernt.'
   })
 }
 
@@ -119,7 +158,8 @@ function downloadCodes() {
 
 onMounted(async () => {
   await loadStatus()
-  if (props.setupRequested && status.value && !status.value.enabled && !setup.value) await startSetup()
+  // With passkey support the person chooses between passkey and app; otherwise start the app setup.
+  if (props.setupRequested && status.value && !status.value.enabled && !setup.value && !canUsePasskeys) await startSetup()
 })
 </script>
 
@@ -130,8 +170,9 @@ onMounted(async () => {
       Für die Rollen dieses Kontos ist eine Zwei-Faktor-Anmeldung verpflichtend. Bitte richte sie ein, um fortzufahren.
     </Message>
     <p class="hint">
-      Zusätzlich zum Passwort fragt JF-Manager einen sechsstelligen Code aus einer Authenticator-App ab
-      (z. B. Aegis, Google Authenticator, Microsoft Authenticator oder ein Passwortmanager).
+      Zusätzlich zum Passwort bestätigst du die Anmeldung mit einem Passkey (Fingerabdruck, Gesichtserkennung,
+      Geräte-PIN oder Sicherheitsschlüssel) oder mit einem Code aus einer Authenticator-App
+      (z. B. Aegis, Google Authenticator, Microsoft Authenticator oder ein Passwortmanager). Beides kann parallel genutzt werden.
     </p>
 
     <p v-if="loading" class="hint" role="status">Wird geladen…</p>
@@ -174,7 +215,7 @@ onMounted(async () => {
       <div v-if="recoveryCodes.length" class="codes-box" role="region" aria-label="Wiederherstellungscodes">
         <Message severity="warn" :closable="false">
           Speichere diese Codes jetzt sicher. Sie werden nur einmal angezeigt; jeder Code funktioniert genau einmal,
-          falls dein Authenticator nicht verfügbar ist.
+          falls weder Passkey noch Authenticator-App verfügbar sind.
         </Message>
         <ul class="codes">
           <li v-for="code in recoveryCodes" :key="code"><code>{{ code }}</code></li>
@@ -186,12 +227,48 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-if="!setup && !recoveryCodes.length" class="actions">
-        <Button v-if="!status.enabled" label="Einrichten" icon="pi pi-shield" :loading="busy" @click="startSetup" />
-        <template v-else>
-          <Button label="Neue Wiederherstellungscodes" icon="pi pi-refresh" severity="secondary" :loading="busy" @click="regenerateCodes" />
-          <Button v-if="!status.required" label="Deaktivieren" icon="pi pi-times" severity="danger" outlined :disabled="busy" @click="disableMfa" />
-        </template>
+      <div v-if="!setup && !recoveryCodes.length" class="factor" aria-labelledby="mfa-passkeys-heading">
+        <h4 id="mfa-passkeys-heading"><i class="pi pi-key" aria-hidden="true" /> Passkeys</h4>
+        <ul v-if="passkeys.length" class="passkey-list">
+          <li v-for="passkey in passkeys" :key="passkey.id">
+            <span class="passkey-name">{{ passkey.name }}</span>
+            <span class="hint">hinzugefügt {{ formatDate(passkey.created_at) }}, zuletzt genutzt {{ formatDate(passkey.last_used_at) }}</span>
+            <Button
+              :aria-label="`Passkey ${passkey.name} entfernen`"
+              label="Entfernen"
+              icon="pi pi-trash"
+              severity="danger"
+              text
+              :disabled="busy || !canRemoveFactor"
+              @click="removePasskey(passkey)"
+            />
+          </li>
+        </ul>
+        <p v-else class="hint">Noch kein Passkey hinzugefügt.</p>
+        <form v-if="canUsePasskeys" class="inline-form" @submit.prevent="addPasskey">
+          <label for="passkey-name" class="sr-only">Name des Passkeys</label>
+          <InputText id="passkey-name" v-model="passkeyName" maxlength="64" placeholder="Name, z. B. Smartphone" />
+          <Button type="submit" label="Passkey hinzufügen" icon="pi pi-plus" :loading="busy" />
+        </form>
+        <p v-else class="hint">Dieser Browser unterstützt keine Passkeys. Nutze die Authenticator-App oder einen aktuellen Browser.</p>
+      </div>
+
+      <div v-if="!setup && !recoveryCodes.length" class="factor" aria-labelledby="mfa-totp-heading">
+        <h4 id="mfa-totp-heading"><i class="pi pi-mobile" aria-hidden="true" /> Authenticator-App</h4>
+        <div class="actions">
+          <Tag v-if="status.totp_enabled" value="Eingerichtet" severity="success" icon="pi pi-check" />
+          <Button v-if="!status.totp_enabled" label="Authenticator-App einrichten" icon="pi pi-shield" severity="secondary" :loading="busy" @click="startSetup" />
+          <Button v-else label="Entfernen" icon="pi pi-trash" severity="danger" text :disabled="busy || !canRemoveFactor" @click="removeTotp" />
+        </div>
+      </div>
+
+      <p v-if="status.required && status.enabled && !canRemoveFactor" class="hint">
+        Der letzte zweite Faktor eines Kontos mit verpflichtender Zwei-Faktor-Anmeldung kann nicht entfernt werden. Richte zuerst einen weiteren ein.
+      </p>
+
+      <div v-if="!setup && !recoveryCodes.length && status.enabled" class="actions">
+        <Button label="Neue Wiederherstellungscodes" icon="pi pi-refresh" severity="secondary" :loading="busy" @click="regenerateCodes" />
+        <Button v-if="!status.required" label="Zwei-Faktor-Anmeldung deaktivieren" icon="pi pi-times" severity="danger" outlined :disabled="busy" @click="disableMfa" />
       </div>
     </template>
 
@@ -207,6 +284,11 @@ onMounted(async () => {
 .hint { color: var(--text-color-secondary); font-size: .95rem; margin: 0; }
 .status-row, .actions, .inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
 .actions :deep(.p-button), .inline-form :deep(.p-button), .inline-form :deep(input) { min-height: 44px; }
+.factor { display: flex; flex-direction: column; gap: .5rem; }
+.factor h4 { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: 1rem; }
+.passkey-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .25rem; }
+.passkey-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; }
+.passkey-name { font-weight: 600; }
 .setup-box, .codes-box { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; border: 1px solid var(--surface-border, #d9dee5); border-radius: 8px; }
 .setup-box ol { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
 .qr-code { display: block; width: 200px; height: 200px; margin: .75rem 0 .25rem; background: #fff; border-radius: 8px; }
