@@ -185,16 +185,24 @@ ad_logs() {
     journalctl "${units[@]}" "${args[@]}" | while IFS= read -r line; do printf '%s\n' "$(redact "$line")"; done
 }
 
-# manage.py as service user with the service environment (files parsed, not sourced).
+# manage.py as service user with the service environment. Files are parsed,
+# not sourced, and values are exported inside a subshell: passing them as
+# "env KEY=VALUE" arguments would expose secrets in /proc/<pid>/cmdline.
 ad_manage() {
-    local env_args=() f k
-    for f in "$JF_APP_ENV" "$JF_ETC/native.env"; do
-        while IFS= read -r k; do env_args+=("$k=$(kv_get "$f" "$k")"); done < <(kv_keys "$f")
-    done
-    (cd "$JF_OPT/current/backend" && runuser -u "$JF_SERVICE_USER" -- env -i \
-        PATH=/usr/bin:/bin HOME="$JF_DATA_DIR" LANG=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 \
-        DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings "${env_args[@]}" \
-        "$JF_OPT/current/venv/bin/python" manage.py "$@")
+    (
+        local v f k runuser_bin
+        runuser_bin=$(command -v runuser) || exit 1
+        while read -r v; do
+            case $v in JF_ADMIN_USER|JF_ADMIN_EMAIL|JF_ADMIN_PASSWORD|JF_ADMIN_FORCE|JF_RESET_MFA) ;; *) unset "$v" ;; esac
+        done < <(compgen -e)
+        export PATH=/usr/bin:/bin LANG=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 \
+            DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings
+        for f in "$JF_APP_ENV" "$JF_ETC/native.env"; do
+            while IFS= read -r k; do export "$k=$(kv_get "$f" "$k")"; done < <(kv_keys "$f")
+        done
+        cd "$JF_OPT/current/backend" || exit 1
+        exec "$runuser_bin" -u "$JF_SERVICE_USER" -- "$JF_OPT/current/venv/bin/python" manage.py "$@"
+    )
 }
 
 ad_entry_stop()  { local e; mapfile -t e < <(_entry_units); systemctl stop "${e[@]}"; }
@@ -248,9 +256,16 @@ ad_uploads_owner() { printf '%s:%s' "$JF_SERVICE_USER" "$JF_SERVICE_USER"; }
 
 # Builds the Python environment inside the (already verified and extracted)
 # release directory. Locked packages with hashes only.
+# jfctl runs with umask 027; release files must be readable (not writable) for
+# the service user and for nginx (www-data).
+_native_perms() {
+    chmod 755 "$JF_OPT" "$JF_OPT/releases" 2>/dev/null || true
+    chmod -R u+rwX,go+rX,go-w "$1"
+}
+
 ad_fetch_release() { # version manifest
     local dir="$JF_OPT/releases/${1#v}"
-    [ -x "$dir/venv/bin/python" ] && [ -f "$dir/venv/.complete" ] && return 0
+    if [ -x "$dir/venv/bin/python" ] && [ -f "$dir/venv/.complete" ]; then _native_perms "$dir"; return 0; fi
     rm -rf "$dir/venv"
     python3 -m venv "$dir/venv"
     "$dir/venv/bin/pip" install -q --disable-pip-version-check --no-cache-dir --require-hashes \
@@ -258,6 +273,7 @@ ad_fetch_release() { # version manifest
     "$dir/venv/bin/pip" install -q --disable-pip-version-check --no-cache-dir --require-hashes \
         -r "$dir/backend/requirements-server.txt" || return 1
     touch "$dir/venv/.complete"
+    _native_perms "$dir"
 }
 
 # The caller switched /opt/jf-manager/current; units point to "current".
