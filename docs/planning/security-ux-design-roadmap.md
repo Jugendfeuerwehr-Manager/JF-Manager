@@ -10,7 +10,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | --- | --- |
 | Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.5a geprüft: 644 PostgreSQL-15- und 203 Frontendtests grün. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
-| Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
+| Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. Einziger Bearbeiter und Integrationsagent. TRAIN-Stand bleibt erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
@@ -549,7 +549,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
-| ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
+| ROLE-02 | in Arbeit | Codex | Detailvertrag aufgenommen; Umsetzung und Abnahme offen. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5a integriert; TRAIN-01.5b Status-/Dienstvertrag in Umsetzung. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
@@ -617,6 +617,28 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Offene Fehler / Risiken:** SEC-01/02 sind offen. Trainings- und Bestell-Sonderrechte werden in der API noch teils global geprüft; abteilungsgebundene Rollen benötigen Bereichsprüfung. Bei ausdrücklich zugeordneter Altgruppe bleiben zusätzliche Rechte bestehen. API-Rechteänderungen an zugewiesenen Gruppen wirken auf bestehende Nutzer; der Vergleich zeigt Zuweisungszahlen. Archivieren entzieht bestehende Rechte nicht; ROLE-02 muss archivierte Vorlagen für neue Zuweisungen sperren. Global-/Abteilungs-Mischzuweisungen benötigen manuelle Bereinigung. `settings_admin` ist fachlich noch nicht definiert. `dump.rdb` bleibt fremd/unversioniert und unangetastet.
 - **Laufende Prozesse und sichere Fortsetzung:** SEC-09.5-Dateien liegen uncommittiert und getrennt vom Rollen-Commit; nur ROLE-01.6c-Dateien und zugehörige Roadmap-Hunks werden gestaged. Git-Staging und Commits ausschließlich durch den Integrationsagenten.
 - **Nächster konkreter Schritt:** `ROLE-01.7` Bereichs- und Kombinationsprüfung sowie Rollenhandbuch.
+
+### ROLE-02: Sichere Zuweisung und nachvollziehbare Herkunft
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Codex, einziger Integrationsagent.
+- **Abhängigkeiten:** ROLE-01-Vorlagen und Vergleich; SEC-01 abgeschlossen, SEC-02-Restabnahme wird bei ROLE-01.7 berücksichtigt; SEC-07 MFA/Step-up vorhanden. CFG-01 bleibt eigenes Paket; vorhandene Einstellungspermissions werden ausdrücklich katalogisiert.
+- **Ziel und Abnahmekriterien:** Person → Bereich → Rolle → Wirkung → Speicherung im Web. Organisationsrollen nur mit globalem Zuweisungsrecht; Leitungen nur im zugelassenen Bereich und mit administrativ freigegebenen unveränderten Fachrollen. Selbstbeförderung und Bearbeitung privilegierter Konten durch Delegierende gesperrt. Archivierte Rollen nicht neu zuweisbar. Django-Gruppen bleiben einzige Rechtequelle. Herkunft lokal/LDAP/OIDC nachvollziehbar; externer Entzug erhält unabhängige lokale und andere externe Quellen. Schreibaktionen mit Step-up, Delegationsrechte mit MFA-Pflicht. Konflikte ändern keine Daten.
+- **Teilschritte mit stabilen IDs:**
+  - `ROLE-01.7a`: Trainings-/Bestell-Sonderrechte und lesende Trainingsbereiche an reale Abteilungen binden; Regressionen mit ausgelieferten Rollen.
+  - `ROLE-02.1`: Explizite Django-Zuweisungs-/Delegationsrechte, versionierter Katalog, permissiongebundene administrative Delegationsfreigabe und Herkunftsmodell samt verlustfreier Migration.
+  - `ROLE-02.2`: Atomare Zuweisungs-API mit Wirkungsvorschau, Fingerprint, Herkunftserklärung, Selbst-/Privilegienschutz, MFA/Step-up und administrativen Identitätsrechten.
+  - `ROLE-02.3`: LDAP/OIDC auf getrennte Quellen umstellen; Mappingänderung/-entzug erhält unabhängige lokale Rollen; Altverwaltung an Quellenmodell anbinden.
+  - `ROLE-02.4`: Zuweisungsoberfläche, Freigabe, lesbare Wirkung und erweiterte technische Ansicht; Fehler-/Konfliktzustände erhalten Eingaben.
+  - `ROLE-01.7b`: Vollständige Einzel-/Kombinationsabnahme, Seed/Migrationsprüfung und Rollenhandbuch; ROLE-01/02 abschließen nach bestandenen Prüfungen.
+- **Letzter dauerhafter Checkpoint:** Planungsübernahme in diesem Commit.
+- **Branch:** `feat/security-roles-training-operations` (sauberer Ausgangsstand bei `7c3e80c`).
+- **Geänderte Dateien / Commit-Bezug:** Dieser Detailblock und Wiederaufnahmeübersicht.
+- **Umgesetzte Teilschritte:** Planung; Implementierung offen.
+- **Ausgeführte Prüfungen mit Ergebnis:** Git-/Codeabgleich bestanden. Keine neuen Anwendungstests ausgeführt.
+- **Offene Fehler / Risiken:** Trainings-/Bestell-Sonderrechte sind tatsächlich noch global geprüft. LDAP-/OIDC-Entzug löscht bisher ganze Abteilungszuordnungen. Systemadministrationsvorlage erreicht alte Superuser-only-APIs bisher nicht. TRAIN-Statusvertrag ist offen; veröffentlichte Übungen für Betreuer benötigen eine konkrete sichere Lösung.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Keine fremden Änderungen vorhanden; bestehende lokale Dienste/Daten werden nicht verändert.
+- **Nächster konkreter Schritt:** ROLE-01.7a implementieren und prüfen.
 
 ### SEC-01: aktueller Detailstand
 
@@ -1278,3 +1300,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | SEC-08.4 | XLSX-Serverfehler bei frei eingegebenen Listennamen mit Excel-reservierten Zeichen reproduziert. Blattnamen vor Vergabe bereinigt und auf 31 Zeichen begrenzt, mit Fallback. Eigener isolierter Arbeitsstand schützt laufende TRAIN-Integration. | Regression vorher fehlgeschlagen, danach 10/10 Export-/Rechtetests und Ruff bestanden. Browserdownload nicht ausgeführt. | Dieser Commit: `fix(SEC-08.4): sanitize list worksheet titles for XLSX exports` | SEC-08.5 PDF, dann koordinierte Integration. |
 
 | 06.10.2026 | SEC-08.5 | pdfmake 0.3 liefert die Schriftdateien direkt und benötigt `addVirtualFileSystem`; veraltete Zuweisung an `vfs` entfernt. Asynchronen Download abwarten, PDF-Fehler in ListDetailView sichtbar melden. Tests erzeugen echte PDF-Bytes mit installierter Bibliothek und prüfen verzögerte Ablehnungen. | Zwei Composable-Regressionen vorher fehlgeschlagen; danach 7/7 gezielte und 194/194 Frontendtests, Gesamt-Typecheck, ESLint, Produktionsbuild bestanden. Browserlauf gegen echtes Backend nicht ausgeführt. | Dieser Commit: `fix(SEC-08.5): register PDF fonts and report list download failures` | Nutzerabnahme der Downloads. |
+
+| 06.10.2026 | ROLE-02.0 | Nutzerauftrag für vollständige ROLE-Umsetzung übernommen. Roadmap, Manifest, Git und tatsächliche Endpunkte abgeglichen; Detailvertrag und stabile IDs ergänzt. Keine fremden Änderungen vorhanden. | Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(ROLE-02.0): define complete role assignment acceptance` | ROLE-01.7a. |
