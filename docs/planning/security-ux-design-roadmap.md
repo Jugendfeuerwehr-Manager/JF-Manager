@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-01 abgeschlossen (SEC-01.57c). |
-| Aktuelles Paket | SEC-01/SEC-02-Restabnahme und ROLE (Claude, von Codex übernommen). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
+| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert. |
+| Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-01.57c` (dieser Commit). |
+| Letzter Roadmap-Commit | TRAIN-Integration (10335ef übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-02.9 Abnahme, danach ROLE-01.7, anschließend ROLE-02. |
+| Nächster konkreter Schritt | TRAIN-Commits integrieren, dann TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf abnehmen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
-| TRAIN-01 | offen | — | Atomarer Planvertrag und Versionsprüfung. |
+| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0 Vertrag und isolierter Arbeitsstand; nächster Schritt TRAIN-01.1. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
@@ -907,6 +907,29 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Grenzen nach Abnahme:** CSP nur beobachtend; Umstellung auf Durchsetzung nach Beobachtung im Betrieb (angemeldete Seiten im Browser nicht geprüft, Monaco-Editor nicht im Browser geprüft). `braces` im Lint-Werkzeug ohne Upstream-Korrektur (CI lässt Werkzeugbefunde unter „kritisch“ zu). Kein Lauf hinter echtem TLS-Proxy; Proxy muss `X-Forwarded-Proto` überschreiben. OpenAPI-Schema mit rund 180 Dokumentationswarnungen (aus `check --deploy` herausgenommen, Grenze aus SEC-07). Redis `allkeys-lru` kann Limitzähler verwerfen. Altlasten für OPS-05: ungenutzte `Pipfile` im Projektwurzelverzeichnis, nicht eingebundene `frontend/conf.d/locations/*.conf`, auskommentierter HTTPS-Serverblock ohne Snippets. GitHub-CI-Lauf mit neuen Jobs nicht ausgeführt.
 - **Nächster Schritt:** keiner im Paket.
 
+### TRAIN-01: Verlässliche Planbearbeitung
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Codex (TRAIN-Session); SEC und DES/UX besitzen ihre bisherigen Dateien weiterhin.
+- **Abhängigkeiten:** Bestehende SEC-02-Zielprüfung und SEC-04/05-Inhalts-/Medienprüfung bleiben erhalten. Abteilungsgebundene Trainingsrechte sind noch global geprüft; deren Aktivierung bleibt SEC-01/02/ROLE-01. Statusabhängige Dienstverknüpfung gehört zum gemeinsamen Vertrag mit TRAIN-03 und wird dort abgenommen.
+- **Ziel und Abnahme:** Zusammenhängender lokaler Planentwurf; genau eine atomare Speicheraktion mit erwarteter Versionsnummer. Ungültige Blöcke oder fehlende Zielrechte ändern nichts. Konflikte erhalten den lokalen Entwurf und zeigen den aktuellen Serverstand. Zeiten liegen vollständig innerhalb eines positiven, eintägigen Terminrahmens. Kein automatischer Tausch; Tastatur/Formular, ausdrückliche Vorschauaktionen, Undo/Redo und Verlassenswarnung. Status Entwurf/veröffentlicht/abgeschlossen/abgesagt mit stabiler Dienstverknüpfung.
+- **Dateiverantwortung:** `backend/training/` (Modelle, Serializer, Planservice, Trainings-Viewsets und neue Tests), `frontend/src/stores/trainingPlanner.ts`, `frontend/src/api/training.ts`, `frontend/src/types/training.ts`, Bearbeitungslogik und zugehörige Bedienelemente in `SwimlaneEditor.vue`. DES-01.10b-Darstellungsänderungen müssen vor Integration abgeglichen werden. Keine Änderungen an SEC-/UX-Dateien oder Rollenrechten.
+- **Teilschritte mit stabilen IDs:**
+  - `TRAIN-01.0`: Vertrag, Verantwortungsgrenzen und Wiederaufnahme festlegen.
+  - `TRAIN-01.1`: Planversion und serverseitige Zeitprüfung einschließlich alter Einzel-Schreibwege; Regressionen.
+  - `TRAIN-01.2`: Vollständiger Plan-Endpunkt mit atomarer Speicherung, Versionsprüfung, Zuordnungsprüfung und Erhalt bestehender Blockidentitäten/Medien.
+  - `TRAIN-01.3`: Lokaler Planentwurf für Anlage, Bearbeitung, Entfernung und Verschiebung; eine Speicheranfrage, Fehler-/Konflikterhalt.
+  - `TRAIN-01.4`: Rückgängig/Wiederholen, Verlassenswarnung und explizite Tastatur-/Formularaktionen ohne automatischen Tausch.
+  - `TRAIN-01.5`: Status-/Dienstvertrag mit TRAIN-03, ausdrückliche Vorschau für Tauschen/Nachfolgende verschieben; gebündelte Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** TRAIN-01.0, dieser Commit.
+- **Branch:** Integration auf `feat/security-roles-training-operations`; isolierter detached Worktree `/private/tmp/jf-manager-train` bei `d89c90b`, keine konkurrierenden Git-Schreiboperationen im gemeinsamen Checkout.
+- **Geänderte Dateien / Commit-Bezug:** Roadmap; dieser Commit: `docs(TRAIN-01.0): define atomic planner implementation contract`.
+- **Umgesetzte Teilschritte:** TRAIN-01.0.
+- **Prüfungen:** Code-/Git-Abgleich bestanden. Anwendungstests für Planungsänderung nicht ausgeführt.
+- **Offene Fehler / Risiken:** Bestehender Planer speichert Einzeländerungen parallel, Inhaltsänderungen sofort; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine TRAIN-Dienste; Tests ausschließlich auf Wegwerf-Testdatenbanken.
+- **Nächster konkreter Schritt:** TRAIN-01.1 Planversion und Zeitprüfung.
+
 ### DES-01: Gemeinsames Designsystem
 
 - **Status:** in Arbeit.
@@ -1224,3 +1247,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | SEC-01.57b | Entfernt: `qualifications/api_views.py` (Qualifikations-Viewsets nur mit globalen `DjangoModelPermissions`, ersetzt durch `qualifications/api/viewsets`), `inventory/api_views.py` (veraltete JSON-Suchen und `ItemVariantAPIView` als einfache Django-Views ohne DRF-Rechte) und `orders/views_notifications.py` (Benachrichtigungs-Dashboard/`OrderSummaryView`). Keines wird geroutet oder importiert; ein späteres Einbinden hätte die SEC-01-Prüfungen umgangen. | `check`, Auflösung aller URL-Namen, Ruff und 321/321 API-/Inventar-/Bestell-/Qualifikationstests (6 übersprungen) bestanden. | Dieser Commit: `refactor(SEC-01.57b): remove unrouted legacy views without scoped checks` | SEC-01.57c. |
 
 | 06.10.2026 | SEC-01.57c | Restendpunkte mit `IsAuthenticated`/Standardrechten geprüft. (1) Anhänge: Schreibzugriffe nutzten für Qualifikationen, Sonderaufgaben, Listen und Ausbildungsblöcke nur die Sichtbarkeit des Eigentümers, weil der Bereichsfilter Schreibzugriffe an eine Objektprüfung weiterreicht, die hier nie lief; jetzt läuft für PATCH/PUT/DELETE die Objektprüfung des Eigentümer-Endpunkts (z. B. Änderungsrecht in der Abteilung des Mitglieds). (2) Einstellungen: Staff durfte ohne Einstellungsrecht allgemeine, E-Mail-, Mitglieder-, Dienst- und Bestelleinstellungen lesen und ändern – entgegen 2.2 („`is_staff` steuert nur den Django-Admin“); entfernt, Liste zeigt die Kategorien mit Leserecht. Alter Test, der Staff-Vollzugriff festschrieb, durch Vertragstests ersetzt; Farbschema-Test (DES-01.6b) erhält ausdrückliche Rechte. (3) `has_org_wide_access` und Favoritenabteilung behandeln Staff nicht mehr als organisationsweit (Anzeige passte nicht zum serverseitigen Bereich). Geprüft ohne Befund: Benutzerprofil nur eigenes Konto, Push nur eigene Abos, App-Einstellungen lesend, OIDC-/LDAP-Test mit Einstellungsrecht, Transaktionen aus SEC-09. SEC-01 abgeschlossen. | 4 neue Anhang-Regressionen (2 vorher rot), 3 Einstellungs-Vertragstests, 71/71 Anhangtests, volle Backend-Suite 645/645 (6 übersprungen), Ruff bestanden. | Dieser Commit: `fix(SEC-01.57c): check owners on attachment writes and drop staff settings bypass` | SEC-02.9. |
+
+| 06.10.2026 | TRAIN-01.0 | Manifest und Roadmap mit Code/Git abgeglichen; TRAIN-01 mit Abnahme, Abhängigkeiten, Dateiverantwortung und IDs übernommen. Isolierter Arbeitsstand schützt laufende SEC-/UX-Arbeit; Integration auf gemeinsamen Branch bleibt eigener koordinierter Schritt. | Code-/Git-Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(TRAIN-01.0): define atomic planner implementation contract` | TRAIN-01.1. |
