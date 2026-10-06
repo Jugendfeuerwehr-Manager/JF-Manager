@@ -8,6 +8,7 @@ from rest_framework.exceptions import APIException, PermissionDenied, Validation
 from rest_framework.response import Response
 
 from departments.api.serializers.role_template import RoleTemplateReadSerializer
+from departments.delegation import approval_digest, can_approve_delegation
 from departments.models import RoleTemplate
 from departments.role_comparison import compare_role_template
 from users.step_up import StepUpForWrites
@@ -26,6 +27,7 @@ class CanManageRoleTemplates(permissions.BasePermission):
         "partial_update": ("departments.change_roletemplate",),
         "archive": ("departments.change_roletemplate",),
         "apply_permissions": ("departments.change_roletemplate", "auth.change_group"),
+        "delegation": ("departments.change_roletemplate", "departments.can_assign_roles"),
         "duplicate": ("departments.add_roletemplate", "auth.add_group"),
     }
 
@@ -99,6 +101,9 @@ class RoleTemplateViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         self._check_fingerprint(request, template)
         self._check_active(template)
         self._check_not_own_group(request, template)
+        if "is_delegable" in changes:
+            template.delegation_approval = ""
+            changes["delegation_approval"] = ""
         for field, value in changes.items():
             setattr(template, field, value)
         try:
@@ -142,7 +147,29 @@ class RoleTemplateViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         if (organization_scope in names) != (template.scope == RoleTemplate.Scope.ORGANIZATION):
             raise ValidationError({"permissions": "Organisationsberechtigung passt nicht zum Vorlagenbereich."})
         template.group.permissions.set(selected)
+        template.delegation_approval = ""
+        template.save(update_fields=["delegation_approval", "updated_at"])
         return Response({**self.get_serializer(template).data, **compare_role_template(template)})
+
+    @transaction.atomic
+    @action(detail=True, methods=["post"])
+    def delegation(self, request, pk=None):
+        self._check_fields(request, {"fingerprint", "approved"})
+        template = self._locked_template()
+        self._check_fingerprint(request, template)
+        self._check_not_own_group(request, template)
+        approved = request.data.get("approved")
+        if type(approved) is not bool:
+            raise ValidationError({"approved": "Ein boolescher Wert ist erforderlich."})
+        if approved and not can_approve_delegation(template):
+            raise ValidationError(
+                {
+                    "approved": "Nur aktive delegierbare Abteilungsrollen ohne privilegierte Rechte können freigegeben werden."
+                }
+            )
+        template.delegation_approval = approval_digest(template) if approved else ""
+        template.save(update_fields=["delegation_approval", "updated_at"])
+        return Response(self.get_serializer(template).data)
 
     @transaction.atomic
     @action(detail=True, methods=["post"])

@@ -123,6 +123,7 @@ PERMISSION_BLOCKS = {
         "members.add_emailmessage",
     ),
     "identity_admin": (
+        "departments.can_assign_roles",
         "users.view_customuser",
         "users.add_customuser",
         "users.change_customuser",
@@ -136,6 +137,9 @@ PERMISSION_BLOCKS = {
         "departments.add_roletemplate",
         "departments.change_roletemplate",
     ),
+    "delegation": ("departments.can_delegate_roles",),
+    "leadership_delegation": ("departments.can_delegate_department_leadership",),
+    "settings_admin": ("settings_manager.view_all_settings", "settings_manager.change_all_settings"),
     "department_admin": (
         "departments.view_department",
         "departments.add_department",
@@ -166,9 +170,11 @@ ROLE_SPECS = (
             "training_editor",
             "qualification_editor",
             "task_editor",
+            "delegation",
+            "leadership_delegation",
             "organization_scope",
         ),
-        version=2,
+        version=3,
     ),
     RoleSpec(
         "department_youth_director",
@@ -186,8 +192,9 @@ ROLE_SPECS = (
             "training_editor",
             "qualification_editor",
             "task_editor",
+            "delegation",
         ),
-        version=2,
+        version=3,
     ),
     RoleSpec(
         "youth_leader",
@@ -307,6 +314,7 @@ ROLE_SPECS = (
         "Konten, Abteilungen und Rollengruppen verwalten.",
         "organization",
         False,
-        _permissions("identity_admin", "department_admin", "organization_scope"),
+        _permissions("identity_admin", "department_admin", "settings_admin", "organization_scope"),
+        version=2,
     ),
 )

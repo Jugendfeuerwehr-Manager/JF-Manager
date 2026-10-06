@@ -33,6 +33,7 @@ class RoleTemplate(models.Model):
     template_version = models.PositiveIntegerField(default=1, verbose_name="Vorlagenversion")
     scope = models.CharField(max_length=20, choices=Scope.choices, verbose_name="Zulässiger Bereich")
     is_delegable = models.BooleanField(default=False, verbose_name="Delegierbar nach Freigabe")
+    delegation_approval = models.CharField(max_length=64, blank=True, default="", editable=False)
     is_archived = models.BooleanField(default=False, verbose_name="Archiviert")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
@@ -41,6 +42,11 @@ class RoleTemplate(models.Model):
         verbose_name = "Rollenvorlage"
         verbose_name_plural = "Rollenvorlagen"
         ordering = ["name", "key"]
+        permissions = [
+            ("can_assign_roles", "Kann Rollen organisationsweit zuweisen"),
+            ("can_delegate_roles", "Kann freigegebene Abteilungsrollen zuweisen"),
+            ("can_delegate_department_leadership", "Kann Abteilungsleitungen zuweisen"),
+        ]
         constraints = [
             models.CheckConstraint(check=models.Q(template_version__gte=1), name="role_template_version_gte_1"),
             models.CheckConstraint(

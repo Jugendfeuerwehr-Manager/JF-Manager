@@ -8,7 +8,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.5a geprüft: 644 PostgreSQL-15- und 203 Frontendtests grün. |
+| Letzter Checkpoint | 06.10.2026: ROLE-02.1 Rechte, Freigabe und Herkunftsmodell implementiert; 31 gezielte Tests bestanden. Parallel erscheinende TRAIN-Änderungen bleiben fremd und unberührt. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. Einziger Bearbeiter und Integrationsagent. TRAIN-Stand bleibt erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
@@ -549,7 +549,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
-| ROLE-02 | in Arbeit | Codex | Detailvertrag aufgenommen; Umsetzung und Abnahme offen. |
+| ROLE-02 | in Arbeit | Codex | ROLE-02.1 Rechte, Freigabe und Herkunftsmodell; 31 gezielte Tests bestanden. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5a integriert; TRAIN-01.5b Status-/Dienstvertrag in Umsetzung. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
@@ -631,14 +631,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `ROLE-02.3`: LDAP/OIDC auf getrennte Quellen umstellen; Mappingänderung/-entzug erhält unabhängige lokale Rollen; Altverwaltung an Quellenmodell anbinden.
   - `ROLE-02.4`: Zuweisungsoberfläche, Freigabe, lesbare Wirkung und erweiterte technische Ansicht; Fehler-/Konfliktzustände erhalten Eingaben.
   - `ROLE-01.7b`: Vollständige Einzel-/Kombinationsabnahme, Seed/Migrationsprüfung und Rollenhandbuch; ROLE-01/02 abschließen nach bestandenen Prüfungen.
-- **Letzter dauerhafter Checkpoint:** Planungsübernahme in diesem Commit.
+- **Letzter dauerhafter Checkpoint:** ROLE-02.1 in diesem Commit.
 - **Branch:** `feat/security-roles-training-operations` (sauberer Ausgangsstand bei `7c3e80c`).
 - **Geänderte Dateien / Commit-Bezug:** Dieser Detailblock und Wiederaufnahmeübersicht.
-- **Umgesetzte Teilschritte:** Planung; Implementierung offen.
-- **Ausgeführte Prüfungen mit Ergebnis:** Git-/Codeabgleich bestanden. Keine neuen Anwendungstests ausgeführt.
+- **Umgesetzte Teilschritte:** Planung und ROLE-02.1.
+- **Ausgeführte Prüfungen mit Ergebnis:** ROLE-02.1: 31/31 Freigabe-/API-/Seed-/Zuordnungstests auf isolierter SQLite-Testdatenbank sowie Ruff bestanden. Erster Werkzeugstart fehlgeschlagen wegen fehlender Testumgebung; mit expliziten fiktiven Schlüsseln/Testsettings bestanden. Keine Anwendungsmigration ausgeführt.
 - **Offene Fehler / Risiken:** Trainings-/Bestell-Sonderrechte sind tatsächlich noch global geprüft. LDAP-/OIDC-Entzug löscht bisher ganze Abteilungszuordnungen. Systemadministrationsvorlage erreicht alte Superuser-only-APIs bisher nicht. TRAIN-Statusvertrag ist offen; veröffentlichte Übungen für Betreuer benötigen eine konkrete sichere Lösung.
-- **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Keine fremden Änderungen vorhanden; bestehende lokale Dienste/Daten werden nicht verändert.
-- **Nächster konkreter Schritt:** ROLE-01.7a implementieren und prüfen.
+- **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Nach Planung sind parallel fremde TRAIN-Änderungen erschienen; ausschließlich eigene ROLE-Dateien und Roadmapänderungen stagen. Alte unmarkierte Gruppenbindungen werden durch Migration konservativ als lokal erhalten.
+- **Nächster konkreter Schritt:** ROLE-02.2 API, anschließend Quellenintegration; ROLE-01.7a nach TRAIN-Abstimmung.
 
 ### SEC-01: aktueller Detailstand
 
@@ -1302,3 +1302,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | SEC-08.5 | pdfmake 0.3 liefert die Schriftdateien direkt und benötigt `addVirtualFileSystem`; veraltete Zuweisung an `vfs` entfernt. Asynchronen Download abwarten, PDF-Fehler in ListDetailView sichtbar melden. Tests erzeugen echte PDF-Bytes mit installierter Bibliothek und prüfen verzögerte Ablehnungen. | Zwei Composable-Regressionen vorher fehlgeschlagen; danach 7/7 gezielte und 194/194 Frontendtests, Gesamt-Typecheck, ESLint, Produktionsbuild bestanden. Browserlauf gegen echtes Backend nicht ausgeführt. | Dieser Commit: `fix(SEC-08.5): register PDF fonts and report list download failures` | Nutzerabnahme der Downloads. |
 
 | 06.10.2026 | ROLE-02.0 | Nutzerauftrag für vollständige ROLE-Umsetzung übernommen. Roadmap, Manifest, Git und tatsächliche Endpunkte abgeglichen; Detailvertrag und stabile IDs ergänzt. Keine fremden Änderungen vorhanden. | Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(ROLE-02.0): define complete role assignment acceptance` | ROLE-01.7a. |
+
+| 06.10.2026 | ROLE-02.1 | Explizite Zuweisungs-/Delegationsrechte und Katalogversionen, Einstellungsrechte für Systemadministration, administrative Freigabe an konkrete Gruppenpermissions gebunden und Herkunftsmodell mit konservativer lokaler Altdatenübernahme ergänzt. Seed erweitert vorhandene Gruppen weiterhin nicht. | 31/31 gezielte Tests und Ruff bestanden; erster Werkzeugstart ohne explizite Testumgebung fehlgeschlagen, Wiederholung bestanden. Anwendungsmigration und breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-02.1): bind delegation approval to permissions and preserve assignment sources` | ROLE-02.2. |

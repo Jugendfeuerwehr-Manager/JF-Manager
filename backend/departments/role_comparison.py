@@ -49,6 +49,7 @@ def compare_role_template(template):
         "oidc_mappings": group.oidc_group_mappings.count() if group else 0,
     }
     snapshot = {
+        "delegation_approval": template.delegation_approval,
         "template_id": template.pk,
         "key": template.key,
         "name": template.name,
