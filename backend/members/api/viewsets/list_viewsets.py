@@ -13,7 +13,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.workbook.child import INVALID_TITLE_REGEX
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -495,7 +497,9 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
 
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = member_list.name[:31]  # Excel sheet name limit
+        # List names are free text; worksheet titles have additional restrictions.
+        sheet_name = ILLEGAL_CHARACTERS_RE.sub("", member_list.name)
+        ws.title = INVALID_TITLE_REGEX.sub("-", sheet_name).strip()[:31] or "Liste"
 
         header_fill = PatternFill(start_color="CC0000", end_color="CC0000", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)

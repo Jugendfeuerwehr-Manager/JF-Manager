@@ -9,6 +9,8 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Feld | Aktueller Stand |
 | --- | --- |
 | Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.5a geprüft: 644 PostgreSQL-15- und 203 Frontendtests grün. |
+
+| Listenexport-Checkpoint | 06.10.2026: SEC-08.4 XLSX-Korrektur geprüft; SEC-08.5 PDF folgt im isolierten Arbeitsstand. |
 | Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
@@ -544,7 +546,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
-| SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
+| SEC-08 | Nachbesserung in Arbeit (SEC-08.4/5) | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
@@ -853,6 +855,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Prüfungen / Checkpoint:** SEC-08.3: 9/9 gezielte Backendtests (`api_tests.test_export_safety`, `departments.tests.test_export_and_qualification_attachment_roles`), `makemigrations --check`, Ruff für Exportdateien, Vue-Typecheck und 86/86 Frontendtests bestanden. Breiter Backendlauf über explizite Module: 549/551 bestanden; 1 veraltete SEC-03-Erwartung (anonyme Vorschau 404 statt 401, SEC-05.5b) und 1 Discovery-Importfehler über Label `orders` (Zirkelimport `orders.api`/`inventory.api`, vorbestehend, nicht exportbezogen). Keine echten Daten exportiert; `dump.rdb` unangetastet.
 - **Risiken:** Export-Audit-Bereinigung muss im Betriebsplan (OPS-03) täglich eingeplant werden. Frontend zeigt die Excel-Aktion ohne gewählte Abteilung, sobald irgendeine Rolle das Exportrecht hat; der Server bleibt maßgeblich.
 - **Nächster Schritt:** keiner im Paket; SEC-07.
+
+### SEC-08-Nachbesserung: Listenexporte (06.10.2026)
+
+- **Status / Verantwortlich:** in Arbeit / Codex.
+- **Abhängigkeiten:** SEC-08, SEC-03, DES-01.9; vorhandene Berechtigungen und Export-Audits bleiben verbindlich.
+- **Abnahme:** Listen mit frei eingegebenen Namen als gültige XLSX herunterladen; PDF mit installierter pdfmake-Version und eingebetteten Schriften erstellen; asynchrone PDF-Fehler sichtbar melden. Regressionen mit ausschließlich fiktiven Daten, Typecheck und Build bestehen.
+- **Stabile Teilschritte:** `SEC-08.4`: XLSX-Fehler reproduzieren und Listenblattnamen absichern. `SEC-08.5`: PDF-Schriftenregistrierung und asynchrone Fehlerbehandlung korrigieren und prüfen.
+- **Dateiverantwortung:** Listen-Viewset, Exporttests, Listen-PDF-Composable, ListDetailView und zugehörige Frontendtests; Roadmap nur eigene Ergänzungen.
+- **Ausgangsstand / Checkpoint:** Git/Code abgeglichen; gemeinsamer Checkout integriert parallel TRAIN-01 mit wechselnden Roadmap-Konflikten. Isolierter Arbeitsstand `/private/tmp/jf-manager-list-exports` auf `f01c771`; Integration ausschließlich auf `feat/security-roles-training-operations` nach Abschluss laufender Git-Operationen.
+- **Prüfungen:** SEC-08.4: neuer XLSX-HTTP-Test vorher fehlgeschlagen (ungültiges Zeichen im Blattnamen), danach 10/10 Export-/Rechtetests und Ruff bestanden. PDF-Prüfungen noch nicht ausgeführt.
+- **Risiken / Fortsetzung:** Fremde TRAIN-/ROLE-/DES-Änderungen unangetastet lassen; keine echten Mitgliederdaten exportieren. Nächster Schritt: reproduzierbare XLSX-/PDF-Regressionen.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -1262,3 +1275,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-01.4 | Lokale Undo/Redo-Historie (bis 50 Schritte, gesamtes Ziehen ein Schritt), Schutz vor Router-/Terminwechsel und Browser-Verlassen. Baustein ohne Ziehen anlegbar, focusierbare benannte Kacheln: Pfeile verschieben, Alt+Pfeile ändern Dauer, Shift in Ein-Minuten-Schritten, Enter öffnet Formular; Gruppen im Formular. Terminrahmen bestimmt Raster und Verschiebe-/Größengrenzen. Automatischen Überlappungstausch entfernt; bestehende Blöcke bleiben an ihrem Ort. | 14/14 gezielte Store-/Tastatur-/Planertests, 198/198 Gesamt-Frontendtests, Typecheck, gezieltes ESLint und Diff-Check bestanden. Vollständige Backend-Suite läuft auf PostgreSQL 15; Browser-/Touchprüfung nicht ausgeführt. Trailing-Whitespace aus TRAIN-01.3 korrigiert. | Dieser Commit: `feat(TRAIN-01.4): add draft history keyboard controls and leave protection` | TRAIN-01.5. |
 
 | 06.10.2026 | TRAIN-01.5a | Benannte Planaktionen Tauschen/Nachfolgende verschieben zeigen vollständige Vorschau mit Bausteinen, alten/neuen Zeiten und Gruppen. Ungültige Zeitlagen blockieren Übernahme; gemeinsame Blöcke und betroffene Gruppen werden ausdrücklich gezeigt. Übernahme ist ein lokaler, gemeinsam rückgängig machbarer Schritt. Wiederaufnehmbarer Checkpoint für Integration und Restabnahme; SEC-/UX-Arbeitsstand im gemeinsamen Checkout bleibt unberührt. | 203/203 Frontendtests, Typecheck, gezieltes ESLint, Produktionsbuild sowie 644/644 Backendtests auf isoliertem PostgreSQL 15 bestanden. Neuer Dialogtest zunächst wegen falschem Slot-/Button-Testdouble fehlgeschlagen; nach Korrektur des Doubles bestanden. Manueller Browser-/Touchlauf und Paketabnahme nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.5a): preview explicit swaps and following block shifts` | Koordinierte Integration, dann TRAIN-01.5b/TRAIN-03. |
+
+| 06.10.2026 | SEC-08.4 | XLSX-Serverfehler bei frei eingegebenen Listennamen mit Excel-reservierten Zeichen reproduziert. Blattnamen vor Vergabe bereinigt und auf 31 Zeichen begrenzt, mit Fallback. Eigener isolierter Arbeitsstand schützt laufende TRAIN-Integration. | Regression vorher fehlgeschlagen, danach 10/10 Export-/Rechtetests und Ruff bestanden. Browserdownload nicht ausgeführt. | Dieser Commit: `fix(SEC-08.4): sanitize list worksheet titles for XLSX exports` | SEC-08.5 PDF, dann koordinierte Integration. |

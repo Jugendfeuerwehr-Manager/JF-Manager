@@ -102,6 +102,20 @@ class ExportBoundaryTests(APITestCase):
         self.assertEqual(sheet.cell(2, 2).data_type, "s")
         self.assertIsNone(sheet.cell(2, 3).value)
 
+    def test_list_export_accepts_names_with_excel_reserved_characters(self):
+        self.role.groups.add(self.export)
+        listing = MemberList.objects.create(name="Ausflug / Anmeldung: [Gruppe A]?*\\", department=self.a)
+        MemberListEntry.objects.create(member_list=listing, member=self.member, checked=True, checked_at=timezone.now())
+        response = self.client.get(f"/api/v1/member-lists/{listing.pk}/export-excel/?columns=name,list_checked_at")
+        self.assertEqual(response.status_code, 200)
+        sheet = load_workbook(BytesIO(response.content)).active
+        self.assertTrue(sheet.title)
+        self.assertLessEqual(len(sheet.title), 31)
+        self.assertFalse(any(char in sheet.title for char in "\\/*?:[]"))
+        self.assertEqual(sheet.cell(2, 1).data_type, "s")
+        self.assertEqual(sheet.cell(2, 2).data_type, "d")
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+
     @override_settings(AUDIT_RETENTION_DAYS=180)
     def test_audit_retention_removes_only_expired_metadata(self):
         old = ExportAudit.objects.create(actor_id=self.user.pk, object_type="members.member", status_code=200)
