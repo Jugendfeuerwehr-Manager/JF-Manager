@@ -38,7 +38,6 @@ BOOKING_REPLAY_RETENTION_DAYS = max(1, int(os.environ.get("BOOKING_REPLAY_RETENT
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 
-
 def _env_flag(name, default):
     return os.environ.get(name, "true" if default else "false").strip().lower() in ("true", "1", "yes")
 
@@ -250,9 +249,21 @@ def _bounded_seconds(name, default, minimum, maximum):
 # Enforced server-side by users.session_policy; values are clamped.
 SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("SESSION_IDLE_TIMEOUT_SECONDS", 30 * 86400, 300, 90 * 86400)
 SESSION_MAX_AGE_SECONDS = _bounded_seconds("SESSION_MAX_AGE_SECONDS", 90 * 86400, 3600, 365 * 86400)
-PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS", 8 * 3600, 300, 86400)
+PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds(
+    "PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS", 8 * 3600, 300, 86400
+)
 PRIVILEGED_SESSION_MAX_AGE_SECONDS = _bounded_seconds("PRIVILEGED_SESSION_MAX_AGE_SECONDS", 8 * 3600, 3600, 7 * 86400)
 SESSION_COOKIE_AGE = SESSION_MAX_AGE_SECONDS
+CONFIGURATION_ENV_OVERRIDES = frozenset(
+    name
+    for name in (
+        "SESSION_IDLE_TIMEOUT_SECONDS",
+        "SESSION_MAX_AGE_SECONDS",
+        "PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS",
+        "PRIVILEGED_SESSION_MAX_AGE_SECONDS",
+    )
+    if name in os.environ
+)
 
 AUTHENTICATION_BACKENDS = (
     "users.ldap_backend.ConfigurableLDAPBackend",
@@ -420,6 +431,9 @@ WEB_PUSH_PUBLIC_KEY = os.environ.get("WEB_PUSH_PUBLIC_KEY", "")
 WEB_PUSH_PRIVATE_KEY = os.environ.get("WEB_PUSH_PRIVATE_KEY", "")
 WEB_PUSH_SUBJECT = os.environ.get("WEB_PUSH_SUBJECT", "")
 WEB_PUSH_ALLOWED_HOSTS = [
-    "fcm.googleapis.com", "updates.push.services.mozilla.com",
-    "push.services.mozilla.com", "web.push.apple.com", "notify.windows.com",
+    "fcm.googleapis.com",
+    "updates.push.services.mozilla.com",
+    "push.services.mozilla.com",
+    "web.push.apple.com",
+    "notify.windows.com",
 ]

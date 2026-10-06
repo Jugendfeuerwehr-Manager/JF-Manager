@@ -79,6 +79,7 @@ class SettingsViewSet(viewsets.ViewSet):
         "order": {"prefix": "orders", "fields": ["equipment_manager_email"]},
         "ldap": {"prefix": "ldap", "fields": []},
         "oidc": {"prefix": "oidc", "fields": []},
+        "security": {"prefix": "security", "fields": []},
     }
 
     LDAP_FIELDS = [
@@ -111,6 +112,37 @@ class SettingsViewSet(viewsets.ViewSet):
         "hide_local_login",
         "trust_provider_mfa",
     ]
+
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    def security(self, request):
+        from settings_manager.api.serializers.security_policy import SecurityPolicySerializer
+        from settings_manager.models import SecurityPolicy, SettingsWriteLock
+        from settings_manager.runtime_policy import POLICY_FIELDS, effective_policy
+        from users.step_up import require_step_up
+
+        operation = "view" if request.method == "GET" else "change"
+        if not self._check_category_permission(request.user, "security", operation):
+            return Response({"detail": "Keine Berechtigung für Sicherheitsrichtlinien."}, status=403)
+        if request.method == "GET":
+            return Response(effective_policy())
+        require_step_up(request)
+        with transaction.atomic():
+            SettingsWriteLock.objects.get_or_create(category="security")
+            SettingsWriteLock.objects.select_for_update().get(category="security")
+            current = effective_policy()
+            locked = {
+                name: "Durch die Umgebung vorgegeben; Änderung nur am Host möglich."
+                for name in request.data
+                if current["fields"].get(name, {}).get("locked")
+            }
+            if locked:
+                raise drf_serializers.ValidationError(locked)
+            merged = {name: current[name] for name in POLICY_FIELDS}
+            merged.update(request.data)
+            serializer = SecurityPolicySerializer(data=merged)
+            serializer.is_valid(raise_exception=True)
+            SecurityPolicy.objects.update_or_create(pk=1, defaults=serializer.validated_data)
+        return Response(effective_policy())
 
     def _get_category_settings(self, category):
         """Helper to retrieve settings for a specific category"""
@@ -247,7 +279,11 @@ class SettingsViewSet(viewsets.ViewSet):
         # Get settings for each category the user can access
         for category in self.CATEGORY_MAPPINGS:
             if self._check_category_permission(request.user, category, "view"):
-                if category == "ldap":
+                if category == "security":
+                    from settings_manager.runtime_policy import effective_policy
+
+                    category_settings = effective_policy()
+                elif category == "ldap":
                     category_settings = self._get_ldap_settings()
                 elif category == "oidc":
                     category_settings = self._get_oidc_settings()

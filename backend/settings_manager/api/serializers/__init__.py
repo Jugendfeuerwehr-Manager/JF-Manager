@@ -290,6 +290,7 @@ class AllSettingsSerializer(serializers.Serializer):
     Used for GET /api/v1/settings/ to return all settings at once
     """
 
+    security = serializers.DictField(required=False)
     general = GeneralSettingsSerializer(required=False)
     email = EmailSettingsSerializer(required=False)
     member = MemberSettingsSerializer(required=False)

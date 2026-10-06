@@ -10,11 +10,11 @@ need a fresh confirmation instead), accounts with mandatory MFA get a short one.
 import time
 from datetime import UTC, datetime
 
-from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
+from settings_manager.runtime_policy import effective_policy
 from users.devices import touch_device
 from users.mfa import REAUTH_KEY
 from users.mfa_policy import mfa_required
@@ -52,9 +52,9 @@ def _apply_profile(session, privileged, now):
 
 def lifetimes(session):
     """(idle, absolute) seconds for this session's profile."""
-    if session.get(PRIVILEGED_KEY):
-        return settings.PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS, settings.PRIVILEGED_SESSION_MAX_AGE_SECONDS
-    return settings.SESSION_IDLE_TIMEOUT_SECONDS, settings.SESSION_MAX_AGE_SECONDS
+    policy = effective_policy()
+    prefix = "privileged_" if session.get(PRIVILEGED_KEY) else ""
+    return policy[f"{prefix}session_idle_timeout_seconds"], policy[f"{prefix}session_max_age_seconds"]
 
 
 def session_deadlines(session):
