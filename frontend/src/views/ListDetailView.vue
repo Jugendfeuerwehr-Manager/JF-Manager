@@ -490,6 +490,8 @@ async function handlePdf() {
     await store.fetchList(listId.value)
     if (!store.currentList) return
     await generateChecklist(store.currentList)
+  } catch {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'PDF-Export fehlgeschlagen.', life: 4000 })
   } finally {
     pdfLoading.value = false
   }

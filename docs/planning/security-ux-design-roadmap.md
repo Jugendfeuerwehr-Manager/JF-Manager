@@ -9,8 +9,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Feld | Aktueller Stand |
 | --- | --- |
 | Letzter Checkpoint | 06.10.2026: SEC-10.5 CI-Prüfungen erweitert; isoliert TRAIN-01.5a geprüft: 644 PostgreSQL-15- und 203 Frontendtests grün. |
-
-| Listenexport-Checkpoint | 06.10.2026: SEC-08.4 XLSX-Korrektur geprüft; SEC-08.5 PDF folgt im isolierten Arbeitsstand. |
+| Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | TRAIN-01 (Codex). Seit Nutzerfreigabe 06.10.2026 einziger laufender Agent und Integrationsagent; SEC-/ROLE-/DES-Reststände bleiben erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
@@ -18,7 +17,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
 | Letzter Roadmap-Commit | TRAIN-Integration (3558df0 übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | TRAIN-Commits integrieren, dann TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf abnehmen. |
+| Nächster konkreter Schritt | TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf umsetzen; Integration abgeschlossen. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -546,13 +545,13 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
 | SEC-06 | abgeschlossen | Codex | Pflichtschlüssel, Sync-Verschlüsselung, strikte Entschlüsselung und atomare Rotation; 36 Tests grün. |
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
-| SEC-08 | Nachbesserung in Arbeit (SEC-08.4/5) | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
+| SEC-08 | abgeschlossen, Nachbesserung SEC-08.4/5 integriert | Claude / Codex (Nachbesserung) | SEC-08.4/5: 10/10 Backendtests, 194/194 Frontendtests, Typecheck, ESLint, Ruff und Build bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
-| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.5a Vorschauaktionen grün; Integration koordinieren, dann TRAIN-01.5b Status-/Dienstvertrag. |
+| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5a integriert; TRAIN-01.5b Status-/Dienstvertrag in Umsetzung. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
@@ -858,14 +857,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-08-Nachbesserung: Listenexporte (06.10.2026)
 
-- **Status / Verantwortlich:** in Arbeit / Codex.
+- **Status / Verantwortlich:** abgeschlossen / Codex.
 - **Abhängigkeiten:** SEC-08, SEC-03, DES-01.9; vorhandene Berechtigungen und Export-Audits bleiben verbindlich.
 - **Abnahme:** Listen mit frei eingegebenen Namen als gültige XLSX herunterladen; PDF mit installierter pdfmake-Version und eingebetteten Schriften erstellen; asynchrone PDF-Fehler sichtbar melden. Regressionen mit ausschließlich fiktiven Daten, Typecheck und Build bestehen.
 - **Stabile Teilschritte:** `SEC-08.4`: XLSX-Fehler reproduzieren und Listenblattnamen absichern. `SEC-08.5`: PDF-Schriftenregistrierung und asynchrone Fehlerbehandlung korrigieren und prüfen.
 - **Dateiverantwortung:** Listen-Viewset, Exporttests, Listen-PDF-Composable, ListDetailView und zugehörige Frontendtests; Roadmap nur eigene Ergänzungen.
 - **Ausgangsstand / Checkpoint:** Git/Code abgeglichen; gemeinsamer Checkout integriert parallel TRAIN-01 mit wechselnden Roadmap-Konflikten. Isolierter Arbeitsstand `/private/tmp/jf-manager-list-exports` auf `f01c771`; Integration ausschließlich auf `feat/security-roles-training-operations` nach Abschluss laufender Git-Operationen.
-- **Prüfungen:** SEC-08.4: neuer XLSX-HTTP-Test vorher fehlgeschlagen (ungültiges Zeichen im Blattnamen), danach 10/10 Export-/Rechtetests und Ruff bestanden. PDF-Prüfungen noch nicht ausgeführt.
-- **Risiken / Fortsetzung:** Fremde TRAIN-/ROLE-/DES-Änderungen unangetastet lassen; keine echten Mitgliederdaten exportieren. Nächster Schritt: reproduzierbare XLSX-/PDF-Regressionen.
+- **Prüfungen:** SEC-08.4: neuer XLSX-HTTP-Test vorher fehlgeschlagen (ungültiges Zeichen im Blattnamen), danach 10/10 Export-/Rechtetests und Ruff bestanden. SEC-08.5: zwei neue Composable-Tests vorher fehlgeschlagen, danach echte PDF-Erzeugung mit eingebetteten Schriften, Fehlerweitergabe und sichtbare Fehlermeldung geprüft; 7/7 gezielte und 194/194 gesamte Frontendtests, Gesamt-Typecheck, ESLint und Produktionsbuild bestanden.
+- **Risiken / Fortsetzung:** Fremde TRAIN-/ROLE-/DES-Änderungen unangetastet lassen; keine echten Mitgliederdaten exportieren. Browserdownload gegen echtes Backend nicht ausgeführt. Integration: XLSX in `c1183a2`, PDF in diesem Commit auf gemeinsamem Branch; Roadmap-Konflikte ausschließlich in eigenen Ergänzungen aufgelöst, TRAIN-Einträge erhalten. Nächster Schritt: Nutzerabnahme der Downloads.
 
 ### SEC-09: Bestandsbuchungen und Konkurrenzschutz
 
@@ -935,7 +934,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `TRAIN-01.4`: Rückgängig/Wiederholen, Verlassenswarnung und explizite Tastatur-/Formularaktionen ohne automatischen Tausch.
   - `TRAIN-01.5`: Status-/Dienstvertrag mit TRAIN-03, ausdrückliche Vorschau für Tauschen/Nachfolgende verschieben; gebündelte Paketabnahme.
     - `TRAIN-01.5a`: Tauschen/Nachfolgende verschieben nur über benannte Aktionen mit vollständiger, zeitlich gültiger Vorschau; gemeinsam rückgängig.
-    - `TRAIN-01.5b`: Statusmigration und stabile Dienstverknüpfung gemeinsam mit TRAIN-03 (Entwürfe ohne regulären Dienst; ausdrückliche Änderungen nach Beginn, historische Anwesenheiten erhalten).
+    - `TRAIN-01.5b`: Statusmigration und stabile Dienstverknüpfung gemeinsam mit TRAIN-03 (Entwürfe ohne regulären Dienst; ausdrückliche Änderungen nach Beginn, historische Anwesenheiten erhalten). Abnahme: verknüpfte Altdaten veröffentlicht, neue Entwürfe ohne Dienst, Veröffentlichung erzeugt genau einen stabilen Dienst; abgeschlossen/abgesagt erhält ihn. Rückkehr zum Entwurf mit verknüpftem Dienst und Abteilungswechsel dokumentierter Dienste blockieren. Planänderungen nach Beginn oder Anwesenheit verlangen `confirm_service_change`; Bestätigung wird nicht im Entwurf gespeichert. Frontend zeigt Status/Version und Dienstlink in Planer, Kalender, mobiler Ansicht und Handout; Statusaktionen werden atomar gespeichert. Mobile Geräte können ausdrücklich den Bearbeitungsmodus öffnen. Regressionen für Migration, Dienstidentität, historische Anwesenheiten und Bestätigungsfluss.
     - `TRAIN-01.5c`: Gebündelte fachliche und Browser-/Touch-Abnahme nach Integration und Statusvertrag.
 - **Letzter dauerhafter Checkpoint:** TRAIN-01.5a, dieser Commit.
 - **Branch:** Integration auf `feat/security-roles-training-operations`; isolierter detached Worktree `/private/tmp/jf-manager-train` bei `d89c90b`, keine konkurrierenden Git-Schreiboperationen im gemeinsamen Checkout.
@@ -944,7 +943,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Prüfungen:** Backend: 48/48 gezielte SQLite-, 50/50 gezielte PostgreSQL-15- und 644/644 Gesamt-Tests auf PostgreSQL 15 bestanden (explizite Modulliste einschließlich `training`, keine übersprungenen Tests). Frontend: 203/203 Gesamt-Tests, Typecheck, gezieltes ESLint und Produktionsbuild bestanden. Migrationsabgleich, Ruff und Diff-Check bestanden. Manueller Browser-/Touchlauf nicht ausgeführt. Backend-Testumgebung Python 3.12; neuere SEC-10.6-Laufzeit nach Integration erneut abgleichen.
 - **Offene Fehler / Risiken:** Status-/Dienstvertrag noch offen; direkte Django-Admin-Änderungen erhöhen derzeit keine Planversion und benötigen vor Paketabnahme einen eigenen Versions-/Zeitprüfungsvertrag; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
 - **Laufende Prozesse und sichere Fortsetzung:** Prüfungen abgeschlossen; Wegwerf-PostgreSQL-15-Container `jf-train-test-pg15` wird nach Sicherung entfernt. Logs `/private/tmp/train-backend-tests.log` und `/private/tmp/train-frontend-build.log`. Keine Änderungen an lokalen Anwendungsdaten. Isolierter Worktree bleibt als wiederaufnehmbarer Checkpoint bestehen.
-- **Nächster konkreter Schritt:** Alle sechs TRAIN-Teilschritt-Commits durch den abgestimmten Integrationsagenten auf `feat/security-roles-training-operations` integrieren (Roadmap-Konflikte mit allen SEC-/DES-Einträgen erhalten). Danach TRAIN-01.5b mit TRAIN-03 übernehmen; Admin-Vertrag und Browser-/Touchabnahme in TRAIN-01.5c, TRAIN-02–04 bleiben offen.
+- **Nächster konkreter Schritt:** Alle sechs TRAIN-Teilschritte sind einzeln auf `feat/security-roles-training-operations` integriert (`b9faa15` bis `7c3e80c`); SEC-/DES-Einträge erhalten. Jetzt TRAIN-01.5b mit TRAIN-03 übernehmen; Admin-Vertrag und Browser-/Touchabnahme in TRAIN-01.5c, TRAIN-02–04 bleiben offen.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1277,3 +1276,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-01.5a | Benannte Planaktionen Tauschen/Nachfolgende verschieben zeigen vollständige Vorschau mit Bausteinen, alten/neuen Zeiten und Gruppen. Ungültige Zeitlagen blockieren Übernahme; gemeinsame Blöcke und betroffene Gruppen werden ausdrücklich gezeigt. Übernahme ist ein lokaler, gemeinsam rückgängig machbarer Schritt. Wiederaufnehmbarer Checkpoint für Integration und Restabnahme; SEC-/UX-Arbeitsstand im gemeinsamen Checkout bleibt unberührt. | 203/203 Frontendtests, Typecheck, gezieltes ESLint, Produktionsbuild sowie 644/644 Backendtests auf isoliertem PostgreSQL 15 bestanden. Neuer Dialogtest zunächst wegen falschem Slot-/Button-Testdouble fehlgeschlagen; nach Korrektur des Doubles bestanden. Manueller Browser-/Touchlauf und Paketabnahme nicht ausgeführt. | Dieser Commit: `feat(TRAIN-01.5a): preview explicit swaps and following block shifts` | Koordinierte Integration, dann TRAIN-01.5b/TRAIN-03. |
 
 | 06.10.2026 | SEC-08.4 | XLSX-Serverfehler bei frei eingegebenen Listennamen mit Excel-reservierten Zeichen reproduziert. Blattnamen vor Vergabe bereinigt und auf 31 Zeichen begrenzt, mit Fallback. Eigener isolierter Arbeitsstand schützt laufende TRAIN-Integration. | Regression vorher fehlgeschlagen, danach 10/10 Export-/Rechtetests und Ruff bestanden. Browserdownload nicht ausgeführt. | Dieser Commit: `fix(SEC-08.4): sanitize list worksheet titles for XLSX exports` | SEC-08.5 PDF, dann koordinierte Integration. |
+
+| 06.10.2026 | SEC-08.5 | pdfmake 0.3 liefert die Schriftdateien direkt und benötigt `addVirtualFileSystem`; veraltete Zuweisung an `vfs` entfernt. Asynchronen Download abwarten, PDF-Fehler in ListDetailView sichtbar melden. Tests erzeugen echte PDF-Bytes mit installierter Bibliothek und prüfen verzögerte Ablehnungen. | Zwei Composable-Regressionen vorher fehlgeschlagen; danach 7/7 gezielte und 194/194 Frontendtests, Gesamt-Typecheck, ESLint, Produktionsbuild bestanden. Browserlauf gegen echtes Backend nicht ausgeführt. | Dieser Commit: `fix(SEC-08.5): register PDF fonts and report list download failures` | Nutzerabnahme der Downloads. |

@@ -3,18 +3,20 @@ import { flushPromises, mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import { reactive } from 'vue'
 import ListDetailView from '../ListDetailView.vue'
+import Menu from 'primevue/menu'
 
-const { store, confirmRequire, toastAdd, push } = vi.hoisted(() => ({
+const { store, confirmRequire, toastAdd, push, generateChecklist } = vi.hoisted(() => ({
   store: {} as Record<string, unknown>,
   confirmRequire: vi.fn(),
   toastAdd: vi.fn(),
   push: vi.fn(),
+  generateChecklist: vi.fn(),
 }))
 vi.mock('@/stores/lists', () => ({ useMemberListsStore: () => store }))
 vi.mock('@/stores/members', () => ({ useMembersStore: () => ({ members: [], fetchMembers: vi.fn() }) }))
 vi.mock('@/stores/groups', () => ({ useGroupsStore: () => ({ groups: [], fetchGroups: vi.fn() }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: null }) }))
-vi.mock('@/composables/useListPdf', () => ({ useListPdf: () => ({ generateChecklist: vi.fn() }) }))
+vi.mock('@/composables/useListPdf', () => ({ useListPdf: () => ({ generateChecklist }) }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '3' } }), useRouter: () => ({ push }) }))
 vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: confirmRequire }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: toastAdd }) }))
@@ -92,6 +94,17 @@ describe('ListDetailView', () => {
     await wrapper.get('button[aria-pressed="false"].p-button').trigger('click')
     expect(wrapper.find('[aria-label="Jonas Becker aus der Liste entfernen"]').exists()).toBe(true)
     expect(wrapper.find('#add-panel-title').exists()).toBe(true)
+  })
+
+  it('reports PDF download errors visibly', async () => {
+    generateChecklist.mockRejectedValueOnce(new Error('Missing font'))
+    const wrapper = render()
+    await flushPromises()
+    const item = wrapper.getComponent(Menu).props('model')!.find(item => item.label === 'PDF erstellen')!
+    item.command!({ originalEvent: new Event('click'), item })
+    await flushPromises()
+    expect(generateChecklist).toHaveBeenCalledWith(store.currentList)
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'PDF-Export fehlgeschlagen.' }))
   })
 
   it('filters open entries and reminds only open members', async () => {
