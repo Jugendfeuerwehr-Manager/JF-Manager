@@ -162,10 +162,16 @@ const serverTimeDivergent = computed(() => {
 })
 
 const usersOptions = computed(() => {
-  return usersStore.users.map((user: UserInfo) => ({
+  const options = usersStore.users.map((user: UserInfo) => ({
     label: user.full_name || user.username,
     value: user.id
   }))
+  // Keep already assigned leads visible by name even if their account was deactivated since.
+  const known = new Set(options.map((option) => option.value))
+  for (const manager of props.initialData?.operations_manager ?? []) {
+    if (!known.has(manager.id)) options.push({ label: `${manager.full_name || manager.username} (inaktiv)`, value: manager.id })
+  }
+  return options
 })
 
 /**
@@ -215,7 +221,7 @@ onMounted(async () => {
   usersLoading.value = true
   try {
     await Promise.all([
-      usersStore.fetchUsers({ limit: 1000 }),
+      usersStore.fetchUsers({ limit: 1000, is_active: true }),
       settingsApi.getService().then(response => {
         appSettings.value = response.data
         // Detect server/client time divergence via Date response header

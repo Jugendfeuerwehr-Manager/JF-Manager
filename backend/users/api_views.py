@@ -75,6 +75,9 @@ def _send_external_auth_password_info(user):
     )
 
 
+ANONYMOUS_USERNAME = "AnonymousUser"
+
+
 @extend_schema_view(
     list=extend_schema(summary="List all users", description="Get a paginated list of all users"),
     retrieve=extend_schema(summary="Get user details", description="Get detailed information about a specific user"),
@@ -92,9 +95,16 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
     )
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    # Person pickers ask for is_active=true (UX-02.1); without a filterset the parameter was ignored.
+    filterset_fields = ["is_active"]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering_fields = ["username", "email", "date_joined"]
     ordering = ["username"]
+
+    def get_queryset(self):
+        # django-guardian's AnonymousUser is a system account, never a person to pick.
+        return super().get_queryset().exclude(username=ANONYMOUS_USERNAME)
+
     # Allow POST so custom POST actions (e.g. request_password_reset, reset_password,
     # change_password) are reachable while still avoiding DELETE/PUT
     http_method_names = ["get", "patch", "post", "head", "options"]  # No delete or full update
