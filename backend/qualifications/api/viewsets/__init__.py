@@ -3,7 +3,7 @@ Enhanced ViewSets for Qualifications API.
 Follows modular pattern from orders.api.viewsets with custom actions.
 """
 
-from datetime import date, timedelta
+from datetime import date
 
 from dateutil.relativedelta import relativedelta
 from django.db.models import Q
@@ -21,7 +21,14 @@ from members.api_serializers import AttachmentSerializer
 from members.models import Attachment
 from qualifications.models import Qualification, QualificationType, SpecialTask, SpecialTaskType
 
-from ..filters import QualificationFilter, SpecialTaskFilter
+from ..filters import (
+    EXPIRY_WINDOWS,
+    QualificationFilter,
+    SpecialTaskFilter,
+    current_qualifications,
+    expiring_within,
+    without_evidence,
+)
 from ..serializers import (
     QualificationCreateSerializer,
     QualificationDetailSerializer,
@@ -58,15 +65,16 @@ class PersonDepartmentRoleModelPermissions(DepartmentRoleModelPermissions):
             return (
                 obj.user_id == user.pk
                 and all(user.has_perm(name) or name in self._department_role_permissions(request) for name in required)
-            ) or (
-                view._user_is_org_wide(user) and all(user.has_perm(name) for name in required)
-            )
+            ) or (view._user_is_org_wide(user) and all(user.has_perm(name) for name in required))
 
         department_ids = set(obj.member.departments.values_list("id", flat=True))
         if not view._user_is_org_wide(user):
             department_ids &= set(view._user_department_ids(user))
         return any(
-            all(user.has_perm(name) or name in self._department_role_permissions(request, department_id) for name in required)
+            all(
+                user.has_perm(name) or name in self._department_role_permissions(request, department_id)
+                for name in required
+            )
             for department_id in department_ids
         )
 
@@ -99,9 +107,7 @@ class PersonDepartmentScopeMixin(DepartmentScopeViewSetMixin):
         if org_wide and requested_dept is None and (global_right or not filter_permission):
             return queryset
 
-        department_ids = (
-            {requested_dept} if requested_dept is not None else set(self._user_department_ids(user))
-        )
+        department_ids = {requested_dept} if requested_dept is not None else set(self._user_department_ids(user))
         if filter_permission and not global_right:
             app_label, codename = permission.split(".", 1)
             right_ids = set(
@@ -181,16 +187,15 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
         qualifications_qs = self._scope_person_queryset(
             Qualification.objects.all(), "qualifications.view_qualification"
         )
-        special_tasks_qs = self._scope_person_queryset(
-            SpecialTask.objects.all(), "qualifications.view_specialtask"
-        )
+        special_tasks_qs = self._scope_person_queryset(SpecialTask.objects.all(), "qualifications.view_specialtask")
 
         today = date.today()
-        soon_threshold = today + timedelta(days=30)
+        # Renewed qualifications keep their old record as history; only the latest one counts.
+        current_qs = current_qualifications(qualifications_qs)
 
         # Calculate statistics
-        expired = qualifications_qs.filter(date_expires__lt=today)
-        expiring = qualifications_qs.filter(date_expires__gte=today, date_expires__lte=soon_threshold)
+        expired = current_qs.filter(date_expires__lt=today)
+        expiring = expiring_within(current_qs, EXPIRY_WINDOWS[0], today)
         active_tasks = special_tasks_qs.filter(Q(end_date__isnull=True) | Q(end_date__gt=today))
         completed_tasks = special_tasks_qs.filter(end_date__lte=today)
 
@@ -204,6 +209,10 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
                 "total_qualifications": qualifications_qs.count(),
                 "expired_qualifications": expired.count(),
                 "expiring_qualifications": expiring.count(),
+                "expiring_by_window": {
+                    str(days): expiring_within(current_qs, days, today).count() for days in EXPIRY_WINDOWS
+                },
+                "without_evidence": without_evidence(current_qs).count(),
                 "active_special_tasks": active_tasks.count(),
                 "completed_special_tasks": completed_tasks.count(),
                 "recent_qualifications": QualificationListSerializer(recent, many=True).data,

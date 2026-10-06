@@ -562,7 +562,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | UX-03 | geplant | Claude (Design-Session) | Teilschritte UX-03.1/2 festgelegt. |
 | UX-04 | geplant | Claude (Design-Session) | UX-04.1 festgelegt; Grundlage DES-01.8. |
 | UX-05 | geplant | Claude (Design-Session) | UX-05.1 festgelegt; Grundlage SEC-09, DES-01.13a. |
-| UX-06 | in Arbeit | Claude (Design-Session) | Plan, Konsistenzvertrag und Farb-Ratsche (DES-01.11c) stehen; als Nächstes UX-06.1. |
+| UX-06 | in Arbeit | Claude (Design-Session) | UX-06.1 Ablauffenster, Verlängerungen und Nachweisfilter im Backend; als Nächstes UX-06.2 Übersicht. |
 | UX-07 | geplant | Claude (Design-Session) | Teilschritte UX-07.1/2 festgelegt. |
 | UX-08 | geplant | Claude (Design-Session) | Teilschritte UX-08.1/2 festgelegt. |
 | OPS-01 | offen | — | Gemeinsamen Installationskern und Adapter festlegen. |
@@ -1077,10 +1077,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `UX-07.2`: Versandauftrag im Hintergrund mit Idempotenzschlüssel, Teilergebnissen und Wiederholung nur fehlgeschlagener Zustellungen.
   - `UX-08.1`: Sync: Änderungsvorschau, Konflikte, Laufhistorie.
   - `UX-08.2`: Profil: Sitzungen, MFA und gerätebezogene Push-Einstellungen.
-- **Letzter dauerhafter Checkpoint:** DES-01.11c Ratsche (dieser Commit); Plan in `d8afeae`.
+- **Letzter dauerhafter Checkpoint:** UX-06.1 (dieser Commit); DES-01.11c `fcb4a1f`, Plan `d8afeae`.
 - **Ausgeführte Prüfungen mit Ergebnis:** Bestandsaufnahme: Qualifikationen, Listen, Gruppen, Protokoll, Eltern-Bearbeitung, Ausbildung und Verwaltung nutzen weder `OverviewHeader` noch `StateView` noch `StatusBadge`; feste Farben vor allem in `views` (153), `components/training` (47, überwiegend Handout/Druck), `members` (34), `admin` (29), `settings` (26). Backend kennt nur ein festes 30-Tage-Ablauffenster.
 - **Offene Fehler / Risiken:** Pakete mit Backend-Anteil (UX-01.1, UX-02.3, UX-03.2, UX-05.1, UX-07.2) berühren Dateien paralleler Sitzungen; vor Beginn `git status` auf fremde Änderungen prüfen.
-- **Nächster konkreter Schritt:** `UX-06.1` Backend-Ablauffenster und Nachweisfilter.
+- **Nächster konkreter Schritt:** `UX-06.2` Qualifikationsübersicht nach Konsistenzvertrag.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -1350,6 +1350,8 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | UX-Plan | Nutzervorgabe: neben dem Planer vor allem UX-01 bis UX-08 und eine einheitliche Umsetzung; Tests und Sichtprüfungen effizient. Detailblock „UX-01 bis UX-08“ mit gemeinsamem Konsistenzvertrag, Ratsche gegen feste Farben (`DES-01.11c`) und stabilen Teilschritt-IDs angelegt; Reihenfolge UX-06 → UX-01 → UX-02 → UX-04 → UX-03 → UX-05 → UX-07 → UX-08. Bestandsaufnahme im Detailblock. | Nur Planung; Code-/Git-Abgleich der Bestandsaufnahme bestanden. | Dieser Commit: `docs(UX-PLAN): plan module workflows with one consistency contract` | DES-01.11c, dann UX-06.1. |
 
 | 06.10.2026 | DES-01.11c | Ratschen-Test `theme/__tests__/fixedColors.spec.ts`: feste Hex-/RGB-Farben in `src/**/*.vue` dürfen je Datei die Obergrenze aus `fixedColorBaseline.json` nicht überschreiten (Ausgangswert: 59 Dateien, 327 Vorkommen, gemessen auf dem committeten Stand; neue Dateien starten bei null); entfernte Dateien müssen aus der Grundlinie verschwinden. Jeder UX-Teilschritt senkt die Werte der angefassten Dateien. | 2 neue Tests, 42/42 Theme-Tests, Typecheck und ESLint bestanden. | Dieser Commit: `test(DES-01.11c): ratchet fixed colours per file` | UX-06.1. |
+
+| 06.10.2026 | UX-06.1 | Qualifikations-API: Filter `expiring_within=30|60|90` (andere Werte 400), `without_evidence` (ohne Anhang) und `current` (nur der jeweils neueste Eintrag je Person und Art). Gefundener Fehler: Eine verlängerte Qualifikation (neuer Eintrag gleicher Art) zählte in der Statistik weiter als abgelaufen, weil der alte Eintrag mitgezählt wurde; `statistics` zählt abgelaufen/ablaufend jetzt nur aktuelle Einträge und liefert zusätzlich `expiring_by_window` und `without_evidence`. Alte Einträge bleiben als Historie über die Liste abrufbar. Listenausgabe ergänzt `member` (ID) und `has_evidence` (aus vorhandenem Prefetch, keine Zusatzabfrage). Bereichsfilter unverändert (`_scope_person_queryset`). Ruff formatierte in `viewsets/__init__.py` drei bestehende Stellen mit (ohne Verhaltensänderung). | 6 neue Tests (Fenster, ungültiges Fenster, Verlängerung/Historie, Nachweis/Listenfelder, Statistik, Abteilungsbereich) plus vorhandene Qualifikations-/Bereichs-/Rollentests: 41/41 auf SQLite bestanden, Ruff bestanden. Volle Backend-Suite und PostgreSQL nicht ausgeführt. | Dieser Commit: `feat(UX-06.1): add expiry windows, renewals and evidence filters` | UX-06.2. |
 
 | 06.10.2026 | SEC-01.57a | Übernahme von SEC-01, SEC-02 und ROLE-01 durch Claude nach Abschluss von SEC-10 (Nutzerauftrag). Endpunktinventar: `AttendanceViewSet` nutzte DRFs `DjangoModelPermissions` – GET ohne Leserecht, Zieldienste nach bloßer Abteilungszuordnung, Abteilungsrollen (in `department_roles`, nicht `user.groups`) wirkungslos. Folgen: Nur-Dienst-Leserecht in B zeigte Anwesenheiten aus B; Leitungen mit Abteilungsrolle konnten über diese API nichts erfassen. Neu `AttendanceRolePermissions` (Objektprüfung an der Dienstabteilung, Sammelerfassung mit `change_attendance` wie das Anwesenheitsboard), Zieldienste nur aus Abteilungen mit Schreibrecht. Bestehender API-Test, der das Leck abbildete, erhält `view_attendance`. Ausgelieferte Rollen koppeln `view_service` bereits mit `view_attendance`. | 9 neue HTTP-Regressionen (6 vorher rot), 58/58 angrenzende Anwesenheits-/API-Tests, Ruff bestanden. | Dieser Commit: `fix(SEC-01.57a): scope the attendance API to department roles` | SEC-01.57b. |
 

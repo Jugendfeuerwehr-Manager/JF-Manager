@@ -6,9 +6,35 @@ Provides status-based filtering for qualifications and special tasks.
 from datetime import date, timedelta
 
 from django.db import models
+from django.db.models import Exists, OuterRef, Q
 from django_filters import rest_framework as filters
 
 from qualifications.models import Qualification, SpecialTask
+
+EXPIRY_WINDOWS = (30, 60, 90)
+
+
+def current_qualifications(queryset):
+    """Drop qualifications superseded by a later one of the same type for the same person (renewals)."""
+    newer = (
+        Qualification.objects.filter(type=OuterRef("type"))
+        .filter(Q(member_id=OuterRef("member_id")) | Q(user_id=OuterRef("user_id")))
+        .filter(
+            Q(date_acquired__gt=OuterRef("date_acquired"))
+            | Q(date_acquired=OuterRef("date_acquired"), id__gt=OuterRef("id"))
+        )
+    )
+    return queryset.filter(~Exists(newer))
+
+
+def expiring_within(queryset, days, today=None):
+    """Qualifications that are still valid today but expire within the given number of days."""
+    today = today or date.today()
+    return queryset.filter(date_expires__gte=today, date_expires__lte=today + timedelta(days=days))
+
+
+def without_evidence(queryset):
+    return queryset.filter(attachments__isnull=True)
 
 
 class QualificationFilter(filters.FilterSet):
@@ -24,9 +50,25 @@ class QualificationFilter(filters.FilterSet):
         ],
     )
 
+    expiring_within = filters.ChoiceFilter(
+        method="filter_expiring_within",
+        choices=[(str(days), f"{days} days") for days in EXPIRY_WINDOWS],
+    )
+    without_evidence = filters.BooleanFilter(method="filter_without_evidence")
+    current = filters.BooleanFilter(method="filter_current")
+
     class Meta:
         model = Qualification
         fields = ["member", "user", "type", "status"]
+
+    def filter_expiring_within(self, queryset, name, value):
+        return expiring_within(queryset, int(value))
+
+    def filter_without_evidence(self, queryset, name, value):
+        return without_evidence(queryset) if value else queryset
+
+    def filter_current(self, queryset, name, value):
+        return current_qualifications(queryset) if value else queryset
 
     def filter_status(self, queryset, name, value):
         """Filter by qualification status"""
