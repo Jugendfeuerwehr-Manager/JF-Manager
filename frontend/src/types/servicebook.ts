@@ -69,6 +69,7 @@ export interface Service {
   place: string | null
   topic: string | null
   department?: number | null
+  training_status?: import('./training').TrainingStatus | null
   training_session?: number | null
   operations_manager: OperationsManager[]
   attendance_summary: AttendanceSummary
@@ -99,6 +100,7 @@ export interface ServiceDetail {
   description: string | null
   events: string | null // Special occurrences
   department?: number | null
+  training_status?: import('./training').TrainingStatus | null
   training_session?: number | null
   operations_manager: OperationsManager[]
   attendance_summary: AttendanceSummary

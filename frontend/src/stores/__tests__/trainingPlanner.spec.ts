@@ -18,6 +18,7 @@ function block(id: number): TrainingBlock {
 }
 function plan(): TrainingSessionDetail {
   return {
+    status: 'draft', requires_service_confirmation: false,
     id: 1, revision: 1, title: 'Plan', description: '', date: '2030-01-01',
     start_time: '18:00:00', end_time: '20:00:00', location: '', notes: '', groups: [],
     blocks: [block(1), block(2)], department: 1, linked_service_id: null,
@@ -33,6 +34,21 @@ beforeEach(() => {
 })
 
 describe('complete local training drafts', () => {
+  it('stages publication with content and never retains service confirmation for a later save', async () => {
+    const store = useTrainingPlannerStore()
+    await store.loadBlocks(1)
+    store.stageSession({ status: 'published' })
+    await store.updateBlockContent(1, { title: 'Veröffentlichter Inhalt' })
+    api.savePlan.mockResolvedValue({ data: { ...plan(), status: 'published', revision: 2, linked_service_id: 4 } })
+    await store.savePendingMoves(true)
+    expect(api.savePlan.mock.calls[0]![1].session).toMatchObject({ status: 'published', confirm_service_change: true })
+    expect(store.isDirty).toBe(false)
+    expect(store.session!.linked_service_id).toBe(4)
+    store.stageSession({ status: 'completed' })
+    await store.savePendingMoves()
+    expect(api.savePlan.mock.calls[1]![1].session).not.toHaveProperty('confirm_service_change')
+  })
+
   it('stages creation, content, deletion, metadata and movement for one request', async () => {
     const store = useTrainingPlannerStore()
     await store.loadBlocks(1)

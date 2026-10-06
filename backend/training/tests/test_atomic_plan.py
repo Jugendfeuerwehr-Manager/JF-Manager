@@ -23,6 +23,7 @@ class AtomicPlanTests(TestCase):
         self.foreign_group = Group.objects.create(name="Gruppe B", department=self.other_department)
         self.session = TrainingSession.objects.create(
             title="Plan",
+            status="published",
             date=date(2030, 1, 1),
             start_time=time(18),
             end_time=time(20),

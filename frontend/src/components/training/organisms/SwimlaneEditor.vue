@@ -8,6 +8,9 @@
           <router-link to="/training" class="editor-head__back"><i class="pi pi-arrow-left" aria-hidden="true"></i>Ausbildung</router-link>
           <span v-if="session?.date"> · {{ formatDate(session.date) }}<template v-if="session.start_time"> · {{ formatTimeRange(session.start_time, session.end_time) }}</template></span>
         </p>
+        <div v-if="session" class="editor-head__meta"><TrainingStatusBadge :status="session.status" /> · Version {{ session.revision }}
+          <router-link v-if="session.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
+        </div>
         <h1 class="editor-head__title">{{ session?.title ?? 'Trainingsplanung' }}</h1>
         <p v-if="session?.location || visibleLanes.length" class="editor-head__meta">
           {{ [laneSummary, session?.location].filter(Boolean).join(' · ') }}
@@ -32,6 +35,9 @@
         />
         <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.undo()" />
         <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.redo()" />
+        <Button v-if="session?.status === 'draft' || session?.status === 'cancelled'" label="Veröffentlichen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('published')" />
+        <Button v-if="session?.status === 'published'" label="Abschließen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('completed')" />
+        <Button v-if="session && session.status !== 'cancelled' && session.status !== 'completed'" label="Absagen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('cancelled')" />
         <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
         <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
@@ -216,6 +222,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import Button from 'primevue/button'
+import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import Dialog from 'primevue/dialog'
 import TrainingBlockTile from '../molecules/TrainingBlockTile.vue'
 import LibraryBlockPicker from '../molecules/LibraryBlockPicker.vue'
@@ -223,7 +230,7 @@ import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove } from '@/types/training'
+import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus } from '@/types/training'
 import interact from 'interactjs'
 import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
@@ -518,10 +525,16 @@ function discardForServerVersion() {
   }
 }
 
+function stageStatus(status: TrainingStatus) {
+  if (plannerStore.session) plannerStore.stageSession({ status })
+}
+
 async function saveAll() {
+  const confirmed = !!session.value?.requires_service_confirmation
+  if (confirmed && !window.confirm('Der Dienst hat begonnen oder enthält Dokumentation. Plan und Status ausdrücklich ändern? Bestehende Anwesenheiten bleiben erhalten.')) return
   saving.value = true
   saveFailed.value = false
-  try { await plannerStore.savePendingMoves() }
+  try { await plannerStore.savePendingMoves(confirmed) }
   catch { saveFailed.value = true }
   finally { saving.value = false }
 }

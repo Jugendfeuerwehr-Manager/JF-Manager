@@ -48,7 +48,7 @@
           <div class="list-item-info">
             <strong class="session-title-with-icon">
               <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" title="Terminserie" />
-              {{ session.title }}
+              {{ session.title }} <TrainingStatusBadge :status="session.status" />
             </strong>
             <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
               {{ departmentMeta(session.id).label }}
@@ -91,7 +91,7 @@
             @click.stop="openSession(session)"
           >
             <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" />
-            {{ session.title }}
+            {{ session.title }} <TrainingStatusBadge :status="session.status" />
           </div>
           <div v-if="cell.sessions.length > 3" class="more-pill">
             +{{ cell.sessions.length - 3 }} weitere
@@ -132,7 +132,7 @@
           <div class="session-info">
             <strong class="session-title-with-icon">
               <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" title="Terminserie" />
-              {{ session.title }}
+              {{ session.title }} <TrainingStatusBadge :status="session.status" />
             </strong>
             <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
               {{ departmentMeta(session.id).label }}
@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'

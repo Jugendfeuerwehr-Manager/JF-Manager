@@ -9,6 +9,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Feld | Aktueller Stand |
 | --- | --- |
 | Letzter Checkpoint | 06.10.2026: ROLE-02.1 Rechte, Freigabe und Herkunftsmodell implementiert; 31 gezielte Tests bestanden. Parallel erscheinende TRAIN-Änderungen bleiben fremd und unberührt. |
+| TRAIN-Checkpoint | 06.10.2026: TRAIN-01.0–01.5a einzeln integriert; TRAIN-01.5b Status-/Dienstvertrag einschließlich Kalender, Planer, mobiler Bearbeitungszugang, Handout und Dienstbuch umgesetzt. 35 Backendtests (2 PostgreSQL-only übersprungen), 214 Frontendtests, Typecheck, ESLint und Migrationsabgleich bestanden. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. Einziger Bearbeiter und Integrationsagent. TRAIN-Stand bleibt erhalten. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
@@ -17,7 +18,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
 | Letzter Roadmap-Commit | TRAIN-Integration (3558df0 übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | TRAIN-01.5b Status-/Dienstvertrag und vollständigen Frontendablauf umsetzen; Integration abgeschlossen. |
+| Nächster konkreter Schritt | TRAIN: TRAIN-01.5c Admin-/Browserabnahme; parallel ROLE: aktuellen ROLE-Checkpoint beachten. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -551,7 +552,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | in Arbeit | Codex | ROLE-02.1 Rechte, Freigabe und Herkunftsmodell; 31 gezielte Tests bestanden. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
-| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5a integriert; TRAIN-01.5b Status-/Dienstvertrag in Umsetzung. |
+| TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5b integriert; Status-/Dienstvertrag im Frontend umgesetzt. Nächster Schritt: TRAIN-01.5c Admin-/Browserabnahme. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
 | TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
@@ -958,14 +959,16 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
     - `TRAIN-01.5a`: Tauschen/Nachfolgende verschieben nur über benannte Aktionen mit vollständiger, zeitlich gültiger Vorschau; gemeinsam rückgängig.
     - `TRAIN-01.5b`: Statusmigration und stabile Dienstverknüpfung gemeinsam mit TRAIN-03 (Entwürfe ohne regulären Dienst; ausdrückliche Änderungen nach Beginn, historische Anwesenheiten erhalten). Abnahme: verknüpfte Altdaten veröffentlicht, neue Entwürfe ohne Dienst, Veröffentlichung erzeugt genau einen stabilen Dienst; abgeschlossen/abgesagt erhält ihn. Rückkehr zum Entwurf mit verknüpftem Dienst und Abteilungswechsel dokumentierter Dienste blockieren. Planänderungen nach Beginn oder Anwesenheit verlangen `confirm_service_change`; Bestätigung wird nicht im Entwurf gespeichert. Frontend zeigt Status/Version und Dienstlink in Planer, Kalender, mobiler Ansicht und Handout; Statusaktionen werden atomar gespeichert. Mobile Geräte können ausdrücklich den Bearbeitungsmodus öffnen. Regressionen für Migration, Dienstidentität, historische Anwesenheiten und Bestätigungsfluss.
     - `TRAIN-01.5c`: Gebündelte fachliche und Browser-/Touch-Abnahme nach Integration und Statusvertrag.
-- **Letzter dauerhafter Checkpoint:** TRAIN-01.5a, dieser Commit.
+- **Letzter dauerhafter Checkpoint:** TRAIN-01.5b, dieser Commit.
 - **Branch:** Integration auf `feat/security-roles-training-operations`; isolierter detached Worktree `/private/tmp/jf-manager-train` bei `d89c90b`, keine konkurrierenden Git-Schreiboperationen im gemeinsamen Checkout.
 - **Geänderte Dateien / Commit-Bezug:** Trainings-Backend, Planer-Store, API/Typen, Trainingsformulare/-aktionen und Planer-Bedienlogik, neue Tests; `10335ef`, `4d2e276`, `26e3098`, `4de5e64`, `31996e4`, dieser Commit: `feat(TRAIN-01.5a): preview explicit swaps and following block shifts`. API-Dokumentation: `docs/planning/training-plan-api.md`.
-- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.4 und TRAIN-01.5a; Paket bleibt in Arbeit.
+- **Umgesetzte Teilschritte:** TRAIN-01.0 bis TRAIN-01.4 und TRAIN-01.5a/b; Paket bleibt in Arbeit.
 - **Prüfungen:** Backend: 48/48 gezielte SQLite-, 50/50 gezielte PostgreSQL-15- und 644/644 Gesamt-Tests auf PostgreSQL 15 bestanden (explizite Modulliste einschließlich `training`, keine übersprungenen Tests). Frontend: 203/203 Gesamt-Tests, Typecheck, gezieltes ESLint und Produktionsbuild bestanden. Migrationsabgleich, Ruff und Diff-Check bestanden. Manueller Browser-/Touchlauf nicht ausgeführt. Backend-Testumgebung Python 3.12; neuere SEC-10.6-Laufzeit nach Integration erneut abgleichen.
-- **Offene Fehler / Risiken:** Status-/Dienstvertrag noch offen; direkte Django-Admin-Änderungen erhöhen derzeit keine Planversion und benötigen vor Paketabnahme einen eigenen Versions-/Zeitprüfungsvertrag; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Integration durch den abgestimmten Integrationsagenten; isolierte Commits gelten bis Integration nicht als gemeinsamer Branchstand.
+- **Offene Fehler / Risiken:** Status-/Dienstvertrag in TRAIN-01.5b umgesetzt; direkte Django-Admin-Änderungen erhöhen derzeit keine Planversion und benötigen vor Paketabnahme einen eigenen Versions-/Zeitprüfungsvertrag; Seriengenerierung löscht Folgetermine (TRAIN-03). Fremde Änderungen an CI, Laufzeit, Sitzungsrichtlinie, Mitgliederlisten und Betriebsanleitungen bleiben unangetastet. Alle sechs isolierten Commits sind integriert; der detached Worktree bleibt lediglich Sicherung.
 - **Laufende Prozesse und sichere Fortsetzung:** Prüfungen abgeschlossen; Wegwerf-PostgreSQL-15-Container `jf-train-test-pg15` wird nach Sicherung entfernt. Logs `/private/tmp/train-backend-tests.log` und `/private/tmp/train-frontend-build.log`. Keine Änderungen an lokalen Anwendungsdaten. Isolierter Worktree bleibt als wiederaufnehmbarer Checkpoint bestehen.
-- **Nächster konkreter Schritt:** Alle sechs TRAIN-Teilschritte sind einzeln auf `feat/security-roles-training-operations` integriert (`b9faa15` bis `7c3e80c`); SEC-/DES-Einträge erhalten. Jetzt TRAIN-01.5b mit TRAIN-03 übernehmen; Admin-Vertrag und Browser-/Touchabnahme in TRAIN-01.5c, TRAIN-02–04 bleiben offen.
+- **Nächster konkreter Schritt:** Alle sechs TRAIN-Teilschritte sind einzeln auf `feat/security-roles-training-operations` integriert (`b9faa15` bis `7c3e80c`); SEC-/DES-Einträge erhalten. TRAIN-01.5b umgesetzt. Admin-Vertrag und Browser-/Touchabnahme in TRAIN-01.5c, TRAIN-02–04 bleiben offen.
+
+- **TRAIN-01.5b-Prüfung:** 35 Backendtests bestanden (2 PostgreSQL-only übersprungen), 214/214 Frontendtests, Typecheck, gezieltes ESLint, Migrationsabgleich und Diff-Check bestanden. Zwei neue Historientests zunächst wegen veralteter Testinstanz fehlgeschlagen; nach `refresh_from_db()` im Veröffentlichungshelper bestanden. Browser-/Touchlauf noch nicht ausgeführt. SEC-/ROLE-/Export-Commits, die während der Umsetzung erschienen, bleiben erhalten; ausschließlich TRAIN-bezogene Dateien stagen.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1304,3 +1307,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | ROLE-02.0 | Nutzerauftrag für vollständige ROLE-Umsetzung übernommen. Roadmap, Manifest, Git und tatsächliche Endpunkte abgeglichen; Detailvertrag und stabile IDs ergänzt. Keine fremden Änderungen vorhanden. | Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(ROLE-02.0): define complete role assignment acceptance` | ROLE-01.7a. |
 
 | 06.10.2026 | ROLE-02.1 | Explizite Zuweisungs-/Delegationsrechte und Katalogversionen, Einstellungsrechte für Systemadministration, administrative Freigabe an konkrete Gruppenpermissions gebunden und Herkunftsmodell mit konservativer lokaler Altdatenübernahme ergänzt. Seed erweitert vorhandene Gruppen weiterhin nicht. | 31/31 gezielte Tests und Ruff bestanden; erster Werkzeugstart ohne explizite Testumgebung fehlgeschlagen, Wiederholung bestanden. Anwendungsmigration und breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-02.1): bind delegation approval to permissions and preserve assignment sources` | ROLE-02.2. |
+
+| 06.10.2026 | TRAIN-01.5b | Sechs TRAIN-Commits einzeln integriert. Statusmigration übernimmt verknüpfte Alttermine veröffentlicht; Entwürfe ohne Dienst. Veröffentlichungen behalten eine stabile Dienstidentität; Abschluss/Absage und dokumentierte Löschfälle erhalten Anwesenheiten. Bestätigung für Änderungen nach Beginn/Dokumentation, Abteilungswechsel dann blockiert. Frontend-Statusaktionen im atomaren Planentwurf; Statusanzeigen in Kalender, Planer, Mobile, Handout und Dienstbuch; Version und Dienstlink, ausdrücklicher mobiler Bearbeitungszugang sowie erhaltene Formularfehler. | 35 Backendtests bestanden (2 PostgreSQL-only übersprungen), 214/214 Frontendtests, Typecheck, gezieltes ESLint, Migrationsabgleich und Diff-Check bestanden. Browser-/Touchlauf nicht ausgeführt. Historientestaufbauten zunächst fehlgeschlagen, nach Aktualisierung der Testinstanz bestanden. | Dieser Commit: `feat(TRAIN-01.5b): connect training status and stable services to the frontend` | TRAIN-01.5c Admin-/Browserabnahme. |

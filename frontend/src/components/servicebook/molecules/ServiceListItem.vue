@@ -12,6 +12,7 @@
       </h3>
       <p class="service-row__meta">{{ [timeRange, service.place].filter(Boolean).join(' · ') }}</p>
       <div class="service-row__badges">
+        <TrainingStatusBadge v-if="service.training_status" :status="service.training_status" />
         <StatusBadge v-if="attendanceTotal" severity="success" icon="pi pi-users" :label="attendanceLabel" />
         <StatusBadge v-else-if="isStarted" severity="warning" icon="pi pi-user-plus" label="Anwesenheit offen" />
         <StatusBadge v-if="service.has_events" severity="info" icon="pi pi-flag" label="Besonderheiten" />
@@ -50,6 +51,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Button from 'primevue/button'
+import TrainingStatusBadge from '@/components/training/atoms/TrainingStatusBadge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import type { Service } from '@/types/servicebook'
 

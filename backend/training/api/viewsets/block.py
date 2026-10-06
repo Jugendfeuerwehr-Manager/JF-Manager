@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image as PilImage
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, NotFound
 from rest_framework.parsers import MultiPartParser
@@ -25,6 +25,7 @@ from training.api.serializers import (
 )
 from training.api.serializers.block import validate_block_target
 from training.models import TrainingBlock, TrainingMedia
+from training.workflow import validate_documented_change
 
 # ── Image processing helper ───────────────────────────────────────────────────
 
@@ -93,6 +94,10 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
                 exc.status_code = 409
                 raise exc
             self.check_object_permissions(self.request, block)
+            confirmed = serializers.BooleanField().run_validation(
+                self.request.data.get("confirm_service_change", False)
+            )
+            validate_documented_change(block.session, confirmed)
         return block
 
     def perform_create(self, serializer):
@@ -100,6 +105,8 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         if not locked:
             raise NotFound()
         session = locked[0]
+        confirmed = serializers.BooleanField().run_validation(self.request.data.get("confirm_service_change", False))
+        validate_documented_change(session, confirmed)
         serializer.validated_data["session"] = session
         validate_block_target(serializer, serializer.validated_data)
         serializer.save()
@@ -107,6 +114,9 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         previous_session = serializer.instance.session
+        target = serializer.validated_data.get("session", previous_session)
+        confirmed = serializers.BooleanField().run_validation(self.request.data.get("confirm_service_change", False))
+        validate_documented_change(target, confirmed)
         block = serializer.save()
         advance_revision(previous_session)
         if block.session_id != previous_session.pk:

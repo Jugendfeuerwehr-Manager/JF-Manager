@@ -93,7 +93,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   function metadata(): TrainingSessionCreate {
     const s = session.value!
     return {
-      title: s.title, description: s.description, date: s.date,
+      status: s.status, title: s.title, description: s.description, date: s.date,
       start_time: s.start_time, end_time: s.end_time, location: s.location,
       notes: s.notes, department: s.department, group_ids: s.groups.map((g) => g.id),
       recurrence_rule: s.recurrence_rule,
@@ -196,7 +196,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     return b
   }
 
-  function stageSession(data: TrainingSessionCreate, choices: GroupMini[] = []) {
+  function stageSession(data: Partial<TrainingSessionCreate>, choices: GroupMini[] = []) {
     assertEditable()
     const { group_ids, ...values } = data
     mutate(() => {
@@ -222,10 +222,11 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     })
   }
 
-  async function savePendingMoves() {
+  async function savePendingMoves(confirmServiceChange = false) {
     if (!isDirty.value || saving.value || loading.value || !sessionId.value) return
     const requestGeneration = generation
     const payload = draft()
+    if (confirmServiceChange) payload.session.confirm_service_change = true
     saving.value = true
     error.value = null
     try {

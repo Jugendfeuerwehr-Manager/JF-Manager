@@ -76,6 +76,7 @@
       </div>
     </div>
 
+    <p v-if="error" role="alert">{{ error }}</p>
     <div class="form-actions">
       <Button label="Abbrechen" severity="secondary" outlined @click="emit('cancel')" />
       <Button
@@ -130,6 +131,7 @@ const emit = defineEmits<{
 const trainingStore = useTrainingStore()
 const saving = ref(false)
 const submitted = ref(false)
+const error = ref('')
 const groups = ref<{ id: number; name: string }[]>([])
 
 const hasRecurrence = ref(false)
@@ -161,9 +163,11 @@ const frequencyOptions = [
 ]
 
 onMounted(async () => {
+  if (props.initialData) populateForm(props.initialData)
+  try {
   const res = await apiClient.get<{ results: { id: number; name: string }[] }>('/groups/')
   groups.value = res.data.results ?? res.data
-  if (props.initialData) populateForm(props.initialData)
+  } catch { error.value = 'Gruppen konnten nicht geladen werden. Eingaben bleiben erhalten.' }
 })
 
 watch(() => props.initialData, (data) => { if (data) populateForm(data) })
@@ -218,6 +222,8 @@ async function submit() {
   submitted.value = true
   if (!form.value.title.trim() || !form.value.date) return
 
+  error.value = ''
+  if (!props.draftOnly && props.initialData?.requires_service_confirmation && !window.confirm('Dokumentierten oder begonnenen Dienst ausdrücklich ändern? Anwesenheiten bleiben erhalten.')) return
   saving.value = true
   try {
     const payload: TrainingSessionCreate = {
@@ -228,12 +234,17 @@ async function submit() {
     if (props.draftOnly) {
       emit('draft', payload, groups.value)
     } else if (props.initialData?.id) {
+      payload.confirm_service_change = !!props.initialData.requires_service_confirmation
       await trainingStore.updateSession(props.initialData.id, payload)
       emit('success', props.initialData.id)
     } else {
       const session = await trainingStore.createSession(payload)
       if (session) emit('success', session.id)
     }
+  } catch (e: unknown) {
+    const response = (e as { response?: { data?: unknown } }).response
+    const messages = (value: unknown): string[] => typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(messages) : []
+    error.value = messages(response?.data).join(' ') || 'Nicht gespeichert. Verbindung und Berechtigung prüfen und erneut versuchen.'
   } finally {
     saving.value = false
   }

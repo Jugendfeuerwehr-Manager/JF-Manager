@@ -86,6 +86,8 @@ export const useTrainingStore = defineStore('training', () => {
       // Add to list
       const listItem: TrainingSessionList = {
         id: response.data.id,
+        status: response.data.status,
+        requires_service_confirmation: response.data.requires_service_confirmation,
         title: response.data.title,
         date: response.data.date,
         start_time: response.data.start_time,

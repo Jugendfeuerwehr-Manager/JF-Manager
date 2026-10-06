@@ -14,7 +14,7 @@ const router = useRouter()
 const sessionId = computed(() => Number(route.params.id))
 
 // Redirect mobile / touch-primary devices to the mobile-optimised read-only view
-if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && route.query.edit !== '1') {
   router.replace({ name: 'training-mobile', params: { id: route.params.id } })
 }
 </script>

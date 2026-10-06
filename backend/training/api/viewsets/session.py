@@ -21,6 +21,7 @@ from training.api.serializers import (
     TrainingSessionListSerializer,
 )
 from training.models import TrainingSession
+from training.workflow import service_is_documented, sync_linked_service
 
 
 class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
@@ -65,45 +66,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
         self.queryset = qs
         return super().get_queryset()
 
-    def _to_aware_datetime(self, date_value, time_value):
-        dt = datetime.datetime.combine(date_value, time_value)
-        if timezone.is_naive(dt):
-            return timezone.make_aware(dt, timezone.get_current_timezone())
-        return dt
-
-    def _sync_linked_servicebook_entry(self, session):
-        from servicebook.models import Service
-
-        start = self._to_aware_datetime(session.date, session.start_time)
-        end = self._to_aware_datetime(session.date, session.end_time)
-
-        service, _ = Service.objects.get_or_create(
-            training_session=session,
-            defaults={
-                "start": start,
-                "end": end,
-                "topic": session.title,
-                "place": session.location,
-                "description": session.description,
-                "department": session.department,
-            },
-        )
-        service.start = start
-        service.end = end
-        service.topic = session.title
-        service.place = session.location
-        service.description = session.description
-        service.department = session.department
-        service.save(
-            update_fields=[
-                "start",
-                "end",
-                "topic",
-                "place",
-                "description",
-                "department",
-            ]
-        )
+    _sync_linked_servicebook_entry = staticmethod(sync_linked_service)
 
     def perform_create(self, serializer):
         session = serializer.save()
@@ -128,7 +91,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
             }
             is_future_service = linked_service.start >= timezone.now()
 
-            if is_future_service and should_delete_linked_service:
+            if is_future_service and should_delete_linked_service and not service_is_documented(linked_service):
                 linked_service.delete()
             else:
                 linked_service.training_session = None

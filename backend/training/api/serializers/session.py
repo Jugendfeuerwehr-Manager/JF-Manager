@@ -6,6 +6,7 @@ from members.models import Group
 from training.api.permissions import can_manage_training_department
 from training.api.validation import validate_block_times, validate_session_times
 from training.models import TrainingSession
+from training.workflow import requires_service_confirmation, validate_workflow
 
 from .block import GroupMiniSerializer, TrainingBlockSerializer
 
@@ -16,12 +17,14 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
     block_count = serializers.SerializerMethodField()
     linked_service_id = serializers.SerializerMethodField()
     linked_service_start = serializers.SerializerMethodField()
+    requires_service_confirmation = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingSession
         fields = [
             "id",
             "revision",
+            "status",
             "title",
             "date",
             "start_time",
@@ -35,6 +38,7 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
             "department",
             "linked_service_id",
             "linked_service_start",
+            "requires_service_confirmation",
         ]
 
     def get_group_count(self, obj):
@@ -42,6 +46,9 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
 
     def get_block_count(self, obj):
         return obj.blocks.count()
+
+    def get_requires_service_confirmation(self, obj):
+        return requires_service_confirmation(obj)
 
     def get_linked_service_id(self, obj):
         service = getattr(obj, "servicebook_entry", None)
@@ -53,6 +60,7 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
 
 
 class TrainingSessionDetailSerializer(serializers.ModelSerializer):
+    confirm_service_change = serializers.BooleanField(write_only=True, default=False)
     groups = GroupMiniSerializer(many=True, read_only=True)
     group_ids = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(),
@@ -65,14 +73,17 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True, default=None)
     linked_service_id = serializers.SerializerMethodField()
     linked_service_start = serializers.SerializerMethodField()
+    requires_service_confirmation = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingSession
         fields = [
             "id",
             "revision",
+            "status",
             "title",
             "description",
+            "confirm_service_change",
             "date",
             "start_time",
             "end_time",
@@ -86,6 +97,7 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "department",
             "linked_service_id",
             "linked_service_start",
+            "requires_service_confirmation",
             "created_by",
             "created_by_name",
             "created_at",
@@ -95,6 +107,8 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        confirmed = attrs.pop("confirm_service_change", False)
+        validate_workflow(self.instance, attrs, confirmed)
         start = attrs.get("start_time", getattr(self.instance, "start_time", None))
         end = attrs.get("end_time", getattr(self.instance, "end_time", None))
         if start is not None and end is not None:
@@ -138,6 +152,9 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             instance.groups.set(groups)
         return instance
 
+    def get_requires_service_confirmation(self, obj):
+        return requires_service_confirmation(obj)
+
     def get_linked_service_id(self, obj):
         service = getattr(obj, "servicebook_entry", None)
         return service.id if service else None
@@ -166,6 +183,7 @@ class TrainingSessionHandoutSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "revision",
+            "status",
             "title",
             "description",
             "date",

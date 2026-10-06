@@ -172,6 +172,8 @@ export interface TrainingBlockMove {
 
 // ─── Training Session ─────────────────────────────────────────────────────────
 
+export type TrainingStatus = 'draft' | 'published' | 'completed' | 'cancelled'
+
 export type RecurrenceFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
 
 export interface RecurrenceRule {
@@ -180,6 +182,7 @@ export interface RecurrenceRule {
 }
 
 export interface TrainingSessionList {
+  status: TrainingStatus
   id: number
   title: string
   date: string
@@ -192,11 +195,13 @@ export interface TrainingSessionList {
   department: number | null
   linked_service_id: number | null
   linked_service_start: string | null
+  requires_service_confirmation: boolean
   series_parent: number | null
   recurrence_rule: RecurrenceRule | null
 }
 
 export interface TrainingSessionDetail {
+  status: TrainingStatus
   id: number
   revision: number
   title: string
@@ -212,6 +217,7 @@ export interface TrainingSessionDetail {
   department: number | null
   linked_service_id: number | null
   linked_service_start: string | null
+  requires_service_confirmation: boolean
   series_parent: number | null
   recurrence_rule: RecurrenceRule | null
   created_by: number | null
@@ -221,6 +227,8 @@ export interface TrainingSessionDetail {
 }
 
 export interface TrainingSessionCreate {
+  status?: TrainingStatus
+  confirm_service_change?: boolean
   title: string
   description?: string
   date: string
@@ -236,6 +244,8 @@ export interface TrainingSessionCreate {
 export type TrainingSessionUpdate = Partial<TrainingSessionCreate>
 
 export interface TrainingSessionHandout {
+  revision: number
+  status: TrainingStatus
   id: number
   title: string
   description: string

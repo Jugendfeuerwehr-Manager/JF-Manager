@@ -59,6 +59,7 @@ class TrainingServicebookLinkTest(TestCase):
     def _create_session(self, **overrides):
         payload = {
             "title": "Dienst mit Theorie",
+            "status": "published",
             "description": "Beschreibung",
             "date": "2030-03-15",
             "start_time": "18:00:00",

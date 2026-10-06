@@ -5,6 +5,7 @@
       <div class="handout-title-row">
         <h1 class="handout-title">{{ handout.title }}</h1>
         <div class="handout-meta">
+          <TrainingStatusBadge :status="handout.status" /><span>Version {{ handout.revision }}</span>
           <span>{{ formatDate(handout.date) }}</span>
           <span v-if="handout.start_time">· {{ handout.start_time }}</span>
           <span v-if="handout.end_time">– {{ handout.end_time }}</span>
@@ -118,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import { downloadMedia } from '@/utils/privateMedia'
 import SafeHtml from '@/components/common/SafeHtml.vue'
 import { computed } from 'vue'

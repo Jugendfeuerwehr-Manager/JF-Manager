@@ -20,6 +20,13 @@ class TrainingSession(models.Model):
         BIWEEKLY = "BIWEEKLY", "Zweiwöchentlich"
         MONTHLY = "MONTHLY", "Monatlich"
 
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Entwurf"
+        PUBLISHED = "published", "Veröffentlicht"
+        COMPLETED = "completed", "Abgeschlossen"
+        CANCELLED = "cancelled", "Abgesagt"
+
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT, verbose_name="Status")
     title = models.CharField(max_length=300, verbose_name="Titel")
     description = models.TextField(blank=True, verbose_name="Beschreibung")
 
