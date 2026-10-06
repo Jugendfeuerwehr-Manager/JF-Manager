@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import SeriesDialog from '../SeriesDialog.vue'
+import SeriesGeneratePanel from '../SeriesGeneratePanel.vue'
 import type { SeriesPreview } from '@/types/training'
 
 const api = vi.hoisted(() => ({ seriesPreview: vi.fn(), generateSeries: vi.fn() }))
@@ -20,11 +20,10 @@ function preview(overrides: Partial<SeriesPreview> = {}): SeriesPreview {
 }
 
 function mountDialog() {
-  return mount(SeriesDialog, {
-    props: { visible: true, sessionId: 1 },
+  return mount(SeriesGeneratePanel, {
+    props: { sessionId: 1 },
     global: {
       stubs: {
-        Dialog: { template: '<div><slot /><slot name="footer" /></div>' },
         Button: { props: ['label', 'disabled', 'type'], emits: ['click'], template: '<button :type="type || \'button\'" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>' },
         InputText: { props: ['modelValue'], template: '<input :value="modelValue" />' },
         RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
@@ -33,7 +32,7 @@ function mountDialog() {
   })
 }
 
-describe('SeriesDialog', () => {
+describe('SeriesGeneratePanel', () => {
   beforeEach(() => {
     api.seriesPreview.mockReset()
     api.generateSeries.mockReset()

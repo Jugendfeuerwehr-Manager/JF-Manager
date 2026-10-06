@@ -3,6 +3,7 @@
 import calendar
 import hashlib
 import json
+import re
 import uuid
 from datetime import date, datetime, timedelta
 
@@ -11,9 +12,11 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from training.api.permissions import can_manage_training_department
+from training.api.plan import advance_revision, delete_plan_blocks
 from training.api.validation import validate_block_times, validate_session_times
-from training.copying import copied_files, copy_session, snapshot_hash
+from training.copying import BLOCK_FIELDS, SESSION_FIELDS, copied_files, copy_block, copy_session, snapshot_hash
 from training.models import TrainingSession
+from training.workflow import linked_service, service_is_documented, sync_linked_service
 
 MAX_OCCURRENCES = 200
 MAX_MONTHS = 24
@@ -200,3 +203,163 @@ def generate_missing(root, children, data, user):
             child.save(update_fields=["series_baseline_hash"])
             created.append(child.pk)
     return {"created": len(created), "session_ids": created}, preview
+
+
+class PropagationInputSerializer(serializers.Serializer):
+    include_deviating = serializers.ListField(
+        child=serializers.IntegerField(), required=False, max_length=MAX_OCCURRENCES
+    )
+    preview_token = serializers.CharField(required=False, max_length=64)
+
+
+def comparable(session):
+    """Plan content without per-copy media URLs, for a readable change summary."""
+    blocks = [
+        {
+            **{name: getattr(block, name) for name in BLOCK_FIELDS if name != "content"},
+            "content": re.sub(r'src="[^"]*"', "", block.content),
+            "groups": sorted(block.groups.values_list("pk", flat=True)),
+        }
+        for block in session.blocks.order_by("start_offset_minutes", "position_order", "pk")
+    ]
+    return {
+        **{name: getattr(session, name) for name in SESSION_FIELDS},
+        "groups": sorted(session.groups.values_list("pk", flat=True)),
+        "blocks": blocks,
+    }
+
+
+def describe_changes(source, target):
+    new, old = comparable(source), comparable(target)
+    changes = []
+    if new["title"] != old["title"]:
+        changes.append(f"Titel: „{old['title']}“ → „{new['title']}“")
+    if (new["start_time"], new["end_time"]) != (old["start_time"], old["end_time"]):
+        changes.append(
+            f"Zeit: {old['start_time']:%H:%M}–{old['end_time']:%H:%M} → {new['start_time']:%H:%M}–{new['end_time']:%H:%M}"
+        )
+    if new["location"] != old["location"]:
+        changes.append("Ort")
+    if (new["description"], new["notes"]) != (old["description"], old["notes"]):
+        changes.append("Beschreibung/Notizen")
+    if new["groups"] != old["groups"]:
+        changes.append("Gruppen")
+    if new["blocks"] != old["blocks"]:
+        changes.append(f"Ablauf: {len(old['blocks'])} → {len(new['blocks'])} Bausteine")
+    return changes
+
+
+def is_deviating(session):
+    moved = session.original_date is not None and session.date != session.original_date
+    # Without a baseline (legacy series) a plan is conservatively treated as deviating.
+    return moved or not session.series_baseline_hash or snapshot_hash(session) != session.series_baseline_hash
+
+
+def propagation_preview(source, root, children, data, user):
+    if not source.series_uuid:
+        raise serializers.ValidationError({"series": "Dieser Termin gehört zu keiner gespeicherten Serie."})
+    if not can_manage_training_department(user, source.department_id):
+        raise serializers.ValidationError({"series": "Keine Schreibberechtigung für diesen Termin."})
+    position = source.original_date or source.date
+    include = set(data.get("include_deviating") or [])
+    rows = []
+    for target in sorted(
+        (s for s in [root, *children] if s.pk != source.pk and (s.original_date or s.date) > position),
+        key=lambda s: (s.original_date or s.date, s.pk),
+    ):
+        row = {
+            "session_id": target.pk,
+            "date": target.date.isoformat(),
+            "original_date": (target.original_date or target.date).isoformat(),
+            "title": target.title,
+            "status": target.status,
+            "changes": [],
+            "overridable": False,
+        }
+        if not can_manage_training_department(user, target.department_id):
+            row.update(
+                session_id=None,
+                title="Nicht sichtbarer Termin",
+                action="conflict",
+                reason="Keine Schreibberechtigung; bleibt unverändert.",
+            )
+        elif target.department_id != source.department_id:
+            row.update(action="conflict", reason="Andere Abteilung; bleibt unverändert.")
+        elif target.status in (TrainingSession.Status.COMPLETED, TrainingSession.Status.CANCELLED):
+            row.update(action="history", reason="Abgeschlossen oder abgesagt; bleibt unverändert.")
+        elif started(target.date, target.start_time) or service_is_documented(linked_service(target)):
+            row.update(
+                action="history", reason="Begonnen oder dokumentiert; Dienst und Anwesenheiten bleiben unverändert."
+            )
+        else:
+            row["changes"] = describe_changes(source, target)
+            if not row["changes"]:
+                row.update(action="unchanged", reason="Bereits identisch.")
+            elif is_deviating(target):
+                row["overridable"] = True
+                chosen = target.pk in include
+                row.update(
+                    action="update" if chosen else "deviating",
+                    reason="Abweichender Einzeltermin – ausdrücklich zum Überschreiben ausgewählt."
+                    if chosen
+                    else "Abweichender Einzeltermin bleibt standardmäßig erhalten.",
+                )
+            else:
+                row.update(action="update", reason="Wird auf den Stand dieses Termins gebracht.")
+        rows.append(row)
+    unknown = include - {row["session_id"] for row in rows if row["overridable"]}
+    if unknown:
+        raise serializers.ValidationError({"include_deviating": "Nur abweichende, änderbare Folgetermine auswählbar."})
+    if len(rows) > MAX_OCCURRENCES:
+        raise serializers.ValidationError({"series": f"Höchstens {MAX_OCCURRENCES} Vorkommen je Aktion."})
+    fingerprint = {
+        "source": [source.pk, source.revision],
+        "targets": sorted((target.pk, target.revision, target.date, target.status) for target in [*children, root]),
+        "include": sorted(include),
+        "rows": rows,
+    }
+    counts = {name: sum(row["action"] == name for row in rows) for name in ACTIONS}
+    return {
+        "source_id": source.pk,
+        "source_revision": source.revision,
+        "preview_token": preview_token(fingerprint),
+        "occurrences": rows,
+        "counts": counts,
+    }
+
+
+ACTIONS = ("update", "unchanged", "deviating", "history", "conflict")
+
+
+def replace_plan(target, source, user, files):
+    for name in SESSION_FIELDS:
+        setattr(target, name, getattr(source, name))
+    target.save()
+    target.groups.set(source.groups.all())
+    delete_plan_blocks(target.blocks.all())
+    for block in source.blocks.all():
+        copy_block(block, target, user, files)
+    advance_revision(target)
+    sync_linked_service(target)
+    target.series_baseline_hash = snapshot_hash(target)
+    target.save(update_fields=["series_baseline_hash"])
+
+
+@transaction.atomic
+def propagate(source, root, children, data, user):
+    """Returns (result, preview); result is None when the preview is outdated."""
+    source = next(s for s in [root, *children] if s.pk == source.pk)
+    preview = propagation_preview(source, root, children, data, user)
+    if data.get("preview_token") != preview["preview_token"]:
+        return None, preview
+    by_id = {s.pk: s for s in [root, *children]}
+    updated = []
+    with copied_files() as files:
+        for row in preview["occurrences"]:
+            if row["action"] == "update":
+                replace_plan(by_id[row["session_id"]], source, user, files)
+                updated.append(row["session_id"])
+    # This occurrence is now the agreed state of the following series.
+    source.series_baseline_hash = snapshot_hash(source)
+    source.save(update_fields=["series_baseline_hash"])
+    return {"updated": len(updated), "session_ids": updated}, preview

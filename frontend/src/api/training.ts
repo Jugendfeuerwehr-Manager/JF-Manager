@@ -12,6 +12,7 @@ import type {
   LibraryBlockUsageSession,
   LibraryImportResult,
   PaginatedResponse,
+  PropagationPreview,
   SeriesPreview,
   SeriesWindow,
   TrainingBlock,
@@ -58,6 +59,12 @@ export const trainingSessionsApi = {
   },
   generateSeries(id: number, data: SeriesWindow & { preview_token: string }) {
     return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`, data)
+  },
+  propagationPreview(id: number, data: { include_deviating?: number[] }) {
+    return apiClient.post<PropagationPreview>(`/training/sessions/${id}/propagation_preview/`, data)
+  },
+  propagateSeries(id: number, data: { include_deviating?: number[]; preview_token: string }) {
+    return apiClient.post<{ updated: number; session_ids: number[] }>(`/training/sessions/${id}/propagate_series/`, data)
   },
 }
 

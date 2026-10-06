@@ -26,8 +26,21 @@ BLOCK_FIELDS = (
 )
 
 
+def owned_files(block):
+    block_type = ContentType.objects.get_for_model(TrainingBlock)
+    return {
+        "media": sorted(
+            TrainingMedia.objects.filter(content_type=block_type, object_id=block.pk).values_list("pk", flat=True)
+        ),
+        "attachments": sorted(
+            Attachment.objects.filter(content_type=block_type, object_id=block.pk).values_list("pk", flat=True)
+        ),
+    }
+
+
 def snapshot_hash(session):
-    data = {name: str(getattr(session, name)) for name in (*SESSION_FIELDS, "date", "status")}
+    """Content fingerprint of a plan; status and date are compared separately."""
+    data = {name: str(getattr(session, name)) for name in SESSION_FIELDS}
     data["groups"] = sorted(session.groups.values_list("pk", flat=True))
     data["blocks"] = []
     for block in session.blocks.order_by("start_offset_minutes", "position_order", "pk"):
@@ -35,6 +48,7 @@ def snapshot_hash(session):
             {
                 **{name: getattr(block, name) for name in BLOCK_FIELDS},
                 "groups": sorted(block.groups.values_list("pk", flat=True)),
+                **owned_files(block),
             }
         )
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()

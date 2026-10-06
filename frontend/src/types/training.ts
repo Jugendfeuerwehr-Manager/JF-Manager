@@ -302,6 +302,29 @@ export interface SeriesPreview {
   counts: Record<SeriesOccurrenceAction, number>
 }
 
+export type PropagationAction = 'update' | 'unchanged' | 'deviating' | 'history' | 'conflict'
+
+export interface PropagationRow {
+  session_id: number | null
+  date: string
+  original_date: string
+  title: string
+  status: TrainingStatus
+  action: PropagationAction
+  reason: string
+  changes: string[]
+  overridable: boolean
+}
+
+// 'This and following': applies the saved state of one occurrence to later ones.
+export interface PropagationPreview {
+  source_id: number
+  source_revision: number
+  preview_token: string
+  occurrences: PropagationRow[]
+  counts: Record<PropagationAction, number>
+}
+
 export interface SeriesWindow {
   window_start?: string
   window_end?: string

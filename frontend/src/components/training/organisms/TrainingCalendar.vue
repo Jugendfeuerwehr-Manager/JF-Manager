@@ -117,7 +117,7 @@
       <TrainingSessionForm :initial-data="prefillDate ? { date: prefillDate } as any : null" @success="onSessionCreated" @cancel="showCreate = false" />
     </Dialog>
 
-    <SeriesDialog v-model:visible="showSeries" :session-id="seriesSessionId" @generated="loadSessions" />
+    <SeriesDialog v-model:visible="showSeries" :session-id="seriesSessionId" @changed="loadSessions" />
 
     <!-- Day detail panel -->
     <Dialog

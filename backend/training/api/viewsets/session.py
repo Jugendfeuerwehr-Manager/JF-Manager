@@ -19,10 +19,19 @@ from training.api.serializers import (
     TrainingSessionListSerializer,
 )
 from training.models import TrainingSession
-from training.series import SeriesInputSerializer, generate_missing, generation_preview, lock_series, series_root
+from training.series import (
+    PropagationInputSerializer,
+    SeriesInputSerializer,
+    generate_missing,
+    generation_preview,
+    lock_series,
+    propagate,
+    propagation_preview,
+    series_root,
+)
 from training.workflow import service_is_documented, sync_linked_service
 
-SERIES_ACTIONS = {"generate_series"}
+SERIES_ACTIONS = {"generate_series", "propagate_series"}
 
 
 class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
@@ -176,3 +185,34 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
                 status=status.HTTP_409_CONFLICT,
             )
         return Response(result, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def propagation_preview(self, request, pk=None):
+        """'This and following': complete preview of the saved state; nothing is changed."""
+        session = self.get_object()
+        payload = PropagationInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        root = series_root(session)
+        children = list(root.series_children.order_by("pk"))
+        return Response(propagation_preview(session, root, children, payload.validated_data, request.user))
+
+    @action(detail=True, methods=["post"])
+    def propagate_series(self, request, pk=None):
+        """Applies the confirmed preview; deviating dates only when explicitly listed."""
+        session = self.get_object()
+        payload = PropagationInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        if not payload.validated_data.get("preview_token"):
+            raise ValidationError({"preview_token": "Vorschau bestätigen, bevor Folgetermine geändert werden."})
+        root, children = lock_series(session)
+        result, preview = propagate(session, root, children, payload.validated_data, request.user)
+        if result is None:
+            return Response(
+                {
+                    "code": "series_preview_changed",
+                    "detail": "Serie oder Termine wurden inzwischen geändert. Aktualisierte Vorschau prüfen.",
+                    "preview": preview,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(result)
