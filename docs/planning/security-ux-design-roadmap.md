@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.1 Backend auf Django 5.2 LTS ohne bekannte Abhängigkeitslücken. |
+| Letzter Checkpoint | 06.10.2026: SEC-10.2 Frontend-Abhängigkeiten aktualisiert (65 → 1 Werkzeugbefund). |
 | Aktuelles Paket | SEC-10 in Arbeit (Claude). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-09 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-10.1` (dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-10.2` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-10.2 Frontend-Abhängigkeiten; danach SEC-10.3 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
+| Nächster konkreter Schritt | SEC-10.3 Produktionsvorgaben (`check --deploy`, Header, CSP, Monaco lokal); danach SEC-10.4 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -545,7 +545,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
-| SEC-10 | in Arbeit | Claude | SEC-10.1 Django 5.2.17 LTS, Backend ohne bekannte Lücken, 611/611 auf SQLite und PostgreSQL; nächster Schritt SEC-10.2 Frontend. |
+| SEC-10 | in Arbeit | Claude | SEC-10.2 Frontend-Laufzeitpakete ohne Befund, nur `braces` im Lint-Werkzeug offen; nächster Schritt SEC-10.3 Produktionsvorgaben. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
@@ -892,9 +892,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-10.6`: Python-Laufzeit von 3.10 auf eine unterstützte Version (Dockerfile, CI, Pipfile).
   - `SEC-10.7`: Gebündelte Abnahme.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation. SEC-10.1: `pip-audit` gegen neue Lockdatei ohne Befund; volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14; `check`, Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build nicht ausgeführt.
-- **Risiken:** Major-Sprünge (django-import-export 3→4, django-guardian 2→3, Pillow 10→12, urllib3 1→2, DRF 3.14→3.17) können Verhalten ändern; jede Anpassung durch Tests belegen. Produktionsdatenbank und `dump.rdb` nicht anfassen.
-- **Nächster Schritt:** SEC-10.2 Frontend-Abhängigkeiten.
+- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation. SEC-10.1: `pip-audit` gegen neue Lockdatei ohne Befund; volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14; `check`, Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build nicht ausgeführt. SEC-10.2: `npm audit --omit=dev` ohne Befund; gesamt 1 verbleibender hoher Befund (`braces` ≤ 3.0.3 über `@vue/eslint-config-typescript` → `fast-glob`, nur Lint-Werkzeug, keine korrigierte Version veröffentlicht; Ausnahme bis zu einer Upstream-Korrektur). Typecheck, ESLint, 162/162 Frontendtests, Coverage-Lauf und Build bestanden.
+- **Risiken:** Major-Sprünge (django-import-export 3→4, django-guardian 2→3, Pillow 10→12, urllib3 1→2, DRF 3.14→3.17) können Verhalten ändern; jede Anpassung durch Tests belegen. Produktionsdatenbank und `dump.rdb` nicht anfassen. Befund für SEC-10.3: `MonacoEditor.vue` lädt Monaco über `@monaco-editor/loader` ohne Konfiguration zur Laufzeit von `cdn.jsdelivr.net` (fremdes Skript, eigene Monaco-Version); das npm-Paket liefert nur Typen. Für eine strenge CSP lokal ausliefern.
+- **Nächster Schritt:** SEC-10.3 Produktionsvorgaben.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1153,3 +1153,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | SEC-10.0 | SEC-10 übernommen. `pip-audit` gegen die Lockdatei: 11 Pakete mit bekannten Lücken (Django 5.0.14, Pillow 10.0.1, PyJWT, aiohttp, urllib3 1.26 u. a.); `npm audit`: 65 Befunde (6 kritisch). Abnahme und Teilschritte SEC-10.1 bis SEC-10.7 festgelegt, Python-3.10-Supportende als eigener Teilschritt. | Code-/Git-Abgleich und Audit ausgeführt; keine Anwendungstests für Dokumentation. | Dieser Commit: `docs(SEC-10.0): define dependency and production check contract` | SEC-10.1. |
 
 | 06.10.2026 | SEC-10.1 | Pipfile: Django `~=5.2.17` (LTS), DRF 3.17.2, Pillow 12.3, urllib3 2.8 (Pin auf 1.26 aufgehoben), django-import-export 4.4, django-guardian 3.5, django-filter 25.2, django-phonenumber-field 8.5, django-redis 6.0, django-mptt 0.18, django-colorfield 0.14, django-environ 0.14, django-dynamic-preferences 1.17, dj-database-url 3.1. `djangorestframework-simplejwt` entfernt, `pyjwt[crypto]~=2.15` direkt (OIDC). Lockdatei neu erzeugt; transitiv u. a. PyJWT 2.15.1, aiohttp 3.14.4, cryptography 50.0.2, sqlparse 0.6.0, tablib 3.10.0. Keine Codeanpassung nötig; Python bleibt 3.10 (SEC-10.6). Lokale Pipenv-Umgebung synchronisiert und bereinigt. | `pip-audit` ohne Befund (vorher 11 Pakete). Volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14 (Wegwerf-Cluster), `check` (nur vorbestehende W342), Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build und Lauf mit echtem Konto nicht ausgeführt. | Dieser Commit: `build(SEC-10.1): move backend to Django 5.2 LTS and patched dependencies` | SEC-10.2. |
+
+| 06.10.2026 | SEC-10.2 | `npm audit fix` ohne Bruch; Tiptap-Pakete einheitlich auf `^3.31.4` (Prototyp-Attribut- und ReDoS-Lücken in `@tiptap/core`), `monaco-editor` 0.57 mit Override auf die eigene DOMPurify 3.4.16, Vitest und Coverage 3 → 5 (kritische `tinypool`-Lücke), `eslint-plugin-vue` 10.11. Ungenutztes Nightwatch-E2E-Gerüst (Vite-Beispieltest „You did it!“, Chromedriver, Geckodriver, Vite-Plugin, tsconfig-Verweis, README-Abschnitt) entfernt. Offen: `braces` im Lint-Werkzeug ohne veröffentlichte Korrektur. Befund: Monaco wird vom CDN geladen (SEC-10.3). | `npm audit` 65 → 1 (Werkzeug), `npm audit --omit=dev` 0; Typecheck, ESLint, 162/162 Frontendtests, Coverage-Lauf, Produktionsbuild und `npm ci --dry-run` bestanden. Editor im Browser nicht manuell geprüft. | Dieser Commit: `build(SEC-10.2): update frontend dependencies and drop unused e2e scaffold` | SEC-10.3. |

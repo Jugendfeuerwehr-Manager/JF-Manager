@@ -3,7 +3,6 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import nightwatchPlugin from 'vite-plugin-nightwatch'
 
 // https://vite.dev/config/
 // Dev server proxy target. The SPA itself calls the relative /api/v1 so that
@@ -29,7 +28,6 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
-    nightwatchPlugin(),
   ],
   resolve: {
     alias: {
