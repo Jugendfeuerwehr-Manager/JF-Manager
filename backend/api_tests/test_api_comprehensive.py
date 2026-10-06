@@ -367,6 +367,8 @@ class ServicebookAPITests(BaseAPITestCase):
     def setUp(self):
         super().setUp()
         self.grant_permissions(self.authorized_user, "service", ["view"])
+        # Attendance carries member data and needs its own view right (SEC-01.57).
+        self.grant_permissions(self.authorized_user, "attendance", ["view"])
         self.authenticate_user(self.authorized_user)
 
     def test_services_list(self):

@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10 abgeschlossen (SEC-10.7). |
+| Letzter Checkpoint | 06.10.2026: SEC-01.57a Anwesenheits-API abgesichert (Übernahme SEC-01/02/ROLE-01 von Codex). |
 | Aktuelles Paket | SEC-01/SEC-02-Restabnahme und ROLE (Claude, von Codex übernommen). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-10.7` (dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-01.57a` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | Restabnahmen SEC-01.57 und SEC-02.9 (von Codex übernommen), danach ROLE-01.7 und ROLE-02; anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
+| Nächster konkreter Schritt | SEC-01.57b/c, danach SEC-02.9 und ROLE-01.7, anschließend ROLE-02. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -537,7 +537,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Codex | SEC-01.56 grün: Staff kein Organisationsrecht, globale Bestellkatalogrechte geprüft; SEC-01.57 Restabnahme. |
+| SEC-01 | in Arbeit | Claude (von Codex übernommen) | SEC-01.57a Anwesenheits-API nach Abteilungsrolle und Dienstabteilung; nächster Schritt SEC-01.57b/c. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
@@ -620,7 +620,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 ### SEC-01: aktueller Detailstand
 
 - **Status:** in Arbeit.
-- **Verantwortlich:** Codex.
+- **Verantwortlich:** Codex bis SEC-01.56; ab SEC-01.57 Claude (Übernahme 06.10.2026).
 - **Abhängigkeiten:** EXEC-01 abgeschlossen; SEC-02 wird die Ziel- und Relationsprüfung aller Schreibaktionen ergänzen.
 - **Ziel und Abnahme:** Aktionsrechte hängen von der tatsächlichen Objektabteilung ab. Ein Lesezugriff in B zusammen mit Schreibrecht in A erlaubt keine Änderung in B, unabhängig von Queryparametern. Organisationssicht mit bloßem A-Inventarrecht erlaubt keine zentrale Änderung; globales Inventarrecht mit Organisationssicht erlaubt die zentrale Ausgabe an Mitglieder beliebiger Abteilungen. Vollqualifizierte Permissions und unbekannte Aktionen werden sicher behandelt.
 - **Teilschritte:**
@@ -681,6 +681,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-01.55`: Übrige Endpunkte mit `OrgWideWritePermission` bei Staff, scoped A-Recht und fehlender Organisationssicht per HTTP auf globale Schreibzugriffe prüfen.
   - `SEC-01.56`: `OrgWideWritePermission` nur mit ausdrücklicher Organisationssicht erfüllen und globale Bestellstatus/-katalog-Schreibaktionen zusätzlich an globale Modellrechte binden. Abnahme: SEC-01.55-Regressionen und globale Positivfälle grün, relevante Backendtests, Ruff und Staged-Diff geprüft.
   - `SEC-01.57`: Verbliebene globale Schreibansichten und SEC-01-Aktions-/Objektpfade anhand Code, HTTP und breiter Testbasis gegen Abnahmevertrag prüfen; offene Zielbeziehungen sauber SEC-02 zuordnen.
+    - `SEC-01.57a`: Generische Anwesenheits-API (`/servicebook/attendances/`) auf Abteilungsrollen und Dienstabteilung umstellen. Abnahme: Leserecht nur mit `view_attendance` in der Dienstabteilung, Schreiben nur mit Recht in der Dienstabteilung, Zieldienst nur aus berechtigten Abteilungen, fremde Mitglieder abgewiesen, Sammelerfassung wie Anwesenheitsboard.
+    - `SEC-01.57b`: Nicht geroutete Alt-Views mit schwacher Rechteprüfung entfernen.
+    - `SEC-01.57c`: Übrige Endpunkte mit `IsAuthenticated`/Standardrechten (Anhänge, Einstellungen, Benutzer, Push, App-Einstellungen) prüfen und Restabnahme abschließen.
 - **Letzter dauerhafter Checkpoint:** SEC-01.55 `89c089f`; SEC-01.56 wird mit diesem Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
 - **Geänderte Dateien / Commit-Bezug:** Globale Bestellkatalogregressionen `89c089f`; gemeinsame Organisationsprüfung und globale Modellrechte in diesem SEC-01.56-Commit. Frühere Einzelbezüge stehen im Journal und in Git.
@@ -689,7 +692,8 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
 - **Offene Fehler / Risiken:** Weitere globale Schreibansichten und Sonderaktionen müssen gegen den SEC-01-Vertrag abgenommen werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Nächster konkreter Schritt:** `SEC-01.57` Restabnahme der globalen Schreibansichten.
+- **Prüfungen SEC-01.57:** SEC-01.57a: Endpunktinventar aller Views mit Rechteklassen erstellt; 9 neue HTTP-Regressionen (6 rot vor Korrektur: Abteilungsrolle konnte nicht erfassen, Nur-Dienst-Leserecht sah Anwesenheiten), danach 9/9 sowie 58/58 angrenzende Anwesenheits-/API-Tests und Ruff bestanden.
+- **Nächster konkreter Schritt:** `SEC-01.57b` Alt-Views entfernen, dann `SEC-01.57c`.
 
 ### SEC-02: aktueller Detailstand
 
@@ -1213,3 +1217,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | DES-01.11b | Beim Inventar gefunden, app-weit vorhanden: 15 Ansichten renderten zusätzlich zur globalen Instanz in `App.vue` eigene `<Toast />` bzw. ungruppierte `<ConfirmDialog />`. Folge: Meldungen doppelt, Bestätigungsdialoge mehrfach übereinander (jede ungruppierte Instanz reagiert auf jede Anfrage). Lokale Kopien in Einstellungen (Statusse, Eintragstypen, LDAP, OIDC), Bibliothek, Abteilungen, Gruppen, Listen und Protokoll entfernt (Inventar bereits in DES-01.13a); gruppierte Dialoge (`group=…`) bleiben. Ratschen-Test verhindert neue Kopien. | Ratschen-Test, Gesamt-Typecheck, ESLint und alle Frontendtests bestanden. | Dieser Commit: `fix(DES-01.11b): keep a single global toast and confirm dialog` | Integration. |
 
 | 06.10.2026 | DES-01.9b | Nutzerangabe: Feuerwehren ohne Abteilungen sollen weiterhin Listen anlegen können. Produktentscheidung 1.1 und Listenregel in 2.1 um die Ausnahme „organisationsweite Liste“ ergänzt. Neues Feld `MemberList.organization_wide` (Migration `0033`, Prüfbedingung: nur ohne Abteilung) trennt sie von ungeklärten Altlisten (`department=NULL`, `organization_wide=False`), die weiterhin nur in der Superuser-Klärung erscheinen. Anlegen per Formular und `create_from_event_type` mit `department=null` nur ohne aktive Abteilung und nur für Superuser oder Organisationssicht mit globalem `add_memberlist`; Sicht, Änderung, Einträge, Anhänge, Export und Löschen nur mit Organisationssicht und globalem Aktionsrecht. Abteilungswechsel bleibt gesperrt; bestehende organisationsweite Listen bleiben nach Anlage erster Abteilungen nutzbar. Frontend: ohne aktive Abteilung kein Abteilungsfeld, sondern Hinweis „gilt für die gesamte Organisation“; fehlt das Recht, nennt der Hinweis die organisationsweite Listenberechtigung. Der Knopf „Abteilung anlegen“ aus DES-01.9a entfällt. Die Listenanlage aus dem Ereignis-Log sendet die Abteilung jetzt ausdrücklich im Inhalt; zuvor fehlte das Pflichtfeld, die Anlage schlug daher immer fehl. Fremde, uncommittete Änderungen der parallelen Sitzung (Python-3.12-Umstellung, CI, Pipfile) nicht gestaged. | 8/8 neue Backendtests, 50/50 Listen-/Migrationstests, volle Backend-Suite mit CI-Labels 631/631 auf SQLite (6 übersprungen; Stand einschließlich der inzwischen als SEC-10.6 committeten Python-3.12-Änderungen), Migrationsabgleich und Ruff bestanden. 3 neue/ersetzte Frontendtests, Gesamt-Typecheck, ESLint und 191/191 Frontendtests bestanden. PostgreSQL und Lauf gegen echtes Backend im Browser nicht ausgeführt. | Dieser Commit: `feat(DES-01.9b): let organizations without departments create lists` | Nutzerabnahme. |
+
+| 06.10.2026 | SEC-01.57a | Übernahme von SEC-01, SEC-02 und ROLE-01 durch Claude nach Abschluss von SEC-10 (Nutzerauftrag). Endpunktinventar: `AttendanceViewSet` nutzte DRFs `DjangoModelPermissions` – GET ohne Leserecht, Zieldienste nach bloßer Abteilungszuordnung, Abteilungsrollen (in `department_roles`, nicht `user.groups`) wirkungslos. Folgen: Nur-Dienst-Leserecht in B zeigte Anwesenheiten aus B; Leitungen mit Abteilungsrolle konnten über diese API nichts erfassen. Neu `AttendanceRolePermissions` (Objektprüfung an der Dienstabteilung, Sammelerfassung mit `change_attendance` wie das Anwesenheitsboard), Zieldienste nur aus Abteilungen mit Schreibrecht. Bestehender API-Test, der das Leck abbildete, erhält `view_attendance`. Ausgelieferte Rollen koppeln `view_service` bereits mit `view_attendance`. | 9 neue HTTP-Regressionen (6 vorher rot), 58/58 angrenzende Anwesenheits-/API-Tests, Ruff bestanden. | Dieser Commit: `fix(SEC-01.57a): scope the attendance API to department roles` | SEC-01.57b. |
