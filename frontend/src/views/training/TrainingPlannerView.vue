@@ -21,15 +21,10 @@ if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matc
 
 <style scoped>
 .planner-page {
-  /* Fixed overlay below the 70px topbar — most reliable for full-height planners */
-  position: fixed;
-  top: 70px;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Fills the content area next to the navigation; the route is marked full-width in the router. */
+  height: calc(100dvh - var(--topbar-height, 64px));
   display: flex;
   flex-direction: column;
-  background: var(--p-content-background);
-  z-index: 1;
+  background: var(--jf-color-ground);
 }
 </style>

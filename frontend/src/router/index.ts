@@ -353,6 +353,7 @@ const router = createRouter({
           path: 'training/sessions/:id/plan',
           name: 'training-planner',
           component: () => import('@/views/training/TrainingPlannerView.vue'),
+          meta: { fullWidth: true, workspace: true },
           props: (route) => ({ sessionId: Number(route.params.id) })
         },
         {

@@ -1,58 +1,52 @@
 <template>
   <div class="swimlane-editor">
 
-    <!-- ── Topbar ──────────────────────────────────────────────────── -->
-    <div class="editor-topbar">
-      <div class="session-info">
-        <span class="session-title">{{ session?.title ?? 'Trainingsplanung' }}</span>
-        <span v-if="session?.date" class="session-meta">
-          {{ formatDate(session.date) }}
-          <span v-if="session?.start_time">· ab {{ session.start_time }} Uhr</span>
-        </span>
+    <!-- ── Header ──────────────────────────────────────────────────── -->
+    <header class="editor-head">
+      <div class="editor-head__info">
+        <p class="editor-head__eyebrow">
+          <router-link to="/training" class="editor-head__back"><i class="pi pi-arrow-left" aria-hidden="true"></i>Ausbildung</router-link>
+          <span v-if="session?.date"> · {{ formatDate(session.date) }}<template v-if="session.start_time"> · {{ formatTimeRange(session.start_time, session.end_time) }}</template></span>
+        </p>
+        <h1 class="editor-head__title">{{ session?.title ?? 'Trainingsplanung' }}</h1>
+        <p v-if="session?.location || visibleLanes.length" class="editor-head__meta">
+          {{ [laneSummary, session?.location].filter(Boolean).join(' · ') }}
+        </p>
       </div>
-      <div class="topbar-actions">
+      <div class="editor-head__actions">
+        <span class="save-hint" :class="{ 'save-hint--dirty': isDirty, 'save-hint--error': saveFailed }" role="status">
+          <template v-if="saveFailed"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Nicht gespeichert</template>
+          <template v-else-if="isDirty"><i class="pi pi-pencil" aria-hidden="true"></i>{{ pendingLabel }}</template>
+          <template v-else><i class="pi pi-check" aria-hidden="true"></i>Alles gespeichert</template>
+        </span>
         <Button
-          icon="pi pi-arrow-left"
-          label="Kalender"
-          size="small"
+          :icon="navHidden ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"
           severity="secondary"
-          outlined
-          @click="router.push('/training')"
+          text
+          :aria-label="navHidden ? 'Navigation einblenden' : 'Navigation ausblenden, mehr Platz zum Planen'"
+          :aria-pressed="navHidden"
+          v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
+          @click="toggleNav"
         />
-        <Button
-          icon="pi pi-cog"
-          label="Einstellungen"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="showSessionSettings = true"
-        />
+        <Button icon="pi pi-cog" severity="secondary" text aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
+        <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
         <Button
           :icon="showLibraryPicker ? 'pi pi-times' : 'pi pi-book'"
-          :label="showLibraryPicker ? 'Schließen' : 'Bibliothek'"
-          size="small"
-          :severity="showLibraryPicker ? 'primary' : 'secondary'"
+          :label="showLibraryPicker ? 'Bibliothek schließen' : 'Bibliothek'"
+          severity="secondary"
           :outlined="!showLibraryPicker"
+          :aria-expanded="showLibraryPicker"
           @click="showLibraryPicker = !showLibraryPicker"
         />
         <Button
           icon="pi pi-save"
           label="Speichern"
-          size="small"
-          :loading="plannerStore.saving"
+          :loading="plannerStore.saving || saving"
           :disabled="!isDirty"
           @click="saveAll"
         />
-        <Button
-          icon="pi pi-file-pdf"
-          label="Handout"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="goHandout"
-        />
       </div>
-    </div>
+    </header>
 
     <!-- ── Main planner ────────────────────────────────────────────── -->
     <div class="planner-container">
@@ -207,6 +201,7 @@ import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import { useTrainingStore } from '@/stores/training'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail } from '@/types/training'
 import interact from 'interactjs'
+import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
 interface Props {
   sessionId: number
@@ -228,6 +223,8 @@ const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
 const editingBlock = ref<PlannerBlock | null>(null)
 const saving = ref(false)
+const saveFailed = ref(false)
+const { navHidden, toggleNav } = useWorkspaceNavigation()
 
 // Drag-to-create state
 const creating = ref<{
@@ -463,8 +460,25 @@ async function onSessionSaved(_sessionId: number) {
 
 async function saveAll() {
   saving.value = true
+  saveFailed.value = false
   try { await plannerStore.savePendingMoves() }
+  catch { saveFailed.value = true }
   finally { saving.value = false }
+}
+
+const pendingLabel = computed(() => {
+  const count = plannerStore.pendingMoves.size
+  return count === 1 ? '1 ungespeicherte Änderung' : `${count} ungespeicherte Änderungen`
+})
+
+const laneSummary = computed(() => {
+  const groups = visibleLanes.value.filter((lane) => lane.groupId !== null).length
+  return groups ? `${groups} ${groups === 1 ? 'Gruppe' : 'Gruppen'}` : ''
+})
+
+function formatTimeRange(start: string, end?: string) {
+  const short = (t: string) => t.slice(0, 5)
+  return end ? `${short(start)}–${short(end)}` : `ab ${short(start)}`
 }
 
 function goHandout() {
@@ -473,7 +487,7 @@ function goHandout() {
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('de-DE', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
   })
 }
 
@@ -638,22 +652,59 @@ function swapIfOverlapping(draggedId: number, draggedOriginalStart: number) {
   overflow: hidden;
 }
 
-/* ── Topbar ───────────────────────────────────────────────────────────── */
-.editor-topbar {
+/* ── Header ───────────────────────────────────────────────────────── */
+.editor-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 0.6rem 1rem;
-  background: var(--p-content-background);
-  border-bottom: 1px solid var(--p-content-border-color);
+  gap: var(--jf-space-1-5) var(--jf-space-3);
+  padding: var(--jf-space-1-5) var(--jf-space-3);
+  background: var(--jf-color-card);
+  border-bottom: 1px solid var(--jf-color-border);
   flex-shrink: 0;
-  gap: 1rem;
-  min-height: 52px;
 }
-.session-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.session-title { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.session-meta { font-size: 0.8rem; color: var(--p-text-muted-color); }
-.topbar-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.editor-head__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.editor-head__eyebrow {
+  margin: 0;
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jf-color-text-muted);
+}
+.editor-head__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  color: var(--jf-color-primary);
+  text-decoration: none;
+}
+.editor-head__back i { font-size: 0.7rem; }
+.editor-head__title {
+  margin: 0;
+  font-size: var(--jf-text-xl);
+  line-height: var(--jf-leading-tight);
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-head__meta { margin: 0; font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
+.editor-head__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); }
+.save-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  margin-right: var(--jf-space-0-5);
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text-muted);
+}
+.save-hint--dirty { color: var(--p-amber-800); }
+.save-hint--error { color: var(--p-red-700); }
+.app-dark .save-hint--dirty { color: var(--p-amber-300); }
+.app-dark .save-hint--error { color: var(--p-red-300); }
 
 /* ── Planner container ────────────────────────────────────────────────── */
 .planner-container {

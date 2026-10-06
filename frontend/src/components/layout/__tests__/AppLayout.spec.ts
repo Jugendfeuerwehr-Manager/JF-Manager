@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AppLayout from '../AppLayout.vue'
+import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
 const { auth, sessionTimeout } = vi.hoisted(() => ({
   auth: { canAccessModule: vi.fn(() => true), logout: vi.fn() },
@@ -11,7 +12,8 @@ vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => ({ activeDep
 vi.mock('@/composables/useAppSettings', () => ({ useAppSettings: () => ({ websiteTitle: 'JF-Manager' }) }))
 vi.mock('@/composables/useTheme', () => ({ useTheme: () => ({ themeMode: { value: 'light' }, setMode: vi.fn() }) }))
 vi.mock('@/composables/useSessionTimeout', () => ({ useSessionTimeout: sessionTimeout }))
-vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/members' }), useRouter: () => ({ push: vi.fn() }) }))
+const route = vi.hoisted(() => ({ path: '/members', meta: {} as Record<string, unknown> }))
+vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn() }) }))
 
 const stubs = {
   AppTopbar: { template: '<div class="topbar-stub" />' },
@@ -30,7 +32,12 @@ function renderAt(width: number) {
 }
 
 describe('App layout shell', () => {
-  afterEach(() => { vi.clearAllMocks() })
+  afterEach(() => {
+    vi.clearAllMocks()
+    route.path = '/members'
+    route.meta = {}
+    useWorkspaceNavigation().setNavHidden(false)
+  })
 
   it('shows the active department directly in the mobile toolbar', () => {
     const wrapper = renderAt(390)
@@ -53,5 +60,17 @@ describe('App layout shell', () => {
     expect(sessionTimeout).toHaveBeenCalledOnce()
     expect(wrapper.find('.confirm-stub[data-group="session-timeout"]').exists()).toBe(true)
     expect(wrapper.get('.skip-link').attributes('href')).toBe('#main-content')
+  })
+
+  it('lets workspace views hide the desktop navigation but never other pages', () => {
+    useWorkspaceNavigation().setNavHidden(true)
+    expect(renderAt(1440).find('.desktop-sidebar').exists()).toBe(true)
+
+    route.path = '/training/sessions/7/plan'
+    route.meta = { workspace: true, fullWidth: true }
+    const wrapper = renderAt(1440)
+    expect(wrapper.find('.desktop-sidebar').exists()).toBe(false)
+    expect(wrapper.get('.layout-wrapper').classes()).toContain('layout-wrapper--nav-hidden')
+    expect(wrapper.get('.layout-content').classes()).toContain('layout-content--full-width')
   })
 })

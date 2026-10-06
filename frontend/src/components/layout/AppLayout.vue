@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-wrapper">
+  <div class="layout-wrapper" :class="{ 'layout-wrapper--nav-hidden': workspaceNavHidden }">
     <a href="#main-content" class="skip-link">Zum Inhalt springen</a>
     <AppTopbar v-if="!isMobile" />
     <header v-else class="mobile-toolbar">
@@ -11,9 +11,9 @@
       <Button icon="pi pi-user" text rounded aria-label="Benutzermenü öffnen" aria-haspopup="menu" @click="toggleUserMenu" />
     </header>
 
-    <aside v-if="!isMobile" class="desktop-sidebar"><ModuleNavigation /></aside>
+    <aside v-if="!isMobile && !workspaceNavHidden" class="desktop-sidebar"><ModuleNavigation /></aside>
     <main id="main-content" tabindex="-1" class="layout-main">
-      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') }">
+      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') || route.meta.fullWidth }">
         <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" />
       </div>
     </main>
@@ -52,11 +52,15 @@ import Menu from 'primevue/menu'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useSessionTimeout } from '@/composables/useSessionTimeout'
 import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
+import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()
 useSessionTimeout()
+const { navHidden } = useWorkspaceNavigation()
+/** Only workspace routes honour the hidden navigation, so it never goes missing elsewhere. */
+const workspaceNavHidden = computed(() => navHidden.value && !!route.meta.workspace)
 const { websiteTitle } = useAppSettings()
 const { themeMode, setMode } = useTheme()
 const userMenu = ref()
@@ -87,6 +91,7 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize) })
 .desktop-sidebar { position: fixed; top: var(--topbar-height); left: 0; bottom: 0; width: var(--sidebar-width); overflow-y: auto; background: var(--jf-color-card); border-right: 1px solid var(--jf-color-border); z-index: 900; }
 .layout-main { margin-left: var(--sidebar-width); padding-top: var(--topbar-height); min-width: 0; }
 .layout-main:focus { outline: none; }
+.layout-wrapper--nav-hidden { --sidebar-width: 0px; }
 .layout-content { padding: var(--jf-space-3) var(--jf-space-4); max-width: 1600px; margin: 0 auto; }
 .layout-content--full-width { max-width: none; padding: 0; }
 .mobile-toolbar { position: fixed; inset: 0 0 auto; height: var(--mobile-bar-height); z-index: 1000; background: var(--jf-color-card); border-bottom: 1px solid var(--jf-color-border); display: flex; align-items: center; padding: 0 var(--jf-space-0-5); gap: var(--jf-space-0-5); }
