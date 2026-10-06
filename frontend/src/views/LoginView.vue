@@ -19,10 +19,21 @@
       <div class="login-form-wrap">
         <p class="eyebrow">{{ branding?.slug || 'Willkommen zurück' }}</p>
         <h2 id="login-heading">{{ mfaStep ? 'Bestätigung' : 'Anmelden' }}</h2>
-        <p class="login-description">{{ mfaStep ? (useRecoveryCode ? 'Gib einen deiner Wiederherstellungscodes ein.' : 'Gib den sechsstelligen Code aus deiner Authenticator-App ein.') : 'Melde dich mit deinem Zugang an.' }}</p>
+        <p class="login-description">{{ mfaStep ? mfaDescription : 'Melde dich mit deinem Zugang an.' }}</p>
         <form v-if="mfaStep" class="login-form" :aria-busy="loading" @submit.prevent="handleMfa">
           <Message v-if="error" id="login-error" severity="error" role="alert">{{ error }}</Message>
-          <div class="field">
+          <Button
+            v-if="offerPasskey"
+            type="button"
+            label="Mit Passkey bestätigen"
+            icon="pi pi-key"
+            :severity="showCodeField ? 'secondary' : undefined"
+            :loading="loading && passkeyBusy"
+            :disabled="loading && !passkeyBusy"
+            @click="handlePasskey"
+          />
+          <div v-if="offerPasskey && showCodeField" class="divider"><span>oder mit Code</span></div>
+          <div v-if="showCodeField" class="field">
             <label for="mfa-code">{{ useRecoveryCode ? 'Wiederherstellungscode' : 'Bestätigungscode' }}</label>
             <InputText
               id="mfa-code"
@@ -33,13 +44,13 @@
               autocapitalize="none"
               :spellcheck="false"
               required
-              autofocus
+              :autofocus="!offerPasskey"
               :invalid="!!error"
               :aria-describedby="error ? 'login-error' : undefined"
             />
           </div>
-          <Button type="submit" label="Bestätigen" icon="pi pi-check" :loading="loading" />
-          <button type="button" class="text-link" @click="toggleRecoveryCode">{{ useRecoveryCode ? 'Authenticator-Code verwenden' : 'Wiederherstellungscode verwenden' }}</button>
+          <Button v-if="showCodeField" type="submit" label="Bestätigen" icon="pi pi-check" :loading="loading && !passkeyBusy" :disabled="passkeyBusy" />
+          <button type="button" class="text-link" @click="toggleRecoveryCode">{{ useRecoveryCode ? (hasTotp ? 'Authenticator-Code verwenden' : 'Passkey verwenden') : 'Wiederherstellungscode verwenden' }}</button>
           <button type="button" class="text-link" @click="restartLogin">Abbrechen und neu anmelden</button>
         </form>
         <form v-else class="login-form" :aria-busy="loading || oidcLoading" @submit.prevent="handleLogin">
@@ -70,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { oidcApi } from '@/api/oidc'
@@ -84,6 +95,7 @@ import Message from 'primevue/message'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { hardNavigate, isServerPath, safeReturnPath } from '@/utils/navigation'
 import type { SessionStatus } from '@/api/auth'
+import { passkeysSupported } from '@/utils/webauthn'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -98,6 +110,16 @@ const branding = ref<PublicBranding | null>(null)
 const mfaStep = ref(false)
 const mfaCode = ref('')
 const useRecoveryCode = ref(false)
+const passkeyBusy = ref(false)
+const hasTotp = computed(() => authStore.mfaMethods?.totp ?? true)
+const offerPasskey = computed(() => !!authStore.mfaMethods?.passkey && passkeysSupported() && !useRecoveryCode.value)
+const showCodeField = computed(() => useRecoveryCode.value || hasTotp.value || !offerPasskey.value)
+const mfaDescription = computed(() => {
+  if (useRecoveryCode.value) return 'Gib einen deiner Wiederherstellungscodes ein.'
+  if (offerPasskey.value && hasTotp.value) return 'Bestätige mit deinem Passkey oder dem Code aus deiner Authenticator-App.'
+  if (offerPasskey.value) return 'Bestätige die Anmeldung mit deinem Passkey.'
+  return 'Gib den sechsstelligen Code aus deiner Authenticator-App ein.'
+})
 const info = ref(router.currentRoute.value.query.expired ? 'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.' : '')
 
 // Optional branding and SSO discovery must not delay local sign-in.
@@ -149,6 +171,23 @@ async function handleMfa() {
     if (code === 'mfa_login_expired') mfaStep.value = false
   } finally {
     loading.value = false
+  }
+}
+
+async function handlePasskey() {
+  if (loading.value) return
+  loading.value = true
+  passkeyBusy.value = true
+  error.value = ''
+  try {
+    await finish(await authStore.verifyMfaPasskey())
+  } catch (err) {
+    error.value = authStore.error || 'Der Passkey konnte nicht bestätigt werden.'
+    const code = (err as { response?: { data?: { code?: string } } }).response?.data?.code
+    if (code === 'mfa_login_expired') mfaStep.value = false
+  } finally {
+    loading.value = false
+    passkeyBusy.value = false
   }
 }
 

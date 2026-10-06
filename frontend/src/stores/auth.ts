@@ -6,6 +6,7 @@ import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import router from '@/router'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { getPasskeyAssertion, passkeyErrorMessage } from '@/utils/webauthn'
 import { hardNavigate } from '@/utils/navigation'
 import { useDepartmentsStore } from '@/stores/departments'
 
@@ -25,6 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!session.value?.authenticated && !!user.value)
   const mfaPending = computed(() => !!session.value?.mfa_required && !session.value.authenticated)
+  const mfaMethods = computed(() => session.value?.mfa_methods ?? { totp: true, passkey: false })
   const mfaSetupRequired = computed(() => !!session.value?.authenticated && !!session.value.mfa_setup_required)
   const userFullName = computed(() => user.value?.full_name || '')
 
@@ -129,6 +131,23 @@ export const useAuthStore = defineStore('auth', () => {
       return await applySession(response.data)
     } catch (err) {
       error.value = getApiErrorMessage(err, 'Der Code ist ungültig.')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Finishes the pending login with a passkey (SEC-11). */
+  async function verifyMfaPasskey() {
+    loading.value = true
+    error.value = null
+    try {
+      const options = (await authApi.loginPasskeyOptions()).data
+      const assertion = await getPasskeyAssertion(options)
+      const response = await authApi.verifyMfaPasskey(assertion)
+      return await applySession(response.data)
+    } catch (err) {
+      error.value = passkeyErrorMessage(err) ?? getApiErrorMessage(err, 'Der Passkey konnte nicht bestätigt werden.')
       throw err
     } finally {
       loading.value = false
@@ -243,6 +262,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     isAuthenticated,
     mfaPending,
+    mfaMethods,
     mfaSetupRequired,
     userFullName,
     permissions,
@@ -255,6 +275,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     login,
     verifyMfa,
+    verifyMfaPasskey,
     refreshSession,
     fetchUser,
     updateProfile,
