@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-10.2 Frontend-Abhängigkeiten aktualisiert (65 → 1 Werkzeugbefund). |
+| Letzter Checkpoint | 06.10.2026: SEC-10.3a Django-Transportsicherheit und sauberer Deploy-Check. |
 | Aktuelles Paket | SEC-10 in Arbeit (Claude). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
 | Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-09 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-10.2` (dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-10.3a` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-10.3 Produktionsvorgaben (`check --deploy`, Header, CSP, Monaco lokal); danach SEC-10.4 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
+| Nächster konkreter Schritt | SEC-10.3b Nginx-Header und CSP, SEC-10.3c Monaco lokal; danach SEC-10.4 bis SEC-10.7, anschließend Restabnahmen SEC-01.57 und SEC-02.9. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -545,7 +545,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-07 | abgeschlossen | Claude | SEC-07.8: 76/76 gebündelte Backendtests, breiter Lauf 587/587, 93/93 Frontendtests, Produktionsbuild grün; Grenzen im Detailblock. |
 | SEC-08 | abgeschlossen | Claude | SEC-08.3: 9/9 gezielte Export-/Anhangtests, Typecheck und 86/86 Frontendtests bestanden. |
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
-| SEC-10 | in Arbeit | Claude | SEC-10.2 Frontend-Laufzeitpakete ohne Befund, nur `braces` im Lint-Werkzeug offen; nächster Schritt SEC-10.3 Produktionsvorgaben. |
+| SEC-10 | in Arbeit | Claude | SEC-10.3a HTTPS/HSTS/Proxy-Vertrauen, `check --deploy` sauber; nächster Schritt SEC-10.3b Nginx-Header und CSP. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
 | ROLE-02 | offen | — | Delegationsregeln und Zuweisungsoberfläche. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
@@ -887,14 +887,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-10.1`: Backend-Abhängigkeiten: Django 5.2 LTS und sicherheitsrelevante Aktualisierungen, simplejwt entfernen, Lockdatei neu erzeugen, Kompatibilitätsanpassungen, Volllauf SQLite und PostgreSQL.
   - `SEC-10.2`: Frontend-Abhängigkeiten nach `npm audit` aktualisieren; Laufzeitpakete zuerst, dann Werkzeuge.
   - `SEC-10.3`: Produktionsvorgaben: `check --deploy`, Sicherheitsheader, CSP Report-Only, Proxy-/TLS-Vertrauen.
+    - `SEC-10.3a`: Django: HTTPS-Umleitung (außer `/health/`), HSTS, ausdrückliches Proxy-Vertrauen, Referrer-/Frame-/COOP-Vorgaben; `check --deploy` ohne Sicherheitsbefund.
+    - `SEC-10.3b`: Nginx: Sicherheitsheader in allen Auslieferungspfaden, CSP als Report-Only mit Meldeendpunkt.
+    - `SEC-10.3c`: Monaco lokal ausliefern statt vom CDN.
   - `SEC-10.4`: Gemeinsamer Cache für Rate-Limits und OIDC-Einmalmarke in Produktion erzwingen.
   - `SEC-10.5`: CI-Prüfungen (`pip-audit`, `npm audit`, `check --deploy`).
   - `SEC-10.6`: Python-Laufzeit von 3.10 auf eine unterstützte Version (Dockerfile, CI, Pipfile).
   - `SEC-10.7`: Gebündelte Abnahme.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation. SEC-10.1: `pip-audit` gegen neue Lockdatei ohne Befund; volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14; `check`, Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build nicht ausgeführt. SEC-10.2: `npm audit --omit=dev` ohne Befund; gesamt 1 verbleibender hoher Befund (`braces` ≤ 3.0.3 über `@vue/eslint-config-typescript` → `fast-glob`, nur Lint-Werkzeug, keine korrigierte Version veröffentlicht; Ausnahme bis zu einer Upstream-Korrektur). Typecheck, ESLint, 162/162 Frontendtests, Coverage-Lauf und Build bestanden.
+- **Prüfungen / Checkpoint:** SEC-10.0: Code-/Git-Abgleich und Audit-Inventar ausgeführt; keine Anwendungstests für Dokumentation. SEC-10.1: `pip-audit` gegen neue Lockdatei ohne Befund; volle Backend-Suite 611/611 auf SQLite (6 übersprungen) und 611/611 auf PostgreSQL 14; `check`, Migrationsabgleich, Ruff und Export-Smoke aller 9 Import-Export-Admins bestanden. Docker-Build nicht ausgeführt. SEC-10.2: `npm audit --omit=dev` ohne Befund; gesamt 1 verbleibender hoher Befund (`braces` ≤ 3.0.3 über `@vue/eslint-config-typescript` → `fast-glob`, nur Lint-Werkzeug, keine korrigierte Version veröffentlicht; Ausnahme bis zu einer Upstream-Korrektur). Typecheck, ESLint, 162/162 Frontendtests, Coverage-Lauf und Build bestanden. SEC-10.3a: 7/7 neue Produktionsvorgabentests (Werte in frischem Prozess, `check --deploy` ohne `security.*`, Redirect/Ausnahme/Proxy), volle Backend-Suite 618/618 (6 übersprungen), Ruff bestanden.
 - **Risiken:** Major-Sprünge (django-import-export 3→4, django-guardian 2→3, Pillow 10→12, urllib3 1→2, DRF 3.14→3.17) können Verhalten ändern; jede Anpassung durch Tests belegen. Produktionsdatenbank und `dump.rdb` nicht anfassen. Befund für SEC-10.3: `MonacoEditor.vue` lädt Monaco über `@monaco-editor/loader` ohne Konfiguration zur Laufzeit von `cdn.jsdelivr.net` (fremdes Skript, eigene Monaco-Version); das npm-Paket liefert nur Typen. Für eine strenge CSP lokal ausliefern.
-- **Nächster Schritt:** SEC-10.3 Produktionsvorgaben.
+- **Nächster Schritt:** SEC-10.3b Nginx-Header und CSP.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1177,3 +1180,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | DES-01.8b | Dienstbuch-Übersicht nach Entwurf: Kopf mit „Neuer Dienst“ (mobil schwebend über der unteren Leiste); „Heute“-Karte je Dienst des Tages mit Zeitstatus („beginnt in n Min.“, „läuft gerade“, „beendet“), erfasster Anwesenheit und den Hauptaktionen „Anwesenheit erfassen“ sowie „Ablauf ansehen“ (vorhandene mobile Planansicht, wenn eine Übung verknüpft ist); eigene, leichte Abfrage nur für den heutigen Tag. Zeitraum „Kommend/Vergangen“ (in der URL gemerkt, kommend aufsteigend, vergangen absteigend) ersetzt das Akkordeon „Zukünftige“; Filter eingeklappt mit Zähler, Statistik eingeklappt darunter. Terminzeilen mit Datumskachel, Thema, Zeit und Ort, Anwesenheit in Worten bzw. „Anwesenheit offen“, Besonderheiten und Verantwortliche; „Anwesenheit“ ab Diensttag, Übung und Bearbeiten als benannte Symbolknöpfe; Monatsüberschriften. `DataView` arbeitet jetzt `lazy`, weil die Seiten serverseitig geladen werden (vorher wurde die Serverseite clientseitig erneut geschnitten). Toter Sprung auf die nicht existierende Route `service-detail` führt jetzt zur Anwesenheit. | 2/2 neue Tests, App-Typecheck, ESLint und 180/180 Frontendtests bestanden (temporäre Konfiguration); Sichtprüfung 390/1440 px gegen Mock. Kein Lauf gegen echtes Backend. | Dieser Commit: `feat(DES-01.8b): rebuild the servicebook overview around today and attendance` | Nutzerabnahme, dann DES-01.10b/11. |
 
 | 06.10.2026 | DES-01.8c | Nutzerrückmeldung: Das zentrale Dienstbuch sah noch nicht gut aus. Seite „Dienst bearbeiten/anlegen“ neu: Brotkrumen, Kopf mit Datum/Zeit, Thema als Überschrift und Ort; beim Bearbeiten Umschalter „Dienstdaten | Anwesenheit“ als Tabs (Pfeiltasten, in der URL gemerkt) statt schmaler Anwesenheitsspalte neben dem Formular, in der Statusflächen abgeschnitten wurden. Formular in Abschnitte „Termin“ (ein Knopf „Heute, Standardzeit“ statt zweier gleicher), „Inhalt“ (Thema, Ort, Leitung, Beschreibung) und „Nachbereitung“ (Besondere Vorkommnisse mit Hinweis auf die Markierung in der Übersicht); Feldfehler mit Symbol, feste Aktionsleiste über der mobilen Navigation. Vorher: Toolbar-Karte, verschachtelte Karten, doppelte Standardzeit-Knöpfe. Zusätzlich vor diesem Schritt Rebase der Design-Commits auf SEC-10.2 (`a11a347`, nur Journalkonflikte, beide Seiten erhalten) und Fast-Forward von `feat/security-roles-training-operations`. | 2/2 neue Tests, Gesamt-Typecheck, ESLint, Produktionsbuild und 182/182 Frontendtests mit regulärer Konfiguration bestanden; Sichtprüfung 1440/390 px gegen Mock. Kein Lauf gegen echtes Backend. | Dieser Commit: `feat(DES-01.8c): restructure service editing with details and attendance tabs` | Nutzerabnahme. |
+
+| 06.10.2026 | SEC-10.3a | Ohne `DEBUG`: `SECURE_SSL_REDIRECT` (Ausnahme `/health/` für den Container-Healthcheck), HSTS 1 Jahr, `X_FRAME_OPTIONS=DENY`, `same-origin` für Referrer und COOP. `SECURE_PROXY_SSL_HEADER` nur bei `TRUST_PROXY_SSL_HEADER` (Standard an, dokumentiert: vorgeschalteter Proxy muss `X-Forwarded-Proto` überschreiben). HSTS-Subdomains/Preload bewusst optional, deren Hinweise W005/W021 stummgeschaltet. drf-spectacular-Schemaprüfung aus `check --deploy` genommen (180 Dokumentationswarnungen verdeckten Sicherheitsbefunde; Schema bleibt offene Grenze aus SEC-07). Test-Runner schaltet Umleitung für Fachtests ab. Betriebsanleitung `docs/operations/production-security.md`, Variablen in `getting-started.md`. Befunde für SEC-10.3b: Nginx-Header gehen in Locations mit eigenem `add_header` verloren; `conf.d/locations/*.conf` werden nirgends eingebunden (OPS-05); ungenutzte `Pipfile` im Projektwurzelverzeichnis (OPS-05). | 7/7 neue Tests, volle Backend-Suite 618/618 (6 übersprungen), Ruff bestanden. Kein Lauf hinter echtem TLS-Proxy. | Dieser Commit: `feat(SEC-10.3a): enforce HTTPS and clean deployment checks` | SEC-10.3b. |

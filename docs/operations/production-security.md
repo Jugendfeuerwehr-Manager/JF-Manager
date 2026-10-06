@@ -1,0 +1,35 @@
+# Produktionsvorgaben: HTTPS, Proxy und Sicherheitsheader
+
+Gilt ab SEC-10.3. Ergänzt [session-auth.md](session-auth.md).
+
+## HTTPS ist Pflicht
+
+Ohne `DEBUG` sind Cookies `Secure`, das Backend leitet HTTP auf HTTPS um und sendet HSTS für ein Jahr. Ausgenommen ist nur `/health/`, damit der Container-Healthcheck intern über HTTP prüfen kann.
+
+| Variable | Wirkung | Standard |
+| --- | --- | --- |
+| `SECURE_SSL_REDIRECT` | HTTPS-Umleitung im Backend | wie `SECURE_COOKIES` |
+| `SECURE_HSTS_SECONDS` | HSTS-Dauer; `0` schaltet ab | `31536000` |
+| `SECURE_HSTS_INCLUDE_SUBDOMAINS` | HSTS auch für Subdomains | `false` |
+| `SECURE_HSTS_PRELOAD` | Preload-Kennzeichen | `false` |
+| `TRUST_PROXY_SSL_HEADER` | `X-Forwarded-Proto: https` als Nachweis akzeptieren | `true` |
+
+HSTS lässt sich im Browser nicht zurücknehmen, bevor die Dauer abläuft. Vor dem ersten Produktivstart prüfen, dass die Adresse dauerhaft per HTTPS erreichbar ist. Subdomains und Preload nur aktivieren, wenn alle Subdomains der Organisation HTTPS sprechen.
+
+## Reverse Proxy
+
+TLS endet am vorgeschalteten Proxy (z. B. Traefik, Caddy, Nginx). Dieser muss
+
+- `X-Forwarded-Proto` **selbst setzen und einen vom Client mitgeschickten Wert überschreiben**,
+- der einzige Weg zum Frontend-Container sein (Port 8080 nicht öffentlich freigeben).
+
+Der mitgelieferte Nginx im Frontend-Container reicht `X-Forwarded-Proto` an das Backend weiter. Wird er ohne vorgeschalteten Proxy direkt aus dem Netz erreicht, könnte ein Client HTTPS vortäuschen. In diesem Fall `TRUST_PROXY_SSL_HEADER=false` setzen und TLS direkt im Nginx terminieren.
+
+## Prüfung
+
+```sh
+cd backend
+DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings python manage.py check --deploy
+```
+
+Erwartet: keine `security.*`-Meldung. Die Meldung `orders.OrderableItem.inventory_item (fields.W342)` ist vorbestehend und sicherheitsneutral. Die Hinweise zu HSTS-Subdomains und -Preload (`security.W005`, `security.W021`) sind bewusst stummgeschaltet (siehe oben). Der automatische Test `api_tests.test_production_settings` prüft dieselben Vorgaben.

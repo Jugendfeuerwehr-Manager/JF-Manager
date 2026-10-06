@@ -37,8 +37,16 @@ BOOKING_REPLAY_RETENTION_DAYS = max(1, int(os.environ.get("BOOKING_REPLAY_RETENT
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+
+
+def _env_flag(name, default):
+    return os.environ.get(name, "true" if default else "false").strip().lower() in ("true", "1", "yes")
+
+
 # Nginx forwards the original scheme when TLS terminates at a reverse proxy.
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Only trust it when every request passes through a proxy that overwrites
+# X-Forwarded-Proto; direct access to the backend must then be impossible.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if _env_flag("TRUST_PROXY_SSL_HEADER", True) else None
 
 # CSRF Trusted Origins - required for POST requests from frontend
 # Must include full URL scheme (https:// or http://)
@@ -198,7 +206,7 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
 # Browser sessions: host-only cookies, never readable by scripts. Secure by
 # default; only an explicit development override may disable it.
-_SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "false" if DEBUG else "true").lower() in ("true", "1", "yes")
+_SECURE_COOKIES = _env_flag("SECURE_COOKIES", not DEBUG)
 SESSION_COOKIE_SECURE = _SECURE_COOKIES
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -208,6 +216,24 @@ CSRF_COOKIE_SECURE = _SECURE_COOKIES
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_DOMAIN = None
+
+# Transport security. HTTPS is mandatory whenever cookies are secure; the
+# container health check calls the backend directly over HTTP.
+SECURE_SSL_REDIRECT = _env_flag("SECURE_SSL_REDIRECT", _SECURE_COOKIES)
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
+SECURE_HSTS_SECONDS = max(0, int(os.environ.get("SECURE_HSTS_SECONDS", "31536000" if _SECURE_COOKIES else "0")))
+# Subdomains of the organisation's domain may still be served over HTTP, so
+# extending HSTS to them (and preloading) stays an explicit decision.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_flag("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
+SECURE_HSTS_PRELOAD = _env_flag("SECURE_HSTS_PRELOAD", False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SILENCED_SYSTEM_CHECKS = [
+    "security.W005",  # HSTS includeSubDomains, see above
+    "security.W021",  # HSTS preload, see above
+]
 
 
 def _bounded_seconds(name, default, minimum, maximum):
@@ -280,6 +306,9 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1/",
+    # Schema completeness is not a deployment safety check; keep
+    # `check --deploy` focused on security settings.
+    "ENABLE_DJANGO_DEPLOY_CHECK": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "SERVE_AUTHENTICATION": [
         "users.session_auth.SessionAuthentication",
