@@ -131,6 +131,11 @@ _port_in_use() {
 install_preflight() {
     local failed=0 free mem port
     step "Vorabprüfung (es wird noch nichts verändert)"
+    local tool missing=()
+    for tool in jq curl openssl sha256sum flock tar gzip awk; do have "$tool" || missing+=("$tool"); done
+    if [ ${#missing[@]} -gt 0 ]; then
+        err "Benötigte Werkzeuge fehlen: ${missing[*]} (Debian: apt-get install -y jq curl openssl ca-certificates)"; failed=1
+    fi
     config_validate || failed=1
     [ -n "$JF_DOMAIN" ] || { err "Domain fehlt"; failed=1; }
     if [ "$JF_ACTION" = install ] && [ -n "$JF_ADMIN_EMAIL" ] && ! [[ $JF_ADMIN_EMAIL =~ ^[^@[:space:]]+@[^@[:space:]]+$ ]]; then
@@ -151,6 +156,9 @@ install_preflight() {
         [ "$JF_MODE" = native ] && ports+=(8000 5432 6379)
         local busy=0
         for port in "${ports[@]}"; do
+            # Native: PostgreSQL/Redis from Debian are used as they are.
+            if [ "$port" = 5432 ] && systemctl is-active --quiet postgresql.service 2>/dev/null; then continue; fi
+            if [ "$port" = 6379 ] && systemctl is-active --quiet redis-server.service 2>/dev/null; then continue; fi
             if _port_in_use "$port"; then err "Port $port ist belegt"; busy=1; fi
         done
         if [ "$busy" = 0 ]; then ok "Benötigte Ports frei (${ports[*]})"; else failed=1; fi
@@ -324,6 +332,9 @@ cmd_install() {
     fi
     if [ -n "$answers" ]; then load_answers "$answers"; JF_NONINTERACTIVE=1; fi
     if [ "$resume" = 1 ]; then
+        # Secrets from the first run are already in /etc/jf-manager; a lost
+        # admin password is generated again in the admin step.
+        : "${JF_BACKUP_PASSWORD:=}" "${JF_ADMIN_PASSWORD:=}"
         conf_defaults; JF_ACTION=$(kv_get "$(_install_state)" ACTION || echo install)
         JF_ADMIN_USER=$(kv_get "$(_install_state)" ADMIN_USER || echo admin)
         JF_ADMIN_EMAIL=$(kv_get "$(_install_state)" ADMIN_EMAIL || true)

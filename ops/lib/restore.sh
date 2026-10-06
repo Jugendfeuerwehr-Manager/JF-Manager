@@ -30,6 +30,11 @@ restore_preflight() { # id staging-dir -> sets RESTORE_* variables
     fi
     free=$(free_bytes "$JF_DATA_DIR")
     backup_fetch "$id" "$staging" || die "$EX_PRECHECK" "Sicherung $id nicht verfügbar."
+    local bpg tpg
+    bpg=$(jq -r '.postgres_major // 0' "$FETCH_MANIFEST"); ad_db_start; tpg=$(ad_pg_major)
+    if [ "$bpg" -gt "$tpg" ]; then
+        die "$EX_PRECHECK" "Sicherung stammt von PostgreSQL $bpg, hier läuft $tpg – ein neuerer Dump ist nicht einspielbar. Nichts wurde verändert."
+    fi
     backup_check_fetched || die "$EX_PRECHECK" "Sicherung $id ist beschädigt – nichts wurde verändert."
     ok "Integrität geprüft (Prüfsumme und Lesbarkeit des Dumps, Schlüssel, Uploads)"
     bver=$(jq -r .app_version "$FETCH_MANIFEST")
