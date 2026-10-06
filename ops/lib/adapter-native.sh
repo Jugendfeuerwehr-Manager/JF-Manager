@@ -260,11 +260,8 @@ ad_fetch_release() { # version manifest
     touch "$dir/venv/.complete"
 }
 
-ad_activate_release() { # version -> switch current, render configuration
-    JF_VERSION=$1
-    switch_current "${1#v}"
-    ad_render
-}
+# The caller switched /opt/jf-manager/current; units point to "current".
+ad_activate_release() { JF_VERSION=$1; ad_render; }
 
 ad_running_version() { readlink "$JF_OPT/current" 2>/dev/null | xargs -r basename; }
 
