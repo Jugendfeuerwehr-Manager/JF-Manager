@@ -49,6 +49,8 @@ ENROLMENT_PATHS = frozenset(
         "/api/v1/auth/mfa/setup/",
         "/api/v1/auth/mfa/confirm/",
         "/api/v1/users/me/",
+        # Anonymous browser reports; carry no account data.
+        "/api/v1/security/csp-report/",
     }
 )
 

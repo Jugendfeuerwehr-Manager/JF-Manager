@@ -45,6 +45,7 @@ RUN apk upgrade --no-cache && \
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY conf.d/ /etc/nginx/conf.d/
+COPY snippets/ /etc/nginx/snippets/
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html

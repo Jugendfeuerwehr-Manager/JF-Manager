@@ -33,3 +33,16 @@ DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings python manage.py check
 ```
 
 Erwartet: keine `security.*`-Meldung. Die Meldung `orders.OrderableItem.inventory_item (fields.W342)` ist vorbestehend und sicherheitsneutral. Die Hinweise zu HSTS-Subdomains und -Preload (`security.W005`, `security.W021`) sind bewusst stummgeschaltet (siehe oben). Der automatische Test `api_tests.test_production_settings` prüft dieselben Vorgaben.
+
+## Sicherheitsheader und Content-Security-Policy
+
+Der Nginx im Frontend-Container setzt die Header über zwei Snippets in `/etc/nginx/snippets/` (Quelle: `frontend/snippets/`):
+
+- `security-headers.conf` für alles, was Nginx selbst ausliefert (Oberfläche, Assets, `/static/`, Service Worker, Manifest): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin` sowie die CSP-Zeilen.
+- `csp-report-only.conf` für `/api/` und `/admin/`; die übrigen Header setzt dort Django.
+
+Nginx verwirft geerbte `add_header`-Angaben in jedem Block, der eigene setzt. Neue `location`-Blöcke mit `add_header` müssen deshalb das passende Snippet einbinden.
+
+Die CSP läuft zunächst als `Content-Security-Policy-Report-Only`. Verstöße meldet der Browser an `/api/v1/security/csp-report/`; das Backend protokolliert sie im Logger `security.csp` nur mit Direktive, Herkunft der blockierten Quelle und Seitenpfad (ohne Abfrageparameter), höchstens 120 Meldungen pro Minute.
+
+Umstellung auf Durchsetzung: Nach einer Beobachtungsphase ohne unerwartete Meldungen in `csp-report-only.conf` den Headernamen auf `Content-Security-Policy` ändern und das Image neu bauen.

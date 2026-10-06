@@ -35,11 +35,13 @@ from users.session_views import SessionLoginView, SessionLogoutView, SessionMFAV
 
 # Import custom email admin
 from .api_views import AppSettingsView, PublicBrandingView
+from .csp_report import csp_report
 from .private_media import private_media
 from .rest_urls import api
 
 api_patterns = [
     path("api/v1/private-media/<str:kind>/<int:pk>/", private_media, name="private-media"),
+    path("api/v1/security/csp-report/", csp_report, name="csp-report"),
     path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
     path("api/v1/push/", include("notifications.urls")),
     path("api/v1/", include(api.urls)),
