@@ -90,11 +90,17 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertFalse(values["session_secure"])
 
     def test_deploy_check_reports_no_security_findings(self):
-        result = self.run_backend(["manage.py", "check", "--deploy"])
+        # The check inspects configuration only and never connects to Redis.
+        result = self.run_backend(["manage.py", "check", "--deploy"], REDIS_URL="redis://127.0.0.1:6399/0")
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, output)
         self.assertNotIn("(security.", output)
         self.assertNotIn("drf_spectacular", output)
+
+    def test_deploy_check_rejects_a_process_local_cache(self):
+        result = self.run_backend(["manage.py", "check", "--deploy", "--fail-level", "ERROR"], REDIS_URL="none")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("users.E001", result.stdout + result.stderr)
 
 
 @override_settings(SECURE_SSL_REDIRECT=True, ALLOWED_HOSTS=["testserver"])

@@ -5,4 +5,4 @@ class UsersConfig(AppConfig):
     name = "users"
 
     def ready(self):
-        from . import devices  # noqa: F401  (signal receivers)
+        from . import checks, devices  # noqa: F401  (system checks, signal receivers)

@@ -46,3 +46,11 @@ Nginx verwirft geerbte `add_header`-Angaben in jedem Block, der eigene setzt. Ne
 Die CSP läuft zunächst als `Content-Security-Policy-Report-Only`. Verstöße meldet der Browser an `/api/v1/security/csp-report/`; das Backend protokolliert sie im Logger `security.csp` nur mit Direktive, Herkunft der blockierten Quelle und Seitenpfad (ohne Abfrageparameter), höchstens 120 Meldungen pro Minute.
 
 Umstellung auf Durchsetzung: Nach einer Beobachtungsphase ohne unerwartete Meldungen in `csp-report-only.conf` den Headernamen auf `Content-Security-Policy` ändern und das Image neu bauen.
+
+## Gemeinsamer Cache (Redis) ist Pflicht
+
+Anmelde-, MFA- und Passwortlimits, die OIDC-Einmalmarken und das Limit für CSP-Meldungen liegen im Django-Standard-Cache. Ohne `REDIS_URL` wäre das ein Cache je Serverprozess: Limits würden mit der Zahl der Prozesse vervielfacht, eine OIDC-Marke ließe sich je Prozess einmal einlösen.
+
+`check --deploy` meldet in diesem Fall den Fehler `users.E001`. Der Backend-Container führt `check --deploy --fail-level ERROR` vor jedem Start aus und startet ohne gemeinsamen Cache nicht. Alle mitgelieferten Compose-Dateien setzen `REDIS_URL=redis://redis:6379`.
+
+Redis läuft mit `maxmemory 256mb` und `allkeys-lru`. Unter Speicherdruck kann Redis Limitzähler vorzeitig verwerfen; Redis deshalb nicht mit anderen Anwendungen teilen und die Speichernutzung beobachten.
