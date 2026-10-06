@@ -127,7 +127,8 @@ class OIDCFlowTests(TestCase):
         params = self.start()
         _response, query = self.callback(params["state"][0])
         self.assertEqual(query["result"], "mfa_required")
-        self.assertEqual(self.authenticated(), {"authenticated": False, "mfa_required": True})
+        status = self.authenticated()
+        self.assertEqual((status["authenticated"], status["mfa_required"]), (False, True))
 
     def test_provider_mfa_counts_only_when_explicitly_trusted(self):
         self.user.is_staff = True

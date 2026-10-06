@@ -16,7 +16,7 @@ from urllib.parse import quote, urlencode
 from django.db import transaction
 from django.utils import timezone
 
-from users.models import MFADevice, MFARecoveryCode
+from users.models import MFADevice, MFARecoveryCode, PasskeyCredential
 
 TOTP_STEP = 30
 TOTP_DIGITS = 6
@@ -117,17 +117,29 @@ def use_recovery_code(user, code):
     return False
 
 
-def has_mfa(user):
+def has_totp(user):
     return MFADevice.objects.filter(user=user, confirmed_at__isnull=False).exists()
 
 
+def has_passkeys(user):
+    return PasskeyCredential.objects.filter(user=user).exists()
+
+
+def has_mfa(user):
+    """A confirmed authenticator app or at least one passkey (SEC-11)."""
+    return has_totp(user) or has_passkeys(user)
+
+
 def verify_second_factor(user, code):
-    """Check a TOTP code or, failing that, a recovery code."""
-    device = MFADevice.objects.filter(user=user, confirmed_at__isnull=False).first()
-    if device is None:
+    """Check a TOTP code or, failing that, a recovery code.
+
+    Recovery codes work for every account with MFA, including passkey-only ones.
+    """
+    if not has_mfa(user):
         return False
     if _normalize_totp(code) is not None:
-        return verify_totp(device.pk, code)
+        device = MFADevice.objects.filter(user=user, confirmed_at__isnull=False).first()
+        return device is not None and verify_totp(device.pk, code)
     return use_recovery_code(user, code)
 
 

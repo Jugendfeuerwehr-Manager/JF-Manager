@@ -51,7 +51,10 @@ class MFALoginTests(APITestCase):
             "/api/v1/auth/session/login/", {"username": "mfa-login", "password": PASSWORD}, format="json"
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, {"authenticated": False, "mfa_required": True})
+        self.assertEqual(
+            response.data,
+            {"authenticated": False, "mfa_required": True, "mfa_methods": {"totp": True, "passkey": False}},
+        )
         self.assertNotEqual(self.client.cookies[settings.SESSION_COOKIE_NAME].value, before)
         return response
 
@@ -61,7 +64,8 @@ class MFALoginTests(APITestCase):
     def test_password_alone_does_not_authenticate(self):
         self.password_step()
         self.assertIn(self.client.get("/api/v1/users/me/").status_code, (401, 403))
-        self.assertEqual(self.client.get("/api/v1/auth/session/").data, {"authenticated": False, "mfa_required": True})
+        status = self.client.get("/api/v1/auth/session/").data
+        self.assertEqual((status["authenticated"], status["mfa_required"]), (False, True))
 
     def test_totp_completes_login_and_rotates_csrf(self):
         self.password_step()
@@ -188,7 +192,10 @@ class LDAPLoginTests(APITestCase):
             response = client.post(
                 "/api/v1/auth/session/login/", {"username": "ldap-user", "password": "directory-secret"}, format="json"
             )
-            self.assertEqual(response.data, {"authenticated": False, "mfa_required": True})
+            self.assertEqual(
+            response.data,
+            {"authenticated": False, "mfa_required": True, "mfa_methods": {"totp": True, "passkey": False}},
+        )
             code = mfa.totp_at(SECRET, mfa.current_step())
             self.assertTrue(
                 client.post("/api/v1/auth/session/mfa/", {"code": code}, format="json").data["authenticated"]

@@ -55,6 +55,10 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.sp
 
 # Frontend URL for password reset emails
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# Passkeys (SEC-11): relying party and accepted origins; both default to the
+# address of FRONTEND_URL. Changing the domain invalidates registered passkeys.
+WEBAUTHN_RP_ID = os.environ.get("WEBAUTHN_RP_ID", "")
+WEBAUTHN_ORIGINS = [o.strip() for o in os.environ.get("WEBAUTHN_ORIGINS", "").split(",") if o.strip()]
 
 # CORS settings for Vue.js frontend
 CORS_ALLOWED_ORIGINS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "")
