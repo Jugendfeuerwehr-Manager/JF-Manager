@@ -34,6 +34,7 @@ from members.api.serializers.list_serializers import (
     MemberListSerializer,
     ResolveLegacyListInputSerializer,
     can_write_list_department,
+    validate_organization_wide_target,
 )
 from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_EXPORT_DEFAULT_COLUMNS
 from members.api_serializers import AttachmentSerializer
@@ -103,7 +104,7 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         member_list = self.get_object()
         if (
-            member_list.department_id is None
+            member_list.is_unresolved_legacy
             or hasattr(member_list, "legacy_source_mapping")
             or member_list.legacy_targets.exists()
         ):
@@ -116,7 +117,9 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
     @extend_schema(responses=LegacyListPendingSerializer(many=True))
     @action(detail=False, methods=["get"], url_path="pending-resolution", pagination_class=None)
     def pending_resolution(self, request):
-        sources = MemberList.objects.filter(department__isnull=True, legacy_resolved_at__isnull=True).order_by("pk")
+        sources = MemberList.objects.filter(
+            department__isnull=True, organization_wide=False, legacy_resolved_at__isnull=True
+        ).order_by("pk")
         return Response([pending_resolution_data(source) for source in sources])
 
     @extend_schema(responses=LegacyListPendingSerializer, methods=["GET"])
@@ -127,7 +130,9 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["get", "post"], url_path="resolve-legacy")
     def resolve_legacy(self, request, pk=None):
-        source = get_object_or_404(MemberList, pk=pk, department__isnull=True, legacy_resolved_at__isnull=True)
+        source = get_object_or_404(
+            MemberList, pk=pk, department__isnull=True, organization_wide=False, legacy_resolved_at__isnull=True
+        )
         if request.method == "GET":
             return Response(pending_resolution_data(source))
         serializer = ResolveLegacyListInputSerializer(data=request.data)
@@ -154,11 +159,13 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
         # Unassigned legacy lists remain in a superuser-only migration queue.
         if user.is_superuser:
             return queryset
-        queryset = queryset.filter(department__isnull=False)
+        queryset = queryset.filter(Q(department__isnull=False) | Q(organization_wide=True))
         invalid_entries = MemberListEntry.objects.filter(member_list_id=OuterRef("pk")).exclude(
             member__departments__id=OuterRef("department_id")
         )
-        queryset = queryset.annotate(_has_invalid_entries=Exists(invalid_entries)).filter(_has_invalid_entries=False)
+        queryset = queryset.annotate(_has_invalid_entries=Exists(invalid_entries)).filter(
+            Q(organization_wide=True) | Q(_has_invalid_entries=False)
+        )
 
         required = MemberListRolePermissions()._required_permissions(self.request, self)
         if required is None:
@@ -167,6 +174,8 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
             user.has_perm(permission) for permission in required
         ):
             return queryset
+        # Organization-wide lists need the organization-wide scope and global rights.
+        queryset = queryset.filter(organization_wide=False)
 
         allowed_ids = set(user.department_roles.values_list("department_id", flat=True))
         for permission in required:
@@ -182,13 +191,15 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
         return queryset.filter(department_id__in=allowed_ids)
 
     def _require_list_write(self, member_list):
-        if member_list.department_id is None or not can_write_list_department(
+        if member_list.is_unresolved_legacy or not can_write_list_department(
             self.request.user, member_list.department, "change"
         ):
             raise PermissionDenied("Keine Schreibberechtigung für die Listenabteilung.")
 
     @staticmethod
     def _require_member_in_list_department(member_list, member):
+        if member_list.organization_wide:
+            return
         if not member.departments.filter(pk=member_list.department_id).exists():
             raise serializers.ValidationError({"member_id": "Das Mitglied gehört nicht zur Listenabteilung."})
 
@@ -284,7 +295,10 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
         if not isinstance(member_ids, list):
             return Response({"error": "member_ids muss eine Liste sein."}, status=status.HTTP_400_BAD_REQUEST)
         member_ids = set(serializers.ListField(child=serializers.IntegerField(min_value=1)).run_validation(member_ids))
-        members = list(Member.objects.filter(pk__in=member_ids, departments=member_list.department).distinct())
+        members = Member.objects.filter(pk__in=member_ids)
+        if not member_list.organization_wide:
+            members = members.filter(departments=member_list.department)
+        members = list(members.distinct())
         if {member.pk for member in members} != member_ids:
             raise serializers.ValidationError({"member_ids": "Alle Mitglieder müssen zur Listenabteilung gehören."})
 
@@ -380,26 +394,32 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
         date_from = data.get("date_from")
         date_to = data.get("date_to")
 
+        if department is None:
+            validate_organization_wide_target()
         if not can_write_list_department(request.user, department, "add"):
             raise PermissionDenied("Keine Schreibberechtigung für die Listenabteilung.")
 
         # The query parameter can narrow a request, but must never select a
         # different owner than the explicit body field.
         dept_raw = request.query_params.get("department")
-        if dept_raw is not None and dept_raw != str(department.pk):
+        if dept_raw is not None and (department is None or dept_raw != str(department.pk)):
             raise serializers.ValidationError({"department": "Abteilung in URL und Inhalt stimmen nicht überein."})
 
         if event_type_id is not None:
             event_type = get_object_or_404(EventType, pk=event_type_id)
-            if event_type.department_id not in (None, department.pk):
+            if department is not None and event_type.department_id not in (None, department.pk):
                 raise serializers.ValidationError({"event_type_id": "Ereignistyp gehört zu einer anderen Abteilung."})
 
-        base_members = Member.objects.filter(departments=department).distinct()
+        if department is None:
+            base_members = Member.objects.all()
+            events_qs = Event.objects.filter(member__in=base_members, type__isnull=False)
+        else:
+            base_members = Member.objects.filter(departments=department).distinct()
+            events_qs = Event.objects.filter(member__in=base_members).filter(
+                Q(type__department=department) | Q(type__isnull=False, type__department__isnull=True)
+            )
 
         # Filter events matching the criteria
-        events_qs = Event.objects.filter(member__in=base_members).filter(
-            Q(type__department=department) | Q(type__isnull=False, type__department__isnull=True)
-        )
         if event_type_id is not None:
             events_qs = events_qs.filter(type_id=event_type_id)
         if date_from:
@@ -415,7 +435,9 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
             selected_members = list(base_members.filter(id__in=member_ids_with_events))
 
         with transaction.atomic():
-            member_list = MemberList.objects.create(name=name, description=description, department=department)
+            member_list = MemberList.objects.create(
+                name=name, description=description, department=department, organization_wide=department is None
+            )
             MemberListEntry.objects.bulk_create(
                 [MemberListEntry(member_list=member_list, member=m) for m in selected_members]
             )

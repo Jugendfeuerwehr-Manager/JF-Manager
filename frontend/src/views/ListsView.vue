@@ -11,24 +11,16 @@
       </div>
       <div class="header-actions">
         <Button v-if="authStore.user?.is_superuser" label="Altlisten klären" icon="pi pi-shield" severity="secondary" outlined @click="router.push({ name: 'legacy-list-resolution' })" />
-        <Button label="Neue Liste" icon="pi pi-plus" :disabled="createDepartments.length === 0" :title="createDepartments.length === 0 ? 'Keine berechtigte aktive Abteilung verfügbar' : undefined" @click="openCreateDialog" />
+        <Button label="Neue Liste" icon="pi pi-plus" :disabled="!canCreate" :title="canCreate ? undefined : createBlockReason.title" @click="openCreateDialog" />
       </div>
     </div>
 
-    <div v-if="!departmentsStore.loading && createDepartments.length === 0 && createBlockReason" class="create-blocked" role="status">
+    <div v-if="!departmentsStore.loading && !canCreate" class="create-blocked" role="status">
       <i class="pi pi-info-circle" aria-hidden="true"></i>
       <div class="create-blocked__text">
         <strong>{{ createBlockReason.title }}</strong>
         <span>{{ createBlockReason.message }}</span>
       </div>
-      <Button
-        v-if="createBlockReason.action"
-        :label="createBlockReason.action"
-        icon="pi pi-building"
-        severity="secondary"
-        outlined
-        @click="router.push({ path: '/users', query: { tab: 'departments' } })"
-      />
     </div>
 
     <!-- Search -->
@@ -54,7 +46,7 @@
       <i class="pi pi-list-check empty-big-icon"></i>
       <h2>Noch keine Listen</h2>
       <p>Erstelle deine erste Liste, um Mitglieder zu organisieren.</p>
-      <Button label="Erste Liste erstellen" icon="pi pi-plus" :disabled="createDepartments.length === 0" @click="openCreateDialog" />
+      <Button label="Erste Liste erstellen" icon="pi pi-plus" :disabled="!canCreate" @click="openCreateDialog" />
     </div>
 
     <!-- No search results -->
@@ -149,7 +141,11 @@
     >
       <div class="dialog-form">
         <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
-        <div class="form-field">
+        <p v-if="formIsOrganizationWide" class="form-hint org-wide-hint">
+          <i class="pi pi-building" aria-hidden="true"></i>
+          Es gibt keine Abteilungen. Die Liste gilt für die gesamte Organisation.
+        </p>
+        <div v-else class="form-field">
           <label class="field-label" for="list-department">Abteilung *</label>
           <Select
             id="list-department"
@@ -208,7 +204,7 @@
         <Button
           :label="editingList ? 'Speichern' : 'Erstellen'"
           icon="pi pi-check"
-          :disabled="!formData.name.trim() || !formData.department"
+          :disabled="!formData.name.trim() || (!formData.department && !formIsOrganizationWide)"
           :loading="store.saving"
           @click="saveForm"
         />
@@ -281,19 +277,30 @@ function canWriteDepartment(departmentId: number, action: 'add' | 'change') {
   return hasPermission(role?.permissions, modelPermission)
 }
 
+/** Organization-wide lists need the organization-wide scope plus the global list right. */
+function canWriteOrganization(action: 'add' | 'change') {
+  const user = authStore.user
+  if (!user) return false
+  if (user.is_superuser) return true
+  return hasPermission(user.permissions, 'departments.can_access_all_departments') && hasPermission(user.permissions, `members.${action}_memberlist`)
+}
+
 const activeDepartments = computed(() => departmentsStore.departments.filter((department) => department.is_active))
 const createDepartments = computed(() => activeDepartments.value.filter((department) => canWriteDepartment(department.id, 'add')))
+/** Without any active department, lists belong to the whole organization. */
+const createsOrganizationWide = computed(() => !departmentsStore.error && !activeDepartments.value.length)
+const canCreate = computed(() =>
+  createsOrganizationWide.value ? canWriteOrganization('add') : createDepartments.value.length > 0,
+)
 /** Explains a disabled "Neue Liste" instead of hiding the reason in a tooltip. */
 const createBlockReason = computed(() => {
   if (departmentsStore.error) {
-    return { title: 'Abteilungen konnten nicht geladen werden', message: 'Ohne Abteilungen lassen sich keine Listen anlegen. Bitte lade die Seite neu.', action: '' }
+    return { title: 'Abteilungen konnten nicht geladen werden', message: 'Ohne Abteilungen lassen sich keine Listen anlegen. Bitte lade die Seite neu.' }
   }
-  if (!activeDepartments.value.length) {
-    return authStore.user?.is_superuser
-      ? { title: 'Lege zuerst eine Abteilung an', message: 'Jede Liste gehört zu genau einer Abteilung, damit nur Berechtigte ihre Mitglieder sehen. Es gibt noch keine aktive Abteilung.', action: 'Abteilung anlegen' }
-      : { title: 'Noch keine Abteilung eingerichtet', message: 'Jede Liste gehört zu genau einer Abteilung. Bitte wende dich an die Administration.', action: '' }
+  if (createsOrganizationWide.value) {
+    return { title: 'Keine Berechtigung zum Anlegen', message: 'Listen ohne Abteilung gelten für die gesamte Organisation. Dafür fehlt deinem Konto die organisationsweite Listenberechtigung.' }
   }
-  return { title: 'Keine Berechtigung zum Anlegen', message: 'Für deine Abteilungen ist das Anlegen von Listen nicht freigegeben.', action: '' }
+  return { title: 'Keine Berechtigung zum Anlegen', message: 'Für deine Abteilungen ist das Anlegen von Listen nicht freigegeben.' }
 })
 
 const formDepartments = computed(() => {
@@ -331,6 +338,9 @@ const showFormDialog = ref(false)
 const editingList = ref<MemberList | null>(null)
 const formError = ref('')
 const formData = reactive({ name: '', description: '', color: '#3B82F6', department: null as number | null })
+const formIsOrganizationWide = computed(() =>
+  editingList.value ? editingList.value.organization_wide : createsOrganizationWide.value,
+)
 
 async function ensureDepartments() {
   if (!departmentsStore.departments.length) await departmentsStore.fetchDepartments()
@@ -339,8 +349,8 @@ async function ensureDepartments() {
 
 function openCreateDialog() {
   formError.value = ''
-  if (createDepartments.value.length === 0) {
-    toast.add({ severity: 'error', summary: 'Keine Abteilung verfügbar', detail: 'Für dein Konto ist keine aktive Abteilung mit Listen-Schreibrecht verfügbar.', life: 4000 })
+  if (!canCreate.value) {
+    toast.add({ severity: 'error', summary: createBlockReason.value.title, detail: createBlockReason.value.message, life: 4000 })
     return
   }
   editingList.value = null
@@ -357,7 +367,7 @@ async function openEditDialog(list: MemberList) {
     toast.add({ severity: 'error', summary: 'Fehler', detail: 'Abteilungen konnten nicht geladen werden.', life: 4000 })
     return
   }
-  if (list.department === null || !canWriteDepartment(list.department, 'change')) return
+  if (!canEditList(list)) return
   editingList.value = list
   formData.name = list.name
   formData.description = list.description
@@ -369,15 +379,20 @@ async function openEditDialog(list: MemberList) {
 async function saveForm() {
   formError.value = ''
   if (!formData.name.trim()) return
-  if (formData.department === null) {
+  const action = editingList.value ? 'change' : 'add'
+  if (formIsOrganizationWide.value) {
+    formData.department = null
+    if (!canWriteOrganization(action)) {
+      formError.value = 'Für organisationsweite Listen fehlt die erforderliche Listenberechtigung.'
+      return
+    }
+  } else if (formData.department === null) {
     formError.value = 'Bitte wähle eine Abteilung aus.'
     return
-  }
-  if (editingList.value && formData.department !== editingList.value.department) {
+  } else if (editingList.value && formData.department !== editingList.value.department) {
     formError.value = 'Die Abteilung einer bestehenden Liste kann nicht geändert werden.'
     return
-  }
-  if (!canWriteDepartment(formData.department, editingList.value ? 'change' : 'add')) {
+  } else if (!canWriteDepartment(formData.department, action)) {
     formError.value = 'Für diese Abteilung fehlt die erforderliche Listenberechtigung.'
     return
   }
@@ -396,6 +411,7 @@ async function saveForm() {
 }
 
 function canEditList(list: MemberList) {
+  if (list.organization_wide) return canWriteOrganization('change')
   return list.department !== null && canWriteDepartment(list.department, 'change')
 }
 
@@ -453,6 +469,13 @@ onMounted(() => {
   border-color: color-mix(in srgb, var(--p-sky-400), transparent 60%);
   background: color-mix(in srgb, var(--p-sky-400), transparent 88%);
   color: var(--p-sky-100);
+}
+
+.org-wide-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  margin: 0;
 }
 
 .create-blocked__text {

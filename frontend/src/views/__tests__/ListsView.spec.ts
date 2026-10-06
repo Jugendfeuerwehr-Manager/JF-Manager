@@ -6,7 +6,7 @@ import ListsView from '../ListsView.vue'
 const { listsStore, membersStore, authStore, departmentsStore, addToast, push } = vi.hoisted(() => ({
   listsStore: { lists: [] as Array<Record<string, unknown>>, loading: false, saving: false, currentList: null as null | Record<string, unknown>, fetchLists: vi.fn(), createList: vi.fn(), updateList: vi.fn(), fetchList: vi.fn(), deleteList: vi.fn() },
   membersStore: { fetchMembers: vi.fn() },
-  authStore: { user: { is_superuser: true, permissions: [], department_roles: [] as Array<{ department_id: number; permissions: string[] }> } },
+  authStore: { user: { is_superuser: true, permissions: [] as string[], department_roles: [] as Array<{ department_id: number; permissions: string[] }> } },
   departmentsStore: { departments: [{ id: 7, name: 'Jugend', is_active: true }, { id: 8, name: 'Musik', is_active: false }], error: null as string | null, fetchDepartments: vi.fn() },
   addToast: vi.fn(),
   push: vi.fn(),
@@ -107,16 +107,41 @@ describe('ListsView department-aware forms', () => {
     wrapper.unmount()
   })
 
-  it('explains why lists cannot be created when no department exists and links to department setup', async () => {
+  it('creates an organization-wide list without department selection when no department exists', async () => {
     departmentsStore.departments = []
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.find('.create-blocked').exists()).toBe(false)
+    await wrapper.findAll('button').find((button) => button.text() === 'Neue Liste')!.trigger('click')
+    await nextTick()
+    expect(wrapper.find('#list-department').exists()).toBe(false)
+    expect(wrapper.get('.org-wide-hint').text()).toContain('gesamte Organisation')
+    await wrapper.get('#list-name').setValue('Zeltlager')
+    await wrapper.findAll('button').find((button) => button.text() === 'Erstellen')!.trigger('click')
+    await flushPromises()
+    expect(listsStore.createList).toHaveBeenCalledWith(expect.objectContaining({ name: 'Zeltlager', department: null }))
+    wrapper.unmount()
+  })
+
+  it('explains missing organization-wide rights when no department exists', async () => {
+    departmentsStore.departments = []
+    authStore.user = { is_superuser: false, permissions: ['members.add_memberlist'], department_roles: [] }
     const wrapper = render()
     await flushPromises()
     const notice = wrapper.get('.create-blocked')
     expect(notice.attributes('role')).toBe('status')
-    expect(notice.text()).toContain('Lege zuerst eine Abteilung an')
+    expect(notice.text()).toContain('organisationsweite Listenberechtigung')
     expect((wrapper.findAll('button').find((button) => button.text() === 'Neue Liste')!.element as HTMLButtonElement).disabled).toBe(true)
-    await notice.findAll('button').find((button) => button.text() === 'Abteilung anlegen')!.trigger('click')
-    expect(push).toHaveBeenCalledWith({ path: '/users', query: { tab: 'departments' } })
+    wrapper.unmount()
+  })
+
+  it('allows organization-wide creation with org scope and the global list right', async () => {
+    departmentsStore.departments = []
+    authStore.user = { is_superuser: false, permissions: ['departments.can_access_all_departments', 'members.add_memberlist'], department_roles: [] }
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.find('.create-blocked').exists()).toBe(false)
+    expect((wrapper.findAll('button').find((button) => button.text() === 'Neue Liste')!.element as HTMLButtonElement).disabled).toBe(false)
     wrapper.unmount()
   })
 

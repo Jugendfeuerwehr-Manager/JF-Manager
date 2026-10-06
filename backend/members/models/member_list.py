@@ -17,7 +17,12 @@ class MemberList(models.Model):
         blank=True,
         related_name="member_lists",
         verbose_name="Abteilung",
-        help_text="Ohne Abteilung nur für ungeklärte Altlisten während der Migration.",
+        help_text="Ohne Abteilung nur für organisationsweite Listen oder ungeklärte Altlisten.",
+    )
+    organization_wide = models.BooleanField(
+        default=False,
+        verbose_name="Organisationsweit",
+        help_text="Liste einer Organisation ohne Abteilungen; nur mit organisationsweitem Recht sichtbar.",
     )
     description = models.TextField(blank=True, default="", verbose_name="Beschreibung")
     color = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbe")
@@ -31,9 +36,19 @@ class MemberList(models.Model):
         verbose_name_plural = "Mitgliederlisten"
         ordering = ["name"]
         permissions = [("export_memberlist", "Kann Mitgliederlisten exportieren")]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(organization_wide=False) | models.Q(department__isnull=True),
+                name="organization_wide_list_without_department",
+            )
+        ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_unresolved_legacy(self):
+        return self.department_id is None and not self.organization_wide
 
     @property
     def member_count(self):
