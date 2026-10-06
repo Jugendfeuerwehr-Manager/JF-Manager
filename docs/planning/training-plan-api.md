@@ -85,3 +85,7 @@ Serie, Kopie, Vorlage und „dieser und folgende“ übernehmen Art, Ort, Lernzi
 - Übungen, die die Person nicht planen darf, erscheinen nur als „einer anderen Übung (nicht sichtbar)“ ohne Titel oder ID.
 
 Warnungen blockieren das Speichern nicht. Der Übergang zu `published` (Planvertrag oder Einzeländerung) verlangt bei Warnungen `publish_justification`; sonst HTTP 400 mit `publish_justification` und den Warntexten unter `warnings`. Gespeichert werden Begründung und Warntexte (`publish_warnings`, schreibgeschützt). Weitere Speicherungen einer bereits veröffentlichten Übung fragen nicht erneut. Ungültige Zeiten und fehlende Rechte blockieren weiterhin.
+
+### Rotationsassistent
+
+Der Rotationsassistent im Planer erzeugt ausschließlich lokale Entwurfsbausteine (kein eigener Endpunkt); gespeichert wird wie jeder Entwurf über den vollständigen Planvertrag. Eingaben: Gruppen, Stationen in Reihenfolge (Titel, Ort, Ausbilder), Beginn, Stationsdauer, Wechselzeit und optional eine Pause zwischen zwei Runden. Runden = max(Gruppen, Stationen); in Runde r besucht Gruppe g die Position (g + r) mod Runden. Positionen ohne Station werden als `free` („Freie Runde“) für diese Gruppe angelegt, unbesetzte Stationen erscheinen in der Vorschau. Zwischen den Runden entstehen `transition`-Bausteine bzw. ein `break`; nehmen alle Gruppen teil, gelten sie für alle Gruppen. Überschreitet der Ablauf den Terminrahmen, ist die Übernahme gesperrt. Die vollständige Vorschau (Runden × Gruppen mit Uhrzeiten) wird als ein rückgängig machbarer Schritt übernommen.

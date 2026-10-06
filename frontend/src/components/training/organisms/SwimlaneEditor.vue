@@ -34,12 +34,13 @@
           @click="toggleNav"
         />
         <template v-if="canManage">
-        <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.undo()" />
-        <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.redo()" />
+        <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.undo()" />
+        <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.redo()" />
         <Button v-if="session?.status === 'draft' || session?.status === 'cancelled'" label="Veröffentlichen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('published')" />
         <Button v-if="session?.status === 'published' && session.linked_service_id" label="Abschließen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('completed')" />
         <Button v-if="session && session.status !== 'cancelled' && session.status !== 'completed'" label="Absagen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('cancelled')" />
         <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
+        <Button icon="pi pi-th-large" label="Rotation" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="showRotation = true" />
         <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
         <Button v-if="isSeries" icon="pi pi-sync" label="Serie" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading || isDirty" v-tooltip.bottom="isDirty ? 'Zuerst speichern: Serien verwenden den gespeicherten Stand' : 'Serientermine ergänzen oder diesen Stand auf folgende übertragen'" @click="showSeries = true" />
         <Button icon="pi pi-ellipsis-v" severity="secondary" text aria-label="Weitere Aktionen" aria-haspopup="menu" v-tooltip.bottom="'Weitere Aktionen'" :disabled="plannerStore.saving || plannerStore.loading" @click="moreMenu?.toggle($event)" />
@@ -61,7 +62,7 @@
           icon="pi pi-save"
           label="Speichern"
           :loading="plannerStore.saving || saving"
-          :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings || showPlanAction"
+          :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings || showPlanAction || showRotation"
           @click="saveAll"
         />
         </template>
@@ -212,6 +213,7 @@
 
     <MobileBlockDetailSheet v-if="!canManage" :block="readingBlock" :session-start-min="sessionStartMin" @close="readingBlock = null" />
     <PlanActionDialog v-model:visible="showPlanAction" :duration="sessionDuration" />
+    <RotationDialog v-if="canManage" v-model:visible="showRotation" :duration="sessionDuration" />
     <SessionCopyDialog v-if="canManage" v-model:visible="showCopy" :mode="copyMode" :session="session" @copied="onCopied" @saved="onTemplateSaved" />
     <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" :can-propagate="!!session?.series_uuid" />
 
@@ -252,6 +254,7 @@ import MobileBlockDetailSheet from '../molecules/MobileBlockDetailSheet.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import SeriesDialog from '../molecules/SeriesDialog.vue'
+import RotationDialog from '../molecules/RotationDialog.vue'
 import SessionCopyDialog from '../molecules/SessionCopyDialog.vue'
 import PlanWarningsPanel from '../molecules/PlanWarningsPanel.vue'
 import PublishJustificationDialog from '../molecules/PublishJustificationDialog.vue'
@@ -287,6 +290,7 @@ const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
 const showSeries = ref(false)
+const showRotation = ref(false)
 const showCopy = ref(false)
 const showJustification = ref(false)
 const copyMode = ref<'copy' | 'template'>('copy')

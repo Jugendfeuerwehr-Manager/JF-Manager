@@ -160,7 +160,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     }
   }
 
-  async function addBlock(data: TrainingBlockCreate) {
+  async function addBlock(data: TrainingBlockCreate & { instructors?: InstructorMini[] }) {
     assertEditable()
     const requestGeneration = generation
     let content = data.content ?? ''
@@ -179,7 +179,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
       start_offset_minutes: data.start_offset_minutes ?? 0, position_order: data.position_order ?? 0,
       color, nextcloud_folder_url: data.nextcloud_folder_url ?? '',
       kind: data.kind ?? 'block', location: data.location ?? '', learning_objective: data.learning_objective ?? '',
-      safety_notes: data.safety_notes ?? '', instructors: [], materials: data.materials ?? [],
+      safety_notes: data.safety_notes ?? '', instructors: data.instructors ?? [], materials: data.materials ?? [],
       created_at: '', updated_at: '', media: [], attachments: [],
     }
     mutate(() => { blocks.value.push(normalize(b)) })
@@ -187,6 +187,17 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   }
 
   // Instructors are passed with their names so the draft can show them before saving.
+  // Several new blocks (e.g. a rotation) as one undoable draft step.
+  async function addBlocks(list: Array<TrainingBlockCreate & { instructors?: InstructorMini[] }>) {
+    assertEditable()
+    beginGesture()
+    try {
+      for (const data of list) await addBlock(data)
+    } finally {
+      endGesture()
+    }
+  }
+
   async function updateBlockContent(id: number, data: Partial<TrainingBlockCreate> & { instructors?: InstructorMini[] }) {
     assertEditable()
     const b = blocks.value.find((b) => b.id === id)
@@ -335,7 +346,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     sessionId, session, blocks, selectedBlockId, draggingBlockId, pendingMoves,
     loading, saving, error, conflict, isDirty, selectedBlock, blocksByGroup,
     canUndo, canRedo, undo, redo, beginGesture, endGesture,
-    loadBlocks, addBlock, updateBlockContent, stageSession, stageMove, savePendingMoves,
+    loadBlocks, addBlock, addBlocks, updateBlockContent, stageSession, stageMove, savePendingMoves,
     removeBlock, discardForServerVersion, selectBlock, setDragging, reset,
     warnings, checking, checkError, checkDraft,
   }
