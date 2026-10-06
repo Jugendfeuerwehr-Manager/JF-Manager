@@ -37,10 +37,18 @@ class PersonOrderTrainingTargetTests(APITestCase):
         cls.order_status, _ = OrderStatus.objects.get_or_create(code="NEW", defaults={"name": "New"})
         cls.order_a = Order.objects.create(member=cls.member_a, department=cls.department_a)
         cls.session_a = TrainingSession.objects.create(
-            title="A session", date=date(2026, 10, 15), start_time="10:00", end_time="11:00", department=cls.department_a
+            title="A session",
+            date=date(2026, 10, 15),
+            start_time="10:00",
+            end_time="11:00",
+            department=cls.department_a,
         )
         cls.session_b = TrainingSession.objects.create(
-            title="B session", date=date(2026, 10, 15), start_time="10:00", end_time="11:00", department=cls.department_b
+            title="B session",
+            date=date(2026, 10, 15),
+            start_time="10:00",
+            end_time="11:00",
+            department=cls.department_b,
         )
         cls.block_a = TrainingBlock.objects.create(title="A block", session=cls.session_a)
         cls.block_b = TrainingBlock.objects.create(title="B block", session=cls.session_b)
@@ -152,9 +160,7 @@ class PersonOrderTrainingTargetTests(APITestCase):
         self.assertEqual(self.order_a.department_id, self.department_a.pk)
 
     def test_order_cannot_be_moved_to_read_only_member(self):
-        response = self.client.patch(
-            f"/api/v1/orders/{self.order_a.pk}/", {"member": self.member_b.pk}, format="json"
-        )
+        response = self.client.patch(f"/api/v1/orders/{self.order_a.pk}/", {"member": self.member_b.pk}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.order_a.refresh_from_db()
@@ -212,11 +218,9 @@ class PersonOrderTrainingTargetTests(APITestCase):
 
     def test_training_block_cannot_be_changed_in_other_department(self):
         self.client.force_authenticate(user=self.training_user)
-        response = self.client.patch(
-            f"/api/v1/training/blocks/{self.block_b.pk}/", {"title": "Changed"}, format="json"
-        )
+        response = self.client.patch(f"/api/v1/training/blocks/{self.block_b.pk}/", {"title": "Changed"}, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.block_b.refresh_from_db()
         self.assertEqual(self.block_b.title, "B block")
 

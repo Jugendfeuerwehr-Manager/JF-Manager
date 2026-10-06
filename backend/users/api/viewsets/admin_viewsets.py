@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, viewsets
@@ -204,6 +205,16 @@ class AuthGroupViewSet(viewsets.ModelViewSet):
     search_fields = ["name"]
     ordering_fields = ["name"]
     ordering = ["name"]
+
+    @transaction.atomic
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.method not in ("GET", "HEAD", "OPTIONS"):
+            queryset = queryset.select_for_update()
+        return queryset
 
     def get_object(self):
         group = super().get_object()

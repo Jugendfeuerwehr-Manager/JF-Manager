@@ -122,8 +122,18 @@ class RoleAssignmentViewSet(viewsets.ViewSet):
         if lock:
             templates = templates.select_for_update(of=("self",))
         template = get_object_or_404(templates, pk=data["template_id"])
-        if lock and template.group_id:
-            Group.objects.select_for_update().get(pk=template.group_id)
+        if lock:
+            group_ids = set(
+                Group.objects.filter(user__pk__in=[request.user.pk, target.pk]).values_list("pk", flat=True)
+            )
+            group_ids.update(
+                Group.objects.filter(department_assignments__user_id__in=[request.user.pk, target.pk]).values_list(
+                    "pk", flat=True
+                )
+            )
+            if template.group_id:
+                group_ids.add(template.group_id)
+            list(Group.objects.select_for_update().filter(pk__in=group_ids).order_by("pk"))
         # Reload the actor, avoiding permission caches from middleware/tests.
         actor = User.objects.get(pk=request.user.pk)
         preview = assignment_preview(actor, target, template, data["department_id"], data["operation"])

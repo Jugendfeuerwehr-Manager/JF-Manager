@@ -26,8 +26,9 @@ class LDAPDepartmentMappingViewSet(viewsets.ViewSet):
     def _check_perm(self, user):
         if user.is_superuser:
             return True
-        return user.has_perm("settings_manager.change_ldap_settings") or user.has_perm(
-            "settings_manager.change_all_settings"
+        return user.has_perm("departments.can_assign_roles") and (
+            user.has_perm("settings_manager.change_ldap_settings")
+            or user.has_perm("settings_manager.change_all_settings")
         )
 
     def _check_view_perm(self, user):

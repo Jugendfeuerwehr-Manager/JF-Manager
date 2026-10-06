@@ -285,7 +285,7 @@ class DepartmentEndpointTest(DeptScopingFixture):
 
 
 class UserDepartmentRoleAdminTest(DeptScopingFixture):
-    """Staff may read role assignments; only superusers may change them."""
+    """Identity APIs require explicit permissions; staff alone has no access."""
 
     URL = "/api/v1/admin/department-roles/"
 
@@ -298,13 +298,10 @@ class UserDepartmentRoleAdminTest(DeptScopingFixture):
         resp = self.client.get(self.URL)
         self.assertIn(resp.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED))
 
-    def test_staff_can_list_roles(self):
+    def test_staff_without_identity_permissions_cannot_list_roles(self):
         self.client.force_authenticate(user=self.staff_user)
         resp = self.client.get(self.URL)
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        # Both roles from setUpTestData should be present
-        ids = {item["id"] for item in resp.data["results"]}
-        self.assertGreaterEqual(len(ids), 2)
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_superuser_can_create_role(self):
         new_user = _make_user("new_user_for_role")

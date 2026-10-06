@@ -27,11 +27,12 @@ class OIDCGroupMappingViewSet(viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated, StepUpForWrites]
 
-    def _check_permission(self, user):
+    def _check_permission(self, user, *, assigning=False):
         if user.is_superuser:
             return True
-        return user.has_perm("settings_manager.change_oidc_settings") or user.has_perm(
-            "settings_manager.change_all_settings"
+        return (not assigning or user.has_perm("departments.can_assign_roles")) and (
+            user.has_perm("settings_manager.change_oidc_settings")
+            or user.has_perm("settings_manager.change_all_settings")
         )
 
     def list(self, request):
@@ -51,7 +52,7 @@ class OIDCGroupMappingViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def create(self, request):
-        if not self._check_permission(request.user):
+        if not self._check_permission(request.user, assigning=True):
             return Response(
                 {"detail": "Keine Berechtigung für OIDC-Einstellungen."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -65,7 +66,7 @@ class OIDCGroupMappingViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, pk=None):
-        if not self._check_permission(request.user):
+        if not self._check_permission(request.user, assigning=True):
             return Response(
                 {"detail": "Keine Berechtigung für OIDC-Einstellungen."},
                 status=status.HTTP_403_FORBIDDEN,

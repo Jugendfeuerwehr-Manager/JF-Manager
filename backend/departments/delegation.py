@@ -34,6 +34,7 @@ def can_approve_delegation(template):
         or name.startswith(("auth.", "users.", "settings_manager."))
         or name.split(".")[1].startswith(("delete_", "anonymize_"))
         or name == "departments.can_access_all_departments"
+        or name == "inventory.clear_former_member_names"
         for name in names
     )
 

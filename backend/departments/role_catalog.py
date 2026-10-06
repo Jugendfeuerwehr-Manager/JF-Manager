@@ -1,4 +1,4 @@
-"""Version 1 of the built-in role templates; groups remain the permission source."""
+"""Versioned built-in role templates; groups remain the permission source."""
 
 from dataclasses import dataclass
 

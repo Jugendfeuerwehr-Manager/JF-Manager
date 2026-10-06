@@ -46,6 +46,19 @@ class DelegationApprovalTests(APITestCase):
         self.role.delegation_approval = approval_digest(self.role)
         self.assertFalse(delegation_approved(self.role))
 
+    def test_anonymization_is_never_delegated_as_an_ordinary_subject_role(self):
+        self.role.group.permissions.add(
+            Permission.objects.get(content_type__app_label="inventory", codename="clear_former_member_names")
+        )
+        self.assertEqual(self.approve().status_code, 400)
+
+    def test_settings_permission_alone_cannot_assign_external_roles(self):
+        user = get_user_model().objects.create_user(username="integration-config-only")
+        user.user_permissions.add(Permission.objects.get(codename="change_all_settings"))
+        self.client.force_authenticate(user)
+        for url in ("/api/v1/ldap-department-mappings/", "/api/v1/oidc-group-mappings/"):
+            self.assertEqual(self.client.post(url, {}, format="json").status_code, 403)
+
     def test_approval_refuses_organization_and_archived_roles(self):
         self.role = RoleTemplate.objects.get(key="inventory_manager_organization")
         self.assertEqual(self.approve().status_code, 400)
