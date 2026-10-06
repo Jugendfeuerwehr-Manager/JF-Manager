@@ -14,6 +14,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from jf_manager_backend.dashboard_api import DashboardSummaryView
 from members.attachment_links import attachment_preview, deny_direct_attachments
 from users.device_views import DeviceListView, DeviceRevokeOthersView, DeviceRevokeView
 from users.mfa_views import (
@@ -44,6 +45,7 @@ api_patterns = [
     path("api/v1/security/csp-report/", csp_report, name="csp-report"),
     path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
     path("api/v1/push/", include("notifications.urls")),
+    path("api/v1/dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
     path("api/v1/", include(api.urls)),
     # Browser session endpoints
     path("api/v1/auth/session/", SessionStatusView.as_view(), name="session-status"),
