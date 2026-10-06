@@ -46,6 +46,8 @@ pipenv run python manage.py migrate
 pipenv run python manage.py createsuperuser
 ```
 
+Alle 16 Standardrollen werden nach der Migration automatisch angelegt. Vorhandene Rollenrechte bleiben erhalten. Neue Rollen und Kopien bestehender Vorlagen werden unter **Rollenvorlagen** verwaltet; siehe [Rollenhandbuch](domains/roles-and-permissions.md).
+
 Administratorkonten müssen beim ersten Login eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes.
 
 ### 3. Frontend einrichten

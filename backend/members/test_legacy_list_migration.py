@@ -16,6 +16,8 @@ class LegacyMemberListMigrationTests(TransactionTestCase):
 
     def test_safe_assignment_split_preservation_repeat_and_rollback(self):
         executor = MigrationExecutor(connection)
+        leaves = executor.loader.graph.leaf_nodes()
+        self.addCleanup(lambda: MigrationExecutor(connection).migrate(leaves))
         executor.migrate([self.migrate_from])
         old_apps = executor.loader.project_state([self.migrate_from]).apps
         Department = old_apps.get_model("departments", "Department")

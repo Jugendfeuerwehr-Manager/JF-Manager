@@ -96,10 +96,10 @@
           <label for="new-role-permissions">Fachliche Rechte</label>
           <input id="new-role-permissions" v-model="permissionSearch" placeholder="Rechte suchen" />
           <p v-if="catalogLoading" role="status">Berechtigungen werden geladen …</p>
-          <div class="new-permission-list"><label v-for="permission in filteredCatalog" :key="permission.full_codename" class="permission-option"><input type="checkbox" v-model="newRolePermissions" :value="permission.full_codename" /> {{ permissionLabel(permission.full_codename) }}</label></div>
+          <div class="new-permission-list"><label v-for="permission in filteredCatalog" :key="permission.full_codename" class="permission-option"><input type="checkbox" v-model="newRolePermissions" :value="permission.full_codename" /> {{ catalogLabel(permission) }}</label></div>
           <p v-if="newRoleScope === 'organization'">Organisationssicht wird automatisch ergänzt; Fachrechte bitte ausdrücklich auswählen.</p>
         </template>
-        <label class="check-line"><input v-model="duplicateForm.is_delegable" type="checkbox" /> Delegierbar</label>
+        <label class="check-line"><input v-model="duplicateForm.is_delegable" type="checkbox" :disabled="creating && newRoleScope === 'organization'" /> Delegierbar</label>
         <details><summary>Erweiterte Ansicht</summary><label for="duplicate-key">Technischer Schlüssel (optional)</label><InputText id="duplicate-key" v-model="duplicateForm.key" pattern="[a-z][a-z0-9_]+" placeholder="Wird automatisch erzeugt" /></details>
         <p class="text-color-secondary">{{ creating ? 'Die ausgewählten Rechte werden in einer neuen Gruppe angelegt.' : 'Die Rechte der Quellgruppe werden kopiert.' }} Die neue Rolle erhält keine Zuweisungen und keine Delegationsfreigabe.</p>
         <div class="actions"><Button label="Abbrechen" severity="secondary" type="button" @click="duplicateVisible = false" /><Button :label="creating ? 'Rolle anlegen' : 'Kopie anlegen'" type="submit" :loading="saving" :disabled="catalogLoading" /></div>
@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { roleTemplatesApi } from '@/api/role-templates'
 import { getApiErrorMessage } from '@/utils/apiError'
@@ -141,12 +141,17 @@ const newRolePermissions = ref<string[]>([])
 const permissionSearch = ref('')
 const permissionCatalog = ref<{ full_codename: string; name: string }[]>([])
 const catalogLoading = ref(false)
-const filteredCatalog = computed(() => permissionCatalog.value.filter(permission => permission.full_codename !== 'departments.can_access_all_departments' && permissionLabel(permission.full_codename).toLocaleLowerCase().includes(permissionSearch.value.toLocaleLowerCase())))
+function catalogLabel(permission: { full_codename: string; name: string }) {
+  const label = permissionLabel(permission.full_codename)
+  return label.startsWith('Weitere Berechtigung') ? permission.name : label
+}
+const filteredCatalog = computed(() => permissionCatalog.value.filter(permission => permission.full_codename !== 'departments.can_access_all_departments' && catalogLabel(permission).toLocaleLowerCase().includes(permissionSearch.value.toLocaleLowerCase())))
 const selectedPermissions = ref<string[]>([])
 const permissionToAdd = ref('')
 const permissionError = ref('')
 const form = reactive({ name: '', description: '', is_delegable: false })
 const duplicateForm = reactive({ key: '', name: '', description: '', is_delegable: false })
+watch(newRoleScope, scope => { if (scope === 'organization') duplicateForm.is_delegable = false })
 
 const canApproveDelegation = computed(() => auth.hasPerm('departments.can_assign_roles') && auth.hasPerm('departments.change_roletemplate'))
 const canChangeMetadata = computed(() => auth.hasPerm('departments.change_roletemplate'))
@@ -284,7 +289,7 @@ async function openCreate() {
 }
 async function duplicateTemplate() {
   if (!creating.value && (!selected.value || !comparison.value)) return
-  if (!window.confirm(`Neue, noch nicht zugewiesene Vorlage „${duplicateForm.name}“ mit den aktuellen Rechten anlegen?`)) return
+  if (!window.confirm(`Neue, noch nicht zugewiesene Rolle „${duplicateForm.name}“ anlegen?`)) return
   saving.value = true; duplicateError.value = ''
   try {
     const input = { ...duplicateForm, key: duplicateForm.key || undefined }

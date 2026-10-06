@@ -1,5 +1,7 @@
 # JF-Manager Documentation
 
+- [Rollen und Berechtigungen](domains/roles-and-permissions.md) – Zuweisung, Delegation, Herkunft und sicheres Upgrade vorhandener Gruppen
+
 ## Getting Started
 
 - [Getting Started](getting-started.md) – Local development setup, environment variables, first steps

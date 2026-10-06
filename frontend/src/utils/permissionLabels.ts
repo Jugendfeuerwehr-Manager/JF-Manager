@@ -7,6 +7,7 @@ const models: Record<string, string> = {
   'qualifications.qualification': 'Qualifikationen', 'qualifications.specialtask': 'Sonderaufgaben',
   'qualifications.qualificationtype': 'Qualifikationstypen', 'qualifications.specialtasktype': 'Aufgabentypen',
   'inventory.item': 'Artikel', 'inventory.itemvariant': 'Artikelvarianten', 'inventory.storagelocation': 'Lagerorte',
+  'inventory.category': 'Inventarkategorien',
   'inventory.stock': 'Bestände', 'inventory.transaction': 'Bestandsbewegungen',
   'orders.order': 'Bestellungen', 'orders.orderitem': 'Bestellpositionen', 'orders.orderableitem': 'Bestellkatalog',
   'users.customuser': 'Konten', 'auth.group': 'Berechtigungsgruppen', 'departments.department': 'Abteilungen',
