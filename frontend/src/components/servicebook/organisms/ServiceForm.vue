@@ -1,132 +1,100 @@
 <template>
-  <form @submit.prevent="handleSubmit" class="service-form">
-    <!-- Server time divergence warning -->
-    <Message v-if="serverTimeDivergent" severity="warn" :closable="false" class="mb-3">
+  <form class="service-form" novalidate @submit.prevent="handleSubmit">
+    <Message v-if="serverTimeDivergent" severity="warn" :closable="false">
       <span>
         <strong>Zeitabweichung erkannt:</strong> Die Serverzeit weicht um
         {{ serverTimeDiffMinutes !== null ? Math.abs(serverTimeDiffMinutes) : '' }} Minuten von deiner
         lokalen Zeit ab. Die Standardzeiten beziehen sich auf deine lokale Uhrzeit.
       </span>
     </Message>
-    <!-- Quick Action Button -->
-    <div class="form-actions-top mb-3">
-      <Button
-        type="button"
-        label="Heute zu Standard Zeit"
-        icon="pi pi-clock"
-        severity="secondary"
-        outlined
-        @click="setTodayWithDefaultTime"
-        :disabled="loading"
-      />
-    </div>
 
-    <div class="form-grid">
-      <!-- Start Date/Time -->
-      <div class="form-field">
-        <label for="start" class="required">Start</label>
-        <Calendar
-          id="start"
-          v-model="formData.start"
-          updateModelType="date"
-          showTime
-          hourFormat="24"
-          dateFormat="dd.mm.yy"
-          showIcon
-          :showButtonBar="true"
-          :class="{ 'p-invalid': errors.start }"
-        />
-        <small v-if="errors.start" class="p-error">{{ errors.start }}</small>
-      </div>
-
-      <!-- End Date/Time -->
-      <div class="form-field">
-        <label for="end" class="required">Ende</label>
-        <Calendar
-          id="end"
-          v-model="formData.end"
-          updateModelType="date"
-          showTime
-          hourFormat="24"
-          dateFormat="dd.mm.yy"
-          showIcon
-          :showButtonBar="true"
-          :class="{ 'p-invalid': errors.end }"
-        />
-        <small v-if="errors.end" class="p-error">{{ errors.end }}</small>
-      </div>
-       <div class="form-field full-width">
-          <Button
+    <section class="form-card" aria-labelledby="service-time-title">
+      <div class="form-card__header">
+        <h2 id="service-time-title">Termin</h2>
+        <Button
           type="button"
-          label="Standardzeit setzen"
+          label="Heute, Standardzeit"
           icon="pi pi-clock"
           severity="secondary"
           outlined
-          @click="setTodayWithDefaultTime"
           :disabled="loading"
-        />
-       </div>
-
-      <!-- Topic -->
-      <div class="form-field full-width">
-        <label for="topic">Thema</label>
-        <InputText
-          id="topic"
-          v-model="formData.topic"
-          placeholder="z.B. Übung: Erste Hilfe"
+          @click="setTodayWithDefaultTime"
         />
       </div>
-
-      <!-- Place -->
-      <div class="form-field full-width">
-        <label for="place">Ort</label>
-        <InputText id="place" v-model="formData.place" placeholder="z.B. Feuerwehrhaus" />
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="start">Beginn</label>
+          <Calendar
+            input-id="start"
+            v-model="formData.start"
+            updateModelType="date"
+            showTime
+            hourFormat="24"
+            dateFormat="dd.mm.yy"
+            showIcon
+            :showButtonBar="true"
+            :invalid="!!errors.start"
+          />
+          <p v-if="errors.start" class="field-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.start }}</p>
+        </div>
+        <div class="form-field">
+          <label for="end">Ende</label>
+          <Calendar
+            input-id="end"
+            v-model="formData.end"
+            updateModelType="date"
+            showTime
+            hourFormat="24"
+            dateFormat="dd.mm.yy"
+            showIcon
+            :showButtonBar="true"
+            :invalid="!!errors.end"
+          />
+          <p v-if="errors.end" class="field-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.end }}</p>
+        </div>
       </div>
+    </section>
 
-      <!-- Operations Manager -->
-      <div class="form-field full-width">
-        <label for="operations_manager">Übungsleitung</label>
-        <UserChipSelector
-          v-model="formData.operations_manager_ids"
-          :options="usersOptions"
-          :loading="usersLoading"
-          :searchable="true"
-        />
+    <section class="form-card" aria-labelledby="service-content-title">
+      <h2 id="service-content-title">Inhalt</h2>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="topic">Thema</label>
+          <InputText id="topic" v-model="formData.topic" placeholder="z. B. Übung: Erste Hilfe" />
+        </div>
+        <div class="form-field">
+          <label for="place">Ort</label>
+          <InputText id="place" v-model="formData.place" placeholder="z. B. Gerätehaus" />
+        </div>
+        <div class="form-field form-field--wide">
+          <span id="operations-manager-label" class="field-label">Leitung</span>
+          <UserChipSelector
+            v-model="formData.operations_manager_ids"
+            :options="usersOptions"
+            :loading="usersLoading"
+            :searchable="true"
+            aria-labelledby="operations-manager-label"
+          />
+        </div>
+        <div class="form-field form-field--wide">
+          <label for="description">Beschreibung <span class="field-optional">(optional)</span></label>
+          <Textarea id="description" v-model="formData.description" rows="3" auto-resize placeholder="Was ist geplant?" />
+        </div>
       </div>
+    </section>
 
-      <!-- Description -->
-      <div class="form-field full-width">
-        <label for="description">Beschreibung</label>
-        <Textarea
-          id="description"
-          v-model="formData.description"
-          rows="4"
-          placeholder="Beschreibung des Dienstes..."
-        />
+    <section class="form-card" aria-labelledby="service-followup-title">
+      <h2 id="service-followup-title">Nachbereitung</h2>
+      <div class="form-field">
+        <label for="events">Besondere Vorkommnisse <span class="field-optional">(optional)</span></label>
+        <Textarea id="events" v-model="formData.events" rows="3" auto-resize placeholder="Verletzungen, Schäden, Auffälligkeiten …" aria-describedby="events-hint" />
+        <p id="events-hint" class="field-hint">Dienste mit Einträgen hier sind in der Übersicht als „Besonderheiten“ markiert.</p>
       </div>
+    </section>
 
-      <!-- Special Events -->
-      <div class="form-field full-width">
-        <label for="events">Besondere Vorkommnisse</label>
-        <Textarea
-          id="events"
-          v-model="formData.events"
-          rows="3"
-          placeholder="Besondere Vorkommnisse während des Dienstes..."
-        />
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="form-actions">
-      <Button
-        type="button"
-        label="Abbrechen"
-        severity="secondary"
-        outlined
-        @click="$emit('cancel')"
-      />
-      <Button type="submit" :label="submitLabel" icon="pi pi-save" :loading="loading" />
+    <div class="action-bar">
+      <Button type="button" label="Abbrechen" severity="secondary" text @click="$emit('cancel')" />
+      <Button type="submit" :label="submitLabel" icon="pi pi-check" :loading="loading" />
     </div>
   </form>
 </template>
@@ -326,69 +294,120 @@ const handleSubmit = () => {
 .service-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--jf-space-2);
 }
 
-.form-actions-top {
+.form-card {
   display: flex;
-  justify-content: flex-start;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  flex-direction: column;
+  gap: var(--jf-space-2);
+  padding: var(--jf-space-3);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  box-shadow: var(--jf-shadow-sm);
+}
+
+.form-card h2 {
+  margin: 0;
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.form-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-1);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--jf-space-2) 20px;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  min-width: 0; /* Allow shrinking below content size */
+  gap: 6px;
+  min-width: 0;
 }
 
-.form-field.full-width {
-  grid-column: span 2;
-  min-width: 0; /* Allow shrinking below content size */
+.form-field--wide {
+  grid-column: 1 / -1;
 }
 
-.form-field label {
-  font-weight: 500;
-  color: var(--text-color);
+.form-field label,
+.field-label {
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text);
 }
 
-.form-field label.required::after {
-  content: ' *';
-  color: var(--red-500);
+.field-optional {
+  font-weight: 400;
+  color: var(--jf-color-text-muted);
 }
 
-.form-actions {
+.form-field :deep(.p-inputtext),
+.form-field :deep(.p-datepicker),
+.form-field :deep(.p-textarea) {
+  width: 100%;
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-semibold);
+  color: var(--p-red-700);
+}
+
+.app-dark .field-error {
+  color: var(--p-red-300);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--surface-border);
+  gap: var(--jf-space-1);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  box-shadow: 0 -4px 12px rgba(23, 32, 51, 0.06);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
+  .action-bar {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 767px) {
+  .form-card {
+    padding: var(--jf-space-2);
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
-    min-width: 0;
   }
 
-  .form-field.full-width {
-    grid-column: span 1;
-    min-width: 0;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .form-actions button {
-    width: 100%;
+  .action-bar :deep(.p-button:last-child) {
+    flex: 1;
   }
 }
 </style>
