@@ -18,6 +18,7 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
     linked_service_id = serializers.SerializerMethodField()
     linked_service_start = serializers.SerializerMethodField()
     requires_service_confirmation = serializers.SerializerMethodField()
+    can_manage_plan = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingSession
@@ -39,6 +40,7 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
             "linked_service_id",
             "linked_service_start",
             "requires_service_confirmation",
+            "can_manage_plan",
         ]
 
     def get_group_count(self, obj):
@@ -46,6 +48,10 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
 
     def get_block_count(self, obj):
         return obj.blocks.count()
+
+    def get_can_manage_plan(self, obj):
+        request = self.context.get("request")
+        return bool(request and can_manage_training_department(request.user, obj.department_id))
 
     def get_requires_service_confirmation(self, obj):
         return requires_service_confirmation(obj)
@@ -74,6 +80,7 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
     linked_service_id = serializers.SerializerMethodField()
     linked_service_start = serializers.SerializerMethodField()
     requires_service_confirmation = serializers.SerializerMethodField()
+    can_manage_plan = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingSession
@@ -98,6 +105,7 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "linked_service_id",
             "linked_service_start",
             "requires_service_confirmation",
+            "can_manage_plan",
             "created_by",
             "created_by_name",
             "created_at",
@@ -151,6 +159,10 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
         if groups is not None:
             instance.groups.set(groups)
         return instance
+
+    def get_can_manage_plan(self, obj):
+        request = self.context.get("request")
+        return bool(request and can_manage_training_department(request.user, obj.department_id))
 
     def get_requires_service_confirmation(self, obj):
         return requires_service_confirmation(obj)

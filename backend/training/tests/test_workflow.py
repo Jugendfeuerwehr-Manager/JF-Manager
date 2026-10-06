@@ -4,11 +4,12 @@ from types import SimpleNamespace
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.db import connection
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from departments.models import Department
+from departments.models import Department, UserDepartmentRole
 from servicebook.models import Service, StaffAttendance
 from training.models import TrainingBlock, TrainingSession
 from training.workflow import sync_linked_service
@@ -26,6 +27,20 @@ class TrainingWorkflowTests(TestCase):
 
     def patch(self, **data):
         return self.client.patch(self.url, data, format="json")
+
+    def test_released_reader_gets_explicit_read_only_capability(self):
+        department = Department.objects.create(name="Lesebereich", code="reader-plan")
+        self.session.department = department
+        self.session.save()
+        self.publish()
+        reader = get_user_model().objects.create_user(username="plan-reader")
+        reader.user_permissions.add(Permission.objects.get(codename="view_trainingsession"))
+        UserDepartmentRole.objects.create(user=reader, department=department)
+        self.client.force_authenticate(reader)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["can_manage_plan"])
+        self.assertEqual(self.patch(status="cancelled").status_code, 403)
 
     def test_draft_create_does_not_create_service(self):
         response = self.client.post(

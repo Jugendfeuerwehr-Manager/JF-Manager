@@ -20,7 +20,7 @@
         <span class="save-hint" :class="{ 'save-hint--dirty': isDirty, 'save-hint--error': saveFailed }" role="status">
           <template v-if="plannerStore.loading">Plan lädt …</template>
           <template v-else-if="plannerStore.saving">Speichert …</template>
-          <template v-else-if="saveFailed"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Nicht gespeichert</template>
+          <template v-else-if="saveFailed || plannerStore.error"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Nicht gespeichert</template>
           <template v-else-if="isDirty"><i class="pi pi-pencil" aria-hidden="true"></i>{{ pendingLabel }}</template>
           <template v-else><i class="pi pi-check" aria-hidden="true"></i>Alles gespeichert</template>
         </span>
@@ -33,15 +33,18 @@
           v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
           @click="toggleNav"
         />
+        <template v-if="canManage">
         <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.undo()" />
         <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction" @click="plannerStore.redo()" />
         <Button v-if="session?.status === 'draft' || session?.status === 'cancelled'" label="Veröffentlichen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('published')" />
-        <Button v-if="session?.status === 'published'" label="Abschließen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('completed')" />
+        <Button v-if="session?.status === 'published' && session.linked_service_id" label="Abschließen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('completed')" />
         <Button v-if="session && session.status !== 'cancelled' && session.status !== 'completed'" label="Absagen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('cancelled')" />
         <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
         <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
+        </template>
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
+        <template v-if="canManage">
         <Button
           :icon="showLibraryPicker ? 'pi pi-times' : 'pi pi-book'"
           :label="showLibraryPicker ? 'Bibliothek schließen' : 'Bibliothek'"
@@ -58,10 +61,14 @@
           :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings || showPlanAction"
           @click="saveAll"
         />
+        </template>
       </div>
     </header>
 
-    <p v-if="plannerStore.error" role="alert">{{ plannerStore.error }}</p>
+    <div v-if="plannerStore.error" role="alert">
+      <p>{{ plannerStore.error }}</p>
+      <Button v-if="!session" label="Erneut laden" severity="secondary" @click="plannerStore.loadBlocks(sessionId).catch(() => {})" />
+    </div>
     <details v-if="plannerStore.conflict" class="plan-conflict" open>
       <summary>Serverstand vergleichen · Version {{ plannerStore.conflict.revision }}</summary>
       <p>Dein Entwurf bleibt im Planer erhalten. Der Server enthält:</p>
@@ -171,12 +178,13 @@
                 v-for="block in lane.blocks"
                 :key="block.id"
                 :block="block"
+                :read-only="!canManage"
                 :minute-height="MINUTE_PX"
                 :selected="selectedBlockId === block.id"
                 @click="openEdit(block)"
                 @edit="openEdit(block)"
                 @move="onKeyboardMove"
-                @remove="plannerStore.removeBlock($event)"
+                @remove="canManage && plannerStore.removeBlock($event)"
               />
             </div>
           </div>
@@ -191,13 +199,14 @@
       </Transition>
     </div>
 
+    <MobileBlockDetailSheet v-if="!canManage" :block="readingBlock" :session-start-min="sessionStartMin" @close="readingBlock = null" />
     <PlanActionDialog v-model:visible="showPlanAction" :duration="sessionDuration" />
 
     <!-- Session settings dialog -->
     <Dialog
       v-model:visible="showSessionSettings"
       header="Training bearbeiten"
-      :style="{ width: '640px' }"
+      :style="{ width: '640px', maxWidth: 'calc(100vw - 24px)' }"
       modal
     >
       <TrainingSessionForm
@@ -226,6 +235,7 @@ import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import Dialog from 'primevue/dialog'
 import TrainingBlockTile from '../molecules/TrainingBlockTile.vue'
 import LibraryBlockPicker from '../molecules/LibraryBlockPicker.vue'
+import MobileBlockDetailSheet from '../molecules/MobileBlockDetailSheet.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
@@ -275,6 +285,8 @@ const blocks = computed(() => plannerStore.blocks)
 const selectedBlockId = computed(() => plannerStore.selectedBlockId)
 const isDirty = computed(() => plannerStore.isDirty)
 const session = computed(() => plannerStore.session)
+const canManage = computed(() => session.value?.can_manage_plan !== false)
+const readingBlock = ref<PlannerBlock | null>(null)
 const totalHeightPx = computed(() => sessionDuration.value * MINUTE_PX)
 
 // ── Session start time (minutes from midnight) ─────────────────────────────
@@ -362,6 +374,7 @@ const createPreviewStyle = computed(() => ({
 }))
 
 function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | null) {
+  if (!canManage.value) return
   if ((event.target as HTMLElement).closest('.block-tile')) return
   if (event.button !== 0 || plannerStore.saving || plannerStore.loading) return
   event.preventDefault()
@@ -433,6 +446,7 @@ function onLaneMouseDown(event: MouseEvent, laneKey: string, groupId: number | n
 // ── Drag-from-library-picker ───────────────────────────────────────────────
 async function onLaneDrop(event: DragEvent, groupId: number | null) {
   event.preventDefault()
+  if (!canManage.value) return
   if (plannerStore.saving || plannerStore.loading) return
   const blockId = event.dataTransfer?.getData('application/x-library-block-id')
   if (!blockId) return
@@ -482,6 +496,7 @@ async function addFromLibrary(libraryBlock: LibraryBlockList) {
 let dragOccurred = false
 
 function openEdit(block: PlannerBlock) {
+  if (!canManage.value) { readingBlock.value = block; return }
   if (dragOccurred || plannerStore.saving) return
   plannerStore.selectBlock(block.id)
   editingBlock.value = block
@@ -610,6 +625,7 @@ onBeforeUnmount(() => {
 })
 
 function setupInteract() {
+  if (!canManage.value) return
   interact('.block-tile')
     .draggable({
       listeners: {

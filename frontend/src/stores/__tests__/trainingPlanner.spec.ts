@@ -18,7 +18,7 @@ function block(id: number): TrainingBlock {
 }
 function plan(): TrainingSessionDetail {
   return {
-    status: 'draft', requires_service_confirmation: false,
+    status: 'draft', requires_service_confirmation: false, can_manage_plan: true,
     id: 1, revision: 1, title: 'Plan', description: '', date: '2030-01-01',
     start_time: '18:00:00', end_time: '20:00:00', location: '', notes: '', groups: [],
     blocks: [block(1), block(2)], department: 1, linked_service_id: null,
@@ -34,6 +34,17 @@ beforeEach(() => {
 })
 
 describe('complete local training drafts', () => {
+  it('keeps a released read-only plan free of local mutations', async () => {
+    api.plan.mockResolvedValue({ data: { ...plan(), status: 'published', can_manage_plan: false } })
+    const store = useTrainingPlannerStore()
+    await store.loadBlocks(1)
+    store.stageMove(1, { start_offset_minutes: 40 })
+    expect(store.isDirty).toBe(false)
+    expect(() => store.stageSession({ status: 'cancelled' })).toThrow('Leseberechtigung')
+    await expect(store.removeBlock(1)).rejects.toThrow('Leseberechtigung')
+    expect(store.blocks).toHaveLength(2)
+  })
+
   it('stages publication with content and never retains service confirmation for a later save', async () => {
     const store = useTrainingPlannerStore()
     await store.loadBlocks(1)

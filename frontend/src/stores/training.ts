@@ -87,6 +87,7 @@ export const useTrainingStore = defineStore('training', () => {
       const listItem: TrainingSessionList = {
         id: response.data.id,
         status: response.data.status,
+        can_manage_plan: response.data.can_manage_plan,
         requires_service_confirmation: response.data.requires_service_confirmation,
         title: response.data.title,
         date: response.data.date,

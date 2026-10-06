@@ -196,6 +196,7 @@ export interface TrainingSessionList {
   linked_service_id: number | null
   linked_service_start: string | null
   requires_service_confirmation: boolean
+  can_manage_plan: boolean
   series_parent: number | null
   recurrence_rule: RecurrenceRule | null
 }
@@ -218,6 +219,7 @@ export interface TrainingSessionDetail {
   linked_service_id: number | null
   linked_service_start: string | null
   requires_service_confirmation: boolean
+  can_manage_plan: boolean
   series_parent: number | null
   recurrence_rule: RecurrenceRule | null
   created_by: number | null

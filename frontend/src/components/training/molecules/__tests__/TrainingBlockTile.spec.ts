@@ -10,6 +10,16 @@ const block: PlannerBlock = {
 }
 
 describe('keyboard planning', () => {
+  it('offers details but no movement or removal to read-only users', async () => {
+    const wrapper = shallowMount(TrainingBlockTile, { props: { block, readOnly: true } })
+    expect(wrapper.findAll('button-stub')).toHaveLength(0)
+    expect(wrapper.attributes('aria-label')).toContain('Details ansehen')
+    await wrapper.trigger('keydown', { key: 'ArrowDown' })
+    expect(wrapper.emitted('move')).toBeUndefined()
+    await wrapper.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.emitted('edit')?.[0]).toEqual([block])
+  })
+
   it('supports movement, resizing and editing from a named focusable tile', async () => {
     const wrapper = shallowMount(TrainingBlockTile, { props: { block } })
     expect(wrapper.attributes('tabindex')).toBe('0')

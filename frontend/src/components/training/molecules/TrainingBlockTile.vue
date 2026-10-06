@@ -3,7 +3,7 @@
     :data-block-id="block.id"
     tabindex="0"
     role="group"
-    :aria-label="`${block.title}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.`"
+    :aria-label="`${block.title}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. ${readOnly ? 'Enter: Details ansehen.' : 'Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.'}`"
     @keydown="onKeydown"
     :style="tileStyle"
     :class="{ selected: selected, dragging: isDragging }"
@@ -11,7 +11,7 @@
   >
     <div class="tile-header">
       <span class="tile-title">{{ block.title }}</span>
-      <div class="tile-actions">
+      <div v-if="!readOnly" class="tile-actions">
         <Button icon="pi pi-pencil" text size="small" :aria-label="`${block.title} bearbeiten`" @click.stop="emit('edit', block)" />
         <Button icon="pi pi-trash" text size="small" severity="danger" :aria-label="`${block.title} entfernen`" @click.stop="emit('remove', block.id)" />
       </div>
@@ -19,7 +19,7 @@
     <div class="tile-duration">
       <BlockDurationBadge :minutes="block.duration_minutes" />
     </div>
-    <div class="resize-handle" title="Dauer ändern" />
+    <div v-if="!readOnly" class="resize-handle" title="Dauer ändern" />
   </div>
 </template>
 
@@ -31,11 +31,12 @@ import type { PlannerBlock, TrainingBlockMove } from '@/types/training'
 
 interface Props {
   block: PlannerBlock
+  readOnly?: boolean
   selected?: boolean
   minuteHeight?: number // px per minute
 }
 
-const props = withDefaults(defineProps<Props>(), { selected: false, minuteHeight: 2 })
+const props = withDefaults(defineProps<Props>(), { selected: false, minuteHeight: 2, readOnly: false })
 
 const emit = defineEmits<{
   click: [block: PlannerBlock]
@@ -49,7 +50,7 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     emit('edit', props.block)
-  } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+  } else if (!props.readOnly && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
     event.preventDefault()
     const delta = (event.key === 'ArrowDown' ? 1 : -1) * (event.shiftKey ? 1 : 5)
     emit('move', props.block.id, event.altKey

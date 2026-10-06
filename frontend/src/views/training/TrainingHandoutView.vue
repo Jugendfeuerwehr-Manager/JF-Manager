@@ -7,6 +7,7 @@
       <Button icon="pi pi-file-pdf" label="PDF herunterladen" size="small" :loading="generatingPdf" @click="downloadPdf" />
     </div>
 
+    <p v-if="pdfError" role="alert">{{ pdfError }}</p>
     <div v-if="loading" class="loading-state">
       <ProgressSpinner />
     </div>
@@ -34,6 +35,7 @@ import type { Content, ContentText } from 'pdfmake/interfaces'
 const route = useRoute()
 const trainingStore = useTrainingStore()
 const generatingPdf = ref(false)
+const pdfError = ref('')
 const sessionId = computed(() => Number(route.params.id))
 const handout = computed(() => trainingStore.handout)
 const loading = computed(() => trainingStore.loading)
@@ -110,13 +112,13 @@ async function htmlToPdfContent(html: string): Promise<Content[]> {
 
 async function downloadPdf() {
   generatingPdf.value = true
+  pdfError.value = ''
   try {
     const { default: pdfMake } = await import('pdfmake/build/pdfmake')
     const { default: pdfFonts } = await import('pdfmake/build/vfs_fonts')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfMakeTyped = pdfMake as any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pdfMakeTyped.vfs = (pdfFonts as any).pdfMake?.vfs ?? (pdfFonts as any).vfs
+    pdfMakeTyped.addVirtualFileSystem(pdfFonts)
 
     if (!handout.value) return
     const h = handout.value
@@ -178,6 +180,7 @@ async function downloadPdf() {
     // ── First page: title + meta + Ablaufplan (swimlane overview) ─────────
     const content: Content[] = [
       { text: h.title, style: 'h1' } as ContentText,
+      { text: `Version ${h.revision} · ${{draft: 'Entwurf', published: 'Veröffentlicht', completed: 'Abgeschlossen', cancelled: 'Abgesagt'}[h.status]}`, style: 'meta' } as ContentText,
       {
         text: `${dateStr}${h.start_time ? ' · ' + h.start_time : ''}${h.location ? ' · ' + h.location : ''}`,
         style: 'meta',
@@ -347,7 +350,9 @@ async function downloadPdf() {
       pageMargins: [40, 40, 40, 40] as [number, number, number, number],
     }
 
-    pdfMakeTyped.createPdf(docDef).download(`handout-${sessionId.value}.pdf`)
+    await pdfMakeTyped.createPdf(docDef).download(`handout-${sessionId.value}.pdf`)
+  } catch {
+    pdfError.value = 'PDF konnte nicht erstellt werden. Bitte erneut versuchen.'
   } finally {
     generatingPdf.value = false
   }

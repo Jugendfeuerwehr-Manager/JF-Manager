@@ -2,7 +2,7 @@
   <Dialog
     :visible="visible"
     :header="block ? block.title : 'Block bearbeiten'"
-    :style="{ width: '900px' }"
+    :style="{ width: '900px', maxWidth: 'calc(100vw - 24px)' }"
     modal
     @update:visible="emit('update:visible', $event)"
   >
@@ -10,22 +10,22 @@
       <!-- Main editor -->
       <div class="edit-main">
         <div class="field mb-3">
-          <label>Titel</label>
-          <InputText v-model="form.title" class="w-full" />
+          <label for="block-title">Titel</label>
+          <InputText id="block-title" v-model="form.title" class="w-full" />
         </div>
 
         <div class="field-row mb-3">
           <div class="field">
-            <label>Dauer (Min.)</label>
-            <InputNumber v-model="form.duration_minutes" :min="1" :max="480" class="w-full" />
+            <label for="block-duration">Dauer (Min.)</label>
+            <InputNumber input-id="block-duration" v-model="form.duration_minutes" :min="1" :max="480" class="w-full" />
           </div>
           <div class="field">
-            <label>Start-Offset (Min.)</label>
-            <InputNumber v-model="form.start_offset_minutes" :min="0" class="w-full" />
+            <label for="block-offset">Start-Offset (Min.)</label>
+            <InputNumber input-id="block-offset" v-model="form.start_offset_minutes" :min="0" class="w-full" />
           </div>
           <div class="field">
-            <label>Farbe</label>
-            <input type="color" v-model="form.color" class="color-input" />
+            <label for="block-color">Farbe</label>
+            <input id="block-color" type="color" v-model="form.color" class="color-input" />
           </div>
         </div>
 
@@ -35,8 +35,8 @@
         </div>
 
         <div class="field mb-3">
-          <label>Nextcloud-Ordner-URL</label>
-          <InputText v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
+          <label for="block-folder">Nextcloud-Ordner-URL</label>
+          <InputText id="block-folder" v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
         </div>
 
         <div class="field">
@@ -228,4 +228,8 @@ async function updateLibraryBlock() {
 .color-input { width: 2.5rem; height: 2rem; border: none; background: none; cursor: pointer; }
 
 .footer-left { flex: 1; display: flex; align-items: center; gap: 0.5rem; }
+</style>
+
+<style scoped>
+@media (max-width: 640px) { .block-edit-layout { grid-template-columns: 1fr; } .edit-panel { width: 100%; border-left: 0; } .field-row { grid-template-columns: 1fr; } }
 </style>

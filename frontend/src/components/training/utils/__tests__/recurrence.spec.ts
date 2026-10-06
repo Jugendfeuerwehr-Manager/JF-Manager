@@ -4,7 +4,7 @@ import { expandTrainingSessionsForRange } from '../recurrence'
 
 function makeSession(overrides: Partial<TrainingSessionList> = {}): TrainingSessionList {
   return {
-    status: 'draft', requires_service_confirmation: false,
+    status: 'draft', requires_service_confirmation: false, can_manage_plan: true,
     id: 1,
     title: 'Dienstabend',
     date: '2026-05-01',

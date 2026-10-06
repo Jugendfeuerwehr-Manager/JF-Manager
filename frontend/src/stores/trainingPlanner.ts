@@ -129,6 +129,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   }
 
   function assertEditable() {
+    if (session.value?.can_manage_plan === false) throw new Error('Für diese Übung besteht nur Leseberechtigung.')
     if (!session.value || loading.value || saving.value) throw new Error('Der Plan wird gerade geladen oder gespeichert.')
   }
 
@@ -206,7 +207,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   }
 
   function stageMove(id: number, move: TrainingBlockMove) {
-    if (saving.value || loading.value) return
+    if (saving.value || loading.value || session.value?.can_manage_plan === false) return
     const b = blocks.value.find((b) => b.id === id)
     if (!b) return
     mutate(() => {

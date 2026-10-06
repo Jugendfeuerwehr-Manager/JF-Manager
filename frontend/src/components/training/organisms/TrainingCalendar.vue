@@ -21,10 +21,13 @@
         />
         <Button icon="pi pi-book" label="Bibliothek" size="small" severity="secondary" outlined @click="router.push('/training/library')" />
         <Button label="Heute" size="small" outlined @click="goToday" />
-        <Button icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
+        <Button v-if="canCreate" icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
       </div>
     </div>
 
+    <div v-if="trainingStore.error" role="alert">
+      <p>{{ trainingStore.error }}</p><Button label="Erneut laden" severity="secondary" @click="loadSessions" />
+    </div>
     <!-- List view -->
     <div v-if="showListView" class="session-list-view">
       <div class="list-search-bar">
@@ -56,7 +59,7 @@
             <span v-if="session.location" class="text-color-secondary text-sm">{{ session.location }}</span>
           </div>
           <div class="list-item-actions">
-            <Button icon="pi pi-trash" text size="small" severity="danger" @click.stop="confirmDeleteSession(session)" />
+            <Button v-if="session.can_manage_plan" icon="pi pi-trash" text size="small" severity="danger" @click.stop="confirmDeleteSession(session)" />
             <Button icon="pi pi-arrow-right" text size="small" @click.stop="openSession(session)" />
           </div>
         </div>
@@ -108,7 +111,7 @@
     <Dialog
       v-model:visible="showCreate"
       header="Übung erstellen"
-      :style="{ width: '640px' }"
+      :style="{ width: '640px', maxWidth: 'calc(100vw - 24px)' }"
       modal
     >
       <TrainingSessionForm :initial-data="prefillDate ? { date: prefillDate } as any : null" @success="onSessionCreated" @cancel="showCreate = false" />
@@ -118,7 +121,7 @@
     <Dialog
       v-model:visible="showDayDetail"
       :header="dayDetailTitle"
-      :style="{ width: '500px' }"
+      :style="{ width: '500px', maxWidth: 'calc(100vw - 24px)' }"
       modal
     >
       <div class="day-sessions">
@@ -141,12 +144,12 @@
           </div>
           <div class="session-actions">
             <Button icon="pi pi-calendar" text size="small" title="Planer" @click.stop="goToPlanner(session.id)" />
-            <Button icon="pi pi-trash" text size="small" severity="danger" title="Löschen" @click.stop="confirmDeleteSession(session)" />
+            <Button v-if="session.can_manage_plan" icon="pi pi-trash" text size="small" severity="danger" title="Löschen" @click.stop="confirmDeleteSession(session)" />
           </div>
         </div>
       </div>
       <template #footer>
-        <Button label="Übung erstellen" icon="pi pi-plus" size="small" @click="openCreateForDay" />
+        <Button v-if="canCreate" label="Übung erstellen" icon="pi pi-plus" size="small" @click="openCreateForDay" />
       </template>
     </Dialog>
   </div>
@@ -163,6 +166,7 @@ import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingStore } from '@/stores/training'
+import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
 import {
   expandTrainingSessionsForRange,
@@ -173,6 +177,8 @@ const router = useRouter()
 const confirm = useConfirm()
 const trainingStore = useTrainingStore()
 const departmentsStore = useDepartmentsStore()
+const auth = useAuthStore()
+const canCreate = computed(() => auth.hasPerm('training.can_manage_training'))
 
 const today = new Date()
 const currentYear = ref(today.getFullYear())
@@ -199,7 +205,7 @@ async function toggleListView() {
   showListView.value = !showListView.value
   if (showListView.value) {
     // Load all upcoming sessions for list mode
-    await trainingStore.fetchSessions({ limit: 500 })
+    try { await trainingStore.fetchSessions({ limit: 500 }) } catch { /* visible store error */ }
   }
 }
 
@@ -312,11 +318,11 @@ function makeCell(date: Date, inMonth: boolean): CalendarCell {
 async function loadSessions() {
   const from = visibleDateRange.value.fromIso
   const to = visibleDateRange.value.toIso
-  await trainingStore.fetchSessions({
+  try { await trainingStore.fetchSessions({
     date_from: from,
     date_to: to,
     limit: 200,
-  })
+  }) } catch { /* visible store error, retry button */ }
 }
 
 function toIsoDate(date: Date): string {
@@ -340,11 +346,13 @@ function goToday() {
 }
 
 function openCreate() {
+  if (!canCreate.value) return
   prefillDate.value = null
   showCreate.value = true
 }
 
 function openCreateForDay() {
+  if (!canCreate.value) return
   if (selectedCell.value) prefillDate.value = selectedCell.value.dateStr
   showDayDetail.value = false
   showCreate.value = true
@@ -360,7 +368,7 @@ function openSession(session: TrainingCalendarSession) {
 }
 
 function hasFutureLinkedService(session: TrainingCalendarSession): boolean {
-  if (!session.linked_service_id || !session.linked_service_start) {
+  if (session.requires_service_confirmation || !session.linked_service_id || !session.linked_service_start) {
     return false
   }
   return new Date(session.linked_service_start) >= new Date()
@@ -378,6 +386,7 @@ async function runDeleteSession(
 }
 
 function confirmDeleteSession(session: TrainingCalendarSession) {
+  if (!session.can_manage_plan) return
   if (hasFutureLinkedService(session)) {
     confirm.require({
       header: 'Verknüpften Dienst löschen?',

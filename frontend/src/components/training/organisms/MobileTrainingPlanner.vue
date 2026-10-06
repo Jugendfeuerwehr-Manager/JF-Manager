@@ -22,7 +22,7 @@
         </div>
       </div>
       <div class="header-buttons">
-        <Button label="Plan bearbeiten" icon="pi pi-pencil" severity="secondary" outlined @click="router.push({ name: 'training-planner', params: { id: sessionId }, query: { edit: '1' } })" />
+        <Button v-if="session?.can_manage_plan" label="Plan bearbeiten" icon="pi pi-pencil" severity="secondary" outlined @click="router.push({ name: 'training-planner', params: { id: sessionId }, query: { edit: '1' } })" />
         <router-link v-if="session?.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
         <Button
           icon="pi pi-file-pdf"
