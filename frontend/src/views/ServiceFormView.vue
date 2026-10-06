@@ -32,7 +32,14 @@
       </Card>
 
       <Card v-if="isEdit && serviceId !== null && servicebookStore.currentService" class="attendance-card">
-        <template #title>Anwesenheit</template>
+        <template #title>
+          <span class="attendance-card__title">
+            Anwesenheit
+            <router-link :to="{ name: 'service-attendance', params: { id: serviceId } }" class="attendance-card__link">
+              <i class="pi pi-external-link" aria-hidden="true"></i>Eigene Ansicht (mobil)
+            </router-link>
+          </span>
+        </template>
         <template #content>
           <AttendanceManager :service-id="serviceId" />
         </template>
@@ -128,6 +135,25 @@ const handleBack = () => {
 </script>
 
 <style scoped>
+.attendance-card__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-1);
+}
+
+.attendance-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  min-height: var(--jf-touch-target);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-primary);
+  text-decoration: none;
+}
+
 .service-detail-view {
   max-width: 100%;
   overflow-x: hidden;

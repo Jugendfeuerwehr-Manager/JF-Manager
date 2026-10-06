@@ -129,6 +129,11 @@ const router = createRouter({
           name: 'service-edit',
           component: () => import('@/views/ServiceFormView.vue')
         },
+        {
+          path: 'servicebook/:id/attendance',
+          name: 'service-attendance',
+          component: () => import('@/views/ServiceAttendanceView.vue')
+        },
         // Inventory - Stock Management & Loans
         {
           path: 'inventory',
