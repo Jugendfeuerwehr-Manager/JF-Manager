@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: SEC-01.57b ungeroutete Alt-Views entfernt. |
+| Letzter Checkpoint | 06.10.2026: SEC-01 abgeschlossen (SEC-01.57c). |
 | Aktuelles Paket | SEC-01/SEC-02-Restabnahme und ROLE (Claude, von Codex übernommen). Parallel DES-01 in Arbeit (Claude, Design-Session, Worktree `wip/des-01`). |
-| Umsetzungsstatus | EXEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-01, SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-01.57b` (dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-01.57c` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | SEC-01.57c, danach SEC-02.9 und ROLE-01.7, anschließend ROLE-02. |
+| Nächster konkreter Schritt | SEC-02.9 Abnahme, danach ROLE-01.7, anschließend ROLE-02. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -537,7 +537,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
-| SEC-01 | in Arbeit | Claude (von Codex übernommen) | SEC-01.57b Alt-Views entfernt; nächster Schritt SEC-01.57c Restendpunkte. |
+| SEC-01 | abgeschlossen | Claude (von Codex übernommen) | SEC-01.57c: Anwesenheits-API, Anhang-Schreibzugriffe und Staff-Einstellungen korrigiert, Alt-Views entfernt; 645/645 Backendtests. |
 | SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
@@ -619,7 +619,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-01: aktueller Detailstand
 
-- **Status:** in Arbeit.
+- **Status:** abgeschlossen (SEC-01.57c).
 - **Verantwortlich:** Codex bis SEC-01.56; ab SEC-01.57 Claude (Übernahme 06.10.2026).
 - **Abhängigkeiten:** EXEC-01 abgeschlossen; SEC-02 wird die Ziel- und Relationsprüfung aller Schreibaktionen ergänzen.
 - **Ziel und Abnahme:** Aktionsrechte hängen von der tatsächlichen Objektabteilung ab. Ein Lesezugriff in B zusammen mit Schreibrecht in A erlaubt keine Änderung in B, unabhängig von Queryparametern. Organisationssicht mit bloßem A-Inventarrecht erlaubt keine zentrale Änderung; globales Inventarrecht mit Organisationssicht erlaubt die zentrale Ausgabe an Mitglieder beliebiger Abteilungen. Vollqualifizierte Permissions und unbekannte Aktionen werden sicher behandelt.
@@ -692,8 +692,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Inventar weiterer Pfade:** Zentrale Artikel/Lagerorte (`department=NULL`) bleiben optional und können mit globalem Inventarrecht verwaltet und an Abteilungsmitglieder verliehen werden. Abteilungen können eigene Artikel mit scoped Recht anlegen. `can_access_all_departments` ohne globales Inventarrecht reicht nicht für zentrale Buchungen. Weitere Zielrelationen und Sammelaktionen gehören zu SEC-02/SEC-09, Mitgliederlisten zu SEC-03.
 - **Offene Fehler / Risiken:** Weitere globale Schreibansichten und Sonderaktionen müssen gegen den SEC-01-Vertrag abgenommen werden. Zielbeziehungen bei Qualifikations-, E-Mail-, Mitglieder-Lösch- und Inventar-Schreibaktionen gehören zu SEC-02 beziehungsweise SEC-09. `SEC-01` ist noch nicht vollständig abgenommen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; die breite 277er-Prüfung wurde vor der Bestellpositionskorrektur abgeschlossen.
-- **Prüfungen SEC-01.57:** SEC-01.57a: Endpunktinventar aller Views mit Rechteklassen erstellt; 9 neue HTTP-Regressionen (6 rot vor Korrektur: Abteilungsrolle konnte nicht erfassen, Nur-Dienst-Leserecht sah Anwesenheiten), danach 9/9 sowie 58/58 angrenzende Anwesenheits-/API-Tests und Ruff bestanden. SEC-01.57b: `check`, URL-Auflösung, Ruff und 321/321 API-/Inventar-/Bestell-/Qualifikationstests bestanden.
-- **Nächster konkreter Schritt:** `SEC-01.57c`.
+- **Prüfungen SEC-01.57:** SEC-01.57a: Endpunktinventar aller Views mit Rechteklassen erstellt; 9 neue HTTP-Regressionen (6 rot vor Korrektur: Abteilungsrolle konnte nicht erfassen, Nur-Dienst-Leserecht sah Anwesenheiten), danach 9/9 sowie 58/58 angrenzende Anwesenheits-/API-Tests und Ruff bestanden. SEC-01.57b: `check`, URL-Auflösung, Ruff und 321/321 API-/Inventar-/Bestell-/Qualifikationstests bestanden. SEC-01.57c: 4 neue Anhang-Regressionen (2 vorher rot: Anhang einer nur lesbaren Qualifikation/Sonderaufgabe änderbar bzw. löschbar), 3 neue Einstellungs-Vertragstests (vorher galt Staff als voll berechtigt), 71/71 Anhangtests, volle Backend-Suite 645/645 (6 übersprungen), Ruff bestanden.
+- **Grenzen nach Abnahme:** Staff darf die Benutzerverwaltung lesend sehen (`users.api.permissions.IsAdminUser`); als Administration eingestuft, in ROLE-02 mit der Zuweisungsoberfläche neu bewerten. Einstellungsrechte sind global (`user.has_perm`); Abteilungsrollen mit Einstellungsrechten wirken bewusst nicht. Zielrelationen bleiben SEC-02.
+- **Nächster konkreter Schritt:** keiner im Paket; SEC-02.9.
 
 ### SEC-02: aktueller Detailstand
 
@@ -1221,3 +1222,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | SEC-01.57a | Übernahme von SEC-01, SEC-02 und ROLE-01 durch Claude nach Abschluss von SEC-10 (Nutzerauftrag). Endpunktinventar: `AttendanceViewSet` nutzte DRFs `DjangoModelPermissions` – GET ohne Leserecht, Zieldienste nach bloßer Abteilungszuordnung, Abteilungsrollen (in `department_roles`, nicht `user.groups`) wirkungslos. Folgen: Nur-Dienst-Leserecht in B zeigte Anwesenheiten aus B; Leitungen mit Abteilungsrolle konnten über diese API nichts erfassen. Neu `AttendanceRolePermissions` (Objektprüfung an der Dienstabteilung, Sammelerfassung mit `change_attendance` wie das Anwesenheitsboard), Zieldienste nur aus Abteilungen mit Schreibrecht. Bestehender API-Test, der das Leck abbildete, erhält `view_attendance`. Ausgelieferte Rollen koppeln `view_service` bereits mit `view_attendance`. | 9 neue HTTP-Regressionen (6 vorher rot), 58/58 angrenzende Anwesenheits-/API-Tests, Ruff bestanden. | Dieser Commit: `fix(SEC-01.57a): scope the attendance API to department roles` | SEC-01.57b. |
 
 | 06.10.2026 | SEC-01.57b | Entfernt: `qualifications/api_views.py` (Qualifikations-Viewsets nur mit globalen `DjangoModelPermissions`, ersetzt durch `qualifications/api/viewsets`), `inventory/api_views.py` (veraltete JSON-Suchen und `ItemVariantAPIView` als einfache Django-Views ohne DRF-Rechte) und `orders/views_notifications.py` (Benachrichtigungs-Dashboard/`OrderSummaryView`). Keines wird geroutet oder importiert; ein späteres Einbinden hätte die SEC-01-Prüfungen umgangen. | `check`, Auflösung aller URL-Namen, Ruff und 321/321 API-/Inventar-/Bestell-/Qualifikationstests (6 übersprungen) bestanden. | Dieser Commit: `refactor(SEC-01.57b): remove unrouted legacy views without scoped checks` | SEC-01.57c. |
+
+| 06.10.2026 | SEC-01.57c | Restendpunkte mit `IsAuthenticated`/Standardrechten geprüft. (1) Anhänge: Schreibzugriffe nutzten für Qualifikationen, Sonderaufgaben, Listen und Ausbildungsblöcke nur die Sichtbarkeit des Eigentümers, weil der Bereichsfilter Schreibzugriffe an eine Objektprüfung weiterreicht, die hier nie lief; jetzt läuft für PATCH/PUT/DELETE die Objektprüfung des Eigentümer-Endpunkts (z. B. Änderungsrecht in der Abteilung des Mitglieds). (2) Einstellungen: Staff durfte ohne Einstellungsrecht allgemeine, E-Mail-, Mitglieder-, Dienst- und Bestelleinstellungen lesen und ändern – entgegen 2.2 („`is_staff` steuert nur den Django-Admin“); entfernt, Liste zeigt die Kategorien mit Leserecht. Alter Test, der Staff-Vollzugriff festschrieb, durch Vertragstests ersetzt; Farbschema-Test (DES-01.6b) erhält ausdrückliche Rechte. (3) `has_org_wide_access` und Favoritenabteilung behandeln Staff nicht mehr als organisationsweit (Anzeige passte nicht zum serverseitigen Bereich). Geprüft ohne Befund: Benutzerprofil nur eigenes Konto, Push nur eigene Abos, App-Einstellungen lesend, OIDC-/LDAP-Test mit Einstellungsrecht, Transaktionen aus SEC-09. SEC-01 abgeschlossen. | 4 neue Anhang-Regressionen (2 vorher rot), 3 Einstellungs-Vertragstests, 71/71 Anhangtests, volle Backend-Suite 645/645 (6 übersprungen), Ruff bestanden. | Dieser Commit: `fix(SEC-01.57c): check owners on attachment writes and drop staff settings bypass` | SEC-02.9. |

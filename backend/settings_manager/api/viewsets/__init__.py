@@ -158,10 +158,8 @@ class SettingsViewSet(viewsets.ViewSet):
 
     def _check_category_permission(self, user, category, permission_type="view"):
         """Check if user has permission for a specific category"""
+        # is_staff only controls Django admin access, never settings rights.
         if user.is_superuser:
-            return True
-
-        if user.is_staff and category not in ("ldap", "oidc"):
             return True
 
         # Check specific permission
@@ -219,10 +217,8 @@ class SettingsViewSet(viewsets.ViewSet):
     def list(self, request):
         """GET /api/v1/settings/ - List all settings"""
         # Check if user has permission to view all settings
-        if not (
-            request.user.is_superuser
-            or request.user.is_staff
-            or request.user.has_perm("settings_manager.view_all_settings")
+        if not any(
+            self._check_category_permission(request.user, category, "view") for category in self.CATEGORY_MAPPINGS
         ):
             return Response(
                 {"detail": "You do not have permission to view settings."}, status=status.HTTP_403_FORBIDDEN
@@ -632,10 +628,8 @@ class SettingsViewSet(viewsets.ViewSet):
         user = request.user
 
         permissions_data = {
-            "can_view_all": user.is_superuser or user.is_staff or user.has_perm("settings_manager.view_all_settings"),
-            "can_change_all": user.is_superuser
-            or user.is_staff
-            or user.has_perm("settings_manager.change_all_settings"),
+            "can_view_all": user.is_superuser or user.has_perm("settings_manager.view_all_settings"),
+            "can_change_all": user.is_superuser or user.has_perm("settings_manager.change_all_settings"),
             "categories": {},
         }
 

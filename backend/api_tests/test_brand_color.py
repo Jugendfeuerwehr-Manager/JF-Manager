@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from dynamic_preferences.registries import global_preferences_registry
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -10,6 +11,13 @@ class BrandColorSettingsTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.admin = User.objects.create_user(username="brand_admin", password="brand123!", is_staff=True)
+        # Settings rights are explicit; is_staff alone grants none (SEC-01.57c).
+        self.admin.user_permissions.add(
+            *Permission.objects.filter(
+                content_type__app_label="settings_manager",
+                codename__in=["view_general_settings", "change_general_settings"],
+            )
+        )
         self.preferences = global_preferences_registry.manager()
 
     def test_public_branding_defaults_to_feuerwehr_red(self):

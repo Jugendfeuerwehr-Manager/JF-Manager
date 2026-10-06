@@ -93,7 +93,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
         return value
 
     def get_has_org_wide_access(self, obj):
-        return obj.is_staff or obj.is_superuser or obj.has_perm("departments.can_access_all_departments")
+        return obj.is_superuser or obj.has_perm("departments.can_access_all_departments")
 
     def validate_favorite_department(self, value):
         """Non-org-wide users can only pick one of their assigned departments."""
@@ -102,7 +102,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             return value
 
         actor = request.user
-        is_org_wide = actor.is_staff or actor.is_superuser or actor.has_perm("departments.can_access_all_departments")
+        is_org_wide = actor.is_superuser or actor.has_perm("departments.can_access_all_departments")
 
         # Only org-wide users may store "All Departments" as favorite (null)
         if value is None:
