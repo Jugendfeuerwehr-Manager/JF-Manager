@@ -291,6 +291,7 @@ class AllSettingsSerializer(serializers.Serializer):
     """
 
     security = serializers.DictField(required=False)
+    push = serializers.DictField(required=False)
     general = GeneralSettingsSerializer(required=False)
     email = EmailSettingsSerializer(required=False)
     member = MemberSettingsSerializer(required=False)

@@ -1,11 +1,13 @@
 """Durable outbox: requests only enqueue; the worker performs network I/O."""
+
 import json
 import logging
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+
+from settings_manager.push_configuration import effective_push
 
 from .models import PushDelivery, PushSubscription
 from .validation import validate_endpoint
@@ -24,21 +26,26 @@ def can_read(user, obj, permission):
     if not roles.exists():
         return False
     app_label, codename = permission.split(".")
-    return user.has_perm(permission) or roles.filter(
-        groups__permissions__codename=codename, groups__permissions__content_type__app_label=app_label
-    ).exists()
+    return (
+        user.has_perm(permission)
+        or roles.filter(
+            groups__permissions__codename=codename, groups__permissions__content_type__app_label=app_label
+        ).exists()
+    )
 
 
 def event_object(kind, object_id):
     if kind == "services":
         from servicebook.models import Service
+
         return Service.objects.filter(pk=object_id).first(), "servicebook.view_service"
     from orders.models import Order
+
     return Order.objects.filter(pk=object_id).first(), "orders.view_order"
 
 
 def enqueue_event(kind, object_id):
-    if not settings.WEB_PUSH_PUBLIC_KEY:
+    if not effective_push()["enabled"]:
         return
     obj, permission = event_object(kind, object_id)
     if not obj:
@@ -50,14 +57,24 @@ def enqueue_event(kind, object_id):
 
 
 def deliver_pending(limit=100):
-    if not (settings.WEB_PUSH_PRIVATE_KEY and settings.WEB_PUSH_PUBLIC_KEY and settings.WEB_PUSH_SUBJECT):
+    config = effective_push(include_secret=True)
+    if not config["enabled"]:
         return 0
     from pywebpush import WebPushException, webpush
+
     processed = 0
-    ids = list(PushDelivery.objects.filter(available_at__lte=timezone.now()).order_by("pk").values_list("pk", flat=True)[:limit])
+    ids = list(
+        PushDelivery.objects.filter(available_at__lte=timezone.now())
+        .order_by("pk")
+        .values_list("pk", flat=True)[:limit]
+    )
     for delivery_id in ids:
         with transaction.atomic():
-            delivery = PushDelivery.objects.select_for_update().filter(pk=delivery_id, available_at__lte=timezone.now()).first()
+            delivery = (
+                PushDelivery.objects.select_for_update()
+                .filter(pk=delivery_id, available_at__lte=timezone.now())
+                .first()
+            )
             if not delivery:
                 continue
             # Lease prevents two workers sending the same item concurrently.
@@ -70,21 +87,38 @@ def deliver_pending(limit=100):
         allowed = subscription.user.is_active
         if delivery.kind != "test":
             obj, permission = event_object(delivery.kind, delivery.object_id)
-            allowed = allowed and getattr(subscription, delivery.kind) and obj is not None and can_read(subscription.user, obj, permission)
+            allowed = (
+                allowed
+                and getattr(subscription, delivery.kind)
+                and obj is not None
+                and can_read(subscription.user, obj, permission)
+            )
         if not allowed or delivery.created_at < timezone.now() - timedelta(days=1):
             delivery.delete()
             continue
-        payload = {"title": "JF-Manager", "body": {
-            "services": "Ein Dienst wurde angelegt oder geändert. Details findest du im Dienstbuch.",
-            "orders": "Es gibt Neuigkeiten zu einer Bestellung.",
-            "test": "Push-Mitteilungen sind auf diesem Gerät eingerichtet.",
-        }[delivery.kind], "url": {"services": "/servicebook", "orders": "/orders", "test": "/profile"}[delivery.kind],
-            "tag": f"jf-{delivery.kind}-{delivery.object_id}"}
+        payload = {
+            "title": "JF-Manager",
+            "body": {
+                "services": "Ein Dienst wurde angelegt oder geändert. Details findest du im Dienstbuch.",
+                "orders": "Es gibt Neuigkeiten zu einer Bestellung.",
+                "test": "Push-Mitteilungen sind auf diesem Gerät eingerichtet.",
+            }[delivery.kind],
+            "url": {"services": "/servicebook", "orders": "/orders", "test": "/profile"}[delivery.kind],
+            "tag": f"jf-{delivery.kind}-{delivery.object_id}",
+        }
         try:
             validate_endpoint(subscription.endpoint)
-            webpush(subscription_info={"endpoint": subscription.endpoint, "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth}},
-                    data=json.dumps(payload), vapid_private_key=settings.WEB_PUSH_PRIVATE_KEY,
-                    vapid_claims={"sub": settings.WEB_PUSH_SUBJECT}, ttl=3600, timeout=10)
+            webpush(
+                subscription_info={
+                    "endpoint": subscription.endpoint,
+                    "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth},
+                },
+                data=json.dumps(payload),
+                vapid_private_key=config["private_key"],
+                vapid_claims={"sub": config["subject"]},
+                ttl=3600,
+                timeout=10,
+            )
         except WebPushException as exc:
             status = exc.response.status_code if exc.response is not None else None
             if status in (404, 410):
@@ -93,7 +127,7 @@ def deliver_pending(limit=100):
                 delivery.delete()
                 logger.warning("Push delivery %s abandoned after five attempts (status %s)", delivery_id, status)
             else:
-                delivery.available_at = timezone.now() + timedelta(minutes=2 ** delivery.attempts)
+                delivery.available_at = timezone.now() + timedelta(minutes=2**delivery.attempts)
                 delivery.save(update_fields=["available_at"])
         except Exception:
             # Do not log endpoint/key material from provider exceptions.

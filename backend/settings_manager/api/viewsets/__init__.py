@@ -80,6 +80,7 @@ class SettingsViewSet(viewsets.ViewSet):
         "ldap": {"prefix": "ldap", "fields": []},
         "oidc": {"prefix": "oidc", "fields": []},
         "security": {"prefix": "security", "fields": []},
+        "push": {"prefix": "push", "fields": []},
     }
 
     LDAP_FIELDS = [
@@ -143,6 +144,72 @@ class SettingsViewSet(viewsets.ViewSet):
             serializer.is_valid(raise_exception=True)
             SecurityPolicy.objects.update_or_create(pk=1, defaults=serializer.validated_data)
         return Response(effective_policy())
+
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    def push(self, request):
+        from settings_manager.api.serializers.push_configuration import PushConfigurationSerializer
+        from settings_manager.models import PushConfiguration, SettingsWriteLock
+        from settings_manager.push_configuration import PUSH_FIELDS, effective_push, validate_push
+        from users.step_up import require_step_up
+
+        operation = "view" if request.method == "GET" else "change"
+        if not self._check_category_permission(request.user, "push", operation):
+            return Response({"detail": "Keine Berechtigung für Push-Einstellungen."}, status=403)
+        if request.method == "GET":
+            return Response(effective_push())
+        require_step_up(request)
+        with transaction.atomic():
+            SettingsWriteLock.objects.get_or_create(category="push")
+            SettingsWriteLock.objects.select_for_update().get(category="push")
+            current = effective_push(include_secret=True)
+            invalid = {
+                name: "Unbekanntes oder durch die Umgebung gesperrtes Feld."
+                for name in request.data
+                if name not in PUSH_FIELDS or current["fields"].get(name, {}).get("locked")
+            }
+            if invalid:
+                raise drf_serializers.ValidationError(invalid)
+            serializer = PushConfigurationSerializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            merged = {name: current[name] for name in PUSH_FIELDS}
+            merged.update(serializer.validated_data)
+            # Host keys are validated by deployment; their legacy activation can still be disabled in the web UI.
+            if not any(current["fields"][name]["locked"] for name in ("public_key", "private_key", "subject")):
+                validate_push(merged)
+            elif merged["enabled"] and not all(merged[name] for name in ("public_key", "private_key", "subject")):
+                raise drf_serializers.ValidationError({"enabled": "Die Host-VAPID-Konfiguration ist unvollständig."})
+            PushConfiguration.objects.update_or_create(pk=1, defaults=serializer.validated_data)
+        return Response(effective_push())
+
+    @action(detail=False, methods=["post"], url_path="push/generate-keys", permission_classes=[IsAuthenticated])
+    def generate_push_keys(self, request):
+        from settings_manager.models import PushConfiguration, SettingsWriteLock
+        from settings_manager.push_configuration import (
+            effective_push,
+            environment_keys,
+            generate_key_pair,
+            validate_push,
+        )
+        from users.step_up import require_step_up
+
+        if not self._check_category_permission(request.user, "push", "change"):
+            return Response({"detail": "Keine Berechtigung für Push-Einstellungen."}, status=403)
+        require_step_up(request)
+        if set(request.data) != {"subject"} or not isinstance(request.data.get("subject"), str):
+            raise drf_serializers.ValidationError({"subject": "Eine Kontaktadresse ist erforderlich."})
+        with transaction.atomic():
+            SettingsWriteLock.objects.get_or_create(category="push")
+            SettingsWriteLock.objects.select_for_update().get(category="push")
+            if environment_keys() or effective_push()["has_private_key"]:
+                raise drf_serializers.ValidationError(
+                    {
+                        "detail": "Schlüssel sind bereits vorhanden. Vor einer neuen Einrichtung bestehende Konfiguration ausdrücklich entfernen; Geräte müssen anschließend neu angemeldet werden."
+                    }
+                )
+            values = {**generate_key_pair(), "subject": request.data["subject"], "enabled": False}
+            validate_push(values)
+            PushConfiguration.objects.update_or_create(pk=1, defaults=values)
+        return Response(effective_push(), status=201)
 
     def _get_category_settings(self, category):
         """Helper to retrieve settings for a specific category"""
@@ -279,7 +346,11 @@ class SettingsViewSet(viewsets.ViewSet):
         # Get settings for each category the user can access
         for category in self.CATEGORY_MAPPINGS:
             if self._check_category_permission(request.user, category, "view"):
-                if category == "security":
+                if category == "push":
+                    from settings_manager.push_configuration import effective_push
+
+                    category_settings = effective_push()
+                elif category == "security":
                     from settings_manager.runtime_policy import effective_policy
 
                     category_settings = effective_policy()

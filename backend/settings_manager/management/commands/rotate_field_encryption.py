@@ -16,6 +16,7 @@ class Command(BaseCommand):
         ("settings_manager", "LDAPConfig", "bind_password"),
         ("settings_manager", "OIDCConfig", "client_secret"),
         ("users", "MFADevice", "secret"),
+        ("settings_manager", "PushConfiguration", "private_key"),
         ("dynamic_preferences", "GlobalPreferenceModel", "raw_value"),
     )
 
