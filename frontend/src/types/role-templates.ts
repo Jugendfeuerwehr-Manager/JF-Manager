@@ -5,6 +5,7 @@ export interface RoleTemplate {
   description: string
   template_version: number
   scope: 'organization' | 'department' | 'both'
+  delegation_approved?: boolean
   is_delegable: boolean
   is_archived: boolean
   group: { id: number; name: string } | null

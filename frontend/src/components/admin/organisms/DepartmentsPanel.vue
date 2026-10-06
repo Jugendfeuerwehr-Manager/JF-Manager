@@ -71,7 +71,7 @@
             <div class="card-header">
               <span class="font-semibold">{{ selectedDept.name }}: Benutzer</span>
               <Button
-                v-if="authStore.user?.is_superuser"
+                v-if="authStore.hasPerm('departments.can_manage_all_departments')"
                 label="Hinzufügen"
                 icon="pi pi-user-plus"
                 size="small"
@@ -105,7 +105,7 @@
                   </div>
                   <span v-else class="text-color-secondary text-xs">Keine Gruppen</span>
                 </div>
-                <div v-if="authStore.user?.is_superuser" class="flex gap-1 ml-2 flex-shrink-0">
+                <div v-if="authStore.hasPerm('departments.can_manage_all_departments')" class="flex gap-1 ml-2 flex-shrink-0">
                   <Button
                     icon="pi pi-pencil"
                     size="small"

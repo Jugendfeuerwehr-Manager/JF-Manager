@@ -17,7 +17,7 @@
         </template>
         <template #end>
           <Button
-            v-if="authStore.user?.is_superuser"
+            v-if="authStore.hasPerm('auth.add_group')"
             icon="pi pi-plus"
             label="Neu"
             size="small"
@@ -95,7 +95,7 @@
         <h3 class="detail-empty-title">Keine Gruppe ausgewählt</h3>
         <p class="detail-empty-sub">Wähle eine Gruppe aus der Liste oder erstelle eine neue.</p>
         <Button
-          v-if="authStore.user?.is_superuser"
+          v-if="authStore.hasPerm('auth.add_group')"
           label="Neue Gruppe erstellen"
           icon="pi pi-plus"
           size="small"
@@ -105,7 +105,7 @@
 
       <!-- Delete button in detail footer (only for existing groups) -->
       <div
-        v-if="authStore.user?.is_superuser && selectedGroupId !== null && !showNew && !detailLoading && selectedGroupDetail"
+        v-if="authStore.hasPerm('auth.delete_group') && selectedGroupId !== null && !showNew && !detailLoading && selectedGroupDetail"
         class="detail-footer flex justify-content-end mt-4 pt-3 border-top-1 border-200"
       >
         <Button

@@ -320,7 +320,10 @@ const router = createRouter({
           path: 'users',
           name: 'admin-users',
           component: () => import('@/components/admin/organisms/UserManagementView.vue'),
-          meta: { requiresStaff: true }
+          meta: { requiresPerm: 'users.view_customuser' }
+        },
+        {
+          path: 'roles', name: 'roles', component: () => import('@/views/RoleAssignmentsView.vue'),
         },
         {
           path: 'role-templates',

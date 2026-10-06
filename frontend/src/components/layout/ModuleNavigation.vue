@@ -41,14 +41,15 @@ const sections: { label: string; items: NavItem[] }[] = [
     { label: 'E-Mail-Verlauf', icon: 'pi pi-history', to: '/emails/history', permission: 'view_emailmessage' },
   ] },
   { label: 'Verwaltung', items: [
-    { label: 'Protokoll', icon: 'pi pi-list', to: '/log', admin: true },
-    { label: 'Benutzerverwaltung', icon: 'pi pi-shield', to: '/users', admin: true },
+    { label: 'Protokoll', icon: 'pi pi-list', to: '/log', permission: 'members.view_event' },
+    { label: 'Benutzerverwaltung', icon: 'pi pi-shield', to: '/users', permission: 'users.view_customuser' },
+    { label: 'Rollen und Rechte', icon: 'pi pi-user-edit', to: '/roles' },
     { label: 'Rollenvorlagen', icon: 'pi pi-id-card', to: '/role-templates', permission: 'view_roletemplate' },
-    { label: 'Einstellungen', icon: 'pi pi-cog', to: '/settings', admin: true },
+    { label: 'Einstellungen', icon: 'pi pi-cog', to: '/settings', permission: 'settings_manager.view_all_settings' },
   ] },
 ]
 const visibleSections = computed(() => sections.map(section => ({ ...section, items: section.items.filter(item =>
-  (auth.isOrgWide || (!item.admin && (!item.permission || auth.hasPerm(item.permission)))) &&
+  (!item.permission || auth.hasPerm(item.permission)) &&
   item.label.toLocaleLowerCase('de').includes(search.value.trim().toLocaleLowerCase('de'))
 ) })).filter(section => section.items.length))
 function isActive(target: string) { return route.path === target || (target !== '/' && route.path.startsWith(`${target}/`)) }

@@ -8,7 +8,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: ROLE-01.7a Trainings-/Bestellbereichsrechte und veröffentlichte Lesesicht; 52 gezielte Tests bestanden (2 PostgreSQL-only übersprungen). |
+| Letzter Checkpoint | 06.10.2026: ROLE-02.4 Zuweisungs-/Herkunftsoberfläche, Delegationsfreigabe und Rechtebedienung; 222 Frontendtests, Typecheck, ESLint und Build bestanden. |
 | TRAIN-Checkpoint | 06.10.2026: TRAIN-01.0–01.5a einzeln integriert; TRAIN-01.5b Status-/Dienstvertrag einschließlich Kalender, Planer, mobiler Bearbeitungszugang, Handout und Dienstbuch umgesetzt. 35 Backendtests (2 PostgreSQL-only übersprungen), 214 Frontendtests, Typecheck, ESLint und Migrationsabgleich bestanden. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
 | ROLE-01 | in Arbeit | Codex (ROLE-Session) | ROLE-01.7a Trainings-/Bestellbereichsrechte geprüft; vollständige Rollenabnahme und Handbuch folgen. |
-| ROLE-02 | in Arbeit | Codex | ROLE-02.1–3 Rechte, Freigabe, API und getrennte Quellen; 68 gezielte Tests bestanden. |
+| ROLE-02 | in Prüfung | Codex | ROLE-02.1–4 umgesetzt; API-/Quellentests und 222 Frontendtests bestanden. Gemeinsame Abnahme ROLE-01.7b folgt. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5b integriert; Status-/Dienstvertrag im Frontend umgesetzt. Nächster Schritt: TRAIN-01.5c Admin-/Browserabnahme. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
@@ -633,14 +633,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `ROLE-02.4`: Zuweisungsoberfläche, Freigabe, lesbare Wirkung und erweiterte technische Ansicht; Fehler-/Konfliktzustände erhalten Eingaben.
   - `ROLE-01.7c`: Inventar-/Bestellrollen erhalten eine auf erforderliche Namen/IDs begrenzte Mitgliederauswahl; Bestell-Wareneingänge mit eigenem Bestellrecht und tatsächlichem Artikel-/Lagerbereich, ohne allgemeines Inventarschreibrecht.
   - `ROLE-01.7b`: Vollständige Einzel-/Kombinationsabnahme, Seed/Migrationsprüfung und Rollenhandbuch; ROLE-01/02 abschließen nach bestandenen Prüfungen.
-- **Letzter dauerhafter Checkpoint:** ROLE-01.7a-fix in diesem Commit; ROLE-02.1 `d1b7cba`, ROLE-02.2 `7e52f03`, ROLE-02.3 `0565af6`.
+- **Letzter dauerhafter Checkpoint:** ROLE-02.4 in diesem Commit; ROLE-02.1 `d1b7cba`, ROLE-02.2 `7e52f03`, ROLE-02.3 `0565af6`.
 - **Branch:** `feat/security-roles-training-operations` (sauberer Ausgangsstand bei `7c3e80c`).
 - **Geänderte Dateien / Commit-Bezug:** Dieser Detailblock und Wiederaufnahmeübersicht.
-- **Umgesetzte Teilschritte:** Planung, ROLE-02.1–3 und ROLE-01.7a.
+- **Umgesetzte Teilschritte:** Planung, ROLE-02.1–4 und ROLE-01.7a.
 - **Ausgeführte Prüfungen mit Ergebnis:** ROLE-02.1: 31/31 Freigabe-/API-/Seed-/Zuordnungstests auf isolierter SQLite-Testdatenbank sowie Ruff bestanden. Erster Werkzeugstart fehlgeschlagen wegen fehlender Testumgebung; mit expliziten fiktiven Schlüsseln/Testsettings bestanden. ROLE-02.2: 42/42 Zuweisungs-/Identitätstests bestanden. Erste Läufe fehlgeschlagen (Fehlerformat bei unbekannten Feldern; Testsession hatte noch frische Bestätigung), korrigiert und Wiederholung bestanden. ROLE-02.3: 68/68 Quellen-/Zuweisungs-/Identitäts-/Anmeldesicherheitstests bestanden. Erstlauf mit falschem Testimport fehlgeschlagen, korrigiert und bestanden. Keine Anwendungsmigration ausgeführt.
 - **Offene Fehler / Risiken:** Operative Fachrollenprüfung bleibt ROLE-01.7c/b. LDAP/OIDC verwenden ausschließlich gebundene Rollenvorlagen; alte unmarkierte Gruppen gelten konservativ als lokal und werden nicht erraten. Nicht gebundene Alt-Mappings müssen ausdrücklich mit ROLE-01.5 zugeordnet werden. Rohe LDAP-Gruppenspiegelung ist abgeschaltet, weil sie unabhängige lokale Gruppen ersetzt. Authentifizierter echter IdP-Lauf bleibt Betreiberintegration.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Nach Planung sind parallel fremde TRAIN-Änderungen erschienen; ausschließlich eigene ROLE-Dateien und Roadmapänderungen stagen. Alte unmarkierte Gruppenbindungen werden durch Migration konservativ als lokal erhalten.
-- **Nächster konkreter Schritt:** ROLE-02.4 Oberfläche; operative Fachrollenauswahl/-eingänge (ROLE-01.7c) und Gesamtprüfung ROLE-01.7b.
+- **Nächster konkreter Schritt:** ROLE-01.7c operative Fachrollen, dann gemeinsame Abnahme ROLE-01.7b.
 
 ### SEC-01: aktueller Detailstand
 
@@ -1318,3 +1318,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | ROLE-01.7a | Trainings-/Bestell-Sonderrechte auf tatsächliche Abteilungen erweitert; Zielanlage nutzt dieselben Rechte. Trainingslesesicht verlangt Fachrecht und zeigt Entwürfe nur Planern im jeweiligen Bereich; Bausteine, Handouts und direkte Planabrufe folgen derselben Sicht. Normale Standardrollen erhalten keine impliziten Modelllöschrechte. TRAIN-Statusvertrag aus paralleler Sitzung genutzt, ausschließlich eigene Scope-Hunks integriert. | Abnahme fehlgeschlagen: Bestellfixture erforderte zusätzlich eine Größe; im Commit versehentlich als bestanden eingetragen, durch ROLE-01.7a-fix korrigiert. Ruff bestanden; vorherige 50 Tests bestanden (2 übersprungen). | Dieser Commit: `fix(ROLE-01.7a): enforce scoped training and ordering capabilities` | ROLE-02.4, ROLE-01.7c/b. |
 
 | 06.10.2026 | ROLE-01.7a-fix | Bestellfixture als Artikel ohne Größen konfiguriert. Fehlgeschlagenen 52er-Lauf aus ROLE-01.7a im Journal richtiggestellt; der dortige Teststatus war voreilig als bestanden eingetragen. Produktcode unverändert. | 52/52 Bereichs-/Training-/Bestelltests jetzt bestanden (2 PostgreSQL-only übersprungen). | Dieser Commit: `test(ROLE-01.7a): complete order fixture and correct verification record` | ROLE-02.4. |
+
+| 06.10.2026 | ROLE-02.4 | Zuweisungsablauf mit Wirkungsvorschau und Bestätigung, lokale Entfernung bei erhaltenen externen Quellen sowie eigene/bereichsbegrenzte Herkunftsauskunft. Technische Codenamen nur in erweiterter Ansicht. Vorlagenverwaltung erhält Freigabeaktion; Identitätsoberfläche folgt ausdrücklichen Rechten statt Superuser-only-Schaltern. LDAP/OIDC wählen aktive Vorlagen des passenden Bereichs; Pagination berücksichtigt. Navigation trennt Organisationssicht von Fachrechten. | 222/222 Frontendtests, Typecheck, gezieltes ESLint und Produktionsbuild bestanden. Erste Tests mit falscher Text-/Navigationsannahme fehlgeschlagen, korrigiert und bestanden. Browserprüfung folgt Gesamtprüfung. | Dieser Commit: `feat(ROLE-02.4): add reviewed role assignment and provenance UI` | ROLE-01.7c/b. |

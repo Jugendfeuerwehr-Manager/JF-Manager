@@ -62,6 +62,11 @@
               <Button v-if="canChangePermissions" label="Auswahl prüfen und übernehmen" icon="pi pi-check" :disabled="selected.is_archived || !comparison.group || saving" @click="applyPermissions" />
             </details>
 
+            <section v-if="selected.scope === 'department' && selected.is_delegable" class="mb-3">
+              <h2>Delegationsfreigabe</h2>
+              <p>{{ selected.delegation_approved ? 'Diese Rechteauswahl ist zur Delegation freigegeben.' : 'Keine aktuelle Freigabe. Änderungen an Rechten erfordern eine erneute Freigabe.' }}</p>
+              <Button v-if="canApproveDelegation" :label="selected.delegation_approved ? 'Freigabe zurücknehmen' : 'Delegation freigeben'" :disabled="selected.is_archived || saving" @click="setDelegation" />
+            </section>
             <section class="metadata-form">
               <h2>Metadaten</h2>
               <label for="role-name">Anzeigename</label><InputText id="role-name" v-model="form.name" :disabled="!canChangeMetadata || selected.is_archived" />
@@ -125,6 +130,7 @@ const permissionError = ref('')
 const form = reactive({ name: '', description: '', is_delegable: false })
 const duplicateForm = reactive({ key: '', name: '', description: '', is_delegable: false })
 
+const canApproveDelegation = computed(() => auth.hasPerm('departments.can_assign_roles') && auth.hasPerm('departments.change_roletemplate'))
 const canChangeMetadata = computed(() => auth.hasPerm('departments.change_roletemplate'))
 const canChangePermissions = computed(() => canChangeMetadata.value && auth.hasPerm('auth.change_group'))
 const canDuplicate = computed(() => auth.hasPerm('departments.add_roletemplate') && auth.hasPerm('auth.add_group'))
@@ -208,6 +214,17 @@ async function applyPermissions() {
     await roleTemplatesApi.applyPermissions(selected.value.id, { fingerprint: comparison.value.fingerprint, permissions: selectedPermissions.value })
     await loadTemplates(selected.value.id)
   } catch (error) { detailError.value = getApiErrorMessage(error, 'Rechte konnten nicht übernommen werden. Bitte den Vergleich neu laden.') }
+  finally { saving.value = false }
+}
+async function setDelegation() {
+  if (!selected.value || !comparison.value) return
+  const approved = !selected.value.delegation_approved
+  if (!window.confirm(`${approved ? 'Delegation freigeben' : 'Freigabe zurücknehmen'} für „${selected.value.name}“ mit der angezeigten Rechteauswahl?`)) return
+  saving.value = true; detailError.value = ''
+  try {
+    await roleTemplatesApi.delegation(selected.value.id, comparison.value.fingerprint, approved)
+    await loadTemplates(selected.value.id)
+  } catch (error) { detailError.value = getApiErrorMessage(error, 'Freigabe konnte nicht gespeichert werden. Bitte neu vergleichen.') }
   finally { saving.value = false }
 }
 async function archiveTemplate() {

@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RoleTemplatesAdminView from '../RoleTemplatesAdminView.vue'
 
-const { list, compare, update, applyPermissions, archive, duplicate } = vi.hoisted(() => ({
-  list: vi.fn(), compare: vi.fn(), update: vi.fn(), applyPermissions: vi.fn(), archive: vi.fn(), duplicate: vi.fn(),
+const { list, compare, update, applyPermissions, archive, duplicate, delegation } = vi.hoisted(() => ({
+  list: vi.fn(), compare: vi.fn(), update: vi.fn(), applyPermissions: vi.fn(), archive: vi.fn(), duplicate: vi.fn(), delegation: vi.fn(),
 }))
-vi.mock('@/api/role-templates', () => ({ roleTemplatesApi: { list, compare, update, applyPermissions, archive, duplicate } }))
+vi.mock('@/api/role-templates', () => ({ roleTemplatesApi: { list, compare, update, applyPermissions, archive, duplicate, delegation } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPerm: () => true }) }))
 
 const template = { id: 1, key: 'leader', name: 'Leitung', description: 'Leitung', template_version: 1,
@@ -79,6 +79,17 @@ describe('RoleTemplatesAdminView', () => {
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({ fingerprint: 'current-fingerprint', name: 'Neue Leitung' }))
     expect(wrapper.text()).toContain('Vergleich veraltet.')
     expect((wrapper.get('#role-name').element as HTMLInputElement).value).toBe('Neue Leitung')
+    wrapper.unmount()
+  })
+
+  it('approves delegation for the currently compared permission selection', async () => {
+    compare.mockResolvedValue({ data: { ...comparison, scope: 'department', delegation_approved: false } })
+    delegation.mockResolvedValue({ data: template })
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Delegation freigeben').trigger('click')
+    await flushPromises()
+    expect(delegation).toHaveBeenCalledWith(1, 'current-fingerprint', true)
     wrapper.unmount()
   })
 

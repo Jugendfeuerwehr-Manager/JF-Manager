@@ -5,7 +5,7 @@
       <p class="text-color-secondary mt-1 mb-0">Benutzer, Gruppen und Berechtigungen verwalten</p>
     </div>
 
-    <p v-if="!authStore.user?.is_superuser" role="status" class="mb-3 text-color-secondary">Lesemodus: Benutzer, Gruppen und Rollen können ausschließlich durch einen Superuser geändert werden.</p>
+    <p v-if="!authStore.hasPerm('users.change_customuser')" role="status" class="mb-3 text-color-secondary">Lesemodus: Für Änderungen sind die jeweiligen Verwaltungsrechte erforderlich.</p>
 
     <TabView v-model:activeIndex="activeTab" lazy>
       <TabPanel value="0">

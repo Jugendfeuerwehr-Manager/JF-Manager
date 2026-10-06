@@ -17,7 +17,7 @@
         </template>
         <template #end>
           <Button
-            v-if="authStore.user?.is_superuser"
+            v-if="authStore.hasPerm('users.add_customuser')"
             icon="pi pi-plus"
             label="Neu"
             size="small"
@@ -118,7 +118,7 @@
         <h3 class="detail-empty-title">Kein Benutzer ausgewählt</h3>
         <p class="detail-empty-sub">Wähle einen Benutzer aus der Liste oder lege einen neuen an.</p>
         <Button
-          v-if="authStore.user?.is_superuser"
+          v-if="authStore.hasPerm('users.add_customuser')"
           label="Neuen Benutzer anlegen"
           icon="pi pi-plus"
           size="small"
@@ -128,7 +128,7 @@
 
       <!-- Actions footer for existing users -->
       <div
-        v-if="authStore.user?.is_superuser && selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail"
+        v-if="authStore.hasPerm('users.change_customuser') && selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail"
         class="detail-footer flex justify-content-end gap-2 mt-4 pt-3"
       >
         <Button

@@ -6,7 +6,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/members/42' }) }))
 function render() { return mount(ModuleNavigation, { global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } }) }
 describe('Module navigation', () => {
-  beforeEach(() => { auth.isOrgWide = true; auth.hasPerm.mockReset() })
+  beforeEach(() => { auth.isOrgWide = true; auth.hasPerm.mockReset().mockReturnValue(true) })
   it('exposes every module without an overflow menu and highlights detail pages', () => {
     const wrapper = render()
     for (const path of ['/members', '/servicebook', '/training', '/qualifications', '/inventory', '/orders', '/emails/history', '/users', '/settings']) {
@@ -19,7 +19,13 @@ describe('Module navigation', () => {
     auth.isOrgWide = false
     auth.hasPerm.mockImplementation(permission => permission === 'view_member')
     const wrapper = render()
-    expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['/', '/members'])
+    expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['/', '/members', '/roles'])
+  })
+  it('organization visibility alone does not expose subject or administration modules', () => {
+    auth.isOrgWide = true
+    auth.hasPerm.mockReturnValue(false)
+    const wrapper = render()
+    expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['/', '/roles'])
   })
   it('finds modules directly by name', async () => {
     const wrapper = render()

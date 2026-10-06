@@ -91,7 +91,6 @@ export const useAuthStore = defineStore('auth', () => {
    * Other users need at least view permission for the relevant model.
    */
   const canAccessModule = (viewPerm: string): boolean => {
-    if (isOrgWide.value) return true
     return hasPerm(viewPerm)
   }
 
