@@ -42,6 +42,8 @@
         <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
         <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
         <Button v-if="isSeries" icon="pi pi-sync" label="Serie" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading || isDirty" v-tooltip.bottom="isDirty ? 'Zuerst speichern: Serien verwenden den gespeicherten Stand' : 'Serientermine ergänzen oder diesen Stand auf folgende übertragen'" @click="showSeries = true" />
+        <Button icon="pi pi-ellipsis-v" severity="secondary" text aria-label="Weitere Aktionen" aria-haspopup="menu" v-tooltip.bottom="'Weitere Aktionen'" :disabled="plannerStore.saving || plannerStore.loading" @click="moreMenu?.toggle($event)" />
+        <Menu ref="moreMenu" :model="moreItems" popup />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
         </template>
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
@@ -202,6 +204,7 @@
 
     <MobileBlockDetailSheet v-if="!canManage" :block="readingBlock" :session-start-min="sessionStartMin" @close="readingBlock = null" />
     <PlanActionDialog v-model:visible="showPlanAction" :duration="sessionDuration" />
+    <SessionCopyDialog v-if="canManage" v-model:visible="showCopy" :mode="copyMode" :session="session" @copied="onCopied" @saved="onTemplateSaved" />
     <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" :can-propagate="!!session?.series_uuid" />
 
     <!-- Session settings dialog -->
@@ -241,6 +244,10 @@ import MobileBlockDetailSheet from '../molecules/MobileBlockDetailSheet.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import SeriesDialog from '../molecules/SeriesDialog.vue'
+import SessionCopyDialog from '../molecules/SessionCopyDialog.vue'
+import Menu from 'primevue/menu'
+import type { MenuItem } from 'primevue/menuitem'
+import { useToast } from 'primevue/usetoast'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus } from '@/types/training'
@@ -270,6 +277,26 @@ const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
 const showSeries = ref(false)
+const showCopy = ref(false)
+const copyMode = ref<'copy' | 'template'>('copy')
+const moreMenu = ref<InstanceType<typeof Menu> | null>(null)
+const toast = useToast()
+// Copies and templates use the saved state, never unsaved local changes.
+const moreItems = computed<MenuItem[]>(() => [
+  { label: 'Auf anderes Datum kopieren', icon: 'pi pi-copy', disabled: isDirty.value, command: () => openCopy('copy') },
+  { label: 'Als Vorlage speichern', icon: 'pi pi-bookmark', disabled: isDirty.value, command: () => openCopy('template') },
+  ...(isDirty.value ? [{ label: 'Zuerst speichern, um zu kopieren', disabled: true }] : []),
+])
+function openCopy(mode: 'copy' | 'template') {
+  copyMode.value = mode
+  showCopy.value = true
+}
+function onCopied(copy: TrainingSessionDetail) {
+  router.push(`/training/sessions/${copy.id}/plan`)
+}
+function onTemplateSaved() {
+  toast.add({ severity: 'success', summary: 'Vorlage gespeichert', detail: 'Sie steht im Kalender unter „Vorlagen“ bereit.', life: 4000 })
+}
 const editingBlock = ref<PlannerBlock | null>(null)
 const saving = ref(false)
 const saveFailed = ref(false)

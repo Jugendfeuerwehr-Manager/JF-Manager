@@ -26,18 +26,20 @@ class TrainingDepartmentSeriesTest(TestCase):
         self.parent = TrainingSession.objects.create(
             title="Geratekunde",
             description="Serie",
-            date=date(2026, 5, 1),
+            date=date(2099, 5, 1),
             start_time=time(18, 0),
             end_time=time(20, 0),
             department=self.department,
-            recurrence_rule={"frequency": "WEEKLY", "end_date": "2026-05-31"},
+            recurrence_rule={"frequency": "WEEKLY", "end_date": "2099-05-31"},
             created_by=self.user,
         )
 
     def test_generate_series_inherits_department(self):
-        response = self.client.post(f"/api/v1/training/sessions/{self.parent.id}/generate_series/")
+        url = f"/api/v1/training/sessions/{self.parent.id}"
+        token = self.client.get(f"{url}/series_preview/").data["preview_token"]
+        response = self.client.post(f"{url}/generate_series/", {"preview_token": token}, format="json")
 
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 201, response.data)
         children = TrainingSession.objects.filter(series_parent=self.parent)
         self.assertGreater(children.count(), 0)
         self.assertTrue(all(child.department_id == self.department.id for child in children))

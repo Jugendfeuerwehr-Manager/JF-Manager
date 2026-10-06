@@ -325,6 +325,39 @@ export interface PropagationPreview {
   counts: Record<PropagationAction, number>
 }
 
+// Whole-exercise template with its own copies of content, images and attachments.
+export interface TrainingTemplate {
+  id: number
+  title: string
+  description: string
+  start_time: string
+  end_time: string
+  location: string
+  department: number | null
+  groups: GroupMini[]
+  block_count: number
+  source_session: number | null
+  created_by_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TrainingTemplateBlock {
+  id: number
+  title: string
+  content: string
+  groups: GroupMini[]
+  duration_minutes: number
+  start_offset_minutes: number
+  position_order: number
+  color: string
+}
+
+export interface TrainingTemplateDetail extends TrainingTemplate {
+  notes: string
+  blocks: TrainingTemplateBlock[]
+}
+
 export interface SeriesWindow {
   window_start?: string
   window_end?: string

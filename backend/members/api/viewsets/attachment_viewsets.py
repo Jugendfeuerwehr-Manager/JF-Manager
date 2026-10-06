@@ -48,13 +48,15 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         from qualifications.models import Qualification, SpecialTask
         from training.api.viewsets.block import TrainingBlockViewSet
         from training.api.viewsets.library import LibraryBlockViewSet
-        from training.models import LibraryBlock, TrainingBlock
+        from training.api.viewsets.template import TrainingTemplateBlockViewSet
+        from training.models import LibraryBlock, TrainingBlock, TrainingTemplateBlock
 
         return {
             Member: MemberViewSet,
             MemberList: MemberListViewSet,
             TrainingBlock: TrainingBlockViewSet,
             LibraryBlock: LibraryBlockViewSet,
+            TrainingTemplateBlock: TrainingTemplateBlockViewSet,
             Qualification: QualificationViewSet,
             SpecialTask: SpecialTaskViewSet,
         }

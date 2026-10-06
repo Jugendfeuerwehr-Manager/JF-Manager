@@ -6,6 +6,7 @@ from jf_manager_backend.html_safety import SanitizedHTMLField, sanitize_rich_htm
 from members.models import Group
 from training.api.permissions import can_manage_training_department
 from training.api.validation import validate_block_times, validate_session_times
+from training.copying import copied_files, copy_owned_files
 from training.models import TrainingBlock, TrainingMedia
 
 from .library_block import TrainingMediaSerializer
@@ -127,6 +128,17 @@ class TrainingBlockCreateSerializer(serializers.ModelSerializer):
             validated_data["color"] = library_block.color
         block = super().create(validated_data)
         block.groups.set(groups)
+        if library_block:
+            # The planned block owns its images/attachments; later library edits or
+            # deletions never change or break it.
+            request = self.context.get("request")
+            user = getattr(request, "user", None)
+            files = self.context.get("copied_files")
+            if files is None:
+                with copied_files() as files:
+                    copy_owned_files(library_block, block, user, files, referenced_only=True)
+            else:
+                copy_owned_files(library_block, block, user, files, referenced_only=True)
         return block
 
 

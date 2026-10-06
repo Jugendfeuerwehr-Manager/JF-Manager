@@ -18,6 +18,8 @@ from training.api.serializers import (
     TrainingSessionHandoutSerializer,
     TrainingSessionListSerializer,
 )
+from training.api.serializers.template import CopyToDateSerializer, SaveAsTemplateSerializer, TrainingTemplateSerializer
+from training.copying import copied_files, copy_session, session_to_template
 from training.models import TrainingSession
 from training.series import (
     PropagationInputSerializer,
@@ -216,3 +218,27 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
                 status=status.HTTP_409_CONFLICT,
             )
         return Response(result)
+
+    @action(detail=True, methods=["post"])
+    def save_as_template(self, request, pk=None):
+        """Save the stored plan as an independent exercise template (own file copies)."""
+        session = self.get_object()
+        payload = SaveAsTemplateSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        with copied_files() as files:
+            template = session_to_template(session, request.user, files, payload.validated_data.get("title", ""))
+        return Response(TrainingTemplateSerializer(template).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def copy(self, request, pk=None):
+        """Independent draft copy on another date; not part of any series."""
+        session = self.get_object()
+        payload = CopyToDateSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        title = payload.validated_data.get("title") or session.title
+        with copied_files() as files:
+            copy = copy_session(session, payload.validated_data["date"], request.user, files, title=title)
+        return Response(
+            TrainingSessionDetailSerializer(copy, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )

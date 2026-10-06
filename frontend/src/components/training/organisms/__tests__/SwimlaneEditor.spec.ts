@@ -1,3 +1,4 @@
+import ToastService from 'primevue/toastservice'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -22,7 +23,7 @@ vi.mock('interactjs', () => ({ default: () => ({
 
 function mount() {
   return shallowMount(SwimlaneEditor, { props: { sessionId: 1 }, global: {
-    directives: { tooltip: () => {} }, stubs: { RouterLink: true },
+    directives: { tooltip: () => {} }, stubs: { RouterLink: true }, plugins: [ToastService],
   } })
 }
 

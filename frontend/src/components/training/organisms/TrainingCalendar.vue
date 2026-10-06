@@ -21,6 +21,7 @@
         />
         <Button icon="pi pi-book" label="Bibliothek" size="small" severity="secondary" outlined @click="router.push('/training/library')" />
         <Button label="Heute" size="small" outlined @click="goToday" />
+        <Button v-if="canCreate" icon="pi pi-bookmark" label="Vorlagen" size="small" severity="secondary" outlined @click="openTemplates(null)" />
         <Button v-if="canCreate" icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
       </div>
     </div>
@@ -117,6 +118,7 @@
       <TrainingSessionForm :initial-data="prefillDate ? { date: prefillDate } as any : null" @success="onSessionCreated" @cancel="showCreate = false" />
     </Dialog>
 
+    <TrainingTemplatesDialog v-model:visible="showTemplates" :default-date="templateDate" :department="departmentsStore.activeDepartmentId" @created="(created) => router.push(`/training/sessions/${created.id}/plan`)" />
     <SeriesDialog v-model:visible="showSeries" :session-id="seriesSessionId" @changed="loadSessions" />
 
     <!-- Day detail panel -->
@@ -151,6 +153,7 @@
         </div>
       </div>
       <template #footer>
+        <Button v-if="canCreate" label="Aus Vorlage" icon="pi pi-bookmark" size="small" severity="secondary" @click="openTemplates(selectedCell?.dateStr ?? null)" />
         <Button v-if="canCreate" label="Übung erstellen" icon="pi pi-plus" size="small" @click="openCreateForDay" />
       </template>
     </Dialog>
@@ -168,6 +171,7 @@ import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import SeriesDialog from '../molecules/SeriesDialog.vue'
+import TrainingTemplatesDialog from './TrainingTemplatesDialog.vue'
 import { useTrainingStore } from '@/stores/training'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
@@ -191,6 +195,14 @@ const showCreate = ref(false)
 const showDayDetail = ref(false)
 const showSeries = ref(false)
 const seriesSessionId = ref<number | null>(null)
+const showTemplates = ref(false)
+const templateDate = ref<string | null>(null)
+
+function openTemplates(date: string | null) {
+  templateDate.value = date
+  showDayDetail.value = false
+  showTemplates.value = true
+}
 const prefillDate = ref<string | null>(null)
 const selectedCell = ref<CalendarCell | null>(null)
 

@@ -46,6 +46,8 @@ from training.api.viewsets import (
     LibraryBlockViewSet,
     TrainingBlockViewSet,
     TrainingSessionViewSet,
+    TrainingTemplateBlockViewSet,
+    TrainingTemplateViewSet,
 )
 from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
 from users.api_views import UserViewSet
@@ -112,3 +114,5 @@ api.register(r"training/library/tags", LibraryBlockTagViewSet, basename="trainin
 api.register(r"training/library", LibraryBlockViewSet, basename="training-library")
 api.register(r"training/sessions", TrainingSessionViewSet, basename="training-sessions")
 api.register(r"training/blocks", TrainingBlockViewSet, basename="training-blocks")
+api.register(r"training/templates", TrainingTemplateViewSet, basename="training-templates")
+api.register(r"training/template-blocks", TrainingTemplateBlockViewSet, basename="training-template-blocks")

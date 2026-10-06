@@ -338,7 +338,7 @@ def replace_plan(target, source, user, files):
     target.groups.set(source.groups.all())
     delete_plan_blocks(target.blocks.all())
     for block in source.blocks.all():
-        copy_block(block, target, user, files)
+        copy_block(block, user, files, session=target)
     advance_revision(target)
     sync_linked_service(target)
     target.series_baseline_hash = snapshot_hash(target)

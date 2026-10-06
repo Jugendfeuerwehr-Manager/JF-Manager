@@ -9,6 +9,7 @@ from rest_framework import serializers
 from members.models import Attachment
 from training.api.serializers.block import TrainingBlockCreateSerializer
 from training.api.serializers.session import TrainingSessionCreateSerializer
+from training.copying import copied_files
 from training.models import TrainingBlock, TrainingMedia, TrainingSession
 
 
@@ -75,8 +76,10 @@ def save_plan(session, data, context, sync_service):
         prepared.append(serializer)
 
     session = session_serializer.save()
-    for serializer in prepared:
-        serializer.save(session=session)
+    with copied_files() as files:
+        for serializer in prepared:
+            serializer.context["copied_files"] = files
+            serializer.save(session=session)
     delete_plan_blocks(session.blocks.exclude(pk__in=retained | {serializer.instance.pk for serializer in prepared}))
     advance_revision(session)
     sync_service(session)

@@ -74,7 +74,8 @@ def private_media(request, kind, pk):
     from members.models import EmailAttachment
     from training.api.viewsets.block import TrainingBlockViewSet
     from training.api.viewsets.library import LibraryBlockViewSet
-    from training.models import LibraryBlock, TrainingBlock, TrainingMedia
+    from training.api.viewsets.template import TrainingTemplateBlockViewSet
+    from training.models import LibraryBlock, TrainingBlock, TrainingMedia, TrainingTemplateBlock
     from users.api_views import UserViewSet
 
     if kind == "member-avatar":
@@ -95,6 +96,8 @@ def private_media(request, kind, pk):
                 raise Http404
         elif isinstance(owner, LibraryBlock):
             authorized_owner(LibraryBlockViewSet, request, owner.pk)
+        elif isinstance(owner, TrainingTemplateBlock):
+            authorized_owner(TrainingTemplateBlockViewSet, request, owner.pk)
         else:
             raise Http404
         return private_file_response(media.file, filename=media.original_filename)
