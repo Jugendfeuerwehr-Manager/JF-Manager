@@ -119,3 +119,15 @@ setup() { jf_source_libs; }
     ! grep -rq "pg-secret-value" "$JFCTL_LOG_DIR"
     [[ $output != *pg-secret-value* ]]
 }
+
+@test "admin reset-mfa runs the management command after confirmation" {
+    jf_minimal_install compose
+    : >"$BATS_TEST_TMPDIR/calls"
+    jf_stub docker 'echo "docker $*" >>"$BATS_TEST_TMPDIR/calls"'
+    run "$OPS_DIR/jfctl" --non-interactive admin reset-mfa --user chef
+    [ "$status" -eq 5 ]
+    ! grep -q reset_mfa "$BATS_TEST_TMPDIR/calls"
+    run "$OPS_DIR/jfctl" --yes admin reset-mfa --user chef
+    [ "$status" -eq 0 ]
+    grep -q "run --rm --no-deps -T -e DJANGO_COLLECTSTATIC=off backend python manage.py reset_mfa --user chef" "$BATS_TEST_TMPDIR/calls"
+}

@@ -195,7 +195,7 @@ _ADMIN_RECOVER_PY='
 import os
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
-from users.models import MFADevice, MFARecoveryCode, UserSession
+from users.models import UserSession
 User = get_user_model()
 try:
     user = User.objects.get(username=os.environ["JF_ADMIN_USER"])
@@ -206,8 +206,9 @@ if os.environ.get("JF_ADMIN_PASSWORD"):
 user.is_active = True
 user.save()
 if os.environ.get("JF_RESET_MFA") == "1":
-    MFADevice.objects.filter(user=user).delete()
-    MFARecoveryCode.objects.filter(user=user).delete()
+    # Authenticator app, passkeys and recovery codes (SEC-11.3)
+    from users.mfa import reset_mfa
+    reset_mfa(user, channel="console")
 Session.objects.filter(pk__in=UserSession.objects.filter(user=user).values("session_id")).delete()
 print("RECOVERED")
 '
@@ -270,7 +271,21 @@ cmd_admin() {
                     _log_file "AUDIT admin recover user=$user reset_mfa=$reset_mfa reset_password=$reset_pw" ;;
                 *NOT_FOUND*) die "$EX_PRECHECK" "Benutzer '$user' nicht gefunden." ;;
             esac ;;
-        *) die "$EX_USAGE" "jfctl admin bootstrap [--user NAME --email ADRESSE] | recover --user NAME [--reset-mfa]" ;;
+        reset-mfa)
+            # Second factor only (authenticator app, passkeys, recovery codes);
+            # the only way for superusers, staff and other accounts with
+            # mandatory MFA (SEC-11.3).
+            local user=""
+            while [ $# -gt 0 ]; do
+                case $1 in --user) user=$2; shift 2 ;; *) die "$EX_USAGE" "Unbekannte Option $1" ;; esac
+            done
+            ask user "Benutzername" "$user"
+            [ -n "$user" ] || die "$EX_USAGE" "jfctl admin reset-mfa --user NAME"
+            confirm_yes "Zwei-Faktor-Anmeldung von '$user' zurücksetzen (Authenticator-App, Passkeys, Wiederherstellungscodes) und alle Sitzungen beenden?" ||
+                die "$EX_ABORTED" "Abgebrochen."
+            ad_manage reset_mfa --user "$user" || die "$EX_ERROR" "Zurücksetzen fehlgeschlagen (Benutzer vorhanden?)."
+            _log_file "AUDIT admin reset-mfa user=$user" ;;
+        *) die "$EX_USAGE" "jfctl admin bootstrap [--user NAME --email ADRESSE] | recover --user NAME [--reset-mfa] | reset-mfa --user NAME" ;;
     esac
 }
 

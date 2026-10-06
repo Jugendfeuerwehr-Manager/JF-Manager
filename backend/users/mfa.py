@@ -8,6 +8,7 @@ supports. A code is accepted at most once per user (replay protection).
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 import struct
 import time
@@ -16,7 +17,7 @@ from urllib.parse import quote, urlencode
 from django.db import transaction
 from django.utils import timezone
 
-from users.models import MFADevice, MFARecoveryCode, PasskeyCredential
+from users.models import MFADevice, MFARecoveryCode, PasskeyCredential, UserSession
 
 TOTP_STEP = 30
 TOTP_DIGITS = 6
@@ -157,3 +158,36 @@ MFA_VERIFIED_KEY = "_mfa_verified_at"
 
 def mark_mfa_verified(request):
     request.session[MFA_VERIFIED_KEY] = int(time.time())
+
+
+security_log = logging.getLogger("security.mfa")
+
+
+def reset_mfa(user, *, actor=None, channel):
+    """Remove every second factor of ``user`` and end all of its sessions.
+
+    Used by the console (``manage.py reset_mfa``, ``jfctl admin reset-mfa``)
+    and by administrators in the web interface. The account sets up MFA again
+    at the next login; mandatory accounts can only enrol until then. The log
+    entry names account ids and the channel, no personal data.
+    """
+    from django.contrib.sessions.models import Session
+
+    with transaction.atomic():
+        totp = MFADevice.objects.filter(user=user).delete()[0]
+        keys = PasskeyCredential.objects.filter(user=user).delete()[0]
+        codes = MFARecoveryCode.objects.filter(user=user).delete()[0]
+        user_sessions = Session.objects.filter(pk__in=UserSession.objects.filter(user=user).values("session_id"))
+        sessions = user_sessions.count()
+        user_sessions.delete()
+    security_log.warning(
+        "mfa_reset target=%s actor=%s channel=%s totp=%s passkeys=%s recovery_codes=%s sessions=%s",
+        user.pk,
+        getattr(actor, "pk", None),
+        channel,
+        totp,
+        keys,
+        codes,
+        sessions,
+    )
+    return {"totp": totp, "passkeys": keys, "recovery_codes": codes, "sessions": sessions}

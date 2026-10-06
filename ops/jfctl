@@ -44,7 +44,8 @@ Befehle:
   backup create | list | verify [ID]     Verschlüsselte Sicherungen (Restic)
   restore <backup-id> [--confirm NAME]   Wiederherstellung mit Vorabprüfung
   config [show | set KEY WERT | edit]    Betriebsangaben anzeigen/ändern
-  admin bootstrap | recover              Erstes Administratorkonto / Zugang wiederherstellen
+  admin bootstrap | recover | reset-mfa  Erstes Administratorkonto / Zugang wiederherstellen /
+                                         Zwei-Faktor-Anmeldung zurücksetzen (auch Admin-Konten)
   workers hold | release | status        Hintergrundaufträge anhalten/freigeben
   maintenance list | run AUFGABE         Wiederkehrende Wartung (über systemd-Timer)
   migrate legacy-compose --from VERZ.    Alte Compose-Installation übernehmen

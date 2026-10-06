@@ -22,6 +22,7 @@ cmd_menu() {
   4) Protokolle anzeigen          9) Update auf neue Version
   5) Sicherung jetzt erstellen   10) Konfiguration anzeigen
                                  11) Administratorzugang wiederherstellen
+                                 12) Zwei-Faktor-Anmeldung zurücksetzen
   q) Beenden
 EOF
         else
@@ -58,6 +59,7 @@ EOF
             9) local v; ask v "Zielversion (z. B. 1.4.0)" ""; [ -n "$v" ] && _menu_run cmd_update --version "$v" ;;
             10) _menu_run cmd_config show ;;
             11) _menu_run cmd_admin recover ;;
+            12) _menu_run cmd_admin reset-mfa ;;
             q|Q) return 0 ;;
             *) echo "Unbekannte Auswahl" ;;
         esac
