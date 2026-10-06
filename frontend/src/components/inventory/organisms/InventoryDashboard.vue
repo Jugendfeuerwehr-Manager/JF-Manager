@@ -1,206 +1,83 @@
 <template>
   <div class="inventory-dashboard">
-    <!-- Stats Row -->
-    <div class="stats-grid">
-      <Card class="stat-card clickable" @click="$emit('navigate', 'stock')">
-        <template #content>
-          <div class="stat-content">
-            <div class="stat-icon-wrapper blue">
-              <i class="pi pi-box"></i>
-            </div>
-            <div class="stat-info">
-              <span class="stat-value">{{ totalStock }}</span>
-              <span class="stat-label">Artikel im Bestand</span>
-            </div>
-          </div>
-        </template>
-      </Card>
+    <section class="kpi-grid" aria-label="Kennzahlen">
+      <button v-for="tile in tiles" :key="tile.tab" type="button" class="kpi-tile" @click="$emit('navigate', tile.tab)">
+        <span class="kpi-tile__label">{{ tile.label }}<i :class="tile.icon" aria-hidden="true"></i></span>
+        <span class="kpi-tile__value">{{ tile.value }}</span>
+        <span class="kpi-tile__cta">{{ tile.cta }}<i class="pi pi-arrow-right" aria-hidden="true"></i></span>
+      </button>
+    </section>
 
-      <Card class="stat-card clickable" @click="$emit('navigate', 'loans')">
-        <template #content>
-          <div class="stat-content">
-            <div class="stat-icon-wrapper orange">
-              <i class="pi pi-users"></i>
-            </div>
-            <div class="stat-info">
-              <span class="stat-value">{{ itemsOnLoan }}</span>
-              <span class="stat-label">Ausgeliehene Artikel</span>
-            </div>
-          </div>
-        </template>
-      </Card>
+    <section class="panel" aria-labelledby="quick-actions-title">
+      <h2 id="quick-actions-title">Schnellaktionen</h2>
+      <div class="quick-actions">
+        <Button label="Ausgeben" icon="pi pi-user-plus" @click="$emit('navigate', 'lending')" />
+        <Button label="Rücknahme" icon="pi pi-replay" severity="secondary" outlined @click="showQuickReturnDialog = true" />
+        <Button label="Wareneingang" icon="pi pi-arrow-down" severity="secondary" outlined @click="openTransactionDialog('IN')" />
+        <Button label="Umlagern" icon="pi pi-arrows-h" severity="secondary" outlined @click="openTransactionDialog('MOVE')" />
+      </div>
+    </section>
 
-      <Card class="stat-card clickable" @click="$emit('navigate', 'items')">
-        <template #content>
-          <div class="stat-content">
-            <div class="stat-icon-wrapper green">
-              <i class="pi pi-list"></i>
-            </div>
-            <div class="stat-info">
-              <span class="stat-value">{{ totalItems }}</span>
-              <span class="stat-label">Artikeltypen</span>
-            </div>
-          </div>
-        </template>
-      </Card>
+    <div class="panel-grid">
+      <section class="panel" aria-labelledby="low-stock-title">
+        <header class="panel__header">
+          <h2 id="low-stock-title">Niedriger Bestand</h2>
+          <button type="button" class="text-link" @click="$emit('navigate', 'stock')">Bestand</button>
+        </header>
+        <ul v-if="lowStockItems.length" class="rows">
+          <li v-for="item in lowStockItems" :key="item.id" class="row">
+            <span class="row__text">
+              <span class="row__title">{{ item.variant_display || item.item_name }}</span>
+              <span class="row__meta">{{ item.location_name }}</span>
+            </span>
+            <StockBadge :quantity="item.quantity" />
+          </li>
+        </ul>
+        <p v-else class="empty"><i class="pi pi-check-circle" aria-hidden="true"></i>Alle Bestände ausreichend</p>
+      </section>
 
-      <Card class="stat-card clickable" @click="$emit('navigate', 'locations')">
-        <template #content>
-          <div class="stat-content">
-            <div class="stat-icon-wrapper purple">
-              <i class="pi pi-map-marker"></i>
-            </div>
-            <div class="stat-info">
-              <span class="stat-value">{{ totalLocations }}</span>
-              <span class="stat-label">Lagerorte</span>
-            </div>
-          </div>
-        </template>
-      </Card>
+      <section class="panel" aria-labelledby="loans-title">
+        <header class="panel__header">
+          <h2 id="loans-title">Ausgegeben an</h2>
+          <button type="button" class="text-link" @click="$emit('navigate', 'loans')">Alle</button>
+        </header>
+        <ul v-if="recentLoans.length" class="rows">
+          <li v-for="loan in recentLoans" :key="loan.member_id" class="row">
+            <span class="row__avatar" aria-hidden="true">{{ getInitials(loan.member_name) }}</span>
+            <span class="row__text">
+              <span class="row__title">{{ loan.member_name }}</span>
+              <span class="row__meta">{{ loan.total_items }} {{ loan.total_items === 1 ? 'Teil' : 'Teile' }}</span>
+            </span>
+          </li>
+        </ul>
+        <p v-else class="empty"><i class="pi pi-inbox" aria-hidden="true"></i>Nichts ausgegeben</p>
+      </section>
+
+      <section class="panel" aria-labelledby="transactions-title">
+        <header class="panel__header">
+          <h2 id="transactions-title">Letzte Buchungen</h2>
+          <button type="button" class="text-link" @click="$emit('navigate', 'history')">Verlauf</button>
+        </header>
+        <ul v-if="recentTransactions.length" class="rows">
+          <li v-for="tx in recentTransactions" :key="tx.id" class="row">
+            <TransactionTypeBadge :type="tx.transaction_type" />
+            <span class="row__text">
+              <span class="row__title">{{ tx.item_name }}</span>
+              <span class="row__meta">{{ formatDate(tx.date) }}</span>
+            </span>
+            <span class="row__qty">{{ tx.quantity }}×</span>
+          </li>
+        </ul>
+        <p v-else class="empty"><i class="pi pi-inbox" aria-hidden="true"></i>Noch keine Buchungen</p>
+      </section>
     </div>
 
-    <!-- Quick Actions & Recent Activity -->
-    <div class="dashboard-grid">
-      <!-- Quick Actions -->
-      <Card class="quick-actions-card">
-        <template #title>
-          <div class="card-title">
-            <i class="pi pi-bolt"></i>
-            Schnellaktionen
-          </div>
-        </template>
-        <template #content>
-          <div class="quick-actions">
-            <Button
-              label="Ausleihe & Einkleidung"
-              icon="pi pi-user"
-              class="action-button"
-              severity="primary"
-              @click="$emit('navigate', 'lending')"
-            />
-            <Button
-              label="Rückgabe erfassen"
-              icon="pi pi-replay"
-              class="action-button"
-              severity="success"
-              @click="showQuickReturnDialog = true"
-            />
-            <Button
-              label="Wareneingang"
-              icon="pi pi-arrow-down"
-              class="action-button"
-              severity="info"
-              @click="openTransactionDialog('IN')"
-            />
-            <Button
-              label="Umlagerung"
-              icon="pi pi-arrows-h"
-              class="action-button"
-              severity="secondary"
-              @click="openTransactionDialog('MOVE')"
-            />
-          </div>
-        </template>
-      </Card>
-
-      <!-- Recent Loans -->
-      <Card class="recent-loans-card">
-        <template #title>
-          <div class="card-title">
-            <i class="pi pi-users"></i>
-            Aktuelle Ausleihen
-          </div>
-        </template>
-        <template #content>
-          <div v-if="recentLoans.length > 0" class="recent-loans">
-            <div v-for="loan in recentLoans" :key="loan.member_id" class="loan-item">
-              <Avatar :label="getInitials(loan.member_name)" size="normal" shape="circle" />
-              <div class="loan-info">
-                <span class="loan-member">{{ loan.member_name }}</span>
-                <span class="loan-count">{{ loan.total_items }} Artikel</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="empty-state">
-            <i class="pi pi-check-circle"></i>
-            <p>Keine aktiven Ausleihen</p>
-          </div>
-          <Button
-            v-if="recentLoans.length > 0"
-            label="Alle anzeigen"
-            text
-            size="small"
-            class="show-all-button"
-            @click="$emit('navigate', 'loans')"
-          />
-        </template>
-      </Card>
-
-      <!-- Low Stock Alert -->
-      <Card class="low-stock-card">
-        <template #title>
-          <div class="card-title">
-            <i class="pi pi-exclamation-triangle"></i>
-            Niedriger Bestand
-          </div>
-        </template>
-        <template #content>
-          <div v-if="lowStockItems.length > 0" class="low-stock-items">
-            <div v-for="item in lowStockItems" :key="item.id" class="low-stock-item">
-              <span class="item-name">{{ item.variant_display || item.item_name }}</span>
-              <Badge :value="item.quantity" severity="warn" />
-            </div>
-          </div>
-          <div v-else class="empty-state success">
-            <i class="pi pi-check-circle"></i>
-            <p>Alle Bestände in Ordnung</p>
-          </div>
-        </template>
-      </Card>
-
-      <!-- Recent Transactions -->
-      <Card class="recent-transactions-card">
-        <template #title>
-          <div class="card-title">
-            <i class="pi pi-history"></i>
-            Letzte Transaktionen
-          </div>
-        </template>
-        <template #content>
-          <div v-if="recentTransactions.length > 0" class="recent-transactions">
-            <div v-for="tx in recentTransactions" :key="tx.id" class="transaction-item">
-              <TransactionTypeBadge :type="tx.transaction_type" />
-              <div class="transaction-info">
-                <span class="transaction-item-name">{{ tx.item_name }}</span>
-                <span class="transaction-date">{{ formatDate(tx.date) }}</span>
-              </div>
-              <Badge :value="tx.quantity" severity="secondary" />
-            </div>
-          </div>
-          <div v-else class="empty-state">
-            <i class="pi pi-inbox"></i>
-            <p>Keine Transaktionen</p>
-          </div>
-          <Button
-            v-if="recentTransactions.length > 0"
-            label="Alle anzeigen"
-            text
-            size="small"
-            class="show-all-button"
-            @click="$emit('navigate', 'history')"
-          />
-        </template>
-      </Card>
-    </div>
-
-    <!-- Transaction Dialog -->
     <TransactionDialog
       v-model="showTransactionDialog"
       :initial-type="transactionType"
       @success="onTransactionSuccess"
     />
 
-    <!-- Quick Return Dialog -->
     <QuickReturnDialog
       v-model="showQuickReturnDialog"
       @success="onTransactionSuccess"
@@ -210,10 +87,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import Card from 'primevue/card'
 import Button from 'primevue/button'
-import Avatar from 'primevue/avatar'
-import Badge from 'primevue/badge'
+import StockBadge from '../atoms/StockBadge.vue'
 import TransactionTypeBadge from '../atoms/TransactionTypeBadge.vue'
 import TransactionDialog from '../molecules/TransactionDialog.vue'
 import QuickReturnDialog from '../molecules/QuickReturnDialog.vue'
@@ -241,6 +116,13 @@ const itemsOnLoan = computed(() => {
 
 const totalItems = computed(() => inventoryStore.items.length)
 const totalLocations = computed(() => inventoryStore.locations.length)
+
+const tiles = computed(() => [
+  { tab: 'stock', label: 'Im Bestand', icon: 'pi pi-box', value: totalStock.value, cta: 'Bestand' },
+  { tab: 'loans', label: 'Ausgegeben', icon: 'pi pi-users', value: itemsOnLoan.value, cta: 'Ausgaben' },
+  { tab: 'items', label: 'Artikel', icon: 'pi pi-list', value: totalItems.value, cta: 'Artikel' },
+  { tab: 'locations', label: 'Lagerorte', icon: 'pi pi-map-marker', value: totalLocations.value, cta: 'Lagerorte' },
+])
 
 const recentLoans = computed(() => {
   return inventoryStore.memberLoans.slice(0, 5)
@@ -294,185 +176,194 @@ function onTransactionSuccess() {
 .inventory-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--jf-space-2);
 }
 
-.stats-grid {
+.kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--jf-space-2);
 }
 
-.stat-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.stat-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-}
-
-.stat-icon-wrapper.blue {
-  background: rgba(59, 130, 246, 0.1);
-  color: rgb(59, 130, 246);
-}
-
-.stat-icon-wrapper.orange {
-  background: rgba(249, 115, 22, 0.1);
-  color: rgb(249, 115, 22);
-}
-
-.stat-icon-wrapper.green {
-  background: rgba(34, 197, 94, 0.1);
-  color: rgb(34, 197, 94);
-}
-
-.stat-icon-wrapper.purple {
-  background: rgba(168, 85, 247, 0.1);
-  color: rgb(168, 85, 247);
-}
-
-.stat-info {
+.kpi-tile {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  gap: var(--jf-space-1);
+  padding: var(--jf-space-2) var(--jf-space-3);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  box-shadow: var(--jf-shadow-sm);
+  color: var(--jf-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--jf-duration), border-color var(--jf-duration);
 }
 
-.stat-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--text-color);
-  line-height: 1;
+.kpi-tile:hover {
+  border-color: var(--p-surface-300);
+  box-shadow: var(--jf-shadow-md);
 }
 
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--text-color-secondary);
-  margin-top: 0.25rem;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-.card-title {
+.kpi-tile__label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  font-weight: 600;
+  justify-content: space-between;
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-medium);
+  color: var(--jf-color-text-muted);
+}
+
+.kpi-tile__value {
+  font-size: 2rem;
+  font-weight: var(--jf-weight-bold);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.kpi-tile__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-primary);
+}
+
+.kpi-tile__cta i {
+  font-size: 0.7rem;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--jf-space-2);
+  align-items: start;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-2) var(--jf-space-3);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  box-shadow: var(--jf-shadow-sm);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: var(--jf-text-md);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-1);
 }
 
 .quick-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jf-space-1);
 }
 
-.action-button {
-  width: 100%;
-  justify-content: flex-start;
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--jf-touch-target);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--jf-color-primary);
+  font: inherit;
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  cursor: pointer;
 }
 
-.recent-loans,
-.low-stock-items,
-.recent-transactions {
+.rows {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.loan-item,
-.low-stock-item,
-.transaction-item {
+.row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-1) 0;
+  border-top: 1px solid var(--jf-color-border);
 }
 
-.loan-info,
-.transaction-info {
+.row__avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+}
+
+.row__text {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  line-height: 1.3;
 }
 
-.loan-member,
-.transaction-item-name,
-.item-name {
-  font-weight: 500;
-  white-space: nowrap;
+.row__title {
+  font-weight: var(--jf-weight-semibold);
+  font-size: var(--jf-text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.loan-count,
-.transaction-date {
-  font-size: 0.8rem;
-  color: var(--text-color-secondary);
+.row__meta {
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
 }
 
-.empty-state {
+.row__qty {
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 599px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--jf-space-1);
+  }
+
+  .kpi-tile,
+  .panel {
+    padding: var(--jf-space-1-5) var(--jf-space-2);
+  }
+
+  .kpi-tile__value {
+    font-size: 1.5rem;
+  }
+}
+
+.empty {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 1.5rem;
-  color: var(--text-color-secondary);
-}
-
-.empty-state i {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.empty-state.success {
-  color: var(--green-500);
-}
-
-.show-all-button {
-  margin-top: 0.5rem;
-  width: 100%;
-}
-
-@media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-actions {
-    grid-template-columns: 1fr;
-  }
+  gap: var(--jf-space-1);
+  margin: 0;
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
 }
 </style>

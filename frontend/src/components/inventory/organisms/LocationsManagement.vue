@@ -46,7 +46,7 @@
                   <div class="location-header">
                     <i class="pi pi-box location-icon"></i>
                     <span class="location-name">{{ location.name }}</span>
-                    <Tag v-if="location.department === null" value="G" icon="pi pi-globe" severity="contrast" />
+                    <ScopeBadge v-if="location.department === null" />
                   </div>
                   <span v-if="location.parent_name" class="location-path">
                     {{ location.full_path }}
@@ -153,12 +153,11 @@
       @success="onLocationSaved"
     />
 
-    <!-- Delete Confirmation -->
-    <ConfirmDialog />
   </div>
 </template>
 
 <script setup lang="ts">
+import ScopeBadge from '@/components/inventory/atoms/ScopeBadge.vue'
 import { ref, computed } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -169,7 +168,6 @@ import Dropdown from 'primevue/dropdown'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import Tag from 'primevue/tag'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'

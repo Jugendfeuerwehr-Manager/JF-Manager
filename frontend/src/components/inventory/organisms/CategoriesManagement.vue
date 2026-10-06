@@ -22,7 +22,7 @@
             <div class="category-info">
               <div class="category-name-row">
                 <span class="category-name">{{ category.name }}</span>
-                <Tag value="G" icon="pi pi-globe" severity="contrast" />
+                <ScopeBadge />
               </div>
               <Tag :value="`${category.item_count || 0} Artikel`" severity="secondary" />
             </div>
@@ -65,17 +65,15 @@
       @success="onCategorySaved"
     />
 
-    <!-- Delete Confirmation -->
-    <ConfirmDialog />
   </div>
 </template>
 
 <script setup lang="ts">
+import ScopeBadge from '@/components/inventory/atoms/ScopeBadge.vue'
 import { ref } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import CategoryFormDialog from '../molecules/CategoryFormDialog.vue'

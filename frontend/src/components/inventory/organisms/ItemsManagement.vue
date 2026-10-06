@@ -57,7 +57,7 @@
               <div class="item-cell">
                 <div class="item-name-row">
                   <span class="item-name">{{ data.name }}</span>
-                  <Tag v-if="data.department === null" value="G" icon="pi pi-globe" severity="contrast" />
+                  <ScopeBadge v-if="data.department === null" />
                   <Tag v-if="data.is_standard_item" value="Standard" icon="pi pi-star-fill" severity="help" />
                 </div>
                 <span v-if="data.is_variant_parent" class="variant-info">
@@ -126,12 +126,11 @@
       @success="onItemSaved"
     />
 
-    <!-- Delete Confirmation -->
-    <ConfirmDialog />
   </div>
 </template>
 
 <script setup lang="ts">
+import ScopeBadge from '@/components/inventory/atoms/ScopeBadge.vue'
 import { ref, computed } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -143,7 +142,6 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Checkbox from 'primevue/checkbox'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import StockBadge from '../atoms/StockBadge.vue'
