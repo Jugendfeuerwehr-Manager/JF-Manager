@@ -41,6 +41,7 @@
         <Button v-if="session && session.status !== 'cancelled' && session.status !== 'completed'" label="Absagen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('cancelled')" />
         <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
         <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
+        <Button v-if="isSeries" icon="pi pi-sync" label="Serie" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading || isDirty" v-tooltip.bottom="isDirty ? 'Zuerst speichern: Serien verwenden den gespeicherten Stand' : 'Serientermine prüfen und ergänzen'" @click="showSeries = true" />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
         </template>
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
@@ -201,6 +202,7 @@
 
     <MobileBlockDetailSheet v-if="!canManage" :block="readingBlock" :session-start-min="sessionStartMin" @close="readingBlock = null" />
     <PlanActionDialog v-model:visible="showPlanAction" :duration="sessionDuration" />
+    <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" />
 
     <!-- Session settings dialog -->
     <Dialog
@@ -238,6 +240,7 @@ import LibraryBlockPicker from '../molecules/LibraryBlockPicker.vue'
 import MobileBlockDetailSheet from '../molecules/MobileBlockDetailSheet.vue'
 import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
+import SeriesDialog from '../molecules/SeriesDialog.vue'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus } from '@/types/training'
@@ -266,6 +269,7 @@ const showLibraryPicker = ref(false)
 const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
+const showSeries = ref(false)
 const editingBlock = ref<PlannerBlock | null>(null)
 const saving = ref(false)
 const saveFailed = ref(false)
@@ -284,6 +288,7 @@ const creating = ref<{
 const blocks = computed(() => plannerStore.blocks)
 const selectedBlockId = computed(() => plannerStore.selectedBlockId)
 const isDirty = computed(() => plannerStore.isDirty)
+const isSeries = computed(() => !!session.value && (!!session.value.recurrence_rule || !!session.value.series_uuid || session.value.series_parent !== null))
 const session = computed(() => plannerStore.session)
 const canManage = computed(() => session.value?.can_manage_plan !== false)
 const readingBlock = ref<PlannerBlock | null>(null)

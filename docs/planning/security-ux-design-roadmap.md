@@ -9,7 +9,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Feld | Aktueller Stand |
 | --- | --- |
 | Letzter Checkpoint | 06.10.2026: SEC-02.9 abgenommen; SEC-Bereich (SEC-01 bis SEC-10) abgeschlossen. Davor: ROLE-02.4 Zuweisungs-/Herkunftsoberfläche. |
-| TRAIN-Checkpoint | 06.10.2026: TRAIN-01 vollständig integriert und abgenommen. Admin-Versions-/Zeitvertrag, tatsächliche Leseberechtigung und Frontend-/PDF-/Mobilprüfung bestanden; 41 PostgreSQL-15-TRAIN-Tests und 227 Frontendtests grün. Backend-Gesamtlauf: ein unabhängiger ROLE-Test fehlgeschlagen. |
+| TRAIN-Checkpoint | 06.10.2026: TRAIN-03.1 abgeschlossen (Claude übernimmt die TRAIN-Session von Codex). Serienidentität/ursprüngliches Datum migriert, zerstörungsfreie Generierung nur über versionierte vollständige Vorschau, Frontenddialog und ausschließlich echte Kalendertermine. 47/47 Trainingstests auf PostgreSQL 15, 250/250 Frontendtests, Typecheck bestanden. TRAIN-01 abgeschlossen (`a07d9bb`). |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
 | Umsetzungsstatus | EXEC-01 und SEC-01 bis SEC-10 abgeschlossen; ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
@@ -18,7 +18,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
 | Letzter Roadmap-Commit | `SEC-02.9` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | TRAIN: TRAIN-03.1 sichere Serienvorschau/-generierung; parallel ROLE: aktuellen ROLE-Checkpoint beachten. |
+| Nächster konkreter Schritt | TRAIN: TRAIN-03.2 „dieser und folgende“ mit Vorschau; danach TRAIN-03.3/03.4, TRAIN-02, TRAIN-04. Parallel ROLE: aktuellen ROLE-Checkpoint beachten. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -554,7 +554,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | abgeschlossen | Codex (TRAIN-Session) | TRAIN-01.0–01.5c integriert; 41 TRAIN-Tests auf PostgreSQL 15, Frontend-/Browser-/PDFabnahme bestanden. TRAIN-02–04 bleiben eigene Pakete. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
-| TRAIN-03 | in Arbeit | Codex (TRAIN-Session) | TRAIN-03.0 Vertrag definiert; als Nächstes TRAIN-03.1 sichere Serienvorschau/-generierung. |
+| TRAIN-03 | in Arbeit | Claude (TRAIN-Session, Übernahme von Codex) | TRAIN-03.0 Vertrag, TRAIN-03.1 sichere Seriengenerierung; als Nächstes TRAIN-03.2 „dieser und folgende“. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
 | DES-01 | in Arbeit | Claude (Design-Session) | DES-01.10b Planer-Raster, Bausteine und Bibliothek auf Tokens; offen DES-01.11 (Konsistenz, mit UX-01–08), DES-01.12 sowie Nutzerabnahme. |
 | UX-01 | geplant | Claude (Design-Session) | Teilschritte UX-01.1/2 festgelegt; nach UX-06. |
@@ -979,7 +979,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 ### TRAIN-03: Vorlagen und sichere Serien
 
 - **Status:** in Arbeit.
-- **Verantwortlicher Agent:** Codex (TRAIN-Session); andere ROLE-/UX-Änderungen bleiben erhalten.
+- **Verantwortlicher Agent:** Codex (TRAIN-Session) bis TRAIN-03.0 und uncommittetes Backendgerüst für TRAIN-03.1; ab TRAIN-03.1 Claude (Nutzerauftrag 06.10.2026: TRAIN-01 bis 04 vollständig). Andere ROLE-/UX-Änderungen bleiben erhalten.
 - **Abhängigkeiten:** TRAIN-01 atomarer Plan-/Versions-/Statusvertrag und ROLE-01.7a tatsächliche Abteilungsrechte; bestehende Inhalts-/Medienprüfung. Ressourcenfelder aus TRAIN-02 bei der späteren Erweiterung in Kopien einbeziehen.
 - **Ziel und Abnahme:** Ganze Übungen und Bausteine unabhängig kopieren/als Vorlage übernehmen. Serien besitzen stabile Identität und ursprüngliches Datum. Generierung ergänzt fehlende Termine, erhält vorhandene Identitäten, Pläne, Dienste und Anwesenheiten. Monatsanker kehrt nach Monatsletzten zum ursprünglichen Tag zurück. Vorschau maximal 200 Vorkommen/24 Monate; unbekannte Frequenzen und ungültige Grenzen werden vor Änderungen abgewiesen. Explizites „dieser und folgende“ erhält vergangene, abgeschlossene und abweichende Termine standardmäßig. Vorschau und Übernahme verwenden aktuelle Planversionen; kein stilles Überschreiben. Frontend zeigt vollständige Vorschau und echte gespeicherte Termine; keine virtuellen Einträge, die auf den falschen Elterntermin führen.
 - **Dateiverantwortung:** `backend/training/`, zugehörige Trainingsmigrationen/-tests, Frontend-Trainings-API/Typen/Stores, Kalender-/Planer-/Vorlagendialoge und Trainingsdokumentation. Keine fremden Rollen-/Inventar-/Bestelldateien stagen.
@@ -989,12 +989,13 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `TRAIN-03.2`: Ausdrückliches „dieser und folgende“ mit Vorschau, Versionsprüfung, Erhalt abweichender/historischer Termine und stabiler Dienstidentität.
   - `TRAIN-03.3`: Ganze Übungen als Vorlage speichern und unabhängig kopieren, vorhandene Bausteinvorlagen unabhängig übernehmen; Medien-/Anhangkopien dürfen nicht auf später entfernte Quelldateien angewiesen sein. Vollständige Frontendaktionen.
   - `TRAIN-03.4`: Regressionen auf PostgreSQL 15, Frontend-/Browserprüfung und Paketabnahme.
-- **Letzter dauerhafter Checkpoint:** TRAIN-03.0, dieser Commit.
+- **Letzter dauerhafter Checkpoint:** TRAIN-03.1, dieser Commit; TRAIN-03.0 `21736e5`.
 - **Branch:** `feat/security-roles-training-operations`.
-- **Prüfungen:** Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests für diesen Dokumentationsschritt nicht ausgeführt. TRAIN-01 ist bei `a07d9bb` abgeschlossen.
-- **Offene Fehler / Risiken:** Bisheriger `generate_series` löscht Kinder und Monatsserien verlieren ihren ursprünglichen Tag. Virtuelle Frontendtermine führen zum Elternplan. Altserien müssen konservativ migriert werden, ohne automatisch bestehende Pläne neu zu erzeugen. Dateikopien außerhalb der DB benötigen Fehler-/Aufräumstrategie.
-- **Laufende Prozesse:** Synthetische Django-/Vite-Browserumgebung (18081/15173) und Wegwerf-PostgreSQL 15 (55438) aus TRAIN-01; keine produktiven Daten ändern.
-- **Nächster konkreter Schritt:** TRAIN-03.1 implementieren.
+- **Umgesetzt (TRAIN-03.1):** Codex-Gerüst (Felder `series_uuid`/`original_date`/`series_baseline_hash`, Migration 0006, `series.py`, `copying.py`) geprüft und vervollständigt: Regelvalidierung im Serializer (Frequenz, Schlüssel, Ende), Regel nur am Ursprung, ohne Fenster automatische Begrenzung auf 24 Monate, Überschneidungswarnungen, Vorschau über `GET series_preview`, Erzeugung nur mit `preview_token` (409 `series_preview_changed` mit aktueller Vorschau), Sperrfolge Ursprung → Vorkommen. Kopierte Bild-URLs behalten Schema/Host (Sanitizer erlaubt nur absolute URLs). Frontend: `SeriesDialog` in Planer und nach Anlage einer wiederkehrenden Übung; Kalender zeigt nur gespeicherte Termine. API-Dokumentation `docs/planning/training-plan-api.md`.
+- **Prüfungen:** TRAIN-03.1: 47/47 Trainingstests auf PostgreSQL 15 (11 neue Serien-/Migrationstests), Ruff/Format, Migrationsabgleich, 250/250 Frontendtests und Typecheck bestanden. Zwei Codex-Gerüstfehler durch neue Tests aufgedeckt (relative Bild-URL wäre vom Sanitizer entfernt worden; Standardfenster über 24 Monate wurde abgewiesen statt begrenzt) und korrigiert. Browserprüfung nicht ausgeführt (TRAIN-03.4). TRAIN-01 ist bei `a07d9bb` abgeschlossen.
+- **Offene Fehler / Risiken:** Löschender `generate_series` und virtuelle Kalendertermine entfernt. Die 200er-Grenze ist bei wöchentlich/zweiwöchentlich/monatlich innerhalb von 24 Monaten nicht erreichbar und bleibt harte Schutzgrenze. Dateikopien bei Generierung werden bei Ausnahme im Kopierblock entfernt; ein Fehler erst beim Commit kann verwaiste Kopien hinterlassen (gering, dokumentiert). Altserien ohne Basis-Hash gelten in TRAIN-03.2 konservativ als abweichend.
+- **Laufende Prozesse:** Wegwerf-PostgreSQL 15 `jf-train-final-pg15` (55438) für Tests; Testsettings ausschließlich im Sitzungs-Scratchpad. Browserumgebung 18081/15173 aus TRAIN-01 läuft nicht mehr. Keine produktiven Daten ändern.
+- **Nächster konkreter Schritt:** TRAIN-03.2 „dieser und folgende“ mit Vorschau, Versionsprüfung und Erhalt abweichender/historischer Termine.
 
 ### DES-01: Gemeinsames Designsystem
 
@@ -1400,3 +1401,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-03.0 | Vertrag für stabile Serienidentität, konservative Altdatenübernahme, verlustfreie Generierung, begrenzte/versionierte Vorschau, Erhalt historischer/abweichender Termine, unabhängige Vorlagenkopien und vollständigen Frontendablauf festgelegt. | Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(TRAIN-03.0): define safe series and independent template acceptance` | TRAIN-03.1. |
 
 | 06.10.2026 | SEC-02.9 | Abnahme des Ziel-/Relationsvertrags durch Claude. Dynamisches Inventar aller beschreibbaren Relationsfelder der gerouteten Schreib-Endpunkte (54) gegen vorhandene Regressionen abgeglichen; neue Sammel-Regression für ungetestete Ziele. Befunde: (1) Einzel-E-Mail an ein Mitglied außerhalb der Versandabteilungen wurde an Mitglied und Eltern zugestellt, weil `prepare_recipients` den Einzelempfänger nicht auf `member_qs` beschränkte; (2) E-Mail-Abteilung frei wählbar; (3) Ereignis für Mitglied aus B; (4) Ereignistyp in B; (5) Mitglied nach B verschiebbar. Korrekturen: gemeinsamer Zielbaustein im `DepartmentScopeViewSetMixin` (Gruppen nutzen ihn jetzt ebenfalls), Prüfungen in Ereignis-, Ereignistyp-, Mitglieds- und E-Mail-Viewset (Versand, Anlage, Änderung) sowie Begrenzung im E-Mail-Dienst. SEC-02 abgeschlossen; damit SEC-01 bis SEC-10 abgeschlossen. | 11/11 neue Regressionen (5 vorher rot), Gruppen- und Ereignistests, volle Backend-Suite im sauberen Worktree 736/737 (8 übersprungen); einziger Fehlschlag (`test_private_media`, Abteilungs-Neuprüfung privater Dateien) besteht auf HEAD unabhängig von diesem Commit und liegt bei der parallelen Arbeit. Ruff bestanden. | Dieser Commit: `fix(SEC-02.9): validate email, event and member department targets` | Fehlschlag `test_private_media` durch den zuständigen Agent klären. |
+
+| 06.10.2026 | TRAIN-03.1 | Übernahme des uncommitteten Codex-Gerüsts nach Abgleich mit Git/Code. Stabile Serienidentität und ursprüngliches Datum (Migration 0006 ohne Neuerzeugung, doppelte Altdaten ohne `original_date`). Vorschau/Erzeugung zerstörungsfrei, Monatsanker, 24-Monats-/200-Vorkommen-Grenze, Überschneidungswarnungen, Token-gebundene Übernahme mit 409 und aktueller Vorschau; unabhängige Medienkopien mit erhaltenem Host. Seriendialog in Planer/Kalender, keine virtuellen Kalendertermine. | 47/47 Trainingstests auf PostgreSQL 15, Ruff, Migrationsabgleich, 250/250 Frontendtests und Typecheck bestanden. Neuer Medienkopietest zunächst fehlgeschlagen (Sanitizer entfernte relative Bild-URL), nach Korrektur bestanden. Browserprüfung nicht ausgeführt. | Dieser Commit: `feat(TRAIN-03.1): generate series occurrences only from a confirmed preview` | TRAIN-03.2. |

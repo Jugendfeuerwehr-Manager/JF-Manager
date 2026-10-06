@@ -198,6 +198,8 @@ export interface TrainingSessionList {
   requires_service_confirmation: boolean
   can_manage_plan: boolean
   series_parent: number | null
+  series_uuid: string | null
+  original_date: string | null
   recurrence_rule: RecurrenceRule | null
 }
 
@@ -221,6 +223,8 @@ export interface TrainingSessionDetail {
   requires_service_confirmation: boolean
   can_manage_plan: boolean
   series_parent: number | null
+  series_uuid: string | null
+  original_date: string | null
   recurrence_rule: RecurrenceRule | null
   created_by: number | null
   created_by_name: string | null
@@ -271,6 +275,36 @@ export interface PlannerBlock extends TrainingBlock {
 export interface GenerateSeriesResult {
   created: number
   session_ids: number[]
+}
+
+export type SeriesOccurrenceAction = 'new' | 'preserved' | 'skipped' | 'conflict'
+
+export interface SeriesOccurrence {
+  date: string
+  action: SeriesOccurrenceAction
+  session_id: number | null
+  actual_date: string | null
+  reason: string
+  warnings: string[]
+}
+
+// Complete, bounded preview; the token binds generation to exactly this state.
+export interface SeriesPreview {
+  series_id: string | null
+  root_id: number
+  root_revision: number
+  frequency: RecurrenceFrequency
+  anchor_date: string
+  window_start: string
+  window_end: string
+  preview_token: string
+  occurrences: SeriesOccurrence[]
+  counts: Record<SeriesOccurrenceAction, number>
+}
+
+export interface SeriesWindow {
+  window_start?: string
+  window_end?: string
 }
 
 // ─── Paginated responses ─────────────────────────────────────────────────────

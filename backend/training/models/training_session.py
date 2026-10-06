@@ -11,6 +11,9 @@ class TrainingSession(models.Model):
         verbose_name = "Trainingseinheit"
         verbose_name_plural = "Trainingseinheiten"
         ordering = ["-date", "start_time"]
+        constraints = [
+            models.UniqueConstraint(fields=["series_uuid", "original_date"], name="unique_training_series_occurrence")
+        ]
         permissions = [
             ("can_manage_training", "Kann Trainingseinheiten verwalten"),
         ]
@@ -76,6 +79,9 @@ class TrainingSession(models.Model):
         verbose_name="Abteilung",
         related_name="training_sessions",
     )
+    series_uuid = models.UUIDField(null=True, blank=True, db_index=True, editable=False)
+    original_date = models.DateField(null=True, blank=True, editable=False)
+    series_baseline_hash = models.CharField(max_length=64, blank=True, editable=False)
     revision = models.PositiveBigIntegerField(default=1, editable=False, verbose_name="Planversion")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

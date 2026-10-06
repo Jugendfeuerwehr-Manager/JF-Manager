@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TrainingSessionList } from '@/types/training'
-import { expandTrainingSessionsForRange } from '../recurrence'
+import { calendarSessionsForRange } from '../recurrence'
 
 function makeSession(overrides: Partial<TrainingSessionList> = {}): TrainingSessionList {
   return {
@@ -18,58 +18,39 @@ function makeSession(overrides: Partial<TrainingSessionList> = {}): TrainingSess
     linked_service_id: null,
     linked_service_start: null,
     series_parent: null,
+    series_uuid: null,
+    original_date: null,
     recurrence_rule: null,
     ...overrides,
   }
 }
 
-describe('expandTrainingSessionsForRange', () => {
-  it('expands weekly recurring sessions within range without duplicating IDs', () => {
-    const sessions: TrainingSessionList[] = [
-      makeSession({
-        id: 7,
-        recurrence_rule: {
-          frequency: 'WEEKLY',
-          end_date: '2026-05-22',
-        },
-      }),
-    ]
-
-    const expanded = expandTrainingSessionsForRange(sessions, '2026-05-01', '2026-05-31')
-
-    expect(expanded.map((s) => s.occurrence_date)).toEqual([
-      '2026-05-01',
-      '2026-05-08',
-      '2026-05-15',
-      '2026-05-22',
-    ])
-    expect(new Set(expanded.map((s) => s.id))).toEqual(new Set([7]))
-    expect(expanded[0]?.is_series_occurrence).toBe(false)
-    expect(expanded[1]?.is_series_occurrence).toBe(true)
-    expect(expanded.every((s) => s.is_recurring)).toBe(true)
+describe('calendarSessionsForRange', () => {
+  it('never invents virtual occurrences that would open the parent plan', () => {
+    const root = makeSession({
+      id: 7,
+      date: '2026-05-01',
+      recurrence_rule: { frequency: 'WEEKLY', end_date: '2026-05-29' },
+    })
+    const entries = calendarSessionsForRange([root], '2026-05-01', '2026-05-31')
+    expect(entries.map((s) => `${s.id}@${s.occurrence_date}`)).toEqual(['7@2026-05-01'])
+    expect(entries[0]?.is_recurring).toBe(true)
   })
 
-  it('does not expand recurrence when generated children exist', () => {
-    const parent = makeSession({
-      id: 10,
-      recurrence_rule: {
-        frequency: 'WEEKLY',
-        end_date: '2026-05-22',
-      },
-    })
-    const child = makeSession({
-      id: 11,
-      date: '2026-05-08',
-      series_parent: 10,
-      recurrence_rule: null,
-    })
+  it('shows each stored occurrence with its own id, including moved ones', () => {
+    const series = 'b4b8c2e2-5f7f-4a5f-9a54-6f5d2a1c0b11'
+    const root = makeSession({ id: 1, series_uuid: series, recurrence_rule: { frequency: 'WEEKLY', end_date: '2026-05-31' } })
+    const moved = makeSession({ id: 3, date: '2026-05-09', original_date: '2026-05-08', series_parent: 1, series_uuid: series })
+    const child = makeSession({ id: 2, date: '2026-05-15', original_date: '2026-05-15', series_parent: 1, series_uuid: series })
+    const single = makeSession({ id: 9, date: '2026-05-15', start_time: '10:00' })
+    const entries = calendarSessionsForRange([child, single, root, moved], '2026-05-01', '2026-05-31')
+    expect(entries.map((s) => `${s.id}@${s.occurrence_date}`)).toEqual(['1@2026-05-01', '3@2026-05-09', '9@2026-05-15', '2@2026-05-15'])
+    expect(entries.map((s) => s.is_recurring)).toEqual([true, true, false, true])
+  })
 
-    const expanded = expandTrainingSessionsForRange([parent, child], '2026-05-01', '2026-05-31')
-
-    expect(expanded.map((s) => `${s.id}@${s.occurrence_date}`)).toEqual([
-      '10@2026-05-01',
-      '11@2026-05-08',
-    ])
-    expect(expanded[1]?.is_recurring).toBe(true)
+  it('filters by range and rejects inverted ranges', () => {
+    const sessions = [makeSession({ id: 1, date: '2026-04-30' }), makeSession({ id: 2, date: '2026-05-02' })]
+    expect(calendarSessionsForRange(sessions, '2026-05-01', '2026-05-31').map((s) => s.id)).toEqual([2])
+    expect(calendarSessionsForRange(sessions, '2026-06-01', '2026-05-01')).toEqual([])
   })
 })

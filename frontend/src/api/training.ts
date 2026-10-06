@@ -12,6 +12,8 @@ import type {
   LibraryBlockUsageSession,
   LibraryImportResult,
   PaginatedResponse,
+  SeriesPreview,
+  SeriesWindow,
   TrainingBlock,
   TrainingBlockCreate,
   TrainingBlockMove,
@@ -51,8 +53,11 @@ export const trainingSessionsApi = {
   handout(id: number) {
     return apiClient.get<TrainingSessionHandout>(`/training/sessions/${id}/handout/`)
   },
-  generateSeries(id: number) {
-    return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`)
+  seriesPreview(id: number, params?: SeriesWindow) {
+    return apiClient.get<SeriesPreview>(`/training/sessions/${id}/series_preview/`, { params })
+  },
+  generateSeries(id: number, data: SeriesWindow & { preview_token: string }) {
+    return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`, data)
   },
 }
 

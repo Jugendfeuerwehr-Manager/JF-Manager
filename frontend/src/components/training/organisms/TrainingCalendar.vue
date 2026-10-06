@@ -117,6 +117,8 @@
       <TrainingSessionForm :initial-data="prefillDate ? { date: prefillDate } as any : null" @success="onSessionCreated" @cancel="showCreate = false" />
     </Dialog>
 
+    <SeriesDialog v-model:visible="showSeries" :session-id="seriesSessionId" @generated="loadSessions" />
+
     <!-- Day detail panel -->
     <Dialog
       v-model:visible="showDayDetail"
@@ -165,11 +167,12 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
+import SeriesDialog from '../molecules/SeriesDialog.vue'
 import { useTrainingStore } from '@/stores/training'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
 import {
-  expandTrainingSessionsForRange,
+  calendarSessionsForRange,
   type TrainingCalendarSession,
 } from '../utils/recurrence'
 
@@ -186,6 +189,8 @@ const currentMonth = ref(today.getMonth()) // 0-based
 
 const showCreate = ref(false)
 const showDayDetail = ref(false)
+const showSeries = ref(false)
+const seriesSessionId = ref<number | null>(null)
 const prefillDate = ref<string | null>(null)
 const selectedCell = ref<CalendarCell | null>(null)
 
@@ -242,7 +247,7 @@ const visibleDateRange = computed(() => {
 })
 
 const displaySessions = computed(() =>
-  expandTrainingSessionsForRange(
+  calendarSessionsForRange(
     sessions.value,
     visibleDateRange.value.fromIso,
     visibleDateRange.value.toIso,
@@ -418,9 +423,15 @@ function goToPlanner(sessionId: number) {
   router.push(`/training/sessions/${sessionId}/plan`)
 }
 
-function onSessionCreated(_sessionId: number) {
+async function onSessionCreated(sessionId: number) {
   showCreate.value = false
-  loadSessions()
+  // A new recurring exercise only gets further dates through the explicit preview.
+  const recurring = !!trainingStore.sessions.find((s) => s.id === sessionId)?.recurrence_rule
+  await loadSessions()
+  if (recurring) {
+    seriesSessionId.value = sessionId
+    showSeries.value = true
+  }
 }
 
 function departmentMeta(sessionId: number): { label: string | null; color: string | null } {

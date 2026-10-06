@@ -22,7 +22,7 @@ function plan(): TrainingSessionDetail {
     id: 1, revision: 1, title: 'Plan', description: '', date: '2030-01-01',
     start_time: '18:00:00', end_time: '20:00:00', location: '', notes: '', groups: [],
     blocks: [block(1), block(2)], department: 1, linked_service_id: null,
-    linked_service_start: null, series_parent: null, recurrence_rule: null,
+    linked_service_start: null, series_parent: null, series_uuid: null, original_date: null, recurrence_rule: null,
     created_by: null, created_by_name: null, created_at: '', updated_at: '',
   }
 }

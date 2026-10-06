@@ -35,6 +35,8 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
             "groups",
             "block_count",
             "series_parent",
+            "series_uuid",
+            "original_date",
             "recurrence_rule",
             "department",
             "linked_service_id",
@@ -100,6 +102,8 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "group_ids",
             "blocks",
             "series_parent",
+            "series_uuid",
+            "original_date",
             "recurrence_rule",
             "department",
             "linked_service_id",
@@ -111,12 +115,23 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["revision", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["series_uuid", "original_date", "revision", "created_by", "created_at", "updated_at"]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         confirmed = attrs.pop("confirm_service_change", False)
         validate_workflow(self.instance, attrs, confirmed)
+        if "recurrence_rule" in attrs:
+            from training.series import validate_recurrence_rule
+
+            if attrs["recurrence_rule"] and getattr(self.instance, "series_parent_id", None):
+                raise serializers.ValidationError(
+                    {"recurrence_rule": "Die Wiederholungsregel wird am Serienursprung gepflegt."}
+                )
+            anchor = getattr(self.instance, "original_date", None) or attrs.get(
+                "date", getattr(self.instance, "date", None)
+            )
+            validate_recurrence_rule(attrs["recurrence_rule"], anchor)
         start = attrs.get("start_time", getattr(self.instance, "start_time", None))
         end = attrs.get("end_time", getattr(self.instance, "end_time", None))
         if start is not None and end is not None:
