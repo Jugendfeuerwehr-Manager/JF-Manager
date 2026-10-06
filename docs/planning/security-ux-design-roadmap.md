@@ -557,14 +557,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | TRAIN-03 | in Arbeit | Codex (TRAIN-Session) | TRAIN-03.0 Vertrag definiert; als Nächstes TRAIN-03.1 sichere Serienvorschau/-generierung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
 | DES-01 | in Arbeit | Claude (Design-Session) | DES-01.10b Planer-Raster, Bausteine und Bibliothek auf Tokens; offen DES-01.11 (Konsistenz, mit UX-01–08), DES-01.12 sowie Nutzerabnahme. |
-| UX-01 | offen | — | Dashboard-Zusammenfassungen und Aufgaben. |
-| UX-02 | offen | — | Mitglieder-/Eltern-/Gruppenabläufe. |
-| UX-03 | offen | — | Listen- und Ereignisansichten. |
-| UX-04 | offen | — | Dienstbuch und mobile Erfassung. |
-| UX-05 | offen | — | Inventar-/Bestellabläufe nach SEC-09. |
-| UX-06 | offen | — | Qualifikationen und Nachweise. |
-| UX-07 | offen | — | E-Mail-Prüfung, Auftrag und Versandstatus. |
-| UX-08 | offen | — | Sync-Vorschau und Profileinstellungen. |
+| UX-01 | geplant | Claude (Design-Session) | Teilschritte UX-01.1/2 festgelegt; nach UX-06. |
+| UX-02 | geplant | Claude (Design-Session) | Teilschritte UX-02.1–3 festgelegt. |
+| UX-03 | geplant | Claude (Design-Session) | Teilschritte UX-03.1/2 festgelegt. |
+| UX-04 | geplant | Claude (Design-Session) | UX-04.1 festgelegt; Grundlage DES-01.8. |
+| UX-05 | geplant | Claude (Design-Session) | UX-05.1 festgelegt; Grundlage SEC-09, DES-01.13a. |
+| UX-06 | in Arbeit | Claude (Design-Session) | Plan und Konsistenzvertrag angelegt; als Nächstes DES-01.11c, dann UX-06.1. |
+| UX-07 | geplant | Claude (Design-Session) | Teilschritte UX-07.1/2 festgelegt. |
+| UX-08 | geplant | Claude (Design-Session) | Teilschritte UX-08.1/2 festgelegt. |
 | OPS-01 | offen | — | Gemeinsamen Installationskern und Adapter festlegen. |
 | OPS-02 | offen | — | Assistent mit vollständiger Vorabprüfung. |
 | OPS-03 | offen | — | Einheitliche Host-CLI mit Menü und Unterbefehlen. |
@@ -1045,6 +1045,43 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Keine. Ab DES-01.10b Arbeit direkt im gemeinsamen Checkout (Nutzerwunsch: Worktree zusammenführen); `wip/des-01` hat keine eigenen Commits mehr, das Entfernen des Worktrees `../JF-Manager-des01` steht beim Nutzer aus. Nur eigene Dateien/Hunks stagen.
 - **Nächster konkreter Schritt:** Nutzervorgabe 06.10.2026: Schwerpunkt UX-01 bis UX-08 mit einheitlicher Umsetzung; dazu `DES-01.11` (feste Farben und Bausteine modulübergreifend, Einstellungskarten `SettingsCategoryCard`/`SettingsTextField`). Offener Befund aus DES-01.10b: Planerkopf bricht bei 390 px in vier Aktionszeilen um.
 
+### UX-01 bis UX-08: Modulabläufe mit einheitlicher Umsetzung
+
+- **Status:** UX-06 in Arbeit, übrige Pakete geplant.
+- **Verantwortlicher Agent:** Claude (Design-Session), im gemeinsamen Checkout; nur eigene Dateien/Hunks stagen.
+- **Abhängigkeiten:** DES-01.1–01.3 (Tokens, Shell, `OverviewHeader`, `StateView`, `StatusBadge`) abgeschlossen. Serverrechte bleiben maßgeblich (SEC-01/02, ROLE-01); neue Endpunkte nutzen die vorhandenen Bereichsfilter und erhalten Rechte-/Bereichstests. UX-05 baut auf SEC-09 auf, UX-07 auf SEC-04/SEC-08, UX-08 auf SEC-07. TRAIN-04 bleibt eigenes Paket.
+- **Gemeinsamer Konsistenzvertrag (gilt für jeden UX-Teilschritt, Abnahme je Ansicht):**
+  1. Seitenkopf `OverviewHeader` mit genau einer Hauptaktion; sekundäre Aktionen als Zweitknöpfe oder Menü, destruktive Aktionen nur mit Bestätigung und nie als Hauptaktion.
+  2. Laden, leer, keine Rechte und Fehler mit Wiederholen über `StateView`; fehlgeschlagene Änderungen erscheinen nie als gespeichert.
+  3. Zustände über `StatusBadge` (Symbol plus Text); Farben nur aus Tokens, PrimeVue-Schweregrad `warn`.
+  4. Mobil: Kartenliste statt Tabelle, 44-px-Flächen, Hauptaktion erreichbar; Desktop: Tabelle mit benannten Aktionen.
+  5. Feldfehler am Feld, ungespeicherte Änderungen beim Verlassen geschützt, stabile Direktlinks und Filter in der URL; keine personenbezogenen Suchinhalte in gespeicherten Präferenzen.
+  6. Neutrale Begriffe (keine jugendfeuerwehrspezifischen Texte, wo nicht fachlich).
+  7. Prüfung effizient: gezielte Vitest-/Backendtests je Teilschritt, Gesamtsuite vor jedem Commit; Sichtprüfung als Stichprobe (eine Desktop- und eine Mobilansicht, Dunkelmodus nur bei neuen Farbflächen) gegen Mock mit fiktiven Daten.
+- **Ratsche:** `DES-01.11c` führt einen Ratschen-Test über feste Farben in `src/**/*.vue` mit Obergrenze je Datei ein; jeder UX-Teilschritt senkt die Grenzen der angefassten Dateien.
+- **Teilschritte mit stabilen IDs:**
+  - `DES-01.11c`: Ratschen-Test feste Farben (Obergrenze je Datei, Ist-Stand als Ausgangswert).
+  - `UX-06.1`: Backend: Ablauffenster `expiring_within=30|60|90`, Filter „ohne Nachweis“, Zähler je Fenster in `statistics`; Bereichs-/Rechtetests.
+  - `UX-06.2`: Qualifikationsübersicht nach Konsistenzvertrag: Fenster 30/60/90 Tage als Umschalter in der URL, „Abgelaufen“, „Ohne Nachweis“, mobil Karten.
+  - `UX-06.3`: Verlängern (neue Qualifikation mit Vorbelegung, alte bleibt Historie) und Historie je Mitglied und Typ in der Detailansicht.
+  - `UX-01.1`: Dashboard-Zusammenfassungsendpunkt (nur Zähler, nach Recht und Abteilung) für kommende Dienste, offene Bestellungen, ablaufende Qualifikationen, offene Listen.
+  - `UX-01.2`: Dashboard „Nächste Aufgaben“ und Kennzahlen aus dem Endpunkt, Links in gefilterte Ansichten; keine Personenlisten nur zum Zählen.
+  - `UX-02.1`: Personenauswahlen ohne `AnonymousUser`/inaktive Konten.
+  - `UX-02.2`: Dublettenwarnung beim Anlegen (Name und Geburtsdatum), Eltern- und Gruppenansichten nach Konsistenzvertrag.
+  - `UX-02.3`: Gespeicherte Filter/Spalten je Benutzer und Abteilung (ohne Suchtexte).
+  - `UX-04.1`: Dienstbuch: offene Personen und Speicher-/Abgleichzustand über alle Einstiege; Statusbezeichnungen vereinheitlicht.
+  - `UX-03.1`: Listenübersicht nach Konsistenzvertrag, Vorschau von Sammelaktionen.
+  - `UX-03.2`: Versionskennung und Konfliktantwort beim Abhaken; Mitgliederereignisse vom Sicherheitsprotokoll getrennt.
+  - `UX-05.1`: Inventar/Bestellungen: verfügbar/ausgegeben/bestellt, geführte Ausgabe/Rücknahme mit Teilmengen und manueller Scanalternative, Statusverlauf.
+  - `UX-07.1`: E-Mail: Empfängerprüfung und sichere Vorschau vor dem Versand.
+  - `UX-07.2`: Versandauftrag im Hintergrund mit Idempotenzschlüssel, Teilergebnissen und Wiederholung nur fehlgeschlagener Zustellungen.
+  - `UX-08.1`: Sync: Änderungsvorschau, Konflikte, Laufhistorie.
+  - `UX-08.2`: Profil: Sitzungen, MFA und gerätebezogene Push-Einstellungen.
+- **Letzter dauerhafter Checkpoint:** Plan angelegt (dieser Commit).
+- **Ausgeführte Prüfungen mit Ergebnis:** Bestandsaufnahme: Qualifikationen, Listen, Gruppen, Protokoll, Eltern-Bearbeitung, Ausbildung und Verwaltung nutzen weder `OverviewHeader` noch `StateView` noch `StatusBadge`; feste Farben vor allem in `views` (153), `components/training` (47, überwiegend Handout/Druck), `members` (34), `admin` (29), `settings` (26). Backend kennt nur ein festes 30-Tage-Ablauffenster.
+- **Offene Fehler / Risiken:** Pakete mit Backend-Anteil (UX-01.1, UX-02.3, UX-03.2, UX-05.1, UX-07.2) berühren Dateien paralleler Sitzungen; vor Beginn `git status` auf fremde Änderungen prüfen.
+- **Nächster konkreter Schritt:** `DES-01.11c`, danach `UX-06.1`.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -1309,6 +1346,8 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | DES-01.9b | Nutzerangabe: Feuerwehren ohne Abteilungen sollen weiterhin Listen anlegen können. Produktentscheidung 1.1 und Listenregel in 2.1 um die Ausnahme „organisationsweite Liste“ ergänzt. Neues Feld `MemberList.organization_wide` (Migration `0033`, Prüfbedingung: nur ohne Abteilung) trennt sie von ungeklärten Altlisten (`department=NULL`, `organization_wide=False`), die weiterhin nur in der Superuser-Klärung erscheinen. Anlegen per Formular und `create_from_event_type` mit `department=null` nur ohne aktive Abteilung und nur für Superuser oder Organisationssicht mit globalem `add_memberlist`; Sicht, Änderung, Einträge, Anhänge, Export und Löschen nur mit Organisationssicht und globalem Aktionsrecht. Abteilungswechsel bleibt gesperrt; bestehende organisationsweite Listen bleiben nach Anlage erster Abteilungen nutzbar. Frontend: ohne aktive Abteilung kein Abteilungsfeld, sondern Hinweis „gilt für die gesamte Organisation“; fehlt das Recht, nennt der Hinweis die organisationsweite Listenberechtigung. Der Knopf „Abteilung anlegen“ aus DES-01.9a entfällt. Die Listenanlage aus dem Ereignis-Log sendet die Abteilung jetzt ausdrücklich im Inhalt; zuvor fehlte das Pflichtfeld, die Anlage schlug daher immer fehl. Fremde, uncommittete Änderungen der parallelen Sitzung (Python-3.12-Umstellung, CI, Pipfile) nicht gestaged. | 8/8 neue Backendtests, 50/50 Listen-/Migrationstests, volle Backend-Suite mit CI-Labels 631/631 auf SQLite (6 übersprungen; Stand einschließlich der inzwischen als SEC-10.6 committeten Python-3.12-Änderungen), Migrationsabgleich und Ruff bestanden. 3 neue/ersetzte Frontendtests, Gesamt-Typecheck, ESLint und 191/191 Frontendtests bestanden. PostgreSQL und Lauf gegen echtes Backend im Browser nicht ausgeführt. | Dieser Commit: `feat(DES-01.9b): let organizations without departments create lists` | Nutzerabnahme. |
 
 | 06.10.2026 | DES-01.10b | Abgleich mit dem Referenzentwurf „Übungsplaner“ im Design-Canvas. Bausteinkacheln: Nutzerfarbe nur noch als 14-%-Tönung und Rahmen über der Inhaltsfläche, Text immer in Themenschrift (vorher Rohfarbe mit 20 % Alpha und 2-px-Rahmen); ungültige Farbwerte werden verworfen (`utils/blockColor.ts`, nur `#rgb/#rrggbb`). Titel zweizeilig statt abgeschnitten, weil die ausgeblendeten Aktionsknöpfe die Titelbreite belegten; Aktionen liegen jetzt über der Ecke. Dauer als neutraler Text „25 Min.“ statt farbiger Abzeichen (lange Bausteine erschienen rot wie ein Fehler), Bibliothek ebenfalls neutral. Auswahl als Fokusrahmen, sichtbarer Tastaturfokus. Raster: neutraler Spaltenkopf statt rotem Strich, dünnere Stundenlinien, erste Zeitmarke nicht mehr unter dem Kopf. Bibliotheksleiste: Einträge per Tastatur einfügbar (`role=button`, Enter/Leertaste), benannte Symbolknöpfe und Filter, Suchsymbol, „Alle Kategorien“ sichtbar, Ziehvorschau und Abstände auf Tokens; Kategorieabzeichen mit Farbpunkt und lesbarer Schrift (gelbe Kategorien waren unlesbar). Editor-Ablagefläche ohne feste Farben. Ratschen-Test gegen feste Farben in den Planerdateien. | 6 neue Tests (Farbprüfung inkl. Kontrast für acht Extremfarben hell/dunkel, Kachelfarbe, Dauertext, Bibliothek per Tastatur und benannte Bedienelemente, Ratsche), Typecheck, ESLint, Build und 239/239 Frontendtests bestanden; Sichtprüfung gegen Mock mit fiktiven Daten 1440 px hell/dunkel und 390 px. Kein Lauf gegen echtes Backend. | Dieser Commit: `feat(DES-01.10b): put planner grid, blocks and library on design tokens` | UX-01–08 mit DES-01.11. |
+
+| 06.10.2026 | UX-Plan | Nutzervorgabe: neben dem Planer vor allem UX-01 bis UX-08 und eine einheitliche Umsetzung; Tests und Sichtprüfungen effizient. Detailblock „UX-01 bis UX-08“ mit gemeinsamem Konsistenzvertrag, Ratsche gegen feste Farben (`DES-01.11c`) und stabilen Teilschritt-IDs angelegt; Reihenfolge UX-06 → UX-01 → UX-02 → UX-04 → UX-03 → UX-05 → UX-07 → UX-08. Bestandsaufnahme im Detailblock. | Nur Planung; Code-/Git-Abgleich der Bestandsaufnahme bestanden. | Dieser Commit: `docs(UX-PLAN): plan module workflows with one consistency contract` | DES-01.11c, dann UX-06.1. |
 
 | 06.10.2026 | SEC-01.57a | Übernahme von SEC-01, SEC-02 und ROLE-01 durch Claude nach Abschluss von SEC-10 (Nutzerauftrag). Endpunktinventar: `AttendanceViewSet` nutzte DRFs `DjangoModelPermissions` – GET ohne Leserecht, Zieldienste nach bloßer Abteilungszuordnung, Abteilungsrollen (in `department_roles`, nicht `user.groups`) wirkungslos. Folgen: Nur-Dienst-Leserecht in B zeigte Anwesenheiten aus B; Leitungen mit Abteilungsrolle konnten über diese API nichts erfassen. Neu `AttendanceRolePermissions` (Objektprüfung an der Dienstabteilung, Sammelerfassung mit `change_attendance` wie das Anwesenheitsboard), Zieldienste nur aus Abteilungen mit Schreibrecht. Bestehender API-Test, der das Leck abbildete, erhält `view_attendance`. Ausgelieferte Rollen koppeln `view_service` bereits mit `view_attendance`. | 9 neue HTTP-Regressionen (6 vorher rot), 58/58 angrenzende Anwesenheits-/API-Tests, Ruff bestanden. | Dieser Commit: `fix(SEC-01.57a): scope the attendance API to department roles` | SEC-01.57b. |
 
