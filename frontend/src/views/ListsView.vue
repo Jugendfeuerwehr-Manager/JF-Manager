@@ -15,6 +15,22 @@
       </div>
     </div>
 
+    <div v-if="!departmentsStore.loading && createDepartments.length === 0 && createBlockReason" class="create-blocked" role="status">
+      <i class="pi pi-info-circle" aria-hidden="true"></i>
+      <div class="create-blocked__text">
+        <strong>{{ createBlockReason.title }}</strong>
+        <span>{{ createBlockReason.message }}</span>
+      </div>
+      <Button
+        v-if="createBlockReason.action"
+        :label="createBlockReason.action"
+        icon="pi pi-building"
+        severity="secondary"
+        outlined
+        @click="router.push({ path: '/users', query: { tab: 'departments' } })"
+      />
+    </div>
+
     <!-- Search -->
     <div v-if="store.lists.length > 0" class="search-bar">
       <span class="p-input-icon-left search-input-wrap">
@@ -271,6 +287,19 @@ function canWriteDepartment(departmentId: number, action: 'add' | 'change') {
 
 const activeDepartments = computed(() => departmentsStore.departments.filter((department) => department.is_active))
 const createDepartments = computed(() => activeDepartments.value.filter((department) => canWriteDepartment(department.id, 'add')))
+/** Explains a disabled "Neue Liste" instead of hiding the reason in a tooltip. */
+const createBlockReason = computed(() => {
+  if (departmentsStore.error) {
+    return { title: 'Abteilungen konnten nicht geladen werden', message: 'Ohne Abteilungen lassen sich keine Listen anlegen. Bitte lade die Seite neu.', action: '' }
+  }
+  if (!activeDepartments.value.length) {
+    return authStore.user?.is_superuser
+      ? { title: 'Lege zuerst eine Abteilung an', message: 'Jede Liste gehört zu genau einer Abteilung, damit nur Berechtigte ihre Mitglieder sehen. Es gibt noch keine aktive Abteilung.', action: 'Abteilung anlegen' }
+      : { title: 'Noch keine Abteilung eingerichtet', message: 'Jede Liste gehört zu genau einer Abteilung. Bitte wende dich an die Administration.', action: '' }
+  }
+  return { title: 'Keine Berechtigung zum Anlegen', message: 'Für deine Abteilungen ist das Anlegen von Listen nicht freigegeben.', action: '' }
+})
+
 const formDepartments = computed(() => {
   const allowed = activeDepartments.value.filter((department) =>
     canWriteDepartment(department.id, editingList.value ? 'change' : 'add'),
@@ -411,6 +440,33 @@ onMounted(() => {
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
+.create-blocked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+  margin-bottom: var(--jf-space-2);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  border: 1px solid var(--p-sky-200);
+  border-radius: var(--jf-radius-lg);
+  background: var(--p-sky-50);
+  color: var(--p-sky-900);
+}
+
+.app-dark .create-blocked {
+  border-color: color-mix(in srgb, var(--p-sky-400), transparent 60%);
+  background: color-mix(in srgb, var(--p-sky-400), transparent 88%);
+  color: var(--p-sky-100);
+}
+
+.create-blocked__text {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--jf-text-sm);
+}
+
 .page-header {
   display: flex;
   align-items: center;

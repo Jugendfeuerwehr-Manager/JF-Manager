@@ -330,7 +330,7 @@ const router = createRouter({
         },
         {
           path: 'departments',
-          redirect: '/users'
+          redirect: { path: '/users', query: { tab: 'departments' } }
         },
         {
           path: 'log',

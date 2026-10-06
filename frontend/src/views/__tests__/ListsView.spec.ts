@@ -106,4 +106,24 @@ describe('ListsView department-aware forms', () => {
     expect(wrapper.get('.dialog').attributes('data-visible')).toBe('false')
     wrapper.unmount()
   })
+
+  it('explains why lists cannot be created when no department exists and links to department setup', async () => {
+    departmentsStore.departments = []
+    const wrapper = render()
+    await flushPromises()
+    const notice = wrapper.get('.create-blocked')
+    expect(notice.attributes('role')).toBe('status')
+    expect(notice.text()).toContain('Lege zuerst eine Abteilung an')
+    expect((wrapper.findAll('button').find((button) => button.text() === 'Neue Liste')!.element as HTMLButtonElement).disabled).toBe(true)
+    await notice.findAll('button').find((button) => button.text() === 'Abteilung anlegen')!.trigger('click')
+    expect(push).toHaveBeenCalledWith({ path: '/users', query: { tab: 'departments' } })
+    wrapper.unmount()
+  })
+
+  it('shows no notice when an allowed department exists', async () => {
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.find('.create-blocked').exists()).toBe(false)
+    wrapper.unmount()
+  })
 })
