@@ -17,7 +17,6 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@monaco-editor/loader": "^1.7.0",
     "@primeuix/themes": "^1.2.5",
     "@tiptap/extension-color": "^3.31.4",
     "@tiptap/extension-dropcursor": "^3.31.4",
