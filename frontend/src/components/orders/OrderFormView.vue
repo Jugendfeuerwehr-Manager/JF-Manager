@@ -15,6 +15,12 @@
       </template>
       <template #content>
         <form @submit.prevent="handleSubmit">
+          <Message v-if="memberChoices.error.value" severity="error" :closable="false">{{ memberChoices.error.value }}</Message>
+          <div v-if="!isEdit" class="field">
+            <label for="order-department">Abteilung *</label>
+            <Dropdown id="order-department" v-model="formData.department" :options="memberDepartments" optionLabel="name" optionValue="id" placeholder="Abteilung auswählen" class="w-full" />
+            <small v-if="errors.department" class="p-error">{{ errors.department }}</small>
+          </div>
           <!-- Member Selection -->
           <div class="field">
             <label for="member">Mitglied *</label>
@@ -159,9 +165,11 @@ import Dropdown from 'primevue/dropdown'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
+import Message from 'primevue/message'
 import { useOrdersStore } from '@/stores/orders'
 import { useOrderableItemsStore } from '@/stores/orderableItems'
-import { useMembersStore } from '@/stores/members'
+import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
+import { useDepartmentsStore } from '@/stores/departments'
 import type { OrderCreate } from '@/types/orders'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -179,19 +187,26 @@ const emit = defineEmits<{
 const router = useRouter()
 const ordersStore = useOrdersStore()
 const itemsStore = useOrderableItemsStore()
-const membersStore = useMembersStore()
+const memberChoices = useRoleMemberOptions('orders')
+const departments = useDepartmentsStore()
 const toast = useToast()
 
 const loading = ref(false)
 const errors = ref<Record<string, string>>({})
-const members = computed(() => membersStore.members)
+const members = memberChoices.members
 
 const formData = ref<OrderCreate>({
   member: props.initialMemberId || 0,
   notes: '',
+  department: departments.activeDepartmentId ?? undefined,
   items: []
 })
 
+const memberDepartments = computed(() => {
+  const selected = members.value.find(member => member.id === formData.value.member)
+  const allowed = selected?.department_ids ?? [...new Set(members.value.flatMap(member => member.department_ids))]
+  return departments.departments.filter(department => department.is_active && allowed.includes(department.id))
+})
 const isEdit = computed(() => !!props.orderId)
 const orderableItems = computed(() => itemsStore.items.filter(i => i.is_active))
 
@@ -223,6 +238,7 @@ function removeItem(index: number) {
 function validate(): boolean {
   errors.value = {}
   
+  if (!props.orderId && !formData.value.department) errors.value.department = 'Abteilung auswählen'
   if (!formData.value.member) {
     errors.value.member = 'Bitte Mitglied auswählen'
   }
@@ -295,7 +311,7 @@ async function handleSubmit() {
 
 async function loadMembers() {
   try {
-    await membersStore.fetchMembers({ limit: 1000 })
+    await memberChoices.load()
   } catch {
     toast.add({
       severity: 'error',

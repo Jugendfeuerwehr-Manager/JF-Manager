@@ -95,6 +95,7 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ["item", "size", "quantity", "status", "notes"]
+        extra_kwargs = {"status": {"required": False}}
 
     def validate_quantity(self, value):
         """Ensure quantity is positive"""
@@ -179,7 +180,23 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
                         {"receipt_location": "Bitte einen Lagerort für den Wareneingang wählen."}
                     )
                 inventory_item = instance.item.inventory_item
-                if not can_manage_department(user, inventory_item.department_id, "inventory.add_transaction") or (
+                order_receipt = (
+                    can_manage_department(user, instance.order.department_id, "orders.can_receive_order")
+                    and inventory_item.department_id == instance.order.department_id
+                    and location.department_id == inventory_item.department_id
+                    and not location.is_member
+                )
+                central_receipt = (
+                    is_org_wide_user(user)
+                    and user.has_perm("orders.can_receive_order")
+                    and inventory_item.department_id is None
+                    and location.department_id is None
+                    and not location.is_member
+                )
+                inventory_receipt = can_manage_department(
+                    user, inventory_item.department_id, "inventory.add_transaction"
+                )
+                if not (order_receipt or central_receipt or inventory_receipt) or (
                     not is_org_wide_user(user)
                     and not is_location_allowed_for_item_department(location, inventory_item.department_id)
                 ):

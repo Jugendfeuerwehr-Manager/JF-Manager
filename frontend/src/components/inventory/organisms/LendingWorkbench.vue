@@ -1,5 +1,6 @@
 <template>
   <div class="lending-workbench">
+    <Message v-if="memberChoices.error.value" severity="error" :closable="false">{{ memberChoices.error.value }}</Message>
     <div class="workbench-grid">
       <!-- Left: Ausgabe-Formular -->
       <Card class="form-card">
@@ -258,12 +259,12 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { useInventoryStore } from '@/stores/inventory'
-import { useMembersStore } from '@/stores/members'
+import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import StockBadge from '../atoms/StockBadge.vue'
 import type { BatchLoanResponse } from '@/types/inventory'
 
 const inventoryStore = useInventoryStore()
-const membersStore = useMembersStore()
+const memberChoices = useRoleMemberOptions('inventory')
 const toast = useToast()
 
 const loading = ref(false)
@@ -294,7 +295,7 @@ function createLine(itemId: number | null = null): LoanLine {
 const lines = ref<LoanLine[]>([createLine()])
 
 const memberOptions = computed(() =>
-  membersStore.members.map((member) => ({ value: member.id, label: member.full_name }))
+  memberChoices.members.value.map((member) => ({ value: member.id, label: member.full_name }))
 )
 
 const itemOptions = computed(() =>

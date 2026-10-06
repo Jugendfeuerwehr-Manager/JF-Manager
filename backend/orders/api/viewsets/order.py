@@ -78,6 +78,15 @@ class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             return OrderUpdateSerializer
         return OrderSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            OrderDetailSerializer(serializer.instance, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )
+
     def perform_create(self, serializer):
         """Create order and send notification"""
         order = serializer.save()

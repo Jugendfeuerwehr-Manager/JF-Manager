@@ -6,6 +6,7 @@
     modal
     :closable="!loading"
   >
+    <Message v-if="memberChoices.error.value" severity="error" :closable="false">{{ memberChoices.error.value }}</Message>
     <div class="quick-loan-form">
       <div class="field">
         <label>An wen wird ausgeliehen? *</label>
@@ -102,7 +103,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useInventoryStore } from '@/stores/inventory'
-import { useMembersStore } from '@/stores/members'
+import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import { useToast } from 'primevue/usetoast'
 
 interface Props {
@@ -124,7 +125,7 @@ const emit = defineEmits<{
 }>()
 
 const inventoryStore = useInventoryStore()
-const membersStore = useMembersStore()
+const memberChoices = useRoleMemberOptions('inventory')
 const toast = useToast()
 
 const loading = ref(false)
@@ -147,7 +148,7 @@ const visible = computed({
 })
 
 const memberOptions = computed(() => {
-  return membersStore.members.map((member) => ({ value: member.id, label: member.full_name }))
+  return memberChoices.members.value.map((member) => ({ value: member.id, label: member.full_name }))
 })
 
 const itemOptions = computed(() => {
@@ -234,7 +235,7 @@ watch(
         ? inventoryStore.items.filter((item) => item.is_standard_item).map((item) => createLine(item.id))
         : [createLine(props.preselectedItem)]
       note.value = ''
-      if (membersStore.members.length === 0) await membersStore.fetchMembers({ limit: 1000 })
+      if (memberChoices.members.value.length === 0) await memberChoices.load()
     }
   }
 )

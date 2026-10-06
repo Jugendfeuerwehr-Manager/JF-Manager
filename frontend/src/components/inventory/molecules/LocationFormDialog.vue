@@ -6,6 +6,7 @@
     modal
     :closable="!loading"
   >
+    <Message v-if="memberChoices.error.value" severity="error" :closable="false">{{ memberChoices.error.value }}</Message>
     <div class="location-form">
       <div class="field">
         <label for="name">Name *</label>
@@ -69,13 +70,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
+import Message from 'primevue/message'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
 import Divider from 'primevue/divider'
 import Button from 'primevue/button'
 import { useInventoryStore } from '@/stores/inventory'
-import { useMembersStore } from '@/stores/members'
+import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import { useToast } from 'primevue/usetoast'
 import type { StorageLocation, StorageLocationCreate, StorageLocationUpdate } from '@/types/inventory'
 
@@ -96,7 +98,7 @@ const emit = defineEmits<{
 }>()
 
 const inventoryStore = useInventoryStore()
-const membersStore = useMembersStore()
+const memberChoices = useRoleMemberOptions('inventory')
 const toast = useToast()
 
 const loading = ref(false)
@@ -137,7 +139,7 @@ const parentOptions = computed(() => {
     }))
 })
 
-const memberOptions = computed(() => membersStore.memberOptions)
+const memberOptions = computed(() => memberChoices.memberOptions.value)
 
 // Initialize form from props
 watch(
@@ -145,8 +147,8 @@ watch(
   async (newVal) => {
     if (newVal) {
       // Load members if not loaded
-      if (membersStore.members.length === 0) {
-        await membersStore.fetchMembers({ limit: 1000 })
+      if (memberChoices.members.value.length === 0) {
+        await memberChoices.load()
       }
 
       if (props.location) {

@@ -26,6 +26,7 @@ class Order(models.Model):
         verbose_name = "Bestellung"
         verbose_name_plural = "Bestellungen"
         permissions = (
+            ("can_receive_order", "Kann Bestell-Wareneingänge buchen"),
             ("can_manage_orders", "Kann Bestellungen verwalten"),
             ("can_change_order_status", "Kann Bestellstatus ändern"),
         )

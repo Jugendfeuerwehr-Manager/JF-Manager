@@ -85,12 +85,14 @@ PERMISSION_BLOCKS = {
         "qualifications.view_specialtasktype",
     ),
     "inventory_reader": (
+        "inventory.view_category",
         "inventory.view_item",
         "inventory.view_itemvariant",
         "inventory.view_storagelocation",
         "inventory.view_stock",
     ),
     "inventory_editor": (
+        "inventory.view_category",
         "inventory.view_item",
         "inventory.add_item",
         "inventory.change_item",
@@ -104,6 +106,7 @@ PERMISSION_BLOCKS = {
         "inventory.add_stock",
         "inventory.view_transaction",
         "inventory.add_transaction",
+        "inventory.change_transaction",
         "inventory.can_rent",
     ),
     "order_editor": (
@@ -111,6 +114,7 @@ PERMISSION_BLOCKS = {
         "orders.add_order",
         "orders.change_order",
         "orders.can_manage_orders",
+        "orders.can_receive_order",
         "orders.can_change_order_status",
         "orders.view_orderitem",
         "orders.add_orderitem",
@@ -227,6 +231,7 @@ ROLE_SPECS = (
         "department",
         True,
         _permissions("inventory_editor"),
+        version=2,
     ),
     RoleSpec(
         "inventory_manager_organization",
@@ -235,6 +240,7 @@ ROLE_SPECS = (
         "organization",
         True,
         _permissions("inventory_editor", "organization_scope"),
+        version=2,
     ),
     RoleSpec(
         "order_manager",
@@ -243,6 +249,7 @@ ROLE_SPECS = (
         "department",
         True,
         _permissions("order_editor", "inventory_reader"),
+        version=2,
     ),
     RoleSpec(
         "order_manager_organization",
@@ -251,6 +258,7 @@ ROLE_SPECS = (
         "organization",
         True,
         _permissions("order_editor", "inventory_reader", "organization_scope"),
+        version=2,
     ),
     RoleSpec(
         "email_communicator",
