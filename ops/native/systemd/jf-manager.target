@@ -1,0 +1,7 @@
+[Unit]
+Description=JF-Manager (alle Anwendungsdienste)
+Wants=jf-manager-web.service jf-manager-worker.service jf-manager-push.service jf-manager-nginx.service
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target

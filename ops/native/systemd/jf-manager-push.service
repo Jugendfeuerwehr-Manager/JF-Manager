@@ -1,0 +1,33 @@
+[Unit]
+Description=JF-Manager Push-Worker
+PartOf=jf-manager.target
+After=jf-manager-web.service postgresql.service
+Requires=postgresql.service
+
+[Service]
+Environment=DJANGO_SETTINGS_MODULE=jf_manager_backend.docker_settings PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=@ETC@/app.env
+EnvironmentFile=@ETC@/native.env
+User=jfmanager
+Group=jfmanager
+WorkingDirectory=@OPT@/current/backend
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+ReadWritePaths=@DATA@/uploads @DATA@/static
+ExecStart=@OPT@/current/venv/bin/python manage.py send_push --loop
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=jf-manager.target

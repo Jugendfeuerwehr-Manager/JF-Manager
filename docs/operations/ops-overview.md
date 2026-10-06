@@ -66,3 +66,23 @@ Das Frontend-Image vertraut ohne eingebundene Datei weiterhin jedem Absender (bi
 ## Gepinnte Laufzeitkomponenten
 
 `backend/requirements-server.txt` legt uWSGI und den optionalen MySQL-Treiber mit Version und Prüfsumme fest; Image und natives Releasepaket installieren daraus. Anwendungsabhängigkeiten kommen unverändert aus `backend/Pipfile.lock`.
+
+## Debian 13 nativ
+
+Gleicher Aufbau ohne Container. Debian liefert PostgreSQL 17, Redis, Nginx und Caddy; die Anwendung läuft in einer Python-Umgebung je Release (`/opt/jf-manager/releases/<version>/venv`), installiert ausschließlich aus `backend/requirements.lock.txt` (aus `Pipfile.lock` erzeugt) und `requirements-server.txt`, jeweils mit `--require-hashes`.
+
+| Unit | Aufgabe |
+| --- | --- |
+| `jf-manager.target` | Fasst die Anwendungsdienste zusammen |
+| `jf-manager-web.service` | uWSGI an `127.0.0.1:8000`; prüft vorher `check --deploy` und sammelt statische Dateien |
+| `jf-manager-worker.service` | `rqworker default` |
+| `jf-manager-push.service` | Web-Push-Auslieferung |
+| `jf-manager-nginx.service` | Eigene Nginx-Instanz (`/etc/jf-manager/nginx/`), erzeugt aus derselben Konfiguration wie das Frontend-Image; der Debian-Standarddienst `nginx.service` wird deaktiviert |
+| `caddy.service` | Nur bei integriertem HTTPS; `/etc/caddy/Caddyfile` erzeugt `jfctl` |
+| `postgresql.service`, `redis-server.service` | Debian-Pakete, nur lokal erreichbar |
+
+Die Anwendungsdienste laufen als Systembenutzer `jfmanager` mit systemd-Härtung (`ProtectSystem=strict`, nur Uploads und statische Dateien beschreibbar). Infrastrukturwerte stehen in `/etc/jf-manager/native.env` (von `jfctl` erzeugt). Debian 13 bringt Python 3.13 mit, das Container-Image nutzt 3.12; beide Versionen werden von Django 5.2 unterstützt.
+
+## Proxmox-LXC
+
+`ops/proxmox/jf-lxc.sh` läuft auf dem Proxmox-Host, legt einen unprivilegierten Debian-13-Container an und führt darin denselben nativen Installationskern aus. Auf dem Host selbst werden keine Anwendungsdienste installiert (siehe [ops-install.md](ops-install.md)).

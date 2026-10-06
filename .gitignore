@@ -41,6 +41,8 @@ dist/
 downloads/
 eggs/
 lib/
+# jfctl libraries (OPS) are sources, not a Python build directory
+!ops/lib/
 lib64/
 parts/
 sdist/
