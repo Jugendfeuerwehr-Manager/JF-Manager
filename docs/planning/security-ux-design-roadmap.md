@@ -18,7 +18,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
 | Letzter Roadmap-Commit | TRAIN-Integration (3558df0 übernommen; dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | TRAIN: TRAIN-03 sicheren Serien-/Vorlagenvertrag vor Paketbeginn ausfüllen; parallel ROLE: aktuellen ROLE-Checkpoint beachten. |
+| Nächster konkreter Schritt | TRAIN: TRAIN-03.1 sichere Serienvorschau/-generierung; parallel ROLE: aktuellen ROLE-Checkpoint beachten. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
 | Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
 
@@ -554,7 +554,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | abgeschlossen | Codex (TRAIN-Session) | TRAIN-01.0–01.5c integriert; 41 TRAIN-Tests auf PostgreSQL 15, Frontend-/Browser-/PDFabnahme bestanden. TRAIN-02–04 bleiben eigene Pakete. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
-| TRAIN-03 | offen | — | Verlustfreie Serien, Vorlagen und Dienstverknüpfung. |
+| TRAIN-03 | in Arbeit | Codex (TRAIN-Session) | TRAIN-03.0 Vertrag definiert; als Nächstes TRAIN-03.1 sichere Serienvorschau/-generierung. |
 | TRAIN-04 | offen | — | Mobile Durchführung, Handout und Nachbereitung. |
 | DES-01 | in Arbeit | Claude (Design-Session) | DES-01.7 bis DES-01.9b und DES-01.10a umgesetzt; offen DES-01.10b, DES-01.11, DES-01.12 sowie Nutzerabnahme der umgebauten Abläufe. |
 | UX-01 | offen | — | Dashboard-Zusammenfassungen und Aufgaben. |
@@ -973,6 +973,26 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 - **TRAIN-01.5c-Abnahme:** 41/41 TRAIN-Backendtests auf PostgreSQL 15, 227/227 Frontendtests, Typecheck, gezieltes ESLint, Produktionsbuild und Ruff bestanden. Browser: veröffentlichen/speichern, Formularinhalt/Zeit, Tastatur/Undo, echter Versionskonflikt mit erhaltenem Entwurf, Serverstand, Handout/PDF, 390-Pixel-Durchführung/Bearbeitungsformular sowie reine Lesedetails bestanden. PDF mit PDFKit visuell geprüft. Gesamter PostgreSQL-Lauf: 700 Tests, ein ROLE-Test fehlgeschlagen (`UserDepartmentRoleAdminTest.test_staff_can_list_roles`), alle TRAIN-Tests bestanden. Zwischenstände: fremder doppelter Inventory-Import blockierte zunächst Build; nach fremder Korrektur bestanden. Eigener Calendar-Parsingfehler vor Commit korrigiert; Typecheck/ESLint anschließend bestanden.
 
+### TRAIN-03: Vorlagen und sichere Serien
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Codex (TRAIN-Session); andere ROLE-/UX-Änderungen bleiben erhalten.
+- **Abhängigkeiten:** TRAIN-01 atomarer Plan-/Versions-/Statusvertrag und ROLE-01.7a tatsächliche Abteilungsrechte; bestehende Inhalts-/Medienprüfung. Ressourcenfelder aus TRAIN-02 bei der späteren Erweiterung in Kopien einbeziehen.
+- **Ziel und Abnahme:** Ganze Übungen und Bausteine unabhängig kopieren/als Vorlage übernehmen. Serien besitzen stabile Identität und ursprüngliches Datum. Generierung ergänzt fehlende Termine, erhält vorhandene Identitäten, Pläne, Dienste und Anwesenheiten. Monatsanker kehrt nach Monatsletzten zum ursprünglichen Tag zurück. Vorschau maximal 200 Vorkommen/24 Monate; unbekannte Frequenzen und ungültige Grenzen werden vor Änderungen abgewiesen. Explizites „dieser und folgende“ erhält vergangene, abgeschlossene und abweichende Termine standardmäßig. Vorschau und Übernahme verwenden aktuelle Planversionen; kein stilles Überschreiben. Frontend zeigt vollständige Vorschau und echte gespeicherte Termine; keine virtuellen Einträge, die auf den falschen Elterntermin führen.
+- **Dateiverantwortung:** `backend/training/`, zugehörige Trainingsmigrationen/-tests, Frontend-Trainings-API/Typen/Stores, Kalender-/Planer-/Vorlagendialoge und Trainingsdokumentation. Keine fremden Rollen-/Inventar-/Bestelldateien stagen.
+- **Teilschritte mit stabilen IDs:**
+  - `TRAIN-03.0`: Detailvertrag, Abnahme und Wiederaufnahme festhalten.
+  - `TRAIN-03.1`: Stabile Serienidentität und ursprünglicher Terminbezug migrieren; zerstörungsfreie, begrenzte Generierung mit Monatsanker und versionierter vollständiger Vorschau; Frontenddialog und echte Kalendertermine.
+  - `TRAIN-03.2`: Ausdrückliches „dieser und folgende“ mit Vorschau, Versionsprüfung, Erhalt abweichender/historischer Termine und stabiler Dienstidentität.
+  - `TRAIN-03.3`: Ganze Übungen als Vorlage speichern und unabhängig kopieren, vorhandene Bausteinvorlagen unabhängig übernehmen; Medien-/Anhangkopien dürfen nicht auf später entfernte Quelldateien angewiesen sein. Vollständige Frontendaktionen.
+  - `TRAIN-03.4`: Regressionen auf PostgreSQL 15, Frontend-/Browserprüfung und Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** TRAIN-03.0, dieser Commit.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Prüfungen:** Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests für diesen Dokumentationsschritt nicht ausgeführt. TRAIN-01 ist bei `a07d9bb` abgeschlossen.
+- **Offene Fehler / Risiken:** Bisheriger `generate_series` löscht Kinder und Monatsserien verlieren ihren ursprünglichen Tag. Virtuelle Frontendtermine führen zum Elternplan. Altserien müssen konservativ migriert werden, ohne automatisch bestehende Pläne neu zu erzeugen. Dateikopien außerhalb der DB benötigen Fehler-/Aufräumstrategie.
+- **Laufende Prozesse:** Synthetische Django-/Vite-Browserumgebung (18081/15173) und Wegwerf-PostgreSQL 15 (55438) aus TRAIN-01; keine produktiven Daten ändern.
+- **Nächster konkreter Schritt:** TRAIN-03.1 implementieren.
+
 ### DES-01: Gemeinsames Designsystem
 
 - **Status:** in Arbeit.
@@ -1328,3 +1348,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | ROLE-02.2b | Anonymisierung bleibt initial nicht delegierbar. Externe LDAP-/OIDC-Rollenzuweisung verlangt neben Konfigurationsrechten das ausdrückliche Zuweisungsrecht. Rollenübernahme sperrt alle beteiligten Gruppen geordnet; direkte administrative Gruppenänderungen verwenden dieselbe Sperre. Zwei alte Bereichstests an den verbindlichen Rechtevertrag angepasst (Staff allein verboten, fremder Trainingsentwurf verborgen). | 105/105 gezielte Tests und Ruff bestanden. Erstlauf mit falschem Testmodulpfad fehlgeschlagen, korrigiert und bestanden. ROLE-01.7c Typecheck fand doppelten Import, vor Commit korrigiert; abschließender Typecheck bestanden. Breite Suite/Build/Browserprüfung noch in Arbeit. | Dieser Commit: `fix(ROLE-02.2b): enforce external assignment and delegation boundaries` | ROLE-01.7b. |
 
 | 06.10.2026 | TRAIN-01.5c | Adminformulare prüfen erwartete Revision, Zeitrahmen, Gruppen und dokumentierte Dienste; Änderungen/Blocklöschungen erhöhen Planversionen. Frontend folgt tatsächlicher Leseberechtigung; sichere mobile Formulare, benannte Felder, Gruppenpagination, Fehler-/Ladewiederholung und vollständiger Status-/PDFversionsstand. Browserabnahme mit ausschließlich synthetischen Daten dokumentiert. | 41/41 TRAIN-Tests auf PostgreSQL 15, 227/227 Frontendtests, Typecheck, gezieltes ESLint, Ruff und Build bestanden. Browser-/PDF-/390-Pixel-Prüfung bestanden. Gesamt-Backendlauf: 700 Tests, ein unabhängiger ROLE-Test fehlgeschlagen; TRAIN bestanden. Manueller Offline-/Touch-Hardwarelauf nicht ausgeführt; automatisierte Regressionen bestanden. | Dieser Commit: `feat(TRAIN-01.5c): complete admin and frontend planner acceptance` | TRAIN-03-Vertrag und sichere Serien. |
+
+| 06.10.2026 | TRAIN-03.0 | Vertrag für stabile Serienidentität, konservative Altdatenübernahme, verlustfreie Generierung, begrenzte/versionierte Vorschau, Erhalt historischer/abweichender Termine, unabhängige Vorlagenkopien und vollständigen Frontendablauf festgelegt. | Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(TRAIN-03.0): define safe series and independent template acceptance` | TRAIN-03.1. |
