@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# jfctl – Installation und Betrieb von JF-Manager (Docker Compose oder Debian 13 nativ).
+# Dokumentation: docs/operations/ops-jfctl.md
+set -Eeuo pipefail
+umask 027
+
+JFCTL_SELF=$(readlink -f "${BASH_SOURCE[0]}")
+JFCTL_HOME=$(dirname "$JFCTL_SELF")
+JFCTL_VERSION=$(jq -r '.version // empty' "$JFCTL_HOME/../MANIFEST.json" 2>/dev/null || true)
+: "${JFCTL_VERSION:=dev}"
+
+# shellcheck source=lib/common.sh
+. "$JFCTL_HOME/lib/common.sh"
+# shellcheck source=lib/release.sh
+. "$JFCTL_HOME/lib/release.sh"
+for _lib in basic maintenance backup restore update install migrate menu; do
+    # shellcheck source=/dev/null
+    [ -f "$JFCTL_HOME/lib/$_lib.sh" ] && . "$JFCTL_HOME/lib/$_lib.sh"
+done
+unset _lib
+
+load_adapter() {
+    case "${JF_MODE:-}" in
+        compose) . "$JFCTL_HOME/lib/adapter-compose.sh" ;;
+        native)  . "$JFCTL_HOME/lib/adapter-native.sh" ;;
+        *) die "$EX_USAGE" "Unbekannter Betriebsmodus '${JF_MODE:-}' (compose oder native)." ;;
+    esac
+}
+
+usage() {
+    cat <<'EOF'
+jfctl – Installation und Betrieb von JF-Manager
+
+Aufruf: jfctl [Optionen] <Befehl> [Argumente]
+Ohne Befehl öffnet sich ein Menü.
+
+Befehle:
+  install [--answers DATEI] [--expert]   Installation oder Wiederherstellung (Assistent)
+  status                                 Version, Dienste, letzte Sicherung
+  doctor                                 Prüft Installation, Dienste, Speicher, Schlüssel
+  start | stop | restart                 Anwendung starten/stoppen
+  logs [dienst] [-f] [-n ZEILEN]         Bereinigte Protokolle
+  update --version X.Y.Z                 Geprüfter Releasewechsel mit Sicherung
+  backup create | list | verify [ID]     Verschlüsselte Sicherungen (Restic)
+  restore <backup-id> [--confirm NAME]   Wiederherstellung mit Vorabprüfung
+  config [show | set KEY WERT | edit]    Betriebsangaben anzeigen/ändern
+  admin bootstrap | recover              Erstes Administratorkonto / Zugang wiederherstellen
+  workers hold | release | status        Hintergrundaufträge anhalten/freigeben
+  maintenance list | run AUFGABE         Wiederkehrende Wartung (über systemd-Timer)
+  migrate legacy-compose --from VERZ.    Alte Compose-Installation übernehmen
+  version                                Version von jfctl
+
+Optionen:
+  -y, --yes             Ja/Nein-Fragen bejahen (nie für Datenersetzung)
+  --non-interactive     Keine Rückfragen; fehlende Pflichtangaben sind Fehler
+  -h, --help            Diese Hilfe
+
+Rückgabecodes: 0 ok, 1 Fehler, 2 Aufruf, 3 Vorabprüfung, 4 gesperrt,
+5 abgebrochen, 6 Prüfung nach Änderung fehlgeschlagen, 7 zurückgerollt,
+8 nicht installiert.
+EOF
+}
+
+main() {
+    local args=()
+    while [ $# -gt 0 ]; do
+        case $1 in
+            -y|--yes) JF_ASSUME_YES=1; shift ;;
+            --non-interactive) JF_NONINTERACTIVE=1; shift ;;
+            -h|--help) usage; return 0 ;;
+            *) args+=("$1"); shift ;;
+        esac
+    done
+    set -- "${args[@]+"${args[@]}"}"
+    if [ $# -eq 0 ]; then
+        if [ -t 0 ] && [ "$JF_NONINTERACTIVE" != 1 ] && declare -F cmd_menu >/dev/null; then cmd_menu; return; fi
+        usage; return "$EX_USAGE"
+    fi
+    local cmd=$1; shift
+    _log_file "CMD   jfctl $cmd $*"
+    case $cmd in version|help) ;; *)
+        declare -F "cmd_$cmd" >/dev/null || { err "Unbekannter Befehl: $cmd"; usage >&2; return "$EX_USAGE"; } ;;
+    esac
+    case $cmd in
+        install)     cmd_install "$@" ;;
+        status)      cmd_status "$@" ;;
+        doctor)      cmd_doctor "$@" ;;
+        start)       cmd_start "$@" ;;
+        stop)        cmd_stop "$@" ;;
+        restart)     cmd_restart "$@" ;;
+        logs)        cmd_logs "$@" ;;
+        update)      cmd_update "$@" ;;
+        backup)      cmd_backup "$@" ;;
+        restore)     cmd_restore "$@" ;;
+        config)      cmd_config "$@" ;;
+        admin)       cmd_admin "$@" ;;
+        workers)     cmd_workers "$@" ;;
+        maintenance) cmd_maintenance "$@" ;;
+        migrate)     cmd_migrate "$@" ;;
+        version)     echo "jfctl $JFCTL_VERSION" ;;
+        help)        usage ;;
+        *) err "Unbekannter Befehl: $cmd"; usage >&2; return "$EX_USAGE" ;;
+    esac
+}
+
+main "$@"
