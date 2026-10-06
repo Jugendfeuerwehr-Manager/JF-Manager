@@ -8,4 +8,4 @@ class SettingsManagerConfig(AppConfig):
 
     def ready(self):
         # Import signal handlers
-        pass
+        from . import role_mapping_signals  # noqa: F401

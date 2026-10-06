@@ -157,7 +157,20 @@ class AuthGroupMiniSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-class LDAPDepartmentRoleMappingSerializer(serializers.ModelSerializer):
+class RoleMappingValidation:
+    def validate(self, attrs):
+        from departments.assignment_sources import valid_mapping_group
+
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        groups = attrs.get("auth_groups", self.instance.auth_groups.all() if self.instance else [])
+        if not groups or any(not valid_mapping_group(group, getattr(department, "pk", None)) for group in groups):
+            raise serializers.ValidationError(
+                {"auth_group_ids": "Aktive Rollenvorlagen des gewählten Bereichs sind erforderlich."}
+            )
+        return attrs
+
+
+class LDAPDepartmentRoleMappingSerializer(RoleMappingValidation, serializers.ModelSerializer):
     """Serializer for LDAP group → Department role mappings"""
 
     department_name = serializers.CharField(source="department.name", read_only=True)
@@ -230,7 +243,7 @@ class OIDCDiscoveryResultSerializer(serializers.Serializer):
     claims_supported = serializers.ListField(child=serializers.CharField(), required=False)
 
 
-class OIDCGroupMappingSerializer(serializers.ModelSerializer):
+class OIDCGroupMappingSerializer(RoleMappingValidation, serializers.ModelSerializer):
     """Serializer for OIDC group → Department role mappings"""
 
     department_name = serializers.CharField(source="department.name", read_only=True)

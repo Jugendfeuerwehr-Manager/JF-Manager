@@ -50,3 +50,77 @@ def set_local_groups(user, department_id, groups):
             user=user, department_id=department_id, group_id=group_id, source="local", source_key=""
         )
     project_sources(user, department_id)
+
+
+def valid_mapping_group(group, department_id, *, allow_archived=False):
+    template = getattr(group, "role_template", None)
+    return bool(
+        template
+        and (allow_archived or not template.is_archived)
+        and template.scope == ("organization" if department_id is None else "department")
+    )
+
+
+@transaction.atomic
+def sync_external_groups(user, source, mappings, matches):
+    """Sync verified claims. Mismatch revokes only this mapping's source."""
+    get_user_model().objects.select_for_update().get(pk=user.pk)
+    existing = RoleGrant.objects.filter(user=user, source=source)
+    areas = set(existing.values_list("department_id", flat=True)) | {mapping.department_id for mapping in mappings}
+    for area in areas:
+        capture_untracked_local(user, area)
+    keys = {str(mapping.pk) for mapping in mappings}
+    existing.exclude(source_key__in=keys).delete()
+    for mapping in mappings:
+        key = str(mapping.pk)
+        rows = RoleGrant.objects.filter(user=user, source=source, source_key=key)
+        if matches(mapping):
+            desired = {
+                group.pk
+                for group in mapping.auth_groups.all()
+                if valid_mapping_group(
+                    group,
+                    mapping.department_id,
+                    allow_archived=rows.filter(group=group, department_id=mapping.department_id).exists(),
+                )
+            }
+            rows.exclude(department_id=mapping.department_id, group_id__in=desired).delete()
+            for group_id in desired:
+                RoleGrant.objects.get_or_create(
+                    user=user, group_id=group_id, department_id=mapping.department_id, source=source, source_key=key
+                )
+        elif mapping.revoke_on_mismatch:
+            rows.delete()
+        else:
+            # Even retained grants must lose removed groups and invalid scopes.
+            desired = {
+                group.pk
+                for group in mapping.auth_groups.all()
+                if valid_mapping_group(
+                    group,
+                    mapping.department_id,
+                    allow_archived=rows.filter(group=group, department_id=mapping.department_id).exists(),
+                )
+            }
+            rows.exclude(department_id=mapping.department_id, group_id__in=desired).delete()
+    for area in areas:
+        project_sources(user, area)
+
+
+@transaction.atomic
+def remove_external_mapping(source, mapping_id):
+    """Immediate revocation on mapping deletion; preserve other sources."""
+    rows = RoleGrant.objects.filter(source=source, source_key=str(mapping_id))
+    affected = list(rows.values_list("user_id", "department_id").distinct())
+    users = {
+        user.pk: user
+        for user in get_user_model()
+        .objects.select_for_update()
+        .filter(pk__in=[pk for pk, _ in affected])
+        .order_by("pk")
+    }
+    for user_id, area in affected:
+        capture_untracked_local(users[user_id], area)
+    rows.delete()
+    for user_id, area in affected:
+        project_sources(users[user_id], area)

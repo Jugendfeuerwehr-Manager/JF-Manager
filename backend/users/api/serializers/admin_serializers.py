@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
+from departments.assignment_sources import set_local_groups
 from jf_manager_backend.html_safety import SanitizedHTMLField
 
 User = get_user_model()
@@ -210,6 +211,12 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"group_ids": "Eigene Rollenzuweisungen können nicht geändert werden."}
                     )
+        for group in data.get("groups", []):
+            template = getattr(group, "role_template", None)
+            if template and (template.is_archived or template.scope != "organization"):
+                raise serializers.ValidationError(
+                    {"group_ids": "Globale Zuweisungen benötigen aktive Organisationsvorlagen."}
+                )
         return data
 
     def create(self, validated_data):
@@ -228,7 +235,7 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             user.set_unusable_password()
         user.save()
         if groups:
-            user.groups.set(groups)
+            set_local_groups(user, None, groups)
         return user
 
     def update(self, instance, validated_data):
@@ -246,5 +253,5 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         if groups is not None:
-            instance.groups.set(groups)
+            set_local_groups(instance, None, groups)
         return instance

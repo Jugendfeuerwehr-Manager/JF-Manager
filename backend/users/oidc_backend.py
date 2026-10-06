@@ -276,63 +276,13 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
             )
 
     def _sync_group_mappings(self, user, groups, config):
-        """
-        Sync UserDepartmentRole records from OIDCGroupMapping after login.
-        Mirrors ConfigurableLDAPBackend._sync_department_roles().
-        """
-        import contextlib
-
-        from departments.models import UserDepartmentRole
+        """Project independently owned OIDC grants after verified login."""
+        from departments.assignment_sources import sync_external_groups
         from settings_manager.models import OIDCGroupMapping
 
         mappings = list(
             OIDCGroupMapping.objects.filter(oidc_config=config)
             .select_related("department")
-            .prefetch_related("auth_groups")
+            .prefetch_related("auth_groups__role_template")
         )
-
-        if not mappings:
-            logger.debug("OIDC: no group mappings configured — skipping department role sync")
-            return
-
-        logger.debug(
-            "OIDC: syncing %d group mapping(s) for user '%s' (groups=%s)",
-            len(mappings),
-            user.username,
-            groups,
-        )
-
-        for mapping in mappings:
-            is_member = mapping.group_claim_value in groups
-
-            if is_member and mapping.department:
-                role, created = UserDepartmentRole.objects.get_or_create(user=user, department=mapping.department)
-                existing_ids = set(role.groups.values_list("id", flat=True))
-                mapped_ids = set(mapping.auth_groups.values_list("id", flat=True))
-                role.groups.set(list(existing_ids | mapped_ids))
-
-                if created:
-                    logger.info(
-                        "OIDC: created UserDepartmentRole for user '%s' in department '%s'",
-                        user.username,
-                        mapping.department,
-                    )
-                else:
-                    logger.debug(
-                        "OIDC: updated UserDepartmentRole for user '%s' in department '%s'",
-                        user.username,
-                        mapping.department,
-                    )
-
-            elif not is_member and mapping.revoke_on_mismatch and mapping.department:
-                with contextlib.suppress(UserDepartmentRole.DoesNotExist):
-                    deleted_count, _ = UserDepartmentRole.objects.filter(
-                        user=user, department=mapping.department
-                    ).delete()
-                    if deleted_count:
-                        logger.info(
-                            "OIDC: revoked UserDepartmentRole for user '%s' in department '%s' "
-                            "(revoke_on_mismatch=True)",
-                            user.username,
-                            mapping.department,
-                        )
+        sync_external_groups(user, "oidc", mappings, lambda mapping: mapping.group_claim_value in groups)

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -187,13 +187,12 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
         if user.pk == request.user.pk:
             raise PermissionDenied("Eigene Rollenzuweisungen können nicht geändert werden.")
-        group_ids = request.data.get("group_ids", [])
-        try:
-            groups = Group.objects.filter(id__in=group_ids)
-            user.groups.set(groups)
-            return Response(AdminUserDetailSerializer(user).data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = AdminUserWriteSerializer(
+            user, data={"group_ids": request.data.get("group_ids", [])}, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(AdminUserDetailSerializer(user).data)
 
 
 class AuthGroupViewSet(viewsets.ModelViewSet):
