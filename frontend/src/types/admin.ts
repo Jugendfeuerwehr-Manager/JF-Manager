@@ -52,10 +52,22 @@ export interface AdminUser {
   date_joined: string
   last_login: string | null
   groups: AuthGroup[]
+  /** Authenticator app or passkey set up (list view). */
+  mfa_enabled?: boolean
+}
+
+export interface AdminUserMfa {
+  enabled: boolean
+  totp: boolean
+  passkeys: number
+  /** False for the own account and for administrative accounts (console only). */
+  ui_reset_allowed: boolean
+  reset_blocker: 'self' | 'console_only' | null
 }
 
 export interface AdminUserDetail extends AdminUser {
   permissions: string[]
+  mfa?: AdminUserMfa
 }
 
 export interface AdminUserWrite {

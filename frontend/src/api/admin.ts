@@ -2,6 +2,7 @@ import apiClient from './index'
 import type {
   AdminUser,
   AdminUserDetail,
+  AdminUserMfa,
   AdminUserWrite,
   AuthGroup,
   AuthGroupDetail,
@@ -36,6 +37,10 @@ export const adminUsersApi = {
   },
   delete(id: number) {
     return apiClient.delete(`/admin/users/${id}/`)
+  },
+  /** Superuser only, needs step-up; refused for administrative accounts (SEC-11.4). */
+  resetMfa(id: number) {
+    return apiClient.post<{ mfa: AdminUserMfa }>(`/admin/users/${id}/reset-mfa/`)
   },
   setGroups(id: number, groupIds: number[]) {
     return apiClient.patch<AdminUserDetail>(`/admin/users/${id}/set-groups/`, {

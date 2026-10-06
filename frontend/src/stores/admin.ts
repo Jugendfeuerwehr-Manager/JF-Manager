@@ -85,6 +85,11 @@ export const useAdminStore = defineStore('admin', () => {
     return response.data
   }
 
+  async function resetUserMfa(id: number) {
+    const response = await adminUsersApi.resetMfa(id)
+    return response.data.mfa
+  }
+
   async function deleteUser(id: number) {
     await adminUsersApi.delete(id)
   }
@@ -148,6 +153,7 @@ export const useAdminStore = defineStore('admin', () => {
     fetchUser,
     createUser,
     updateUser,
+    resetUserMfa,
     deleteUser,
     setUserGroups,
 
