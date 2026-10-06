@@ -149,7 +149,7 @@ class StandardOrderRoleTests(APITestCase):
     def test_order_creation_target_uses_same_special_right_as_object_mutation(self):
         from orders.models import OrderableItem, OrderStatus
 
-        item = OrderableItem.objects.create(name="Synthetic item", category="Synthetic")
+        item = OrderableItem.objects.create(name="Synthetic item", category="Synthetic", has_sizes=False)
         status, _ = OrderStatus.objects.get_or_create(code="NEW", defaults={"name": "Neu"})
         self.client.force_authenticate(self.user)
         payload = {
