@@ -562,7 +562,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | UX-03 | geplant | Claude (Design-Session) | Teilschritte UX-03.1/2 festgelegt. |
 | UX-04 | geplant | Claude (Design-Session) | UX-04.1 festgelegt; Grundlage DES-01.8. |
 | UX-05 | geplant | Claude (Design-Session) | UX-05.1 festgelegt; Grundlage SEC-09, DES-01.13a. |
-| UX-06 | in Arbeit | Claude (Design-Session) | Plan und Konsistenzvertrag angelegt; als Nächstes DES-01.11c, dann UX-06.1. |
+| UX-06 | in Arbeit | Claude (Design-Session) | Plan, Konsistenzvertrag und Farb-Ratsche (DES-01.11c) stehen; als Nächstes UX-06.1. |
 | UX-07 | geplant | Claude (Design-Session) | Teilschritte UX-07.1/2 festgelegt. |
 | UX-08 | geplant | Claude (Design-Session) | Teilschritte UX-08.1/2 festgelegt. |
 | OPS-01 | offen | — | Gemeinsamen Installationskern und Adapter festlegen. |
@@ -1077,10 +1077,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `UX-07.2`: Versandauftrag im Hintergrund mit Idempotenzschlüssel, Teilergebnissen und Wiederholung nur fehlgeschlagener Zustellungen.
   - `UX-08.1`: Sync: Änderungsvorschau, Konflikte, Laufhistorie.
   - `UX-08.2`: Profil: Sitzungen, MFA und gerätebezogene Push-Einstellungen.
-- **Letzter dauerhafter Checkpoint:** Plan angelegt (dieser Commit).
+- **Letzter dauerhafter Checkpoint:** DES-01.11c Ratsche (dieser Commit); Plan in `d8afeae`.
 - **Ausgeführte Prüfungen mit Ergebnis:** Bestandsaufnahme: Qualifikationen, Listen, Gruppen, Protokoll, Eltern-Bearbeitung, Ausbildung und Verwaltung nutzen weder `OverviewHeader` noch `StateView` noch `StatusBadge`; feste Farben vor allem in `views` (153), `components/training` (47, überwiegend Handout/Druck), `members` (34), `admin` (29), `settings` (26). Backend kennt nur ein festes 30-Tage-Ablauffenster.
 - **Offene Fehler / Risiken:** Pakete mit Backend-Anteil (UX-01.1, UX-02.3, UX-03.2, UX-05.1, UX-07.2) berühren Dateien paralleler Sitzungen; vor Beginn `git status` auf fremde Änderungen prüfen.
-- **Nächster konkreter Schritt:** `DES-01.11c`, danach `UX-06.1`.
+- **Nächster konkreter Schritt:** `UX-06.1` Backend-Ablauffenster und Nachweisfilter.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -1348,6 +1348,8 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | DES-01.10b | Abgleich mit dem Referenzentwurf „Übungsplaner“ im Design-Canvas. Bausteinkacheln: Nutzerfarbe nur noch als 14-%-Tönung und Rahmen über der Inhaltsfläche, Text immer in Themenschrift (vorher Rohfarbe mit 20 % Alpha und 2-px-Rahmen); ungültige Farbwerte werden verworfen (`utils/blockColor.ts`, nur `#rgb/#rrggbb`). Titel zweizeilig statt abgeschnitten, weil die ausgeblendeten Aktionsknöpfe die Titelbreite belegten; Aktionen liegen jetzt über der Ecke. Dauer als neutraler Text „25 Min.“ statt farbiger Abzeichen (lange Bausteine erschienen rot wie ein Fehler), Bibliothek ebenfalls neutral. Auswahl als Fokusrahmen, sichtbarer Tastaturfokus. Raster: neutraler Spaltenkopf statt rotem Strich, dünnere Stundenlinien, erste Zeitmarke nicht mehr unter dem Kopf. Bibliotheksleiste: Einträge per Tastatur einfügbar (`role=button`, Enter/Leertaste), benannte Symbolknöpfe und Filter, Suchsymbol, „Alle Kategorien“ sichtbar, Ziehvorschau und Abstände auf Tokens; Kategorieabzeichen mit Farbpunkt und lesbarer Schrift (gelbe Kategorien waren unlesbar). Editor-Ablagefläche ohne feste Farben. Ratschen-Test gegen feste Farben in den Planerdateien. | 6 neue Tests (Farbprüfung inkl. Kontrast für acht Extremfarben hell/dunkel, Kachelfarbe, Dauertext, Bibliothek per Tastatur und benannte Bedienelemente, Ratsche), Typecheck, ESLint, Build und 239/239 Frontendtests bestanden; Sichtprüfung gegen Mock mit fiktiven Daten 1440 px hell/dunkel und 390 px. Kein Lauf gegen echtes Backend. | Dieser Commit: `feat(DES-01.10b): put planner grid, blocks and library on design tokens` | UX-01–08 mit DES-01.11. |
 
 | 06.10.2026 | UX-Plan | Nutzervorgabe: neben dem Planer vor allem UX-01 bis UX-08 und eine einheitliche Umsetzung; Tests und Sichtprüfungen effizient. Detailblock „UX-01 bis UX-08“ mit gemeinsamem Konsistenzvertrag, Ratsche gegen feste Farben (`DES-01.11c`) und stabilen Teilschritt-IDs angelegt; Reihenfolge UX-06 → UX-01 → UX-02 → UX-04 → UX-03 → UX-05 → UX-07 → UX-08. Bestandsaufnahme im Detailblock. | Nur Planung; Code-/Git-Abgleich der Bestandsaufnahme bestanden. | Dieser Commit: `docs(UX-PLAN): plan module workflows with one consistency contract` | DES-01.11c, dann UX-06.1. |
+
+| 06.10.2026 | DES-01.11c | Ratschen-Test `theme/__tests__/fixedColors.spec.ts`: feste Hex-/RGB-Farben in `src/**/*.vue` dürfen je Datei die Obergrenze aus `fixedColorBaseline.json` nicht überschreiten (Ausgangswert: 59 Dateien, 327 Vorkommen, gemessen auf dem committeten Stand; neue Dateien starten bei null); entfernte Dateien müssen aus der Grundlinie verschwinden. Jeder UX-Teilschritt senkt die Werte der angefassten Dateien. | 2 neue Tests, 42/42 Theme-Tests, Typecheck und ESLint bestanden. | Dieser Commit: `test(DES-01.11c): ratchet fixed colours per file` | UX-06.1. |
 
 | 06.10.2026 | SEC-01.57a | Übernahme von SEC-01, SEC-02 und ROLE-01 durch Claude nach Abschluss von SEC-10 (Nutzerauftrag). Endpunktinventar: `AttendanceViewSet` nutzte DRFs `DjangoModelPermissions` – GET ohne Leserecht, Zieldienste nach bloßer Abteilungszuordnung, Abteilungsrollen (in `department_roles`, nicht `user.groups`) wirkungslos. Folgen: Nur-Dienst-Leserecht in B zeigte Anwesenheiten aus B; Leitungen mit Abteilungsrolle konnten über diese API nichts erfassen. Neu `AttendanceRolePermissions` (Objektprüfung an der Dienstabteilung, Sammelerfassung mit `change_attendance` wie das Anwesenheitsboard), Zieldienste nur aus Abteilungen mit Schreibrecht. Bestehender API-Test, der das Leck abbildete, erhält `view_attendance`. Ausgelieferte Rollen koppeln `view_service` bereits mit `view_attendance`. | 9 neue HTTP-Regressionen (6 vorher rot), 58/58 angrenzende Anwesenheits-/API-Tests, Ruff bestanden. | Dieser Commit: `fix(SEC-01.57a): scope the attendance API to department roles` | SEC-01.57b. |
 
