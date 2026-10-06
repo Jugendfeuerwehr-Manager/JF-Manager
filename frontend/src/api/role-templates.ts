@@ -2,6 +2,12 @@ import apiClient from './index'
 import type { RoleTemplate, RoleTemplateComparison, RoleTemplateList } from '@/types/role-templates'
 
 export const roleTemplatesApi = {
+  create(data: { name: string; description?: string; scope: 'department' | 'organization'; permissions: string[]; is_delegable?: boolean; key?: string }) {
+    return apiClient.post<RoleTemplate>('/admin/role-templates/', data)
+  },
+  permissions(offset = 0) {
+    return apiClient.get<{ results: { full_codename: string; name: string }[]; next: string | null }>('/admin/permissions/', { params: { limit: 100, offset } })
+  },
   list(offset = 0) {
     return apiClient.get<RoleTemplate[] | RoleTemplateList>('/admin/role-templates/', { params: { limit: 100, offset } })
   },
@@ -20,7 +26,7 @@ export const roleTemplatesApi = {
   archive(id: number, fingerprint: string) {
     return apiClient.post<RoleTemplate>(`/admin/role-templates/${id}/archive/`, { fingerprint })
   },
-  duplicate(id: number, data: { key: string; name: string; description?: string; is_delegable?: boolean; fingerprint: string }) {
+  duplicate(id: number, data: { key?: string; name: string; description?: string; is_delegable?: boolean; fingerprint: string }) {
     return apiClient.post<RoleTemplate>(`/admin/role-templates/${id}/duplicate/`, data)
   },
 }

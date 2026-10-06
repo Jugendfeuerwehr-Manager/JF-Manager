@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RoleTemplatesAdminView from '../RoleTemplatesAdminView.vue'
 
-const { list, compare, update, applyPermissions, archive, duplicate, delegation } = vi.hoisted(() => ({
-  list: vi.fn(), compare: vi.fn(), update: vi.fn(), applyPermissions: vi.fn(), archive: vi.fn(), duplicate: vi.fn(), delegation: vi.fn(),
+const { list, compare, update, applyPermissions, archive, duplicate, delegation, create, permissions } = vi.hoisted(() => ({
+  list: vi.fn(), compare: vi.fn(), update: vi.fn(), applyPermissions: vi.fn(), archive: vi.fn(), duplicate: vi.fn(), delegation: vi.fn(), create: vi.fn(), permissions: vi.fn(),
 }))
-vi.mock('@/api/role-templates', () => ({ roleTemplatesApi: { list, compare, update, applyPermissions, archive, duplicate, delegation } }))
+vi.mock('@/api/role-templates', () => ({ roleTemplatesApi: { list, compare, update, applyPermissions, archive, duplicate, delegation, create, permissions } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPerm: () => true }) }))
 
 const template = { id: 1, key: 'leader', name: 'Leitung', description: 'Leitung', template_version: 1,
@@ -41,6 +41,34 @@ describe('RoleTemplatesAdminView', () => {
     applyPermissions.mockResolvedValue({ data: comparison })
     archive.mockResolvedValue({ data: { ...template, is_archived: true } })
     duplicate.mockResolvedValue({ data: { ...template, id: 2 } })
+    create.mockResolvedValue({ data: { ...template, id: 2 } })
+    permissions.mockResolvedValue({ data: { results: [{ full_codename: 'members.view_member', name: 'Can view member' }], next: null } })
+  })
+
+  it('creates a role using a name, area and readable rights without a technical key', async () => {
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Neue Rolle').trigger('click')
+    await flushPromises()
+    await wrapper.get('#duplicate-name').setValue('Neue Betreuung')
+    await wrapper.get('#new-role-scope').setValue('department')
+    await wrapper.get('.new-permission-list input').setValue(true)
+    expect(wrapper.text()).toContain('Mitglieder ansehen')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Neue Betreuung', key: undefined, scope: 'department', permissions: ['members.view_member'] }))
+  })
+
+  it('preserves the new role fields when creation fails', async () => {
+    create.mockRejectedValueOnce(new Error('Failure'))
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Neue Rolle').trigger('click')
+    await flushPromises()
+    await wrapper.get('#duplicate-name').setValue('Bleibt erhalten')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect((wrapper.get('#duplicate-name').element as HTMLInputElement).value).toBe('Bleibt erhalten')
   })
 
   it('loads all pages and shows the comparison with assignment counts', async () => {
@@ -102,7 +130,7 @@ describe('RoleTemplatesAdminView', () => {
     await button(wrapper, 'Vorlage kopieren').trigger('click')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(duplicate).toHaveBeenCalledWith(1, expect.objectContaining({ key: 'leader_copy', fingerprint: 'current-fingerprint' }))
+    expect(duplicate).toHaveBeenCalledWith(1, expect.objectContaining({ key: undefined, fingerprint: 'current-fingerprint' }))
     expect(window.confirm).toHaveBeenCalledTimes(2)
     wrapper.unmount()
   })

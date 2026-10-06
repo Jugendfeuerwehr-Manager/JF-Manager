@@ -3,6 +3,7 @@
     <header class="mb-4">
       <h1 class="text-3xl font-bold m-0">Rollenvorlagen</h1>
       <p class="text-color-secondary">Vergleiche Soll- und Ist-Rechte. Änderungen an Gruppenrechten wirken direkt auf zugewiesene Konten.</p>
+      <Button v-if="canDuplicate" label="Neue Rolle" icon="pi pi-plus" @click="openCreate" />
     </header>
 
     <Message v-if="pageError" severity="error" :closable="false" class="mb-3">{{ pageError }}</Message>
@@ -84,15 +85,24 @@
       </Card>
     </div>
 
-    <Dialog v-model:visible="duplicateVisible" header="Rollenvorlage kopieren" modal :style="{ width: 'min(32rem, 95vw)' }">
+    <Dialog v-model:visible="duplicateVisible" :header="creating ? 'Neue Rolle anlegen' : 'Rollenvorlage kopieren'" modal :style="{ width: 'min(38rem, 95vw)' }">
       <Message v-if="duplicateError" severity="error" :closable="false">{{ duplicateError }}</Message>
       <form class="flex flex-column gap-3" @submit.prevent="duplicateTemplate">
-        <label for="duplicate-key">Technischer Schlüssel</label><InputText id="duplicate-key" v-model="duplicateForm.key" required pattern="[a-z0-9_]+" />
         <label for="duplicate-name">Anzeigename</label><InputText id="duplicate-name" v-model="duplicateForm.name" required />
         <label for="duplicate-description">Beschreibung</label><Textarea id="duplicate-description" v-model="duplicateForm.description" rows="3" />
+        <template v-if="creating">
+          <label for="new-role-scope">Bereich</label>
+          <select id="new-role-scope" v-model="newRoleScope"><option value="department">Abteilung</option><option value="organization">Organisation</option></select>
+          <label for="new-role-permissions">Fachliche Rechte</label>
+          <input id="new-role-permissions" v-model="permissionSearch" placeholder="Rechte suchen" />
+          <p v-if="catalogLoading" role="status">Berechtigungen werden geladen …</p>
+          <div class="new-permission-list"><label v-for="permission in filteredCatalog" :key="permission.full_codename" class="permission-option"><input type="checkbox" v-model="newRolePermissions" :value="permission.full_codename" /> {{ permissionLabel(permission.full_codename) }}</label></div>
+          <p v-if="newRoleScope === 'organization'">Organisationssicht wird automatisch ergänzt; Fachrechte bitte ausdrücklich auswählen.</p>
+        </template>
         <label class="check-line"><input v-model="duplicateForm.is_delegable" type="checkbox" /> Delegierbar</label>
-        <p class="text-color-secondary">Die Rechte der Quellgruppe werden kopiert. Die neue Gruppe erhält keine Benutzer- oder Abteilungszuweisungen.</p>
-        <div class="actions"><Button label="Abbrechen" severity="secondary" type="button" @click="duplicateVisible = false" /><Button label="Kopie anlegen" type="submit" :loading="saving" /></div>
+        <details><summary>Erweiterte Ansicht</summary><label for="duplicate-key">Technischer Schlüssel (optional)</label><InputText id="duplicate-key" v-model="duplicateForm.key" pattern="[a-z][a-z0-9_]+" placeholder="Wird automatisch erzeugt" /></details>
+        <p class="text-color-secondary">{{ creating ? 'Die ausgewählten Rechte werden in einer neuen Gruppe angelegt.' : 'Die Rechte der Quellgruppe werden kopiert.' }} Die neue Rolle erhält keine Zuweisungen und keine Delegationsfreigabe.</p>
+        <div class="actions"><Button label="Abbrechen" severity="secondary" type="button" @click="duplicateVisible = false" /><Button :label="creating ? 'Rolle anlegen' : 'Kopie anlegen'" type="submit" :loading="saving" :disabled="catalogLoading" /></div>
       </form>
     </Dialog>
   </main>
@@ -103,6 +113,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { roleTemplatesApi } from '@/api/role-templates'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { permissionLabel } from '@/utils/permissionLabels'
 import type { RoleTemplate, RoleTemplateComparison } from '@/types/role-templates'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -124,6 +135,13 @@ const pageError = ref('')
 const detailError = ref('')
 const duplicateError = ref('')
 const duplicateVisible = ref(false)
+const creating = ref(false)
+const newRoleScope = ref<'department' | 'organization'>('department')
+const newRolePermissions = ref<string[]>([])
+const permissionSearch = ref('')
+const permissionCatalog = ref<{ full_codename: string; name: string }[]>([])
+const catalogLoading = ref(false)
+const filteredCatalog = computed(() => permissionCatalog.value.filter(permission => permission.full_codename !== 'departments.can_access_all_departments' && permissionLabel(permission.full_codename).toLocaleLowerCase().includes(permissionSearch.value.toLocaleLowerCase())))
 const selectedPermissions = ref<string[]>([])
 const permissionToAdd = ref('')
 const permissionError = ref('')
@@ -240,18 +258,39 @@ async function archiveTemplate() {
 function openDuplicate() {
   if (!selected.value) return
   duplicateError.value = ''
-  duplicateForm.key = `${selected.value.key}_copy`
+  creating.value = false
+  duplicateForm.key = ''
   duplicateForm.name = `${selected.value.name} (Kopie)`
   duplicateForm.description = selected.value.description
   duplicateForm.is_delegable = selected.value.is_delegable
   duplicateVisible.value = true
 }
+async function openCreate() {
+  creating.value = true; duplicateError.value = ''; duplicateForm.key = ''; duplicateForm.name = ''; duplicateForm.description = ''; duplicateForm.is_delegable = false
+  newRoleScope.value = 'department'; newRolePermissions.value = []; permissionSearch.value = ''; duplicateVisible.value = true
+  catalogLoading.value = true
+  try {
+    const rows: typeof permissionCatalog.value = []
+    let offset = 0
+    while (true) {
+      const data = (await roleTemplatesApi.permissions(offset)).data
+      rows.push(...data.results)
+      if (!data.next || !data.results.length) break
+      offset += data.results.length
+    }
+    permissionCatalog.value = rows
+  } catch (error) { duplicateError.value = getApiErrorMessage(error, 'Berechtigungen konnten nicht geladen werden.') }
+  finally { catalogLoading.value = false }
+}
 async function duplicateTemplate() {
-  if (!selected.value || !comparison.value) return
+  if (!creating.value && (!selected.value || !comparison.value)) return
   if (!window.confirm(`Neue, noch nicht zugewiesene Vorlage „${duplicateForm.name}“ mit den aktuellen Rechten anlegen?`)) return
   saving.value = true; duplicateError.value = ''
   try {
-    const created = (await roleTemplatesApi.duplicate(selected.value.id, { ...duplicateForm, fingerprint: comparison.value.fingerprint })).data
+    const input = { ...duplicateForm, key: duplicateForm.key || undefined }
+    const created = creating.value
+      ? (await roleTemplatesApi.create({ ...input, scope: newRoleScope.value, permissions: newRolePermissions.value })).data
+      : (await roleTemplatesApi.duplicate(selected.value!.id, { ...input, fingerprint: comparison.value!.fingerprint })).data
     duplicateVisible.value = false
     await loadTemplates(created.id)
   } catch (error) { duplicateError.value = getApiErrorMessage(error, 'Vorlage konnte nicht kopiert werden. Eingaben bleiben erhalten.') }
@@ -271,6 +310,7 @@ onMounted(() => { void loadTemplates() })
 .compare-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }.compare-grid h2 { display: flex; align-items: center; gap: .5rem; }
 .permission-list { max-height: 20rem; overflow: auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(19rem,1fr)); gap: .35rem; margin: 1rem 0; }.permission-option { display: flex; gap: .5rem; align-items: center; overflow-wrap: anywhere; }
 .permission-add { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.new-permission-list { max-height: 18rem; overflow: auto; display: grid; gap: .5rem; }select, #new-role-permissions { min-height: 44px; padding: .5rem; font: inherit; background: var(--surface-card); color: var(--text-color); border: 1px solid var(--surface-border); }
 .metadata-form { display: grid; gap: .6rem; max-width: 42rem; margin-top: 1.5rem; }.metadata-form h2 { margin-bottom: 0; }.check-line { display: flex; align-items: center; gap: .5rem; }
 .actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
 @media(max-width: 850px) { .role-layout { grid-template-columns: 1fr; } .compare-grid { grid-template-columns: 1fr; } }

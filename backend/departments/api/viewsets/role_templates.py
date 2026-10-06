@@ -1,7 +1,10 @@
+from uuid import uuid4
+
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils.text import slugify
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
@@ -29,6 +32,7 @@ class CanManageRoleTemplates(permissions.BasePermission):
         "apply_permissions": ("departments.change_roletemplate", "auth.change_group"),
         "delegation": ("departments.change_roletemplate", "departments.can_assign_roles"),
         "duplicate": ("departments.add_roletemplate", "auth.add_group"),
+        "create": ("departments.add_roletemplate", "auth.add_group"),
     }
 
     def has_permission(self, request, view):
@@ -43,6 +47,56 @@ class RoleTemplateViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
 
     def get_queryset(self):
         return RoleTemplate.objects.select_related("group").order_by("key")
+
+    @staticmethod
+    def _new_key(data, name):
+        key = data.get("key")
+        if key is None or key == "":
+            key = f"custom_{slugify(name).replace('-', '_')[:70] or 'role'}_{uuid4().hex[:8]}"
+        if not isinstance(key, str):
+            raise ValidationError({"key": "Ein Textwert ist erforderlich."})
+        from departments.role_catalog import ROLE_SPECS
+
+        if key in {spec.key for spec in ROLE_SPECS}:
+            raise ValidationError({"key": "Dieser Schlüssel ist für eine Standardrolle reserviert."})
+        return key
+
+    @transaction.atomic
+    def create(self, request):
+        self._check_fields(request, {"key", "name", "description", "scope", "is_delegable", "permissions"})
+        name = request.data.get("name")
+        description = request.data.get("description", "")
+        scope = request.data.get("scope")
+        delegable = request.data.get("is_delegable", False)
+        if not isinstance(name, str) or not name.strip():
+            raise ValidationError({"name": "Ein Anzeigename ist erforderlich."})
+        if not isinstance(description, str) or type(delegable) is not bool:
+            raise ValidationError({"description": "Beschreibung und Delegierbarkeit prüfen."})
+        if scope not in ("department", "organization"):
+            raise ValidationError({"scope": "Abteilung oder Organisation auswählen."})
+        key = self._new_key(request.data, name)
+        if Group.objects.filter(name=f"jf_role__{key}").exists() or RoleTemplate.objects.filter(key=key).exists():
+            raise ValidationError({"key": "Dieser Vorlagenschlüssel existiert bereits."})
+        names = request.data.get("permissions", [])
+        self._resolve_permissions(names)
+        organization = "departments.can_access_all_departments"
+        if scope == "department" and organization in names:
+            raise ValidationError({"permissions": "Eine Abteilungsrolle darf keine Organisationssicht enthalten."})
+        names = sorted(set(names) | ({organization} if scope == "organization" else set()))
+        group = Group.objects.create(name=f"jf_role__{key}")
+        group.permissions.set(self._resolve_permissions(names))
+        try:
+            template = RoleTemplate.objects.create(
+                key=key,
+                name=name.strip(),
+                description=description,
+                scope=scope,
+                is_delegable=delegable and scope == "department",
+                group=group,
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message_dict) from exc
+        return Response(self.get_serializer(template).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"])
     def compare(self, request, pk=None):
@@ -192,11 +246,11 @@ class RoleTemplateViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         self._check_active(source)
         if source.group_id is None or source.scope == RoleTemplate.Scope.BOTH:
             raise ValidationError({"group": "Nur gebundene Vorlagen mit eindeutigem Bereich können kopiert werden."})
-        key = request.data.get("key")
         name = request.data.get("name")
         is_delegable = request.data.get("is_delegable", False)
-        if not isinstance(key, str) or not isinstance(name, str):
+        if not isinstance(name, str) or not name.strip():
             raise ValidationError({"key": "Ein neuer Schlüssel und Anzeigename sind erforderlich."})
+        key = self._new_key(request.data, name)
         description = request.data.get("description", source.description)
         if not isinstance(description, str):
             raise ValidationError({"description": "Ein Textwert ist erforderlich."})
