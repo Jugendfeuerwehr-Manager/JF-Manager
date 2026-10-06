@@ -36,10 +36,13 @@
     </section>
 
     <div class="list-controls">
-      <div class="segmented" role="group" aria-label="Zeitraum">
-        <button type="button" :aria-pressed="scope === 'upcoming'" @click="setScope('upcoming')">Kommend</button>
-        <button type="button" :aria-pressed="scope === 'past'" @click="setScope('past')">Vergangen</button>
-      </div>
+      <SegmentedControl
+        class="scope-switch"
+        label="Zeitraum"
+        :model-value="scope"
+        :options="[{ value: 'upcoming', label: 'Kommend' }, { value: 'past', label: 'Vergangen' }]"
+        @update:model-value="setScope"
+      />
       <Button
         :label="activeFilterCount ? `Filter (${activeFilterCount})` : 'Filter'"
         icon="pi pi-filter"
@@ -101,6 +104,7 @@
 </template>
 
 <script setup lang="ts">
+import SegmentedControl from '@/components/common/SegmentedControl.vue'
 import { ref, onMounted, onActivated, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -395,33 +399,9 @@ const handleOpenTraining = (trainingId: number) => {
   gap: var(--jf-space-1);
 }
 
-.segmented {
+.scope-switch {
   flex: 1 1 260px;
   max-width: 420px;
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: var(--jf-radius-md);
-  background: var(--jf-color-border);
-}
-
-.segmented button {
-  flex: 1;
-  min-height: 40px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--jf-color-text-muted);
-  font: inherit;
-  font-size: var(--jf-text-sm);
-  font-weight: var(--jf-weight-semibold);
-  cursor: pointer;
-}
-
-.segmented button[aria-pressed='true'] {
-  background: var(--jf-color-card);
-  color: var(--jf-color-text);
-  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.12);
 }
 
 .filters-card {

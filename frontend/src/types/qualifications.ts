@@ -31,6 +31,8 @@ export interface Qualification {
   is_expired: boolean
   expires_soon: boolean
   status_class: string
+  /** List responses only: whether at least one evidence file is attached. */
+  has_evidence?: boolean
   attachments?: Attachment[]
 }
 
@@ -155,8 +157,16 @@ export interface QualificationListParams {
   user?: number
   type?: number
   status?: 'all' | 'active' | 'expired' | 'expiring'
+  /** Still valid today, expiring within this many days (UX-06.1). */
+  expiring_within?: ExpiryWindow
+  without_evidence?: boolean
+  /** Only the latest record per person and type; renewed ones are history. */
+  current?: boolean
   ordering?: string
 }
+
+export const EXPIRY_WINDOWS = [30, 60, 90] as const
+export type ExpiryWindow = (typeof EXPIRY_WINDOWS)[number]
 
 export interface SpecialTaskListParams {
   page?: number
@@ -186,6 +196,8 @@ export interface QualificationStatistics {
   total_qualifications: number
   expired_qualifications: number
   expiring_qualifications: number
+  expiring_by_window?: Record<`${ExpiryWindow}`, number>
+  without_evidence?: number
   active_special_tasks: number
   completed_special_tasks: number
   recent_qualifications: Qualification[]
