@@ -1,7 +1,6 @@
 """SEC-03.5: only a superuser can explicitly resolve ambiguous legacy lists."""
 
-from datetime import datetime
-from datetime import timezone as datetime_timezone
+from datetime import UTC, datetime
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -23,7 +22,7 @@ class LegacyListResolutionTests(APITestCase):
         cls.member_b.departments.add(cls.department_b)
         cls.member_shared.departments.add(cls.department_a, cls.department_b)
         cls.source = MemberList.objects.create(name="Legacy", description="Private note")
-        cls.checked_at = datetime(2025, 5, 4, 12, 30, tzinfo=datetime_timezone.utc)
+        cls.checked_at = datetime(2025, 5, 4, 12, 30, tzinfo=UTC)
         cls.entry_a = MemberListEntry.objects.create(
             member_list=cls.source,
             member=cls.member_a,

@@ -2,7 +2,7 @@
 
 ## Voraussetzungen
 
-- Python 3.10+ und pipenv
+- Python 3.12+ und pipenv
 - Node.js 20.19+ oder 22.12+
 - Redis (lokal, z. B. `brew install redis`) für Hintergrundaufgaben und Drosselung
 - Docker (optional, für den Produktionsweg)

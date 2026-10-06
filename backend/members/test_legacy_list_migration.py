@@ -1,7 +1,6 @@
 """Exercise SEC-03.4 through Django's historical migration state."""
 
-from datetime import datetime
-from datetime import timezone as datetime_timezone
+from datetime import UTC, datetime
 from importlib import import_module
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -44,8 +43,8 @@ class LegacyMemberListMigrationTests(TransactionTestCase):
         described = MemberList.objects.create(name="Described A", description="Private legacy description")
         attached = MemberList.objects.create(name="Attached B")
         shared = MemberList.objects.create(name="Shared A B")
-        checked_at = datetime(2025, 5, 4, 12, 30, tzinfo=datetime_timezone.utc)
-        original_date = datetime(2025, 4, 1, 10, 0, tzinfo=datetime_timezone.utc)
+        checked_at = datetime(2025, 5, 4, 12, 30, tzinfo=UTC)
+        original_date = datetime(2025, 4, 1, 10, 0, tzinfo=UTC)
         MemberList.objects.filter(pk=mixed.pk).update(created_at=original_date, updated_at=original_date)
         uniform_entry = Entry.objects.create(
             member_list=uniform, member=member_a, checked=True, checked_at=checked_at, notes="Preserve this note"

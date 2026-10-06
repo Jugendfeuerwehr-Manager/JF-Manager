@@ -50,7 +50,7 @@ Die Anwendung ist zunächst am konfigurierten HTTP-Port erreichbar. Für öffent
 
 ## Ausprobieren mit Beispieldaten
 
-Die lokale Demo erzeugt eine **neue temporäre SQLite-Datenbank** mit zwölf fiktiven Mitgliedern, vier Betreuungspersonen und Beispieldiensten. Sie benutzt weder die vorhandene Anwendungsdatenbank noch echten E-Mail- oder Push-Versand. Voraussetzungen sind Python 3.10+, Pipenv und Node.js 20.19+ beziehungsweise 22.12+.
+Die lokale Demo erzeugt eine **neue temporäre SQLite-Datenbank** mit zwölf fiktiven Mitgliedern, vier Betreuungspersonen und Beispieldiensten. Sie benutzt weder die vorhandene Anwendungsdatenbank noch echten E-Mail- oder Push-Versand. Voraussetzungen sind Python 3.12+, Pipenv und Node.js 20.19+ beziehungsweise 22.12+.
 
 ```sh
 cd backend

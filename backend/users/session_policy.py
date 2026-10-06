@@ -8,7 +8,7 @@ need a fresh confirmation instead), accounts with mandatory MFA get a short one.
 """
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from django.conf import settings
 from django.contrib.auth import logout
@@ -70,7 +70,7 @@ def session_deadlines(session):
 
 
 def isoformat(timestamp):
-    return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(timestamp, tz=UTC).isoformat()
 
 
 class SessionPolicyMiddleware:

@@ -1,5 +1,5 @@
 # --- Build stage ---
-FROM python:3.10-slim-bookworm AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -39,7 +39,7 @@ RUN pipenv install --deploy --system && \
     pip uninstall -y pipenv
 
 # --- Final stage ---
-FROM python:3.10-slim-bookworm AS production
+FROM python:3.12-slim-bookworm AS production
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -70,7 +70,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Create non-root user and group
