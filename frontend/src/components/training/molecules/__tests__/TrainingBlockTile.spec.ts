@@ -39,3 +39,21 @@ describe('keyboard planning', () => {
     expect(wrapper.emitted('move')).toBeUndefined()
   })
 })
+
+describe('block colour', () => {
+  it('tints the tile with a valid block colour and ignores anything else', () => {
+    const coloured = shallowMount(TrainingBlockTile, { props: { block: { ...block, color: '#2563EB' } } })
+    expect(coloured.attributes('style')).toContain('--tile-color: #2563eb')
+    const unsafe = shallowMount(TrainingBlockTile, { props: { block: { ...block, color: 'red; background: url(x)' } } })
+    expect(unsafe.attributes('style')).not.toContain('--tile-color')
+    expect(unsafe.attributes('style')).not.toContain('url(')
+  })
+
+  it('shows the duration as neutral text instead of a coloured status tag', () => {
+    const short = shallowMount(TrainingBlockTile, { props: { block } })
+    expect(short.find('.tile-meta').text()).toBe('15 Min.')
+    const long = shallowMount(TrainingBlockTile, { props: { block: { ...block, duration_minutes: 90 } } })
+    expect(long.find('.tile-meta').text()).toBe('1 Std. 30 Min.')
+    expect(long.find('tag-stub').exists()).toBe(false)
+  })
+})

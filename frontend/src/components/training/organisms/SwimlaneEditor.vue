@@ -100,8 +100,8 @@
         </div>
 
         <!-- Loading state -->
-        <div v-if="plannerStore.loading" class="loading-overlay">
-          <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: var(--p-primary-color)"></i>
+        <div v-if="plannerStore.loading" class="loading-overlay" role="status">
+          <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: var(--jf-color-primary)" aria-hidden="true"></i>
           <span>Lade Trainingsplan...</span>
         </div>
 
@@ -718,7 +718,7 @@ function setupInteract() {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--p-content-background);
+  background: var(--jf-color-card);
   overflow: hidden;
 }
 
@@ -797,9 +797,9 @@ function setupInteract() {
   top: 0;
   z-index: 10;
   display: flex;
-  background: var(--p-content-background);
-  border-bottom: 2px solid var(--p-primary-color);
-  height: 40px;
+  background: var(--jf-color-card);
+  border-bottom: 1px solid var(--jf-color-border);
+  height: 44px;
 }
 
 .time-corner {
@@ -808,15 +808,15 @@ function setupInteract() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--p-text-muted-color);
-  border-right: 1px solid var(--p-content-border-color);
+  letter-spacing: 0.08em;
+  color: var(--jf-color-text-muted);
+  border-right: 1px solid var(--jf-color-border);
   position: sticky;
   left: 0;
-  background: var(--p-content-background);
+  background: var(--jf-color-card);
   z-index: 11;
 }
 
@@ -825,12 +825,12 @@ function setupInteract() {
   flex: 1;
   display: flex;
   align-items: center;
-  padding: 0 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-right: 1px solid var(--p-content-border-color);
-  color: var(--p-text-color);
-  background: var(--p-content-background);
+  padding: 0 var(--jf-space-1-5);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-bold);
+  border-right: 1px solid var(--jf-color-border);
+  color: var(--jf-color-text);
+  background: var(--jf-color-card);
 }
 .lane-header-cell:last-child { border-right: none; }
 
@@ -840,10 +840,10 @@ function setupInteract() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: var(--jf-space-1-5);
   height: 300px;
-  color: var(--p-text-muted-color);
-  font-size: 0.9rem;
+  color: var(--jf-color-text-muted);
+  font-size: var(--jf-text-sm);
 }
 
 /* ── Grid body ────────────────────────────────────────────────────────── */
@@ -859,31 +859,34 @@ function setupInteract() {
   position: sticky;
   left: 0;
   z-index: 5;
-  background: color-mix(in srgb, var(--p-content-border-color) 15%, var(--p-content-background));
-  border-right: 2px solid var(--p-content-border-color);
+  background: var(--jf-color-card);
+  border-right: 1px solid var(--jf-color-border);
 }
 
 .ruler-label {
   position: absolute;
   right: 6px;
   transform: translateY(-50%);
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--p-text-muted-color);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text-muted);
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;
 }
+
+/* The first mark sits at the top edge and would hide under the sticky header */
+.ruler-label:first-child { transform: none; }
 
 .ruler-hline {
   position: absolute;
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--p-content-border-color);
+  background: color-mix(in srgb, var(--jf-color-border) 50%, transparent);
 }
-.ruler-hline--hour { background: var(--p-text-muted-color); height: 2px; }
-.ruler-hline--quarter { background: color-mix(in srgb, var(--p-content-border-color) 70%, transparent); }
+.ruler-hline--hour { background: var(--jf-color-border); }
+.ruler-hline--quarter { background: color-mix(in srgb, var(--jf-color-border) 70%, transparent); }
 
 /* ── Lane columns ─────────────────────────────────────────────────────── */
 .lanes-wrap {
@@ -895,9 +898,9 @@ function setupInteract() {
   flex: 1;
   min-width: 200px;
   position: relative;
-  border-right: 1px solid var(--p-content-border-color);
+  border-right: 1px solid var(--jf-color-border);
   cursor: crosshair;
-  background: var(--p-content-background);
+  background: var(--jf-color-card);
 }
 .lane-col:last-child { border-right: none; }
 
@@ -909,17 +912,17 @@ function setupInteract() {
   height: 1px;
   pointer-events: none;
 }
-.grid-line--quarter { background: color-mix(in srgb, var(--p-content-border-color) 40%, transparent); }
-.grid-line--hour { background: var(--p-content-border-color); height: 2px; }
+.grid-line--quarter { background: color-mix(in srgb, var(--jf-color-border) 45%, transparent); }
+.grid-line--hour { background: var(--jf-color-border); }
 
 /* ── Drag-to-create preview ───────────────────────────────────────────── */
 .create-preview {
   position: absolute;
   left: 4px;
   right: 4px;
-  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
-  border: 2px dashed var(--p-primary-color);
-  border-radius: 6px;
+  background: color-mix(in srgb, var(--jf-color-primary) 10%, transparent);
+  border: 2px dashed var(--jf-color-primary);
+  border-radius: var(--jf-radius-md);
   pointer-events: none;
   display: flex;
   align-items: center;
@@ -927,11 +930,11 @@ function setupInteract() {
   z-index: 4;
 }
 .create-preview__label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--p-primary-color);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+  color: var(--jf-color-primary);
   text-align: center;
-  padding: 0 0.25rem;
+  padding: 0 var(--jf-space-0-5);
 }
 
 /* ── "All Groups" ghost hatching ──────────────────────────────────────── */
@@ -943,22 +946,22 @@ function setupInteract() {
   z-index: 1;
   background-image: repeating-linear-gradient(
     -45deg,
-    color-mix(in srgb, var(--p-text-muted-color) 18%, transparent) 0px,
-    color-mix(in srgb, var(--p-text-muted-color) 18%, transparent) 2px,
+    color-mix(in srgb, var(--jf-color-text-muted) 14%, transparent) 0px,
+    color-mix(in srgb, var(--jf-color-text-muted) 14%, transparent) 2px,
     transparent 2px,
     transparent 10px
   );
-  border-top: 1px solid color-mix(in srgb, var(--p-text-muted-color) 30%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--p-text-muted-color) 30%, transparent);
+  border-top: 1px solid var(--jf-color-border);
+  border-bottom: 1px solid var(--jf-color-border);
 }
 
 /* ── Library panel ────────────────────────────────────────────────────── */
 .library-panel {
-  width: 280px;
+  width: 320px;
   flex-shrink: 0;
   overflow: hidden;
-  border-left: 1px solid var(--p-content-border-color);
-  background: var(--p-content-background);
+  border-left: 1px solid var(--jf-color-border);
+  background: var(--jf-color-card);
 }
 
 /* ── Slide transition ─────────────────────────────────────────────────── */

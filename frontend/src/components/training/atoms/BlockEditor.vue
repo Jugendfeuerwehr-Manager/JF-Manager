@@ -322,7 +322,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.5rem;
-  background: var(--primary-50, #eff6ff);
+  background: var(--jf-color-selected);
   border-bottom: 1px solid var(--surface-border);
 }
 
@@ -349,7 +349,7 @@ onBeforeUnmount(() => {
 .drop-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(99, 102, 241, 0.1);
+  background: color-mix(in srgb, var(--jf-color-primary) 10%, transparent);
   border: 2px dashed var(--primary-color);
   border-radius: var(--border-radius);
   display: flex;

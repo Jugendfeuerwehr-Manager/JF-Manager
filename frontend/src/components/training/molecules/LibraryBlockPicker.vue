@@ -1,72 +1,91 @@
 <template>
-  <div class="library-picker">
+  <section class="library-picker" aria-labelledby="library-picker-title">
     <div class="picker-header">
-      <h3 class="picker-title">Bibliothek</h3>
+      <h2 id="library-picker-title" class="picker-title">Bibliothek</h2>
       <div class="picker-header-actions">
-        <a href="/training/library" target="_blank" class="manage-link" title="Bibliothek verwalten">
-          <i class="pi pi-external-link" />
-        </a>
-        <Button icon="pi pi-times" text size="small" @click="emit('close')" />
+        <router-link
+          to="/training/library"
+          target="_blank"
+          class="manage-link"
+          aria-label="Bibliothek verwalten (neuer Tab)"
+          v-tooltip.bottom="'Bibliothek verwalten'"
+        >
+          <i class="pi pi-external-link" aria-hidden="true" />
+        </router-link>
+        <Button icon="pi pi-times" text severity="secondary" aria-label="Bibliothek schließen" @click="emit('close')" />
       </div>
     </div>
 
-    <InputText v-model="search" placeholder="Suchen…" class="w-full mb-2" @update:model-value="debouncedFetch" />
-
-    <Select
-      v-model="filterCategory"
-      :options="[{ id: null, name: 'Alle Kategorien' }, ...categories]"
-      option-label="name"
-      option-value="id"
-      class="w-full mb-2"
-      @change="fetchBlocks"
-    />
-
-    <MultiSelect
-      v-model="filterTags"
-      :options="tags"
-      option-label="name"
-      option-value="id"
-      placeholder="Tags filtern…"
-      class="w-full mb-3"
-      :max-selected-labels="2"
-      @change="fetchBlocks"
-    />
-
-    <div v-if="loading" class="loading"><ProgressSpinner style="width:32px;height:32px" /></div>
-
-    <div v-else class="picker-list">
-      <div
-        v-for="block in blocks"
-        :key="block.id"
-        class="picker-item"
-        draggable="true"
-        @dragstart="onDragStart($event, block)"
-        @click="emit('pick', block)"
-      >
-        <div class="picker-item-header">
-          <span class="picker-item-title">{{ block.title }}</span>
-          <BlockDurationBadge v-if="block.default_duration_minutes" :minutes="block.default_duration_minutes" />
-        </div>
-        <div class="picker-item-meta">
-          <LibraryBlockCategoryBadge
-            v-if="block.category !== null"
-            :category="{ id: block.category!, name: block.category_name ?? '', color: block.category_color ?? '', icon: '' }"
-          />
-          <span v-if="block.last_used_date" class="picker-last-used">
-            Zuletzt: {{ formatLastUsed(block.last_used_date) }}
-          </span>
-          <span v-else class="picker-last-used never">Noch nicht verwendet</span>
-        </div>
-      </div>
-
-      <p v-if="!blocks.length" class="empty-hint">Keine Bausteine gefunden.</p>
+    <div class="picker-filters">
+      <IconField>
+        <InputIcon class="pi pi-search" />
+        <InputText v-model="search" placeholder="Baustein suchen …" aria-label="Bausteine durchsuchen" class="w-full" @update:model-value="debouncedFetch" />
+      </IconField>
+      <Select
+        v-model="filterCategory"
+        :options="[{ id: null, name: 'Alle Kategorien' }, ...categories]"
+        option-label="name"
+        option-value="id"
+        placeholder="Alle Kategorien"
+        aria-label="Kategorie"
+        class="w-full"
+        @change="fetchBlocks"
+      />
+      <MultiSelect
+        v-model="filterTags"
+        :options="tags"
+        option-label="name"
+        option-value="id"
+        placeholder="Tags filtern …"
+        aria-label="Tags"
+        class="w-full"
+        :max-selected-labels="2"
+        @change="fetchBlocks"
+      />
     </div>
-  </div>
+
+    <p class="picker-hint">Antippen fügt den Baustein ein, Ziehen legt ihn in eine Gruppe.</p>
+
+    <div v-if="loading" class="loading" role="status"><ProgressSpinner style="width:32px;height:32px" aria-label="Bausteine laden" /></div>
+
+    <ul v-else class="picker-list" aria-label="Bausteine">
+      <li v-for="block in blocks" :key="block.id">
+        <div
+          class="picker-item"
+          role="button"
+          tabindex="0"
+          draggable="true"
+          :aria-label="`${block.title} einfügen`"
+          @dragstart="onDragStart($event, block)"
+          @click="emit('pick', block)"
+          @keydown.enter.prevent="emit('pick', block)"
+          @keydown.space.prevent="emit('pick', block)"
+        >
+          <div class="picker-item-header">
+            <span class="picker-item-title">{{ block.title }}</span>
+            <BlockDurationBadge v-if="block.default_duration_minutes" :minutes="block.default_duration_minutes" />
+          </div>
+          <div class="picker-item-meta">
+            <LibraryBlockCategoryBadge
+              v-if="block.category !== null"
+              :category="{ id: block.category!, name: block.category_name ?? '', color: block.category_color ?? '', icon: '' }"
+            />
+            <span class="picker-last-used">
+              {{ block.last_used_date ? `Zuletzt ${formatLastUsed(block.last_used_date)}` : 'Noch nicht verwendet' }}
+            </span>
+          </div>
+        </div>
+      </li>
+      <li v-if="!blocks.length" class="empty-hint">Keine Bausteine gefunden.</li>
+    </ul>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import Button from 'primevue/button'
@@ -116,20 +135,19 @@ function onDragStart(event: DragEvent, block: LibraryBlockList) {
   )
   event.dataTransfer?.setData('application/x-library-block-color', block.color ?? '')
 
-  // Create a styled ghost element for the drag preview
+  // Drag preview in the theme's primary colour; tokens resolve because the ghost lives in <body>.
   const ghost = document.createElement('div')
   ghost.style.cssText = `
     position: fixed;
     top: -1000px;
     left: -1000px;
     padding: 6px 10px;
-    background: var(--p-primary-color, #3b82f6);
-    color: #fff;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
+    background: var(--jf-color-primary);
+    color: var(--jf-color-on-primary);
+    border-radius: var(--jf-radius-md);
+    font: 600 13px var(--jf-font-sans);
     white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    box-shadow: var(--jf-shadow-lg);
     pointer-events: none;
   `
   ghost.textContent = block.title
@@ -152,9 +170,11 @@ onMounted(async () => {
 .library-picker {
   display: flex;
   flex-direction: column;
+  gap: var(--jf-space-1-5);
   height: 100%;
-  background: var(--p-content-background);
-  padding: 0.75rem;
+  background: var(--jf-color-card);
+  padding: var(--jf-space-2);
+  box-sizing: border-box;
   overflow: hidden;
 }
 
@@ -162,108 +182,84 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
 }
-
-.picker-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+.picker-header-actions { display: flex; align-items: center; gap: var(--jf-space-0-5); }
+.picker-title {
+  margin: 0;
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-bold);
+  color: var(--jf-color-text);
 }
 
 .manage-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  color: var(--p-text-muted-color);
-  border-radius: 50%;
-  transition: background 0.15s, color 0.15s;
+  width: var(--jf-touch-target);
+  height: var(--jf-touch-target);
+  color: var(--jf-color-text-muted);
+  border-radius: var(--jf-radius-md);
   text-decoration: none;
+  transition: background var(--jf-duration), color var(--jf-duration);
 }
-.manage-link:hover {
-  background: var(--p-content-hover-background);
-  color: var(--p-primary-color);
-}
+.manage-link:hover { background: var(--p-content-hover-background); color: var(--jf-color-text); }
+.manage-link:focus-visible { outline: var(--jf-focus-ring); outline-offset: 2px; }
 
-.picker-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--p-text-color);
-}
+.picker-filters { display: flex; flex-direction: column; gap: var(--jf-space-1); }
+.picker-hint { margin: 0; font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
 
-.loading {
-  display: flex;
-  justify-content: center;
-  padding: 2rem;
-}
+.loading { display: flex; justify-content: center; padding: var(--jf-space-4); }
 
 .picker-list {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--jf-space-1);
+  margin: 0;
+  padding: 2px;
+  list-style: none;
 }
 
 .picker-item {
-  border: 1px solid var(--p-content-border-color);
-  border-radius: var(--p-border-radius, 6px);
-  padding: 0.5rem 0.625rem;
-  cursor: grab;
-  transition: background 0.1s, box-shadow 0.1s;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  background: var(--p-content-background);
+  gap: var(--jf-space-0-5);
+  min-height: var(--jf-touch-target);
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-card);
+  cursor: grab;
   user-select: none;
+  transition: background var(--jf-duration), box-shadow var(--jf-duration);
 }
-.picker-item:hover {
-  background: var(--p-content-hover-background);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
+.picker-item:hover { background: var(--p-content-hover-background); box-shadow: var(--jf-shadow-sm); }
+.picker-item:focus-visible { outline: var(--jf-focus-ring); outline-offset: 2px; }
 .picker-item:active { cursor: grabbing; }
 
 .picker-item-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.25rem;
+  gap: var(--jf-space-1);
 }
-
 .picker-item-title {
-  font-size: 0.85rem;
-  font-weight: 500;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
-  color: var(--p-text-color);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text);
 }
+.picker-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--jf-space-1); }
+.picker-last-used { font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
 
 .empty-hint {
-  font-size: 0.875rem;
-  color: var(--p-text-muted-color);
+  padding: var(--jf-space-2);
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
   text-align: center;
-  padding: 1rem;
-}
-
-.picker-item-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.picker-last-used {
-  font-size: 0.72rem;
-  color: var(--p-text-muted-color);
-}
-
-.picker-last-used.never {
-  font-style: italic;
-  opacity: 0.7;
 }
 </style>
