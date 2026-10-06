@@ -2,7 +2,7 @@
 
 ## Neuinstallation
 
-`FIELD_ENCRYPTION_KEY` ist für jeden Start verpflichtend, auch lokal. Einen neuen Fernet-Schlüssel einmalig mit `python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'` erzeugen und im geschützten Secret Store beziehungsweise einer nur für den Dienst lesbaren Umgebungsdatei hinterlegen. `setup.sh` erzeugt ihn bei Neuinstallation selbst. Schlüssel nicht committen, protokollieren oder zusammen mit frei zugänglichen Datenbankbackups ablegen. Alle Web-/Worker-Prozesse benötigen denselben Schlüsselring.
+`FIELD_ENCRYPTION_KEY` ist für jeden Start verpflichtend, auch lokal. Einen neuen Fernet-Schlüssel einmalig mit `python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'` erzeugen und im geschützten Secret Store beziehungsweise einer nur für den Dienst lesbaren Umgebungsdatei hinterlegen. `jfctl install` erzeugt ihn bei Neuinstallation selbst und übernimmt ihn bei Wiederherstellung und Migration aus der Sicherung. Schlüssel nicht committen, protokollieren oder zusammen mit frei zugänglichen Datenbankbackups ablegen. Alle Web-/Worker-Prozesse benötigen denselben Schlüsselring.
 
 ## Update bestehender Installationen
 
