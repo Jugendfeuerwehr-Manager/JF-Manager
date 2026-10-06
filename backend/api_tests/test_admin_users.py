@@ -47,7 +47,7 @@ class AdminUserViewSetTests(AdminUserManagementBaseTestCase):
     def test_list_users_as_staff(self):
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/v1/admin/users/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_users_as_regular_forbidden(self):
         self.client.force_authenticate(user=self.regular_user)

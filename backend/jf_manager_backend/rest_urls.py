@@ -1,6 +1,7 @@
 from rest_framework import routers
 
 from departments.api.viewsets.departments import DepartmentViewSet
+from departments.api.viewsets.role_assignments import RoleAssignmentViewSet
 from departments.api.viewsets.role_templates import RoleTemplateViewSet
 from departments.api.viewsets.user_department_roles import UserDepartmentRoleViewSet
 from external_sync.api import SyncJobViewSet, SyncRunViewSet
@@ -58,6 +59,7 @@ api.register(r"admin/permissions", PermissionViewSet, basename="admin-permission
 api.register(r"departments", DepartmentViewSet, basename="departments")
 api.register(r"admin/department-roles", UserDepartmentRoleViewSet, basename="department-roles")
 api.register(r"admin/role-templates", RoleTemplateViewSet, basename="role-templates")
+api.register(r"role-assignments", RoleAssignmentViewSet, basename="role-assignments")
 api.register(r"sync-jobs", SyncJobViewSet, basename="sync-jobs")
 api.register(r"sync-runs", SyncRunViewSet, basename="sync-runs")
 api.register(r"members", MemberViewSet)

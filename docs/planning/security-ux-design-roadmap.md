@@ -8,10 +8,10 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: ROLE-02.1 Rechte, Freigabe und Herkunftsmodell implementiert; 31 gezielte Tests bestanden. Parallel erscheinende TRAIN-Änderungen bleiben fremd und unberührt. |
+| Letzter Checkpoint | 06.10.2026: ROLE-02.2 Zuweisungs-API mit atomarer Vorschau/Fingerprint, Herkunft und Identitätsrechten; 42 gezielte Tests bestanden. |
 | TRAIN-Checkpoint | 06.10.2026: TRAIN-01.0–01.5a einzeln integriert; TRAIN-01.5b Status-/Dienstvertrag einschließlich Kalender, Planer, mobiler Bearbeitungszugang, Handout und Dienstbuch umgesetzt. 35 Backendtests (2 PostgreSQL-only übersprungen), 214 Frontendtests, Typecheck, ESLint und Migrationsabgleich bestanden. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
-| Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. Einziger Bearbeiter und Integrationsagent. TRAIN-Stand bleibt erhalten. |
+| Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
 | Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
@@ -550,7 +550,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | SEC-09 | abgeschlossen | Claude | SEC-09.6: 611/611 Backendtests auf PostgreSQL 14 und SQLite, 4 Konkurrenztests dreifach grün. |
 | SEC-10 | abgeschlossen | Claude | SEC-10.7: Django 5.2 LTS, Python 3.12, keine bekannten Lücken in ausgelieferten Paketen, HTTPS/Header/CSP Report-Only, gemeinsamer Cache, CI auf PostgreSQL 15; Grenzen im Detailblock. |
 | ROLE-01 | in Arbeit | Codex (Integrationsagent) | ROLE-01.6a/b API und ROLE-01.6c Administrationsansicht geprüft; ROLE-01.7 und SEC-01/02-Bereichsprüfung bleiben Abnahmeabhängigkeit. |
-| ROLE-02 | in Arbeit | Codex | ROLE-02.1 Rechte, Freigabe und Herkunftsmodell; 31 gezielte Tests bestanden. |
+| ROLE-02 | in Arbeit | Codex | ROLE-02.1/2 Rechte, Freigabe, Herkunftsmodell und Zuweisungs-API; 42 gezielte API-/Identitätstests bestanden. |
 | CFG-01 | offen | — | Vollständigen Einstellungskatalog mit Quelle/Berechtigung erstellen. |
 | TRAIN-01 | in Arbeit | Codex (TRAIN-Session) | TRAIN-01.0–01.5b integriert; Status-/Dienstvertrag im Frontend umgesetzt. Nächster Schritt: TRAIN-01.5c Admin-/Browserabnahme. |
 | TRAIN-02 | offen | — | Stationen, Rotation und Ressourcenwarnungen. |
@@ -632,14 +632,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `ROLE-02.3`: LDAP/OIDC auf getrennte Quellen umstellen; Mappingänderung/-entzug erhält unabhängige lokale Rollen; Altverwaltung an Quellenmodell anbinden.
   - `ROLE-02.4`: Zuweisungsoberfläche, Freigabe, lesbare Wirkung und erweiterte technische Ansicht; Fehler-/Konfliktzustände erhalten Eingaben.
   - `ROLE-01.7b`: Vollständige Einzel-/Kombinationsabnahme, Seed/Migrationsprüfung und Rollenhandbuch; ROLE-01/02 abschließen nach bestandenen Prüfungen.
-- **Letzter dauerhafter Checkpoint:** ROLE-02.1 in diesem Commit.
+- **Letzter dauerhafter Checkpoint:** ROLE-02.2 in diesem Commit; ROLE-02.1 `d1b7cba`.
 - **Branch:** `feat/security-roles-training-operations` (sauberer Ausgangsstand bei `7c3e80c`).
 - **Geänderte Dateien / Commit-Bezug:** Dieser Detailblock und Wiederaufnahmeübersicht.
-- **Umgesetzte Teilschritte:** Planung und ROLE-02.1.
-- **Ausgeführte Prüfungen mit Ergebnis:** ROLE-02.1: 31/31 Freigabe-/API-/Seed-/Zuordnungstests auf isolierter SQLite-Testdatenbank sowie Ruff bestanden. Erster Werkzeugstart fehlgeschlagen wegen fehlender Testumgebung; mit expliziten fiktiven Schlüsseln/Testsettings bestanden. Keine Anwendungsmigration ausgeführt.
+- **Umgesetzte Teilschritte:** Planung und ROLE-02.1/2.
+- **Ausgeführte Prüfungen mit Ergebnis:** ROLE-02.1: 31/31 Freigabe-/API-/Seed-/Zuordnungstests auf isolierter SQLite-Testdatenbank sowie Ruff bestanden. Erster Werkzeugstart fehlgeschlagen wegen fehlender Testumgebung; mit expliziten fiktiven Schlüsseln/Testsettings bestanden. ROLE-02.2: 42/42 Zuweisungs-/Identitätstests bestanden. Erste Läufe fehlgeschlagen (Fehlerformat bei unbekannten Feldern; Testsession hatte noch frische Bestätigung), korrigiert und Wiederholung bestanden. Keine Anwendungsmigration ausgeführt.
 - **Offene Fehler / Risiken:** Trainings-/Bestell-Sonderrechte sind tatsächlich noch global geprüft. LDAP-/OIDC-Entzug löscht bisher ganze Abteilungszuordnungen. Systemadministrationsvorlage erreicht alte Superuser-only-APIs bisher nicht. TRAIN-Statusvertrag ist offen; veröffentlichte Übungen für Betreuer benötigen eine konkrete sichere Lösung.
 - **Laufende Prozesse und sichere Fortsetzung:** Keine eigenen Prozesse. Nach Planung sind parallel fremde TRAIN-Änderungen erschienen; ausschließlich eigene ROLE-Dateien und Roadmapänderungen stagen. Alte unmarkierte Gruppenbindungen werden durch Migration konservativ als lokal erhalten.
-- **Nächster konkreter Schritt:** ROLE-02.2 API, anschließend Quellenintegration; ROLE-01.7a nach TRAIN-Abstimmung.
+- **Nächster konkreter Schritt:** ROLE-02.3 Quellenintegration; anschließend ROLE-01.7a am jetzt committeten TRAIN-Statusvertrag.
 
 ### SEC-01: aktueller Detailstand
 
@@ -1309,3 +1309,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | ROLE-02.1 | Explizite Zuweisungs-/Delegationsrechte und Katalogversionen, Einstellungsrechte für Systemadministration, administrative Freigabe an konkrete Gruppenpermissions gebunden und Herkunftsmodell mit konservativer lokaler Altdatenübernahme ergänzt. Seed erweitert vorhandene Gruppen weiterhin nicht. | 31/31 gezielte Tests und Ruff bestanden; erster Werkzeugstart ohne explizite Testumgebung fehlgeschlagen, Wiederholung bestanden. Anwendungsmigration und breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-02.1): bind delegation approval to permissions and preserve assignment sources` | ROLE-02.2. |
 
 | 06.10.2026 | TRAIN-01.5b | Sechs TRAIN-Commits einzeln integriert. Statusmigration übernimmt verknüpfte Alttermine veröffentlicht; Entwürfe ohne Dienst. Veröffentlichungen behalten eine stabile Dienstidentität; Abschluss/Absage und dokumentierte Löschfälle erhalten Anwesenheiten. Bestätigung für Änderungen nach Beginn/Dokumentation, Abteilungswechsel dann blockiert. Frontend-Statusaktionen im atomaren Planentwurf; Statusanzeigen in Kalender, Planer, Mobile, Handout und Dienstbuch; Version und Dienstlink, ausdrücklicher mobiler Bearbeitungszugang sowie erhaltene Formularfehler. | 35 Backendtests bestanden (2 PostgreSQL-only übersprungen), 214/214 Frontendtests, Typecheck, gezieltes ESLint, Migrationsabgleich und Diff-Check bestanden. Browser-/Touchlauf nicht ausgeführt. Historientestaufbauten zunächst fehlgeschlagen, nach Aktualisierung der Testinstanz bestanden. | Dieser Commit: `feat(TRAIN-01.5b): connect training status and stable services to the frontend` | TRAIN-01.5c Admin-/Browserabnahme. |
+
+| 06.10.2026 | ROLE-02.2 | Atomare Zuweisungs-API mit Personen-/Bereichs-/Rollenauswahl, Wirkungsvorschau, aktuellem Fingerprint und Quellenanzeige. Delegation prüft reale Abteilung und Freigabe; Selbstzuweisung, privilegierte Ziele und Organisationsrollen sind begrenzt. Identitäts-APIs nutzen globale Modellrechte statt Staff-Bypass; Notfallkonten bleiben Superuserverwaltung. | 42/42 gezielte Tests bestanden. Erste Läufe wegen Fehlerformat und Testsession-Annahme fehlgeschlagen, korrigiert und bestanden; breite Suite nicht ausgeführt. | Dieser Commit: `feat(ROLE-02.2): review and apply scoped role assignments atomically` | ROLE-02.3. |

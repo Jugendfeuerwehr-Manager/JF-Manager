@@ -198,6 +198,18 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"is_superuser": "Sie koennen Ihre eigene Superuser-Berechtigung nicht entfernen."}
             )
+        if request:
+            if "is_superuser" in data and data["is_superuser"] and not request.user.is_superuser:
+                raise serializers.ValidationError({"is_superuser": "Notfallrechte vergeben ausschließlich Superuser."})
+            if "groups" in data:
+                if not request.user.has_perm("departments.can_assign_roles"):
+                    raise serializers.ValidationError(
+                        {"group_ids": "Ein globales Rollenzuweisungsrecht ist erforderlich."}
+                    )
+                if self.instance and self.instance.pk == request.user.pk:
+                    raise serializers.ValidationError(
+                        {"group_ids": "Eigene Rollenzuweisungen können nicht geändert werden."}
+                    )
         return data
 
     def create(self, validated_data):
