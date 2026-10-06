@@ -166,7 +166,7 @@ config_validate() {
             { err "Integriertes HTTPS braucht einen öffentlichen Domainnamen (gefunden: '${JF_DOMAIN}')"; return 1; }
         [[ $JF_ACME_EMAIL =~ ^[^@[:space:]]+@[^@[:space:]]+$ ]] || { err "JF_ACME_EMAIL (Kontakt für Zertifikate) fehlt"; return 1; }
     else
-        [[ $JF_HTTP_BIND =~ ^[0-9a-fA-F:.\[\]]+:[0-9]{2,5}$ ]] || { err "JF_HTTP_BIND muss ADRESSE:PORT sein"; return 1; }
+        [[ $JF_HTTP_BIND =~ ^(\[[0-9a-fA-F:]+\]|[0-9.]+):[0-9]{2,5}$ ]] || { err "JF_HTTP_BIND muss ADRESSE:PORT sein"; return 1; }
         [ -n "$JF_TRUSTED_PROXY_ADDRS" ] || { err "JF_TRUSTED_PROXY_ADDRS (Adresse des Reverse Proxy) fehlt"; return 1; }
     fi
     [[ $JF_BACKUP_KEEP_DAILY$JF_BACKUP_KEEP_WEEKLY$JF_BACKUP_KEEP_MONTHLY =~ ^[0-9]+$ ]] || { err "Aufbewahrung muss aus Zahlen bestehen"; return 1; }
@@ -235,8 +235,8 @@ cmd_admin() {
                     ok "Administrator '$user' angelegt."
                     if [ "$generated" = 1 ]; then
                         # Shown once on the terminal, never logged.
-                        printf '  Einmalpasswort: %s\n  Nach der ersten Anmeldung ändern und MFA einrichten.\n' "$JF_ADMIN_PASSWORD" >/dev/tty 2>/dev/null ||
-                            printf '  Einmalpasswort: %s\n' "$JF_ADMIN_PASSWORD"
+                        show_once "  Einmalpasswort: $JF_ADMIN_PASSWORD"
+                        printf '  Nach der ersten Anmeldung ändern und MFA einrichten.\n'
                     fi ;;
                 *EXISTS*) ok "Es gibt bereits einen Administrator; nichts geändert (Zugang verloren: jfctl admin recover)." ;;
                 *NAME_TAKEN*) die "$EX_PRECHECK" "Benutzername '$user' ist vergeben." ;;
@@ -266,12 +266,18 @@ cmd_admin() {
             case $out in
                 *RECOVERED*)
                     ok "Zugang für '$user' wiederhergestellt; Sitzungen beendet."
-                    [ "$reset_pw" = 1 ] && printf '  Neues Passwort: %s\n' "$JF_ADMIN_PASSWORD" >/dev/tty 2>/dev/null || true
+                    if [ "$reset_pw" = 1 ]; then show_once "  Neues Passwort: $JF_ADMIN_PASSWORD"; fi
                     _log_file "AUDIT admin recover user=$user reset_mfa=$reset_mfa reset_password=$reset_pw" ;;
                 *NOT_FOUND*) die "$EX_PRECHECK" "Benutzer '$user' nicht gefunden." ;;
             esac ;;
         *) die "$EX_USAGE" "jfctl admin bootstrap [--user NAME --email ADRESSE] | recover --user NAME [--reset-mfa]" ;;
     esac
+}
+
+# Prints a secret for the operator only: terminal if available, else stdout.
+# Never written to the jfctl log.
+show_once() {
+    if { : >/dev/tty; } 2>/dev/null; then printf '%s\n' "$1" >/dev/tty; else printf '%s\n' "$1"; fi
 }
 
 admin_python() { # code -> runs "manage.py shell" with code on stdin

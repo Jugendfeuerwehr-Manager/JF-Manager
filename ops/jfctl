@@ -77,29 +77,20 @@ main() {
         usage; return "$EX_USAGE"
     fi
     local cmd=$1; shift
-    _log_file "CMD   jfctl $cmd $*"
+    # Arguments after a secret-looking key (config set EMAIL_HOST_PASSWORD …) are not logged.
+    local logged=() a mask=0
+    for a in "$@"; do
+        if [ "$mask" = 1 ]; then logged+=("***"); mask=0; else logged+=("$a"); fi
+        case $a in *PASSWORD*|*KEY*|*SECRET*|*TOKEN*) mask=1 ;; esac
+    done
+    _log_file "CMD   jfctl $cmd ${logged[*]+"${logged[*]}"}"
     case $cmd in version|help) ;; *)
         declare -F "cmd_$cmd" >/dev/null || { err "Unbekannter Befehl: $cmd"; usage >&2; return "$EX_USAGE"; } ;;
     esac
     case $cmd in
-        install)     cmd_install "$@" ;;
-        status)      cmd_status "$@" ;;
-        doctor)      cmd_doctor "$@" ;;
-        start)       cmd_start "$@" ;;
-        stop)        cmd_stop "$@" ;;
-        restart)     cmd_restart "$@" ;;
-        logs)        cmd_logs "$@" ;;
-        update)      cmd_update "$@" ;;
-        backup)      cmd_backup "$@" ;;
-        restore)     cmd_restore "$@" ;;
-        config)      cmd_config "$@" ;;
-        admin)       cmd_admin "$@" ;;
-        workers)     cmd_workers "$@" ;;
-        maintenance) cmd_maintenance "$@" ;;
-        migrate)     cmd_migrate "$@" ;;
-        version)     echo "jfctl $JFCTL_VERSION" ;;
-        help)        usage ;;
-        *) err "Unbekannter Befehl: $cmd"; usage >&2; return "$EX_USAGE" ;;
+        version) echo "jfctl $JFCTL_VERSION" ;;
+        help)    usage ;;
+        *)       "cmd_$cmd" "$@" ;;
     esac
 }
 
