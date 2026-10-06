@@ -29,6 +29,7 @@ export interface UserGroup {
 }
 
 export interface UserInfo {
+  qualified_permissions?: string[]
   id: number
   username: string
   email: string

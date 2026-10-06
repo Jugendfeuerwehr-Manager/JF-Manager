@@ -50,7 +50,7 @@ const router = createRouter({
           path: 'groups',
           name: 'group-management',
           component: () => import('@/views/GroupManagementView.vue'),
-          meta: { requiresPerm: 'view_group' }
+          meta: { requiresPerm: 'members.view_group' }
         },
         // Lists
         {

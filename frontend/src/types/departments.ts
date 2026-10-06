@@ -54,6 +54,7 @@ export interface UserDepartmentRole {
 }
 
 export interface UserDepartmentRoleMini {
+  qualified_permissions?: string[]
   department_id: number
   department_name: string
   department_code: string

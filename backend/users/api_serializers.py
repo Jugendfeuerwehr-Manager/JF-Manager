@@ -31,6 +31,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
     email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     permissions = serializers.SerializerMethodField()
+    qualified_permissions = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
     avatar_url = serializers.SerializerMethodField()
     full_name = serializers.CharField(source="get_full_name", read_only=True)
@@ -68,6 +69,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "auth_source",
             "groups",
             "permissions",
+            "qualified_permissions",
             "department_roles",
             "has_org_wide_access",
             "favorite_department",
@@ -82,6 +84,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "is_superuser",
             "groups",
             "permissions",
+            "qualified_permissions",
             "department_roles",
             "has_org_wide_access",
             "auth_source",
@@ -130,6 +133,9 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
         all_perms = set(list(user_perms) + list(group_perms))
         return list(all_perms)
+
+    def get_qualified_permissions(self, obj):
+        return sorted(obj.get_all_permissions())
 
     def get_avatar_url(self, obj):
         if obj.avatar:

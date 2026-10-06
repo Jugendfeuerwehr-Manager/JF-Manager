@@ -107,10 +107,28 @@ class UserDepartmentRoleMiniSerializer(serializers.ModelSerializer):
     department_color = serializers.CharField(source="department.color", read_only=True)
     groups = GroupMiniSerializer(many=True, read_only=True)
     permissions = serializers.SerializerMethodField()
+    qualified_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = UserDepartmentRole
-        fields = ["department_id", "department_name", "department_code", "department_color", "groups", "permissions"]
+        fields = [
+            "department_id",
+            "department_name",
+            "department_code",
+            "department_color",
+            "groups",
+            "permissions",
+            "qualified_permissions",
+        ]
+
+    def get_qualified_permissions(self, obj):
+        return sorted(
+            {
+                f"{permission.content_type.app_label}.{permission.codename}"
+                for group in obj.groups.all()
+                for permission in group.permissions.select_related("content_type")
+            }
+        )
 
     def get_permissions(self, obj):
         """Return all permission codenames granted by groups in this department role."""

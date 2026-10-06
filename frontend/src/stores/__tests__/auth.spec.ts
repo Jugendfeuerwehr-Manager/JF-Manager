@@ -91,6 +91,18 @@ describe('Auth Store', () => {
   })
 
   describe('State', () => {
+    it('keeps auth group permissions distinct from member group permissions', () => {
+      const store = useAuthStore()
+      store.user = createMockUser({ permissions: ['view_group'], qualified_permissions: ['auth.view_group'] })
+      expect(store.hasPerm('auth.view_group')).toBe(true)
+      expect(store.canAccessModule('members.view_group')).toBe(false)
+    })
+    it('includes department subject roles alongside global administration without merging their namespaces', () => {
+      const store = useAuthStore()
+      store.user = createMockUser({ has_org_wide_access: true, permissions: ['view_group'], qualified_permissions: ['auth.view_group'], department_roles: [{ department_id: 1, permissions: ['view_member'], qualified_permissions: ['members.view_member'], groups: [], department_name: 'Test', department_code: 'test', department_color: '#000000' }] })
+      expect(store.hasPerm('members.view_member')).toBe(true)
+      expect(store.hasPerm('members.view_group')).toBe(false)
+    })
     it('starts signed out without reading tokens from storage', () => {
       localStorage.setItem('accessToken', 'legacy-access')
       const store = useAuthStore()

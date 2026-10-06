@@ -28,31 +28,18 @@ export const useAuthStore = defineStore('auth', () => {
   const mfaSetupRequired = computed(() => !!session.value?.authenticated && !!session.value.mfa_setup_required)
   const userFullName = computed(() => user.value?.full_name || '')
 
-  /**
-   * Effective permissions for the currently active department context.
-   * - If the user is org-wide (staff/superuser) or "All Departments" is active,
-   *   returns the full union of permissions from the server.
-   * - If a specific department is active, returns only the permissions the user
-   *   has through their groups in that department.
-   */
-  const permissions = computed((): string[] => {
-    if (!user.value) return []
-    // org-wide users always get all their permissions regardless of active dept
-    if (user.value.has_org_wide_access || user.value.is_superuser) {
-      return user.value.permissions
-    }
-    const deptStore = useDepartmentsStore()
-    const activeDeptId = deptStore.activeDepartmentId
-    if (activeDeptId === null) {
-      // No specific dept selected → union of all dept permissions
-      return user.value.permissions
-    }
-    // A concrete department narrows the effective permission set to the role
-    // groups assigned for that department only. UI guards and button states
-    // intentionally follow this context-sensitive permission view.
-    const role = user.value.department_roles.find((r) => r.department_id === activeDeptId)
-    return role?.permissions ?? []
+  // Global rights remain global; department rights follow the selected area.
+  // Organisation visibility never turns a scoped right into a global right.
+  const contextualRoles = computed(() => {
+    const id = useDepartmentsStore().activeDepartmentId
+    return user.value?.department_roles.filter(role => id === null || role.department_id === id) ?? []
   })
+  const permissions = computed((): string[] => [...new Set([
+    ...(user.value?.permissions ?? []), ...contextualRoles.value.flatMap(role => role.permissions),
+  ])])
+  const qualifiedPermissions = computed((): string[] => [...new Set([
+    ...(user.value?.qualified_permissions ?? []), ...contextualRoles.value.flatMap(role => role.qualified_permissions ?? []),
+  ])])
 
   /** True for staff / superuser / users with can_access_all_departments permission */
   const isOrgWide = computed(() => user.value?.has_org_wide_access ?? false)
@@ -76,19 +63,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * Check app-label-qualified permission, e.g. 'members.view_member'.
-   * Also strips the app label and checks the bare codename.
+   * Legacy profiles without qualified names retain compatibility.
    */
   const hasPerm = (appPerm: string): boolean => {
     if (!user.value) return false
     if (user.value.is_superuser || permissions.value.includes('superuser')) return true
     const codename = appPerm.includes('.') ? (appPerm.split('.')[1] ?? appPerm) : appPerm
+    if (appPerm.includes('.') && user.value.qualified_permissions !== undefined) return qualifiedPermissions.value.includes(appPerm)
     return permissions.value.includes(appPerm) || permissions.value.includes(codename)
   }
 
   /**
    * Returns true if the user can access the given module.
-   * Staff/org-wide users can access everything.
-   * Other users need at least view permission for the relevant model.
+   * Requires the explicit subject permission in the selected context.
    */
   const canAccessModule = (viewPerm: string): boolean => {
     return hasPerm(viewPerm)
