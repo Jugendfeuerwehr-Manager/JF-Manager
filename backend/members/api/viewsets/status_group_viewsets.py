@@ -4,7 +4,6 @@ StatusViewSet and GroupViewSet — lookup tables for member categorisation.
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
-from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from departments.mixins import DepartmentScopeViewSetMixin
@@ -41,32 +40,6 @@ class GroupViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     ordering = ["name"]
-
-    def _validate_target_department(self, serializer):
-        if "department" in serializer.validated_data:
-            department = serializer.validated_data["department"]
-            department_id = department.pk if department is not None else None
-        elif serializer.instance is not None:
-            department_id = serializer.instance.department_id
-        else:
-            department_id = self._resolve_requested_department(self.request.user)
-            if department_id is None and not self._user_is_org_wide(self.request.user):
-                assigned_ids = self._user_department_ids(self.request.user)
-                if len(assigned_ids) == 1:
-                    department_id = assigned_ids[0]
-
-        permission = DepartmentRoleModelPermissions()
-        if department_id is None:
-            required = permission._required_permissions(self.request, self)
-            allowed = required is not None and self._user_is_org_wide(self.request.user) and all(
-                self.request.user.has_perm(name) for name in required
-            )
-        else:
-            allowed = permission.has_object_permission(
-                self.request, self, Group(department_id=department_id)
-            )
-        if not allowed:
-            raise ValidationError({"department": "Keine Schreibberechtigung für die Zielabteilung."})
 
     def perform_create(self, serializer):
         self._validate_target_department(serializer)

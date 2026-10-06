@@ -15,6 +15,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -160,8 +161,24 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
         # Members with no department are NOT surfaced (include_central_records=False).
         return self._filter_by_action_permission(base_qs.filter(departments__id__in=allowed_ids).distinct(), user)
 
+    def _validate_department_changes(self, serializer):
+        """Adding or removing a department needs the write right there, so a
+        role in A cannot move a member into (or out of) department B."""
+        if "departments" not in serializer.validated_data:
+            return
+        new_ids = {department.pk for department in serializer.validated_data["departments"]}
+        old_ids = set(serializer.instance.departments.values_list("id", flat=True)) if serializer.instance else set()
+        permission = "members.add_member" if serializer.instance is None else "members.change_member"
+        if any(not self._has_right_in_department(self.request.user, permission, pk) for pk in new_ids ^ old_ids):
+            raise ValidationError({"departments": "Keine Schreibberechtigung für diese Abteilungszuordnung."})
+
+    def perform_update(self, serializer):
+        self._validate_department_changes(serializer)
+        serializer.save()
+
     def perform_create(self, serializer):
         """Auto-assign department on create for dept-scoped users."""
+        self._validate_department_changes(serializer)
         instance = serializer.save()
         user = self.request.user
         requested_dept = self._resolve_requested_department(user)

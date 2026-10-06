@@ -65,20 +65,56 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         Return a Member queryset filtered to the departments accessible
         to the current user, mirroring MemberViewSet.get_queryset() logic.
         """
-        user = self.request.user
         base_qs = Member.objects.prefetch_related("departments")
-        has_global_right = user.has_perm("members.can_send_member_emails")
+        allowed_ids = self._sending_department_ids()
+        if allowed_ids is None:
+            return base_qs
+        return base_qs.filter(departments__id__in=allowed_ids).distinct()
 
+    def _sending_department_ids(self):
+        """Departments the caller may send to; ``None`` means every department."""
+        user = self.request.user
+        has_global_right = user.has_perm("members.can_send_member_emails")
         requested_dept = self._resolve_requested_department(user)
         if self._user_is_org_wide(user) and has_global_right:
-            if requested_dept is not None:
-                return base_qs.filter(departments__id=requested_dept).distinct()
-            return base_qs
-
-        allowed_ids = self._user_department_ids(user) if has_global_right else sending_department_ids(user)
+            return None if requested_dept is None else [requested_dept]
+        allowed_ids = list(self._user_department_ids(user) if has_global_right else sending_department_ids(user))
         if requested_dept is not None:
             allowed_ids = [requested_dept] if requested_dept in allowed_ids else []
-        return base_qs.filter(departments__id__in=allowed_ids).distinct()
+        return allowed_ids
+
+    def _validate_targets(self, data, member_qs):
+        """Reject recipients and a department label outside the sending scope
+        before anything is stored or sent."""
+        errors = {}
+        member = data.get("recipient_member")
+        if member is not None and not member_qs.filter(pk=member.pk).exists():
+            errors["recipient_member"] = "Mitglied nicht gefunden oder kein Versandrecht."
+        members = data.get("recipient_members") or []
+        if members and member_qs.filter(pk__in=[m.pk for m in members]).count() != len({m.pk for m in members}):
+            errors["recipient_members"] = "Mindestens ein Mitglied liegt außerhalb Ihres Versandbereichs."
+        allowed_ids = self._sending_department_ids()
+        department = data.get("department")
+        if department is not None and allowed_ids is not None and department.pk not in allowed_ids:
+            errors["department"] = "Kein Versandrecht für diese Abteilung."
+        group = data.get("recipient_group")
+        if (
+            group is not None
+            and group.department_id is not None
+            and allowed_ids is not None
+            and group.department_id not in allowed_ids
+        ):
+            errors["recipient_group"] = "Kein Versandrecht für die Abteilung dieser Gruppe."
+        if errors:
+            raise ValidationError(errors)
+
+    def perform_create(self, serializer):
+        self._validate_targets(serializer.validated_data, self._get_accessible_member_queryset())
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._validate_targets(serializer.validated_data, self._get_accessible_member_queryset())
+        serializer.save()
 
     @action(detail=False, methods=["post"])
     def send(self, request):
@@ -93,6 +129,7 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """
         create_serializer = EmailMessageCreateSerializer(data=request.data, context={"request": request})
         create_serializer.is_valid(raise_exception=True)
+        self._validate_targets(create_serializer.validated_data, self._get_accessible_member_queryset())
 
         from jf_manager_backend.upload_safety import validate_batch
 

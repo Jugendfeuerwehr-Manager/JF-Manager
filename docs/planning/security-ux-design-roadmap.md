@@ -8,15 +8,15 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 
 | Feld | Aktueller Stand |
 | --- | --- |
-| Letzter Checkpoint | 06.10.2026: ROLE-02.4 Zuweisungs-/Herkunftsoberfläche, Delegationsfreigabe und Rechtebedienung; 222 Frontendtests, Typecheck, ESLint und Build bestanden. |
+| Letzter Checkpoint | 06.10.2026: SEC-02.9 abgenommen; SEC-Bereich (SEC-01 bis SEC-10) abgeschlossen. Davor: ROLE-02.4 Zuweisungs-/Herkunftsoberfläche. |
 | TRAIN-Checkpoint | 06.10.2026: TRAIN-01 vollständig integriert und abgenommen. Admin-Versions-/Zeitvertrag, tatsächliche Leseberechtigung und Frontend-/PDF-/Mobilprüfung bestanden; 41 PostgreSQL-15-TRAIN-Tests und 227 Frontendtests grün. Backend-Gesamtlauf: ein unabhängiger ROLE-Test fehlgeschlagen. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
-| Umsetzungsstatus | EXEC-01, SEC-01, SEC-03 bis SEC-10 abgeschlossen; SEC-02 und ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
+| Umsetzungsstatus | EXEC-01 und SEC-01 bis SEC-10 abgeschlossen; ROLE-01 in Arbeit. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
 | Branch bei Dateianlage | `main` |
 | Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
 | Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | TRAIN-Integration (3558df0 übernommen; dieser Commit). |
+| Letzter Roadmap-Commit | `SEC-02.9` (dieser Commit). |
 | Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
 | Nächster konkreter Schritt | TRAIN: TRAIN-03.1 sichere Serienvorschau/-generierung; parallel ROLE: aktuellen ROLE-Checkpoint beachten. |
 | Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
@@ -540,7 +540,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | --- | --- | --- | --- |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | abgeschlossen | Claude (von Codex übernommen) | SEC-01.57c: Anwesenheits-API, Anhang-Schreibzugriffe und Staff-Einstellungen korrigiert, Alt-Views entfernt; 645/645 Backendtests. |
-| SEC-02 | in Arbeit | Codex | SEC-02.9-WIP `1aebe19`; Paketabnahme nach SEC-03/ROLE-01-Bereichsprüfung/SEC-09 wiederholen. |
+| SEC-02 | abgeschlossen | Claude (Abnahme, von Codex übernommen) | SEC-02.9: Querschnittsinventar, fünf Zielrelationsfehler (E-Mail, Ereignisse, Ereignistypen, Mitgliedsabteilungen) korrigiert. |
 | SEC-03 | abgeschlossen | Codex | SEC-03.7: 42 Listen-/Migrationstests, 8 UI-Tests und gezielter Listenschema-Vertrag bestanden; globale Schemafehler außerhalb des Listenbereichs dokumentiert. |
 | SEC-04 | abgeschlossen | Codex | Server-/Browserbereinigung, isolierte Vorschau und Altinhaltsbefehl; 32 Backend- und fünf Frontendtests grün. |
 | SEC-05 | abgeschlossen | Codex | Private Medien, authentifizierte Clients, Uploadgrenzen und Upgradehinweise implementiert; gebündelte Abnahme samt gezieltem Nachlauf grün. |
@@ -723,8 +723,8 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### SEC-02: aktueller Detailstand
 
-- **Status:** in Arbeit; `SEC-02.9` in Prüfung, Paketabnahme ausstehend.
-- **Verantwortlich:** Codex.
+- **Status:** abgeschlossen (SEC-02.9).
+- **Verantwortlich:** Codex bis SEC-02.9-WIP; Abnahme SEC-02.9 durch Claude (Übernahme 06.10.2026).
 - **Abhängigkeiten:** SEC-01-Rechteprüfung für Quellobjekte und Aktionen ist weitgehend umgesetzt; `SEC-01.57` bleibt als Restabnahme offen. SEC-09 prüft Bestandsbuchungen und parallele Änderungen vertieft. SEC-03 behandelt gemischte Mitgliederlisten.
 - **Ziel und Abnahme:** Jede Schreibaktion prüft die tatsächliche Zielabteilung und alle relationalen Zuordnungen mit dem passenden Fachrecht. A-Recht plus bloße B-Zuordnung darf keine B-Gruppe, B-Variante, B-Qualifikation, B-Bestellung oder B-Lagerortänderung erzeugen. Zentrale Artikel und Lagerorte (`department=NULL`) sind optional; globales Inventarrecht mit Organisationssicht erlaubt die zentrale Ausgabe an Mitglieder jeder Abteilung. Abteilungen behalten eigenes Material und können es mit ihrem scoped Recht verwalten. Sammelaktionen sind atomar: ein unerlaubter Teil lässt keine zulässigen Teiländerungen zurück. HTTP-Regressionen belegen erlaubte und verweigerte Fälle.
 - **Teilschritte mit stabilen IDs:**
@@ -737,7 +737,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `SEC-02.6`: Diese Zielrelationen vor dem Speichern validieren.
   - `SEC-02.7`: Sammelaktionen mit gemischten erlaubten/unerlaubten Zielen auf Teiländerungen prüfen.
   - `SEC-02.8`: Sammelaktionen vollständig validieren und atomar ausführen.
-  - `SEC-02.9`: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen; offene SEC-09-/SEC-03-Grenzen ausdrücklich dokumentieren.
+  - `SEC-02.9`: Ziel- und Relationsvertrag über alle betroffenen Module abnehmen; offene SEC-09-/SEC-03-Grenzen ausdrücklich dokumentieren. Abnahme durch dynamisches Inventar aller 54 beschreibbaren Relationsfelder gerouteter Schreib-Endpunkte und Sammel-Regression für die ungetesteten Ziele.
 - **Letzter dauerhafter Checkpoint:** SEC-02.8 `5057612`; SEC-02.9 wird als WIP-Checkpoint committed.
 - **Branch:** `feat/security-roles-training-operations`.
 - **Geänderte Dateien / Commit-Bezug:** SEC-02.1 `319f56d`; SEC-02.2 `4e619a5`; SEC-02.3 `f578bb6`; SEC-02.4 `6335831`; SEC-02.5 `f28d282`; SEC-02.6 `7223e55`; SEC-02.7 `e9f7430`; SEC-02.8 `5057612`. SEC-02.9-WIP: Trainings-Permission, Block-/Sitzungsserializer, Block-Viewset, HTTP-Tests und dieser Roadmap-Status.
@@ -745,7 +745,10 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Ausgeführte Prüfungen mit Ergebnis:** SEC-02.9: 382/382 breite Backendtests (explizite Module) bestanden; danach 22/22 gezielte Tests und Ruff bestanden. Staged-Diff-Check vor Commit. SEC-02-Abnahme wegen offener Abhängigkeiten nicht ausgeführt.
 - **Offene Fehler / Risiken:** Mitgliederlisten haben noch keinen Abteilungsbesitz und gemischte Listen/Anhänge sind SEC-03 zugeordnet. `training.can_manage_training` fehlt im Modell; die Tests legen es nur im Fixture an, ROLE-01.2 muss es ausliefern und den Rollenvertrag prüfen. Bestandskonkurrenz und Idempotenz gehören zu SEC-09. Weitere Schreibpfade benötigen bei der abschließenden SEC-02.9-Abnahme einen erneuten Quercheck; SEC-02 nicht abgeschlossen.
 - **Laufende Prozesse und sichere Fortsetzung:** keine; `dump.rdb` bleibt unversioniert.
-- **Nächster konkreter Schritt:** SEC-03-Detailblock vor Paketbeginn ausfüllen, Mitgliederlisten und Relationen migrieren; danach `SEC-02.9` mit ROLE-01.2 und SEC-09-Befunden erneut abnehmen.
+- **Abnahme SEC-02.9 (Claude):** Inventar der beschreibbaren Relationsfelder über alle gerouteten Viewsets mit vorhandenen Regressionen abgeglichen; ungetestete Ziele in `departments/tests/test_cross_module_targets.py` (11 Fälle) geprüft. Fünf vorher rot: Einzel-E-Mail an Mitglied aus B (inkl. Eltern) versendet, E-Mail mit Abteilung B kennzeichenbar, Ereignis für Mitglied aus B, Ereignistyp in B, Mitglied nach B verschiebbar. Korrigiert: gemeinsamer Baustein `_has_right_in_department`/`_validate_target_department` im `DepartmentScopeViewSetMixin` (aus der Gruppenprüfung SEC-02.2 verallgemeinert), Ereignis-Mitgliedsprüfung, Abteilungsänderungen an Mitgliedern nur mit Schreibrecht in jeder hinzugefügten/entfernten Abteilung, E-Mail-Empfänger/-Gruppe/-Abteilung vor dem Speichern gegen den Versandbereich geprüft und `prepare_recipients` begrenzt Einzelempfänger auf denselben Bereich. Ohne Befund: Gruppen, Inventar, Qualifikationen, Bestellungen, Ausbildung (SEC-02.1–02.8), Listen (SEC-03), Buchungen (SEC-09), Anwesenheit/Anhänge (SEC-01.57). `training.can_manage_training` ist inzwischen im Modell (Migration `training.0003`).
+- **Prüfungen SEC-02.9:** 11/11 neue Regressionen (5 vorher rot), 7/7 Gruppen-, 5/5 Ereignistests; volle Backend-Suite im sauberen Worktree (HEAD + diese Änderungen) 736/737 (8 übersprungen). Der eine Fehlschlag `api_tests.test_private_media…recheck_department_and_deny_anonymous` tritt auf HEAD auch ohne diese Änderungen auf (aus zwischenzeitlichen Commits anderer Agents; Datei dort uncommittet in Arbeit). Ruff bestanden.
+- **Grenzen:** Übungsleitung (`operations_manager_ids`) und Qualifikations-`user` verweisen auf Benutzerkonten ohne Abteilungsbezug und bleiben unbeschränkt; Wareneingang in fremde Lagerorte gehört zu SEC-09/ROLE-01.7c (dort bearbeitet).
+- **Nächster konkreter Schritt:** keiner im Paket.
 
 ### SEC-03: Mitgliederlisten nach Abteilung
 
@@ -1350,3 +1353,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 06.10.2026 | TRAIN-01.5c | Adminformulare prüfen erwartete Revision, Zeitrahmen, Gruppen und dokumentierte Dienste; Änderungen/Blocklöschungen erhöhen Planversionen. Frontend folgt tatsächlicher Leseberechtigung; sichere mobile Formulare, benannte Felder, Gruppenpagination, Fehler-/Ladewiederholung und vollständiger Status-/PDFversionsstand. Browserabnahme mit ausschließlich synthetischen Daten dokumentiert. | 41/41 TRAIN-Tests auf PostgreSQL 15, 227/227 Frontendtests, Typecheck, gezieltes ESLint, Ruff und Build bestanden. Browser-/PDF-/390-Pixel-Prüfung bestanden. Gesamt-Backendlauf: 700 Tests, ein unabhängiger ROLE-Test fehlgeschlagen; TRAIN bestanden. Manueller Offline-/Touch-Hardwarelauf nicht ausgeführt; automatisierte Regressionen bestanden. | Dieser Commit: `feat(TRAIN-01.5c): complete admin and frontend planner acceptance` | TRAIN-03-Vertrag und sichere Serien. |
 
 | 06.10.2026 | TRAIN-03.0 | Vertrag für stabile Serienidentität, konservative Altdatenübernahme, verlustfreie Generierung, begrenzte/versionierte Vorschau, Erhalt historischer/abweichender Termine, unabhängige Vorlagenkopien und vollständigen Frontendablauf festgelegt. | Roadmap-/Code-/Git-Abgleich bestanden; Anwendungstests nicht ausgeführt. | Dieser Commit: `docs(TRAIN-03.0): define safe series and independent template acceptance` | TRAIN-03.1. |
+
+| 06.10.2026 | SEC-02.9 | Abnahme des Ziel-/Relationsvertrags durch Claude. Dynamisches Inventar aller beschreibbaren Relationsfelder der gerouteten Schreib-Endpunkte (54) gegen vorhandene Regressionen abgeglichen; neue Sammel-Regression für ungetestete Ziele. Befunde: (1) Einzel-E-Mail an ein Mitglied außerhalb der Versandabteilungen wurde an Mitglied und Eltern zugestellt, weil `prepare_recipients` den Einzelempfänger nicht auf `member_qs` beschränkte; (2) E-Mail-Abteilung frei wählbar; (3) Ereignis für Mitglied aus B; (4) Ereignistyp in B; (5) Mitglied nach B verschiebbar. Korrekturen: gemeinsamer Zielbaustein im `DepartmentScopeViewSetMixin` (Gruppen nutzen ihn jetzt ebenfalls), Prüfungen in Ereignis-, Ereignistyp-, Mitglieds- und E-Mail-Viewset (Versand, Anlage, Änderung) sowie Begrenzung im E-Mail-Dienst. SEC-02 abgeschlossen; damit SEC-01 bis SEC-10 abgeschlossen. | 11/11 neue Regressionen (5 vorher rot), Gruppen- und Ereignistests, volle Backend-Suite im sauberen Worktree 736/737 (8 übersprungen); einziger Fehlschlag (`test_private_media`, Abteilungs-Neuprüfung privater Dateien) besteht auf HEAD unabhängig von diesem Commit und liegt bei der parallelen Arbeit. Ruff bestanden. | Dieser Commit: `fix(SEC-02.9): validate email, event and member department targets` | Fehlschlag `test_private_media` durch den zuständigen Agent klären. |

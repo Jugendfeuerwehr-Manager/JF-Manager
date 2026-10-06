@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from departments.mixins import DepartmentScopeViewSetMixin
@@ -28,7 +29,10 @@ class EventRolePermissions(DepartmentRoleModelPermissions):
         if not view._user_is_org_wide(user):
             department_ids &= set(view._user_department_ids(user))
         return any(
-            all(user.has_perm(name) or name in self._department_role_permissions(request, department_id) for name in required)
+            all(
+                user.has_perm(name) or name in self._department_role_permissions(request, department_id)
+                for name in required
+            )
             for department_id in department_ids
         )
 
@@ -69,6 +73,14 @@ class EventTypeViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         return qs.filter(Q(department_id__in=allowed_ids) | Q(department__isnull=True)).order_by("name")
 
+    def perform_create(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_update(serializer)
+
 
 @extend_schema_view(
     list=extend_schema(summary="List all events"),
@@ -108,3 +120,22 @@ class EventViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             )
             allowed_ids &= permitted_ids
         return base_qs.filter(member__departments__id__in=allowed_ids).distinct()
+
+    def _validate_target_member(self, serializer):
+        """The event's member must belong to a department where the caller may
+        add (create) or change (update) events; shared members need one."""
+        member = serializer.validated_data.get("member", getattr(serializer.instance, "member", None))
+        permission = "members.add_event" if serializer.instance is None else "members.change_event"
+        department_ids = list(member.departments.values_list("id", flat=True)) if member else []
+        if not department_ids:
+            department_ids = [None]
+        if not any(self._has_right_in_department(self.request.user, permission, pk) for pk in department_ids):
+            raise ValidationError({"member": "Keine Berechtigung für Ereignisse dieses Mitglieds."})
+
+    def perform_create(self, serializer):
+        self._validate_target_member(serializer)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._validate_target_member(serializer)
+        serializer.save()

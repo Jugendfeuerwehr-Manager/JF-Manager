@@ -278,7 +278,11 @@ class MemberEmailService:
                 email_message.recipient_group, member_qs=member_qs
             )
         elif email_message.recipient_type == "individual":
-            recipients = EmailRecipientCollector.get_recipients_for_member(email_message.recipient_member)
+            member = email_message.recipient_member
+            # The single recipient obeys the same department scope as all others.
+            if member is not None and member_qs is not None and not member_qs.filter(pk=member.pk).exists():
+                member = None
+            recipients = EmailRecipientCollector.get_recipients_for_member(member) if member else []
         elif email_message.recipient_type == "multiple":
             recipients = EmailRecipientCollector.get_recipients_for_members(
                 email_message.recipient_members.all(), member_qs=member_qs
