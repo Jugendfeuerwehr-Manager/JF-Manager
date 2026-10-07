@@ -23,6 +23,7 @@ CATEGORY_LABELS = {
     "push": "Push-Benachrichtigungen",
 }
 FIELD_LABELS = {
+    "email_credentials_unavailable": "SMTP-Passwort nicht entschlüsselbar",
     "title": "Anwendungsname",
     "slug": "Organisationsbezeichnung",
     "logo_url": "Öffentliche Logo-Adresse",
@@ -157,6 +158,9 @@ def configuration_catalog(view, request, categories):
             effective = "Neue Datensätze" if category in {"service", "training"} else "Nächste Anfrage"
             if category in {"ldap", "oidc"}:
                 effective = "Nächste Anmeldung / Synchronisation"
+            if field.read_only:
+                source = "computed"
+                storage = "derived"
             fields[name] = {
                 "label": FIELD_LABELS[name],
                 "storage": storage,
@@ -204,7 +208,7 @@ def setup_status(view):
         "standard_roles": roles.count(),
         "expected_standard_roles": len(ROLE_SPECS),
         "administrator_assigned": roles.filter(group__user__is_active=True, key="system_administrator").exists(),
-        "email_configured": bool(view._get_category_settings("email")["email_host"]),
+        "email_configured": bool(view._get_category_settings("email", tolerate_email_secret_error=True)["email_host"]),
         "ldap_enabled": LDAPConfig.objects.filter(enabled=True).exists(),
         "oidc_enabled": OIDCConfig.objects.filter(enabled=True).exists(),
         "push_enabled": effective_push()["enabled"],

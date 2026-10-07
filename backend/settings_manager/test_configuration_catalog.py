@@ -43,7 +43,7 @@ class ConfigurationCatalogTests(TestCase):
         for category in response.data["categories"].values():
             for field in category["fields"].values():
                 self.assertTrue(field["label"])
-                self.assertIn(field["source"], {"database", "default", "environment"})
+                self.assertIn(field["source"], {"database", "default", "environment", "computed"})
                 self.assertTrue(field["effective"])
         self.assertTrue(response.data["host"])
         self.assertEqual(self.client.get("/api/v1/settings/setup/").status_code, 200)

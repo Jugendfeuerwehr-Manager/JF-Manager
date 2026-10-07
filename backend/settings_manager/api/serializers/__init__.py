@@ -65,6 +65,7 @@ class EmailSettingsSerializer(serializers.Serializer):
         required=False, allow_blank=True, write_only=True, help_text="Password for SMTP authentication"
     )
     has_email_host_password = serializers.BooleanField(read_only=True)
+    email_credentials_unavailable = serializers.BooleanField(read_only=True)
     default_from_email = serializers.EmailField(
         required=False, allow_blank=True, help_text="Email address used as sender"
     )

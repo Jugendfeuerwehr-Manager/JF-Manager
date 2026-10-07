@@ -27,6 +27,8 @@ FIELD_ENCRYPTION_KEY = encryption_keys(os.environ)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+# Explicit local-only recovery: preserve opaque SMTP data and block delivery.
+DEV_ALLOW_UNREADABLE_SMTP = os.environ.get("DEV_ALLOW_UNREADABLE_SMTP", "False").lower() in ("true", "1", "yes")
 
 if not DEBUG and not SECRET_KEY:
     raise Exception("DJANGO_SECRET_KEY must be set in production (DEBUG=False)")
@@ -392,8 +394,8 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = "webmaster@localhost"
 
-# For development - use console backend to see emails in terminal
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# SMTP settings are DB-backed for web requests, workers and management commands.
+EMAIL_BACKEND = "jf_manager_backend.email_backend.ConfiguredSMTPBackend"
 
 
 # Logging

@@ -29,6 +29,8 @@ export interface EmailSettings {
   email_use_ssl: boolean
   email_host_user: string
   email_host_password?: string  // Write-only field
+  has_email_host_password?: boolean
+  email_credentials_unavailable?: boolean
   default_from_email: string
 }
 

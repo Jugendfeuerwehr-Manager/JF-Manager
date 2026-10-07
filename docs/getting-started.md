@@ -74,6 +74,29 @@ Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd fron
 
 **Mit Beispieldaten statt eigener Datenbank:** VS-Code-Konfiguration **„Demo: Backend + Frontend“** oder wie in der README beschrieben. Die Demo legt eine temporäre Datenbank mit eigenem Wegwerf-Schlüssel an.
 
+### Nicht lesbares SMTP-Passwort in der Entwicklung
+
+Die VS-Code-Konfigurationen verwenden denselben Schlüssel aus `backend/.env` und aktivieren
+`DEV_ALLOW_UNREADABLE_SMTP=True` ausschließlich für den lokalen Backend-/Workerstart.
+Wenn **nur** das gespeicherte SMTP-Passwort nicht lesbar ist, startet Django im Debugmodus
+weiter; jeder E-Mail-Versand schlägt ausdrücklich fehl. Der gespeicherte Wert bleibt erhalten.
+Unter **Einstellungen → E-Mail** wird der Fehler angezeigt und das Passwort kann neu
+hinterlegt werden. Andere verschlüsselte Daten (MFA, LDAP/OIDC, Sync) bleiben strikt geprüft.
+
+Im Terminal ist dieser begrenzte Modus ebenfalls ausdrücklich einschaltbar:
+
+```bash
+cd backend
+DEBUG=True DEV_ALLOW_UNREADABLE_SMTP=True pipenv run python manage.py runserver
+```
+
+`DEBUG=False` ignoriert die Ausnahme auch bei gesetztem Schalter. Ein neuer zufälliger
+Hauptschlüssel repariert keine vorhandene Datenbank: den ursprünglichen Schlüssel erhalten
+oder als `FIELD_ENCRYPTION_PREVIOUS_KEYS` ergänzen und mit
+`pipenv run python manage.py rotate_field_encryption` zunächst prüfen. Keine Schlüssel in
+VS-Code-Dateien eintragen. Ohne passenden alten Schlüssel muss das betroffene SMTP-Passwort
+neu eingegeben werden; es wird weder entschlüsselt noch still gelöscht.
+
 ### Häufige Probleme
 
 | Symptom | Ursache und Abhilfe |
@@ -92,6 +115,7 @@ Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd fron
 | `DJANGO_SECRET_KEY` | Django-Geheimnis | *Pflicht* |
 | `FIELD_ENCRYPTION_KEY` | Fernet-Schlüssel für verschlüsselte Felder | *Pflicht* |
 | `FIELD_ENCRYPTION_PREVIOUS_KEYS` | Kommagetrennte alte Schlüssel für die Rotation | leer |
+| `DEV_ALLOW_UNREADABLE_SMTP` | Lokaler Start trotz unlesbarem SMTP-Passwort, Versand gesperrt; nur mit `DEBUG=True` wirksam | `False` |
 | `DEBUG` | Entwicklungsmodus; schaltet `Secure`-Cookies ab | `False` |
 | `SECURE_COOKIES` | Erzwingt `Secure`-Cookies unabhängig von `DEBUG` | `true` ohne `DEBUG` |
 | `SECURE_SSL_REDIRECT` | Leitet HTTP-Anfragen ans Backend auf HTTPS um (außer `/health/`) | wie `SECURE_COOKIES` |

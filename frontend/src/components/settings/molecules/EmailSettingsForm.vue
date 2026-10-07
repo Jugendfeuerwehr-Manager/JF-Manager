@@ -4,6 +4,11 @@
     description="SMTP Server und E-Mail Konfiguration"
     icon="pi pi-envelope"
   >
+    <Message v-if="settings?.email_credentials_unavailable" severity="warn" :closable="false">
+      Das gespeicherte SMTP-Passwort kann mit dem aktuellen Schlüssel nicht gelesen werden.
+      Der Versand ist gesperrt. Ergänze den ursprünglichen Schlüssel am Host oder gib das Passwort neu ein.
+    </Message>
+    <p v-else-if="settings?.has_email_host_password">Ein SMTP-Passwort ist hinterlegt. Leer lassen erhält es.</p>
     <form @submit.prevent="handleSubmit">
       <div class="grid">
         <div class="col-12 md:col-8">
@@ -75,6 +80,9 @@
         :disabled="!canEdit"
       />
 
+      <SettingsCheckbox v-if="settings?.has_email_host_password"
+        v-model="clearPassword" field-id="clear-smtp-password" label="Gespeichertes SMTP-Passwort ausdrücklich entfernen"
+        :disabled="!canEdit" />
       <div class="flex justify-content-end gap-2 mt-4">
         <Button
           label="Abbrechen"
@@ -133,6 +141,7 @@ const formData = reactive<EmailSettings & { email_host_password: string }>({
   default_from_email: ''
 })
 
+const clearPassword = ref(false)
 const originalData = ref<EmailSettings | null>(null)
 const successMessage = ref('')
 const errorMessage = ref('')
@@ -144,7 +153,8 @@ watch(() => props.settings, (newSettings) => {
     formData.email_use_tls = newSettings.email_use_tls ?? true
     formData.email_use_ssl = newSettings.email_use_ssl ?? false
     formData.email_host_user = newSettings.email_host_user || ''
-    formData.email_host_password = newSettings.email_host_password || ''
+    formData.email_host_password = ''
+    clearPassword.value = false
     formData.default_from_email = newSettings.default_from_email || ''
     originalData.value = { ...newSettings }
   }
@@ -158,7 +168,7 @@ const hasChanges = computed(() => {
     formData.email_use_tls !== originalData.value.email_use_tls ||
     formData.email_use_ssl !== originalData.value.email_use_ssl ||
     formData.email_host_user !== originalData.value.email_host_user ||
-    formData.email_host_password !== originalData.value.email_host_password ||
+    formData.email_host_password !== '' || clearPassword.value ||
     formData.default_from_email !== originalData.value.default_from_email
   )
 })
@@ -187,8 +197,8 @@ function handleSubmit() {
   if (formData.email_host_user !== originalData.value?.email_host_user) {
     changes.email_host_user = formData.email_host_user
   }
-  if (formData.email_host_password !== originalData.value?.email_host_password) {
-    changes.email_host_password = formData.email_host_password
+  if (formData.email_host_password || clearPassword.value) {
+    changes.email_host_password = clearPassword.value ? '' : formData.email_host_password
   }
   if (formData.default_from_email !== originalData.value?.default_from_email) {
     changes.default_from_email = formData.default_from_email
@@ -196,11 +206,7 @@ function handleSubmit() {
   
   if (Object.keys(changes).length > 0) {
     emit('save', changes)
-    successMessage.value = 'E-Mail Einstellungen erfolgreich gespeichert'
     errorMessage.value = ''
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
   }
 }
 
@@ -211,7 +217,8 @@ function handleCancel() {
     formData.email_use_tls = originalData.value.email_use_tls ?? true
     formData.email_use_ssl = originalData.value.email_use_ssl ?? false
     formData.email_host_user = originalData.value.email_host_user || ''
-    formData.email_host_password = originalData.value.email_host_password || ''
+    formData.email_host_password = ''
+    clearPassword.value = false
     formData.default_from_email = originalData.value.default_from_email || ''
   }
   errorMessage.value = ''

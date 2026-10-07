@@ -82,6 +82,7 @@
                 },
                 "env": {
                     "DEBUG": "True",
+                    "DEV_ALLOW_UNREADABLE_SMTP": "True",
                     "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
                     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
                 }
@@ -116,6 +117,7 @@
                 },
                 "env": {
                     "DEBUG": "True",
+                    "DEV_ALLOW_UNREADABLE_SMTP": "True",
                     "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
                     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
                 }

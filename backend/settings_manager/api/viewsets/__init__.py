@@ -2,7 +2,7 @@
 ViewSets for Settings API
 """
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from dynamic_preferences.registries import global_preferences_registry
@@ -256,7 +256,7 @@ class SettingsViewSet(viewsets.ViewSet):
 
         return AppSettingsView().get(request)
 
-    def _get_category_settings(self, category):
+    def _get_category_settings(self, category, tolerate_email_secret_error=False):
         """Helper to retrieve settings for a specific category"""
         mapping = self.CATEGORY_MAPPINGS.get(category)
 
@@ -271,9 +271,16 @@ class SettingsViewSet(viewsets.ViewSet):
         for field in mapping["fields"]:
             preference = global_preferences_registry.get(section=prefix, name=field)
             row = GlobalPreferenceModel.objects.filter(section=prefix, name=field).first()
-            settings[field] = preference.serializer.deserialize(row.raw_value) if row else preference.default
+            try:
+                settings[field] = preference.serializer.deserialize(row.raw_value) if row else preference.default
+            except ImproperlyConfigured:
+                if not (tolerate_email_secret_error and category == "email" and field == "email_host_password"):
+                    raise
+                settings["email_credentials_unavailable"] = True
+                settings["has_email_host_password"] = True
         if category == "email":
-            settings["has_email_host_password"] = bool(settings.get("email_host_password"))
+            settings.setdefault("has_email_host_password", bool(settings.get("email_host_password")))
+            settings.setdefault("email_credentials_unavailable", False)
         return settings
 
     def _save_category_settings(self, category, data):
@@ -308,14 +315,14 @@ class SettingsViewSet(viewsets.ViewSet):
                 raise drf_serializers.ValidationError(
                     {name: "Unbekanntes oder schreibgeschütztes Feld." for name in unknown}
                 )
-            current = self._get_category_settings(category)
+            current = self._get_category_settings(category, tolerate_email_secret_error=True)
             merged = {name: value for name, value in current.items() if name in writable}
             merged.update(request.data)
             serializer = serializer_class(data=merged)
             serializer.is_valid(raise_exception=True)
             self._save_category_settings(category, {name: serializer.validated_data[name] for name in request.data})
             # Never let a failed write populate preference caches with partial state.
-            result = self._get_category_settings(category)
+            result = self._get_category_settings(category, tolerate_email_secret_error=True)
         return Response(serializer_class(result).data)
 
     def _check_category_permission(self, user, category, permission_type="view"):
@@ -407,7 +414,7 @@ class SettingsViewSet(viewsets.ViewSet):
                 elif category == "oidc":
                     category_settings = self._get_oidc_settings()
                 else:
-                    category_settings = self._get_category_settings(category)
+                    category_settings = self._get_category_settings(category, tolerate_email_secret_error=True)
                 if category_settings is not None:
                     all_settings[category] = category_settings
 
@@ -455,7 +462,7 @@ class SettingsViewSet(viewsets.ViewSet):
                     {"detail": "You do not have permission to view email settings."}, status=status.HTTP_403_FORBIDDEN
                 )
 
-            settings = self._get_category_settings("email")
+            settings = self._get_category_settings("email", tolerate_email_secret_error=True)
             serializer = EmailSettingsSerializer(settings)
             return Response(serializer.data)
 
@@ -465,6 +472,9 @@ class SettingsViewSet(viewsets.ViewSet):
                     {"detail": "You do not have permission to change email settings."}, status=status.HTTP_403_FORBIDDEN
                 )
 
+            from users.step_up import require_step_up
+
+            require_step_up(request)
             return self._patch_preferences(request, "email", EmailSettingsSerializer)
 
     @extend_schema(
