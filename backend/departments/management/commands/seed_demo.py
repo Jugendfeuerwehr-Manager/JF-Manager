@@ -223,7 +223,9 @@ class Command(BaseCommand):
                 password=password, **values
             )
             codes = {code for _, code in roles if code} or (set(self.departments) if not roles or superuser else set())
-            user.favorite_department = self.departments[sorted(codes)[0]] if codes else self.departments["mitte"]
+            # Mitte has the richest data; it is the start view for every account that can see it.
+            start = "mitte" if "mitte" in codes or not codes else sorted(codes)[0]
+            user.favorite_department = self.departments[start]
             user.save(update_fields=["favorite_department"])
             for code in codes:
                 UserDepartmentRole.objects.get_or_create(user=user, department=self.departments[code])
@@ -345,6 +347,16 @@ class Command(BaseCommand):
                 if member.canSwimm:
                     Qualification.objects.create(
                         type=swim, member=member, date_acquired=self.today - timedelta(days=700)
+                    )
+                # Youth first-aid courses expire too; spread them over the dashboard's 30/60/90-day windows.
+                if age >= 13 and index % 3 == 0:
+                    expires = self.today + timedelta(days=offsets[index % len(offsets)])
+                    Qualification.objects.create(
+                        type=first_aid,
+                        member=member,
+                        date_expires=expires,
+                        date_acquired=expires - timedelta(days=730),
+                        issued_by="Jugendrotkreuz Musterstadt",
                     )
         tasks = {
             name: SpecialTaskType.objects.create(name=name, description=text)

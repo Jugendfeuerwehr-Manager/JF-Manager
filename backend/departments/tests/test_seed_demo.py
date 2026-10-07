@@ -51,6 +51,8 @@ class SeedDemoTests(TestCase):
             self.assertTrue(user.check_password("demo-pass-123"))
             self.assertEqual(mfa_required(user), hasattr(user, "mfa_device"), user.username)
         self.assertIn("demo-pass-123", self.output.getvalue())
+        self.assertEqual(users.get(username="admin").favorite_department.code, "mitte")
+        self.assertEqual(users.get(username="leitung.nord").favorite_department.code, "nord")
 
     def test_refuses_a_non_empty_database_and_production(self):
         with self.assertRaisesMessage(CommandError, "nicht leer"):
