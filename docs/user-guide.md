@@ -124,13 +124,45 @@ Für einzelne Jugendliche findest du deren Verlauf im Mitgliederprofil unter **A
 
 ## Ausbildung planen und wiederverwenden
 
-Die **Ausbildungsplanung** bietet einen Kalender für Ausbildungstermine. Lege eine Einheit mit Datum, Beginn, Ende, Ort, Beschreibung und teilnehmenden Gruppen an. Wiederholungsregeln und Serienerzeugung helfen bei regelmäßig stattfindenden Terminen.
+Die **Ausbildung** zeigt einen Kalender mit allen gespeicherten Übungen. Lege eine Übung mit Datum, Beginn, Ende, Ort, Beschreibung und teilnehmenden Gruppen an. Im Planer stellst du den Ablauf aus Bausteinen zusammen: eigene Inhalte oder Bausteine aus der **Bibliothek**, je Gruppe in einer eigenen Bahn. Ein Baustein ohne Gruppe gilt für alle Gruppen. Änderungen sammelt der Planer als Entwurf; **Speichern** übernimmt den ganzen Plan auf einmal, **Rückgängig** und **Wiederholen** helfen beim Ausprobieren. Hat jemand anderes inzwischen gespeichert, bleibt dein Entwurf erhalten und du vergleichst ihn mit dem Serverstand.
 
-Im Planer stellst du den Ablauf aus Bausteinen zusammen. Du kannst eigene Inhalte erstellen oder Bausteine aus der **Bibliothek** übernehmen, ihre Reihenfolge und Zeiten ändern und sie Gruppen beziehungsweise Bahnen zuordnen. Bilder und Dateianhänge ergänzen die Ausbildungsunterlagen.
+### Stationen, Ausbilder und Material
 
-In der Bibliothek pflegst du wiederverwendbare Inhalte mit Kategorien, Tags und einer Standarddauer. Ein vorbereiteter Baustein „Knoten und Stiche“ lässt sich so in weitere Ausbildungseinheiten übernehmen.
+Im Baustein wählst du die **Art** (Baustein, Station, Wechsel, Pause, freie Runde) und ergänzt Ort, Lernziel, Sicherheitshinweise, **Ausbilder** und **Materialbedarf** (Artikel aus dem Inventar mit Variante und Menge oder ein freier Text). Materialbedarf ist reine Planung: Bestand und Ausleihen ändern sich dadurch nicht.
 
-Für die Durchführung stehen eine mobile Planungsansicht sowie ein **Handout** mit Druck- und PDF-Funktion bereit. Prüfe den Ablauf vor dem Dienst auf einem kleinen Bildschirm oder lade das Handout herunter. Die mobile Planungsansicht benötigt für aktuelle Daten und Änderungen weiterhin eine Verbindung.
+### Rotation
+
+Mit **Rotation** planst du einen Stationsbetrieb in einem Schritt: Gruppen wählen (meist die Altersgruppen, die an diesem Abend dabei sind), Stationen in Reihenfolge anlegen – auf Wunsch direkt **aus der Bibliothek** –, Stationsdauer, Wechselzeit und optional eine Pause festlegen. Die Vorschau zeigt jede Runde mit Uhrzeit und welche Gruppe wo ist; gibt es mehr Stationen als Gruppen oder umgekehrt, erscheinen freie Runden und unbesetzte Stationen ausdrücklich. Übernommen wird alles als ein Schritt, den **Rückgängig** wieder entfernt.
+
+Die Bausteine einer Station sind **verknüpft**: Änderst du Station 1 für eine Gruppe, gilt die Beschreibung für alle Gruppen – du schreibst sie nur einmal. Zeiten und Gruppen bleiben je Baustein. Braucht eine Altersgruppe eine eigene Ansprache, setze im Baustein **Nur für diese Gruppe ändern (Verknüpfung lösen)**.
+
+### Planungswarnungen und Veröffentlichen
+
+Der Planer prüft den Entwurf laufend auf überlappende Gruppen, doppelt eingeplante Ausbilder und Orte (auch in anderen Übungen desselben Tages) und rechnerischen Materialmangel. Der Bereich **Planungswarnungen** ist eingeklappt; **Anzeigen** listet die Warnungen mit Sprung zum Baustein. Warnungen verhindern das Speichern nicht. Wer trotz Warnungen **Veröffentlicht**, gibt eine kurze Begründung an. Übungen, die du nicht planen darfst, erscheinen nur anonym.
+
+Mit dem Veröffentlichen entsteht im **Dienstbuch** der zugehörige Dienst. Ein Klick auf einen Dienstbucheintrag öffnet wie gewohnt **Dienst bearbeiten**; zur Übung gelangst du über den Kalender oder das Kalendersymbol am Eintrag.
+
+### Serien, Vorlagen und Kopien
+
+**Serie** ergänzt fehlende Termine einer wiederkehrenden Übung nach einer vollständigen Vorschau; vorhandene Termine, Dienste und Anwesenheiten bleiben unberührt. **Dieser und folgende** überträgt einen gespeicherten Stand auf spätere Termine; abweichende oder bereits gehaltene Termine bleiben, sofern du sie nicht ausdrücklich einbeziehst. Unter **Weitere Aktionen** speicherst du eine Übung als **Vorlage** oder **kopierst** sie auf ein anderes Datum; Kopien besitzen eigene Bilder und Anhänge.
+
+### Durchführen
+
+Am Übungstag startest du über **Durchführen** – auf der Heute-Karte im Dienstbuch, im Planer oder in der mobilen Planansicht. Die Ansicht ist für das Telefon gemacht: oben der aktuelle Abschnitt mit Restzeit und was danach kommt, darunter alle Stationen mit der Gruppe jetzt und danach, Ort und Ausbildern. **Meine Station** zeigt dir als Ausbilder deine Station mit Lernziel, Ablauf, Sicherheit und einer Materialliste zum Abhaken. Das Abhaken gilt nur auf deinem Gerät. Mit den Pfeilen blätterst du durch die Abschnitte, ohne etwas zu ändern; die aktuelle Zeit stammt von der Uhr deines Geräts.
+
+Die Ansicht aktualisiert sich jede Minute und nach einer Unterbrechung der Verbindung. Ohne Verbindung siehst du einen Hinweis mit dem Stand der letzten Aktualisierung; Änderungen sind dann nicht möglich. Hat jemand den Plan geändert, meldet die Ansicht die neue Version. **Anwesenheit** führt zur Erfassung im Dienstbuch.
+
+### Nachbereiten
+
+Nach Beginn der Übung öffnest du **Nachbereiten** im Planer oder in der Durchführung. Trage den tatsächlichen Beginn und das Ende ein (**Planzeit übernehmen** hilft), dazu eine kurze Reflexion und Verbesserungshinweise. Die Planzeit bleibt unverändert; angezeigt wird der Unterschied. Mit **Übung zugleich abschließen** schließt du die Übung im selben Schritt ab; Anwesenheiten bleiben im Dienstbuch. Hat jemand anderes die Nachbereitung inzwischen geändert, siehst du beide Stände und entscheidest, welcher gilt.
+
+### Handout
+
+Das **Handout** (Drucken oder PDF) enthält Version und Stand, den Ablauf, je Station eine Karte mit Ort, Ausbildern, Zeitfenstern und Gruppen, Lernziel, Sicherheit und Material sowie eine zusammengefasste Materialliste. Material einer Station zählt dort einmal, weil die Gruppen nacheinander üben.
+
+### Bibliothek
+
+In der Bibliothek pflegst du wiederverwendbare Inhalte mit Kategorien, Tags und einer Standarddauer. Ein Bibliotheksbaustein wird beim Einfügen in die Übung kopiert; spätere Änderungen in der Bibliothek verändern geplante Übungen nicht.
 
 ## Inventar, Einkleidung und Rückgaben
 

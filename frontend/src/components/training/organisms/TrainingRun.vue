@@ -170,7 +170,9 @@ const position = computed(() => runPosition(sections.value, session.value?.date 
 const shownIndex = computed(() => manualIndex.value ?? position.value.index)
 const shown = computed(() => sections.value[shownIndex.value])
 const nextSection = computed(() => sections.value[shownIndex.value + 1])
-const isLive = computed(() => position.value.phase === 'running' && manualIndex.value === null)
+// Completed or cancelled exercises never count down, even while the clock is inside the plan.
+const closed = computed(() => session.value?.status === 'completed' || session.value?.status === 'cancelled')
+const isLive = computed(() => position.value.phase === 'running' && manualIndex.value === null && !closed.value)
 const cards = computed(() => sectionCards(sections.value, shownIndex.value))
 const mine = computed(() => myNextCards(sections.value, shownIndex.value, auth.user?.id ?? null))
 const progress = computed(() => {
@@ -197,13 +199,15 @@ const dateLabel = computed(() => {
 })
 const heroEyebrow = computed(() => {
   const label = shown.value?.label ?? ''
-  if (manualIndex.value !== null) return `Ansicht · ${label}`
+  if (manualIndex.value !== null || closed.value) return `Ansicht · ${label}`
   if (position.value.phase === 'running') return `Jetzt · ${label}`
   return position.value.phase === 'before' ? `Als Erstes · ${label}` : `Zuletzt · ${label}`
 })
 const heroMain = computed(() => {
   const p = position.value
-  if (manualIndex.value !== null) return shown.value!.blocks.map((b) => b.title).filter((t, i, all) => all.indexOf(t) === i).join(' · ')
+  if (session.value?.status === 'completed') return 'Übung abgeschlossen'
+  if (session.value?.status === 'cancelled') return 'Übung abgesagt'
+  if (manualIndex.value !== null) return shown.value!.blocks.map((b) => b.title).filter((t, i, all) => all.indexOf(t) === i).join(' · ') || 'Übergang'
   if (p.phase === 'running') return `noch ${Math.max(1, Math.ceil(shown.value!.end - p.minute))} Min.`
   if (p.phase === 'after') return 'Übung beendet'
   if (p.daysAway > 0) return p.daysAway === 1 ? 'Beginnt morgen' : `Beginnt in ${p.daysAway} Tagen`
@@ -321,8 +325,8 @@ defineExpose({ load })
 .run__check input { width: 1.4rem; height: 1.4rem; accent-color: var(--jf-color-primary); }
 .run__hint { display: flex; gap: var(--jf-space-1-5); padding: var(--jf-space-1-5) var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); background: var(--jf-color-card); font-size: var(--jf-text-sm); }
 .run__hint ul { margin: var(--jf-space-0-5) 0 0; padding-left: 1.1rem; }
-.run__footer { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--jf-space-1); padding: var(--jf-space-1-5) var(--jf-space-2) var(--jf-space-2); background: var(--jf-color-card); border-top: 1px solid var(--jf-color-border); }
-.run__action { font: inherit; background: var(--jf-color-card); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--jf-space-1); min-height: 48px; padding: 0 var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); color: var(--jf-color-text); font-weight: var(--jf-weight-semibold); text-decoration: none; }
+.run__footer { position: sticky; bottom: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--jf-space-1); padding: var(--jf-space-1-5) var(--jf-space-2) var(--jf-space-2); background: var(--jf-color-card); border-top: 1px solid var(--jf-color-border); }
+.run__action { font: inherit; font-size: var(--jf-text-sm); background: var(--jf-color-card); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-width: 0; min-height: 48px; padding: 0 var(--jf-space-1); text-align: center; border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); color: var(--jf-color-text); font-weight: var(--jf-weight-semibold); text-decoration: none; }
 .run__action--primary { background: var(--jf-color-primary); border-color: var(--jf-color-primary); color: var(--jf-color-on-primary); }
 .run__action:focus-visible { outline: var(--jf-focus-ring); outline-offset: 2px; }
 </style>

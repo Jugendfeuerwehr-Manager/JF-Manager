@@ -103,4 +103,13 @@ describe('TrainingRun', () => {
     expect(wrapper.find('.run__header').text()).not.toContain('Läuft')
     expect(wrapper.find('[role="alert"]').text()).toContain('abgesagt')
   })
+
+  it('does not count down a completed exercise', async () => {
+    status = 'completed'
+    const wrapper = await mountAt(18, 7)
+    const hero = wrapper.find('.run__hero').text()
+    expect(hero).toContain('Übung abgeschlossen')
+    expect(hero).not.toContain('noch')
+    expect(wrapper.find('[role="progressbar"]').exists()).toBe(false)
+  })
 })

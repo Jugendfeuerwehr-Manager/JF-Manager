@@ -64,3 +64,23 @@ Geprüft am 07.10.2026 mit frisch migrierter synthetischer SQLite-Datenbank (Mig
 | Konsole | keine Fehler |
 
 Grenzen: Konflikte mit anderen Übungen und anonymisierte Übungen sind in Backendtests abgedeckt, im Browser nicht gesondert erzeugt. Kein echter Touch-Hardwarelauf.
+
+# TRAIN-04.5: Browserabnahme Durchführung, Nachbereitung und Handout
+
+Geprüft am 07.10.2026 mit frisch migrierter synthetischer SQLite-Datenbank (Migrationen bis 0011) im Sitzungs-Scratchpad, Django-Testserver 18081, Vite 15183, Chrome headless über `playwright-core`, 390 × 844, 1280 × 900 und 1440 × 900 CSS-Pixel, hell und dunkel. Konten: „Übungsplanung“ ohne Staff (Ausbilder der Station „Knotenkunde“) und ein synthetisches Leitungskonto mit Dienstbuchrecht und synthetischem Authenticator (MFA-Pflicht der Rolle). Eine veröffentlichte Übung, die zur Prüfzeit gerade lief, mit Rotation über zwei Gruppen, verknüpften Stationen, Ausbildern und Material; verknüpfter Dienst. Keine Anwendungsechtdaten.
+
+| Ablauf | Ergebnis |
+| --- | --- |
+| Durchführung (390 px) | bestanden: „Jetzt · Runde 1 von 2“, Uhrzeit, Restzeit, Fortschritt, „Danach: Wechsel“; Stationskarten mit Gruppe jetzt/danach, Ausbilder, Ort |
+| Meine Station | bestanden: eigene Station mit Lernziel, Ablauf, Material; Abhaken übersteht Neuladen, Hinweis „nur auf diesem Gerät“ |
+| Ohne Verbindung | bestanden: Hinweis mit Stand der letzten Aktualisierung |
+| Dienstbuch (1440/390 px) | bestanden: Heute-Karte „Durchführen“ und „Anwesenheit erfassen“; Klick in die Zeile öffnet `/servicebook/{id}/edit`; „Durchführen“ öffnet die Durchführung |
+| Planer | bestanden: „Durchführen“ öffnet die Durchführung |
+| Nachbereitung (390 px) | bestanden: Planzeit übernehmen, Ende ändern, Vergleich „110 Min. · tatsächlich 104 Min. (−6)“, Abschluss; danach Status „Abgeschlossen“, Planzeit unverändert |
+| Handout und PDF | bestanden: Version, Stand, Stationskarten mit beiden Zeitfenstern, Materialliste; PDF-Text (`pdftotext`) mit Umlauten geprüft; 390 px ohne Überbreite |
+| Dunkelmodus | bestanden nach Korrektur (siehe unten) |
+| Konsole | keine Fehler |
+
+Befunde während der Abnahme und behoben: Bei drei Aktionen war die Fußleiste der Durchführung bei 390 px abgeschnitten (Spalten und Schrift angepasst). Eine abgeschlossene Übung zählte im Kopf weiter herunter (gespeicherter Status hat Vorrang, kein Fortschrittsbalken). In TRAIN-04.4 gefunden: Das Handout war bei 390 px 654 px breit und Datum/Stand klebten zusammen.
+
+Grenzen: Gerätezeit bestimmt den Abschnitt; eine falsch gestellte Geräteuhr verschiebt die Anzeige (Blättern bleibt möglich). Kein echter Touch-Hardwarelauf; Offline wurde über den Browser-Offlinemodus simuliert.
