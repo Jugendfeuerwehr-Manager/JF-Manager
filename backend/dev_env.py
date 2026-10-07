@@ -172,6 +172,7 @@ def main(argv=None):
     totp_parser = commands.add_parser("totp")
     totp_parser.add_argument("username")
     args = parser.parse_args(argv)
+    sys.stdout.reconfigure(line_buffering=True)  # keep order with subprocess output
     if args.command == "ensure":
         ensure()
         return 0

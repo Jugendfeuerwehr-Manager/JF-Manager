@@ -23,10 +23,12 @@ cd JF-Manager
 ```bash
 cd backend
 pipenv install
-cp example.env .env
+pipenv run python dev_env.py ensure
 ```
 
-In `backend/.env` für die lokale Entwicklung mindestens setzen:
+`dev_env.py ensure` legt `backend/.env` an bzw. ergänzt fehlende Werte: `DJANGO_SECRET_KEY`,
+`FIELD_ENCRYPTION_KEY`, `DEBUG=True` und `REDIS_URL`. Ein vorhandener gültiger Schlüssel wird nie
+ersetzt, Werte werden nicht ausgegeben. Von Hand sind mindestens nötig:
 
 ```bash
 DEBUG=True
@@ -65,7 +67,16 @@ cp .env.example .env
 
 ### 4. Starten
 
-**VS Code:** Startkonfiguration **„JF-Manager: Backend + Frontend“**. Sie startet Redis (oder nutzt ein laufendes), führt Migrationen aus, startet den RQ-Worker, Django und Vite und öffnet Chrome unter `http://localhost:5173`.
+**VS Code:** Startkonfiguration **„JF-Manager: Backend + Frontend“**. Sie startet Redis (oder nutzt ein laufendes), ergänzt fehlende Werte in `backend/.env`, führt Migrationen aus, prüft alle gespeicherten Geheimnisse gegen den Schlüssel, startet den RQ-Worker, Django und Vite und öffnet Chrome unter `http://localhost:5173`. Passen gespeicherte Daten nicht zum Schlüssel, bricht der Start bei **„backend: check keys“** mit einem Hinweis ab, statt später mit `InvalidToken` im Debugger zu stehen.
+
+Backend-Befehle im Terminal am besten über den Helfer starten; dann hat `backend/.env` Vorrang vor
+Variablen, die in der Shell noch gesetzt sind:
+
+```bash
+cd backend
+pipenv run python dev_env.py run python manage.py runserver
+pipenv run python dev_env.py check
+```
 
 **Terminal:**
 
@@ -76,6 +87,41 @@ cp .env.example .env
 Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd frontend && npm run dev`, dann `http://localhost:5173` öffnen.
 
 **Mit Beispieldaten statt eigener Datenbank:** VS-Code-Konfiguration **„Demo: Backend + Frontend“** oder wie in der README beschrieben. Die Demo legt eine temporäre Datenbank mit eigenem Wegwerf-Schlüssel an.
+
+### Lokale Daten zurücksetzen und Demodaten laden
+
+VS-Code-Task **„dev: Zurücksetzen und Demodaten“** (oder Startkonfiguration **„Dev: Zurücksetzen und
+Demodaten“**) fragt nach und löscht dann die lokale SQLite-Datenbank, `backend/uploads/` und die
+Cache-Einträge der Anwendung in Redis, migriert und lädt vollständige fiktive Demodaten. Im Terminal:
+
+```bash
+cd backend
+pipenv run python dev_env.py reset --confirm ja
+```
+
+Die Demodaten (`manage.py seed_demo`) enthalten drei Abteilungen mit Gruppen, Mitgliedern und Eltern,
+zehn Konten mit Standardrollen, Dienstbuch mit Anwesenheit, Übungen in allen Status mit Stationen,
+Serie und Vorlage, Qualifikationen mit bald ablaufenden Nachweisen, Inventar mit Größen, Beständen und
+Ausgaben sowie Bestellungen in allen Status. Alle Daten sind erfunden (`example.invalid`); nichts wird
+versendet.
+
+| Konto | Rolle |
+|-------|-------|
+| `admin` | Superuser |
+| `jugendwart` | Jugendwart (Organisation, alle Abteilungen) |
+| `leitung.mitte`, `leitung.nord`, `leitung.kinder` | Abteilungsjugendwart |
+| `betreuer.mitte`, `betreuer.nord` | Jugendleiter bzw. Betreuer |
+| `ausbilder` | Übungsplanung Mitte und Nord, Bibliothek |
+| `geraetewart` | Inventar und Bestellungen (alle Abteilungen) |
+| `kommunikation` | E-Mail-Versand (alle Abteilungen) |
+
+Alle Konten haben dasselbe Passwort; es steht in `backend/.dev-demo-login` (nur lokal, nicht
+versioniert). Konten mit Pflicht-Zwei-Faktor-Anmeldung haben bereits eine Authenticator-App
+hinterlegt; den aktuellen Code zeigt der Task **„dev: Anmeldecode (Demo)“** oder
+`pipenv run python dev_env.py totp admin` (nur mit `DEBUG=True` und nur für Demokonten).
+
+`seed_demo` verweigert sich bei nicht leerer Datenbank und ohne `DEBUG`. Für ein eigenes
+Vorführsystem ohne echte Daten: `python manage.py seed_demo --allow-non-debug`.
 
 ### Nicht lesbares SMTP-Passwort in der Entwicklung
 
@@ -104,7 +150,9 @@ neu eingegeben werden; es wird weder entschlüsselt noch still gelöscht.
 
 | Symptom | Ursache und Abhilfe |
 |---------|---------------------|
-| Start bricht mit „FIELD_ENCRYPTION_KEY muss explizit gesetzt sein“ ab | Schlüssel in `backend/.env` eintragen (siehe oben). |
+| Start bricht mit „FIELD_ENCRYPTION_KEY muss explizit gesetzt sein“ ab | `pipenv run python dev_env.py ensure` ausführen. |
+| „backend: check keys“ meldet „Schlüsselprüfung fehlgeschlagen“ oder der Debugger hält bei `InvalidToken` | Lokale Daten wurden mit einem anderen Schlüssel geschrieben. Lokal neu beginnen: „dev: Zurücksetzen und Demodaten“. Daten behalten: alten Schlüssel als `FIELD_ENCRYPTION_PREVIOUS_KEYS` ergänzen. |
+| Mehrere lokale Instanzen (Worktrees) teilen einen Redis | Cache-Einträge sind an den Schlüssel gebunden und kollidieren nicht. RQ-Warteschlangen werden aber geteilt: je Instanz eine eigene Redis-Datenbank setzen, z. B. `REDIS_URL=redis://localhost:6379/1`. |
 | Login meldet „Gespeicherte Zugangsdaten können nicht entschlüsselt werden“ | Die Datenbank wurde mit einem anderen Schlüssel beschrieben. Den ursprünglichen Schlüssel eintragen; bei Schlüsselwechsel den alten in `FIELD_ENCRYPTION_PREVIOUS_KEYS` angeben. |
 | Login klappt, aber jede Anfrage ist sofort wieder abgemeldet | App nicht über `http://localhost:5173` geöffnet oder `DEBUG=True` fehlt (dann sind Cookies `Secure` und werden über http nicht gesendet). |
 | `npm run dev` liefert für `/api/...` HTML statt JSON | Veraltete `frontend/vite.config.js` vorhanden; maßgeblich ist nur `vite.config.ts`. |
