@@ -29,15 +29,19 @@
         <h3 class="today-card__title">{{ service.topic || 'Dienst ohne Thema' }}</h3>
         <p class="today-card__meta">{{ [timeRange(service), service.place].filter(Boolean).join(' · ') }}</p>
         <div class="today-card__actions">
-          <router-link :to="{ name: 'service-attendance', params: { id: service.id } }" class="today-action today-action--primary">
-            <i class="pi pi-check-square" aria-hidden="true"></i>Anwesenheit erfassen
-          </router-link>
           <router-link
             v-if="service.training_session"
-            :to="{ name: 'training-mobile', params: { id: service.training_session } }"
-            class="today-action"
+            :to="{ name: 'training-run', params: { id: service.training_session } }"
+            class="today-action today-action--primary"
           >
-            <i class="pi pi-list" aria-hidden="true"></i>Ablauf ansehen
+            <i class="pi pi-play" aria-hidden="true"></i>Durchführen
+          </router-link>
+          <router-link
+            :to="{ name: 'service-attendance', params: { id: service.id } }"
+            class="today-action"
+            :class="{ 'today-action--primary': !service.training_session }"
+          >
+            <i class="pi pi-check-square" aria-hidden="true"></i>Anwesenheit erfassen
           </router-link>
         </div>
       </article>

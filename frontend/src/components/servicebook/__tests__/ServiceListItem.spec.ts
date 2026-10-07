@@ -30,4 +30,12 @@ describe('ServiceListItem', () => {
     expect(wrapper.find('[aria-label$="bearbeiten"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Anwesenheit offen')
   })
+
+  it('opens the service editor from the row, also for services with an exercise', () => {
+    const linked = { ...base, training_session: 9, training_status: 'published' } as Service
+    const wrapper = mount(ServiceListItem, { props: { service: linked }, global })
+    const title = wrapper.find('.service-row__title a')
+    expect(JSON.parse(title.attributes('data-to')!)).toEqual({ name: 'service-edit', params: { id: 3 } })
+    expect(wrapper.find('[aria-label="Übungsplan zu Knoten öffnen"]').exists()).toBe(true)
+  })
 })

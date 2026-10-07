@@ -33,6 +33,14 @@
           v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
           @click="toggleNav"
         />
+        <Button
+          v-if="session && (session.status === 'published' || session.status === 'completed') && blocks.length"
+          icon="pi pi-play"
+          label="Durchführen"
+          severity="secondary"
+          v-tooltip.bottom="isDirty ? 'Zeigt den gespeicherten Stand' : 'Ablauf vor Ort auf dem Telefon'"
+          @click="router.push({ name: 'training-run', params: { id: session.id } })"
+        />
         <template v-if="canManage">
         <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.undo()" />
         <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.redo()" />

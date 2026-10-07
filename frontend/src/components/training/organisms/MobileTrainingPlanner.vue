@@ -22,6 +22,12 @@
         </div>
       </div>
       <div class="header-buttons">
+        <Button
+          v-if="session && (session.status === 'published' || session.status === 'completed') && plannerStore.blocks.length"
+          label="Durchführen"
+          icon="pi pi-play"
+          @click="router.push({ name: 'training-run', params: { id: sessionId } })"
+        />
         <Button v-if="session?.can_manage_plan" label="Plan bearbeiten" icon="pi pi-pencil" severity="secondary" outlined @click="router.push({ name: 'training-planner', params: { id: sessionId }, query: { edit: '1' } })" />
         <router-link v-if="session?.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
         <Button

@@ -8,7 +8,10 @@
 
     <div class="service-row__text">
       <h3 :id="`service-${service.id}-title`" class="service-row__title">
-        <span class="visually-hidden">{{ fullDate }}: </span>{{ service.topic || 'Dienst ohne Thema' }}
+        <!-- The whole row opens "Dienst bearbeiten", as users know it; the exercise stays one click away. -->
+        <router-link :to="{ name: 'service-edit', params: { id: service.id } }" class="service-row__link">
+          <span class="visually-hidden">{{ fullDate }}: </span>{{ service.topic || 'Dienst ohne Thema' }}
+        </router-link>
       </h3>
       <p class="service-row__meta">{{ [timeRange, service.place].filter(Boolean).join(' · ') }}</p>
       <div class="service-row__badges">
@@ -105,6 +108,7 @@ const operationsManagerNames = computed(() => {
 
 <style scoped>
 .service-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--jf-space-1-5);
@@ -160,6 +164,31 @@ const operationsManagerNames = computed(() => {
   overflow-wrap: anywhere;
 }
 
+.service-row__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Stretch the title link over the row; actions stay clickable above it. */
+.service-row__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.service-row:hover {
+  background: var(--jf-color-ground);
+}
+
+.service-row:has(.service-row__link:focus-visible) {
+  outline: var(--jf-focus-ring);
+  outline-offset: -2px;
+}
+
+.service-row__link:focus-visible {
+  outline: none;
+}
+
 .service-row__meta {
   margin: 0;
   font-size: 0.8125rem;
@@ -183,6 +212,8 @@ const operationsManagerNames = computed(() => {
 }
 
 .service-row__actions {
+  position: relative;
+  z-index: 1;
   flex: none;
   display: flex;
   align-items: center;
