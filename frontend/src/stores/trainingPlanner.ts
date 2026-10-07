@@ -12,6 +12,12 @@ interface DraftSnapshot {
   moves: Array<[number, TrainingBlockMove]>
 }
 
+/** Fields that linked rotation stations share. */
+export const LINKED_FIELDS = [
+  'title', 'content', 'kind', 'location', 'learning_objective', 'safety_notes', 'color',
+  'nextcloud_folder_url', 'instructors', 'materials',
+] as const
+
 export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
   const sessionId = ref<number | null>(null)
   const session = ref<TrainingSessionDetail | null>(null)
@@ -111,7 +117,8 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
         start_offset_minutes: b.start_offset_minutes, position_order: b.position_order,
         color: b.color, nextcloud_folder_url: b.nextcloud_folder_url,
         kind: b.kind ?? 'block', location: b.location ?? '', learning_objective: b.learning_objective ?? '',
-        safety_notes: b.safety_notes ?? '', instructor_ids: (b.instructors ?? []).map((i) => i.id),
+        safety_notes: b.safety_notes ?? '', station_key: b.station_key ?? null,
+        instructor_ids: (b.instructors ?? []).map((i) => i.id),
         materials: (b.materials ?? []).map(({ item, variant, quantity, label }) => ({ item, variant, quantity, label })),
       })),
     }
@@ -179,7 +186,8 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
       start_offset_minutes: data.start_offset_minutes ?? 0, position_order: data.position_order ?? 0,
       color, nextcloud_folder_url: data.nextcloud_folder_url ?? '',
       kind: data.kind ?? 'block', location: data.location ?? '', learning_objective: data.learning_objective ?? '',
-      safety_notes: data.safety_notes ?? '', instructors: data.instructors ?? [], materials: data.materials ?? [],
+      safety_notes: data.safety_notes ?? '', station_key: data.station_key ?? null,
+      instructors: data.instructors ?? [], materials: data.materials ?? [],
       created_at: '', updated_at: '', media: [], attachments: [],
     }
     mutate(() => { blocks.value.push(normalize(b)) })
@@ -203,6 +211,9 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     const b = blocks.value.find((b) => b.id === id)
     if (!b) return
     const { group_ids, instructor_ids: _ids, session: _targetSession, ...content } = data
+    // Linked stations share their description; times and groups stay per block.
+    // Passing station_key: null detaches this block (e.g. adapted for one age group).
+    const siblings = b.station_key && data.station_key !== null ? linkedBlocks(id) : []
     mutate(() => {
       Object.assign(b, content)
       if (group_ids) {
@@ -210,8 +221,21 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
         b.groupIds = group_ids
         b.allGroups = group_ids.length === 0
       }
+      for (const sibling of siblings) {
+        for (const field of LINKED_FIELDS) {
+          if (!(field in content)) continue
+          const value = content[field as keyof typeof content]
+          Object.assign(sibling, { [field]: Array.isArray(value) ? value.map((v) => (typeof v === 'object' ? { ...v } : v)) : value })
+        }
+      }
     })
     return b
+  }
+
+  /** Other blocks of the same rotation station in this draft. */
+  function linkedBlocks(id: number): PlannerBlock[] {
+    const key = blocks.value.find((b) => b.id === id)?.station_key
+    return key ? blocks.value.filter((b) => b.id !== id && b.station_key === key) : []
   }
 
   function stageSession(data: Partial<TrainingSessionCreate>, choices: GroupMini[] = []) {
@@ -346,7 +370,7 @@ export const useTrainingPlannerStore = defineStore('trainingPlanner', () => {
     sessionId, session, blocks, selectedBlockId, draggingBlockId, pendingMoves,
     loading, saving, error, conflict, isDirty, selectedBlock, blocksByGroup,
     canUndo, canRedo, undo, redo, beginGesture, endGesture,
-    loadBlocks, addBlock, addBlocks, updateBlockContent, stageSession, stageMove, savePendingMoves,
+    loadBlocks, addBlock, addBlocks, updateBlockContent, linkedBlocks, stageSession, stageMove, savePendingMoves,
     removeBlock, discardForServerVersion, selectBlock, setDragging, reset,
     warnings, checking, checkError, checkDraft,
   }

@@ -34,6 +34,7 @@ BLOCK_FIELDS = (
     "location",
     "learning_objective",
     "safety_notes",
+    "station_key",
 )
 MATERIAL_FIELDS = ("item_id", "variant_id", "quantity", "label")
 
@@ -72,7 +73,7 @@ def snapshot_hash(session):
                 **owned_files(block),
             }
         )
-    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
 
 
 @contextmanager

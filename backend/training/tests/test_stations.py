@@ -167,3 +167,22 @@ class StationResourceTests(TestCase):
         preview = self.client.post(f"{self.url}/propagation_preview/", {}, format="json").data
         self.assertTrue(all(row["action"] == "update" for row in preview["occurrences"]))
         self.assertTrue(all(any(c.startswith("Ablauf") for c in row["changes"]) for row in preview["occurrences"]))
+
+    def test_linked_station_key_is_kept_in_plan_copies_and_series(self):
+        key = "6f1c2b9e-1d2a-4c55-9a7e-3c1f0b8e2d41"
+        response = self.put(self.station(station_key=key), self.station(station_key=key, start_offset_minutes=30))
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual({b["station_key"] for b in response.data["blocks"]}, {key})
+        self.assertEqual(self.put(self.station(station_key="kein-schlüssel")).status_code, 400)
+        copy = self.client.post(f"{self.url}/copy/", {"date": "2099-07-01"}, format="json").data
+        self.assertEqual(
+            {str(k) for k in TrainingBlock.objects.filter(session_id=copy["id"]).values_list("station_key", flat=True)},
+            {key},
+        )
+        self.session.recurrence_rule = {"frequency": "WEEKLY", "end_date": "2099-06-08"}
+        self.session.save()
+        token = self.client.get(f"{self.url}/series_preview/").data["preview_token"]
+        generated = self.client.post(f"{self.url}/generate_series/", {"preview_token": token}, format="json")
+        self.assertEqual(generated.status_code, 201, generated.data)
+        child = TrainingBlock.objects.filter(session_id=generated.data["session_ids"][0])
+        self.assertEqual({str(k) for k in child.values_list("station_key", flat=True)}, {key})

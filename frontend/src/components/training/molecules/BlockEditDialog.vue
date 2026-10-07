@@ -9,6 +9,18 @@
     <div v-if="block" class="block-edit-layout">
       <!-- Main editor -->
       <div class="edit-main">
+        <div v-if="linked.length" class="linked-note" role="note">
+          <p>
+            <i class="pi pi-link" aria-hidden="true"></i>
+            <strong>Verknüpfte Station.</strong>
+            Titel, Ablauf, Ort, Lernziel, Sicherheit, Ausbilder und Material gelten auch für
+            {{ linkedGroups }}. Zeiten und Gruppen bleiben je Baustein.
+          </p>
+          <div class="linked-note__detach">
+            <Checkbox v-model="detach" input-id="block-detach" binary />
+            <label for="block-detach">Nur für diese Gruppe ändern (Verknüpfung lösen)</label>
+          </div>
+        </div>
         <div class="field-row field-row--two mb-3">
           <div class="field">
             <label for="block-title">Titel</label>
@@ -135,6 +147,7 @@ import MultiSelect from 'primevue/multiselect'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import { useToast } from 'primevue/usetoast'
 import BlockEditor from '../atoms/BlockEditor.vue'
 import AssetPanel from './AssetPanel.vue'
@@ -182,10 +195,19 @@ const form = ref({
   materials: [] as BlockMaterial[],
 })
 
+// Rotation: same station for other groups, edited together unless detached.
+const linked = computed(() => (props.block ? plannerStore.linkedBlocks(props.block.id) : []))
+const linkedGroups = computed(() => {
+  const names = linked.value.map((b) => (b.allGroups ? 'alle Gruppen' : b.groups.map((g) => g.name).join(', ')))
+  return [...new Set(names)].join(' und ') || 'die anderen Gruppen'
+})
+const detach = ref(false)
+
 const kindOptions = (Object.entries(BLOCK_KIND_LABELS) as Array<[BlockKind, string]>).map(([value, label]) => ({ value, label }))
 
 watch(() => [props.block, props.visible] as const, ([b, visible]) => {
   if (b && visible) {
+    detach.value = false
     form.value = {
       title: b.title,
       content: b.content ?? '',
@@ -209,7 +231,9 @@ async function save() {
   saving.value = true
   try {
     const materials = form.value.materials.filter((m) => m.item || m.label.trim())
-    await plannerStore.updateBlockContent(props.block.id, { ...form.value, materials })
+    await plannerStore.updateBlockContent(props.block.id, {
+      ...form.value, materials, ...(detach.value ? { station_key: null } : {}),
+    })
     emit('saved', props.block.id)
     emit('update:visible', false)
   } catch {
@@ -265,6 +289,10 @@ async function updateLibraryBlock() {
   gap: 1rem;
 }
 .edit-main { display: flex; flex-direction: column; gap: 0.75rem; }
+.linked-note { display: grid; gap: var(--jf-space-1); padding: var(--jf-space-1-5) var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); background: var(--jf-color-ground); font-size: var(--jf-text-sm); }
+.linked-note p { margin: 0; }
+.linked-note .pi { margin-right: 0.35rem; }
+.linked-note__detach { display: flex; align-items: center; gap: var(--jf-space-1); min-height: var(--jf-touch-target); }
 .edit-panel { }
 
 .field { display: flex; flex-direction: column; gap: 0.35rem; }

@@ -20,6 +20,9 @@ class PlanBlockFields(models.Model):
     location = models.CharField(max_length=300, blank=True, verbose_name="Ort")
     learning_objective = models.TextField(blank=True, verbose_name="Lernziel")
     safety_notes = models.TextField(blank=True, verbose_name="Sicherheitshinweise")
+    # Rotation: the same station for several groups shares one key, so the planner
+    # edits its description once. Empty = not linked (e.g. adapted for one age group).
+    station_key = models.UUIDField(null=True, blank=True, verbose_name="Stationsverknüpfung")
 
     title = models.CharField(max_length=300, verbose_name="Titel")
 

@@ -6,7 +6,7 @@
         <section class="rotation__setup" aria-label="Rahmen">
           <div class="field">
             <label for="rotation-groups">Gruppen</label>
-            <MultiSelect input-id="rotation-groups" v-model="groupIds" :options="groupChoices" option-label="name" option-value="id" display="chip" />
+            <MultiSelect input-id="rotation-groups" v-model="groupIds" :options="groupChoices" option-label="name" option-value="id" />
           </div>
           <div class="field">
             <label for="rotation-start">Beginn (Minute ab Übungsbeginn)</label>
@@ -22,7 +22,7 @@
           </div>
           <div class="field">
             <label for="rotation-break">Pause</label>
-            <Select input-id="rotation-break" v-model="breakAfterRound" :options="breakOptions" option-label="label" option-value="value" />
+            <Select input-id="rotation-break" v-model="breakChoice" :options="breakOptions" option-label="label" option-value="value" />
           </div>
           <div v-if="breakAfterRound !== null" class="field">
             <label for="rotation-break-duration">Pausendauer (Min.)</label>
@@ -32,21 +32,42 @@
 
         <section aria-labelledby="rotation-stations-heading" class="rotation__stations">
           <h3 id="rotation-stations-heading">Stationen in Reihenfolge</h3>
+          <p class="rotation__muted rotation__hint">
+            Jede Station wird für alle gewählten Gruppen verknüpft angelegt: Eine Änderung an Station 1 gilt für jede Gruppe.
+            Für eine Altersgruppe lässt sich die Verknüpfung im Baustein lösen.
+          </p>
           <ol>
-            <li v-for="(station, index) in stations" :key="index" class="rotation__station">
+            <li v-for="(station, index) in stations" :key="station.key" class="rotation__station">
               <span class="rotation__index" aria-hidden="true">{{ index + 1 }}.</span>
-              <InputText v-model="station.title" :aria-label="`Station ${index + 1}: Titel`" placeholder="Titel" />
-              <InputText v-model="station.location" :aria-label="`Station ${index + 1}: Ort`" placeholder="Ort" />
-              <MultiSelect
-                :model-value="station.instructors.map((i) => i.id)"
-                :options="instructorOptions"
-                option-label="name"
-                option-value="id"
-                filter
-                placeholder="Ausbilder"
-                :aria-label="`Station ${index + 1}: Ausbilder`"
-                @update:model-value="(ids: number[]) => (station.instructors = instructorOptions.filter((o) => ids.includes(o.id)))"
-              />
+              <div class="rotation__fields">
+                <AutoComplete
+                  :model-value="station.libraryBlock ? { id: station.libraryBlock, title: station.title } : null"
+                  :suggestions="librarySuggestions"
+                  option-label="title"
+                  dropdown
+                  force-selection
+                  :input-id="`rotation-library-${index}`"
+                  :aria-label="`Station ${index + 1}: Baustein aus der Bibliothek`"
+                  placeholder="Aus Bibliothek wählen (optional)"
+                  @complete="searchLibrary($event.query)"
+                  @update:model-value="(value: LibraryBlockList | null) => chooseLibrary(station, value)"
+                />
+                <InputText v-model="station.title" :aria-label="`Station ${index + 1}: Titel`" placeholder="Titel" />
+                <InputText v-model="station.location" :aria-label="`Station ${index + 1}: Ort`" placeholder="Ort" />
+                <MultiSelect
+                  :model-value="station.instructors.map((i) => i.id)"
+                  :options="instructorOptions"
+                  option-label="name"
+                  option-value="id"
+                  filter
+                  placeholder="Ausbilder"
+                  :aria-label="`Station ${index + 1}: Ausbilder`"
+                  @update:model-value="(ids: number[]) => (station.instructors = instructorOptions.filter((o) => ids.includes(o.id)))"
+                />
+                <p v-if="station.libraryBlock" class="rotation__muted rotation__source">
+                  <i class="pi pi-book" aria-hidden="true"></i> Inhalt aus der Bibliothek wird übernommen
+                </p>
+              </div>
               <span class="rotation__order">
                 <Button icon="pi pi-arrow-up" text size="small" :disabled="index === 0" :aria-label="`Station ${index + 1} nach oben`" @click="move(index, -1)" />
                 <Button icon="pi pi-arrow-down" text size="small" :disabled="index === stations.length - 1" :aria-label="`Station ${index + 1} nach unten`" @click="move(index, 1)" />
@@ -100,6 +121,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
@@ -108,10 +130,10 @@ import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import Select from 'primevue/select'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { trainingSessionsApi } from '@/api/training'
+import { libraryApi, trainingSessionsApi } from '@/api/training'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import type { InstructorMini } from '@/types/training'
-import { buildRotation, type RotationStation } from '../utils/rotation'
+import type { InstructorMini, LibraryBlockList } from '@/types/training'
+import { buildRotation, newStationKey, type RotationStation } from '../utils/rotation'
 
 const props = defineProps<{ visible: boolean; duration: number }>()
 const emit = defineEmits<{ 'update:visible': [visible: boolean] }>()
@@ -125,13 +147,18 @@ const stationDuration = ref(20)
 const transition = ref(5)
 const breakAfterRound = ref<number | null>(null)
 const breakDuration = ref(10)
+const breakChoice = computed({
+  get: () => breakAfterRound.value ?? 0,
+  set: (value: number) => { breakAfterRound.value = value || null },
+})
 const instructorOptions = ref<InstructorMini[]>([])
+const librarySuggestions = ref<LibraryBlockList[]>([])
 const applying = ref(false)
 
 const selectedGroups = computed(() => groupChoices.value.filter((g) => groupIds.value.includes(g.id)))
 const roundCount = computed(() => Math.max(selectedGroups.value.length, stations.value.length))
 const breakOptions = computed(() => [
-  { value: null, label: 'Keine Pause' },
+  { value: 0, label: 'Keine Pause' },
   ...Array.from({ length: Math.max(0, roundCount.value - 1) }, (_, i) => ({ value: i + 1, label: `Nach Runde ${i + 1}` })),
 ])
 
@@ -172,8 +199,42 @@ function clock(offset: number) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
+function freeStation(title = ''): RotationStation {
+  return { key: newStationKey(), title, location: '', instructors: [], libraryBlock: null }
+}
+
 function addStation() {
-  stations.value.push({ title: '', location: '', instructors: [], libraryBlock: null })
+  stations.value.push(freeStation())
+}
+
+async function searchLibrary(query: string) {
+  try {
+    librarySuggestions.value = (await libraryApi.list({ search: query || undefined, page_size: 30 })).data.results
+  } catch {
+    librarySuggestions.value = []
+  }
+}
+
+// A library block fills title, duration hint and content; the planned blocks own copies.
+async function chooseLibrary(station: RotationStation, value: LibraryBlockList | string | null) {
+  if (!value || typeof value !== 'object') {
+    if (value === null && station.libraryBlock) {
+      Object.assign(station, { libraryBlock: null, content: undefined, color: undefined, learningObjective: undefined })
+    }
+    return
+  }
+  Object.assign(station, { libraryBlock: value.id, title: value.title, color: value.color || undefined })
+  try {
+    const detail = (await libraryApi.get(value.id)).data
+    if (station.libraryBlock !== value.id) return
+    Object.assign(station, {
+      content: detail.content || undefined,
+      color: detail.color || undefined,
+      learningObjective: detail.description || undefined,
+    })
+  } catch {
+    // Without details the server still copies the library content when the plan is saved.
+  }
 }
 
 function move(index: number, delta: number) {
@@ -202,9 +263,7 @@ watch(
   async (visible) => {
     if (!visible) return
     groupIds.value = groupChoices.value.map((g) => g.id)
-    stations.value = [1, 2, 3].slice(0, Math.max(1, groupIds.value.length)).map((n) => ({
-      title: `Station ${n}`, location: '', instructors: [], libraryBlock: null,
-    }))
+    stations.value = [1, 2, 3].slice(0, Math.max(1, groupIds.value.length)).map((n) => freeStation(`Station ${n}`))
     // Start after the existing plan so nothing overlaps by default.
     startOffset.value = Math.min(props.duration, Math.max(0, ...planner.blocks.map((b) => b.start_offset_minutes + b.duration_minutes)))
     if (planner.sessionId) {
@@ -223,8 +282,14 @@ watch(
 .rotation__setup { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--jf-space-2); }
 .field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
 .field label { font-size: var(--jf-text-sm); font-weight: var(--jf-weight-medium); color: var(--jf-color-text-muted); }
+.field :deep(.p-inputnumber), .field :deep(.p-inputnumber-input) { width: 100%; min-width: 0; }
 .rotation__stations ol { display: grid; gap: var(--jf-space-1); margin: 0 0 var(--jf-space-1); padding: 0; list-style: none; }
-.rotation__station { display: grid; grid-template-columns: 1.5rem minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 2fr) auto; gap: var(--jf-space-1); align-items: center; }
+.rotation__hint { margin-bottom: var(--jf-space-1) !important; font-size: var(--jf-text-sm); }
+.rotation__station { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) auto; gap: var(--jf-space-1); align-items: start; padding: var(--jf-space-1) 0; border-bottom: 1px solid var(--jf-color-border); }
+.rotation__index { padding-top: 0.6rem; }
+.rotation__fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--jf-space-1); min-width: 0; }
+.rotation__fields :deep(.p-autocomplete), .rotation__fields :deep(.p-multiselect) { min-width: 0; width: 100%; }
+.rotation__source { grid-column: 1 / -1; margin: 0; font-size: var(--jf-text-sm); }
 .rotation__index { color: var(--jf-color-text-muted); }
 .rotation__order { display: flex; }
 .rotation__summary { font-weight: var(--jf-weight-semibold); margin-bottom: var(--jf-space-1) !important; }
@@ -234,7 +299,6 @@ watch(
 .rotation__between td { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); }
 .rotation__muted { color: var(--jf-color-text-muted); }
 @media (max-width: 720px) {
-  .rotation__station { grid-template-columns: 1.5rem minmax(0, 1fr) auto; }
-  .rotation__station > :nth-child(3), .rotation__station > :nth-child(4) { grid-column: 2 / -1; }
+  .rotation__fields { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

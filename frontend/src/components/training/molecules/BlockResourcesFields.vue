@@ -168,6 +168,6 @@ watch(() => props.sessionId, () => { void loadInstructors() }, { immediate: true
 .resources__material { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 6rem auto; gap: var(--jf-space-1); align-items: center; }
 .resources__material :deep(.p-autocomplete) { min-width: 0; }
 .resources__qty :deep(input) { width: 100%; }
-.resources__add { justify-self: start; }
+.resources__add { align-self: flex-start; }
 @media (max-width: 640px) { .resources__material { grid-template-columns: minmax(0, 1fr) 5rem auto; } .resources__material > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; } .resources__material > span:nth-child(2) { display: none; } }
 </style>

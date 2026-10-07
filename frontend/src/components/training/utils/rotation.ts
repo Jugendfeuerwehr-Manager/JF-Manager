@@ -1,10 +1,26 @@
 import type { GroupMini, InstructorMini, TrainingBlockCreate } from '@/types/training'
 
 export interface RotationStation {
+  /** Shared by all blocks of this station so they are edited together (UUID). */
+  key: string
   title: string
   location: string
   instructors: InstructorMini[]
   libraryBlock: number | null
+  /** Taken from the library block when chosen; empty for a free station. */
+  content?: string
+  color?: string
+  learningObjective?: string
+}
+
+/** Random UUID v4 for a station link. */
+export function newStationKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16))
+  hex[12] = '4'
+  hex[16] = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16)
+  const h = hex.join('')
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
 }
 
 export interface RotationInput {
@@ -76,7 +92,10 @@ export function buildRotation(input: RotationInput, sessionId: number): Rotation
         ? {
             session: sessionId, title: station.title, kind: 'station', location: station.location,
             group_ids: [group.id], start_offset_minutes: time, duration_minutes: stationDuration,
-            library_block: station.libraryBlock, instructors: station.instructors,
+            library_block: station.libraryBlock, instructors: station.instructors, station_key: station.key,
+            ...(station.content ? { content: station.content } : {}),
+            ...(station.color ? { color: station.color } : {}),
+            ...(station.learningObjective ? { learning_objective: station.learningObjective } : {}),
           }
         : {
             session: sessionId, title: 'Freie Runde', kind: 'free', group_ids: [group.id],

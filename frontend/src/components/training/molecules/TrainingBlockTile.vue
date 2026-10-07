@@ -3,14 +3,14 @@
     :data-block-id="block.id"
     tabindex="0"
     role="group"
-    :aria-label="`${kindLabel ? kindLabel + ': ' : ''}${block.title}${block.location ? ', ' + block.location : ''}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. ${readOnly ? 'Enter: Details ansehen.' : 'Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.'}`"
+    :aria-label="`${kindLabel ? kindLabel + ': ' : ''}${block.title}${block.location ? ', ' + block.location : ''}${block.station_key ? ', verknüpfte Station' : ''}, ab Minute ${block.start_offset_minutes}, ${block.duration_minutes} Minuten. ${readOnly ? 'Enter: Details ansehen.' : 'Enter: bearbeiten. Pfeiltasten auf/ab: verschieben, mit Alt: Dauer ändern.'}`"
     @keydown="onKeydown"
     :style="tileStyle"
     :class="{ selected: selected, dragging: isDragging, 'read-only': readOnly }"
     @click.stop="emit('click', block)"
   >
     <span class="tile-title">{{ block.title }}</span>
-    <span class="tile-meta">{{ [kindLabel, durationLabel, block.location].filter(Boolean).join(' · ') }}</span>
+    <span class="tile-meta"><i v-if="block.station_key" class="pi pi-link tile-link" aria-hidden="true" title="Verknüpfte Station"></i>{{ [kindLabel, durationLabel, block.location].filter(Boolean).join(' · ') }}</span>
     <div v-if="!readOnly" class="tile-actions">
       <Button icon="pi pi-pencil" text size="small" severity="secondary" :aria-label="`${block.title} bearbeiten`" @click.stop="emit('edit', block)" />
       <Button icon="pi pi-trash" text size="small" severity="danger" :aria-label="`${block.title} entfernen`" @click.stop="emit('remove', block.id)" />
@@ -111,6 +111,7 @@ const tileStyle = computed(() => {
   overflow-wrap: anywhere;
 }
 .tile-meta { font-size: var(--jf-text-xs); line-height: var(--jf-leading-tight); }
+.tile-link { margin-right: 0.25rem; font-size: 0.7em; }
 /* Actions overlay the tile corner so hidden buttons do not shorten the title */
 .tile-actions {
   position: absolute;

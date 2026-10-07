@@ -22,6 +22,7 @@ class TrainingTemplateBlockSerializer(serializers.ModelSerializer):
             "location",
             "learning_objective",
             "safety_notes",
+            "station_key",
             "instructors",
             "materials",
             "groups",

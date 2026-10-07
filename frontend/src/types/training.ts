@@ -171,6 +171,8 @@ export interface TrainingBlock {
   location?: string
   learning_objective?: string
   safety_notes?: string
+  /** Rotation: blocks of the same station share this key and are edited together. */
+  station_key?: string | null
   instructors?: InstructorMini[]
   materials?: BlockMaterial[]
   groups: GroupMini[]
@@ -195,6 +197,8 @@ export interface TrainingBlockCreate {
   location?: string
   learning_objective?: string
   safety_notes?: string
+  /** Rotation: blocks of the same station share this key and are edited together. */
+  station_key?: string | null
   instructor_ids?: number[]
   materials?: BlockMaterial[]
   group_ids?: number[]
