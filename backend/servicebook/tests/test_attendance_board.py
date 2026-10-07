@@ -185,3 +185,20 @@ class AttendanceBoardTests(TestCase):
         chart = self.client.get("/api/v1/servicebook/services/attendance_chart/")
         self.assertEqual(chart.status_code, 200)
         self.assertEqual(chart.json()["attendance_data"]["A"], [0])
+
+
+class SystemAccountRosterTests(TestCase):
+    """UX-02.1b: guardian's AnonymousUser is active but must never appear in the team roster."""
+
+    def test_service_without_department_lists_only_people(self):
+        admin = get_user_model().objects.create_superuser(username="org-admin", password="test-pass")
+        get_user_model().objects.get_or_create(username="AnonymousUser", defaults={"is_active": True})
+        get_user_model().objects.create_user(username="leitung", first_name="Kim", last_name="Leitung")
+        now = timezone.now()
+        service = Service.objects.create(start=now, end=now + timedelta(hours=2))
+        client = APIClient()
+        client.force_authenticate(admin)
+        staff = client.get(f"/api/v1/servicebook/services/{service.pk}/attendance_board/").json()["staff"]
+        names = [row["full_name"] for row in staff]
+        self.assertIn("Kim Leitung", names)
+        self.assertNotIn("AnonymousUser", names)

@@ -1,6 +1,5 @@
 """Scoped attendance roster and compare-and-set updates for collaborative entry."""
 
-from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Q
@@ -10,6 +9,7 @@ from rest_framework.response import Response
 
 from members.models import Member
 from servicebook.models import Attendance, Service, StaffAttendance
+from users.people import ANONYMOUS_USERNAME, person_accounts
 
 from .attendance_permissions import has_department_permission
 
@@ -23,7 +23,7 @@ class BoardChangeSerializer(serializers.Serializer):
 
 def roster_people(service):
     members = Member.objects.all()
-    staff = get_user_model().objects.filter(is_active=True)
+    staff = person_accounts()
     if service.department_id:
         members = members.filter(departments=service.department_id)
         staff = staff.filter(
@@ -89,6 +89,7 @@ def staff_report(services):
     result = {}
     for attendance in (
         StaffAttendance.objects.filter(service__in=services)
+        .exclude(person__username=ANONYMOUS_USERNAME)
         .select_related("person", "service")
         .order_by("person__last_name", "person__first_name")
     ):

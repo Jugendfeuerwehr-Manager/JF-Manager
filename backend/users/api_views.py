@@ -16,6 +16,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from orders.notifications.template_service import TemplateRenderer
+from users.people import person_accounts
 
 from .api_serializers import (
     PasswordChangeSerializer,
@@ -75,9 +76,6 @@ def _send_external_auth_password_info(user):
     )
 
 
-ANONYMOUS_USERNAME = "AnonymousUser"
-
-
 @extend_schema_view(
     list=extend_schema(summary="List all users", description="Get a paginated list of all users"),
     retrieve=extend_schema(summary="Get user details", description="Get detailed information about a specific user"),
@@ -103,7 +101,7 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
 
     def get_queryset(self):
         # django-guardian's AnonymousUser is a system account, never a person to pick.
-        return super().get_queryset().exclude(username=ANONYMOUS_USERNAME)
+        return person_accounts(super().get_queryset(), active_only=False)
 
     # Allow POST so custom POST actions (e.g. request_password_reset, reset_password,
     # change_password) are reachable while still avoiding DELETE/PUT
