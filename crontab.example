@@ -1,6 +1,0 @@
-# Abgelöst (OPS-03.2): Wartung und Sicherungen laufen als systemd-Timer,
-# eingerichtet von "jfctl install" für Docker Compose und Debian 13 nativ.
-#   jfctl maintenance list      Aufgaben, Zeitpläne, Zustand
-#   jfctl backup create         Sicherung sofort
-# Bisherige Cronjobs (docker-compose run --rm backup, healthcheck.sh, certbot)
-# entfernen, siehe docs/operations/ops-migration.md.

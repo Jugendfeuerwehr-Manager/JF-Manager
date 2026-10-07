@@ -7,7 +7,7 @@ flowchart TD
         client[Internet / Client]
         nginx[Frontend Container Nginx\nRoutes:\n/ -> Vue.js SPA\n/api/* -> backend:8000\n/admin/* -> backend:8000\n/static/* -> Static volume read-only\n/uploads/* -> Uploads volume read-only\n/health -> Health check\nSecurity: non-root, gzip, security headers, SSL/TLS]
         backend[Backend\nDjango REST + uWSGI\n:8000\nUser django UID 1000]
-        db[(PostgreSQL 15\n:5432\nUser pg)]
+        db[(PostgreSQL 17\n:5432\nUser pg)]
         redis[(Redis Cache\n:6379\n256MB)]
         worker[Worker RQ\nrqworker default\nconsumes Redis]
         staticVol[(Static Volume)]
@@ -102,60 +102,13 @@ The project uses GitHub Actions workflows in `.github/workflows/`:
         - runs Trivy image scans and uploads SARIF
 - `deploy.yml`
         - manual deployment workflow (`workflow_dispatch`)
-        - pulls selected image tag, runs backup/migrate/collectstatic/health checks
+        - runs `jfctl update --version X.Y.Z` on the server (verify, backup, migrate, check, rollback)
 
 For details, see [Build Pipeline](../development/build-pipeline.md).
 
-## Data Persistence
+## Operation
 
-| Volume | Content | Persistence |
-|--------|---------|-------------|
-| `database` | PostgreSQL data | Persistent |
-| `redis` | Redis cache data | Persistent |
-| `static` | Django static files | Persistent |
-| `uploads` | User uploaded files | Persistent |
-| `./backups` | DB backups (bind mount) | Host directory |
-
-## Backup Strategy
-
-Daily automated backup at 2 AM:
-
-```mermaid
-flowchart TD
-        pg[(PostgreSQL)] --> dump[pg_dump]
-        dump --> archive[backup.sql.gz]
-        archive --> backups[./backups/]
-        backups --> daily[daily keep 7]
-        backups --> weekly[weekly keep 4]
-        backups --> monthly[monthly keep 6]
-```
-
-## Resource Allocation
-
-| Service | RAM Limit | RAM (idle) |
-|---------|-----------|------------|
-| Backend | 2GB | ~200MB |
-| Database | 1GB | ~50MB |
-| Frontend | 512MB | ~10MB |
-| Redis | 256MB | ~5MB |
-| Worker (optional) | 512MB | ~50-150MB |
-| **Total** | – | **~300MB** |
-
-Recommended minimum: 4GB RAM, 20GB disk.
-
-## Monitoring
-
-| Service | Health Check | Interval |
-|---------|-------------|----------|
-| Frontend | `wget /health` | 30s |
-| Backend | `curl /api/v1/` | 30s |
-| Database | `pg_isready` | 30s |
-| Redis | `redis-cli ping` | 30s |
-| Worker | Queue heartbeat/log monitoring | app-level |
-
-Automatic restart on failure, 3 retries before unhealthy.
-
-Logging: JSON format, 10MB max per file, 3 files rotation.
+Volumes, backups (Restic, systemd timer), resource limits, health checks and updates are defined by the operations tooling, not by this overview. Single source: [Betrieb: Überblick und Layout](../operations/ops-overview.md) and [jfctl](../operations/ops-jfctl.md).
 
 ## Related Architecture Docs
 
