@@ -103,6 +103,8 @@ import { useDepartmentsStore } from '@/stores/departments'
 import { useTrainingStore } from '@/stores/training'
 import type { TrainingSessionDetail, TrainingSessionCreate, RecurrenceRule } from '@/types/training'
 import apiClient from '@/api'
+import { useClientConfiguration } from '@/composables/useClientConfiguration'
+const { configuration, refresh: refreshDefaults } = useClientConfiguration()
 
 interface SessionFormData {
   title: string
@@ -141,8 +143,8 @@ const form = ref<SessionFormData>({
   title: '',
   description: '',
   date: '',
-  start_time: '18:00',
-  end_time: '20:00',
+  start_time: configuration.training_start_time,
+  end_time: configuration.training_end_time,
   location: '',
   notes: '',
   group_ids: [],
@@ -165,6 +167,15 @@ const frequencyOptions = [
 
 onMounted(async () => {
   if (props.initialData) populateForm(props.initialData)
+  else {
+    const initialStart = form.value.start_time
+    const initialEnd = form.value.end_time
+    void refreshDefaults().then(() => {
+      if (props.initialData) return
+      if (form.value.start_time === initialStart) form.value.start_time = configuration.training_start_time
+      if (form.value.end_time === initialEnd) form.value.end_time = configuration.training_end_time
+    }).catch(() => { /* Offline creation retains safe defaults. */ })
+  }
   const department = props.initialData?.id ? props.initialData.department : useDepartmentsStore().activeDepartmentId
   try {
     const choices: { id: number; name: string }[] = []

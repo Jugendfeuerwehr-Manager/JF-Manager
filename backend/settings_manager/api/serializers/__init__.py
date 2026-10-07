@@ -103,6 +103,23 @@ class ServiceSettingsSerializer(serializers.Serializer):
         return data
 
 
+class TrainingSettingsSerializer(serializers.Serializer):
+    training_start_time = serializers.TimeField(required=False)
+    training_end_time = serializers.TimeField(required=False)
+    default_block_duration_minutes = serializers.IntegerField(required=False, min_value=1, max_value=480)
+
+    def validate(self, data):
+        if data["training_start_time"] >= data["training_end_time"]:
+            raise serializers.ValidationError({"training_end_time": "Das Ende muss nach dem Beginn liegen."})
+        return data
+
+
+class VocabularySettingsSerializer(serializers.Serializer):
+    member_label = serializers.CharField(required=False, max_length=80)
+    service_label = serializers.CharField(required=False, max_length=80)
+    training_label = serializers.CharField(required=False, max_length=80)
+
+
 class OrderSettingsSerializer(serializers.Serializer):
     """Serializer for order settings"""
 
@@ -290,6 +307,8 @@ class AllSettingsSerializer(serializers.Serializer):
     Used for GET /api/v1/settings/ to return all settings at once
     """
 
+    training = TrainingSettingsSerializer(required=False)
+    vocabulary = VocabularySettingsSerializer(required=False)
     security = serializers.DictField(required=False)
     push = serializers.DictField(required=False)
     general = GeneralSettingsSerializer(required=False)

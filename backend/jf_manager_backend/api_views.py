@@ -54,25 +54,17 @@ class AppSettingsView(APIView):
     def get(self, request):
         global_preferences = global_preferences_registry.manager()
 
-        # Extract relevant settings - adjust based on your dynamic_preferences_registry
-        settings = {
-            "app_name": getattr(global_preferences.get("general__app_name", None), "value", "JF-Manager")
-            if hasattr(global_preferences, "general__app_name")
-            else "JF-Manager",
-            "organization_name": getattr(global_preferences.get("general__organization_name", None), "value", "")
-            if hasattr(global_preferences, "general__organization_name")
-            else "",
-            "contact_email": getattr(global_preferences.get("general__contact_email", None), "value", "")
-            if hasattr(global_preferences, "general__contact_email")
-            else "",
-            "equipment_manager_email": getattr(
-                global_preferences.get("general__equipment_manager_email", None), "value", ""
-            )
-            if hasattr(global_preferences, "general__equipment_manager_email")
-            else "",
-            # Service default times
-            "service_start_time": global_preferences.get("service__service_start_time", "19:00"),
-            "service_end_time": global_preferences.get("service__service_end_time", "21:00"),
+        # Canonical registered preferences; no connection credentials are exposed.
+        result = {
+            "app_name": global_preferences["general__title"],
+            "organization_name": global_preferences["general__slug"],
+            "contact_email": "",
+            "equipment_manager_email": global_preferences["orders__equipment_manager_email"],
         }
-
-        return Response(settings)
+        for section, names in {
+            "service": ["service_start_time", "service_end_time"],
+            "training": ["training_start_time", "training_end_time", "default_block_duration_minutes"],
+            "general": ["member_label", "service_label", "training_label"],
+        }.items():
+            result.update({name: global_preferences[f"{section}__{name}"] for name in names})
+        return Response(result)

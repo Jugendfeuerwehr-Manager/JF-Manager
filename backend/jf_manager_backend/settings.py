@@ -364,7 +364,7 @@ if REDIS_URL != "none":
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-            "KEY_PREFIX": "jf_manager_backend",
+            "KEY_PREFIX": cache_key_prefix(FIELD_ENCRYPTION_KEY),
         }
     }
 else:

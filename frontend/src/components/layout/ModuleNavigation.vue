@@ -11,10 +11,13 @@
   </nav>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClientConfiguration } from '@/composables/useClientConfiguration'
 defineEmits<{ navigate: [] }>()
+const { configuration, refresh } = useClientConfiguration()
+onMounted(() => { void refresh().catch(() => { /* Existing labels remain usable when offline. */ }) })
 const route = useRoute()
 const auth = useAuthStore()
 const search = ref('')
@@ -48,7 +51,8 @@ const sections: { label: string; items: NavItem[] }[] = [
     { label: 'Einstellungen', icon: 'pi pi-cog', to: '/settings', permission: 'settings_manager.view_all_settings' },
   ] },
 ]
-const visibleSections = computed(() => sections.map(section => ({ ...section, items: section.items.filter(item =>
+const vocabularyLabel = (item: NavItem) => ({ '/members': configuration.member_label, '/servicebook': configuration.service_label, '/training': configuration.training_label }[item.to] || item.label)
+const visibleSections = computed(() => sections.map(section => ({ ...section, items: section.items.map(item => ({ ...item, label: vocabularyLabel(item) })).filter(item =>
   (!item.permission || auth.hasPerm(item.permission)) &&
   item.label.toLocaleLowerCase('de').includes(search.value.trim().toLocaleLowerCase('de'))
 ) })).filter(section => section.items.length))

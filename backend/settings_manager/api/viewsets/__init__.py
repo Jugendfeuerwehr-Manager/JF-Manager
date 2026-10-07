@@ -28,7 +28,9 @@ from ..serializers import (
     OIDCSettingsSerializer,
     OrderSettingsSerializer,
     ServiceSettingsSerializer,
+    TrainingSettingsSerializer,
     UserPermissionsSerializer,
+    VocabularySettingsSerializer,
 )
 
 # Import email template viewset
@@ -81,6 +83,11 @@ class SettingsViewSet(viewsets.ViewSet):
         "oidc": {"prefix": "oidc", "fields": []},
         "security": {"prefix": "security", "fields": []},
         "push": {"prefix": "push", "fields": []},
+        "training": {
+            "prefix": "training",
+            "fields": ["training_start_time", "training_end_time", "default_block_duration_minutes"],
+        },
+        "vocabulary": {"prefix": "general", "fields": ["member_label", "service_label", "training_label"]},
     }
 
     LDAP_FIELDS = [
@@ -211,6 +218,44 @@ class SettingsViewSet(viewsets.ViewSet):
             PushConfiguration.objects.update_or_create(pk=1, defaults=values)
         return Response(effective_push(), status=201)
 
+    @action(detail=False, methods=["get", "patch"])
+    def training(self, request):
+        return self._preference_category(request, "training", TrainingSettingsSerializer)
+
+    @action(detail=False, methods=["get", "patch"])
+    def vocabulary(self, request):
+        return self._preference_category(request, "vocabulary", VocabularySettingsSerializer)
+
+    def _preference_category(self, request, category, serializer_class):
+        if not self._check_category_permission(request.user, category, "view" if request.method == "GET" else "change"):
+            return Response({"detail": "Keine Berechtigung für diese Einstellungen."}, status=403)
+        if request.method == "GET":
+            return Response(serializer_class(self._get_category_settings(category)).data)
+        return self._patch_preferences(request, category, serializer_class)
+
+    @action(detail=False, methods=["get"])
+    def catalog(self, request):
+        from settings_manager.configuration_catalog import configuration_catalog
+
+        categories = [name for name in self.CATEGORY_MAPPINGS if self._check_category_permission(request.user, name)]
+        if not categories:
+            return Response({"detail": "Keine Berechtigung für Einstellungen."}, status=403)
+        return Response(configuration_catalog(self, request, categories))
+
+    @action(detail=False, methods=["get"])
+    def setup(self, request):
+        from settings_manager.configuration_catalog import setup_status
+
+        if not self._check_category_permission(request.user, "all", "view"):
+            return Response({"detail": "Die Einrichtung ist der Systemadministration vorbehalten."}, status=403)
+        return Response(setup_status(self))
+
+    @action(detail=False, methods=["get"], url_path="client-defaults")
+    def client_defaults(self, request):
+        from jf_manager_backend.api_views import AppSettingsView
+
+        return AppSettingsView().get(request)
+
     def _get_category_settings(self, category):
         """Helper to retrieve settings for a specific category"""
         mapping = self.CATEGORY_MAPPINGS.get(category)
@@ -279,6 +324,9 @@ class SettingsViewSet(viewsets.ViewSet):
         if user.is_superuser:
             return True
 
+        # Training defaults and vocabulary belong to general organisation configuration.
+        if category in {"training", "vocabulary"}:
+            category = "general"
         # Check specific permission
         permission = f"settings_manager.{permission_type}_{category}_settings"
         if user.has_perm(permission):

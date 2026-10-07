@@ -1,3 +1,4 @@
+vi.mock('@/api', () => ({ default: { get: vi.fn().mockResolvedValue({ data: {} }) } }))
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ModuleNavigation from '../ModuleNavigation.vue'

@@ -245,6 +245,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import { useClientConfiguration } from '@/composables/useClientConfiguration'
+const { configuration, refresh: refreshDefaults } = useClientConfiguration()
+onMounted(() => { void refreshDefaults().catch(() => { /* Keep safe fallback duration. */ }) })
 import Button from 'primevue/button'
 import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import Dialog from 'primevue/dialog'
@@ -551,7 +554,7 @@ function openEdit(block: PlannerBlock) {
 }
 
 async function createBlock() {
-  const added = await plannerStore.addBlock({ session: props.sessionId, title: 'Neuer Baustein', duration_minutes: Math.min(15, sessionDuration.value) })
+  const added = await plannerStore.addBlock({ session: props.sessionId, title: 'Neuer Baustein', duration_minutes: Math.min(configuration.default_block_duration_minutes, sessionDuration.value) })
   if (added) openEdit(plannerStore.blocks.find((b) => b.id === added.id)!)
 }
 

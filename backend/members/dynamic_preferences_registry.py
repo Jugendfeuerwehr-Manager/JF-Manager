@@ -7,6 +7,7 @@ general = Section("general")
 members = Section("members")
 service = Section("service")
 email = Section("email")  # New section for email settings
+training = Section("training")
 orders = Section("orders")  # New section for order settings
 
 
@@ -155,9 +156,6 @@ class EmailHostPassword(StringPreference):
     field_kwargs = {
         "widget": forms.PasswordInput(render_value=False),
     }
-    field_kwargs = {
-        "widget": forms.PasswordInput(render_value=False),
-    }
 
 
 @global_preferences_registry.register
@@ -179,3 +177,52 @@ class EquipmentManagerEmail(StringPreference):
     help_text = "E-Mail-Adresse des Gerätewarts für Bestellübersichten"
     default = ""
     required = False
+
+
+# Defaults apply only when creating new records; existing plans remain unchanged.
+for preference_name, preference_default, preference_label in [
+    ("training_start_time", "18:00", "Standardbeginn neuer Übungen"),
+    ("training_end_time", "20:00", "Standardende neuer Übungen"),
+]:
+    global_preferences_registry.register(
+        type(
+            preference_name,
+            (StringPreference,),
+            {
+                "section": training,
+                "name": preference_name,
+                "default": preference_default,
+                "verbose_name": preference_label,
+                "required": False,
+            },
+        )
+    )
+
+
+@global_preferences_registry.register
+class TrainingBlockDuration(IntegerPreference):
+    section = training
+    name = "default_block_duration_minutes"
+    default = 15
+    verbose_name = "Standarddauer neuer Bausteine (Minuten)"
+    required = False
+
+
+for preference_name, preference_default in [
+    ("member_label", "Mitglieder"),
+    ("service_label", "Dienstbuch"),
+    ("training_label", "Ausbildung"),
+]:
+    global_preferences_registry.register(
+        type(
+            preference_name,
+            (StringPreference,),
+            {
+                "section": general,
+                "name": preference_name,
+                "default": preference_default,
+                "verbose_name": "Modulbezeichnung",
+                "required": False,
+            },
+        )
+    )
