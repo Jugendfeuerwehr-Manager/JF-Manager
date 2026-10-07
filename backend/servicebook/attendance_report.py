@@ -1,6 +1,6 @@
 """Attendance evaluation per period for members and team: rates, hours, monthly course, trend and warnings."""
 
-from datetime import date, timedelta
+from datetime import date
 
 from django.utils import timezone
 
@@ -12,7 +12,7 @@ from users.people import person_accounts
 LOW_RATE = 0.5
 LOW_RATE_MIN_RECORDS = 4
 DECLINE_POINTS = 25
-DECLINE_MIN_RECORDS_PER_HALF = 2
+DECLINE_MIN_RECORDS_PER_HALF = 4
 MISSED_STREAK = 3
 
 STATE_KEYS = {"A": "present", "E": "excused", "F": "absent"}
@@ -49,16 +49,19 @@ def _add(counts: dict, state: str) -> None:
     counts["recorded"] += 1
 
 
-def _person_row(person_id, full_name, records, months, midpoint) -> dict:
+def _person_row(person_id, full_name, records, months) -> dict:
     """Evaluate one person's records, given as (start, hours, month, state) sorted by start."""
     counts = _counts()
     hours = 0.0
     per_month = {key: _counts() for key in months}
+    # Trend compares the person's earlier and later half of entries, not calendar halves,
+    # so someone with few early entries is not judged on them alone.
     previous, recent = _counts(), _counts()
-    for start, service_hours, month, state in records:
+    half = len(records) // 2
+    for index, (_start, service_hours, month, state) in enumerate(records):
         _add(counts, state)
         _add(per_month[month], state)
-        _add(previous if start.date() < midpoint else recent, state)
+        _add(previous if index < half else recent, state)
         if state == "A":
             hours += service_hours
 
@@ -96,7 +99,7 @@ def _person_row(person_id, full_name, records, months, midpoint) -> dict:
     }
 
 
-def _group_report(rows, months, names, service_info, midpoint) -> dict:
+def _group_report(rows, months, names, service_info) -> dict:
     """Aggregate (person_id, service_id, state) rows into per-person results and a group summary."""
     records_by_person = {}
     month_totals = {key: _counts() for key in months}
@@ -112,7 +115,7 @@ def _group_report(rows, months, names, service_info, midpoint) -> dict:
     people = []
     for person_id, records in records_by_person.items():
         records.sort(key=lambda record: record[0])
-        people.append(_person_row(person_id, names[person_id], records, months, midpoint))
+        people.append(_person_row(person_id, names[person_id], records, months))
     order = {person_id: index for index, person_id in enumerate(names)}
     people.sort(key=lambda row: order[row["id"]])
 
@@ -139,7 +142,6 @@ def attendance_report(services, date_from: date, date_to: date) -> dict:
     """Build the evaluation for already permission-scoped services within the period."""
     services = services.filter(start__date__gte=date_from, start__date__lte=date_to)
     months = month_keys(date_from, date_to)
-    midpoint = date_from + timedelta(days=(date_to - date_from).days // 2 + 1)
 
     service_info = {}
     total_hours = 0.0
@@ -171,7 +173,6 @@ def attendance_report(services, date_from: date, date_to: date) -> dict:
         "period": {
             "date_from": date_from.isoformat(),
             "date_to": date_to.isoformat(),
-            "midpoint": midpoint.isoformat(),
         },
         "services": {"count": len(service_info), "hours": round(total_hours, 2)},
         "thresholds": {
@@ -180,6 +181,6 @@ def attendance_report(services, date_from: date, date_to: date) -> dict:
             "decline_points": DECLINE_POINTS,
             "missed_in_a_row": MISSED_STREAK,
         },
-        "members": _group_report(member_rows, months, member_names, service_info, midpoint),
-        "staff": _group_report(staff_rows, months, staff_names, service_info, midpoint),
+        "members": _group_report(member_rows, months, member_names, service_info),
+        "staff": _group_report(staff_rows, months, staff_names, service_info),
     }

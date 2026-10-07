@@ -88,6 +88,17 @@ class AttendanceReportTests(TestCase):
         self.assertIn("low_rate", row["warnings"])
         self.assertNotIn("missed_in_a_row", row["warnings"])
 
+    def test_trend_needs_enough_entries_per_half(self):
+        # A late joiner: two early entries present, then one absence; too few entries for a trend.
+        late = Member.objects.create(name="Dana", lastname="Spät")
+        for service, state in zip(self.services[8:], ["A", "A", "F", "A"], strict=True):
+            Attendance.objects.create(person=late, service=service, state=state)
+
+        row = self.member_row(self.report(), late)
+
+        self.assertIsNone(row["trend"])
+        self.assertNotIn("declining", row["warnings"])
+
     def test_team_report_excludes_system_account(self):
         instructor = get_user_model().objects.create_user(username="instructor", first_name="Alex", last_name="Lehr")
         system, _ = get_user_model().objects.get_or_create(username=ANONYMOUS_USERNAME)
