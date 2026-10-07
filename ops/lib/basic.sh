@@ -314,7 +314,7 @@ cmd_workers() {
     case ${1:-status} in
         hold)
             acquire_lock workers; state_dir >/dev/null
-            echo "manuell $(_ts)" >"$JF_STATE_DIR/workers-held"; ad_workers_stop; ok "Worker angehalten" ;;
+            echo "manuell $(_ts)" >"$JF_STATE_DIR/workers-held"; ad_workers_stop; ok "Worker angehalten"; write_ops_status ;;
         release)
             acquire_lock workers
             rm -f "$JF_STATE_DIR/workers-held"; ad_workers_start; ok "Worker freigegeben"; write_ops_status ;;

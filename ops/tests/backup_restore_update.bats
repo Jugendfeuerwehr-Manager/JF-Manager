@@ -57,6 +57,16 @@ exit 0'
     ! grep -Eq "secret-value|backup-pass" "$public"
 }
 
+@test "holding and releasing workers is visible in the published status" {
+    public="$BATS_TEST_TMPDIR/data/ops-public/ops-status.json"
+    run "$OPS_DIR/jfctl" workers hold
+    [ "$status" -eq 0 ]
+    [ "$(jq -r .workers_held "$public")" = true ]
+    run "$OPS_DIR/jfctl" workers release
+    [ "$status" -eq 0 ]
+    [ "$(jq -r .workers_held "$public")" = false ]
+}
+
 @test "unreachable repository or wrong password stops before the maintenance window" {
     export REPO_BROKEN=1
     run "$OPS_DIR/jfctl" backup create
