@@ -13,6 +13,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | SEC-11-Checkpoint | 07.10.2026: SEC-11.9 Browserabnahme in Chrome mit virtuellem Authenticator bestanden; integriert in `feat/security-roles-training-operations`. Offen nur Nutzerabnahme mit echtem Gerät unter HTTPS. |
 | OPS-Checkpoint | 07.10.2026: OPS-03.4/03.4b Webstatus, OPS-03.3b Trivy-Pin, OPS-01.3b bats als Benutzer, OPS-01.9b nativer Lauf auf Debian 13 (arm64, Python 3.13) bestanden; integriert in `feat/security-roles-training-operations`. Offen: Proxmox VE 9, Debian 13 auf amd64-Host, erster GitHub-Lauf (Push). |
 | Inventar-Checkpoint | 07.10.2026: UX-05.2 (Nutzerwunsch) abgeschlossen: Variantenliste im Artikeldialog aktualisiert sich nach Anlage/Bearbeitung/Löschung; Größenreihen (Kinder, S–XXXL, Konfektion Herren/Damen, Schuhe) als atomare Sammelanlage. UX-05.1 bleibt geplant. |
+| Portal-/Teilnahme-Checkpoint | 07.10.2026: Neue Pakete PORTAL-01–03, PART-01–04, NOTIF-01 geplant (Nutzerauftrag Eltern-/Mitgliederportal, Teilnahmevoraussetzungen, Positionen, Warteliste, Zuteilung). Konzept, Entscheidungen E1–E11 und Teilschritte in `docs/planning/portal-participation-concept.md`; Mockups im Design-Artifact (Link im PR). Keine Implementierung. Start mit PORTAL-01.0–01.2 (globaler Ausschluss von Portalkonten als Blocker). |
 | DEV-Checkpoint | 07.10.2026: DEV-01 abgeschlossen (DEV-01.0–01.4). Lokaler Bestand frisch mit Demodaten; Start prüft Schlüssel vorab. Nutzer muss laufende VS-Code-Debugsitzung neu starten. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
@@ -581,6 +582,14 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | OPS-05 | in Prüfung | Claude (OPS-Session) | Altvarianten abgelöst, Übernahme PostgreSQL 15 → 17 geprüft. |
 | DEV-01 | abgeschlossen | Claude (Merge-/DEV-Sitzung) | DEV-01.4: 890/890 Backend auf PostgreSQL 17, Live-Login mit 2FA-Demo-Code, frischer lokaler Bestand. |
 | DOC-01 | offen | — | Nach Funktionsabschluss vollständige bebilderte Dokumentation. |
+| PORTAL-01 | geplant | — | Portalkonten, Einladung, globaler Ausschluss von Betreuenden-Endpunkten, Elternzugriff bis 18. Konzept 07.10.2026. |
+| PORTAL-02 | geplant | — | Freigaben (Organisation/Abteilung) und Selbstauskunft. |
+| PORTAL-03 | geplant | — | Änderungsanträge mit feldweiser Freigabe. |
+| PART-01 | geplant | — | An-/Abmeldung zu geplanten Diensten, Modi, getrennte Fristen, Zeitraum-Abmeldung. |
+| PART-02 | geplant | — | Meldestatus im Dienstbuch, Ein-Klick „entschuldigt“. |
+| PART-03 | geplant | — | Teilnahmevoraussetzungen: Regelsprache, Auswertung am Diensttag, Konfigurator. |
+| PART-04 | geplant | — | Positionen, Mindestbesetzung, Warteliste, Zuteilungsboard, Besetzungsvorlagen. |
+| NOTIF-01 | geplant | — | Aufgaben-Postfach, E-Mail sofort/Zusammenfassung, Push-Kategorien. |
 
 ### EXEC-01: aktueller Detailstand
 
@@ -1250,6 +1259,23 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** keine.
 - **Nächster konkreter Schritt:** keiner im Paket; Nutzerabnahme über VS-Code-Start.
 
+### PORTAL-01 bis PORTAL-03, PART-01 bis PART-04, NOTIF-01: Eltern-/Mitgliederportal und Teilnahmesteuerung (gemeinsamer Planungsblock)
+
+- **Status:** geplant (Konzept abgestimmt, keine Implementierung).
+- **Verantwortlicher Agent:** Planung Claude (Cloud-Session, Branch `claude/parent-portal-service-management-gvjcq2`); Umsetzung offen.
+- **Spezifikation:** `docs/planning/portal-participation-concept.md` (Ziele, harte Grenzen, Entscheidungen E1–E11, Standards D1–D10, offene Fragen Q1–Q3, Modelle, API, Sicherheitsarchitektur, Teilschritte, Prüfplan, Risiken). Mockups: Design-Artifact „Eltern- & Mitgliederportal“ (privat, Link im Pull Request).
+- **Abhängigkeiten:** SEC-05, SEC-07, SEC-08, ROLE-01/02, CFG-01, TRAIN-01/03, DES-01; PART-02 zusätzlich UX-04.
+- **Ziel und Abnahmekriterien:** siehe Konzept Abschnitt 6.2/6.3. Kernkriterien: Portalkonten erhalten außerhalb einer Allowlist auf jeder Route 403 (Routen-Audit-Test); keine Notiz-, Ereignis-, Anhang-, Anwesenheits- oder Vorkommnisdaten in Portalantworten; Meldungen nur für veröffentlichte, zukünftige Dienste; Kapazität unter Parallelität exakt; Dienstbuch-Anwesenheit nie automatisch verändert.
+- **Teilschritte mit stabilen IDs:** `PORTAL-01.0`–`01.7`, `PORTAL-02.0`–`02.5`, `PORTAL-03.0`–`03.5`, `PART-01.0`–`01.6`, `PART-02.0`–`02.4`, `PART-03.0`–`03.6`, `PART-04.0`–`04.6`, `NOTIF-01.0`–`01.4` (Inhalte im Konzept 6.2). Jedes Paket füllt bei Übernahme einen eigenen Detailblock aus.
+- **Letzter dauerhafter Checkpoint:** 07.10.2026, Planungscommit `docs(PORTAL-PLAN): plan parent and member portal with participation control`.
+- **Branch:** Planung auf `claude/parent-portal-service-management-gvjcq2` (Basis `feat/security-roles-training-operations` bei `9a7c70d`); Integration per Pull Request in `feat/security-roles-training-operations`.
+- **Geänderte Dateien / Commit-Bezug:** `docs/planning/portal-participation-concept.md` (neu), diese Roadmap.
+- **Umgesetzte Teilschritte:** keine (nur Planung).
+- **Ausgeführte Prüfungen mit Ergebnis:** Codeabgleich der Ausgangslage (Modelle Member/Parent/CustomUser/Service/Attendance/TrainingSession/Qualification, Passwort-Reset, Permission-Defaults, `IsAuthenticated`-Views) durchgeführt. Anwendungstests nicht ausgeführt (keine Codeänderung).
+- **Offene Fehler / Risiken:** Bestehende Views mit nur `IsAuthenticated` wären für Portalkonten offen, bis PORTAL-01.2 umgesetzt ist; deshalb darf kein Portalkonto vor PORTAL-01.2 angelegt werden. Offene Nutzerfragen Q1–Q3.
+- **Laufende Prozesse und sichere Fortsetzung:** keine.
+- **Nächster konkreter Schritt:** `PORTAL-01.0` Detailblock übernehmen, danach `PORTAL-01.1`/`01.2`; parallel möglich `PART-03.0`–`03.3`.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -1667,3 +1693,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 07.10.2026 | SEC-11.9 | Browserabnahme im echten Google Chrome (Playwright-Core außerhalb des Repos, DevTools-WebAuthn mit virtuellem CTAP2-Plattform-Authenticator, Nutzerverifikation) gegen integrierten Stand mit Demodaten, Origin `http://localhost:5199` (WebAuthn-Ausnahme für localhost). Ablauf mit `ausbilder`: Passwort-Login, Profil → Passkey hinzufügen (Wiederherstellungscodes beim ersten Faktor angezeigt), Abmelden, Login: Bestätigungsschritt bietet nur „Mit Passkey bestätigen“ (kein Codefeld), Login abgeschlossen, Signaturzähler steigt; fremder Authenticator wird abgelehnt und bleibt auf `/login`. Zweiter Lauf nach Reset identisch. Test-Passkey danach per `manage.py reset_mfa` entfernt. | Bestanden: 2 vollständige Browserläufe, Screenshot Bestätigungsschritt. Nicht ausgeführt: Hardware-/Plattform-Authenticator (Touch ID, Smartphone) über HTTPS mit echter Domain. | Dieser Commit: `test(SEC-11.9): accept passkey registration and login in Chrome` | Nutzerabnahme mit echtem Gerät unter HTTPS. |
 | 07.10.2026 | OPS-03.4b | Befund aus nativem Debian-13-Lauf: `jfctl workers hold` aktualisierte die Statusdatei nicht (nur `release`), die Weboberfläche zeigte angehaltene Worker deshalb nicht. `hold` schreibt den Status jetzt ebenfalls. | Bestanden: bats 38/38 als Benutzer (neu: hold/release in öffentlicher Statusdatei), ShellCheck; auf Debian 13 nach Einspielen: Anwendung als `jfmanager` meldet nach `hold` `workers_held` mit Warnung, nach `release` keine. | Dieser Commit: `fix(OPS-03.4b): publish the status when workers are held` | OPS-01.9b Nachweis. |
 | 07.10.2026 | OPS-01.9b | Nativer Lauf auf **Debian 13.7 (trixie)** mit Releasepaket 1.4.0 aus `cb0506b` (gebaut wie CI in Ubuntu-Container; Frontend aus HEAD-Worktree, ohne uncommittete Fremdänderungen) in einem systemd-Container. amd64 unter Docker-Desktop-Emulation (linuxkit 5.15) nicht möglich: systemd 257 startet dort keine Dienste (selbst journald/D-Bus `Result: resources`), daher **arm64 nativ** mit dem vorgesehenen Schalter `JFCTL_ALLOW_UNSUPPORTED_OS` nur für die Architekturprüfung. Antwortdatei (root, 0600), `JF_TLS=proxy`. Ergebnis: alle Schritte in einem Durchgang (packages bis verify), Python 3.13.5 im Release-venv, PostgreSQL 17, Redis, eigener Nginx; `doctor` ohne Befund (`check --deploy`, keine offenen Migrationen, Sicherung, Timer); 6 Dienste aktiv, 5 Timer; Oberfläche, API, Assets und `/static/` 200; `backup verify latest` gültig; `systemd-analyze security` Webdienst 1.5; öffentliche Statusdatei 0755/0644 und `OPS_STATUS_FILE` in `native.env`; Anwendung liest sie als `jfmanager` unter `ProtectSystem=strict`. Befund `workers hold` → OPS-03.4b. | Bestanden wie beschrieben. Nicht ausgeführt: Debian 13 auf echter amd64-Hardware/VM, Proxmox VE 9, Caddy/ACME, Restore/Update auf Debian 13 (früher auf Ubuntu-Stellvertreter geprüft). | Dieser Commit: `test(OPS-01.9b): accept the native installation on Debian 13` | Proxmox VE 9 und amd64-Debian-13-Host durch Nutzer; GitHub-Lauf nach Push. |
+| 07.10.2026 | PORTAL-PLAN | Nutzerauftrag: Eltern als Stellvertretung und Mitglieder (konfigurierbare Schwelle) erhalten Login; An-/Abmeldung nur zu geplanten Diensten; Änderungsanträge für Name/Kontakt; abgestufte Freigaben; Teilnahmevoraussetzungen mit Konfigurator; Höchst-/Mindestzahlen, Positionen mit Qualifikationskombinationen, Warteliste, Zuteilung per Drag-and-drop, Besetzungsvorlagen. Elf Entscheidungen mit dem Nutzer abgestimmt (E1–E11), Konzept, technisches Design, Teilschritte und Prüfplan angelegt, acht Mockup-Artboards im Design-Artifact. | Nur Dokumentation; Anwendungstests nicht ausgeführt. Ausgangslage gegen Code geprüft. | Dieser Commit: `docs(PORTAL-PLAN): plan parent and member portal with participation control` | PORTAL-01.0–01.2; offene Fragen Q1–Q3 vor PART-01/PORTAL-01/PART-04 klären. |
