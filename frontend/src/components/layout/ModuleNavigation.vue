@@ -21,6 +21,7 @@ onMounted(() => { void refresh().catch(() => { /* Existing labels remain usable 
 const route = useRoute()
 const auth = useAuthStore()
 const search = ref('')
+const settingsRights = ['all', 'general', 'email', 'member', 'service', 'order', 'ldap', 'oidc'].map(category => `settings_manager.view_${category}_settings`)
 interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean }
 const sections: { label: string; items: NavItem[] }[] = [
   { label: 'Überblick', items: [{ label: 'Dashboard', icon: 'pi pi-home', to: '/' }] },
@@ -53,7 +54,7 @@ const sections: { label: string; items: NavItem[] }[] = [
 ]
 const vocabularyLabel = (item: NavItem) => ({ '/members': configuration.member_label, '/servicebook': configuration.service_label, '/training': configuration.training_label }[item.to] || item.label)
 const visibleSections = computed(() => sections.map(section => ({ ...section, items: section.items.map(item => ({ ...item, label: vocabularyLabel(item) })).filter(item =>
-  (!item.permission || auth.hasPerm(item.permission)) &&
+  (!item.permission || (item.to === '/settings' ? settingsRights.some(permission => auth.hasPerm(permission)) : auth.hasPerm(item.permission))) &&
   item.label.toLocaleLowerCase('de').includes(search.value.trim().toLocaleLowerCase('de'))
 ) })).filter(section => section.items.length))
 function isActive(target: string) { return route.path === target || (target !== '/' && route.path.startsWith(`${target}/`)) }

@@ -459,9 +459,9 @@ async function handleSubmit() {
   if (!payload.client_secret) {
     delete payload.client_secret
   }
+  delete payload.has_client_secret
+  delete payload.callback_url
   emit('save', payload)
-  successMessage.value = 'OIDC Einstellungen gespeichert.'
-  originalData.value = { ...formData }
 }
 
 async function handleTestDiscovery() {

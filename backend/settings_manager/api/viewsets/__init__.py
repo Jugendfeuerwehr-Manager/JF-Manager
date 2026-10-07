@@ -2,6 +2,8 @@
 ViewSets for Settings API
 """
 
+from contextlib import suppress
+
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
@@ -256,6 +258,63 @@ class SettingsViewSet(viewsets.ViewSet):
 
         return AppSettingsView().get(request)
 
+    @action(detail=False, methods=["post"], url_path="email/test-connection")
+    def email_test_connection(self, request):
+        return self._test_smtp(request, send=False)
+
+    @action(detail=False, methods=["post"], url_path="email/send-test")
+    def email_send_test(self, request):
+        return self._test_smtp(request, send=True)
+
+    def _test_smtp(self, request, send):
+        from django.core.mail import EmailMessage
+
+        from jf_manager_backend.email_backend import ConfiguredSMTPBackend
+        from users.step_up import require_step_up
+
+        if not self._check_category_permission(request.user, "email", "change"):
+            return Response({"detail": "Keine Berechtigung für E-Mail-Verbindungstests."}, status=403)
+        require_step_up(request)
+        if set(request.data) != ({"recipient", "confirm_send"} if send else set()):
+            raise drf_serializers.ValidationError({"detail": "Ungültige Testparameter."})
+        recipient = None
+        if send:
+            if request.data["confirm_send"] is not True:
+                raise drf_serializers.ValidationError({"confirm_send": "Testversand ausdrücklich bestätigen."})
+            recipient = drf_serializers.EmailField().run_validation(request.data["recipient"])
+        connection = ConfiguredSMTPBackend(fail_silently=False, timeout=5)
+        try:
+            connection.open()
+            if send:
+                preferences = global_preferences_registry.manager()
+                message = EmailMessage(
+                    subject="JF Manager: SMTP-Test",
+                    body="Diese E-Mail bestätigt den ausdrücklich angeforderten Testversand.",
+                    from_email=preferences["email__default_from_email"],
+                    to=[recipient],
+                    connection=connection,
+                )
+                if message.send(fail_silently=False) != 1:
+                    raise ImproperlyConfigured("Testversand fehlgeschlagen.")
+            return Response(
+                {
+                    "ok": True,
+                    "detail": "Test-E-Mail gesendet." if send else "Verbindung erfolgreich; keine E-Mail gesendet.",
+                }
+            )
+        except Exception:
+            # Provider errors may include identities or secrets. Return no raw exception.
+            return Response(
+                {
+                    "ok": False,
+                    "detail": "SMTP-Test fehlgeschlagen. Gespeicherte Server-/TLS-Einstellungen und Zugangsdaten prüfen.",
+                },
+                status=400,
+            )
+        finally:
+            with suppress(Exception):
+                connection.close()
+
     def _get_category_settings(self, category, tolerate_email_secret_error=False):
         """Helper to retrieve settings for a specific category"""
         mapping = self.CATEGORY_MAPPINGS.get(category)
@@ -380,6 +439,35 @@ class SettingsViewSet(viewsets.ViewSet):
 
         config.save()
         return config
+
+    def _patch_model_settings(self, request, category, serializer_class):
+        from settings_manager.models import SettingsWriteLock
+
+        writable = {name for name, field in serializer_class().fields.items() if not field.read_only}
+        unknown = set(request.data) - writable
+        if unknown:
+            raise drf_serializers.ValidationError(
+                {name: "Unbekanntes oder schreibgeschütztes Feld." for name in unknown}
+            )
+        model = LDAPConfig if category == "ldap" else OIDCConfig
+        with transaction.atomic():
+            SettingsWriteLock.objects.get_or_create(category=category)
+            SettingsWriteLock.objects.select_for_update().get(category=category)
+            config = model.get_or_create_default()
+            merged = {name: getattr(config, name) for name in writable}
+            merged.update(request.data)
+            serializer = serializer_class(data=merged)
+            serializer.is_valid(raise_exception=True)
+            for name in request.data:
+                setattr(config, name, serializer.validated_data[name])
+            try:
+                config.save()
+            except ValidationError as exc:
+                raise drf_serializers.ValidationError(
+                    exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+                ) from exc
+            result = self._get_ldap_settings() if category == "ldap" else self._get_oidc_settings(request)
+        return Response(serializer_class(result).data)
 
     @extend_schema(
         summary="List all settings",
@@ -581,17 +669,7 @@ class SettingsViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = LDAPSettingsSerializer(data=request.data, partial=True)
-        if serializer.is_valid():
-            try:
-                self._save_ldap_settings(serializer.validated_data)
-            except ValidationError as exc:
-                if hasattr(exc, "message_dict"):
-                    return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
-                return Response({"detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
-            response_serializer = LDAPSettingsSerializer(self._get_ldap_settings())
-            return Response(response_serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return self._patch_model_settings(request, "ldap", LDAPSettingsSerializer)
 
     @extend_schema(
         summary="Test LDAP connection",
@@ -637,9 +715,9 @@ class SettingsViewSet(viewsets.ViewSet):
 
             connection.unbind_s()
             return Response({"ok": True, "detail": "LDAP connection test succeeded."})
-        except Exception as exc:
+        except Exception:
             return Response(
-                {"ok": False, "detail": str(exc)},
+                {"ok": False, "detail": "LDAP-Verbindung fehlgeschlagen; Server, Zertifikat und Zugangsdaten prüfen."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -722,9 +800,13 @@ class SettingsViewSet(viewsets.ViewSet):
                 entries.append(entry)
 
             return Response({"ok": True, "entries": entries, "total": len(entries)})
-        except Exception as exc:
+        except Exception:
             return Response(
-                {"ok": False, "detail": str(exc), "entries": []},
+                {
+                    "ok": False,
+                    "detail": "Verzeichnisabfrage fehlgeschlagen; Server, Zertifikat und Zugangsdaten prüfen.",
+                    "entries": [],
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -752,12 +834,7 @@ class SettingsViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = OIDCSettingsSerializer(data=request.data, partial=True)
-        if serializer.is_valid():
-            self._save_oidc_settings(serializer.validated_data)
-            response_serializer = OIDCSettingsSerializer(self._get_oidc_settings(request))
-            return Response(response_serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return self._patch_model_settings(request, "oidc", OIDCSettingsSerializer)
 
     @extend_schema(
         summary="Test OIDC discovery",

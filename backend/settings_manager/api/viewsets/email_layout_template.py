@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from orders.models import EmailLayoutTemplate
+from users.step_up import StepUpForWrites
 
 from ..permissions import CanChangeSettings
 from ..serializers.email_layout_template import (
@@ -70,7 +71,7 @@ class EmailLayoutTemplateViewSet(viewsets.ViewSet):
     A POST to /reset/ deletes the override and reverts to the default.
     """
 
-    permission_classes = [IsAuthenticated, CanChangeSettings]
+    permission_classes = [IsAuthenticated, CanChangeSettings, StepUpForWrites]
 
     @extend_schema(responses=EmailLayoutTemplateSerializer(many=True))
     def list(self, request):

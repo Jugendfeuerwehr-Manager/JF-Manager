@@ -145,7 +145,7 @@ describe('Settings Store', () => {
       const tabs = store.availableTabs
       
       // Should have general, email, member, order tabs (service excluded)
-      expect(tabs.length).toBe(5) // 4 categories + email-templates
+      expect(tabs.map(tab => tab.id)).toEqual(['general', 'email', 'member', 'order', 'email-templates', 'catalog'])
       expect(tabs.find(t => t.id === 'general')).toBeDefined()
       expect(tabs.find(t => t.id === 'email')).toBeDefined()
       expect(tabs.find(t => t.id === 'member')).toBeDefined()

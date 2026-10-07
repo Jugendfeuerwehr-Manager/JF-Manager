@@ -28,6 +28,12 @@ describe('Module navigation', () => {
     const wrapper = render()
     expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['/', '/roles'])
   })
+  it('exposes configuration for a global category right without organization-wide subject access', () => {
+    auth.isOrgWide = false
+    auth.hasPerm.mockImplementation(permission => permission === 'settings_manager.view_email_settings')
+    const wrapper = render()
+    expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['/', '/roles', '/settings'])
+  })
   it('finds modules directly by name', async () => {
     const wrapper = render()
     await wrapper.get('input').setValue('ausbildung')

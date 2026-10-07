@@ -124,3 +124,31 @@ class ConfigurationPatchTests(TestCase):
         raw = GlobalPreferenceModel.objects.get(section="email", name="email_host_password").raw_value
         self.assertNotEqual(raw, "synthetic-legacy-secret")
         self.assertEqual(manager["email__email_host_password"], "synthetic-legacy-secret")
+
+    def test_ldap_partial_patch_validates_existing_certificate_mode_atomically(self):
+        from settings_manager.models import LDAPConfig
+
+        config = LDAPConfig.objects.create(ca_cert_file="/synthetic/ca.pem")
+        response = self.client.patch(
+            "/api/v1/settings/ldap/",
+            {"ca_cert_content": "synthetic-pem", "bind_password": "must-not-save"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400, response.data)
+        config.refresh_from_db()
+        self.assertEqual(config.ca_cert_content, "")
+        self.assertEqual(config.bind_password, "")
+
+    def test_unknown_integration_fields_and_invalid_activation_leave_no_partial_writes(self):
+        from settings_manager.models import OIDCConfig
+
+        config = OIDCConfig.objects.create(provider_name="synthetic-original")
+        for data in [
+            {"enabled": True, "provider_name": "must-not-save"},
+            {"unknown": True, "provider_name": "must-not-save"},
+        ]:
+            response = self.client.patch("/api/v1/settings/oidc/", data, format="json")
+            self.assertEqual(response.status_code, 400, response.data)
+            config.refresh_from_db()
+            self.assertEqual(config.provider_name, "synthetic-original")
+            self.assertFalse(config.enabled)

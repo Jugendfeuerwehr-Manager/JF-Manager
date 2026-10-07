@@ -121,3 +121,23 @@ class PushConfigurationTests(TestCase):
             ).status_code,
             403,
         )
+
+    def test_explicit_removal_disables_push_and_allows_a_new_key_pair(self):
+        response = self.client.post(
+            "/api/v1/settings/push/generate-keys/", {"subject": "mailto:synthetic@example.org"}, format="json"
+        )
+        original_public_key = response.data["public_key"]
+        response = self.client.patch(
+            "/api/v1/settings/push/",
+            {"enabled": False, "public_key": "", "private_key": "", "subject": ""},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["enabled"])
+        self.assertFalse(response.data["has_private_key"])
+        response = self.client.post(
+            "/api/v1/settings/push/generate-keys/", {"subject": "mailto:synthetic@example.org"}, format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertNotEqual(response.data["public_key"], original_public_key)
+        self.assertNotIn("private_key", response.data)

@@ -623,10 +623,6 @@ function handleSubmit() {
   if (formData.bind_password) payload.bind_password = formData.bind_password
   if (Object.keys(payload).length === 0) return
   emit('save', payload)
-  successMessage.value = 'LDAP Einstellungen gespeichert'
-  setTimeout(() => {
-    successMessage.value = ''
-  }, 3000)
 }
 
 function handleCancel() {

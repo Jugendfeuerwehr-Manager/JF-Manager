@@ -258,7 +258,7 @@ const router = createRouter({
         {
           path: 'settings',
           component: () => import('@/views/SettingsView.vue'),
-          meta: { requiresStaff: true },
+          meta: { requiresSettings: true },
           children: [
             {
               path: '',
@@ -266,6 +266,12 @@ const router = createRouter({
               component: () =>
                 import('@/components/settings/organisms/SettingsOverview.vue'),
             },
+            { path: 'setup', name: 'settings-setup', component: () => import('@/components/settings/organisms/sections/SetupSection.vue') },
+            { path: 'catalog', name: 'settings-catalog', component: () => import('@/components/settings/organisms/sections/CatalogSection.vue') },
+            ...['training', 'vocabulary', 'security', 'push'].map(kind => ({
+              path: kind, name: `settings-${kind}`, props: { kind },
+              component: () => import('@/components/settings/organisms/sections/ConfigurationSection.vue'),
+            })),
             {
               path: 'general',
               name: 'settings-general',
@@ -396,6 +402,12 @@ router.beforeEach(async (to, from, next) => {
   } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
     // Accounts with mandatory MFA can only reach the setup until it is done.
     next({ path: '/profile', query: { mfa: 'setup' } })
+  } else if (to.meta.requiresSettings && authStore.isAuthenticated) {
+    try {
+      await settingsStore.fetchPermissions()
+      if (settingsStore.canViewAnySettings) next()
+      else next('/')
+    } catch { next('/') }
   } else if (to.meta.requiresStaff && authStore.isAuthenticated && !authStore.isOrgWide) {
     // Non-staff user trying to access a staff-only route → redirect to dashboard
     next('/')
