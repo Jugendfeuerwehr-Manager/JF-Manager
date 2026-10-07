@@ -25,7 +25,8 @@ class PlannedBlock:
     end: int
     groups: frozenset | None
     instructors: dict = field(default_factory=dict)  # id -> name
-    location: str = ""
+    location: str = ""  # normalized for comparison
+    location_label: str = ""  # as typed, for messages
     materials: list = field(default_factory=list)  # (item_id, variant_id, quantity, label)
     session: TrainingSession | None = None
 
@@ -60,6 +61,7 @@ def saved_blocks(session, ref_prefix=""):
                 groups=groups or ALL,
                 instructors={user.pk: person(user) for user in block.instructors.all()},
                 location=normalize_location(block.location),
+                location_label=block.location.strip(),
                 materials=[(m.item_id, m.variant_id, m.quantity, m.label) for m in block.materials.all()],
                 session=session,
             )
@@ -103,6 +105,7 @@ def draft_blocks(prepared):
                 groups=frozenset(group.pk for group in groups) or ALL,
                 instructors={user.pk: person(user) for user in instructors},
                 location=normalize_location(value("location", "")),
+                location_label=(value("location", "") or "").strip(),
                 materials=[
                     (
                         getattr(m.get("item"), "pk", None),
@@ -178,43 +181,54 @@ def find_conflicts(session, group_names, blocks, user):
             if a.location and a.location == b.location:
                 warn(
                     "location",
-                    f"Ort „{a.location}“ gleichzeitig für „{a.title}“ und „{b.title}“ belegt ({span}).",
+                    f"Ort „{a.location_label}“ gleichzeitig für „{a.title}“ und „{b.title}“ belegt ({span}).",
                     [a.ref, b.ref],
                 )
 
-    # Other exercises on the same day.
+    # Other exercises on the same day: one warning per person/location and exercise,
+    # listing every overlapping slot instead of one warning per block pair.
     others = (
         TrainingSession.objects.filter(date=session.date)
         .exclude(pk=session.pk)
         .exclude(status=TrainingSession.Status.CANCELLED)
+        .select_related("department")
         .prefetch_related("blocks__groups", "blocks__instructors", "blocks__materials")
     )
     foreign = []
     for other in others:
         visible = can_manage_training_department(user, other.department_id)
         described = {"id": other.pk, "title": other.title} if visible else None
-        name = f"„{other.title}“" if visible else "einer anderen Übung (nicht sichtbar)"
+        if visible:
+            department = f", {other.department.name}" if other.department_id != session.department_id else ""
+            name = f"„{other.title}“ ({clock(minutes(other.start_time))}–{clock(minutes(other.end_time))}{department})"
+        else:
+            name = "einer anderen Übung (nicht sichtbar)"
         other_blocks = saved_blocks(other, ref_prefix=f"x{other.pk}-")
         foreign.extend((block, visible) for block in other_blocks)
-        for a in blocks:
+        clashes = {}  # (code, subject) -> {"label": str, "slots": [...], "refs": [...]}
+
+        def clash(code, subject, label, a, b, clashes=clashes):
+            entry = clashes.setdefault((code, subject), {"label": label, "slots": [], "refs": []})
+            slot = f"{clock(max(a.start, b.start))}–{clock(min(a.end, b.end))} „{a.title}“"
+            if slot not in entry["slots"]:
+                entry["slots"].append(slot)
+            entry["refs"].append(a.ref)
+
+        for a in sorted(blocks, key=lambda b: (b.start, b.ref)):
             for b in other_blocks:
                 if not overlap(a, b):
                     continue
-                span = f"{clock(max(a.start, b.start))}–{clock(min(a.end, b.end))}"
                 for pk in a.instructors.keys() & b.instructors.keys():
-                    warn(
-                        "instructor",
-                        f"{a.instructors[pk]} ist zur selben Zeit in {name} eingeplant ({span}, „{a.title}“).",
-                        [a.ref],
-                        described,
-                    )
+                    clash("instructor", pk, a.instructors[pk], a, b)
                 if a.location and a.location == b.location:
-                    warn(
-                        "location",
-                        f"Ort „{a.location}“ ist zur selben Zeit in {name} belegt ({span}, „{a.title}“).",
-                        [a.ref],
-                        described,
-                    )
+                    clash("location", a.location, a.location_label, a, b)
+        for (code, _subject), entry in clashes.items():
+            slots = "; ".join(entry["slots"])
+            if code == "instructor":
+                message = f"{entry['label']} ist zur selben Zeit auch in {name} eingeplant: {slots}."
+            else:
+                message = f"Ort „{entry['label']}“ ist zur selben Zeit auch in {name} belegt: {slots}."
+            warn(code, message, entry["refs"], described)
 
     # Computed material shortage at every block start of this exercise.
     demand = defaultdict(list)  # (item, variant) -> [(block, quantity, own, visible)]

@@ -130,6 +130,27 @@ class ConflictTests(TestCase):
         others = [w["other_session"] for w in warnings if w["other_session"]]
         self.assertEqual({o["id"] for o in others}, {visible.pk})
 
+    def test_repeated_clashes_with_another_exercise_form_one_warning(self):
+        parallel = TrainingSession.objects.create(
+            title="Parallelübung",
+            date=date(2099, 9, 1),
+            start_time=time(18),
+            end_time=time(21),
+            department=self.department,
+        )
+        b = TrainingBlock.objects.create(session=parallel, title="Hydrant", duration_minutes=120, location="Station 1")
+        b.instructors.add(self.trainer)
+        warnings = self.check(
+            self.block("Runde 1", 0, 25, instructor_ids=[self.trainer.pk], location="Station 1"),
+            self.block("Runde 2", 30, 25, instructor_ids=[self.trainer.pk], location="station  1"),
+        )
+        self.assertEqual(sorted(w["code"] for w in warnings), ["instructor", "location"])
+        instructor = next(w for w in warnings if w["code"] == "instructor")
+        self.assertIn("18:00–18:25 „Runde 1“; 18:30–18:55 „Runde 2“", instructor["message"])
+        self.assertIn("„Parallelübung“ (18:00–21:00)", instructor["message"])
+        self.assertEqual(len(instructor["blocks"]), 2)
+        self.assertIn("Ort „Station 1“", next(w for w in warnings if w["code"] == "location")["message"])
+
     def test_material_shortage_ignores_member_stock_and_counts_other_exercises(self):
         material = [{"item": self.hose.pk, "quantity": 2}]
         warnings = self.check(
