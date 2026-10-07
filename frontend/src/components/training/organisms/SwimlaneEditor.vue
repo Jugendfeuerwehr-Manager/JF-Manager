@@ -41,6 +41,15 @@
           v-tooltip.bottom="isDirty ? 'Zeigt den gespeicherten Stand' : 'Ablauf vor Ort auf dem Telefon'"
           @click="router.push({ name: 'training-run', params: { id: session.id } })"
         />
+        <Button
+          v-if="canManage && canDebrief"
+          icon="pi pi-comment"
+          label="Nachbereiten"
+          severity="secondary"
+          :disabled="isDirty || plannerStore.saving"
+          v-tooltip.bottom="isDirty ? 'Zuerst speichern' : 'Tatsächliche Zeit, Reflexion und Verbesserungen'"
+          @click="showDebrief = true"
+        />
         <template v-if="canManage">
         <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.undo()" />
         <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.redo()" />
@@ -222,6 +231,7 @@
     <MobileBlockDetailSheet v-if="!canManage" :block="readingBlock" :session-start-min="sessionStartMin" @close="readingBlock = null" />
     <PlanActionDialog v-model:visible="showPlanAction" :duration="sessionDuration" />
     <RotationDialog v-if="canManage" v-model:visible="showRotation" :duration="sessionDuration" />
+    <DebriefDialog v-if="canManage && session && showDebrief" v-model:visible="showDebrief" :session="session" @saved="onDebriefSaved" />
     <SessionCopyDialog v-if="canManage" v-model:visible="showCopy" :mode="copyMode" :session="session" @copied="onCopied" @saved="onTemplateSaved" />
     <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" :can-propagate="!!session?.series_uuid" />
 
@@ -266,6 +276,7 @@ import BlockEditDialog from '../molecules/BlockEditDialog.vue'
 import PlanActionDialog from '../molecules/PlanActionDialog.vue'
 import SeriesDialog from '../molecules/SeriesDialog.vue'
 import RotationDialog from '../molecules/RotationDialog.vue'
+import DebriefDialog from '../molecules/DebriefDialog.vue'
 import SessionCopyDialog from '../molecules/SessionCopyDialog.vue'
 import PlanWarningsPanel from '../molecules/PlanWarningsPanel.vue'
 import PublishJustificationDialog from '../molecules/PublishJustificationDialog.vue'
@@ -274,7 +285,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import { useToast } from 'primevue/usetoast'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus } from '@/types/training'
+import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus, TrainingDebrief } from '@/types/training'
 import interact from 'interactjs'
 import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
@@ -302,6 +313,19 @@ const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
 const showSeries = ref(false)
 const showRotation = ref(false)
+const showDebrief = ref(false)
+// Follow-up once the exercise has begun (device time); the server checks again.
+const canDebrief = computed(() => {
+  const s = plannerStore.session
+  if (!s || (s.status !== 'published' && s.status !== 'completed')) return false
+  return new Date(`${s.date}T${s.start_time}`) <= new Date()
+})
+
+async function onDebriefSaved(debrief: TrainingDebrief) {
+  toast.add({ severity: 'success', summary: 'Nachbereitung gespeichert', life: 3000 })
+  // Completing changes status and plan version: show the server state.
+  if (plannerStore.session && debrief.session_status !== plannerStore.session.status) await plannerStore.loadBlocks(plannerStore.session.id)
+}
 const showCopy = ref(false)
 const showJustification = ref(false)
 const copyMode = ref<'copy' | 'template'>('copy')

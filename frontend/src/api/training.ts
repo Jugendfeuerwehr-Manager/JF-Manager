@@ -30,6 +30,8 @@ import type {
   TrainingSessionUpdate,
   TrainingTemplate,
   TrainingTemplateDetail,
+  TrainingDebrief,
+  TrainingDebriefInput,
 } from '@/types/training'
 
 // ─── Session API ──────────────────────────────────────────────────────────────
@@ -64,6 +66,12 @@ export const trainingSessionsApi = {
   },
   generateSeries(id: number, data: SeriesWindow & { preview_token: string }) {
     return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`, data)
+  },
+  debrief(id: number) {
+    return apiClient.get<TrainingDebrief>(`/training/sessions/${id}/debrief/`)
+  },
+  saveDebrief(id: number, data: TrainingDebriefInput) {
+    return apiClient.put<TrainingDebrief>(`/training/sessions/${id}/debrief/`, data)
   },
   checkPlan(id: number, data: TrainingPlanDraft) {
     return apiClient.post<{ warnings: PlanWarning[] }>(`/training/sessions/${id}/check_plan/`, data)

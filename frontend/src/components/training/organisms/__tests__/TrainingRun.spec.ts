@@ -11,8 +11,9 @@ const station = (id: number, title: string, start: number, group: { id: number; 
 })
 const toni = { id: 7, name: 'Toni Trainer' }
 let revision = 3
+let status = 'published'
 const plan = vi.fn(async () => ({ data: {
-  id: 1, revision, status: 'published', title: 'Stationsabend', date: '2026-10-11', start_time: '18:00:00', end_time: '20:00:00',
+  id: 1, revision, status, title: 'Stationsabend', date: '2026-10-11', start_time: '18:00:00', end_time: '20:00:00',
   description: '', notes: '', location: '', department: 1, groups: [], linked_service_id: 12, can_manage_plan: false,
   blocks: [
     station(1, 'Knoten', 0, { id: 1, name: 'Bambini' }, { instructors: [toni], safety_notes: 'Handschuhe', materials: [{ item: null, variant: null, quantity: 4, label: 'Leinen' }] }),
@@ -40,7 +41,7 @@ async function mountAt(hour: number, minute: number) {
 }
 
 describe('TrainingRun', () => {
-  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); localStorage.clear(); revision = 3 })
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); localStorage.clear(); revision = 3; status = 'published' })
   afterEach(() => { vi.useRealTimers() })
 
   it('shows the current round with remaining time and every station', async () => {
@@ -56,6 +57,7 @@ describe('TrainingRun', () => {
     expect(cards[0]).toContain('danach Jugend')
     expect(cards[0]).toContain('Toni Trainer')
     expect(wrapper.text()).toContain('Plan Version 3')
+    expect(wrapper.find('.run__header').text()).toContain('Läuft')
   })
 
   it('shows the own station with procedure, safety and a device-only checklist', async () => {
@@ -92,5 +94,13 @@ describe('TrainingRun', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('auf Version 4 aktualisiert')
     wrapper.unmount()
+  })
+
+  it('shows the stored status instead of the clock for cancelled exercises', async () => {
+    status = 'cancelled'
+    const wrapper = await mountAt(18, 7)
+    expect(wrapper.find('.run__header').text()).toContain('Abgesagt')
+    expect(wrapper.find('.run__header').text()).not.toContain('Läuft')
+    expect(wrapper.find('[role="alert"]').text()).toContain('abgesagt')
   })
 })

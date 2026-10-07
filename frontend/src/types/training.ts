@@ -435,3 +435,28 @@ export interface TrainingPlanDraft {
   session: TrainingSessionCreate
   blocks: Array<TrainingBlockCreate & { id?: number }>
 }
+
+// ─── Follow-up (TRAIN-04.3) ───────────────────────────────────────────────────
+
+export interface TrainingDebrief {
+  actual_start: string | null
+  actual_end: string | null
+  actual_minutes: number | null
+  reflection: string
+  improvements: string
+  revision: number
+  updated_by_name: string | null
+  updated_at: string | null
+  planned_minutes: number
+  session_status: TrainingStatus
+  session_revision: number
+}
+
+export interface TrainingDebriefInput {
+  expected_revision: number
+  actual_start: string | null
+  actual_end: string | null
+  reflection: string
+  improvements: string
+  complete?: boolean
+}

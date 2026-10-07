@@ -17,6 +17,10 @@
       <i class="pi pi-refresh" aria-hidden="true"></i>{{ updatedNotice }}
     </p>
 
+    <p v-if="session?.status === 'cancelled'" class="run__banner run__banner--offline" role="alert">
+      <i class="pi pi-ban" aria-hidden="true"></i>Diese Übung wurde abgesagt. Der Ablauf dient nur zur Ansicht.
+    </p>
+
     <StateView v-if="!session" :kind="error ? 'error' : 'loading'" :message="error || undefined" @retry="load" />
 
     <main v-else class="run__body">
@@ -115,12 +119,19 @@
       <router-link :to="{ name: 'training-mobile', params: { id: sessionId } }" class="run__action">
         <i class="pi pi-list" aria-hidden="true"></i>Ablauf
       </router-link>
+      <button
+        v-if="session.can_manage_plan && position.phase !== 'before' && (session.status === 'published' || session.status === 'completed')"
+        type="button"
+        class="run__action"
+        @click="showDebrief = true"
+      ><i class="pi pi-comment" aria-hidden="true"></i>Nachbereiten</button>
       <router-link
         v-if="session.linked_service_id"
         :to="{ name: 'service-attendance', params: { id: session.linked_service_id } }"
         class="run__action run__action--primary"
       ><i class="pi pi-check-square" aria-hidden="true"></i>Anwesenheit</router-link>
     </footer>
+    <DebriefDialog v-if="session && showDebrief" v-model:visible="showDebrief" :session="session" @saved="load" />
   </div>
 </template>
 
@@ -132,6 +143,7 @@ import SafeHtml from '@/components/common/SafeHtml.vue'
 import SegmentedControl from '@/components/common/SegmentedControl.vue'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import DebriefDialog from '../molecules/DebriefDialog.vue'
 import { trainingSessionsApi } from '@/api/training'
 import { useAuthStore } from '@/stores/auth'
 import { BLOCK_KIND_LABELS, type InstructorMini, type TrainingSessionDetail } from '@/types/training'
@@ -149,6 +161,7 @@ const updatedNotice = ref('')
 const online = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 const now = ref(new Date())
 const manualIndex = ref<number | null>(null)
+const showDebrief = ref(false)
 const view = ref<'all' | 'mine'>('all')
 const viewOptions = [{ value: 'all' as const, label: 'Alle Stationen' }, { value: 'mine' as const, label: 'Meine Station' }]
 
@@ -165,8 +178,18 @@ const progress = computed(() => {
   return s ? Math.min(100, Math.max(0, ((position.value.minute - s.start) / (s.end - s.start)) * 100)) : 0
 })
 
-const phaseLabel = computed(() => ({ before: 'Noch nicht begonnen', running: 'Läuft', after: 'Beendet' })[position.value.phase])
-const phaseSeverity = computed(() => ({ before: 'info', running: 'success', after: 'neutral' } as const)[position.value.phase])
+// The stored status wins over the clock (a completed or cancelled exercise never "runs").
+const phaseLabel = computed(() => {
+  if (session.value?.status === 'completed') return 'Abgeschlossen'
+  if (session.value?.status === 'cancelled') return 'Abgesagt'
+  if (session.value?.status === 'draft') return 'Entwurf'
+  return ({ before: 'Noch nicht begonnen', running: 'Läuft', after: 'Beendet' })[position.value.phase]
+})
+const phaseSeverity = computed(() => {
+  if (session.value?.status === 'cancelled') return 'danger' as const
+  if (session.value?.status === 'completed' || session.value?.status === 'draft') return 'neutral' as const
+  return ({ before: 'info', running: 'success', after: 'neutral' } as const)[position.value.phase]
+})
 const dateLabel = computed(() => {
   if (!session.value) return ''
   const [y, m, d] = session.value.date.split('-').map(Number)
@@ -299,7 +322,7 @@ defineExpose({ load })
 .run__hint { display: flex; gap: var(--jf-space-1-5); padding: var(--jf-space-1-5) var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); background: var(--jf-color-card); font-size: var(--jf-text-sm); }
 .run__hint ul { margin: var(--jf-space-0-5) 0 0; padding-left: 1.1rem; }
 .run__footer { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--jf-space-1); padding: var(--jf-space-1-5) var(--jf-space-2) var(--jf-space-2); background: var(--jf-color-card); border-top: 1px solid var(--jf-color-border); }
-.run__action { display: inline-flex; align-items: center; justify-content: center; gap: var(--jf-space-1); min-height: 48px; padding: 0 var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); color: var(--jf-color-text); font-weight: var(--jf-weight-semibold); text-decoration: none; }
+.run__action { font: inherit; background: var(--jf-color-card); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--jf-space-1); min-height: 48px; padding: 0 var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); color: var(--jf-color-text); font-weight: var(--jf-weight-semibold); text-decoration: none; }
 .run__action--primary { background: var(--jf-color-primary); border-color: var(--jf-color-primary); color: var(--jf-color-on-primary); }
 .run__action:focus-visible { outline: var(--jf-focus-ring); outline-offset: 2px; }
 </style>

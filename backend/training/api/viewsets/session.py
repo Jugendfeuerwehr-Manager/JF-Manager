@@ -1,5 +1,7 @@
 """ViewSet for TrainingSession."""
 
+from datetime import datetime
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
@@ -22,10 +24,11 @@ from training.api.serializers import (
     TrainingSessionListSerializer,
 )
 from training.api.serializers.block import InstructorMiniSerializer
+from training.api.serializers.debrief import DebriefInputSerializer, TrainingDebriefSerializer
 from training.api.serializers.template import CopyToDateSerializer, SaveAsTemplateSerializer, TrainingTemplateSerializer
 from training.conflicts import draft_blocks, find_conflicts, saved_blocks
 from training.copying import copied_files, copy_session, eligible_instructors, session_to_template
-from training.models import TrainingSession
+from training.models import TrainingDebrief, TrainingSession
 from training.series import (
     PropagationInputSerializer,
     SeriesInputSerializer,
@@ -287,6 +290,80 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
                 for item in items
             ]
         )
+
+    @action(detail=True, methods=["get", "put"])
+    def debrief(self, request, pk=None):
+        """Actual times, reflection and improvements (planners only); optionally completes the exercise."""
+        session = self._planning_session()
+        debrief = TrainingDebrief.objects.filter(session=session).first()
+        if request.method == "GET":
+            return Response(self._debrief_data(session, debrief))
+        payload = DebriefInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        if session.status not in (TrainingSession.Status.PUBLISHED, TrainingSession.Status.COMPLETED):
+            raise ValidationError(
+                {"status": "Nachbereitung ist nur für veröffentlichte oder abgeschlossene Übungen möglich."}
+            )
+        begin = timezone.make_aware(datetime.combine(session.date, session.start_time))
+        if timezone.now() < begin:
+            raise ValidationError({"status": "Die Übung hat noch nicht begonnen."})
+        with transaction.atomic():
+            # The session row is locked by get_object; the debrief row follows it.
+            debrief = TrainingDebrief.objects.select_for_update().filter(session=session).first()
+            current = debrief.revision if debrief else 0
+            if data["expected_revision"] != current:
+                return Response(
+                    {
+                        "code": "debrief_revision_conflict",
+                        "detail": "Die Nachbereitung wurde inzwischen geändert. Eingaben vergleichen.",
+                        "current": self._debrief_data(session, debrief),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            debrief = debrief or TrainingDebrief(session=session)
+            for name in ("actual_start", "actual_end", "reflection", "improvements"):
+                setattr(debrief, name, data[name])
+            debrief.revision = current + 1
+            debrief.updated_by = request.user
+            debrief.save()
+            if data["complete"] and session.status == TrainingSession.Status.PUBLISHED:
+                serializer = TrainingSessionDetailSerializer(
+                    session,
+                    # Ticking "complete" is the explicit confirmation; attendance stays.
+                    data={"status": TrainingSession.Status.COMPLETED, "confirm_service_change": True},
+                    partial=True,
+                    context=self.get_serializer_context(),
+                )
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+        session.refresh_from_db()
+        return Response(self._debrief_data(session, debrief))
+
+    def _debrief_data(self, session, debrief):
+        data = (
+            TrainingDebriefSerializer(debrief).data
+            if debrief
+            else {
+                "actual_start": None,
+                "actual_end": None,
+                "actual_minutes": None,
+                "reflection": "",
+                "improvements": "",
+                "revision": 0,
+                "updated_by_name": None,
+                "updated_at": None,
+            }
+        )
+        planned = (session.end_time.hour * 60 + session.end_time.minute) - (
+            session.start_time.hour * 60 + session.start_time.minute
+        )
+        return {
+            **data,
+            "planned_minutes": planned,
+            "session_status": session.status,
+            "session_revision": session.revision,
+        }
 
     @action(detail=True, methods=["get"])
     def conflicts(self, request, pk=None):
