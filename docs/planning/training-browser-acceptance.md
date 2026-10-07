@@ -46,3 +46,21 @@ Geprüft am 06.10.2026 mit frisch migrierter synthetischer SQLite-Datenbank und 
 Befunde während der Abnahme und behoben: Die Erfolgsmeldung erschien vor dem Neuladen der Vorschau und stand kurz neben der veralteten Vorschau; Meldung jetzt erst nach aktualisierter Vorschau. Die Hauptaktion lag bei langer Vorschau unterhalb des sichtbaren Dialogbereichs; sie steht jetzt neben der Zusammenfassung über der scrollbaren Tabelle.
 
 Grenzen: Abweichende/historische Termine und 409-Konflikte sind in Backend- und Komponententests abgedeckt, im Browser nicht gesondert erzeugt. Kein echter Touch-Hardwarelauf.
+
+# TRAIN-02.4: Browserabnahme Stationen, Rotation und Ressourcen
+
+Geprüft am 07.10.2026 mit frisch migrierter synthetischer SQLite-Datenbank (Migrationen bis 0010) im Sitzungs-Scratchpad, Django-Testserver 18081, Vite 15183, Chrome headless über `playwright-core`, 1440 × 900 und 390 × 844 CSS-Pixel. Testkonto mit Standardrolle „Übungsplanung“ ohne Staff, synthetische Abteilung mit zwei Gruppen, ein Ausbilderkonto, ein Artikel mit Bestand 3, drei öffentliche Bibliotheksbausteine; keine Anwendungsechtdaten.
+
+| Ablauf | Ergebnis |
+| --- | --- |
+| Rotation mit zwei Gruppen und zwei Stationen | bestanden: Vorschau „2 Runden · 19:00–19:45“, Wechsel zwischen den Runden, jede Gruppe jede Station; Übernahme als ein Schritt, nach Speichern 7 Bausteine |
+| Stationsformular | bestanden: Art, Ort, Lernziel, Ausbilder und Material (5 × Artikel) gespeichert und nach Neuladen vorhanden |
+| Planungswarnungen | bestanden: „1 Planungswarnung“ eingeklappt, nach „Anzeigen“ Materialwarnung „gleichzeitig 5 benötigt, rechnerisch 3 verfügbar“ mit Sprung zum Baustein |
+| Veröffentlichen trotz Warnung | bestanden: Begründungsdialog; Status veröffentlicht, Begründung und 1 Warntext gespeichert |
+| Bibliotheksbaustein als Station (TRAIN-02.3b) | bestanden: Suche „Kno“, Titel und Inhalt übernommen, drei Bausteine mit gemeinsamer Verknüpfung |
+| Verknüpfte Station bearbeiten | bestanden: Hinweis nennt die andere Gruppe; Umbenennung wirkt auf beide Gruppen |
+| Verknüpfung für eine Gruppe lösen | bestanden: nur dieser Baustein geändert, nach Speichern und Neuladen 1 verknüpft, 1 gelöst |
+| 390 Pixel | bestanden: Dokument- und Scrollbreite 390 |
+| Konsole | keine Fehler |
+
+Grenzen: Konflikte mit anderen Übungen und anonymisierte Übungen sind in Backendtests abgedeckt, im Browser nicht gesondert erzeugt. Kein echter Touch-Hardwarelauf.
