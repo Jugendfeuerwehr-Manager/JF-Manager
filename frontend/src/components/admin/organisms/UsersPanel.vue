@@ -65,6 +65,13 @@
                 class="text-xs"
               />
               <Tag
+                v-if="user.mfa_enabled"
+                value="2FA"
+                severity="success"
+                icon="pi pi-shield"
+                class="text-xs"
+              />
+              <Tag
                 v-if="!user.is_active"
                 value="Inaktiv"
                 severity="secondary"
@@ -126,6 +133,33 @@
         />
       </div>
 
+      <!-- Second factor (SEC-11.7) -->
+      <section
+        v-if="authStore.user?.is_superuser && selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail?.mfa"
+        class="mfa-admin mt-4"
+        aria-labelledby="mfa-admin-heading"
+      >
+        <h4 id="mfa-admin-heading" class="m-0"><i class="pi pi-shield" aria-hidden="true" /> Zwei-Faktor-Anmeldung</h4>
+        <p class="text-sm m-0">{{ mfaSummary }}</p>
+        <p v-if="selectedUserDetail.mfa.reset_blocker === 'console_only'" class="text-sm text-color-secondary m-0">
+          Administrationskonto: Zurücksetzen nur auf dem Server mit
+          <code>jfctl admin reset-mfa --user {{ selectedUserDetail.username }}</code>.
+        </p>
+        <p v-else-if="selectedUserDetail.mfa.reset_blocker === 'self'" class="text-sm text-color-secondary m-0">
+          Die eigene Zwei-Faktor-Anmeldung verwaltest du im Profil.
+        </p>
+        <Button
+          v-if="selectedUserDetail.mfa.enabled && selectedUserDetail.mfa.ui_reset_allowed"
+          icon="pi pi-refresh"
+          label="Zwei-Faktor-Anmeldung zurücksetzen"
+          severity="warn"
+          outlined
+          size="small"
+          class="align-self-start"
+          @click="confirmResetMfa"
+        />
+      </section>
+
       <!-- Actions footer for existing users -->
       <div
         v-if="authStore.hasPerm('users.change_customuser') && selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail"
@@ -179,6 +213,7 @@ import Avatar from 'primevue/avatar'
 import Tag from 'primevue/tag'
 import UserDetailForm from '@/components/admin/molecules/UserDetailForm.vue'
 import type { AdminUserDetail, AdminUser } from '@/types/admin'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
@@ -290,6 +325,37 @@ async function activateUser() {
   }
 }
 
+const mfaSummary = computed(() => {
+  const mfa = selectedUserDetail.value?.mfa
+  if (!mfa?.enabled) return 'Nicht eingerichtet.'
+  const parts = []
+  if (mfa.totp) parts.push('Authenticator-App')
+  if (mfa.passkeys) parts.push(mfa.passkeys === 1 ? '1 Passkey' : `${mfa.passkeys} Passkeys`)
+  return `Aktiv: ${parts.join(', ')}.`
+})
+
+function confirmResetMfa() {
+  const name = selectedUserDetail.value?.username
+  confirm.require({
+    message: `Zwei-Faktor-Anmeldung von "${name}" zurücksetzen? Authenticator-App, Passkeys und Wiederherstellungscodes werden entfernt und alle Sitzungen des Kontos beendet. Vorher die Identität der Person prüfen.`,
+    header: 'Zwei-Faktor-Anmeldung zurücksetzen',
+    icon: 'pi pi-shield',
+    rejectLabel: 'Abbrechen',
+    acceptLabel: 'Zurücksetzen',
+    acceptProps: { severity: 'warn' },
+    accept: async () => {
+      try {
+        await adminStore.resetUserMfa(selectedUserId.value!)
+        toast.add({ severity: 'success', summary: 'Zwei-Faktor-Anmeldung zurückgesetzt', detail: `${name} richtet sie bei der nächsten Anmeldung neu ein.`, life: 5000 })
+        await adminStore.fetchUsers({ limit: 100 })
+        await selectUser(selectedUserId.value!)
+      } catch (err) {
+        toast.add({ severity: 'error', summary: 'Zurücksetzen fehlgeschlagen', detail: getApiErrorMessage(err, 'Bitte erneut versuchen.'), life: 6000 })
+      }
+    },
+  })
+}
+
 function confirmDelete() {
   confirm.require({
     message: `Benutzer "${selectedUserDetail.value?.username}" wirklich endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
@@ -319,6 +385,20 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.mfa-admin {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+.mfa-admin h4 {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
 .users-panel {
   display: grid;
   grid-template-columns: 320px 1fr;

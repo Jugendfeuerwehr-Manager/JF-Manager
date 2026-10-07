@@ -10,6 +10,37 @@ from jf_manager_backend.html_safety import SanitizedHTMLField
 User = get_user_model()
 
 
+def mfa_reset_blocker(user, actor=None):
+    """Why the web interface may not reset this account's MFA, or None (SEC-11.4).
+
+    Administrative accounts (superuser, staff, mandatory MFA) are reset only on
+    the console, so a hijacked admin session cannot strip another admin's
+    second factor. Own factors are managed in the profile.
+    """
+    from users.mfa_policy import mfa_required
+
+    if actor is not None and actor.pk == user.pk:
+        return "self"
+    if user.is_superuser or user.is_staff or mfa_required(user):
+        return "console_only"
+    return None
+
+
+def mfa_summary(user, actor=None):
+    from users import mfa
+
+    totp = mfa.has_totp(user)
+    passkeys = user.passkeys.count()
+    blocker = mfa_reset_blocker(user, actor)
+    return {
+        "enabled": totp or passkeys > 0,
+        "totp": totp,
+        "passkeys": passkeys,
+        "ui_reset_allowed": blocker is None,
+        "reset_blocker": blocker,
+    }
+
+
 class PermissionSerializer(serializers.ModelSerializer):
     app_label = serializers.CharField(source="content_type.app_label", read_only=True)
     model = serializers.CharField(source="content_type.model", read_only=True)
@@ -81,6 +112,8 @@ class AuthGroupWriteSerializer(serializers.ModelSerializer):
 class AdminUserListSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     groups = AuthGroupListSerializer(many=True, read_only=True)
+    # Annotated in AdminUserViewSet.get_queryset (no query per row).
+    mfa_enabled = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = User
@@ -97,6 +130,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
             "groups",
+            "mfa_enabled",
         ]
 
 
@@ -105,6 +139,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     groups = AuthGroupListSerializer(many=True, read_only=True)
     permissions = serializers.SerializerMethodField()
+    mfa = serializers.SerializerMethodField()
     phone = serializers.CharField(allow_blank=True, required=False)
     mobile_phone = serializers.CharField(allow_blank=True, required=False)
 
@@ -133,8 +168,13 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
             "last_login",
             "groups",
             "permissions",
+            "mfa",
         ]
         read_only_fields = ["id", "date_joined", "last_login"]
+
+    def get_mfa(self, obj):
+        request = self.context.get("request")
+        return mfa_summary(obj, getattr(request, "user", None))
 
     def get_permissions(self, obj):
         if obj.is_superuser:

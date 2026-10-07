@@ -115,7 +115,6 @@ For details, see [Build Pipeline](../development/build-pipeline.md).
 | `static` | Django static files | Persistent |
 | `uploads` | User uploaded files | Persistent |
 | `./backups` | DB backups (bind mount) | Host directory |
-| `./nginx/ssl` | SSL certificates (bind mount) | Host directory |
 
 ## Backup Strategy
 

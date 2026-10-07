@@ -23,7 +23,12 @@ from users.mfa_views import (
     MFARecoveryCodesView,
     MFASetupView,
     MFAStatusView,
+    MFATotpRemoveView,
+    PasskeyDeleteView,
+    PasskeyRegisterBeginView,
+    PasskeyRegisterFinishView,
     ReauthenticateView,
+    ReauthPasskeyOptionsView,
 )
 
 # OIDC auth views
@@ -32,7 +37,13 @@ from users.oidc_views import (
     OIDCLoginView,
     OIDCPublicConfigView,
 )
-from users.session_views import SessionLoginView, SessionLogoutView, SessionMFAView, SessionStatusView
+from users.session_views import (
+    SessionLoginView,
+    SessionLogoutView,
+    SessionMFAView,
+    SessionPasskeyOptionsView,
+    SessionStatusView,
+)
 
 # Import custom email admin
 from .api_views import AppSettingsView, PublicBrandingView
@@ -52,6 +63,11 @@ api_patterns = [
     path("api/v1/auth/session/login/", SessionLoginView.as_view(), name="session-login"),
     path("api/v1/auth/session/logout/", SessionLogoutView.as_view(), name="session-logout"),
     path("api/v1/auth/session/mfa/", SessionMFAView.as_view(), name="session-mfa"),
+    path(
+        "api/v1/auth/session/mfa/passkey-options/",
+        SessionPasskeyOptionsView.as_view(),
+        name="session-mfa-passkey-options",
+    ),
     path("api/v1/auth/reauthenticate/", ReauthenticateView.as_view(), name="reauthenticate"),
     path("api/v1/auth/devices/", DeviceListView.as_view(), name="devices"),
     path("api/v1/auth/devices/revoke-others/", DeviceRevokeOthersView.as_view(), name="devices-revoke-others"),
@@ -61,6 +77,15 @@ api_patterns = [
     path("api/v1/auth/mfa/confirm/", MFAConfirmView.as_view(), name="mfa-confirm"),
     path("api/v1/auth/mfa/recovery-codes/", MFARecoveryCodesView.as_view(), name="mfa-recovery-codes"),
     path("api/v1/auth/mfa/disable/", MFADisableView.as_view(), name="mfa-disable"),
+    path(
+        "api/v1/auth/reauthenticate/passkey-options/", ReauthPasskeyOptionsView.as_view(), name="reauth-passkey-options"
+    ),
+    path("api/v1/auth/mfa/totp/remove/", MFATotpRemoveView.as_view(), name="mfa-totp-remove"),
+    path("api/v1/auth/mfa/passkeys/register/begin/", PasskeyRegisterBeginView.as_view(), name="passkey-register-begin"),
+    path(
+        "api/v1/auth/mfa/passkeys/register/finish/", PasskeyRegisterFinishView.as_view(), name="passkey-register-finish"
+    ),
+    path("api/v1/auth/mfa/passkeys/<int:pk>/remove/", PasskeyDeleteView.as_view(), name="passkey-remove"),
     # OIDC Authentication endpoints
     path("api/v1/auth/oidc/public-config/", OIDCPublicConfigView.as_view(), name="oidc-public-config"),
     path("api/v1/auth/oidc/login/", OIDCLoginView.as_view(), name="oidc-login"),

@@ -101,6 +101,8 @@ Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd fron
 | `ALLOWED_HOSTS` | Kommagetrennte Hostnamen | `localhost,127.0.0.1` |
 | `CSRF_TRUSTED_ORIGINS` | Vertrauenswürdige Herkünfte hinter einem Proxy | leer |
 | `REDIS_URL` | Redis-Verbindung | `none` |
+| `FRONTEND_URL` | Öffentliche Adresse der Oberfläche; Grundlage für SSO-Weiterleitungen und Passkeys | `http://localhost:5173` |
+| `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS` | Abweichende Passkey-RP-ID bzw. erlaubte Herkünfte ([session-auth.md](operations/session-auth.md#passkeys-domain-und-https)) | aus `FRONTEND_URL` |
 
 ### Frontend
 
@@ -120,25 +122,15 @@ Oder einzeln: `cd backend && pipenv run python manage.py runserver` und `cd fron
 | `/api/redoc/` | ReDoc API docs |
 | `/health/` | Health check |
 
-## Docker Installation
+## Docker (nur Entwicklung)
 
-For a quick Docker Compose based setup:
-
-```bash
-cp backend/example.env .env
-# adjust required values in .env (especially DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY and DB credentials)
-docker compose -f docker-compose.yml up -d --build
-```
-
-Then create an admin user:
+Die `docker-compose.yml` im Projektwurzelverzeichnis baut die Images aus dem Quellcode und dient nur der Entwicklung:
 
 ```bash
-docker compose exec backend python manage.py migrate
+cp .env.example .env
+# Pflichtwerte setzen (DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY, POSTGRES_PASSWORD)
+make dev-up
 docker compose exec backend python manage.py createsuperuser
 ```
 
-For production and Portainer/Synology variants, see:
-
-- [Docker Deployment](deployment/docker.md)
-- [Portainer Deployment](deployment/portainer.md)
-- [Synology NAS](deployment/synology.md)
+Produktion (Docker Compose mit versionsgebundenen Images oder Debian 13 nativ) läuft ausschließlich über `jfctl`: [Installation](operations/ops-install.md), [Migration bestehender Installationen](operations/ops-migration.md).

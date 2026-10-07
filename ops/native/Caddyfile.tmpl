@@ -1,0 +1,11 @@
+# Integrated HTTPS for the native installation (jfctl, tls=caddy).
+# Rendered by jfctl into /etc/caddy/Caddyfile. Caddy replaces client-supplied
+# X-Forwarded-* headers before proxying to the local nginx instance.
+{
+	email @ACME_EMAIL@
+}
+
+@DOMAIN@ {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}

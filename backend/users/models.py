@@ -129,6 +129,31 @@ class MFARecoveryCode(models.Model):
         verbose_name_plural = "MFA-Wiederherstellungscodes"
 
 
+class PasskeyCredential(models.Model):
+    """WebAuthn credential (passkey or security key) used as second factor.
+
+    Only the public key is stored; it is not secret. The signature counter
+    detects cloned authenticators that report counters.
+    """
+
+    MAX_PER_USER = 10
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="passkeys")
+    name = models.CharField(max_length=64)
+    credential_id = models.BinaryField(max_length=1024, unique=True)
+    public_key = models.BinaryField(max_length=2048)
+    sign_count = models.BigIntegerField(default=0)
+    transports = models.JSONField(default=list, blank=True)
+    backed_up = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Passkey"
+        verbose_name_plural = "Passkeys"
+        ordering = ["created_at"]
+
+
 class UserSession(models.Model):
     """Signed-in device shown in the profile so a user can end it remotely.
 

@@ -1,0 +1,7 @@
+# Application servers and optional database drivers installed next to the
+# Pipfile.lock packages. Pinned with hashes so image and native release builds
+# are reproducible (OPS-01.1). Update together with docs/operations/ops-release.md.
+uwsgi==2.0.31 \
+    --hash=sha256:e8f8b350ccc106ff93a65247b9136f529c14bf96b936ac5b264c6ff9d0c76257
+mysqlclient==2.3.0 \
+    --hash=sha256:bea8294964266f6486f1ca514ccfcdbc54d4fe0d32882b38c1d4594df870be8b

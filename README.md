@@ -31,22 +31,17 @@ Die Web-App lässt sich unter HTTPS zum Startbildschirm hinzufügen. Push-Mittei
 
 ## Installation
 
-Für den eigenen Server braucht ihr Docker Compose, eine PostgreSQL-Datenbank (im Compose enthalten), einen öffentlichen Hostnamen und für die installierbare Web-App eine HTTPS-Verbindung. Die mitgelieferte Compose-Konfiguration enthält Backend, Frontend, Datenbank, Redis und einen Push-Versandprozess. Vor dem Einsatz mit echten Mitgliederdaten [Sicherheitsupdate und bekannte Mediengrenze](docs/security-upgrade.md) lesen.
+Unterstützt werden zwei Produktionswege mit demselben Verwaltungswerkzeug `jfctl`: **Docker Compose** mit vorgebauten, versionsgebundenen Images und **Debian 13 nativ** (auch in einem Proxmox-LXC). HTTPS richtet `jfctl` mit Caddy selbst ein oder übergibt an einen vorhandenen Reverse Proxy. Vor dem Einsatz mit echten Mitgliederdaten [Sicherheitsupdate und bekannte Mediengrenze](docs/security-upgrade.md) lesen.
 
 ```sh
-git clone https://github.com/Jugendfeuerwehr-Manager/JF-Manager.git
-cd JF-Manager
-cp .env.example .env
+VERSION=1.4.0   # gewünschtes Release
+BASE=https://github.com/Jugendfeuerwehr-Manager/JF-Manager/releases/download/v$VERSION
+curl -fsSLO "$BASE/jf-manager-$VERSION.tar.gz" -O "$BASE/SHA256SUMS" -O "$BASE/release-manifest.json"
+sha256sum -c SHA256SUMS && tar -xzf "jf-manager-$VERSION.tar.gz"
+sudo "./jf-manager-$VERSION/ops/jfctl" install --version "$VERSION" --release-dir .
 ```
 
-In `.env` mindestens `POSTGRES_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ADMIN_PASSWORD`, `DJANGO_ADMIN_EMAIL`, `ALLOWED_HOSTS` und `CSRF_TRUSTED_ORIGINS` für eure Domain setzen. Danach:
-
-```sh
-docker compose up -d --build
-docker compose ps
-```
-
-Die Anwendung ist zunächst am konfigurierten HTTP-Port erreichbar. Für öffentliches Hosting TLS am vorgeschalteten Reverse Proxy einrichten und die tatsächliche HTTPS-Domain in der Konfiguration hinterlegen. Mobile Installation und Push benötigen einen sicheren Ursprung; Push wird erst nach [VAPID-Konfiguration](docs/push-and-pwa.md) aktiv. Die Datenbankmigrationen laufen im Backend-Einstiegspunkt; beim Aktualisieren zusätzlich die Schritte im [Sicherheitsupdate](docs/security-upgrade.md) beachten. Ausführliche Varianten: [Docker](docs/deployment/docker.md), [Portainer](portainer/README.md) und [Betrieb](docs/getting-started.md).
+Der Assistent fragt alle Angaben vorab ab, prüft das System und installiert erst nach Bestätigung. Danach: `jfctl status`, `jfctl doctor`, `jfctl backup create`, `jfctl update --version …`. Details: [Installation](docs/operations/ops-install.md), [Betrieb mit jfctl](docs/operations/ops-jfctl.md), [Sicherung und Updates](docs/operations/ops-backup-restore-update.md). Bestehende Compose-, Portainer- oder Synology-Installationen werden über [Migration](docs/operations/ops-migration.md) übernommen. Die `docker-compose.yml` im Projektwurzelverzeichnis dient nur der Entwicklung.
 
 ## Ausprobieren mit Beispieldaten
 

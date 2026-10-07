@@ -27,6 +27,7 @@ openpyxl = "*"
 python-dateutil = "*"
 tzdata = "*"
 pyjwt = {version = "~=2.15", extras = ["crypto"]}
+webauthn = "~=3.0.1"
 drf-spectacular = "*"
 django-cors-headers = "*"
 ruff = "*"

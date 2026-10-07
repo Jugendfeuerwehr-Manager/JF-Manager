@@ -1,0 +1,163 @@
+# JF-Manager production stack (Docker Compose V2), managed by jfctl.
+#
+# Do not start this file by hand: jfctl passes the generated interpolation file
+# /etc/jf-manager/compose.env (versions, data directory, bind address, database
+# password) and the application environment /etc/jf-manager/app.env.
+#   jfctl start | stop | status | update --version <version>
+# Layout and variables: docs/operations/ops-overview.md
+name: jf-manager
+
+x-backend: &backend
+  image: ${JF_BACKEND_IMAGE:?set by jfctl}:${JF_VERSION:?set by jfctl}
+  env_file:
+    - ${JF_APP_ENV:-/etc/jf-manager/app.env}
+  environment: &backend-environment
+    DJANGO_MANAGEPY_MIGRATE: "off"
+    DJANGO_COLLECTSTATIC: "on"
+    DATABASE_URL: postgres://jf_manager:${POSTGRES_PASSWORD:?set by jfctl}@db:5432/jf_manager
+    REDIS_URL: redis://redis:6379/0
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  # "edge" gives outbound access (SMTP, OIDC, Spond, Web Push); database and
+  # Redis stay on the internal network only.
+  networks:
+    - internal
+    - edge
+  security_opt:
+    - no-new-privileges:true
+  read_only: true
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  db:
+    image: postgres:${JF_POSTGRES_MAJOR:-17}-alpine
+    environment:
+      POSTGRES_DB: jf_manager
+      POSTGRES_USER: jf_manager
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set by jfctl}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jf_manager -d jf_manager"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - internal
+    shm_size: 256m
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    # Cache, rate limits and the RQ queue. Persisted so queued sync jobs
+    # survive a restart; never shared with other applications. volatile-lru
+    # only evicts keys with an expiry (cache entries, limit counters) and
+    # keeps the queue lists.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/redis:/data
+    restart: unless-stopped
+    networks:
+      - internal
+    logging: *logging
+
+  backend:
+    <<: *backend
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      # Bind mounts with fixed owners (jfctl): a shared named volume would be
+      # initialised by whichever image mounts it first.
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/static:/static
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/uploads:/uploads
+    tmpfs:
+      - /tmp
+      - /tmp/django_imagefit
+
+  worker:
+    <<: *backend
+    entrypoint: ["python", "manage.py", "rqworker", "default"]
+    volumes:
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/uploads:/uploads
+    tmpfs:
+      - /tmp
+
+  push-worker:
+    <<: *backend
+    entrypoint: ["python", "manage.py", "send_push", "--loop"]
+    tmpfs:
+      - /tmp
+
+  frontend:
+    image: ${JF_FRONTEND_IMAGE:?set by jfctl}:${JF_VERSION:?set by jfctl}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Integrated HTTPS: bound to 127.0.0.1 and reached through Caddy.
+    # Existing reverse proxy: bound to the address configured in jfctl.
+    ports:
+      - "${JF_HTTP_BIND:-127.0.0.1:8080}:8080"
+    volumes:
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/static:/static:ro
+      - ${JF_TRUSTED_PROXIES_FILE:-/etc/jf-manager/trusted-proxies.conf}:/etc/nginx/trusted-proxies.conf:ro
+    restart: unless-stopped
+    networks:
+      - internal
+      - edge
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["tls"]
+    depends_on:
+      - frontend
+    environment:
+      JF_DOMAIN: ${JF_DOMAIN:?set by jfctl}
+      JF_ACME_EMAIL: ${JF_ACME_EMAIL:?set by jfctl}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/caddy:/data
+    restart: unless-stopped
+    networks:
+      - edge
+    logging: *logging
+
+networks:
+  internal:
+    internal: true
+  # Fixed subnet: nginx trusts X-Forwarded-Proto from it (Caddy, and a
+  # reverse proxy on this host whose traffic arrives via the gateway).
+  edge:
+    ipam:
+      config:
+        - subnet: ${JF_EDGE_SUBNET:-172.30.83.0/24}

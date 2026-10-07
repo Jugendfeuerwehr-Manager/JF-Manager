@@ -7,19 +7,21 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Password from 'primevue/password'
 import { setStepUpHandler } from '@/api'
-import { cancelStepUp, confirmStepUp, requestStepUp, stepUpState } from '@/composables/useStepUp'
+import { cancelStepUp, confirmStepUp, confirmStepUpWithPasskey, requestStepUp, stepUpState } from '@/composables/useStepUp'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
 const password = ref('')
 const code = ref('')
+const showRecovery = ref(false)
 
 watch(() => stepUpState.visible, visible => {
   if (!visible) {
     // Never keep confirmation secrets in memory longer than needed.
     password.value = ''
     code.value = ''
+    showRecovery.value = false
   }
 })
 
@@ -28,7 +30,19 @@ function onVisibleChange(visible: boolean) {
 }
 
 function submit() {
+  if (stepUpState.passkeyAvailable && !stepUpState.needsCode && !showRecovery.value) {
+    void confirmStepUpWithPasskey(password.value)
+    return
+  }
   void confirmStepUp(password.value, code.value)
+}
+
+function usePasskey() {
+  if (stepUpState.needsPassword && !password.value) {
+    stepUpState.error = 'Bitte zuerst das Passwort eingeben.'
+    return
+  }
+  void confirmStepUpWithPasskey(password.value)
 }
 
 function signInAgain() {
@@ -57,13 +71,30 @@ onUnmounted(() => setStepUpHandler(null))
         <label for="step-up-password">Passwort</label>
         <Password input-id="step-up-password" v-model="password" :feedback="false" toggle-mask autocomplete="current-password" required autofocus />
       </div>
-      <div v-if="stepUpState.needsCode" class="field">
-        <label for="step-up-code">Code aus der Authenticator-App oder Wiederherstellungscode</label>
+      <div v-if="stepUpState.needsCode || showRecovery" class="field">
+        <label for="step-up-code">{{ stepUpState.needsCode ? 'Code aus der Authenticator-App oder Wiederherstellungscode' : 'Wiederherstellungscode' }}</label>
         <InputText id="step-up-code" v-model="code" autocomplete="one-time-code" required />
       </div>
+      <button v-if="stepUpState.codeOptional" type="button" class="text-link" @click="showRecovery = !showRecovery">
+        {{ showRecovery ? 'Passkey verwenden' : 'Wiederherstellungscode verwenden' }}
+      </button>
       <Message v-if="stepUpState.error" severity="error" role="alert">{{ stepUpState.error }}</Message>
       <div class="actions">
-        <Button type="submit" label="Bestätigen" icon="pi pi-check" :loading="stepUpState.busy" />
+        <Button
+          v-if="stepUpState.passkeyAvailable && (stepUpState.needsCode || showRecovery)"
+          type="button"
+          label="Mit Passkey"
+          icon="pi pi-key"
+          severity="secondary"
+          :disabled="stepUpState.busy"
+          @click="usePasskey"
+        />
+        <Button
+          type="submit"
+          :label="stepUpState.passkeyAvailable && !stepUpState.needsCode && !showRecovery ? 'Mit Passkey bestätigen' : 'Bestätigen'"
+          :icon="stepUpState.passkeyAvailable && !stepUpState.needsCode && !showRecovery ? 'pi pi-key' : 'pi pi-check'"
+          :loading="stepUpState.busy"
+        />
         <Button type="button" label="Abbrechen" severity="secondary" text :disabled="stepUpState.busy" @click="cancelStepUp" />
       </div>
     </form>
@@ -82,5 +113,6 @@ onUnmounted(() => setStepUpHandler(null))
 .hint { color: var(--text-color-secondary); margin: 0; }
 .field :deep(.p-password), .field :deep(input) { width: 100%; }
 .actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.text-link { align-self: flex-start; background: none; border: 0; padding: 0; color: var(--primary-color); cursor: pointer; text-decoration: underline; }
 .actions :deep(.p-button) { min-height: 44px; }
 </style>

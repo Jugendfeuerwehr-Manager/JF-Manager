@@ -5,6 +5,7 @@ anonymous login, so a foreign site cannot log a victim into another account.
 """
 
 import hashlib
+import json
 import time
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
@@ -16,8 +17,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
+from users import passkeys
 from users.auth_security import LoginThrottle
-from users.mfa import mark_mfa_verified, verify_second_factor
+from users.mfa import has_passkeys, has_totp, mark_mfa_verified, verify_second_factor
 from users.mfa_policy import is_mfa_verified, mfa_state
 from users.session_auth import SessionAuthentication
 from users.session_policy import PRIVILEGED_KEY, isoformat, lifetimes, session_deadlines
@@ -58,8 +60,13 @@ def session_status(request):
     user = request.user
     authenticated = bool(user and user.is_authenticated)
     data = {"authenticated": authenticated}
-    if not authenticated and _pending(request.session):
+    pending = _pending(request.session) if not authenticated else None
+    if pending:
         data["mfa_required"] = True
+        pending_user = get_user_model().objects.filter(pk=pending["user_id"]).first()
+        if pending_user is not None:
+            # Only after a correct password: which second factors this account has.
+            data["mfa_methods"] = {"totp": has_totp(pending_user), "passkey": has_passkeys(pending_user)}
     if authenticated and not is_mfa_verified(request.session) and mfa_state(user) == "enrol":
         data["mfa_setup_required"] = True
     deadlines = session_deadlines(request.session) if authenticated else None
@@ -136,11 +143,44 @@ class SessionLoginView(SessionCsrfMixin, APIView):
 
 
 class MFACodeSerializer(serializers.Serializer):
-    code = serializers.CharField(max_length=32)
+    code = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    passkey = serializers.DictField(required=False)
+
+    def validate(self, attrs):
+        if not attrs.get("code") and not attrs.get("passkey"):
+            raise serializers.ValidationError("Code oder Passkey erforderlich.")
+        return attrs
+
+
+def _expired_login():
+    return Response(
+        {"detail": "Die Anmeldung ist abgelaufen. Bitte erneut anmelden.", "code": "mfa_login_expired"},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+class SessionPasskeyOptionsView(SessionCsrfMixin, APIView):
+    """POST /api/v1/auth/session/mfa/passkey-options/ — challenge for the pending login."""
+
+    throttle_classes = [LoginThrottle]
+
+    def post(self, request):
+        session = request._request.session
+        pending = _pending(session)
+        if pending is None:
+            session.pop(PENDING_KEY, None)
+            return _expired_login()
+        user = get_user_model().objects.filter(pk=pending["user_id"], is_active=True).first()
+        options = passkeys.authentication_options(session, user) if user else None
+        if options is None:
+            return Response(
+                {"detail": "Für dieses Konto ist kein Passkey eingerichtet."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(json.loads(options))
 
 
 class SessionMFAView(SessionCsrfMixin, APIView):
-    """POST /api/v1/auth/session/mfa/ — finish a login with TOTP or recovery code."""
+    """POST /api/v1/auth/session/mfa/ — finish a login with TOTP, recovery code or passkey."""
 
     throttle_classes = [LoginThrottle]
 
@@ -151,12 +191,9 @@ class SessionMFAView(SessionCsrfMixin, APIView):
         pending = _pending(session)
         if pending is None:
             session.pop(PENDING_KEY, None)
-            return Response(
-                {"detail": "Die Anmeldung ist abgelaufen. Bitte erneut anmelden.", "code": "mfa_login_expired"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return _expired_login()
         user = get_user_model().objects.filter(pk=pending["user_id"], is_active=True).first()
-        if user is None or not verify_second_factor(user, serializer.validated_data["code"]):
+        if user is None or not _second_factor_ok(session, user, serializer.validated_data):
             pending["attempts"] += 1
             if pending["attempts"] >= PENDING_MAX_ATTEMPTS:
                 session.pop(PENDING_KEY, None)
@@ -167,6 +204,16 @@ class SessionMFAView(SessionCsrfMixin, APIView):
         login(request._request, user, backend=pending["backend"])
         mark_mfa_verified(request._request)
         return Response(session_status(request._request))
+
+
+def _second_factor_ok(session, user, data):
+    if data.get("passkey"):
+        try:
+            passkeys.authenticate(session, user, data["passkey"])
+        except passkeys.PasskeyError:
+            return False
+        return True
+    return verify_second_factor(user, data.get("code", ""))
 
 
 class SessionLogoutView(SessionCsrfMixin, APIView):
