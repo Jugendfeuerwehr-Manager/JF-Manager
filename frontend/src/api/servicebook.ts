@@ -8,12 +8,11 @@ import apiClient from './index'
 import type {
   AttendanceBoard,
   AttendanceState,
-  StaffAttendanceStatistic,
+  AttendanceReport,
   Service,
   ServiceDetail,
   ServiceFormData,
   ServiceListParams,
-  ServiceStatistics,
   AttendanceChartData,
   ServiceAttendanceSummaryResponse,
   Attendance,
@@ -47,11 +46,11 @@ export const servicesApi = {
       data,
     )
   },
-  getStaffStatistics(params?: { date_from?: string; date_to?: string }) {
-    return apiClient.get<{ results: StaffAttendanceStatistic[] }>(
-      '/servicebook/services/staff_statistics/',
-      { params },
-    )
+  /**
+   * Attendance evaluation for members and team within a period
+   */
+  getAttendanceReport(params: { date_from: string; date_to: string }) {
+    return apiClient.get<AttendanceReport>('/servicebook/attendance-report/', { params })
   },
   /**
    * List services with optional filtering and pagination
@@ -93,13 +92,6 @@ export const servicesApi = {
    */
   delete(id: number) {
     return apiClient.delete(`/servicebook/services/${id}/`)
-  },
-
-  /**
-   * Get servicebook statistics (total services, top lists, etc.)
-   */
-  getStatistics() {
-    return apiClient.get<ServiceStatistics>('/servicebook/services/statistics/')
   },
 
   /**

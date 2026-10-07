@@ -60,46 +60,12 @@
     </ul>
     <p class="hint">Erneutes Antippen des gewählten Status setzt ihn zurück. Änderungen anderer werden alle 3 Sekunden übernommen.</p>
 
-    <div class="report-toggle">
-      <Button
-        text
-        :label="showReport ? 'Team-Auswertung ausblenden' : 'Team-Auswertung'"
-        icon="pi pi-chart-bar"
-        :aria-expanded="showReport"
-        @click="toggleReport"
-      />
-    </div>
-    <div v-if="showReport" class="report">
-      <h3>Team – Auswertung</h3>
-      <div class="report__range">
-        <label>Von <input v-model="dateFrom" type="date" @change="loadReport" /></label>
-        <label>Bis <input v-model="dateTo" type="date" @change="loadReport" /></label>
-      </div>
-      <p class="muted">Erfasste Dienste im Zeitraum, Stunden aus der Dienstdauer bei Anwesenheit.</p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Anwesend</th>
-              <th>Entschuldigt</th>
-              <th>Fehlend</th>
-              <th>Stunden</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in report" :key="row.id">
-              <th>{{ row.full_name }}</th>
-              <td>{{ row.present }}</td>
-              <td>{{ row.excused }}</td>
-              <td>{{ row.absent }}</td>
-              <td>{{ row.hours }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p v-if="!report.length" class="muted">Keine Team-Anwesenheiten im gewählten Zeitraum.</p>
-    </div>
+    <router-link
+      class="report-link"
+      :to="{ name: 'service-report', query: kind === 'staff' ? { group: 'staff' } : {} }"
+    >
+      <i class="pi pi-chart-bar" aria-hidden="true"></i>Zur Anwesenheitsauswertung
+    </router-link>
   </section>
 </template>
 
@@ -107,7 +73,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import AttendanceButtonGroup from '../atoms/AttendanceButtonGroup.vue'
 import { servicesApi } from '@/api/servicebook'
@@ -115,7 +80,6 @@ import type {
   AttendanceBoard,
   AttendanceBoardPerson,
   AttendanceState,
-  StaffAttendanceStatistic,
 } from '@/types/servicebook'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -138,10 +102,6 @@ const syncIcon = computed(() => ({
 })[syncState.value])
 /** Rows marked while "Offen" is shown stay visible until the filter changes, so a mis-tap can be corrected. */
 const keepVisible = ref(new Set<string>())
-const showReport = ref(false)
-const report = ref<StaffAttendanceStatistic[]>([])
-const dateFrom = ref(`${new Date().getFullYear()}-01-01`)
-const dateTo = ref(`${new Date().getFullYear()}-12-31`)
 let timer: ReturnType<typeof setInterval> | undefined
 let refreshing = false
 let disposed = false
@@ -215,7 +175,6 @@ async function update(person: AttendanceBoardPerson, state: AttendanceState) {
     })
     syncState.value = 'saved'
     syncMessage.value = 'Gespeichert'
-    if (showReport.value) await loadReport()
   } catch (error) {
     person.state = previous
     syncState.value = 'error'
@@ -245,29 +204,6 @@ function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
 }
 
-function toggleReport() {
-  showReport.value = !showReport.value
-  void loadReport()
-}
-
-async function loadReport() {
-  if (!showReport.value) return
-  try {
-    report.value = (
-      await servicesApi.getStaffStatistics({
-        date_from: dateFrom.value || undefined,
-        date_to: dateTo.value || undefined,
-      })
-    ).data.results
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Auswertung',
-      detail: getApiErrorMessage(error, 'Auswertung konnte nicht geladen werden.'),
-      life: 5000,
-    })
-  }
-}
 function onVisibility() {
   if (!document.hidden) void refresh()
 }
@@ -419,31 +355,17 @@ onUnmounted(() => {
 .person :deep(.attendance-button-group) { flex: 1 1 320px; }
 .empty-state { padding: var(--jf-space-4) var(--jf-space-2); text-align: center; color: var(--jf-color-text-muted); }
 .hint { margin: 0; font-size: 0.8125rem; color: var(--jf-color-text-muted); }
-.report-toggle { display: flex; }
-.report {
-  display: flex;
-  flex-direction: column;
-  gap: var(--jf-space-1-5);
-  padding: var(--jf-space-2);
-  border: 1px solid var(--jf-color-border);
-  border-radius: var(--jf-radius-lg);
-  background: var(--jf-color-card);
-}
-.report h3 { margin: 0; font-size: var(--jf-text-md); }
-.report__range { display: flex; flex-wrap: wrap; gap: var(--jf-space-1-5); font-size: var(--jf-text-sm); }
-.report__range label { display: inline-flex; align-items: center; gap: var(--jf-space-1); }
-.table-scroll { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: var(--jf-text-sm); }
-th, td { padding: 0.65rem; text-align: left; border-bottom: 1px solid var(--jf-color-border); }
-input[type='date'] {
+.report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  align-self: flex-start;
   min-height: var(--jf-touch-target);
-  padding: 0 0.5rem;
-  border: 1px solid var(--p-surface-400);
-  border-radius: var(--jf-radius-md);
-  background: var(--jf-color-card);
-  color: var(--jf-color-text);
-  font: inherit;
+  color: var(--jf-color-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
 }
+.report-link:hover { text-decoration: underline; }
 @media (max-width: 767px) {
   .person { padding: var(--jf-space-1-5) var(--jf-space-1); }
   .person :deep(.attendance-button-group) { flex-basis: 100%; }

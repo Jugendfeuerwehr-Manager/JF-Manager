@@ -181,33 +181,6 @@ export interface BulkAttendanceUpdateResult {
 // ============================================================================
 
 /**
- * Top List Entry (for most present/excused/absent)
- */
-export interface TopListEntry {
-  person__name: string
-  person__lastname: string
-  num_services: number
-}
-
-/**
- * Top Lists by Attendance State
- */
-export interface TopLists {
-  most_present: TopListEntry[]
-  most_excused: TopListEntry[]
-  most_absent: TopListEntry[]
-}
-
-/**
- * Service Statistics Overview
- */
-export interface ServiceStatistics {
-  total_services: number
-  recent_services: Service[]
-  top_lists: TopLists
-}
-
-/**
  * Attendance Chart Data (for visualization)
  */
 export interface AttendanceChartData {
@@ -331,12 +304,38 @@ export interface AttendanceBoard {
   staff: AttendanceBoardPerson[]
 }
 
-export interface StaffAttendanceStatistic {
-  id: number
-  full_name: string
+export type AttendanceWarning = 'low_rate' | 'declining' | 'missed_in_a_row'
+
+export interface AttendanceCounts {
   present: number
   excused: number
   absent: number
-  total: number
+  recorded: number
+}
+
+/** One person in the attendance evaluation; rates are percent of recorded entries. */
+export interface AttendanceReportPerson extends AttendanceCounts {
+  id: number
+  full_name: string
+  rate: number | null
   hours: number
+  /** Rate per month, aligned with the group's months; null without entries. */
+  months: (number | null)[]
+  trend: { previous: number; recent: number; delta: number } | null
+  missed_in_a_row: number
+  warnings: AttendanceWarning[]
+}
+
+export interface AttendanceReportGroup {
+  summary: AttendanceCounts & { rate: number | null; people: number; with_warnings: number }
+  months: (AttendanceCounts & { month: string; rate: number | null })[]
+  people: AttendanceReportPerson[]
+}
+
+export interface AttendanceReport {
+  period: { date_from: string; date_to: string }
+  services: { count: number; hours: number }
+  thresholds: { low_rate: number; low_rate_min_records: number; decline_points: number; missed_in_a_row: number }
+  members: AttendanceReportGroup
+  staff: AttendanceReportGroup
 }

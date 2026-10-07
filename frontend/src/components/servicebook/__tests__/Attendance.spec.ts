@@ -5,7 +5,7 @@ import Tooltip from 'primevue/tooltip'
 import AttendanceManager from '../organisms/AttendanceManager.vue'
 
 const { servicesApi, toastAdd } = vi.hoisted(() => ({
-  servicesApi: { getAttendanceBoard: vi.fn(), updateAttendanceBoard: vi.fn(), getStaffStatistics: vi.fn() },
+  servicesApi: { getAttendanceBoard: vi.fn(), updateAttendanceBoard: vi.fn() },
   toastAdd: vi.fn(),
 }))
 vi.mock('@/api/servicebook', () => ({ servicesApi }))

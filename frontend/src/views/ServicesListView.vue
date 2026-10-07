@@ -2,6 +2,14 @@
   <div class="servicebook-list-view">
     <OverviewHeader title="Dienstbuch" subtitle="Dienste planen, Anwesenheit erfassen und nachbereiten">
       <template #actions>
+        <Button
+          v-if="canViewReport"
+          label="Auswertung"
+          icon="pi pi-chart-bar"
+          severity="secondary"
+          outlined
+          @click="router.push({ name: 'service-report' })"
+        />
         <Button label="Neuer Dienst" icon="pi pi-plus" class="create-button" @click="handleCreate" />
       </template>
     </OverviewHeader>
@@ -78,28 +86,6 @@
       @page-change="handlePageChange"
     />
 
-    <Panel header="Statistiken" :collapsed="true" toggleable class="statistics-panel">
-      <div v-if="statisticsLoading" class="loading-container">
-        <ProgressSpinner />
-      </div>
-      <div v-else-if="statistics" class="statistics-grid">
-        <Card v-for="(list, key) in topLists" :key="key" class="top-list-card">
-          <template #title>{{ list.title }}</template>
-          <template #content>
-            <div v-if="!list.data || list.data.length === 0" class="empty-list">
-              Keine Daten verfügbar
-            </div>
-            <div v-else class="list-items">
-              <div v-for="(item, index) in list.data" :key="index" class="list-item">
-                <span class="rank">{{ index + 1 }}.</span>
-                <span class="name">{{ item.person__name }} {{ item.person__lastname }}</span>
-                <Tag :value="item.num_services" />
-              </div>
-            </div>
-          </template>
-        </Card>
-      </div>
-    </Panel>
   </div>
 </template>
 
@@ -108,13 +94,10 @@ import SegmentedControl from '@/components/common/SegmentedControl.vue'
 import { ref, onMounted, onActivated, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import Panel from 'primevue/panel'
-import Card from 'primevue/card'
-import Tag from 'primevue/tag'
-import ProgressSpinner from 'primevue/progressspinner'
 import ServicesList from '@/components/servicebook/organisms/ServicesList.vue'
 import ServiceFilters from '@/components/servicebook/molecules/ServiceFilters.vue'
 import { useServicebookStore } from '@/stores/servicebook'
+import { useAuthStore } from '@/stores/auth'
 import type { ServiceFilters as ServiceFiltersType, ServiceListParams } from '@/types/servicebook'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import { useQueryTableState } from '@/composables/useQueryTableState'
@@ -124,6 +107,8 @@ import type { Service } from '@/types/servicebook'
 
 const router = useRouter()
 const servicebookStore = useServicebookStore()
+const authStore = useAuthStore()
+const canViewReport = computed(() => authStore.hasPerm('servicebook.view_attendance') || authStore.hasPerm('servicebook.change_attendance'))
 const { getInt, getString, syncToUrl } = useQueryTableState()
 
 const filters = ref<ServiceFiltersType>({
@@ -146,13 +131,10 @@ const activeFilterCount = computed(() => [
   filters.value.search, filters.value.topic, filters.value.place, filters.value.operations_manager,
   filters.value.dateFrom, filters.value.dateTo,
 ].filter(Boolean).length)
-const statisticsLoading = ref(false)
-const statistics = ref(servicebookStore.statistics)
 
 onMounted(async () => {
   filtersOpen.value = activeFilterCount.value > 0
   await Promise.all([loadServices(), loadToday()])
-  await loadStatistics()
 })
 
 // Refetch services when returning to this view
@@ -239,42 +221,6 @@ const loadServices = async () => {
 
   await servicebookStore.fetchServices(params)
 }
-
-const loadStatistics = async () => {
-  statisticsLoading.value = true
-  try {
-    await servicebookStore.fetchStatistics()
-    statistics.value = servicebookStore.statistics
-  } catch {
-  } finally {
-    statisticsLoading.value = false
-  }
-}
-
-const topLists = computed(() => {
-  if (!statistics.value) {
-    return {
-      present: { title: 'Am meisten anwesend', data: [] },
-      excused: { title: 'Am meisten entschuldigt', data: [] },
-      absent: { title: 'Am meisten fehlend', data: [] }
-    }
-  }
-
-  return {
-    present: {
-      title: 'Am meisten anwesend',
-      data: statistics.value.top_lists.most_present || []
-    },
-    excused: {
-      title: 'Am meisten entschuldigt',
-      data: statistics.value.top_lists.most_excused || []
-    },
-    absent: {
-      title: 'Am meisten fehlend',
-      data: statistics.value.top_lists.most_absent || []
-    }
-  }
-})
 
 const applyFilters = async () => {
   currentPage.value = 1
@@ -411,50 +357,6 @@ const handleOpenTraining = (trainingId: number) => {
   background: var(--jf-color-card);
 }
 
-.loading-container {
-  display: flex;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.statistics-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.list-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.list-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  background: var(--p-content-background);
-  border-radius: var(--border-radius);
-}
-
-.list-item .rank {
-  font-weight: 700;
-  color: var(--jf-color-primary);
-  min-width: 1.5rem;
-}
-
-.list-item .name {
-  flex: 1;
-  font-weight: 500;
-}
-
-.empty-list {
-  text-align: center;
-  padding: 2rem;
-  color: var(--p-text-muted-color);
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -473,12 +375,6 @@ const handleOpenTraining = (trainingId: number) => {
     min-height: 56px;
     border-radius: 16px;
     box-shadow: var(--jf-shadow-lg);
-  }
-}
-
-@media (max-width: 768px) {
-  .statistics-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -120,6 +120,11 @@ const router = createRouter({
           component: () => import('@/views/ServicesListView.vue')
         },
         {
+          path: 'servicebook/report',
+          name: 'service-report',
+          component: () => import('@/views/ServiceReportView.vue')
+        },
+        {
           path: 'servicebook/create',
           name: 'service-create',
           component: () => import('@/views/ServiceFormView.vue')
