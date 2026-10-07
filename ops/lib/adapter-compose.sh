@@ -75,7 +75,7 @@ ad_render() {
     } >"$tmp"
     mv -f "$tmp" "$JF_COMPOSE_ENV"
     render_trusted_proxies compose
-    mkdir -p "$JF_DATA_DIR"/{uploads,static,postgres,redis,caddy}
+    mkdir -p "$JF_DATA_DIR"/{uploads,static,postgres,redis,caddy,ops-public}
     # uploads and collected static files belong to the container user django
     # (uid 1000, gid 2000); nginx reads static files (world-readable).
     chown 1000:2000 "$JF_DATA_DIR/uploads" "$JF_DATA_DIR/static" 2>/dev/null || true

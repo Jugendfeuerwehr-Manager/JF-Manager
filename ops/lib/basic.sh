@@ -28,7 +28,10 @@ write_ops_status() {
     local last='null' held=false
     [ -r "$JF_STATE_DIR/last-backup.json" ] && last=$(cat "$JF_STATE_DIR/last-backup.json")
     workers_held && held=true
-    state_write_json ops-status.json "{\"instance\": $(json_str "$JF_INSTANCE"), \"mode\": $(json_str "$JF_MODE"), \"version\": $(json_str "${JF_VERSION:-}"), \"workers_held\": $held, \"last_backup\": $last, \"updated\": $(json_str "$(_ts)")}" 2>/dev/null || true
+    local json
+    json="{\"instance\": $(json_str "$JF_INSTANCE"), \"mode\": $(json_str "$JF_MODE"), \"version\": $(json_str "${JF_VERSION:-}"), \"workers_held\": $held, \"last_backup\": $last, \"updated\": $(json_str "$(_ts)")}"
+    state_write_json ops-status.json "$json" 2>/dev/null || true
+    public_write_json ops-status.json "$json" 2>/dev/null || true
 }
 
 cmd_start() {

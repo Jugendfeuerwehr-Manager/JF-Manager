@@ -46,6 +46,17 @@ exit 0'
     [ "$(jq -r .last_success.snapshot "$BATS_TEST_TMPDIR/data/state/last-backup.json")" = abcdef12 ]
 }
 
+@test "backup publishes a readable status copy for the web view without secrets" {
+    run "$OPS_DIR/jfctl" backup create
+    [ "$status" -eq 0 ]
+    public="$BATS_TEST_TMPDIR/data/ops-public/ops-status.json"
+    [ "$(jq -r .last_backup.status "$public")" = ok ]
+    [ "$(jq -r .instance "$public")" = test-instanz ]
+    [ "$(stat -c %a "$public" 2>/dev/null || stat -f %Lp "$public")" = 644 ]
+    [ "$(stat -c %a "$(dirname "$public")" 2>/dev/null || stat -f %Lp "$(dirname "$public")")" = 755 ]
+    ! grep -Eq "secret-value|backup-pass" "$public"
+}
+
 @test "unreachable repository or wrong password stops before the maintenance window" {
     export REPO_BROKEN=1
     run "$OPS_DIR/jfctl" backup create

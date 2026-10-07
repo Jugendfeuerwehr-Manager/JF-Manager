@@ -308,6 +308,14 @@ state_write_json() { # name json
     printf '%s\n' "$2" >"$tmp"; chmod 644 "$tmp"; mv -f "$tmp" "$dir/$1"
 }
 
+# Read-only copy for the web application (OPS-03.4); never contains secrets.
+public_write_json() { # name json
+    local dir="$JF_DATA_DIR/ops-public" tmp
+    mkdir -p "$dir"; chmod 755 "$dir"
+    tmp=$(mktemp "$dir/.$1.XXXXXX")
+    printf '%s\n' "$2" >"$tmp"; chmod 644 "$tmp"; mv -f "$tmp" "$dir/$1"
+}
+
 json_str() { # escape for JSON string content
     local s=$1
     s=${s//\\/\\\\}; s=${s//\"/\\\"}; s=${s//$'\n'/\\n}; s=${s//$'\t'/\\t}

@@ -142,6 +142,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # Media files configuration
 MEDIA_URL = "/uploads/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Public status copy written by jfctl (OPS-03.4); empty outside jfctl installations.
+OPS_STATUS_FILE = os.environ.get("OPS_STATUS_FILE", "")
 
 # Upload folder configuration (can be overridden via environment variables)
 MEMBER_UPLOAD_FOLDER = os.environ.get("MEMBER_UPLOAD_FOLDER", "members/avatars")

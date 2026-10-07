@@ -37,7 +37,28 @@ export interface SetupStatus {
   oidc_enabled: boolean
   push_enabled: boolean
 }
+export interface OperationsWarning {
+  code: string
+  text: string
+}
+export interface OperationsStatus {
+  available: boolean
+  reason?: 'not_configured' | 'missing' | 'unreadable'
+  instance?: string
+  mode?: '' | 'compose' | 'native'
+  version?: string
+  workers_held?: boolean
+  updated?: string
+  last_backup?: {
+    status: 'ok' | 'failed' | 'unknown'
+    finished: string
+    message: string
+    last_success: string | null
+  } | null
+  warnings?: OperationsWarning[]
+}
 export const configurationApi = {
+  operations: () => apiClient.get<OperationsStatus>('/settings/operations/'),
   catalog: () => apiClient.get<ConfigurationCatalog>('/settings/catalog/'),
   setup: () => apiClient.get<SetupStatus>('/settings/setup/'),
   get: (category: string) =>

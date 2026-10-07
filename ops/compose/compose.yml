@@ -16,6 +16,7 @@ x-backend: &backend
     DJANGO_COLLECTSTATIC: "on"
     DATABASE_URL: postgres://jf_manager:${POSTGRES_PASSWORD:?set by jfctl}@db:5432/jf_manager
     REDIS_URL: redis://redis:6379/0
+    OPS_STATUS_FILE: /ops-public/ops-status.json
   depends_on:
     db:
       condition: service_healthy
@@ -88,6 +89,8 @@ services:
       # initialised by whichever image mounts it first.
       - ${JF_DATA_DIR:-/var/lib/jf-manager}/static:/static
       - ${JF_DATA_DIR:-/var/lib/jf-manager}/uploads:/uploads
+      # Status written by jfctl, read-only for the web view (OPS-03.4).
+      - ${JF_DATA_DIR:-/var/lib/jf-manager}/ops-public:/ops-public:ro
     tmpfs:
       - /tmp
       - /tmp/django_imagefit

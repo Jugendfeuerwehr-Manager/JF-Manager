@@ -252,6 +252,15 @@ class SettingsViewSet(viewsets.ViewSet):
             return Response({"detail": "Die Einrichtung ist der Systemadministration vorbehalten."}, status=403)
         return Response(setup_status(self))
 
+    @action(detail=False, methods=["get"])
+    def operations(self, request):
+        """Read-only host status written by jfctl (OPS-03.4); system administration only."""
+        from settings_manager.operations_status import operations_status
+
+        if not self._check_category_permission(request.user, "all", "view"):
+            return Response({"detail": "Der Betriebsstatus ist der Systemadministration vorbehalten."}, status=403)
+        return Response(operations_status())
+
     @action(detail=False, methods=["get"], url_path="client-defaults")
     def client_defaults(self, request):
         from jf_manager_backend.api_views import AppSettingsView

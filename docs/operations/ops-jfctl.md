@@ -57,7 +57,9 @@ Alle Aktionen landen in `/var/log/jf-manager/jfctl.log`. Registrierte Geheimniss
 
 ## Keine Root-Steuerung aus der Webanwendung
 
-Die Webanwendung erhält weder Docker-Socket noch Root-Rechte. Für eine spätere lesende Statusanzeige schreibt `jfctl` `/var/lib/jf-manager/state/ops-status.json` (Instanz, Modus, Version, Workerzustand, letzte Sicherung).
+Die Webanwendung erhält weder Docker-Socket noch Root-Rechte. Nach Installation, Sicherung, Wiederherstellung, Update und Workerwechsel schreibt `jfctl` `/var/lib/jf-manager/state/ops-status.json` (Instanz, Modus, Version, Workerzustand, letzte Sicherung) und eine gleichlautende, für alle lesbare Kopie nach `/var/lib/jf-manager/ops-public/ops-status.json`. Die Kopie enthält keine Geheimnisse.
+
+Die Weboberfläche zeigt sie unter **Einstellungen → System → Betriebsstatus** nur lesend an (Systemadministration). Compose bindet das Verzeichnis schreibgeschützt nach `/ops-public` ein, nativ zeigt `OPS_STATUS_FILE` in `native.env` darauf. Warnungen erscheinen, wenn die letzte Sicherung fehlschlug, seit 36 Stunden keine erfolgreiche Sicherung vorliegt, die Angaben älter als zwei Tage sind oder Hintergrundaufgaben angehalten sind.
 
 ## Wartungsplan
 

@@ -161,6 +161,10 @@ export const useSettingsStore = defineStore('settings', () => {
     ]) {
       if (canViewCategory.value(tab.id) || (tab.id === 'catalog' && canViewAnySettings.value)) tabs.push(tab)
     }
+    // Host status written by jfctl; read-only and reserved for system administration.
+    if (permissions.value.can_view_all) {
+      tabs.push({ id: 'operations', title: 'Betriebsstatus', icon: 'pi pi-server', description: 'Version, Sicherung und Hintergrundaufgaben' })
+    }
     return tabs
   })
 
@@ -173,6 +177,7 @@ export const useSettingsStore = defineStore('settings', () => {
       { label: 'Mitglieder', icon: 'pi pi-users', ids: ['member'] },
       { label: 'Betrieb', icon: 'pi pi-briefcase', ids: ['service', 'training', 'order'] },
       { label: 'Sicherheit', icon: 'pi pi-shield', ids: ['security', 'ldap', 'oidc'] },
+      { label: 'System', icon: 'pi pi-server', ids: ['operations'] },
     ]
 
     return groupDefs

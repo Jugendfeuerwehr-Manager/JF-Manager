@@ -268,6 +268,7 @@ const router = createRouter({
             },
             { path: 'setup', name: 'settings-setup', component: () => import('@/components/settings/organisms/sections/SetupSection.vue') },
             { path: 'catalog', name: 'settings-catalog', component: () => import('@/components/settings/organisms/sections/CatalogSection.vue') },
+            { path: 'operations', name: 'settings-operations', component: () => import('@/components/settings/organisms/sections/OperationsSection.vue') },
             ...['training', 'vocabulary', 'security', 'push'].map(kind => ({
               path: kind, name: `settings-${kind}`, props: { kind },
               component: () => import('@/components/settings/organisms/sections/ConfigurationSection.vue'),

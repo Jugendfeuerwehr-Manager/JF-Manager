@@ -73,6 +73,7 @@ _native_env() {
         echo "STATIC_URL=/static/"
         echo "MEDIA_ROOT=$(kv_quote "$JF_DATA_DIR/uploads")"
         echo "MEDIA_URL=/uploads/"
+        echo "OPS_STATUS_FILE=$(kv_quote "$JF_DATA_DIR/ops-public/ops-status.json")"
     } >"$tmp"
     mv -f "$tmp" "$JF_ETC/native.env"
 }
@@ -118,7 +119,7 @@ ad_render() {
     local unit
     id -u "$JF_SERVICE_USER" >/dev/null 2>&1 ||
         useradd --system --home-dir "$JF_DATA_DIR" --no-create-home --shell /usr/sbin/nologin "$JF_SERVICE_USER"
-    mkdir -p "$JF_DATA_DIR"/{uploads,static} "$JF_LOG_DIR"
+    mkdir -p "$JF_DATA_DIR"/{uploads,static,ops-public} "$JF_LOG_DIR"
     chown "$JF_SERVICE_USER:$JF_SERVICE_USER" "$JF_DATA_DIR/uploads" "$JF_DATA_DIR/static"
     chmod 750 "$JF_DATA_DIR/uploads"; chmod 755 "$JF_DATA_DIR" "$JF_DATA_DIR/static"
     _native_env
