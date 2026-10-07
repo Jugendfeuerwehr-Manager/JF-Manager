@@ -13,6 +13,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | SEC-11-Checkpoint | 06.10.2026: SEC-11.8 Dokumentation und gebündelte Abnahme; Browserlauf mit echtem Authenticator offen. Branch `feat/mfa-passkeys-reset`. Nächster Schritt kein weiterer Teilschritt; Browserabnahme mit echtem Passkey (HTTPS) offen. |
 | OPS-Checkpoint | 06.10.2026: OPS-01.9 gebündelte Abnahme des committeten Stands; offen: OPS-03.4, echte Debian-13-/Proxmox-Läufe, GitHub-Lauf, Integration. Branch `feat/ops-stable-operations`. Nächster Schritt OPS-03.4 (Webstatus, Abstimmung mit Fach-Sessions), echte Debian-13- und Proxmox-Abnahme, erster GitHub-Lauf. Integration in `feat/security-roles-training-operations` erfolgt (07.10.2026, zusammen mit SEC-11). |
 | Inventar-Checkpoint | 07.10.2026: UX-05.2 (Nutzerwunsch) abgeschlossen: Variantenliste im Artikeldialog aktualisiert sich nach Anlage/Bearbeitung/Löschung; Größenreihen (Kinder, S–XXXL, Konfektion Herren/Damen, Schuhe) als atomare Sammelanlage. UX-05.1 bleibt geplant. |
+| DEV-Checkpoint | 07.10.2026: DEV-01.0 Detailblock angelegt (Nutzerauftrag: lokaler Start mit passendem Schlüssel, frischer Datenbestand, vollständige Demodaten). Nächster Schritt DEV-01.1 schlüsselgebundenes Cache-Präfix. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
 | Benutzerformular-Checkpoint | 06.10.2026: ROLE-02.5 abgeschlossen; Theme im Verwaltungsformular ausgelassen, Standard `system` bei Anlage und bestehende persönliche Einstellung bei Bearbeitung erhalten. 3/3 Regressionen, Typecheck und ESLint bestanden. |
@@ -578,6 +579,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | OPS-03 | in Arbeit | Claude (OPS-Session) | 03.1–03.3 umgesetzt; offen: OPS-03.4 Webstatus und erster GitHub-Lauf. |
 | OPS-04 | in Prüfung | Claude (OPS-Session) | Backup, Restore, Update mit Rollback geprüft; offen: Debian 13. |
 | OPS-05 | in Prüfung | Claude (OPS-Session) | Altvarianten abgelöst, Übernahme PostgreSQL 15 → 17 geprüft. |
+| DEV-01 | in Arbeit | Claude (Merge-/DEV-Sitzung) | DEV-01.0 Detailblock; als Nächstes DEV-01.1. |
 | DOC-01 | offen | — | Nach Funktionsabschluss vollständige bebilderte Dokumentation. |
 
 ### EXEC-01: aktueller Detailstand
@@ -1220,6 +1222,33 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** keine. Push nach GitHub in dieser Sitzung abgelehnt (403); Branch liegt lokal und als Git-Bundle vor.
 - **Nächster konkreter Schritt:** `OPS-03.4 (Webstatus, Abstimmung mit Fach-Sessions), echte Debian-13- und Proxmox-Abnahme, erster GitHub-Lauf, Integration in `feat/security-roles-training-operations``.
 
+### DEV-01: Verlässliche lokale Umgebung und Demodaten
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Merge-/DEV-Sitzung, lokal). Dateien: `backend/jf_manager_backend/encryption_config.py`, Cache-Hunk in `settings.py`/`docker_settings.py`, `backend/dev_env.py`, neuer Befehl `seed_demo`, `backend/demo.py`, eigene Einträge in `.vscode/{launch,tasks}.json`, Abschnitt „Lokale Umgebung zurücksetzen“ in `docs/getting-started.md`. Uncommittete CFG-Hunks in denselben Dateien (`DEV_ALLOW_UNREADABLE_SMTP`, SMTP-Backend) bleiben fremd und ungestaget.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Abhängigkeiten:** SEC-06 (Schlüsselring, `rotate_field_encryption`), CFG-01.2 (verschlüsselte SMTP-Preference in DB und Cache), EXEC-01.5 (lokaler Start), alle Fachmodule für den Seed.
+- **Befund (07.10.2026):** Lokaler Start bricht mit `InvalidToken` in `EmailConfigMiddleware` ab. Alle Modellgeheimnisse sind mit dem Schlüssel aus `backend/.env` lesbar, nur die SMTP-Preference nicht – in DB und Redis-Cache. Alle lokalen Instanzen (Worktrees, Sitzungen, Tests mit Redis) teilen denselben Redis mit festem Präfix `jf_manager_backend`; eine Instanz mit anderem Schlüssel kann verschlüsselte Preference-Werte in den gemeinsamen Cache schreiben. Der Debugger hält bereits am inneren `InvalidToken` an, bevor der CFG-Workaround greift.
+- **Ziel und Abnahmekriterien:**
+  - Cache-Präfix enthält einen nicht umkehrbaren Fingerabdruck des primären Schlüssels; Instanzen mit unterschiedlichem Schlüssel teilen keine Cache-Einträge. Produktion: einmalig kalter Cache, Sitzungen liegen in der Datenbank und bleiben gültig.
+  - Dev-Helfer ohne Django-Abhängigkeit: legt fehlende Geheimnisse in `backend/.env` an (ersetzt nie einen gültigen Schlüssel), lädt `.env` mit Vorrang vor geerbten Variablen, prüft vor dem Start alle Geheimnisse mit `rotate_field_encryption` und nennt bei Fehlern den Reset; Reset nur mit ausdrücklicher Bestätigung, nur lokale SQLite-Datenbank, lokale Uploads und eigene Cache-Einträge. Keine Geheimnisse in Ausgaben.
+  - VS Code: Start von Backend/Worker/Tests über den Helfer; eigene Tasks „Schlüssel prüfen“ und „Zurücksetzen und Demodaten“.
+  - `manage.py seed_demo`: fiktive, vollständige Demodaten über alle Module (Abteilungen, Rollen/Konten, Gruppen, Mitglieder mit Eltern, Dienstbuch mit Anwesenheit, Übungsplanung mit Stationen/Serien, Qualifikationen, Inventar mit Varianten/Lagerorten/Beständen, Bestellungen, E-Mail-Vorlagen); idempotent bzw. verweigert sich bei vorhandenen Daten ohne `--reset`; nur mit `DEBUG` oder `--allow-production-database` nicht vorgesehen. `demo.py` nutzt denselben Seed.
+  - Nachweis: frischer Reset, Start über VS-Code-Konfiguration ohne Ausnahme, Anmeldung, Stichproben aller Module; Tests für Präfix, Helfer und Seed.
+- **Teilschritte mit stabilen IDs:**
+  - `DEV-01.0`: Befund, Detailblock, Abnahme, Teilschritte.
+  - `DEV-01.1`: Schlüsselgebundenes Cache-Präfix (Entwicklung und Produktion).
+  - `DEV-01.2`: Dev-Helfer (`.env` absichern, Vorrang, Prüfung, Reset) und VS-Code-Tasks/-Startkonfigurationen.
+  - `DEV-01.3`: `seed_demo` mit vollständigen Demodaten; `demo.py` nutzt ihn.
+  - `DEV-01.4`: Lokalen Bestand zurücksetzen, Start über VS Code und Abnahme; Dokumentation.
+- **Letzter dauerhafter Checkpoint:** DEV-01.0 mit diesem Commit.
+- **Geänderte Dateien / Commit-Bezug:** DEV-01.0: diese Roadmap.
+- **Umgesetzte Teilschritte:** `DEV-01.0`.
+- **Ausgeführte Prüfungen mit Ergebnis:** DEV-01.0: Diagnose ausgeführt (`rotate_field_encryption` schlägt fehl; Einzelprüfung: LDAP/OIDC/MFA lesbar, SMTP-Preference in DB und Cache unlesbar). Anwendungstests nicht ausgeführt.
+- **Offene Fehler / Risiken:** RQ-Warteschlangen bleiben über Instanzen mit gleichem Redis geteilt; getrennte Redis-Datenbank je Worktree über `REDIS_URL` dokumentieren. Uncommittete CFG-Arbeit berührt dieselben Dateien.
+- **Laufende Prozesse und sichere Fortsetzung:** keine.
+- **Nächster konkreter Schritt:** `DEV-01.1`.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -1617,3 +1646,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 07.10.2026 | MERGE-OPS/SEC-11 | `feat/mfa-passkeys-reset` (enthält `feat/ops-stable-operations`, OPS-01–05 und SEC-11) in `feat/security-roles-training-operations` zusammengeführt. Konflikte: `backend/users/api/viewsets/admin_viewsets.py` – Superuser-Schutz in `get_object` und strenge `set_groups`-Prüfung (ROLE-02.2b) behalten, `reset-mfa`-Aktion und MFA-Annotation ergänzt, Detailantwort mit Request-Kontext; Roadmap – Statuszeilen und Journale beider Seiten übernommen. Integrationsfolgen behoben: `UsersPanelMfa.spec.ts` ergänzt den Auth-Mock um `hasPerm` (ROLE-Rechteprüfung), `UsersPanel.vue` nutzt `var(--surface-border)` ohne feste Ersatzfarbe (DES-01.11c-Baseline). Basis `c7019e1`; uncommittete Arbeit paralleler Sitzungen unberührt. | Bestanden: Backend 852/852 auf PostgreSQL 17 (Suite wie CI, seriell), `makemigrations --check`, `manage.py check`; Frontend 304/304, Typecheck, ESLint, Build. Nicht ausgeführt: jfctl-bats/ShellCheck (Werkzeuge lokal nicht installiert; `ops/` und `.github/` auf der Hauptlinie unverändert). Hinweis: Mit `cbor2` 5.9 scheitern 14 Passkey-Tests auch auf dem Quellbranch; Lockstand 6.1.5 erforderlich (baut lokal erst mit Rust ≥ 1.88). | Merge-Commit |
 
 | 07.10.2026 | UX-05.2 | Nutzerfehler: Artikeldialog zeigte nach Variantenanlage den alten Stand, weil nur `currentItem` im Store aktualisiert wurde, der Dialog aber die Tabellenkopie las. Dialog führt jetzt eigenen Artikelstand; `fetchItem` aktualisiert auch die Tabelle. Neuer Artikel mit Varianten bleibt geöffnet. Nutzerwunsch: Größengenerator mit Vorlagen (Kinder 98–176, S–XXXL, Konfektion Herren 44–64/Damen 32–50, Schuhe 30–48) und freien Werten; vorhandene Werte gesperrt. Neuer Endpunkt `POST /inventory/variants/bulk-create/`: atomar, Elternartikel gesperrt, Recht `add_itemvariant` in tatsächlicher Artikelabteilung (zentral nur organisationsweit), Werte bereinigt/dedupliziert, max. 100, vorhandene übersprungen. | 4/4 neue und 60/60 Inventar-Backendtests (SQLite) bestanden; erster Lauf schlug an leeren Werten fehl (Child-Feld), korrigiert und bestanden. Ruff-Lint bestanden; Formatprüfung eigener Zeilen bestanden, vorbestehende Formatbefunde in `item_viewsets.py`/`serializers.py`/`location_viewsets.py` unverändert. 302/302 Frontendtests (2 neu), Typecheck und ESLint der geänderten Dateien bestanden. PostgreSQL-Lauf und Browserprüfung nicht ausgeführt (Backend lokal nicht gestartet). | Dieser Commit: `feat(UX-05.2): refresh item variants and generate size series` | Nutzerabnahme im Browser; Größenbereiche bei Bedarf in `frontend/src/utils/sizePresets.ts` anpassen. |
+| 07.10.2026 | DEV-01.0 | Nutzerauftrag: lokaler Start scheitert am Schlüssel; Datenbestand darf gelöscht werden; vollständige Demodaten gewünscht. Diagnose: nur SMTP-Preference (DB und gemeinsamer Redis-Cache) mit fremdem Schlüssel verschlüsselt, übrige Geheimnisse lesbar; gemeinsamer Redis mit festem Präfix für alle lokalen Instanzen. Detailblock DEV-01 mit Teilschritten angelegt. | Diagnose ausgeführt; Anwendungstests nicht ausgeführt (nur Dokumentation). | Dieser Commit: `docs(DEV-01.0): plan reliable local environment and demo data` | DEV-01.1 schlüsselgebundenes Cache-Präfix. |
