@@ -50,6 +50,9 @@ Alle 16 Standardrollen werden nach der Migration automatisch angelegt. Vorhanden
 
 Administratorkonten müssen beim ersten Login eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes.
 
+Die fachliche Einrichtung erfolgt unter **Einstellungen → Einrichtung**; siehe
+[Einrichtung und Organisationseinstellungen](domains/configuration.md).
+
 ### 3. Frontend einrichten
 
 ```bash

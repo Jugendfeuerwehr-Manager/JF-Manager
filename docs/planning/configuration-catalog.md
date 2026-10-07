@@ -1,6 +1,6 @@
 # Konfigurationskatalog und Quellenvertrag
 
-Stand: 06.10.2026. CFG-01.1 inventarisiert den vorhandenen Code; die gekennzeichneten Erweiterungen werden in CFG-01.2–7 umgesetzt. Keine echten Konfigurationswerte sind in diesem Katalog enthalten.
+Stand: 07.10.2026. CFG-01 ist implementiert, abgenommen und separat committed; Prüfstand und Betriebsgrenzen siehe Roadmap. Keine echten Konfigurationswerte sind in diesem Katalog enthalten.
 
 ## Verbindlicher Vertrag
 
@@ -107,6 +107,29 @@ API: `/api/v1/settings/oidc/`. Speicher: OIDCConfig (Singleton). Fachrecht: `vie
 | `hide_local_login` | BooleanField; typabhängige Validierung | lesen/schreiben |
 | `trust_provider_mfa` | BooleanField; typabhängige Validierung | lesen/schreiben |
 
+## Metadaten, Einrichtung und sichere Tests
+
+`GET /settings/catalog/` liefert den berechtigungsgefilterten Feldvertrag ohne Werte:
+Quelle (`database`, `default`, `environment` oder `computed`), Speicherung, Sperre,
+Geheimnisstatus, Typ/Grenzen, Validierung und Wirksamkeit sowie Kategoriepermissions.
+Vorhanden-Status und OIDC-Rücksprungadresse sind abgeleitete Felder.
+`GET /settings/setup/` liefert nur aggregierten Einrichtungsstand für globale Einstellungssicht.
+`GET /settings/client-defaults/` liefert authentifizierten Konten ausschließlich harmlose
+Organisations-/Zeit-/Vokabularwerte; SMTP-/Anmeldegeheimnisse sind ausgeschlossen.
+
+`POST /settings/email/test-connection/` öffnet/schließt SMTP ohne Nachricht;
+`POST /settings/email/send-test/` verlangt `recipient` und `confirm_send: true`.
+Beide verlangen globales E-Mail-Änderungsrecht und Step-up. LDAP-Tests suchen nur;
+OIDC-Discovery liest nur. Keine Testfunktion importiert oder verändert Fachdaten.
+
+SMTP-Antworten enthalten `has_email_host_password` und `email_credentials_unavailable`.
+Weggelassene Passwörter bleiben erhalten; ein ausdrücklich leeres Passwort entfernt sie.
+Im expliziten lokalen Wiederherstellungsmodus (`DEBUG=True` und
+`DEV_ALLOW_UNREADABLE_SMTP=True`) startet die Webanwendung bei unlesbarem SMTP-Passwort
+mit gesperrtem Versand. Produktionsbetrieb sowie MFA-/LDAP-/OIDC-/Sync-Dekodierung bleiben
+strikt. Das Geheimnis wird nicht gelöscht. Worker prüfen DB-Zugangsdaten beim Öffnen der
+SMTP-Verbindung und fallen nicht auf Umgebungspasswörter zurück.
+
 ## Erweiterungen CFG-01
 
 | Bereich/Feld | Quelle und Speicher | Validierung | Recht / Wirksamkeit |
@@ -114,7 +137,7 @@ API: `/api/v1/settings/oidc/`. Speicher: OIDCConfig (Singleton). Fachrecht: `vie
 | Sicherheitsrichtlinien: `session_idle_timeout_seconds`, `session_max_age_seconds`, `privileged_session_idle_timeout_seconds`, `privileged_session_max_age_seconds` | DB-Konfiguration; gleichnamige Großbuchstaben-Umgebung überschreibt und sperrt | Normale Inaktivität 300–7776000 s, Höchstdauer 3600–31536000 s; privilegiert 300–86400 bzw. 3600–604800 s; Inaktivität ≤ Höchstdauer | Globale Einstellungssicht/-änderung plus Step-up; nächste Sitzungsprüfung |
 | Push: `enabled`, `public_key`, `private_key`, `subject` | DB-Konfiguration; VAPID-Triplett bei Hostvorgabe vollständig gesperrt | EC-P256-Schlüsselpaar, passende öffentliche/private Schlüssel, `mailto:`- oder HTTPS-Kontakt; Aktivierung nur bei vollständiger Konfiguration | Globale Einstellungssicht/-änderung plus Step-up; nächster Pushvorgang |
 | Übungsstandards: Start-/Endzeit, Bausteindauer | DB-Preferences | HH:MM, Start < Ende, Dauer 1–480 min | Globale allgemeine Konfiguration; nur Neuanlage |
-| Organisationsbegriffe für Mitglieder, Dienste und Übungen | DB-Preferences | nicht leer, begrenzte Textlänge | Allgemeine Konfiguration; nächste UI-Aktualisierung |
+| Organisationsbegriffe `member_label`, `service_label`, `training_label` | DB-Preferences in `general`; API `vocabulary` | nicht leer, höchstens 80 Zeichen | Allgemeine Konfiguration; nächste UI-Aktualisierung |
 
 ## Vorhandene Webverwaltungen und Einrichtungsassistent
 
