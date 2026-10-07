@@ -170,9 +170,10 @@ onMounted(async () => {
       Für die Rollen dieses Kontos ist eine Zwei-Faktor-Anmeldung verpflichtend. Bitte richte sie ein, um fortzufahren.
     </Message>
     <p class="hint">
-      Zusätzlich zum Passwort bestätigst du die Anmeldung mit einem Passkey (Fingerabdruck, Gesichtserkennung,
-      Geräte-PIN oder Sicherheitsschlüssel) oder mit einem Code aus einer Authenticator-App
-      (z. B. Aegis, Google Authenticator, Microsoft Authenticator oder ein Passwortmanager). Beides kann parallel genutzt werden.
+      Mit einem Passkey (Fingerabdruck, Gesichtserkennung, Geräte-PIN oder Sicherheitsschlüssel) meldest du dich
+      ohne Passwort an: „Mit Passkey anmelden“ auf der Anmeldeseite genügt. Alternativ bestätigst du die Anmeldung
+      mit Passwort durch einen Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, Microsoft
+      Authenticator oder ein Passwortmanager). Beides kann parallel genutzt werden.
     </p>
 
     <p v-if="loading" class="hint" role="status">Wird geladen…</p>

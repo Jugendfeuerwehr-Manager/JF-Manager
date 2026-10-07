@@ -3,15 +3,15 @@ import { flushPromises, mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import LoginView from '../LoginView.vue'
 
-const { login, verifyMfa, verifyMfaPasskey, replace, loginWithOidc, route, hardNavigate, store, supported } = vi.hoisted(() => ({
-  login: vi.fn(), verifyMfa: vi.fn(), verifyMfaPasskey: vi.fn(), replace: vi.fn(), loginWithOidc: vi.fn(), hardNavigate: vi.fn(),
+const { login, verifyMfa, verifyMfaPasskey, signInWithPasskey, replace, loginWithOidc, route, hardNavigate, store, supported } = vi.hoisted(() => ({
+  login: vi.fn(), verifyMfa: vi.fn(), verifyMfaPasskey: vi.fn(), signInWithPasskey: vi.fn(), replace: vi.fn(), loginWithOidc: vi.fn(), hardNavigate: vi.fn(),
   route: { query: {} as Record<string, string> },
   store: { mfaMethods: undefined as undefined | { totp: boolean, passkey: boolean }, error: null as string | null },
   supported: { value: false },
 }))
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    login, verifyMfa, verifyMfaPasskey, loginWithOidc, mfaPending: false,
+    login, verifyMfa, verifyMfaPasskey, signInWithPasskey, loginWithOidc, mfaPending: false,
     get mfaMethods() { return store.mfaMethods },
     get error() { return store.error },
   }),
@@ -136,6 +136,34 @@ describe('Login', () => {
     await flushPromises()
     await wrapper.findAll('button').find(b => b.text() === 'Wiederherstellungscode verwenden')!.trigger('click')
     expect(wrapper.find('#mfa-code').exists()).toBe(true)
+    wrapper.unmount()
+  })
+  it('signs in with a passkey alone, without username or password', async () => {
+    supported.value = true
+    route.query = { next: '/servicebook' }
+    signInWithPasskey.mockResolvedValue({ authenticated: true })
+    const wrapper = render()
+    await wrapper.findAll('button').find(b => b.text().includes('Mit Passkey anmelden'))!.trigger('click')
+    await flushPromises()
+    expect(signInWithPasskey).toHaveBeenCalledTimes(1)
+    expect(login).not.toHaveBeenCalled()
+    expect(replace).toHaveBeenCalledWith('/servicebook')
+    wrapper.unmount()
+  })
+  it('shows the passkey error and keeps the password form available', async () => {
+    supported.value = true
+    signInWithPasskey.mockImplementation(() => { store.error = 'Der Passkey-Vorgang wurde abgebrochen oder ist abgelaufen.'; return Promise.reject(new Error('cancelled')) })
+    const wrapper = render()
+    await wrapper.findAll('button').find(b => b.text().includes('Mit Passkey anmelden'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('abgebrochen')
+    expect(wrapper.find('#password').exists()).toBe(true)
+    expect(replace).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+  it('hides the passkey sign-in where the browser cannot use passkeys', () => {
+    const wrapper = render()
+    expect(wrapper.findAll('button').some(b => b.text().includes('Mit Passkey anmelden'))).toBe(false)
     wrapper.unmount()
   })
 })

@@ -140,6 +140,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Signs in with a passkey alone; it replaces password and second factor (SEC-12). */
+  async function signInWithPasskey() {
+    loading.value = true
+    error.value = null
+    try {
+      const options = (await authApi.passkeySignInOptions()).data
+      const assertion = await getPasskeyAssertion(options)
+      const response = await authApi.passkeySignIn(assertion)
+      return await applySession(response.data)
+    } catch (err) {
+      error.value = passkeyErrorMessage(err) ?? getApiErrorMessage(err, 'Die Anmeldung mit Passkey ist fehlgeschlagen.')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   /** Reads the session state without counting as user activity. */
   async function refreshSession() {
     const response = await authApi.session()
@@ -262,6 +279,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     verifyMfa,
     verifyMfaPasskey,
+    signInWithPasskey,
     refreshSession,
     fetchUser,
     updateProfile,

@@ -56,6 +56,10 @@
         <form v-else class="login-form" :aria-busy="loading || oidcLoading" @submit.prevent="handleLogin">
           <Message v-if="info" severity="info" role="status">{{ info }}</Message>
           <Message v-if="error" id="login-error" severity="error" role="alert">{{ error }}</Message>
+          <template v-if="canUsePasskeys">
+            <Button type="button" label="Mit Passkey anmelden" icon="pi pi-key" :loading="passkeyBusy" :disabled="(loading && !passkeyBusy) || oidcLoading" @click="handlePasskeySignIn" />
+            <div v-if="!oidcConfig?.enabled" class="divider"><span>oder mit Benutzername</span></div>
+          </template>
           <template v-if="oidcConfig?.enabled">
             <Button type="button" :label="`Mit ${oidcConfig.provider_name} anmelden`" icon="pi pi-sign-in" :loading="oidcLoading" :disabled="loading" @click="handleOIDCLogin" />
             <button v-if="oidcConfig.hide_local_login && !showLocalLogin" type="button" class="text-link" @click="showLocalLogin = true">Lokalen Account verwenden</button>
@@ -111,6 +115,7 @@ const mfaStep = ref(false)
 const mfaCode = ref('')
 const useRecoveryCode = ref(false)
 const passkeyBusy = ref(false)
+const canUsePasskeys = passkeysSupported()
 const hasTotp = computed(() => authStore.mfaMethods?.totp ?? true)
 const offerPasskey = computed(() => !!authStore.mfaMethods?.passkey && passkeysSupported() && !useRecoveryCode.value)
 const showCodeField = computed(() => useRecoveryCode.value || hasTotp.value || !offerPasskey.value)
@@ -185,6 +190,23 @@ async function handlePasskey() {
     error.value = authStore.error || 'Der Passkey konnte nicht bestätigt werden.'
     const code = (err as { response?: { data?: { code?: string } } }).response?.data?.code
     if (code === 'mfa_login_expired') mfaStep.value = false
+  } finally {
+    loading.value = false
+    passkeyBusy.value = false
+  }
+}
+
+/** Passkey with PIN or biometrics: no username, password or code needed (SEC-12). */
+async function handlePasskeySignIn() {
+  if (loading.value || oidcLoading.value) return
+  loading.value = true
+  passkeyBusy.value = true
+  error.value = ''
+  info.value = ''
+  try {
+    await finish(await authStore.signInWithPasskey())
+  } catch {
+    error.value = authStore.error || 'Die Anmeldung mit Passkey ist fehlgeschlagen.'
   } finally {
     loading.value = false
     passkeyBusy.value = false
