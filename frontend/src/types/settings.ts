@@ -15,11 +15,21 @@ export interface GeneralSettings {
   brand_color?: string
 }
 
+export interface LoginTexts {
+  eyebrow: string
+  headline: string
+  intro: string
+  footer: string
+  help: string
+}
+
 export interface PublicBranding {
   title: string
   slug: string
   logo_url: string
   brand_color?: string
+  /** Plain texts of the login page (CFG-02); empty hides the element. */
+  login_texts?: LoginTexts
 }
 
 export interface EmailSettings {
@@ -169,7 +179,7 @@ export interface SettingsPermissions {
 // API Request/Response Types
 // ============================================================================
 
-export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap' | 'oidc' | 'training' | 'vocabulary' | 'security' | 'push' | 'setup' | 'catalog' | 'operations'
+export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap' | 'oidc' | 'training' | 'vocabulary' | 'login' | 'security' | 'push' | 'setup' | 'catalog' | 'operations'
 
 export interface CategorySettingsUpdate {
   category: SettingsCategory

@@ -11,6 +11,8 @@ export interface ConfigurationField {
   max?: number
   max_length?: number
   allow_blank: boolean
+  /** Longer text; edited in a text area. */
+  multiline?: boolean
   effective: string
   validation: string
   environment_key?: string

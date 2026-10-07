@@ -208,4 +208,33 @@ describe('Readable configuration errors', () => {
       }),
     ).toBe('Bitte die Änderung erneut bestätigen.')
   })
+  it('edits multiline login texts in a text area and saves line breaks and empty values', async () => {
+    mocks.catalog.mockResolvedValue({
+      data: {
+        categories: {
+          login: {
+            label: 'Anmeldeseite',
+            can_change: true,
+            fields: {
+              login_headline: field('Überschrift', { type: 'string', allow_blank: true, multiline: true, max_length: 120 }),
+              login_footer: field('Fußzeile', { type: 'string', allow_blank: true, max_length: 120 }),
+            },
+          },
+        },
+        host: [],
+      },
+    })
+    mocks.get.mockResolvedValue({ data: { login_headline: 'Mehr Zeit für\neuer Team.', login_footer: 'Gemeinsam stark.' } })
+    mocks.update.mockResolvedValue({ data: { login_headline: 'Willkommen\nim Verein', login_footer: '' } })
+    const wrapper = await render('login')
+    expect(wrapper.text()).toContain('leeres Feld blendet den Text aus')
+    const textarea = wrapper.get('textarea#config-login_headline')
+    expect(textarea.attributes('maxlength')).toBe('120')
+    await textarea.setValue('Willkommen\nim Verein')
+    await wrapper.get('input#config-login_footer').setValue('')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mocks.update).toHaveBeenCalledWith('login', { login_headline: 'Willkommen\nim Verein', login_footer: '' })
+    expect(wrapper.text()).toContain('Einstellungen gespeichert.')
+  })
 })

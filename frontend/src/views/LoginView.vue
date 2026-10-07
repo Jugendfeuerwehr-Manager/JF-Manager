@@ -2,17 +2,17 @@
   <main class="login-page">
     <section class="login-intro" aria-label="JF-Manager">
       <div class="brand">
-        <img v-if="branding?.logo_url" :src="branding.logo_url" alt="Logo der Jugendfeuerwehr" />
+        <img v-if="branding?.logo_url" :src="branding.logo_url" :alt="`Logo ${branding.title || 'JF-Manager'}`" />
         <i v-else class="pi pi-shield" aria-hidden="true"></i>
         <span>{{ branding?.title || 'JF-Manager' }}</span>
       </div>
       <div class="intro-copy">
-        <p class="eyebrow">Für eure Jugendfeuerwehr</p>
-        <h1>Mehr Zeit für<br />euer Team.</h1>
-        <p>Mitglieder, Dienste und Ausbildung. Alles an einem Ort, damit ihr euch auf das Wesentliche konzentrieren könnt.</p>
+        <p v-if="texts.eyebrow" class="eyebrow">{{ texts.eyebrow }}</p>
+        <h1 v-if="texts.headline">{{ texts.headline }}</h1>
+        <p v-if="texts.intro" class="intro-text">{{ texts.intro }}</p>
         <div class="intro-modules"><span><i class="pi pi-users" aria-hidden="true"></i> Mitglieder</span><span><i class="pi pi-book" aria-hidden="true"></i> Dienstbuch</span><span><i class="pi pi-calendar" aria-hidden="true"></i> Ausbildung</span></div>
       </div>
-      <p class="intro-footer">Gemeinsam organisiert. Gemeinsam stark.</p>
+      <p v-if="texts.footer" class="intro-footer">{{ texts.footer }}</p>
     </section>
 
     <section class="login-panel" aria-labelledby="login-heading">
@@ -78,7 +78,7 @@
             <router-link to="/forgot-password" class="text-link">Passwort vergessen?</router-link>
           </template>
         </form>
-        <p class="login-help">Noch keinen Zugang? Wende dich an die Administration deiner Jugendfeuerwehr.</p>
+        <p v-if="texts.help" class="login-help">{{ texts.help }}</p>
       </div>
     </section>
   </main>
@@ -91,7 +91,7 @@ import { useAuthStore } from '@/stores/auth'
 import { oidcApi } from '@/api/oidc'
 import { brandingApi } from '@/api/branding'
 import type { OIDCPublicConfig } from '@/types/oidc'
-import type { PublicBranding } from '@/types/settings'
+import type { LoginTexts, PublicBranding } from '@/types/settings'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
@@ -111,6 +111,15 @@ const oidcConfig = ref<OIDCPublicConfig | null>(null)
 const oidcLoading = ref(false)
 const showLocalLogin = ref(false)
 const branding = ref<PublicBranding | null>(null)
+// Shown until the configured texts arrive (CFG-02); same as the server defaults.
+const DEFAULT_TEXTS: LoginTexts = {
+  eyebrow: 'Für eure Jugendfeuerwehr',
+  headline: 'Mehr Zeit für\neuer Team.',
+  intro: 'Mitglieder, Dienste und Ausbildung. Alles an einem Ort, damit ihr euch auf das Wesentliche konzentrieren könnt.',
+  footer: 'Gemeinsam organisiert. Gemeinsam stark.',
+  help: 'Noch keinen Zugang? Wende dich an die Administration deiner Jugendfeuerwehr.',
+}
+const texts = computed<LoginTexts>(() => ({ ...DEFAULT_TEXTS, ...branding.value?.login_texts }))
 const mfaStep = ref(false)
 const mfaCode = ref('')
 const useRecoveryCode = ref(false)
@@ -253,8 +262,8 @@ async function handleLogin() {
 .brand > i { display: grid; place-items: center; background: #b42b36; width: 44px; height: 44px; border-radius: 12px; font-size: 1.4rem; }
 .eyebrow { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--text-color-secondary, #637080); margin: 0 0 1rem; }
 .intro-copy .eyebrow { color: #eaa5ab; }
-h1 { font-size: clamp(2.6rem, 4.4vw, 4.7rem); line-height: 1.08; letter-spacing: -.045em; margin: 0 0 1.7rem; }
-.intro-copy > p:not(.eyebrow) { max-width: 420px; color: #c5cdd6; line-height: 1.8; font-size: 1.05rem; }
+h1 { font-size: clamp(2.6rem, 4.4vw, 4.7rem); line-height: 1.08; letter-spacing: -.045em; margin: 0 0 1.7rem; white-space: pre-line; overflow-wrap: anywhere; }
+.intro-copy > p:not(.eyebrow) { max-width: 420px; color: #c5cdd6; line-height: 1.8; font-size: 1.05rem; white-space: pre-line; }
 .intro-modules { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 2rem; color: #e6eaf0; font-size: .85rem; }
 .intro-modules span { display: flex; align-items: center; gap: .5rem; }
 .intro-footer { color: #aab7c5; font-size: .8rem; }
@@ -268,7 +277,7 @@ h2 { font-size: 2rem; letter-spacing: -.03em; margin: 0 0 .7rem; }
 .field :deep(.p-inputtext), .field :deep(.p-password) { width: 100%; }
 .field :deep(input), .login-form :deep(.p-button) { min-height: 46px; }
 .text-link { color: var(--primary-color, #b42b36); text-align: center; background: transparent; border: 0; font: inherit; font-size: .9rem; cursor: pointer; padding: .4rem; text-decoration: underline; text-underline-offset: 4px; }
-.login-help { color: var(--text-color-secondary); font-size: .82rem; line-height: 1.7; margin-top: 2.5rem; }
+.login-help { color: var(--text-color-secondary); font-size: .82rem; line-height: 1.7; margin-top: 2.5rem; white-space: pre-line; }
 .divider { display: flex; align-items: center; gap: 1rem; color: var(--text-color-secondary); font-size: .8rem; }
 .divider::before, .divider::after { content: ''; height: 1px; background: var(--surface-border, #ddd); flex: 1; }
 @media (max-width: 760px) { .login-page { grid-template-columns: 1fr; } .login-intro { padding: 1.5rem; gap: 0; } .intro-copy, .intro-footer { display: none; } .login-panel { padding: 2.5rem 1.5rem; align-items: start; } }

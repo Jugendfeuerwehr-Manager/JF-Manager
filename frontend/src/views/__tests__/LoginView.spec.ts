@@ -23,13 +23,14 @@ vi.mock('@/utils/navigation', async (importOriginal) => ({
 }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ replace, currentRoute: { value: route } }) }))
 vi.mock('@/api/oidc', () => ({ oidcApi: { getPublicConfig: () => Promise.resolve({ data: { enabled: false } }) } }))
-vi.mock('@/api/branding', () => ({ brandingApi: { getPublicBranding: () => Promise.resolve({ data: {} }) } }))
+const { branding } = vi.hoisted(() => ({ branding: { data: {} as Record<string, unknown> } }))
+vi.mock('@/api/branding', () => ({ brandingApi: { getPublicBranding: () => Promise.resolve(branding) } }))
 
 function render() { return mount(LoginView, { global: { plugins: [PrimeVue], stubs: { RouterLink: { template: '<a><slot /></a>' } } } }) }
 describe('Login', () => {
   beforeEach(() => {
     vi.clearAllMocks(); route.query = {}; login.mockResolvedValue({ authenticated: true })
-    store.mfaMethods = undefined; store.error = null; supported.value = false
+    store.mfaMethods = undefined; store.error = null; supported.value = false; branding.data = {}
   })
   it('navigates immediately after authentication and preserves a local destination', async () => {
     route.query = { next: '/servicebook' }
@@ -164,6 +165,23 @@ describe('Login', () => {
   it('hides the passkey sign-in where the browser cannot use passkeys', () => {
     const wrapper = render()
     expect(wrapper.findAll('button').some(b => b.text().includes('Mit Passkey anmelden'))).toBe(false)
+    wrapper.unmount()
+  })
+  it('shows the configured login texts as plain text and hides empty ones', async () => {
+    branding.data = { title: 'SV Muster', login_texts: { eyebrow: '<b>Verein</b>', headline: 'Willkommen\nim Verein', intro: 'Alles an einem Ort.', footer: '', help: 'Zugang beim Vorstand anfragen.' } }
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('.intro-copy .eyebrow').text()).toBe('<b>Verein</b>')
+    expect(wrapper.find('.intro-copy .eyebrow b').exists()).toBe(false)
+    expect(wrapper.get('h1').element.textContent).toBe('Willkommen\nim Verein')
+    expect(wrapper.find('.intro-footer').exists()).toBe(false)
+    expect(wrapper.get('.login-help').text()).toBe('Zugang beim Vorstand anfragen.')
+    wrapper.unmount()
+  })
+  it('keeps the default texts when branding cannot be loaded', () => {
+    const wrapper = render()
+    expect(wrapper.get('h1').text()).toContain('Mehr Zeit für')
+    expect(wrapper.get('.login-help').text()).toContain('Noch keinen Zugang?')
     wrapper.unmount()
   })
 })
