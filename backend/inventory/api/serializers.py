@@ -57,6 +57,44 @@ class ItemVariantSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class ItemVariantBulkCreateSerializer(serializers.Serializer):
+    """Create one variant per value of a single attribute, e.g. all sizes S-XXXL."""
+
+    MAX_VALUES = 100
+
+    parent_item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
+    attribute = serializers.CharField(max_length=50)
+    values = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), allow_empty=False)
+
+    def validate_attribute(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Attributname darf nicht leer sein.")
+        return value
+
+    def validate_values(self, values):
+        cleaned = []
+        seen = set()
+        for raw in values:
+            value = raw.strip()
+            if value and value.casefold() not in seen:
+                seen.add(value.casefold())
+                cleaned.append(value)
+        if not cleaned:
+            raise serializers.ValidationError("Mindestens ein Wert ist erforderlich.")
+        if len(cleaned) > self.MAX_VALUES:
+            raise serializers.ValidationError(f"Höchstens {self.MAX_VALUES} Werte pro Vorgang.")
+        return cleaned
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        user = getattr(self.context.get("request"), "user", None)
+        parent_item = attrs["parent_item"]
+        if not user or not can_manage_department(user, parent_item.department_id, "inventory.add_itemvariant"):
+            raise serializers.ValidationError({"parent_item": "Keine Schreibberechtigung für diesen Artikel."})
+        return attrs
+
+
 class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     total_stock = serializers.IntegerField(read_only=True)

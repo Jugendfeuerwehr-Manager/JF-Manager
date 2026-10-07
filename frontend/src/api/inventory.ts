@@ -18,6 +18,8 @@ import type {
   ItemVariant,
   ItemVariantCreate,
   ItemVariantUpdate,
+  ItemVariantBulkCreate,
+  ItemVariantBulkCreateResult,
   ItemVariantListParams,
   StorageLocation,
   StorageLocationCreate,
@@ -173,6 +175,13 @@ export const variantsApi = {
    */
   create(data: ItemVariantCreate) {
     return apiClient.post<ItemVariant>('/inventory/variants/', data)
+  },
+
+  /**
+   * Create one variant per value (e.g. all sizes) in one atomic request
+   */
+  bulkCreate(data: ItemVariantBulkCreate) {
+    return apiClient.post<ItemVariantBulkCreateResult>('/inventory/variants/bulk-create/', data)
   },
 
   /**

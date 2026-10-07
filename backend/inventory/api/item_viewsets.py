@@ -2,8 +2,9 @@
 ViewSets for Category, Item, and ItemVariant.
 """
 
+from django.db import transaction
 from django.db.models import Q, Sum
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS, BasePermission
@@ -22,6 +23,7 @@ from jf_manager_backend.mixins import BasePermissionedViewSet
 from .serializers import (
     CategorySerializer,
     ItemSerializer,
+    ItemVariantBulkCreateSerializer,
     ItemVariantSerializer,
     StockSerializer,
 )
@@ -130,6 +132,36 @@ class ItemVariantViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, v
             permission = f"inventory.{codename}_itemvariant"
             if not can_manage_department(request.user, obj.parent_item.department_id, permission):
                 raise PermissionDenied("Keine Berechtigung für Varianten dieses Artikels.")
+
+    @action(detail=False, methods=["post"], url_path="bulk-create")
+    def bulk_create(self, request):
+        """Create missing variants for a list of attribute values in one atomic step."""
+        payload = ItemVariantBulkCreateSerializer(data=request.data, context={"request": request})
+        payload.is_valid(raise_exception=True)
+        parent_item = payload.validated_data["parent_item"]
+        attribute = payload.validated_data["attribute"]
+
+        with transaction.atomic():
+            Item.objects.select_for_update().filter(pk=parent_item.pk).first()
+            existing = {
+                str(attrs.get(attribute, "")).strip().casefold()
+                for attrs in parent_item.variants.values_list("variant_attributes", flat=True)
+                if isinstance(attrs, dict)
+            }
+            created, skipped = [], []
+            for value in payload.validated_data["values"]:
+                if value.casefold() in existing:
+                    skipped.append(value)
+                    continue
+                created.append(
+                    ItemVariant.objects.create(parent_item=parent_item, variant_attributes={attribute: value})
+                )
+            if created and not parent_item.is_variant_parent:
+                parent_item.is_variant_parent = True
+                parent_item.save(update_fields=["is_variant_parent"])
+
+        serializer = ItemVariantSerializer(created, many=True, context={"request": request})
+        return Response({"created": serializer.data, "skipped": skipped}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):

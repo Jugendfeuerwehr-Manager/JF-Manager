@@ -60,13 +60,88 @@
         <Divider />
         <div class="variants-header">
           <h4>Varianten</h4>
-          <Button
-            label="Variante hinzufügen"
-            icon="pi pi-plus"
-            size="small"
-            outlined
-            @click="openVariantDialog(null)"
-          />
+          <div class="variants-header-actions">
+            <Button
+              label="Größen generieren"
+              icon="pi pi-th-large"
+              size="small"
+              :outlined="!showGenerator"
+              @click="toggleGenerator"
+            />
+            <Button
+              label="Variante hinzufügen"
+              icon="pi pi-plus"
+              size="small"
+              outlined
+              @click="openVariantDialog(null)"
+            />
+          </div>
+        </div>
+        <div v-if="showGenerator" class="generator">
+          <div class="field-row">
+            <div class="field">
+              <label for="sizePreset">Größenreihe</label>
+              <Dropdown
+                id="sizePreset"
+                v-model="generator.presetKey"
+                :options="SIZE_PRESETS"
+                option-label="label"
+                option-value="key"
+                placeholder="Vorlage wählen"
+                class="w-full"
+                @change="applyPreset"
+              />
+            </div>
+            <div class="field">
+              <label for="sizeAttribute">Attribut</label>
+              <InputText id="sizeAttribute" v-model="generator.attribute" placeholder="Größe" />
+            </div>
+          </div>
+          <div v-if="generatorCandidates.length" class="field">
+            <div class="generator-values-header">
+              <label>Werte</label>
+              <div>
+                <Button label="Alle" size="small" text @click="selectAllCandidates" />
+                <Button label="Keine" size="small" text @click="generator.selected = []" />
+              </div>
+            </div>
+            <div class="size-chips">
+              <button
+                v-for="value in generatorCandidates"
+                :key="value"
+                type="button"
+                class="size-chip"
+                :class="{ selected: generator.selected.includes(value), existing: isExistingValue(value) }"
+                :disabled="isExistingValue(value)"
+                :title="isExistingValue(value) ? 'Variante existiert bereits' : undefined"
+                :aria-pressed="generator.selected.includes(value)"
+                @click="toggleCandidate(value)"
+              >
+                {{ value }}
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="customSizes">Weitere Werte</label>
+            <InputText
+              id="customSizes"
+              v-model="generator.custom"
+              placeholder="z.B. XS, 4XL (durch Komma getrennt)"
+              @keydown.enter.prevent="addCustomValues"
+              @blur="addCustomValues"
+            />
+          </div>
+          <div class="generator-footer">
+            <small>{{ newGeneratorValues.length }} neue Varianten</small>
+            <Button
+              :label="`${newGeneratorValues.length} Varianten anlegen`"
+              icon="pi pi-check"
+              size="small"
+              :loading="variantLoading"
+              :disabled="!newGeneratorValues.length || !generator.attribute.trim()"
+              @click="generateVariants"
+            />
+          </div>
         </div>
         <div v-if="currentItem?.variants?.length" class="variants-list">
           <div v-for="variant in currentItem.variants" :key="variant.id" class="variant-item">
@@ -185,6 +260,8 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useInventoryStore } from '@/stores/inventory'
 import { useToast } from 'primevue/usetoast'
 import type { Item, ItemCreate, ItemUpdate, ItemVariant } from '@/types/inventory'
+import { SIZE_PRESETS, parseSizeValues } from '@/utils/sizePresets'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   modelValue: boolean
@@ -228,14 +305,24 @@ const variantForm = ref({
   sku: ''
 })
 
-const currentItem = computed(() => props.item)
+// Local copy so the variant list reflects changes made inside the dialog.
+const currentItem = ref<Item | null>(null)
+
+const showGenerator = ref(false)
+const generator = ref({
+  presetKey: null as string | null,
+  attribute: 'Größe',
+  candidates: [] as string[],
+  selected: [] as string[],
+  custom: ''
+})
 
 const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
 
-const isEdit = computed(() => !!props.item)
+const isEdit = computed(() => !!currentItem.value)
 
 const isValid = computed(() => {
   return form.value.name && form.value.category
@@ -245,6 +332,10 @@ const isValid = computed(() => {
 watch(
   () => props.modelValue,
   (newVal) => {
+    if (newVal) {
+      currentItem.value = props.item
+      resetGenerator()
+    }
     if (newVal && props.item) {
       form.value = {
         name: props.item.name,
@@ -276,6 +367,106 @@ watch(
   },
   { immediate: true }
 )
+
+const generatorCandidates = computed(() => generator.value.candidates)
+
+const existingValues = computed(() => {
+  const attribute = generator.value.attribute.trim()
+  return new Set(
+    (currentItem.value?.variants ?? [])
+      .map((variant) => variant.variant_attributes?.[attribute])
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim().toLowerCase())
+  )
+})
+
+const newGeneratorValues = computed(() =>
+  generator.value.selected.filter((value) => !isExistingValue(value))
+)
+
+function isExistingValue(value: string): boolean {
+  return existingValues.value.has(value.trim().toLowerCase())
+}
+
+function resetGenerator() {
+  showGenerator.value = false
+  generator.value = { presetKey: null, attribute: 'Größe', candidates: [], selected: [], custom: '' }
+}
+
+function toggleGenerator() {
+  showGenerator.value = !showGenerator.value
+}
+
+function applyPreset() {
+  const preset = SIZE_PRESETS.find((p) => p.key === generator.value.presetKey)
+  generator.value.candidates = preset ? [...preset.values] : []
+  selectAllCandidates()
+}
+
+function selectAllCandidates() {
+  generator.value.selected = generator.value.candidates.filter((value) => !isExistingValue(value))
+}
+
+function toggleCandidate(value: string) {
+  const selected = generator.value.selected
+  generator.value.selected = selected.includes(value)
+    ? selected.filter((v) => v !== value)
+    : [...selected, value]
+}
+
+function addCustomValues() {
+  const known = new Set(generator.value.candidates.map((v) => v.toLowerCase()))
+  for (const value of parseSizeValues(generator.value.custom)) {
+    if (!known.has(value.toLowerCase())) {
+      generator.value.candidates.push(value)
+      known.add(value.toLowerCase())
+    }
+    if (!generator.value.selected.includes(value) && !isExistingValue(value)) {
+      generator.value.selected.push(value)
+    }
+  }
+  generator.value.custom = ''
+}
+
+async function refreshItem() {
+  if (currentItem.value) {
+    currentItem.value = await inventoryStore.fetchItem(currentItem.value.id)
+  }
+}
+
+async function generateVariants() {
+  if (!currentItem.value) return
+  const values = newGeneratorValues.value
+  if (!values.length) return
+
+  variantLoading.value = true
+  try {
+    const result = await inventoryStore.bulkCreateVariants({
+      parent_item: currentItem.value.id,
+      attribute: generator.value.attribute.trim(),
+      values
+    })
+    await refreshItem()
+    resetGenerator()
+    toast.add({
+      severity: 'success',
+      summary: 'Erfolg',
+      detail: result.skipped.length
+        ? `${result.created.length} Varianten angelegt, ${result.skipped.length} bereits vorhanden`
+        : `${result.created.length} Varianten angelegt`,
+      life: 3000
+    })
+  } catch (err: unknown) {
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: getApiErrorMessage(err, 'Varianten konnten nicht angelegt werden'),
+      life: 5000
+    })
+  } finally {
+    variantLoading.value = false
+  }
+}
 
 function formatVariantAttributes(attrs: Record<string, string>): string {
   return Object.entries(attrs)
@@ -322,10 +513,7 @@ function confirmDeleteVariant(variant: ItemVariant) {
     accept: async () => {
       try {
         await inventoryStore.deleteVariant(variant.id)
-        // Refresh the item to get updated variants
-        if (props.item) {
-          await inventoryStore.fetchItem(props.item.id)
-        }
+        await refreshItem()
         toast.add({
           severity: 'success',
           summary: 'Erfolg',
@@ -356,8 +544,8 @@ async function submit() {
   try {
     let result: Item
 
-    if (isEdit.value && props.item) {
-      result = await inventoryStore.updateItem(props.item.id, form.value)
+    if (isEdit.value && currentItem.value) {
+      result = await inventoryStore.updateItem(currentItem.value.id, form.value)
       toast.add({
         severity: 'success',
         summary: 'Erfolg',
@@ -366,6 +554,18 @@ async function submit() {
       })
     } else {
       result = await inventoryStore.createItem(form.value as ItemCreate)
+      if (result.is_variant_parent) {
+        // Stay open so variants can be added right away.
+        currentItem.value = result
+        showGenerator.value = true
+        toast.add({
+          severity: 'success',
+          summary: 'Artikel erstellt',
+          detail: 'Jetzt Varianten anlegen oder Größen generieren',
+          life: 4000
+        })
+        return
+      }
       toast.add({
         severity: 'success',
         summary: 'Erfolg',
@@ -390,7 +590,7 @@ async function submit() {
 }
 
 async function saveVariant() {
-  if (!props.item || Object.keys(variantForm.value.attributes).length === 0) return
+  if (!currentItem.value || Object.keys(variantForm.value.attributes).length === 0) return
 
   variantLoading.value = true
   try {
@@ -409,7 +609,7 @@ async function saveVariant() {
     } else {
       // Create new variant
       await inventoryStore.createVariant({
-        parent_item: props.item.id,
+        parent_item: currentItem.value.id,
         variant_attributes: variantForm.value.attributes,
         sku: variantForm.value.sku
       })
@@ -421,8 +621,7 @@ async function saveVariant() {
       })
     }
 
-    // Refresh the item to get updated variants
-    await inventoryStore.fetchItem(props.item.id)
+    await refreshItem()
 
     showVariantDialog.value = false
     variantForm.value = { attributes: {}, sku: '' }
@@ -478,6 +677,77 @@ async function saveVariant() {
 
 .variants-header h4 {
   margin: 0;
+}
+
+.variants-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.generator {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--p-content-border-color, var(--surface-border));
+  border-radius: var(--border-radius);
+}
+
+.generator-values-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.size-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.size-chip {
+  min-width: 3rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--p-content-border-color, var(--surface-border));
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.size-chip.selected {
+  background: var(--p-primary-color);
+  border-color: var(--p-primary-color);
+  color: var(--p-primary-contrast-color);
+}
+
+.size-chip.existing {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.size-chip:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 2px;
+}
+
+.generator-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .variants-list {

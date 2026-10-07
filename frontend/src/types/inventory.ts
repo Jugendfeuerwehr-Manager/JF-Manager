@@ -59,6 +59,17 @@ export interface ItemVariantUpdate {
   variant_attributes?: Record<string, string>
 }
 
+export interface ItemVariantBulkCreate {
+  parent_item: number
+  attribute: string
+  values: string[]
+}
+
+export interface ItemVariantBulkCreateResult {
+  created: ItemVariant[]
+  skipped: string[]
+}
+
 /**
  * Inventory item (main article without variant-specific data)
  */
