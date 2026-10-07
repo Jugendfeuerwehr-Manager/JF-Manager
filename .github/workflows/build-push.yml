@@ -197,7 +197,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        # Pinned to the commit of v0.36.0 (verified on master); tags can be moved.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ matrix.image-ref }}
           format: sarif
