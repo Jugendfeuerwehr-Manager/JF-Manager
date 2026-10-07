@@ -39,7 +39,9 @@ need_root
 
 if [ -n "$answers" ]; then
     mode=$(stat -c %a "$answers"); owner=$(stat -c %u "$answers")
-    [ "$owner" = 0 ] && [[ $mode =~ ^[0-7]00$ ]] || die "$EX_PRECHECK" "Antwortdatei muss root gehören und 0600 haben."
+    # Same rule as jfctl install: root ownership, relaxed only by the test switch.
+    { [ "$owner" = 0 ] || [ -n "${JFCTL_ALLOW_NONROOT:-}" ]; } && [[ $mode =~ ^[0-7]00$ ]] ||
+        die "$EX_PRECHECK" "Antwortdatei muss root gehören und 0600 haben."
     kv_validate "$answers" || die "$EX_USAGE" "Antwortdatei fehlerhaft."
     while read -r key; do
         if printf '%s\n' "${CT_KEYS[@]}" "${JF_PASS_KEYS[@]}" | grep -qx "$key"; then
