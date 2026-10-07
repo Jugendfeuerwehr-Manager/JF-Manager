@@ -25,6 +25,7 @@ from ..serializers import (
     GeneralSettingsSerializer,
     LDAPConnectionTestSerializer,
     LDAPSettingsSerializer,
+    LoginPageSettingsSerializer,
     MemberSettingsSerializer,
     OIDCDiscoveryResultSerializer,
     OIDCSettingsSerializer,
@@ -90,6 +91,10 @@ class SettingsViewSet(viewsets.ViewSet):
             "fields": ["training_start_time", "training_end_time", "default_block_duration_minutes"],
         },
         "vocabulary": {"prefix": "general", "fields": ["member_label", "service_label", "training_label"]},
+        "login": {
+            "prefix": "general",
+            "fields": ["login_eyebrow", "login_headline", "login_intro", "login_footer", "login_help"],
+        },
     }
 
     LDAP_FIELDS = [
@@ -227,6 +232,10 @@ class SettingsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get", "patch"])
     def vocabulary(self, request):
         return self._preference_category(request, "vocabulary", VocabularySettingsSerializer)
+
+    @action(detail=False, methods=["get", "patch"])
+    def login(self, request):
+        return self._preference_category(request, "login", LoginPageSettingsSerializer)
 
     def _preference_category(self, request, category, serializer_class):
         if not self._check_category_permission(request.user, category, "view" if request.method == "GET" else "change"):
@@ -399,8 +408,8 @@ class SettingsViewSet(viewsets.ViewSet):
         if user.is_superuser:
             return True
 
-        # Training defaults and vocabulary belong to general organisation configuration.
-        if category in {"training", "vocabulary"}:
+        # Training defaults, vocabulary and login texts belong to general organisation configuration.
+        if category in {"training", "vocabulary", "login"}:
             category = "general"
         # Check specific permission
         permission = f"settings_manager.{permission_type}_{category}_settings"

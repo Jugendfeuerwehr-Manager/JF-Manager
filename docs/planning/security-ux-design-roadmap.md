@@ -11,6 +11,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | Letzter Checkpoint | 06.10.2026: SEC-02.9 abgenommen; SEC-Bereich (SEC-01 bis SEC-10) abgeschlossen. Davor: ROLE-02.4 Zuweisungs-/Herkunftsoberfläche. |
 | TRAIN-Checkpoint | 06.10.2026: TRAIN-02.3 abgeschlossen: Rotationsassistent mit vollständiger Vorschau, freien Runden, unbesetzten Stationen, Wechselzeiten und Pause; Übernahme als ein Entwurfsschritt, Rahmenüberschreitung blockiert. 116 Trainings-/Store-Frontendtests, Typecheck, ESLint bestanden. TRAIN-02.2 `41bfeaa`, 02.1 `2da0073`; TRAIN-03 abgeschlossen (`cbf4262`), TRAIN-01 `a07d9bb`. |
 | SEC-11-Checkpoint | 07.10.2026: SEC-11.9 Browserabnahme in Chrome mit virtuellem Authenticator bestanden; integriert in `feat/security-roles-training-operations`. Offen nur Nutzerabnahme mit echtem Gerät unter HTTPS. |
+| CFG-02-Checkpoint | 07.10.2026: CFG-02.1 Backend für anpassbare Texte der Anmeldeseite umgesetzt (Branch `claude/passkey-primary-factor-lggpq4`). Nächster Schritt: CFG-02.2 Einstellungsformular und Anmeldeseite. |
 | SEC-12-Checkpoint | 07.10.2026: SEC-12 abgeschlossen: Anmeldung allein mit Passkey für lokale Konten (Branch `claude/passkey-primary-factor-lggpq4`, Integration per Pull Request). 905/905 Backend (SQLite), 324/324 Frontend bestanden. Offen: Nutzerabnahme mit echtem Gerät unter HTTPS, PostgreSQL-Lauf in CI. |
 | OPS-Checkpoint | 07.10.2026: OPS-03.4/03.4b Webstatus, OPS-03.3b Trivy-Pin, OPS-01.3b bats als Benutzer, OPS-01.9b nativer Lauf auf Debian 13 (arm64, Python 3.13) bestanden; integriert in `feat/security-roles-training-operations`. Offen: Proxmox VE 9, Debian 13 auf amd64-Host, erster GitHub-Lauf (Push). |
 | Inventar-Checkpoint | 07.10.2026: UX-05.2 (Nutzerwunsch) abgeschlossen: Variantenliste im Artikeldialog aktualisiert sich nach Anlage/Bearbeitung/Löschung; Größenreihen (Kinder, S–XXXL, Konfektion Herren/Damen, Schuhe) als atomare Sammelanlage. UX-05.1 bleibt geplant. |
@@ -563,6 +564,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | ROLE-01 | abgeschlossen | Codex (ROLE-Session) | ROLE-01.7b: alle 16 Vorlagen, Einzel-/Kombinationsrechte, Installation/Dev-Seed, einfache Neuerstellung/Kopie und Rollenhandbuch abgenommen. |
 | ROLE-02 | abgeschlossen | Codex (ROLE-Session) | ROLE-01.7b und ROLE-02.5 abgeschlossen; ROLE-02.6 verständliche gebündelte Rechteauswahl/Leitungsfreigabe abgenommen (288 Frontendtests, Typecheck, ESLint, Build, Browser). |
 | CFG-01 | abgeschlossen | Codex (CFG-Session) | CFG-01.1–7 und SMTP-Startkorrektur 01.2b abgenommen/committed; fachliche Konfiguration, Assistent, sichere Tests und Betriebsanleitung fertig. |
+| CFG-02 | in Arbeit | Claude (Cloud-Session) | CFG-02.1 Backend umgesetzt; CFG-02.2 Oberfläche offen. |
 | TRAIN-01 | abgeschlossen | Codex (TRAIN-Session) | TRAIN-01.0–01.5c integriert; 41 TRAIN-Tests auf PostgreSQL 15, Frontend-/Browser-/PDFabnahme bestanden. TRAIN-02–04 bleiben eigene Pakete. |
 | TRAIN-02 | in Arbeit | Claude (TRAIN-Session) | TRAIN-02.0–02.3 umgesetzt (`5a1756a`, `2da0073`, `41bfeaa`, 02.3 dieser Stand); als Nächstes TRAIN-02.4 Paketabnahme. |
 | TRAIN-03 | abgeschlossen | Claude (TRAIN-Session, Übernahme von Codex) | TRAIN-03.0–03.4 integriert (`21736e5`, `b78e31e`, `3a6331b`, `331a2dc`, Abnahme in diesem Commit). Ressourcenfelder aus TRAIN-02 werden dort in die gemeinsame Kopierlogik aufgenommen. |
@@ -623,6 +625,28 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Prüfstatus:** Abnahme vom 06.10.2026 (vor nachfolgenden parallelen Integrationen): 874/874 vollständige Backendtests auf eigenem PostgreSQL 14, 300/300 Frontendtests, Typecheck, ESLint, Ruff, Build und Modell-Migrationsvergleich bestanden. Frische Installation: WSGI startet, alle 16 Standardrollen gebunden, sichere Sicherheits-/Pushdefaults. Browser: Assistent/16 Rollen, atomare Ablehnung ungültiger Übungszeiten mit Eingabeerhalt, korrigierte Speicherung, Sitzungsansicht, sichtbare SMTP-Reparaturmeldung und Step-up vor Verbindungstest bestanden. Keine echten E-Mails/Pushnachrichten oder Anbieterintegration ausgeführt. Zusätzlich 26/26 SMTP-/Katalog-/Patchregressionen auf integriertem Stand am 07.10.2026 bestanden.
 - **Risiken und sichere Fortsetzung:** Keine echten SMTP-/LDAP-/OIDC-/Push-Zugangsdaten in Tests/Journal. Vorhandene Dev-Dienste und fremde Änderungen nicht ersetzen. Schema-/Seedprüfungen isoliert, keine unangekündigte globale Dev-Migration. Eigene Commits je Teilschritt und isolierte Roadmap-Patches.
 - **Nächster Schritt:** Kein offener CFG-Teilschritt. Echte Anbieter-/Produktionsprüfung erst beim jeweiligen Betrieb; andere Pakete/Sitzungen gemäß eigenem Checkpoint.
+
+### CFG-02: Anpassbare Texte der Anmeldeseite
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Cloud-Session, Nutzerauftrag 07.10.2026: „Ergänze bitte auch direkt eine Möglichkeit, die Texte auf der Loginseite anzupassen.“).
+- **Branch:** `claude/passkey-primary-factor-lggpq4` (wie SEC-12); Integration per Pull Request.
+- **Abhängigkeiten:** CFG-01 (Kategorievertrag, Katalog, Rechte `view/change_general_settings`), SEC-04 (sichere Ausgabe), SEC-12 (Anmeldeseite).
+- **Ziel und Abnahmekriterien:**
+  - Kopfzeile, Überschrift, Einleitung, Fußzeile und Hinweis unter dem Formular sind unter **Einstellungen → Anmeldeseite** änderbar; Standard sind die bisherigen Texte.
+  - Reiner Text ohne HTML; die Seite gibt ihn escaped aus, Zeilenumbrüche bleiben erhalten. Leerer Text blendet das Element aus. Längengrenzen serverseitig.
+  - Recht wie „Bezeichnungen“: allgemeine Organisationseinstellungen. Öffentliche Ausgabe nur dieser Texte über den Branding-Endpunkt.
+  - Tests für Standardwerte, Änderung, Escaping-Vertrag, Längen, unbekannte Felder, Rechte, mehrzeilige Felder im Katalog; Frontendtests für Formular und Anmeldeseite.
+- **Teilschritte mit stabilen IDs:**
+  - `CFG-02.1`: Backend: Preferences, Kategorie `login`, Katalog (`multiline`), öffentliche Ausgabe, Tests.
+  - `CFG-02.2`: Frontend: Einstellungsseite (mehrzeilige Felder), Anmeldeseite nutzt die Texte, Tests, Dokumentation.
+- **Letzter dauerhafter Checkpoint:** CFG-02.1 mit diesem Commit.
+- **Geänderte Dateien / Commit-Bezug:** CFG-02.1: `backend/members/dynamic_preferences_registry.py`, `backend/settings_manager/{api/serializers/__init__.py,api/viewsets/__init__.py,configuration_catalog.py,test_configuration_catalog.py}`, `backend/jf_manager_backend/api_views.py`, `docs/planning/configuration-catalog.md`, diese Roadmap.
+- **Umgesetzte Teilschritte:** `CFG-02.1`.
+- **Ausgeführte Prüfungen mit Ergebnis:** CFG-02.1: 57/57 Tests (`settings_manager`, `test_brand_color`, `test_settings_permissions`; SQLite), Ruff, `makemigrations --check` bestanden.
+- **Offene Fehler / Risiken:** Texte sind organisationsweit und einsprachig.
+- **Laufende Prozesse und sichere Fortsetzung:** keine.
+- **Nächster konkreter Schritt:** CFG-02.2 Oberfläche.
 
 ### ROLE-01: aktueller Detailstand
 
@@ -1702,3 +1726,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 07.10.2026 | SEC-12.3 | Dokumentation: Abschnitt „Anmeldung mit Passkey (ohne Passwort)“ in `session-auth.md` (Ablauf, Nutzerverifikation, LDAP/SSO-Grenze, auffindbare Registrierung, API), Benutzerhandbuch und Entwicklungseinstieg ergänzt. | Bestanden: 905/905 Backendtests der CI-Module (SQLite; 8 übersprungen), 324/324 Frontendtests. Nicht ausgeführt: PostgreSQL, Browser mit Authenticator. | Dieser Commit: `docs(SEC-12.3): document passkey sign-in` | Nutzerabnahme echtes Gerät. |
 | 07.10.2026 | OPS-05.3 | Nutzerauftrag: Altlasten des früheren Deployments entfernt, damit nur noch ein Betriebsweg sichtbar ist (`jfctl`, `docs/operations/`). Gelöscht: Verweisskripte im Wurzelverzeichnis, `crontab.example`, `docs/deployment/*`, `docs/development/systemd.md`, `docs/security-upgrade.md` (JWT-Zeit, verwies auf entfallene SimpleJWT-Befehle), `backend/docker-compose.yml` (Compose V1, PostgreSQL 15, `changeme`). Nachfolger stehen gesammelt in der Tabelle „Abgelöste Dateien“ von `ops-migration.md`; Architekturübersicht verweist für Volumes, Sicherung und Überwachung auf `ops-overview.md`. | Bestanden: ShellCheck, bats 38/38 (als root), Verweisprüfung per `git grep`. | Dieser Commit: `chore(OPS-05.3): remove superseded deployment artifacts` | OPS-05.4 Entwicklungs-Container nach `dev/`. |
 | 07.10.2026 | OPS-05.4 | Wurzel-`docker-compose.yml` sah wie eine Produktionsinstallation aus (PostgreSQL 15, `changeme`-Standard, Admin-Passwort, Port 80, Backup-Mount). Entwicklungsumgebung nach `dev/compose.yml` verlegt: eigener Projektname, PostgreSQL 17, Ports nur an localhost, Pflichtwerte aus `dev/.env`, Worker und Push-Worker. `make dev-up/down/logs` angepasst; `.env.example`, `backups/` und tote `.gitignore`-Einträge (`backups/*`, `nginx/ssl/*`) entfernt; Push-Dokumentation nennt beide Produktionsdienste. | Bestanden: `docker compose config`. Nicht ausgeführt: Imagebau und Start (`make dev-up`). | Dieser Commit: `chore(OPS-05.4): move the container dev environment to dev/` | Pull Request; CI-Lauf abwarten. |
+| 07.10.2026 | CFG-02.1 | Texte der Anmeldeseite als Preferences in `general` (Standard = bisherige Texte), Kategorie `login` mit Recht der allgemeinen Konfiguration, Katalog meldet mehrzeilige Felder, Branding-Endpunkt liefert `login_texts` als reinen Text. | Bestanden: 57/57 gezielte Tests, Ruff, Migrationsprüfung. | Dieser Commit: `feat(CFG-02.1): store configurable login page texts` | CFG-02.2 Oberfläche. |

@@ -15,6 +15,7 @@ CATEGORY_LABELS = {
     "service": "Dienstzeiten",
     "training": "Übungsstandards",
     "vocabulary": "Bezeichnungen",
+    "login": "Anmeldeseite",
     "order": "Bestellbenachrichtigungen",
     "email": "E-Mail-Versand",
     "ldap": "Verzeichnisanmeldung",
@@ -38,6 +39,11 @@ FIELD_LABELS = {
     "member_label": "Bezeichnung für Mitglieder",
     "service_label": "Bezeichnung für das Dienstbuch",
     "training_label": "Bezeichnung für die Ausbildungsplanung",
+    "login_eyebrow": "Kopfzeile",
+    "login_headline": "Überschrift",
+    "login_intro": "Einleitung",
+    "login_footer": "Fußzeile",
+    "login_help": "Hinweis unter dem Formular",
     "equipment_manager_email": "Bestellungen melden an",
     "email_host": "SMTP-Server",
     "email_port": "SMTP-Port",
@@ -95,6 +101,7 @@ SERIALIZERS = {
             "service": "ServiceSettingsSerializer",
             "training": "TrainingSettingsSerializer",
             "vocabulary": "VocabularySettingsSerializer",
+            "login": "LoginPageSettingsSerializer",
             "order": "OrderSettingsSerializer",
             "ldap": "LDAPSettingsSerializer",
             "oidc": "OIDCSettingsSerializer",
@@ -136,7 +143,7 @@ def configuration_catalog(view, request, categories):
 
     result = {}
     for category in categories:
-        permission_category = "general" if category in {"training", "vocabulary"} else category
+        permission_category = "general" if category in {"training", "vocabulary", "login"} else category
         if category in {"security", "push"}:
             permission_category = "all"
         runtime = effective_policy() if category == "security" else effective_push() if category == "push" else {}
@@ -179,6 +186,7 @@ def configuration_catalog(view, request, categories):
                 "max": getattr(field, "max_value", None),
                 "max_length": getattr(field, "max_length", None),
                 "allow_blank": getattr(field, "allow_blank", False),
+                "multiline": field.style.get("base_template") == "textarea.html",
                 "choices": list(getattr(field, "choices", {})),
                 "validation": str(field.help_text)
                 or "Feldformat, Grenzen und Gesamtzustand werden serverseitig geprüft.",

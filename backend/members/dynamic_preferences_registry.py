@@ -226,3 +226,32 @@ for preference_name, preference_default in [
             },
         )
     )
+
+
+# Texts of the public login page (CFG-02). Plain text only; the page renders
+# them escaped. An empty value hides the text.
+LOGIN_PAGE_TEXTS = [
+    ("login_eyebrow", "Für eure Jugendfeuerwehr"),
+    ("login_headline", "Mehr Zeit für\neuer Team."),
+    (
+        "login_intro",
+        "Mitglieder, Dienste und Ausbildung. Alles an einem Ort, damit ihr euch auf das Wesentliche konzentrieren könnt.",
+    ),
+    ("login_footer", "Gemeinsam organisiert. Gemeinsam stark."),
+    ("login_help", "Noch keinen Zugang? Wende dich an die Administration deiner Jugendfeuerwehr."),
+]
+
+for preference_name, preference_default in LOGIN_PAGE_TEXTS:
+    global_preferences_registry.register(
+        type(
+            preference_name,
+            (StringPreference,),
+            {
+                "section": general,
+                "name": preference_name,
+                "default": preference_default,
+                "verbose_name": "Text der Anmeldeseite",
+                "required": False,
+            },
+        )
+    )
