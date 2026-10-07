@@ -127,6 +127,14 @@ class TrainingSessionDetailSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not data.get("can_manage_plan"):
+            # Warning texts were written for the publisher's visibility (other exercises).
+            data.pop("publish_justification", None)
+            data.pop("publish_warnings", None)
+        return data
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         confirmed = attrs.pop("confirm_service_change", False)

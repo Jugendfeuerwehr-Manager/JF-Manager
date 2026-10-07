@@ -384,6 +384,14 @@ const router = createRouter({
         }
       ]
     },
+    // Field execution on the phone — full-screen, read-only (TRAIN-04)
+    {
+      path: '/training/sessions/:id/run',
+      name: 'training-run',
+      component: () => import('@/views/training/TrainingRunView.vue'),
+      meta: { requiresAuth: true },
+      props: (route) => ({ sessionId: Number(route.params.id) })
+    },
     // Mobile training planner — full-screen, no shell chrome
     {
       path: '/training/sessions/:id/mobile',

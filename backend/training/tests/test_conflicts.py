@@ -193,6 +193,17 @@ class ConflictTests(TestCase):
         # Saving an already published plan does not ask again.
         payload = {"expected_revision": 2, **self.draft(*blocks, status="published")}
         self.assertEqual(self.client.put(f"{self.url}/plan/", payload, format="json").status_code, 200)
+        # Readers of the published plan never see the publisher's warning texts.
+        from django.contrib.auth.models import Permission
+
+        reader = get_user_model().objects.create_user(username="konflikt-leser")
+        reader.user_permissions.add(Permission.objects.get(codename="view_trainingsession"))
+        UserDepartmentRole.objects.create(user=reader, department=self.department)
+        self.client.force_authenticate(reader)
+        response = self.client.get(f"{self.url}/plan/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("publish_warnings", response.data)
+        self.assertNotIn("publish_justification", response.data)
 
     def test_single_status_change_checks_saved_plan(self):
         TrainingBlock.objects.create(session=self.session, title="A", duration_minutes=30)
