@@ -46,3 +46,4 @@ Die folgenden Dateien und Anleitungen sind aus dem Repository entfernt (OPS-05.3
 | `portainer/`, `docs/deployment/*.md` (Docker, Portainer, Synology, Produktions-Checkliste), `docs/development/systemd.md` | [Installation](ops-install.md), dieses Dokument |
 | `docs/security-upgrade.md` (Update-Hinweise aus der JWT-Zeit) | [Produktionsvorgaben](production-security.md), [Cookie-Sitzungen](session-auth.md) |
 | `backend/docker-compose.yml` (Compose V1) | `ops/compose/compose.yml` über `jfctl` |
+| `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `backups/` im Projektwurzelverzeichnis | Produktion: `jfctl install`; Entwicklung: `dev/compose.yml`, `dev/.env.example` |

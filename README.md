@@ -41,7 +41,7 @@ sha256sum -c SHA256SUMS && tar -xzf "jf-manager-$VERSION.tar.gz"
 sudo "./jf-manager-$VERSION/ops/jfctl" install --version "$VERSION" --release-dir .
 ```
 
-Der Assistent fragt alle Angaben vorab ab, prüft das System und installiert erst nach Bestätigung. Danach: `jfctl status`, `jfctl doctor`, `jfctl backup create`, `jfctl update --version …`. Details: [Installation](docs/operations/ops-install.md), [Betrieb mit jfctl](docs/operations/ops-jfctl.md), [Sicherung und Updates](docs/operations/ops-backup-restore-update.md). Bestehende Compose-, Portainer- oder Synology-Installationen werden über [Migration](docs/operations/ops-migration.md) übernommen. Die `docker-compose.yml` im Projektwurzelverzeichnis dient nur der Entwicklung.
+Der Assistent fragt alle Angaben vorab ab, prüft das System und installiert erst nach Bestätigung. Danach: `jfctl status`, `jfctl doctor`, `jfctl backup create`, `jfctl update --version …`. Details: [Installation](docs/operations/ops-install.md), [Betrieb mit jfctl](docs/operations/ops-jfctl.md), [Sicherung und Updates](docs/operations/ops-backup-restore-update.md). Bestehende Compose-, Portainer- oder Synology-Installationen werden über [Migration](docs/operations/ops-migration.md) übernommen. Andere Wege (eigene Compose-Dateien, Portainer, `git pull` auf dem Server) werden nicht unterstützt; `dev/` enthält nur die Entwicklungsumgebung.
 
 ## Ausprobieren mit Beispieldaten
 

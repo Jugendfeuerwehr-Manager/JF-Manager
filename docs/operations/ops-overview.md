@@ -1,6 +1,6 @@
 # Betrieb: Überblick und Layout
 
-Gilt ab OPS-01. Unterstützte Produktionswege sind **Docker Compose** und **Debian 13 nativ** (auch in einem Proxmox-LXC). Beide verwenden denselben Installationskern unter `ops/` und dasselbe Verwaltungswerkzeug `jfctl`. Entwicklungsanleitungen stehen in [getting-started.md](../getting-started.md); die Datei `docker-compose.yml` im Projektwurzelverzeichnis dient nur der Entwicklung und dem lokalen Imagebau.
+Gilt ab OPS-01. Unterstützte Produktionswege sind **Docker Compose** und **Debian 13 nativ** (auch in einem Proxmox-LXC). Beide verwenden denselben Installationskern unter `ops/` und dasselbe Verwaltungswerkzeug `jfctl`. Entwicklungsanleitungen stehen in [getting-started.md](../getting-started.md); `dev/compose.yml` dient nur der Entwicklung und dem lokalen Imagebau.
 
 ## Aufbau
 
