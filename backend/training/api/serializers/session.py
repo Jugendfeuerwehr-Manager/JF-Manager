@@ -256,4 +256,5 @@ class TrainingSessionHandoutSerializer(serializers.ModelSerializer):
             "notes",
             "groups",
             "blocks",
+            "updated_at",
         ]

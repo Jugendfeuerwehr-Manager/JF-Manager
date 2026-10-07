@@ -319,6 +319,7 @@ export interface TrainingSessionHandout {
   notes: string
   groups: GroupMini[]
   blocks: TrainingBlock[]
+  updated_at?: string
 }
 
 // ─── Planner ui state ────────────────────────────────────────────────────────

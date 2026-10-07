@@ -5,10 +5,9 @@
       <div class="handout-title-row">
         <h1 class="handout-title">{{ handout.title }}</h1>
         <div class="handout-meta">
-          <TrainingStatusBadge :status="handout.status" /><span>Version {{ handout.revision }}</span>
-          <span>{{ formatDate(handout.date) }}</span>
-          <span v-if="handout.start_time">· {{ handout.start_time }}</span>
-          <span v-if="handout.end_time">– {{ handout.end_time }}</span>
+          <TrainingStatusBadge :status="handout.status" /><span>Version {{ handout.revision }}<template v-if="standLabel"> · Stand {{ standLabel }}</template></span>
+          <span>· {{ formatDate(handout.date) }}</span>
+          <span v-if="handout.start_time">· {{ handout.start_time.slice(0, 5) }}<template v-if="handout.end_time">–{{ handout.end_time.slice(0, 5) }}</template></span>
           <span v-if="handout.location">· {{ handout.location }}</span>
         </div>
       </div>
@@ -36,6 +35,48 @@
             <td>{{ block.title }}</td>
             <td>{{ block.duration_minutes }} Min.</td>
             <td>{{ block.groups?.length ? block.groups.map((g) => g.name).join(', ') : 'Alle' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Station cards: one per station with all its slots -->
+    <section v-if="cards.length" class="stations-section">
+      <h2>Stationskarten</h2>
+      <div class="station-cards">
+        <article v-for="card in cards" :key="card.key" class="station-card">
+          <h3>{{ card.title }}</h3>
+          <dl>
+            <template v-if="card.location"><dt>Ort</dt><dd>{{ card.location }}</dd></template>
+            <template v-if="card.instructors.length"><dt>Ausbilder</dt><dd>{{ card.instructors.map((i) => i.name).join(', ') }}</dd></template>
+            <dt>Gruppen</dt>
+            <dd>
+              <span v-for="(slot, i) in card.slots" :key="i" class="station-slot">
+                {{ offsetToTime(slot.start, handout.start_time) }}–{{ offsetToTime(slot.end, handout.start_time) }} {{ slot.groups }}
+              </span>
+            </dd>
+            <template v-if="card.learningObjective"><dt>Lernziel</dt><dd>{{ card.learningObjective }}</dd></template>
+            <template v-if="card.safetyNotes"><dt>Sicherheit</dt><dd>{{ card.safetyNotes }}</dd></template>
+            <template v-if="card.materials.length">
+              <dt>Material</dt>
+              <dd>{{ card.materials.map((m) => `${m.quantity} × ${m.label}`).join(', ') }}</dd>
+            </template>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <!-- Material list -->
+    <section v-if="materials.length" class="materials-section no-print-break">
+      <h2>Materialliste</h2>
+      <p class="materials-hint">Planungswerte; Material einer Station zählt einmal, weil die Gruppen nacheinander üben. Bestand wird nicht gebucht.</p>
+      <table class="schedule-table">
+        <thead><tr><th>Menge</th><th>Material</th><th>Verwendet bei</th></tr></thead>
+        <tbody>
+          <tr v-for="line in materials" :key="line.label + line.usedAt.join()">
+            <td class="time-col">{{ line.quantity }}</td>
+            <td>{{ line.label }}</td>
+            <td>{{ line.usedAt.join(', ') }}</td>
           </tr>
         </tbody>
       </table>
@@ -123,6 +164,7 @@ import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import { downloadMedia } from '@/utils/privateMedia'
 import SafeHtml from '@/components/common/SafeHtml.vue'
 import { computed } from 'vue'
+import { materialSummary, stationCards } from '../utils/handoutSummary'
 import type { TrainingSessionHandout, TrainingBlock } from '@/types/training'
 
 interface Props {
@@ -130,6 +172,12 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const cards = computed(() => stationCards(props.handout.blocks))
+const materials = computed(() => materialSummary(props.handout.blocks))
+const standLabel = computed(() => props.handout.updated_at
+  ? new Date(props.handout.updated_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : '')
 
 function formatAttSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -195,6 +243,8 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
 
 <style scoped>
 .training-handout {
+  min-width: 0;
+  overflow-wrap: anywhere;
   max-width: 1000px;
   margin: 0 auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -207,12 +257,20 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
   margin-bottom: 1.5rem;
 }
 .handout-title { font-size: 1.75rem; font-weight: 800; margin: 0 0 0.25rem; }
-.handout-meta { font-size: 1rem; color: #555; }
+.handout-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-size: 1rem; color: #555; }
 .handout-groups { font-size: 0.95rem; margin-top: 0.5rem; }
 
 .schedule-section { margin-bottom: 2rem; }
 .schedule-section h2 { font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
 
+.station-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.75rem; }
+.station-card { break-inside: avoid; padding: 0.75rem 1rem; border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); }
+.station-card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.station-card dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 0.75rem; margin: 0; font-size: 0.875rem; }
+.station-card dt { font-weight: 600; }
+.station-card dd { margin: 0; }
+.station-slot { display: block; }
+.materials-hint { margin: 0 0 0.5rem; font-size: 0.8125rem; color: var(--jf-color-text-muted); }
 .schedule-table {
   width: 100%;
   border-collapse: collapse;
@@ -354,6 +412,7 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
 
 .sl-lanes {
   flex: 1;
+  min-width: 0; /* scroll inside instead of widening the page on phones */
   display: flex;
   overflow-x: auto;
 }
