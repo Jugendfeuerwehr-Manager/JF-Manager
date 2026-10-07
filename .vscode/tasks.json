@@ -1,6 +1,6 @@
 {
-    // Backend tasks run through pipenv, which loads backend/.env (secrets stay
-    // out of this file). See docs/getting-started.md.
+    // Backend tasks run through backend/dev_env.py: backend/.env takes precedence over
+    // inherited variables, and stored secrets are checked before start. See docs/getting-started.md.
     "version": "2.0.0",
     "tasks": [
         {
@@ -70,9 +70,9 @@
             }
         },
         {
-            "label": "backend: migrate",
+            "label": "backend: env",
             "type": "shell",
-            "command": "pipenv run python manage.py migrate",
+            "command": "pipenv run python dev_env.py ensure",
             "problemMatcher": [],
             "options": {
                 "cwd": "${workspaceFolder}/backend",
@@ -81,9 +81,9 @@
                     "args": ["-c"]
                 },
                 "env": {
-                    "DEBUG": "True",
                     "DEV_ALLOW_UNREADABLE_SMTP": "True",
-                    "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
+                    "PIPENV_DONT_LOAD_ENV": "1",
+                    "PIPENV_VERBOSITY": "-1",
                     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
                 }
             },
@@ -94,12 +94,59 @@
             }
         },
         {
+            "label": "backend: migrate",
+            "type": "shell",
+            "command": "pipenv run python dev_env.py run python manage.py migrate",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                },
+                "env": {
+                    "DEV_ALLOW_UNREADABLE_SMTP": "True",
+                    "PIPENV_DONT_LOAD_ENV": "1",
+                    "PIPENV_VERBOSITY": "-1",
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "silent",
+                "panel": "dedicated"
+            }
+        },
+        {
+            // Fails with a hint when stored secrets do not match the key in backend/.env.
+            "label": "backend: check keys",
+            "type": "shell",
+            "command": "pipenv run python dev_env.py check",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                },
+                "env": {
+                    "DEV_ALLOW_UNREADABLE_SMTP": "True",
+                    "PIPENV_DONT_LOAD_ENV": "1",
+                    "PIPENV_VERBOSITY": "-1",
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
             "label": "backend: worker",
             "type": "shell",
-            "command": "pipenv run python manage.py rqworker default",
+            "command": "pipenv run python dev_env.py run python manage.py rqworker default",
             "isBackground": true,
-            "dependsOn": ["redis: start locally", "backend: migrate"],
-            "dependsOrder": "sequence",
             "problemMatcher": {
                 "owner": "rq",
                 "pattern": { "regexp": "^$" },
@@ -109,6 +156,8 @@
                     "endsPattern": "^.*Listening on.*$"
                 }
             },
+            "dependsOn": ["redis: start locally", "backend: env", "backend: migrate", "backend: check keys"],
+            "dependsOrder": "sequence",
             "options": {
                 "cwd": "${workspaceFolder}/backend",
                 "shell": {
@@ -116,9 +165,9 @@
                     "args": ["-c"]
                 },
                 "env": {
-                    "DEBUG": "True",
                     "DEV_ALLOW_UNREADABLE_SMTP": "True",
-                    "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
+                    "PIPENV_DONT_LOAD_ENV": "1",
+                    "PIPENV_VERBOSITY": "-1",
                     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
                 }
             },
@@ -127,6 +176,72 @@
                 "reveal": "silent",
                 "panel": "dedicated"
             }
+        },
+        {
+            "label": "dev: Zurücksetzen und Demodaten",
+            "type": "shell",
+            "command": "pipenv run python dev_env.py reset --confirm ${input:confirmReset}",
+            "problemMatcher": [],
+            "dependsOn": ["redis: start locally"],
+            "dependsOrder": "sequence",
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                },
+                "env": {
+                    "DEV_ALLOW_UNREADABLE_SMTP": "True",
+                    "PIPENV_DONT_LOAD_ENV": "1",
+                    "PIPENV_VERBOSITY": "-1",
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "dev: Anmeldecode (Demo)",
+            "type": "shell",
+            "command": "pipenv run python dev_env.py totp ${input:demoUser}",
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "shell": {
+                    "executable": "/bin/zsh",
+                    "args": ["-c"]
+                },
+                "env": {
+                    "DEV_ALLOW_UNREADABLE_SMTP": "True",
+                    "PIPENV_DONT_LOAD_ENV": "1",
+                    "PIPENV_VERBOSITY": "-1",
+                    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+                }
+            },
+            "presentation": {
+                "group": "django-dev",
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "confirmReset",
+            "type": "pickString",
+            "description": "Lokale Datenbank, Uploads und Cache löschen und Demodaten laden?",
+            "options": ["nein", "ja"],
+            "default": "nein"
+        },
+        {
+            "id": "demoUser",
+            "type": "pickString",
+            "description": "Demokonto mit Authenticator",
+            "options": ["admin", "jugendwart", "leitung.mitte", "leitung.nord", "leitung.kinder"],
+            "default": "admin"
         }
     ]
 }

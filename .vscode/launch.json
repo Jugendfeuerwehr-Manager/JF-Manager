@@ -1,6 +1,7 @@
 {
     // Local development. Secrets (DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY) come
-    // from the git-ignored backend/.env, see docs/getting-started.md.
+    // from the git-ignored backend/.env; the preLaunchTask creates missing ones and
+    // checks stored secrets against the key, see docs/getting-started.md.
     // Open the app at http://localhost:5173: Vite proxies /api, /admin and
     // /static to Django so session and CSRF cookies share one origin.
     "version": "0.2.0",
@@ -84,11 +85,24 @@
             "args": ["test", "api_tests"],
             "django": true,
             "justMyCode": true,
+            "preLaunchTask": "backend: env",
             "envFile": "${workspaceFolder}/backend/.env",
             "env": {
                 "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
                 "REDIS_URL": "none"
             }
+        },
+        {
+            // Deletes the local SQLite database, uploads and cache, then loads demo data (asks first).
+            "name": "Dev: Zurücksetzen und Demodaten",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/dev_env.py",
+            "cwd": "${workspaceFolder}/backend",
+            "args": ["reset", "--confirm", "${input:confirmReset}"],
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "preLaunchTask": "redis: start locally"
         },
         {
             "name": "Frontend: Unit-Tests",
@@ -103,6 +117,15 @@
                 "NODE_ENV": "test",
                 "PATH": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin:/usr/local/bin:/usr/bin:/bin"
             }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "confirmReset",
+            "type": "pickString",
+            "description": "Lokale Datenbank, Uploads und Cache löschen und Demodaten laden?",
+            "options": ["nein", "ja"],
+            "default": "nein"
         }
     ],
     "compounds": [
