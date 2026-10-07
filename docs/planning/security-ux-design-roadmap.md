@@ -13,7 +13,7 @@ Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. 
 | SEC-11-Checkpoint | 06.10.2026: SEC-11.8 Dokumentation und gebündelte Abnahme; Browserlauf mit echtem Authenticator offen. Branch `feat/mfa-passkeys-reset`. Nächster Schritt kein weiterer Teilschritt; Browserabnahme mit echtem Passkey (HTTPS) offen. |
 | OPS-Checkpoint | 06.10.2026: OPS-01.9 gebündelte Abnahme des committeten Stands; offen: OPS-03.4, echte Debian-13-/Proxmox-Läufe, GitHub-Lauf, Integration. Branch `feat/ops-stable-operations`. Nächster Schritt OPS-03.4 (Webstatus, Abstimmung mit Fach-Sessions), echte Debian-13- und Proxmox-Abnahme, erster GitHub-Lauf. Integration in `feat/security-roles-training-operations` erfolgt (07.10.2026, zusammen mit SEC-11). |
 | Inventar-Checkpoint | 07.10.2026: UX-05.2 (Nutzerwunsch) abgeschlossen: Variantenliste im Artikeldialog aktualisiert sich nach Anlage/Bearbeitung/Löschung; Größenreihen (Kinder, S–XXXL, Konfektion Herren/Damen, Schuhe) als atomare Sammelanlage. UX-05.1 bleibt geplant. |
-| DEV-Checkpoint | 07.10.2026: DEV-01.0 Detailblock angelegt (Nutzerauftrag: lokaler Start mit passendem Schlüssel, frischer Datenbestand, vollständige Demodaten). Nächster Schritt DEV-01.1 schlüsselgebundenes Cache-Präfix. |
+| DEV-Checkpoint | 07.10.2026: DEV-01.1 schlüsselgebundenes Cache-Präfix umgesetzt. Nächster Schritt DEV-01.2 Dev-Helfer und VS-Code-Start. |
 | Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
 | Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
 | Benutzerformular-Checkpoint | 06.10.2026: ROLE-02.5 abgeschlossen; Theme im Verwaltungsformular ausgelassen, Standard `system` bei Anlage und bestehende persönliche Einstellung bei Bearbeitung erhalten. 3/3 Regressionen, Typecheck und ESLint bestanden. |
@@ -579,7 +579,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | OPS-03 | in Arbeit | Claude (OPS-Session) | 03.1–03.3 umgesetzt; offen: OPS-03.4 Webstatus und erster GitHub-Lauf. |
 | OPS-04 | in Prüfung | Claude (OPS-Session) | Backup, Restore, Update mit Rollback geprüft; offen: Debian 13. |
 | OPS-05 | in Prüfung | Claude (OPS-Session) | Altvarianten abgelöst, Übernahme PostgreSQL 15 → 17 geprüft. |
-| DEV-01 | in Arbeit | Claude (Merge-/DEV-Sitzung) | DEV-01.0 Detailblock; als Nächstes DEV-01.1. |
+| DEV-01 | in Arbeit | Claude (Merge-/DEV-Sitzung) | DEV-01.0/01.1 umgesetzt; als Nächstes DEV-01.2. |
 | DOC-01 | offen | — | Nach Funktionsabschluss vollständige bebilderte Dokumentation. |
 
 ### EXEC-01: aktueller Detailstand
@@ -1241,13 +1241,13 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
   - `DEV-01.2`: Dev-Helfer (`.env` absichern, Vorrang, Prüfung, Reset) und VS-Code-Tasks/-Startkonfigurationen.
   - `DEV-01.3`: `seed_demo` mit vollständigen Demodaten; `demo.py` nutzt ihn.
   - `DEV-01.4`: Lokalen Bestand zurücksetzen, Start über VS Code und Abnahme; Dokumentation.
-- **Letzter dauerhafter Checkpoint:** DEV-01.0 mit diesem Commit.
-- **Geänderte Dateien / Commit-Bezug:** DEV-01.0: diese Roadmap.
-- **Umgesetzte Teilschritte:** `DEV-01.0`.
-- **Ausgeführte Prüfungen mit Ergebnis:** DEV-01.0: Diagnose ausgeführt (`rotate_field_encryption` schlägt fehl; Einzelprüfung: LDAP/OIDC/MFA lesbar, SMTP-Preference in DB und Cache unlesbar). Anwendungstests nicht ausgeführt.
+- **Letzter dauerhafter Checkpoint:** DEV-01.1 mit diesem Commit.
+- **Geänderte Dateien / Commit-Bezug:** DEV-01.0: diese Roadmap. DEV-01.1: `backend/jf_manager_backend/{encryption_config.py,settings.py,docker_settings.py}`, `backend/external_sync/tests/test_encryption.py` (Präfixzeile in `settings.py` versehentlich bereits in `7723f0a`).
+- **Umgesetzte Teilschritte:** `DEV-01.0`, `DEV-01.1`.
+- **Ausgeführte Prüfungen mit Ergebnis:** DEV-01.0: Diagnose ausgeführt (`rotate_field_encryption` schlägt fehl; Einzelprüfung: LDAP/OIDC/MFA lesbar, SMTP-Preference in DB und Cache unlesbar). Anwendungstests nicht ausgeführt. DEV-01.1: 3/3 Konfigurationstests, Präfixprüfung beider Settings, Ruff bestanden; volle Suite nicht ausgeführt.
 - **Offene Fehler / Risiken:** RQ-Warteschlangen bleiben über Instanzen mit gleichem Redis geteilt; getrennte Redis-Datenbank je Worktree über `REDIS_URL` dokumentieren. Uncommittete CFG-Arbeit berührt dieselben Dateien.
 - **Laufende Prozesse und sichere Fortsetzung:** keine.
-- **Nächster konkreter Schritt:** `DEV-01.1`.
+- **Nächster konkreter Schritt:** `DEV-01.2`.
 
 ## 7. Fortlaufendes Arbeitsjournal
 
@@ -1649,3 +1649,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 07.10.2026 | DEV-01.0 | Nutzerauftrag: lokaler Start scheitert am Schlüssel; Datenbestand darf gelöscht werden; vollständige Demodaten gewünscht. Diagnose: nur SMTP-Preference (DB und gemeinsamer Redis-Cache) mit fremdem Schlüssel verschlüsselt, übrige Geheimnisse lesbar; gemeinsamer Redis mit festem Präfix für alle lokalen Instanzen. Detailblock DEV-01 mit Teilschritten angelegt. | Diagnose ausgeführt; Anwendungstests nicht ausgeführt (nur Dokumentation). | Dieser Commit: `docs(DEV-01.0): plan reliable local environment and demo data` | DEV-01.1 schlüsselgebundenes Cache-Präfix. |
 
 | 06.10.2026 | CFG-01.5 | Übungszeiten/Bausteindauer und Modulbezeichnungen als validierte Preferences. Sichere Clientdefaults erreichen Navigation, neue Übungen und neue Bausteine; vorhandene Werte und während des Ladens geänderte Zeiten bleiben erhalten. Leserechte filtern den vollständigen Feldkatalog mit Quelle/Speicher/Rechten/Grenzen/Wirksamkeit; Einrichtungsstatus ohne Personendaten. Bestehende fehlerhafte AppSettings-Preference-Namen korrigiert. Nur kleine Standardlade-Hunks in sauberen TRAIN-Dateien, Koordination notiert. | 27/27 Backendtests, 47/47 Navigation-/Trainings- sowie 2/2 Clientdefaulttests, Typecheck und gezieltes ESLint bestanden. Erster Testdateipfad falsch, korrigiert und bestanden. Kein Browser-/Dev-Migrationslauf. | Dieser Commit: `feat(CFG-01.5): publish configuration contracts and effective training defaults` | CFG-01.6. |
+| 07.10.2026 | DEV-01.1 | `cache_key_prefix()` bindet das Redis-Präfix an einen SHA-256-Fingerabdruck (12 Zeichen, mit Kontextlabel) des primären Schlüssels; `settings.py` und `docker_settings.py` nutzen ihn. Instanzen mit unterschiedlichem Schlüssel teilen keine Cache-Einträge mehr; Rotation behält den Präfix nur bei gleichem Primärschlüssel. Produktion: einmalig kalter Cache, Sitzungen liegen in der DB. Zwischenfall: Der `KEY_PREFIX`-Hunk lag bereits im gemeinsamen Index und wurde von der parallelen CFG-Sitzung in `7723f0a` (CFG-01.5) mitcommittet – ohne Import; `7723f0a` ist mit gesetztem `REDIS_URL` nicht startfähig, dieser Commit behebt das. Fremder Commit nicht umgeschrieben. | Bestanden: 3/3 `EncryptionConfigTests` (neu: Präfix je Schlüssel, Rotation, kein Schlüsselklartext), Präfixprüfung mit `settings` und `docker_settings` bei gesetztem `REDIS_URL`, Ruff. Volle Suite nicht ausgeführt. | Dieser Commit: `fix(DEV-01.1): bind cache keys to the encryption key fingerprint` | DEV-01.2 Dev-Helfer und VS-Code-Start. |

@@ -3,6 +3,7 @@ import os
 import dj_database_url
 import environ
 
+from jf_manager_backend.encryption_config import cache_key_prefix
 from jf_manager_backend.settings import *  # noqa: F403
 
 env = environ.Env(
@@ -61,7 +62,7 @@ if REDIS_URL != "none":
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-            "KEY_PREFIX": "jf_manager_backend",
+            "KEY_PREFIX": cache_key_prefix(FIELD_ENCRYPTION_KEY),  # noqa: F405
         }
     }
     RQ_QUEUES = {

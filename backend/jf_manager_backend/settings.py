@@ -14,7 +14,7 @@ import os
 
 import environ
 
-from .encryption_config import encryption_keys
+from .encryption_config import cache_key_prefix, encryption_keys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

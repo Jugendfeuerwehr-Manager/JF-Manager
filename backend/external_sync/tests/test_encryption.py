@@ -11,7 +11,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from external_sync.models import SyncJob
-from jf_manager_backend.encryption_config import encryption_keys
+from jf_manager_backend.encryption_config import cache_key_prefix, encryption_keys
 from settings_manager.models import LDAPConfig, OIDCConfig
 
 
@@ -24,6 +24,14 @@ class EncryptionConfigTests(SimpleTestCase):
     def test_explicit_rotation_ring(self):
         first, previous = Fernet.generate_key().decode(), Fernet.generate_key().decode()
         self.assertEqual(encryption_keys({"FIELD_ENCRYPTION_KEY": first, "FIELD_ENCRYPTION_PREVIOUS_KEYS": previous}), [first, previous])
+
+
+    def test_cache_prefix_is_bound_to_the_primary_key(self):
+        first, second = Fernet.generate_key().decode(), Fernet.generate_key().decode()
+        self.assertEqual(cache_key_prefix([first, second]), cache_key_prefix([first]))
+        self.assertNotEqual(cache_key_prefix([first]), cache_key_prefix([second]))
+        self.assertTrue(cache_key_prefix([first]).startswith("jf_manager_backend:"))
+        self.assertNotIn(first, cache_key_prefix([first]))
 
 
 class StoredEncryptionTests(TestCase):
