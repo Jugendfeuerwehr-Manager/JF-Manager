@@ -50,7 +50,7 @@ pipenv run python manage.py createsuperuser
 
 Alle 16 Standardrollen werden nach der Migration automatisch angelegt. Vorhandene Rollenrechte bleiben erhalten. Neue Rollen und Kopien bestehender Vorlagen werden unter **Rollenvorlagen** verwaltet; siehe [Rollenhandbuch](domains/roles-and-permissions.md).
 
-Administratorkonten müssen beim ersten Login eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes.
+Administratorkonten müssen beim ersten Login einen Passkey oder eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes. Mit Passkey ist danach die Anmeldung ohne Passwort möglich ([session-auth.md](operations/session-auth.md#anmeldung-mit-passkey-ohne-passwort)); unter `http://localhost` erlauben Browser Passkeys auch ohne HTTPS.
 
 Die fachliche Einrichtung erfolgt unter **Einstellungen → Einrichtung**; siehe
 [Einrichtung und Organisationseinstellungen](domains/configuration.md).
