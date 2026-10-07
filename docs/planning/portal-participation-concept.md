@@ -47,6 +47,8 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | E12 | Quick-Action-Links | **Gemischt.** Ein Link wirkt nur nach Login und nur für das adressierte Konto. Folgenlose Aktionen (Ansicht öffnen, als gelesen markieren) laufen nach dem Login direkt; alles mit Wirkung auf Daten, Teilnahme oder Aufgabenstatus zeigt eine vorausgefüllte Bestätigung. |
 | E13 | Bindung Verwaltendenkonto ↔ Mitglied | **Benutzerverwaltung verknüpft 1:1, das Konto bestätigt** die Verknüpfung beim nächsten Login. Bis dahin „ausstehend“ ohne Wirkung. |
 | E14 | Eigene Daten verknüpfter Verwaltender | **Direkt mit vorhandenen Rechten, als „Eigenänderung“ protokolliert.** Qualifikationen und Sonderaufgaben am eigenen Datensatz legt immer eine andere Person an, ändert oder löscht sie (Vier-Augen). |
+| E16 | Mitteilungen zum eigenen Teilnahmestatus | Bei **Zuteilung, Nicht-Berücksichtigung, Platz auf der Warteliste und Nachrücken** erhalten die Betroffenen **E-Mail und Push**, sofern nicht in den eigenen Einstellungen deaktiviert (Nutzerangabe 07.10.2026). |
+| E17 | Abmeldelink | **Jede Teilnahme-E-Mail enthält immer einen Abmeldelink** passend zum Status (Abmelden, Von der Warteliste abmelden, Bewerbung zurückziehen); er funktioniert nach Login mit Bestätigung (E12). Zusätzlich enthält jede E-Mail den Link zu den Benachrichtigungseinstellungen (Nutzerangabe 07.10.2026). |
 | E15 | Status im Eingang | **Team + persönlich.** Aufgaben haben einen teamweiten Status (offen/erledigt mit Name und Zeit); Hinweise einen persönlichen Gelesen-Status. |
 
 ### 2.1 Vom Konzept festgelegte Standards (änderbar, aber vorbelegt)
@@ -277,14 +279,28 @@ Regeln: Tab-Leiste oben (Meldungen · Anwesenheit · Betreuende · Vorkommnisse)
 | Anmeldung/Bewerbung | Dienstverantwortliche | Hinweis „Meldungen“, gebündelt | nur Tageszusammenfassung (`reg_digest`, abwählbar) | — |
 | Platz frei, Warteliste manuell | Dienstverantwortliche | Aufgabe „Besetzung“ | sofort (`slot_free_manual`) | `participation` |
 | Mindestbesetzung gefährdet (≤ 48 h) | Dienstverantwortliche | Aufgabe „Besetzung“ | sofort (`staffing_at_risk`) | `participation` |
-| Nachgerückt | Betroffene | Portal-Hinweis | sofort (`waitlist_promoted`) | `participation` |
-| Zuteilung veröffentlicht (zugeteilt/nicht berücksichtigt) | Betroffene | Portal-Hinweis | sofort (`assign_published`) | `participation` |
+| Auf Warteliste gesetzt (Anmeldung oder Zuteilung) | Betroffene (E16) | Portal-Hinweis | sofort (`waitlist_placed`) | `participation` |
+| Nachgerückt | Betroffene (E16) | Portal-Hinweis | sofort (`waitlist_promoted`) | `participation` |
+| Zuteilung veröffentlicht: zugeteilt / nicht berücksichtigt | Betroffene (E16) | Portal-Hinweis | sofort (`assign_published`) | `participation` |
 | Dienst geändert/abgesagt | Gemeldete, Wartende, Erwartete | Portal-Hinweis | sofort (`session_changed`) | `participation` |
 | Voraussetzungskonflikt | Dienstverantwortliche | Aufgabe „Besetzung“ | sofort (`eligibility_conflict`) | `participation` |
 | Einladung | eingeladene Person | — | sofort (`portal_invite`) | — |
 | Einladung angenommen/abgelaufen | Einladende | Hinweis „Konten“ | — | — |
 | Kontoverknüpfung ausstehend/bestätigt/abgelehnt (PORTAL-04) | betroffenes Konto / Verknüpfende | Hinweis „Konten“ | sofort an das Konto (`account_link`) | — |
 | Elternzugriff endet in 30 Tagen | Elternteil, Mitglied; Betreuende | Hinweis / Aufgabe „Konten“ | einmalig (`parent_access_end`) | — |
+
+**Betroffene** sind bei Kindern alle verknüpften, aktiven Elternkonten und, falls vorhanden, das eigene Mitgliedskonto; bei Erwachsenen das Mitgliedskonto bzw. das gebundene Verwaltendenkonto (PORTAL-04). Für die vier Teilnahmestatus (E16) sind E-Mail und Push standardmäßig **an** und je Konto in „Profil → Mitteilungen“ getrennt abschaltbar; Push setzt ein freiwillig registriertes Gerät voraus (bestehende PWA-Push-Logik, neue Kategorie `participation` auch für Portalkonten).
+
+**Abmeldelink (E17):** Jede Teilnahme-E-Mail (`waitlist_placed`, `waitlist_promoted`, `assign_published`, `session_changed`) enthält einen statusabhängigen Abmeldelink als Quick Action mit Bestätigung:
+
+| Status der Person | Abmeldelink | Wirkung nach Bestätigung |
+| --- | --- | --- |
+| angemeldet / zugeteilt / nachgerückt | „Abmelden“ | Abmeldung mit Grundauswahl; Platz wird frei, Warteliste rückt nach |
+| Warteliste | „Von der Warteliste abmelden“ | Wartelistenplatz wird zurückgegeben |
+| beworben / nicht berücksichtigt bei offener Nachbesetzung | „Bewerbung zurückziehen“ | Person wird bei Nachbesetzung nicht mehr berücksichtigt |
+| nicht berücksichtigt, Zuteilung abgeschlossen | „Keine weiteren Nachrichten zu diesem Dienst“ | stummschaltet weitere Mitteilungen zu diesem Dienst |
+
+Nach Ablauf des Abmeldeschlusses führt der Link zur Terminansicht mit dem Hinweis auf die direkte Kontaktaufnahme (4.5). Push-Mitteilungen enthalten keinen Abmeldelink, öffnen aber die Terminansicht mit derselben Aktion.
 
 Regeln: Jede E-Mail-Art je Benutzer abwählbar (Eingang nicht). Sperrbildschirm-Texte ohne Namen. Zustellung über die bestehende Hintergrundwarteschlange, idempotent je Ereignis-ID. Die Sofort-Schwelle (48 h) ist je Abteilung einstellbar.
 
@@ -310,8 +326,8 @@ Erweiterung:
 2. Standardvorlagen als Dateien unter `backend/templates/notifications/emails/<typ>.html` und `<typ>.txt`, eingetragen in `TemplateRenderer.DEFAULT_TEMPLATES`. Eine Datenbankvorlage desselben Typs überschreibt sie; „Auf Standard zurücksetzen“ löscht die Datenbankvorlage.
 3. Variablenkatalog je Typ mit Beispieldaten in `TEMPLATE_VARIABLES` (empfohlen: Katalog in ein eigenes Modul `notifications/email_catalog.py` verschieben und dort registrieren lassen, damit Portal-/Teilnahme-Apps eigene Typen ohne Änderung der Settings-View ergänzen).
 4. **Kontext nur aus vorbereiteten, flachen Werten** (Zeichenketten, Zahlen, Listen von Dicts), keine Modellinstanzen: Django-Templates dürfen keine Methoden oder Relationen der Modelle erreichen. Alle Werte werden automatisch maskiert; HTML entsteht nur aus Vorlage und Layout, Ergebnis läuft durch `sanitize_rich_html` (SEC-04).
-5. Pflichtbestandteile je Vorlage (Validierung beim Speichern): mindestens ein Link `{{ links.open }}` und der Abmeldehinweis `{{ links.preferences }}`; fehlen sie, wird die Speicherung mit Feldfehler abgelehnt.
-6. Gemeinsame Variablen aller Typen: `org.name`, `org.color`, `recipient.first_name`, `recipient.kind` (staff/parent/member), `links.open`, `links.preferences`, `links.inbox` (nur Verwaltende), `actions` (Liste `{label, url, style}` – siehe 4.9.4), `sent_at`.
+5. Pflichtbestandteile je Vorlage (Validierung beim Speichern): mindestens ein Link `{{ links.open }}` und der Link zu den Benachrichtigungseinstellungen `{{ links.preferences }}`; bei Teilnahmevorlagen zusätzlich der Abmeldelink `{{ links.withdraw }}` mit `{{ links.withdraw_label }}` (E17). Fehlen sie, wird die Speicherung mit Feldfehler abgelehnt.
+6. Gemeinsame Variablen aller Typen: `org.name`, `org.color`, `recipient.first_name`, `recipient.kind` (staff/parent/member), `links.open`, `links.preferences`, `links.withdraw` + `links.withdraw_label` (nur Teilnahmevorlagen, statusabhängig), `links.inbox` (nur Verwaltende), `actions` (Liste `{label, url, style}` – siehe 4.9.4), `sent_at`.
 7. Kein Inhalt aus Abmeldegrund-Kurztexten, Anträgen oder Notizen in E-Mails an Verwaltende über Feldnamen und Kategorie hinaus; Antragswerte (alt → neu) nur für Kontaktfelder und nur an Prüfende.
 
 Typspezifische Variablen und Standardtexte: Anhang A.
@@ -628,7 +644,7 @@ Jeder Teilschritt ist ein eigener Commit nach EXEC-01 (Format `feat(PART-01.3): 
 | NOTIF-01.2 | Eingang Desktop und mobil, Navigationszähler, Dashboard-Kachel | Browser 390/1440 px |
 | NOTIF-01.3 | Neue `EmailTemplate`-Typen, Standardvorlagen (Anhang A), Variablenkatalog mit Beispieldaten, Pflichtlinks-Validierung, Vorschau im bestehenden Editor | Rendering-Tests, XSS-Testdaten |
 | NOTIF-01.4 | Quick-Action-Links: Token, `/a/:token`, Login-Weiterleitung, resolve/execute, direkt/bestätigen (E12) | Tests: fremdes Konto, abgelaufen, entzogene Rechte, bereits erledigt, GET ohne Wirkung |
-| NOTIF-01.5 | Idempotente Zustellung, Tageszusammenfassung, Push-Kategorien `requests`/`participation` ohne Namen | Kein Doppelversand |
+| NOTIF-01.5 | Idempotente Zustellung, Tageszusammenfassung, Push-Kategorien `requests`/`participation` ohne Namen; Teilnahmemitteilungen (E16) standardmäßig an, je Konto abschaltbar; statusabhängiger Abmeldelink (E17) | Kein Doppelversand; Test: jede Teilnahmemail enthält Abmelde- und Einstellungslink |
 | NOTIF-01.6 | Paketabnahme | — |
 
 **PORTAL-04: Verwaltendenkonto als Mitglied**
@@ -700,8 +716,9 @@ Die Texte sind Ausgangspunkte für `backend/templates/notifications/emails/`. Al
 | `reg_digest` | general | `Meldungen von heute ({{ counts.total }})` | `sessions` (je Dienst `title`, `date`, `counts`) | Eingang öffnen (direkt) |
 | `slot_free_manual` | important | `Platz frei: {{ session.title }}` | `session.*`, `slot.label`, `waitlist` (Anzahl passender Wartender) | Platz besetzen (bestätigen) |
 | `staffing_at_risk` | important | `Mindestbesetzung gefährdet: {{ session.title }}` | `session.*`, `staffing.missing` (`label`, `count`) | Board öffnen (direkt) |
+| `waitlist_placed` | events | `Warteliste: {{ session.title }}` | `person.first_name`, `session.*`, `waitlist.position`, `waitlist.slot`, `waitlist.auto` (rückt automatisch nach) | Termin ansehen (direkt), Von der Warteliste abmelden (bestätigen) |
 | `waitlist_promoted` | events | `{{ person.first_name }} ist nachgerückt: {{ session.title }}` | `person.first_name`, `session.*`, `session.public_note`, `deadlines.cancellation` | Termin ansehen (direkt), Abmelden (bestätigen) |
-| `assign_published` | events | `Zuteilung für {{ session.title }}` | `person.first_name`, `assignment.result` (zugeteilt/nicht berücksichtigt), `assignment.slot`, `session.*` | Termin ansehen (direkt), Abmelden (bestätigen) |
+| `assign_published` | events | `{% if assignment.result == "assigned" %}Zugeteilt{% else %}Nicht berücksichtigt{% endif %}: {{ session.title }}` | `person.first_name`, `assignment.result` (`assigned`/`not_selected`), `assignment.slot`, `assignment.open_for_backfill`, `session.*` | Termin ansehen (direkt); Abmeldelink nach E17: Abmelden / Bewerbung zurückziehen / Keine weiteren Nachrichten (bestätigen) |
 | `session_changed` | important | `Geändert: {{ session.title }}` bzw. `Abgesagt: …` | `session.*`, `change.kind` (verschoben/abgesagt/geändert), `change.old`, `change.new`, `person.first_name` | Termin ansehen (direkt), Abmelden (bestätigen, nur bei Verschiebung) |
 | `eligibility_conflict` | important | `Voraussetzung nicht mehr erfüllt: {{ session.title }}` | `session.*`, `conflicts` (`name`, `reason`) | Meldungen ansehen (direkt) |
 | `parent_access_end` | general | `Elternzugang für {{ person.first_name }} endet am {{ access.ends_at }}` | `person.first_name`, `access.ends_at`, `recipient.kind` | Ansehen (direkt); für Verwaltende: Mitglied einladen (bestätigen) |
