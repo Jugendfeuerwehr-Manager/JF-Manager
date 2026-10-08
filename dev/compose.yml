@@ -1,0 +1,106 @@
+# Nur Entwicklung: baut Backend und Frontend aus dem Arbeitsstand und startet
+# sie mit PostgreSQL und Redis (make dev-up). Nicht für Produktion: dort
+# installiert und aktualisiert ausschließlich jfctl veröffentlichte Releases
+# (docs/operations/ops-install.md).
+name: jf-manager-dev
+
+x-backend-environment: &backend-environment
+  DATABASE_URL: postgres://jf_manager:${POSTGRES_PASSWORD:?in dev/.env setzen}@db/jf_manager
+  REDIS_URL: redis://redis:6379
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?in dev/.env setzen}
+  FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?in dev/.env setzen}
+  FRONTEND_URL: http://localhost:8080
+  ALLOWED_HOSTS: "*"
+  CSRF_TRUSTED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+  DEBUG: "True"
+  WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+  WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+  WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}
+
+services:
+  db:
+    # Gleiche Hauptversion wie beide Produktionswege.
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: jf_manager
+      POSTGRES_USER: jf_manager
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?in dev/.env setzen}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jf_manager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - database:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  backend:
+    image: jf_manager_backend:dev
+    build:
+      context: ../backend
+      target: production
+    environment:
+      <<: *backend-environment
+      DJANGO_MANAGEPY_MIGRATE: "on"
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app:ro
+      - static:/static
+      - uploads:/uploads
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    image: jf_manager_backend:dev
+    entrypoint: ["python", "manage.py", "rqworker", "default"]
+    environment:
+      <<: *backend-environment
+      DJANGO_MANAGEPY_MIGRATE: "off"
+    depends_on:
+      - backend
+
+  push-worker:
+    image: jf_manager_backend:dev
+    entrypoint: ["python", "manage.py", "send_push", "--loop"]
+    environment:
+      <<: *backend-environment
+      DJANGO_MANAGEPY_MIGRATE: "off"
+    depends_on:
+      - backend
+
+  frontend:
+    image: jf_manager_frontend:dev
+    build:
+      context: ../frontend
+    depends_on:
+      - backend
+    volumes:
+      - type: volume
+        source: static
+        target: /static
+        read_only: true
+        volume:
+          nocopy: true
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  database:
+  static:
+  uploads:

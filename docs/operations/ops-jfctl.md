@@ -63,7 +63,7 @@ Die Weboberfläche zeigt sie unter **Einstellungen → System → Betriebsstatus
 
 ## Wartungsplan
 
-`jfctl install` richtet auf dem Host systemd-Timer ein; sie gelten für beide Betriebswege und ersetzen `crontab.example`. Jeder Timer ruft `jfctl maintenance run <aufgabe>` auf.
+`jfctl install` richtet auf dem Host systemd-Timer ein; sie gelten für beide Betriebswege; Cronjobs sind nicht nötig. Jeder Timer ruft `jfctl maintenance run <aufgabe>` auf.
 
 | Aufgabe | Zeitplan | Befehl | Standard |
 | --- | --- | --- | --- |

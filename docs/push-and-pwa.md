@@ -33,7 +33,7 @@ Private Schlüssel niemals in Git oder Frontend-Variablen ablegen. Schlüssel be
 
 ## Versand starten
 
-Die Hauptdatei `docker-compose.yml` enthält einen `push-worker`, der nach einem gesunden Backend startet und die Warteschlange alle 15 Sekunden bearbeitet. Bei anderen Compose-/Portainer-Varianten muss ein zusätzlicher Worker mit **demselben Backend-Image, derselben Datenbankkonfiguration und denselben VAPID-Schlüsseln** eingerichtet werden:
+Beide Produktionswege starten den Versand automatisch: Docker Compose mit dem Dienst `push-worker`, Debian 13 nativ mit `jf-manager-push.service` (siehe [Betrieb](operations/ops-overview.md)). Der Worker bearbeitet die Warteschlange alle 15 Sekunden und nutzt dasselbe Backend, dieselbe Datenbank und dieselben VAPID-Schlüssel. Lokal (Entwicklung) läuft er so:
 
 ```sh
 python manage.py send_push --loop

@@ -121,6 +121,29 @@ class VocabularySettingsSerializer(serializers.Serializer):
     training_label = serializers.CharField(required=False, max_length=80)
 
 
+def _login_text(max_length, help_text, multiline=False):
+    style = {"base_template": "textarea.html", "rows": 3} if multiline else {}
+    return serializers.CharField(
+        required=False, allow_blank=True, max_length=max_length, help_text=help_text, style=style
+    )
+
+
+class LoginPageSettingsSerializer(serializers.Serializer):
+    """Public texts of the login page; plain text, rendered escaped, empty hides the text."""
+
+    login_eyebrow = _login_text(80, "Kleine Zeile über der Überschrift. Leer blendet sie aus.")
+    login_headline = _login_text(120, "Große Überschrift; Zeilenumbrüche bleiben erhalten.", multiline=True)
+    login_intro = _login_text(400, "Einleitender Text unter der Überschrift.", multiline=True)
+    login_footer = _login_text(120, "Zeile am unteren Rand der Begrüßungsfläche.")
+    login_help = _login_text(
+        300, "Hinweis unter dem Anmeldeformular, etwa wen man um einen Zugang bittet.", multiline=True
+    )
+
+    def validate(self, data):
+        # Windows line breaks from pasted text; keep the stored value canonical.
+        return {name: value.replace("\r\n", "\n").strip() for name, value in data.items()}
+
+
 class OrderSettingsSerializer(serializers.Serializer):
     """Serializer for order settings"""
 
@@ -310,6 +333,7 @@ class AllSettingsSerializer(serializers.Serializer):
 
     training = TrainingSettingsSerializer(required=False)
     vocabulary = VocabularySettingsSerializer(required=False)
+    login = LoginPageSettingsSerializer(required=False)
     security = serializers.DictField(required=False)
     push = serializers.DictField(required=False)
     general = GeneralSettingsSerializer(required=False)

@@ -138,6 +138,7 @@ SMTP-Verbindung und fallen nicht auf Umgebungspasswörter zurück.
 | Push: `enabled`, `public_key`, `private_key`, `subject` | DB-Konfiguration; VAPID-Triplett bei Hostvorgabe vollständig gesperrt | EC-P256-Schlüsselpaar, passende öffentliche/private Schlüssel, `mailto:`- oder HTTPS-Kontakt; Aktivierung nur bei vollständiger Konfiguration | Globale Einstellungssicht/-änderung plus Step-up; nächster Pushvorgang |
 | Übungsstandards: Start-/Endzeit, Bausteindauer | DB-Preferences | HH:MM, Start < Ende, Dauer 1–480 min | Globale allgemeine Konfiguration; nur Neuanlage |
 | Organisationsbegriffe `member_label`, `service_label`, `training_label` | DB-Preferences in `general`; API `vocabulary` | nicht leer, höchstens 80 Zeichen | Allgemeine Konfiguration; nächste UI-Aktualisierung |
+| Anmeldeseite (CFG-02) `login_eyebrow`, `login_headline`, `login_intro`, `login_footer`, `login_help` | DB-Preferences in `general`; API `login`; öffentlich über `/api/v1/app/branding/` (`login_texts`) | reiner Text, höchstens 80/120/400/120/300 Zeichen, leer blendet aus; Ausgabe escaped | Allgemeine Konfiguration; nächster Aufruf der Anmeldeseite |
 
 ## Vorhandene Webverwaltungen und Einrichtungsassistent
 

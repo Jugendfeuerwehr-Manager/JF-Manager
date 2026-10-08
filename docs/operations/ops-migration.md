@@ -21,7 +21,7 @@ Gilt ab OPS-05. Bisherige Varianten – `docker-compose.yml` aus dem Projektwurz
    ```
 
    Der Export wird über den regulären Wiederherstellungsablauf eingespielt: temporäre Datenbank, Prüfung, Umschalten, Migrationen auf den aktuellen Stand, Sitzungen verworfen, Worker angehalten. Anschließend wartende Aufträge prüfen und `jfctl workers release`.
-4. **Prüfen:** Anmeldung, Mitglieder, Anhänge/Bilder, Synchronisationen; `jfctl doctor`. Danach Exportverzeichnis löschen und die alte Installation (Container, Volumes, Cronjobs `crontab.example`, systemd-Units aus `systemd/`) entfernen.
+4. **Prüfen:** Anmeldung, Mitglieder, Anhänge/Bilder, Synchronisationen; `jfctl doctor`. Danach Exportverzeichnis löschen und die alte Installation (Container, Volumes, Cronjobs, eigene systemd-Units) entfernen.
 
 ## PostgreSQL-Versionswechsel
 
@@ -33,6 +33,8 @@ Beide Wege verwenden dasselbe Sicherungsformat: Sicherung erstellen, auf dem Zie
 
 ## Abgelöste Dateien
 
+Die folgenden Dateien und Anleitungen sind aus dem Repository entfernt (OPS-05.3). Wer noch eine ältere Arbeitskopie nutzt, findet hier den Nachfolger.
+
 | Bisher | Nachfolger |
 | --- | --- |
 | `setup.sh`, `validate.sh` | `jfctl install` (mit Vorabprüfung) |
@@ -41,4 +43,7 @@ Beide Wege verwenden dasselbe Sicherungsformat: Sicherung erstellen, auf dem Zie
 | `scripts/restore.sh`, `make restore` (10-Sekunden-Countdown) | `jfctl restore` mit Vorabprüfung und Bestätigung |
 | `healthcheck.sh`, `make health` | `jfctl status`, `jfctl doctor` |
 | `crontab.example` | systemd-Timer (`jfctl maintenance list`) |
-| `portainer/`, `docs/deployment/portainer*.md`, `docs/deployment/synology.md` | dieses Dokument |
+| `portainer/`, `docs/deployment/*.md` (Docker, Portainer, Synology, Produktions-Checkliste), `docs/development/systemd.md` | [Installation](ops-install.md), dieses Dokument |
+| `docs/security-upgrade.md` (Update-Hinweise aus der JWT-Zeit) | [Produktionsvorgaben](production-security.md), [Cookie-Sitzungen](session-auth.md) |
+| `backend/docker-compose.yml` (Compose V1) | `ops/compose/compose.yml` über `jfctl` |
+| `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `backups/` im Projektwurzelverzeichnis | Produktion: `jfctl install`; Entwicklung: `dev/compose.yml`, `dev/.env.example` |

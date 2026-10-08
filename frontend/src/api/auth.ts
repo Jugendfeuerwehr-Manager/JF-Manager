@@ -102,6 +102,15 @@ export const authApi = {
     return apiClient.post<SessionStatus>('/auth/session/mfa/', { passkey })
   },
 
+  /** Sign-in without password: the browser offers the stored passkeys (SEC-12). */
+  passkeySignInOptions() {
+    return apiClient.post<JsonObject>('/auth/session/passkey/options/')
+  },
+
+  passkeySignIn(passkey: JsonObject) {
+    return apiClient.post<SessionStatus>('/auth/session/passkey/', { passkey })
+  },
+
   reauthPasskeyOptions() {
     return apiClient.post<JsonObject>('/auth/reauthenticate/passkey-options/')
   },

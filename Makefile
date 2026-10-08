@@ -5,14 +5,14 @@
 help: ## Diese Hilfe
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-dev-up: ## Lokale Container aus dem Quellcode bauen und starten (nur Entwicklung)
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+dev-up: ## Lokale Container aus dem Quellcode bauen und starten (nur Entwicklung, dev/.env)
+	docker compose -f dev/compose.yml up -d --build
 
 dev-down: ## Lokale Entwicklungscontainer stoppen
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+	docker compose -f dev/compose.yml down
 
 dev-logs: ## Protokolle der Entwicklungscontainer
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f $(ARGS)
+	docker compose -f dev/compose.yml logs -f $(ARGS)
 
 ops-check: ## ShellCheck und bats-Tests des Betriebswerkzeugs
 	shellcheck -x ops/jfctl ops/lib/*.sh ops/release/build-release.sh ops/proxmox/jf-lxc.sh

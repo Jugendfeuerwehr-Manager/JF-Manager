@@ -60,11 +60,16 @@ class SoftAuthenticator:
             "clientExtensionResults": {},
         }
 
-    def get(self, options, origin=None, counter_step=1):
-        """Answer navigator.credentials.get() options."""
+    def get(self, options, origin=None, counter_step=1, user_handle=None, user_verified=True):
+        """Answer navigator.credentials.get() options.
+
+        ``user_handle`` (bytes) is what a discoverable credential returns;
+        ``user_verified=False`` models a key that only checked presence.
+        """
         self.sign_count += counter_step
         rp_hash = hashlib.sha256(self.rp_id.encode()).digest()
-        auth_data = rp_hash + bytes([0x05]) + struct.pack(">I", self.sign_count)
+        flags = 0x05 if user_verified else 0x01
+        auth_data = rp_hash + bytes([flags]) + struct.pack(">I", self.sign_count)
         client_data = self._client_data("webauthn.get", options["challenge"], origin)
         signature = self.key.sign(auth_data + hashlib.sha256(client_data).digest(), ec.ECDSA(hashes.SHA256()))
         return {
@@ -75,7 +80,7 @@ class SoftAuthenticator:
                 "clientDataJSON": b64url(client_data),
                 "authenticatorData": b64url(auth_data),
                 "signature": b64url(signature),
-                "userHandle": None,
+                "userHandle": b64url(user_handle) if user_handle else None,
             },
             "clientExtensionResults": {},
         }

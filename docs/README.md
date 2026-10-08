@@ -31,8 +31,6 @@ Unterstützt: Docker Compose und Debian 13 nativ (auch im Proxmox-LXC), beide ü
 - [Releasepakete und Herkunftsnachweis](operations/ops-release.md)
 - [Produktionsvorgaben](operations/production-security.md), [Cookie-Sitzungen](operations/session-auth.md), [Schlüsselrotation](operations/encryption-rotation.md)
 
-Abgelöste Anleitungen (Docker-Einzelanleitung, Portainer, Synology, Produktions-Checkliste) verweisen auf diese Seiten.
-
 ## Domain Guides
 
 - [Inventory System](domains/inventory.md) – Inventory models, transactions, permissions, discard tracking

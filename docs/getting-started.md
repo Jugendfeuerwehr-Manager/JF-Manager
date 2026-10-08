@@ -50,7 +50,7 @@ pipenv run python manage.py createsuperuser
 
 Alle 16 Standardrollen werden nach der Migration automatisch angelegt. Vorhandene Rollenrechte bleiben erhalten. Neue Rollen und Kopien bestehender Vorlagen werden unter **Rollenvorlagen** verwaltet; siehe [Rollenhandbuch](domains/roles-and-permissions.md).
 
-Administratorkonten müssen beim ersten Login eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes.
+Administratorkonten müssen beim ersten Login einen Passkey oder eine Authenticator-App (TOTP) einrichten; die Oberfläche führt durch die Einrichtung und zeigt einmalige Wiederherstellungscodes. Mit Passkey ist danach die Anmeldung ohne Passwort möglich ([session-auth.md](operations/session-auth.md#anmeldung-mit-passkey-ohne-passwort)); unter `http://localhost` erlauben Browser Passkeys auch ohne HTTPS.
 
 Die fachliche Einrichtung erfolgt unter **Einstellungen → Einrichtung**; siehe
 [Einrichtung und Organisationseinstellungen](domains/configuration.md).
@@ -199,13 +199,15 @@ neu eingegeben werden; es wird weder entschlüsselt noch still gelöscht.
 
 ## Docker (nur Entwicklung)
 
-Die `docker-compose.yml` im Projektwurzelverzeichnis baut die Images aus dem Quellcode und dient nur der Entwicklung:
+`dev/compose.yml` baut Backend und Frontend aus dem Arbeitsstand und startet sie mit PostgreSQL 17, Redis und Workern, nur an `localhost` gebunden:
 
 ```bash
-cp .env.example .env
-# Pflichtwerte setzen (DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY, POSTGRES_PASSWORD)
+cp dev/.env.example dev/.env
+# Pflichtwerte setzen (POSTGRES_PASSWORD, DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY)
 make dev-up
-docker compose exec backend python manage.py createsuperuser
+docker compose -f dev/compose.yml exec backend python manage.py createsuperuser
 ```
+
+Oberfläche: `http://localhost:8080`. `make dev-logs`, `make dev-down`.
 
 Produktion (Docker Compose mit versionsgebundenen Images oder Debian 13 nativ) läuft ausschließlich über `jfctl`: [Installation](operations/ops-install.md), [Migration bestehender Installationen](operations/ops-migration.md).
