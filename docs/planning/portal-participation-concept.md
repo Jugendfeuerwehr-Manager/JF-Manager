@@ -50,6 +50,7 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | E16 | Mitteilungen zum eigenen Teilnahmestatus | Bei **Zuteilung, Nicht-Berücksichtigung, Platz auf der Warteliste und Nachrücken** erhalten die Betroffenen **E-Mail und Push**, sofern nicht in den eigenen Einstellungen deaktiviert (Nutzerangabe 07.10.2026). |
 | E17 | Abmeldelink | **Jede Teilnahme-E-Mail enthält immer einen Abmeldelink** passend zum Status (Abmelden, Von der Warteliste abmelden, Bewerbung zurückziehen); er funktioniert nach Login mit Bestätigung (E12). Zusätzlich enthält jede E-Mail den Link zu den Benachrichtigungseinstellungen (Nutzerangabe 07.10.2026). |
 | E15 | Status im Eingang | **Team + persönlich.** Aufgaben haben einen teamweiten Status (offen/erledigt mit Name und Zeit); Hinweise einen persönlichen Gelesen-Status. |
+| E18 | Aufbauende Qualifikationen | **Höhere Qualifikationen schließen niedrigere ein** (Nutzerangabe 08.10.2026): Wer „Truppmann“ voraussetzt, lässt auch „Truppführer“ zu. Qualifikationstypen erhalten „schließt ein“ (transitiv, zyklenfrei, in der Qualifikationsverwaltung gepflegt). Umsetzung als PART-03.7 vor PART-04. |
 
 ### 2.1 Vom Konzept festgelegte Standards (änderbar, aber vorbelegt)
 
@@ -205,6 +206,7 @@ Zusätzlich je Meldung: `conflict` (Voraussetzung am Diensttag nicht mehr erfül
 
 - `kind`: `qualification`, `special_task` (`has_any`, `has_all`, `has_none`), `gender` (`in`), `age` (`min`, `max`, `between`; Alter am Diensttag), `group`, `status`, `department` (`in`).
 - Qualifikation gilt, wenn `date_acquired ≤ Diensttag` und (`date_expires` leer oder `≥ Diensttag`) — für `Qualification.member` und für `Qualification.user` eines verknüpften Kontos (E10).
+- Aufbauende Qualifikationen (E18): Eine Bedingung auf Typ T ist auch durch jeden Typ erfüllt, der T direkt oder über Zwischenstufen einschließt (z. B. Zugführer → Gruppenführer → Truppführer → Truppmann), sofern diese höhere Qualifikation am Diensttag gültig ist. `has_none` schließt entsprechend auch höhere Qualifikationen aus. Begründungen und Vorschau nennen die ersetzende Qualifikation („erfüllt durch ‚Truppführer‘“); die Klartext-Zusammenfassung zeigt „Truppmann (oder höher)“. Die Hierarchie wird beim Auswerten einmal als Abschluss (transitive Hülle) geladen, ohne zusätzliche Abfragen je Person.
 - Fehlende Daten (kein Geburtsdatum, kein Geschlecht) erfüllen die Regel nicht; die Begründung nennt die fehlende Angabe.
 - Auswertung `participation/eligibility.py: evaluate(rule, member, on_date) -> Result(ok, reasons[])`, reine Funktion mit vorab geladenen Qualifikationen (keine N+1-Abfragen; Zielgruppe ≤ einige hundert).
 - Begründungen sind verständliche Sätze: „Qualifikation ‚Maschinist‘ fehlt“, „Gültig nur bis 03.10.2026“, „Nur für Teilnehmende von 10 bis 17 Jahren“. Portal zeigt Begründungen nur für die eigene/zugewiesene Person.
@@ -621,6 +623,7 @@ Jeder Teilschritt ist ein eigener Commit nach EXEC-01 (Format `feat(PART-01.3): 
 | PART-03.3 | Vorschau-Endpunkt und Integration in Meldelogik (Sperre mit Begründung) | Tests |
 | PART-03.4 | `RuleBuilder`-UI mit Live-Vorschau, Tastatur | Browser, a11y |
 | PART-03.5 | Nachprüfung (Job + Ereignisse), Konfliktkennzeichnung, Aufgaben | Tests Ablauf/Entzug |
+| PART-03.7 | Aufbauende Qualifikationen (E18): `QualificationType.includes` (M2M auf sich selbst, zyklenfrei validiert), Pflege in der Qualifikationsverwaltung, Auswertung/Vorschau/Zusammenfassung berücksichtigen die transitive Hülle; vor PART-04 umsetzen | Tests: Kette über drei Stufen, Zyklus abgelehnt, höhere Qualifikation abgelaufen, `has_none`, Abfragezahl konstant |
 | PART-03.6 | Paketabnahme | — |
 
 **PART-04: Plätze, Positionen, Warteliste, Zuteilung, Vorlagen**
