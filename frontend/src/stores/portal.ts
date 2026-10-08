@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { portalApi, type PortalMe, type InvitationInfo, type AcceptInvitationPayload } from '@/api/portal'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -8,11 +8,21 @@ export const usePortalStore = defineStore('portal', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  const selectedPersonId = ref<number | null>(null)
+  const selectedPerson = computed(() => me.value?.people.find(p => p.id === selectedPersonId.value) ?? null)
+
+  function selectPerson(id: number) {
+    if (me.value?.people.some(p => p.id === id)) selectedPersonId.value = id
+  }
+
   async function fetchMe() {
     loading.value = true
     error.value = null
     try {
       me.value = (await portalApi.me()).data
+      if (!me.value.people.some(p => p.id === selectedPersonId.value)) {
+        selectedPersonId.value = me.value.people[0]?.id ?? null
+      }
     } catch (err) {
       error.value = getApiErrorMessage(err, 'Die Daten konnten nicht geladen werden.')
     } finally {
@@ -90,7 +100,7 @@ export const usePortalStore = defineStore('portal', () => {
   }
 
   return {
-    me, loading, error, fetchMe,
+    me, loading, error, fetchMe, selectedPersonId, selectedPerson, selectPerson,
     invitation, invitationLoading, invitationError, loadInvitation,
     accepting, accepted, acceptError, acceptFieldErrors, acceptInvitation,
   }

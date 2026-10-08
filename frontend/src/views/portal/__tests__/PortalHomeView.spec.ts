@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import PortalHomeView from '../PortalHomeView.vue'
 import { portalApi } from '@/api/portal'
+import { usePortalStore } from '@/stores/portal'
 
 vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn() } }))
 vi.mock('@/router', () => ({ default: { push: vi.fn(), currentRoute: { value: { path: '/portal' } } } }))
@@ -14,15 +15,17 @@ const account = { first_name: 'Anna', last_name: 'Muster', email: 'a@example.org
 describe('PortalHomeView', () => {
   beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks() })
 
-  it('shows the greeting and people, self as "Ich"', async () => {
+  it('shows the empty services card for the selected person', async () => {
     vi.mocked(portalApi.me).mockResolvedValue({ data: { account, people: [
       { id: 1, relation: 'self', first_name: 'Anna', last_name: 'Muster' },
       { id: 2, relation: 'child', first_name: 'Tim', last_name: 'Muster' },
     ] } } as never)
     const wrapper = render(); await flushPromises()
-    expect(wrapper.text()).toContain('Hallo Anna')
-    const chips = wrapper.findAll('.person').map(c => c.text())
-    expect(chips).toEqual(['Ich', 'Tim'])
+    expect(wrapper.text()).toContain('Nächste Dienste')
+    expect(wrapper.text()).toContain('Noch keine geplanten Dienste')
+    expect(wrapper.text()).toContain('für dich')
+    usePortalStore().selectPerson(2); await flushPromises()
+    expect(wrapper.text()).toContain('für Tim')
   })
 
   it('shows the empty state', async () => {

@@ -74,18 +74,21 @@ async function changePassword() {
 
     <section class="card"><MfaSettings /></section>
     <section class="card"><SessionDevices /></section>
+
+    <Button label="Abmelden" icon="pi pi-sign-out" severity="secondary" outlined class="touch logout" @click="auth.logout()" />
   </div>
 </template>
 
 <style scoped>
 .portal-profile { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
-h1 { margin: 0; font-size: 1.5rem; }
+h1 { margin: 4px 0 0; font-size: 18px; font-weight: 700; }
 h2 { margin: 0 0 0.75rem; font-size: 1.1rem; }
-.card { padding: 1rem; border-radius: 0.75rem; background: var(--p-content-background); border: 1px solid var(--p-content-border-color); min-width: 0; }
+.card { padding: 14px; border-radius: 14px; background: var(--p-content-background); border: 1px solid var(--p-content-border-color); min-width: 0; }
 .form { display: flex; flex-direction: column; gap: 0.35rem; }
 .form label, .card > label { font-size: 0.875rem; color: var(--p-text-muted-color); margin-top: 0.4rem; }
 .form .touch { margin-top: 0.75rem; align-self: flex-start; }
 .touch { min-height: 44px; }
+.logout { align-self: flex-start; }
 .theme-select { width: 100%; max-width: 20rem; min-height: 44px; }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; margin: 0; }
 dt { color: var(--p-text-muted-color); }
