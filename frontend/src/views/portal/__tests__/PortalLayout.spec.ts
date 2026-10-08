@@ -9,6 +9,7 @@ import PortalPlaceholderView from '../PortalPlaceholderView.vue'
 import { portalApi } from '@/api/portal'
 
 vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn(), person: vi.fn() } }))
+vi.mock('@/api/changeRequests', () => ({ changeRequestsApi: { list: vi.fn().mockResolvedValue({ data: { results: [] } }) } }))
 vi.mock('@/api/branding', () => ({ brandingApi: { getPublicBranding: vi.fn().mockResolvedValue({ data: { title: 'Jugendfeuerwehr Musterstadt', logo_url: null } }) } }))
 vi.mock('@/router', () => ({ default: { push: vi.fn(), currentRoute: { value: { path: '/portal' } } } }))
 
@@ -58,12 +59,13 @@ describe('PortalLayout', () => {
     expect(wrapper.findAll('[role="tab"]')).toHaveLength(2)
   })
 
-  it('renders the Daten skeleton with disabled request button and lock hint', async () => {
+  it('renders the Daten page with the request button and lock hint', async () => {
     const wrapper = await mountAt('portal-data')
     expect(wrapper.text()).toContain('Name und Kontakt')
     expect(wrapper.text()).toContain('Anna Muster')
     expect(wrapper.text()).toContain('nicht einsehbar')
-    expect(wrapper.find('button.request').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button.request').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('button.request').text()).toContain('Änderung beantragen')
     await wrapper.findAll('[role="tab"]')[1]!.trigger('click')
     expect(wrapper.text()).toContain('Tim Muster')
   })

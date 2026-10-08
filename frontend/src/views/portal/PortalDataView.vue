@@ -1,11 +1,40 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import PortalEmptyCard from '@/components/portal/PortalEmptyCard.vue'
+import PortalChangeRequestBanner from '@/components/portal/PortalChangeRequestBanner.vue'
+import PortalChangeRequestResult from '@/components/portal/PortalChangeRequestResult.vue'
+import PortalChangeRequestSheet from '@/components/portal/PortalChangeRequestSheet.vue'
 import PortalNotice from '@/components/portal/PortalNotice.vue'
+import { useChangeRequestsStore } from '@/stores/changeRequests'
 import { usePortalStore } from '@/stores/portal'
+import type { ChangeTarget } from '@/types/changeRequests'
+import { fieldsFor } from '@/utils/changeRequestFields'
 
 const portal = usePortalStore()
+const requests = useChangeRequestsStore()
+void requests.load()
+
+const memberTarget = computed<ChangeTarget | null>(() => (data.value ? { kind: 'member', id: data.value.id } : null))
+const parentTarget: ChangeTarget = { kind: 'parent' }
+const editing = ref<ChangeTarget | null>(null)
+const editingFields = computed(() => (editing.value ? fieldsFor(editing.value) : []))
+const editingCurrent = computed<Record<string, string>>(() => {
+  const source = (editing.value?.kind === 'parent' ? parent.value : data.value?.contact) as unknown as Record<string, string> | null | undefined
+  return Object.fromEntries(editingFields.value.map(f => [f.field, source?.[f.key] ?? '']))
+})
+const editingTitle = computed(() => (editing.value?.kind === 'parent' ? 'Meine Kontaktdaten ändern' : `${data.value?.contact.first_name ?? 'Daten'} – Änderung beantragen`))
+const editingExisting = computed(() => requests.openFor(editing.value))
+
+function openForm(target: ChangeTarget | null) {
+  if (!target) return
+  requests.resetErrors()
+  editing.value = target
+}
+async function sendRequest(fields: Record<string, string>) {
+  if (editing.value && await requests.submit(editing.value, fields)) editing.value = null
+}
+function withdraw(id: number) { void requests.withdraw(id) }
 const data = computed(() => portal.personData)
 const parent = computed(() => portal.me?.parent ?? null)
 
@@ -69,7 +98,10 @@ const period = (start?: string | null, end?: string | null) =>
       <dl>
         <div v-for="row in parentRows" :key="row.label"><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
       </dl>
-      <p class="muted small">Nur lesbar. Änderungen meldest du der Jugendleitung.</p>
+      <PortalChangeRequestBanner v-if="requests.openFor(parentTarget)" :request="requests.openFor(parentTarget)!" :busy="requests.busy" :error="requests.actionError" @edit="openForm(parentTarget)" @withdraw="withdraw(requests.openFor(parentTarget)!.id)" />
+      <PortalChangeRequestResult v-else-if="requests.decidedFor(parentTarget)" :request="requests.decidedFor(parentTarget)!" />
+      <Button :label="requests.openFor(parentTarget) ? 'Änderung beantragen (Antrag offen)' : 'Änderung beantragen'" severity="secondary" outlined :disabled="!!requests.openFor(parentTarget)" class="request" @click="openForm(parentTarget)" />
+      <p class="muted small">Änderungen werden erst nach Freigabe durch die Jugendleitung übernommen.</p>
     </section>
 
     <p v-if="portal.personLoading" class="muted" role="status">Daten werden geladen …</p>
@@ -84,6 +116,9 @@ const period = (start?: string | null, end?: string | null) =>
     </PortalEmptyCard>
 
     <template v-else-if="data">
+      <PortalChangeRequestBanner v-if="requests.openFor(memberTarget)" :request="requests.openFor(memberTarget)!" :busy="requests.busy" :error="requests.actionError" @edit="openForm(memberTarget)" @withdraw="withdraw(requests.openFor(memberTarget)!.id)" />
+      <PortalChangeRequestResult v-else-if="requests.decidedFor(memberTarget)" :request="requests.decidedFor(memberTarget)!" />
+
       <section class="card" aria-labelledby="base-title">
         <div class="card-head">
           <h2 id="base-title">Name und Kontakt</h2>
@@ -92,7 +127,8 @@ const period = (start?: string | null, end?: string | null) =>
         <dl>
           <div v-for="row in contactRows" :key="row.label"><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
         </dl>
-        <Button label="Änderung beantragen (bald verfügbar)" severity="secondary" outlined disabled class="request" />
+        <Button :label="requests.openFor(memberTarget) ? 'Änderung beantragen (Antrag offen)' : 'Änderung beantragen'" severity="secondary" outlined :disabled="!!requests.openFor(memberTarget)" class="request" @click="openForm(memberTarget)" />
+        <p class="muted small">Änderungen werden erst nach Freigabe durch die Jugendleitung übernommen.</p>
       </section>
 
       <section v-if="data.group" class="card" aria-labelledby="group-title">
@@ -170,6 +206,19 @@ const period = (start?: string | null, end?: string | null) =>
         </ul>
       </section>
     </template>
+
+    <PortalChangeRequestSheet
+      v-if="editing"
+      :title="editingTitle"
+      :fields="editingFields"
+      :current="editingCurrent"
+      :existing="editingExisting"
+      :busy="requests.busy"
+      :error="requests.formError"
+      :field-errors="requests.fieldErrors"
+      @close="editing = null"
+      @submit="sendRequest"
+    />
 
     <PortalNotice icon="pi pi-lock">
       Anwesenheiten, Notizen und Dienstbuch sind im Portal nicht einsehbar. Welche Daten sichtbar sind, legt die Jugendfeuerwehr fest.
