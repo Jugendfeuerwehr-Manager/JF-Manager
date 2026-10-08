@@ -233,6 +233,14 @@ class TransactionViewSet(
 
             order = None
             if missing_lines:
+                order_department = member.departments.order_by("pk").first()
+                if order_department is None:
+                    raise serializers.ValidationError(
+                        {
+                            "order": "Fehlende Artikel können nicht bestellt werden, weil das Mitglied "
+                            "keiner Abteilung zugeordnet ist."
+                        }
+                    )
                 order_lines = []
                 default_order_status = OrderStatus.objects.filter(code="NEW").first()
                 if not default_order_status:
@@ -268,7 +276,7 @@ class TransactionViewSet(
                 order_serializer = OrderCreateSerializer(
                     data={
                         "member": member.pk,
-                        "department": member.departments.first().pk if member.departments.exists() else None,
+                        "department": order_department.pk,
                         "notes": data["note"] or "Bestellung für fehlende Ausleihartikel",
                         "items": order_lines,
                     },

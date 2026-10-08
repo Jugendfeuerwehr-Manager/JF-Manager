@@ -103,6 +103,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useInventoryStore } from '@/stores/inventory'
+import { getApiErrorMessage } from '@/utils/apiError'
 import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import { useToast } from 'primevue/usetoast'
 
@@ -278,11 +279,11 @@ async function submit() {
 
     emit('success')
     closeDialog()
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: 'Ausleihe fehlgeschlagen. Bitte versuchen Sie es erneut.',
+      detail: getApiErrorMessage(err, 'Ausleihe fehlgeschlagen. Bitte versuchen Sie es erneut.'),
       life: 5000
     })
   } finally {

@@ -144,6 +144,20 @@ class InventoryAPITest(APITestCase):
         self.assertEqual(response.data["order"]["items"][0]["quantity"], 1)
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 0)
 
+    def test_batch_loan_explains_missing_department_for_order(self):
+        member = Member.objects.create(name="Erika", lastname="Musterfrau")
+
+        response = self.client.post(
+            "/api/v1/inventory/transactions/batch-loan/",
+            {"member": member.id, "items": [{"item": self.item.id, "quantity": 6}], "order_missing": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("keiner Abteilung zugeordnet", str(response.data["order"]))
+        self.assertFalse(Transaction.objects.filter(transaction_type="LOAN").exists())
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 5)
+
     def test_batch_loan_rejects_insufficient_stock_without_changes(self):
         member = Member.objects.create(name="Erika", lastname="Musterfrau")
 

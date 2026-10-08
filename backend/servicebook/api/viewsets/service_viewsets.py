@@ -37,7 +37,14 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Service.objects.all()  # Base queryset for router registration
     serializer_class = ServiceDetailSerializer  # Default serializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["topic", "place", "operations_manager", "start", "end"]
+    # Range lookups drive the upcoming/past split and the today card in the list view.
+    filterset_fields = {
+        "topic": ["exact"],
+        "place": ["exact"],
+        "operations_manager": ["exact"],
+        "start": ["exact", "gte", "lte"],
+        "end": ["exact", "gte", "lte"],
+    }
     search_fields = ["topic", "description", "events", "place"]
     ordering_fields = ["start", "end", "topic"]
     ordering = ["-start"]
