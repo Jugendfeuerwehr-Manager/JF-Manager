@@ -1,0 +1,5 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>{{ person.first_name }} steht für <strong>{{ session.title }}</strong> am {{ session.date }}, {{ session.time }} auf der Warteliste{% if waitlist.slot %} für „{{ waitlist.slot }}“{% endif %} (Platz {{ waitlist.position }}).
+{% if waitlist.auto %}Wird ein Platz frei, rückt {{ person.first_name }} automatisch nach und du bekommst Bescheid.{% else %}Die Dienstleitung vergibt frei werdende Plätze und meldet sich.{% endif %}</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

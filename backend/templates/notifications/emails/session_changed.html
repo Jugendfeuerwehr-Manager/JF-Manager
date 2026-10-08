@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+{% if change.kind == "cancelled" %}<p><strong>{{ session.title }}</strong> am {{ change.old }} fällt aus.</p>
+{% elif change.kind == "moved" %}<p><strong>{{ session.title }}</strong> wurde verschoben: statt {{ change.old }} jetzt {{ change.new }}. Die Anmeldung von {{ person.first_name }} bleibt bestehen.</p>
+{% else %}<p>Bei <strong>{{ session.title }}</strong> am {{ session.date }} hat sich etwas geändert: {{ change.new }}.</p>{% endif %}
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

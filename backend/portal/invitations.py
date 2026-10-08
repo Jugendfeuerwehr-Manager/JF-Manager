@@ -101,17 +101,20 @@ def _send(invitation, raw_token):
     record = invitation.record
     prefs = global_preferences_registry.manager()
     context = {
-        "org_name": prefs["general__title"],
-        "first_name": record.name,
-        "kind": invitation.kind,
-        "children": [child.name for child in record.children.all()] if invitation.kind == "parent" else [],
-        "accept_url": f"{settings.FRONTEND_URL.rstrip('/')}/passwort-festlegen?token={raw_token}",
-        "expires_at": timezone.localtime(invitation.expires_at).strftime("%d.%m.%Y, %H:%M Uhr"),
+        "org": {"name": prefs["general__title"], "color": ""},
+        "recipient": {"first_name": record.name, "kind": invitation.kind},
+        "invite": {
+            "expires_at": timezone.localtime(invitation.expires_at).strftime("%d.%m.%Y, %H:%M Uhr"),
+            "children": [child.name for child in record.children.all()] if invitation.kind == "parent" else [],
+            "kind": invitation.kind,
+        },
+        "links": {"open": f"{settings.FRONTEND_URL.rstrip('/')}/passwort-festlegen?token={raw_token}"},
+        "actions": [],
         "site_name": prefs["general__title"],
     }
-    from orders.notifications.template_service import TemplateRenderer
+    from notifications.emails import render
 
-    subject, html_message, plain_message = TemplateRenderer.render_email_content("portal_invite", context)
+    subject, html_message, plain_message = render("portal_invite", context)
     try:
         send_mail(subject, plain_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
     except (ImproperlyConfigured, OSError, SMTPException) as exc:

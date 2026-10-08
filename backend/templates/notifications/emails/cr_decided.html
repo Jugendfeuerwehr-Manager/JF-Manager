@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>dein Änderungsantrag für <strong>{{ request.person_name }}</strong> wurde {{ request.result }}.</p>
+<ul>{% for f in request.fields %}<li>{{ f.label }}: {{ f.new|default:"–" }}{% if f.decision %} ({{ f.decision }}){% endif %}</li>{% endfor %}</ul>
+{% if request.note %}<p>Nachricht der Jugendleitung: {{ request.note }}</p>{% endif %}
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

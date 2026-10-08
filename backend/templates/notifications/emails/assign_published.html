@@ -1,0 +1,5 @@
+<p>Hallo {{ recipient.first_name }},</p>
+{% if assignment.result == "assigned" %}<p>{{ person.first_name }} ist für <strong>{{ session.title }}</strong> am {{ session.date }}, {{ session.time }} eingeteilt{% if assignment.slot %} als {{ assignment.slot }}{% endif %}.</p>
+{% else %}<p>{{ person.first_name }} wurde für <strong>{{ session.title }}</strong> am {{ session.date }} diesmal nicht berücksichtigt.{% if assignment.open_for_backfill %} Die Bewerbung bleibt für frei werdende Plätze bestehen.{% endif %}</p>{% endif %}
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

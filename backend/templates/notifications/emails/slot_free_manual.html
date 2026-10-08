@@ -1,0 +1,4 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>bei <strong>{{ session.title }}</strong> am {{ session.date }} ist {% if slot.label %}auf der Position „{{ slot.label }}“ {% endif %}ein Platz frei geworden. {{ waitlist }} passende Person{{ waitlist|pluralize:"en" }} warte{{ waitlist|pluralize:"n,t" }} auf der Warteliste.</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

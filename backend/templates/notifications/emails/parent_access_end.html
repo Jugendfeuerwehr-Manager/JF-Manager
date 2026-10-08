@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+{% if recipient.kind == "staff" %}<p>Der Elternzugang für {{ person.first_name }} endet am {{ access.ends_at }}, weil {{ person.first_name }} volljährig wird. Du kannst {{ person.first_name }} ein eigenes Mitgliedskonto anbieten oder den Elternzugang mit Begründung verlängern.</p>
+{% elif recipient.kind == "member" %}<p>Ab {{ access.ends_at }} sehen deine Eltern deine Daten und Termine nicht mehr im Portal. Mit deinem eigenen Zugang meldest du dich selbst an und ab.</p>
+{% else %}<p>Dein Elternzugang für {{ person.first_name }} endet am {{ access.ends_at }}, weil {{ person.first_name }} volljährig wird. Danach meldet sich {{ person.first_name }} mit einem eigenen Zugang an.</p>{% endif %}
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

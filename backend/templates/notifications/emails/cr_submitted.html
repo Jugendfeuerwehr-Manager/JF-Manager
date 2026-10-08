@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>{{ request.requested_by }} hat Änderungen für <strong>{{ request.person_name }}</strong> beantragt:</p>
+<ul>{% for f in request.fields %}<li>{{ f.label }}: {{ f.old|default:"–" }} → <strong>{{ f.new|default:"–" }}</strong></li>{% endfor %}</ul>
+{% if request.conflicts %}<p>{{ request.conflicts }} Feld{{ request.conflicts|pluralize:"er" }} wurde{{ request.conflicts|pluralize:"n" }} seit dem Antrag geändert und muss ausdrücklich entschieden werden.</p>{% endif %}
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

@@ -78,6 +78,19 @@ class EmailTemplateCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f'Eine Vorlage für "{value}" existiert bereits.')
         return value
 
+    def validate(self, attrs):
+        """Notification templates must keep their required links (NOTIF-01.3, E17)."""
+        from notifications.emails import missing_links
+
+        template_type = attrs.get("template_type", getattr(self.instance, "template_type", None))
+        html_template = attrs.get("html_template", getattr(self.instance, "html_template", ""))
+        missing = missing_links(template_type, html_template or "")
+        if missing:
+            raise serializers.ValidationError(
+                {"html_template": "Pflichtlinks fehlen: " + ", ".join(f"{{{{ {link} }}}}" for link in missing)}
+            )
+        return attrs
+
     def validate_html_template(self, value):
         """Validate HTML template syntax"""
         from django.template import Template, TemplateSyntaxError

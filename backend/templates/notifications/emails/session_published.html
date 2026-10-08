@@ -1,0 +1,9 @@
+<p>Hallo {{ recipient.first_name }},</p>
+{% if series.dates %}<p>Es gibt neue Termine für <strong>{{ series.title }}</strong>: {{ series.dates|join:", " }}.</p>
+{% else %}<p>Neuer Termin: <strong>{{ session.title }}</strong> am {{ session.date }}, {{ session.time }}{% if session.place %}, {{ session.place }}{% endif %}.</p>{% endif %}
+{% if participation.mode == "opt_out" %}<p>{{ person.first_name }} ist eingeplant. Falls {{ person.first_name }} nicht kann, melde bitte bis {{ deadlines.cancellation }} ab.</p>
+{% elif participation.mode == "assignment" %}<p>{{ person.first_name }} kann sich bis {{ deadlines.registration }} bewerben; die Dienstleitung teilt anschließend ein.</p>
+{% else %}<p>Anmeldung für {{ person.first_name }} bis {{ deadlines.registration }}.</p>{% endif %}
+{% if session.public_note %}<p>Hinweis: {{ session.public_note }}</p>{% endif %}
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}
