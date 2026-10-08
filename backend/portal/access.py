@@ -6,8 +6,8 @@ other route, including new ones, answers 403 before the view runs.
 """
 
 # Own sign-in, second factor, devices, own account profile and password,
-# plus anonymous login-page data. Push stays closed until the portal category
-# exists (NOTIF-01.5): the current categories carry staff notifications.
+# plus anonymous login-page data, own notification settings and push (portal
+# accounts only get the participation category, NOTIF-01.5).
 PORTAL_ALLOWED_VIEW_NAMES = frozenset(
     {
         "session-status",
@@ -39,6 +39,11 @@ PORTAL_ALLOWED_VIEW_NAMES = frozenset(
         "oidc-public-config",
         "csp-report",
         "health_check",
+        # NOTIF-01.5: own notification settings and the participation push category.
+        "notification-preferences",
+        "push-config",
+        "push-subscription",
+        "push-test",
     }
 )
 

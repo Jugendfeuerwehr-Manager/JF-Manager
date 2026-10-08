@@ -10,6 +10,9 @@ class PushSubscription(models.Model):
     auth = models.CharField(max_length=100)
     services = models.BooleanField(default=True)
     orders = models.BooleanField(default=True)
+    # NOTIF-01.5: change requests (staff) and participation (staff and portal accounts).
+    requests = models.BooleanField(default=True)
+    participation = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -106,3 +109,20 @@ class NotificationPreference(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "kind"], name="unique_notification_preference")]
+
+
+class EmailDelivery(models.Model):
+    """Durable e-mail outbox (NOTIF-01.5): idempotent per event key, rendered at send time.
+
+    ``bundle_key`` groups deliveries that become one mail (e.g. a published series);
+    they wait until ``send_after`` so that the whole batch is known.
+    """
+
+    event_key = models.CharField(max_length=160, unique=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    kind = models.CharField(max_length=30)
+    context = models.JSONField(default=dict)
+    bundle_key = models.CharField(max_length=160, blank=True, default="", db_index=True)
+    send_after = models.DateTimeField(default=timezone.now, db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)

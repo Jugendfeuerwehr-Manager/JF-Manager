@@ -95,7 +95,6 @@ class PortalRouteAuditTests(TestCase):
             "/api/v1/users/",
             "/api/v1/settings/",
             "/api/v1/dashboard/summary/",
-            "/api/v1/push/subscription/",
             "/admin/",
         ]:
             with self.subTest(path=path):
@@ -142,6 +141,10 @@ class PortalAllowlistTests(TestCase):
                 "oidc-public-config",
                 "csp-report",
                 "health_check",
+                "notification-preferences",
+                "push-config",
+                "push-subscription",
+                "push-test",
             },
         )
 
