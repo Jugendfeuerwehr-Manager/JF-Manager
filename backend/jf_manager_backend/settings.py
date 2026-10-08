@@ -129,6 +129,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "users.session_policy.SessionPolicyMiddleware",
     "users.mfa_policy.MFAPolicyMiddleware",
+    "portal.middleware.PortalBoundaryMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "jf_manager_backend.email_middleware.EmailConfigMiddleware",
@@ -304,6 +305,7 @@ REST_FRAMEWORK = {
         "users.session_auth.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
+        "portal.permissions.StaffAccountRequired",
         "jf_manager_backend.permissions.CustomDefaultPermissions",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
