@@ -94,7 +94,7 @@ jobs:
           coverage run manage.py test --noinput --verbosity=2 \
             api_tests users departments.tests external_sync.tests inventory.tests \
             servicebook.tests training.tests notifications orders.tests members \
-            qualifications settings_manager portal
+            qualifications settings_manager portal participation
           coverage xml -o coverage.xml
 
       - name: Upload coverage report

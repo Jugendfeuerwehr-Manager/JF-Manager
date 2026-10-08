@@ -59,6 +59,7 @@ api_patterns = [
     path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
     path("api/v1/push/", include("notifications.urls")),
     path("api/v1/portal/", include("portal.urls")),
+    path("api/v1/participation/", include("participation.urls")),
     path("api/v1/dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
     path("api/v1/", include(api.urls)),
     # Browser session endpoints
