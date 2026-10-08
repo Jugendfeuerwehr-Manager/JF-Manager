@@ -42,6 +42,8 @@ from users.session_views import (
     SessionLogoutView,
     SessionMFAView,
     SessionPasskeyOptionsView,
+    SessionPasskeySignInOptionsView,
+    SessionPasskeySignInView,
     SessionStatusView,
 )
 
@@ -63,6 +65,12 @@ api_patterns = [
     path("api/v1/auth/session/login/", SessionLoginView.as_view(), name="session-login"),
     path("api/v1/auth/session/logout/", SessionLogoutView.as_view(), name="session-logout"),
     path("api/v1/auth/session/mfa/", SessionMFAView.as_view(), name="session-mfa"),
+    path("api/v1/auth/session/passkey/", SessionPasskeySignInView.as_view(), name="session-passkey"),
+    path(
+        "api/v1/auth/session/passkey/options/",
+        SessionPasskeySignInOptionsView.as_view(),
+        name="session-passkey-options",
+    ),
     path(
         "api/v1/auth/session/mfa/passkey-options/",
         SessionPasskeyOptionsView.as_view(),

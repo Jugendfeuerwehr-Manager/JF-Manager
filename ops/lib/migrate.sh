@@ -62,7 +62,7 @@ migrate_legacy_compose() {
     register_secret "$(_legacy_kv "$env_file" EMAIL_HOST_PASSWORD || true)"
     [ -n "$secret" ] || die "$EX_PRECHECK" "DJANGO_SECRET_KEY fehlt in $env_file."
     if [ -z "$field" ] || [[ $field == CHANGE_ME* ]]; then
-        die "$EX_PRECHECK" "FIELD_ENCRYPTION_KEY fehlt in $env_file. Ohne den bisherigen Schlüssel sind verschlüsselte Zugangsdaten nicht lesbar (docs/security-upgrade.md)."
+        die "$EX_PRECHECK" "FIELD_ENCRYPTION_KEY fehlt in $env_file. Ohne den bisherigen Schlüssel sind verschlüsselte Zugangsdaten nicht lesbar (docs/operations/ops-migration.md)."
     fi
     [ "$(docker inspect -f '{{.State.Running}}' "$db" 2>/dev/null)" = true ] ||
         die "$EX_PRECHECK" "Datenbankcontainer $db läuft nicht (alte Installation zuerst starten)."

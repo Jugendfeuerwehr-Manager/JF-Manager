@@ -28,6 +28,8 @@ GENERIC_LOGIN_ERROR = "Benutzername oder Passwort ist falsch."
 PENDING_KEY = "_mfa_pending_login"
 PENDING_MAX_AGE = 300
 PENDING_MAX_ATTEMPTS = 5
+# Passkey sign-ins load the account like a local login.
+PASSKEY_BACKEND = "django.contrib.auth.backends.ModelBackend"
 
 
 class LoginUsernameThrottle(SimpleRateThrottle):
@@ -214,6 +216,59 @@ def _second_factor_ok(session, user, data):
             return False
         return True
     return verify_second_factor(user, data.get("code", ""))
+
+
+class PasskeySignInSerializer(serializers.Serializer):
+    passkey = serializers.DictField()
+
+
+class SessionPasskeySignInOptionsView(SessionCsrfMixin, APIView):
+    """POST /api/v1/auth/session/passkey/options/ — challenge for a sign-in without password."""
+
+    throttle_classes = [LoginThrottle]
+
+    def post(self, request):
+        session = request._request.session
+        session.pop(PENDING_KEY, None)
+        return Response(json.loads(passkeys.signin_options(session)))
+
+
+class SessionPasskeySignInView(SessionCsrfMixin, APIView):
+    """POST /api/v1/auth/session/passkey/ — sign in with a passkey alone (SEC-12).
+
+    The passkey must have verified the person (PIN or biometrics); the session
+    then counts as MFA-verified. Only local accounts: LDAP and SSO accounts
+    keep their directory as first factor, so a disabled directory account
+    cannot sign in with a passkey.
+    """
+
+    throttle_classes = [LoginThrottle]
+
+    def post(self, request):
+        serializer = PasskeySignInSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session = request._request.session
+        try:
+            credential = passkeys.signin(session, serializer.validated_data["passkey"])
+        except passkeys.PasskeyError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+        user = credential.user
+        if not user.is_active:
+            return Response(
+                {"detail": "Der Passkey konnte nicht bestätigt werden."}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        if user.auth_source != user.AuthSource.LOCAL:
+            return Response(
+                {
+                    "detail": "Für dieses Konto bestätigt der Passkey nur die Anmeldung mit Passwort oder SSO.",
+                    "code": "passkey_second_factor_only",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        session.pop(PENDING_KEY, None)
+        login(request._request, user, backend=PASSKEY_BACKEND)
+        mark_mfa_verified(request._request)
+        return Response(session_status(request._request))
 
 
 class SessionLogoutView(SessionCsrfMixin, APIView):

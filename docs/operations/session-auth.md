@@ -49,9 +49,21 @@ Folgende Aktionen verlangen eine höchstens fünf Minuten alte Bestätigung mit 
 
 Die Oberfläche zeigt dafür einen Dialog und wiederholt die Aktion nach der Bestätigung automatisch. SSO-Konten ohne eigenes MFA melden sich zur Bestätigung erneut beim Provider an. Passwortwechsel verlangt ohnehin das bisherige Passwort.
 
+## Anmeldung mit Passkey (ohne Passwort)
+
+Ein im Profil eingerichteter **Passkey** (WebAuthn: Fingerabdruck, Gesichtserkennung, Geräte-PIN, Sicherheitsschlüssel, Passwortmanager) meldet lokale Konten allein an: „Mit Passkey anmelden“ auf der Anmeldeseite, Benutzername, Passwort und Code entfallen. Der Browser bietet die für diese Adresse gespeicherten Passkeys selbst an.
+
+- Der Passkey muss die Person selbst prüfen (PIN oder Biometrie, `userVerification=required`). Damit vereint er Besitz und Wissen bzw. Biometrie und gilt als bestätigte MFA, auch für Konten mit MFA-Pflicht (Sitzungsdauer wie dort höchstens acht Stunden).
+- Challenge, Herkunft, RP-ID und Signaturzähler werden wie beim zweiten Faktor geprüft; ein vom Authenticator mitgesendetes Benutzerkennzeichen muss zum Konto des Passkeys passen. Gesperrte Konten werden abgewiesen.
+- **LDAP- und SSO-Konten** melden sich weiter über Verzeichnis bzw. Provider an; dort bestätigt der Passkey nur als zweiter Faktor. So sperrt ein im Verzeichnis deaktiviertes Konto auch den Passkey-Zugang.
+- Neue Passkeys werden als auffindbare Zugangsdaten (`residentKey=required`) angelegt. Ältere Sicherheitsschlüssel ohne eigenen Speicher lassen sich dann nicht mehr registrieren; vor dieser Änderung registrierte, nicht auffindbare Passkeys funktionieren weiter als zweiter Faktor und sollten für die passwortlose Anmeldung neu hinzugefügt werden.
+- Das Passwort bleibt bestehen (Rückfallweg, Step-up-Bestätigung).
+
+API: `POST /api/v1/auth/session/passkey/options/` liefert die Challenge ohne Kontobezug, `POST /api/v1/auth/session/passkey/` mit `{"passkey": …}` meldet an. Beide verlangen CSRF und unterliegen der Login-Drosselung.
+
 ## Zwei-Faktor-Anmeldung (Passkey oder Authenticator-App)
 
-Als zweiter Faktor nach Passwort bzw. SSO dienen **Passkeys** (WebAuthn: Fingerabdruck, Gesichtserkennung, Geräte-PIN, Sicherheitsschlüssel, Passwortmanager) und/oder eine **Authenticator-App** (TOTP). Beides lässt sich im Profil parallel einrichten; ein Konto kann bis zu zehn Passkeys haben.
+Nach Passwort bzw. SSO dienen **Passkeys** und/oder eine **Authenticator-App** (TOTP) als zweiter Faktor. Beides lässt sich im Profil parallel einrichten; ein Konto kann bis zu zehn Passkeys haben.
 
 Verpflichtend für Superuser, Staff (Django-Admin), Konten mit Rechten zur Benutzer-, Gruppen-, Rollen-, Abteilungs- oder Sicherheitseinstellungsverwaltung sowie die Rollenvorlagen Jugendwart, Abteilungsjugendwart und Systemadministration. Solche Konten erreichen nach dem Login nur die Einrichtung im Profil, bis MFA aktiv ist. Alle anderen Konten können MFA freiwillig einrichten.
 

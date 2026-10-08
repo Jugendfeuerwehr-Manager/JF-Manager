@@ -16,7 +16,7 @@ Die Abbildungen zeigen eine Beispielinstallation mit fiktiven Daten. Welche Men�
 
 ## Anmelden und zurechtfinden
 
-Gib Benutzername und Passwort ein und wähle **Anmelden**. Wenn eure Organisation Single Sign-On eingerichtet hat, steht zusätzlich die konfigurierte externe Anmeldung zur Verfügung. Bei einem lokalen Konto hilft der Link zum Zurücksetzen des Passworts. Bei extern verwalteten Konten änderst du das Passwort beim jeweiligen Identitätsanbieter.
+Gib Benutzername und Passwort ein und wähle **Anmelden**. Hast du im Profil unter **Zwei-Faktor-Anmeldung** einen Passkey hinzugefügt, genügt **Mit Passkey anmelden**: Das Gerät fragt Fingerabdruck, Gesicht oder Geräte-PIN ab, Benutzername, Passwort und Code entfallen (gilt für lokale Konten; bei LDAP- und SSO-Konten bestätigt der Passkey die Anmeldung als zweiter Faktor). Wenn eure Organisation Single Sign-On eingerichtet hat, steht zusätzlich die konfigurierte externe Anmeldung zur Verfügung. Bei einem lokalen Konto hilft der Link zum Zurücksetzen des Passworts. Bei extern verwalteten Konten änderst du das Passwort beim jeweiligen Identitätsanbieter.
 
 Am Computer stehen die Module in einer dauerhaften Seitenleiste. Auf dem Smartphone findest du häufige Ziele unten; **Alle Module** oder **Module** öffnet die vollständige Navigation. Über die Modulsuche findest du auch selten verwendete Bereiche. Das Benutzermenü führt zu deinem Profil, dem Farbschema und **Abmelden**.
 

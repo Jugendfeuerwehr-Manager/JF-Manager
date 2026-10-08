@@ -8,6 +8,10 @@
     <p v-if="kind === 'vocabulary'">
       Passe die Modulnamen in der Navigation an deine Organisation an.
     </p>
+    <p v-if="kind === 'login'">
+      Texte der öffentlichen Anmeldeseite. Nur reiner Text, Zeilenumbrüche bleiben erhalten; ein
+      leeres Feld blendet den Text aus.
+    </p>
     <p v-if="kind === 'security'">
       Die nächste Sitzungsprüfung verwendet die neuen Werte, auch für bereits angemeldete Geräte.
       Die maximale Dauer muss mindestens der Zeit ohne Aktivität entsprechen.
@@ -53,6 +57,14 @@
             </select>
           </div>
         </template>
+        <textarea
+          v-else-if="field.multiline"
+          :id="`config-${name}`"
+          v-model="form[name] as string"
+          rows="3"
+          :maxlength="field.max_length"
+          :disabled="!category.can_change || field.locked || saving"
+        />
         <input
           v-else
           :id="`config-${name}`"
@@ -384,8 +396,11 @@ small {
 .configuration-field label {
   font-weight: 600;
 }
-.configuration-field input:not([type='checkbox']) {
+.configuration-field input:not([type='checkbox']),
+.configuration-field textarea {
   width: 100%;
+  font: inherit;
+  resize: vertical;
   min-height: 44px;
   padding: 0.65rem;
   background: var(--p-form-field-background);

@@ -88,3 +88,50 @@ class ConfigurationCatalogTests(TestCase):
             403,
         )
         self.assertFalse(GlobalPreferenceModel.objects.filter(section="training").exists())
+
+
+class LoginPageTextTests(TestCase):
+    """CFG-02: texts of the public login page are configurable in the interface."""
+
+    def setUp(self):
+        self.admin = get_user_model().objects.create_superuser("login-text-admin", "admin@example.org", "x")
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+
+    def test_defaults_are_public_and_cover_every_text(self):
+        texts = APIClient().get("/api/v1/app/branding/").data["login_texts"]
+        self.assertEqual(set(texts), {"eyebrow", "headline", "intro", "footer", "help"})
+        self.assertEqual(texts["headline"], "Mehr Zeit für\neuer Team.")
+
+    def test_admin_changes_texts_and_login_page_receives_them_unaltered(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(
+                "/api/v1/settings/login/",
+                {"login_headline": "Willkommen\r\nbeim SV Muster", "login_footer": "", "login_eyebrow": "<b>Hi</b>"},
+                format="json",
+            )
+        self.assertEqual(response.status_code, 200, response.data)
+        texts = APIClient().get("/api/v1/app/branding/").data["login_texts"]
+        self.assertEqual(texts["headline"], "Willkommen\nbeim SV Muster")
+        self.assertEqual(texts["footer"], "")
+        # Stored as plain text; the page escapes it instead of the server rewriting input.
+        self.assertEqual(texts["eyebrow"], "<b>Hi</b>")
+
+    def test_length_is_limited_and_unknown_fields_are_rejected(self):
+        self.assertEqual(
+            self.client.patch("/api/v1/settings/login/", {"login_intro": "x" * 401}, format="json").status_code, 400
+        )
+        self.assertEqual(self.client.patch("/api/v1/settings/login/", {"title": "x"}, format="json").status_code, 400)
+
+    def test_catalog_marks_long_texts_as_multiline(self):
+        fields = self.client.get("/api/v1/settings/catalog/").data["categories"]["login"]["fields"]
+        self.assertTrue(fields["login_intro"]["multiline"])
+        self.assertFalse(fields["login_eyebrow"]["multiline"])
+        self.assertEqual(fields["login_help"]["label"], "Hinweis unter dem Formular")
+
+    def test_requires_general_settings_right(self):
+        self.client.force_authenticate(get_user_model().objects.create_user("plain", password="x"))
+        self.assertEqual(self.client.get("/api/v1/settings/login/").status_code, 403)
+        self.assertEqual(
+            self.client.patch("/api/v1/settings/login/", {"login_footer": "x"}, format="json").status_code, 403
+        )

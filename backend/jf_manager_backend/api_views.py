@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 DEFAULT_BRAND_COLOR = "#b91c1c"
+LOGIN_TEXT_FIELDS = ("login_eyebrow", "login_headline", "login_intro", "login_footer", "login_help")
 
 
 def _brand_color(value):
@@ -25,7 +26,7 @@ class PublicBrandingView(APIView):
 
     @extend_schema(
         summary="Get public branding information",
-        description="Returns the app title, slug, logo URL and brand colour. No authentication required.",
+        description="Returns the app title, slug, logo URL, brand colour and login page texts. No authentication required.",
     )
     def get(self, request):
         global_preferences = global_preferences_registry.manager()
@@ -35,6 +36,11 @@ class PublicBrandingView(APIView):
             "slug": global_preferences.get("general__slug") or "",
             "logo_url": global_preferences.get("general__logo_url") or "",
             "brand_color": _brand_color(global_preferences.get("general__brand_color")),
+            # Plain text; the login page renders it escaped.
+            "login_texts": {
+                name.removeprefix("login_"): str(global_preferences.get(f"general__{name}") or "")
+                for name in LOGIN_TEXT_FIELDS
+            },
         }
 
         return Response(branding)

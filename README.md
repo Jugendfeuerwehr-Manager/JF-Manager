@@ -31,7 +31,7 @@ Die Web-App lässt sich unter HTTPS zum Startbildschirm hinzufügen. Push-Mittei
 
 ## Installation
 
-Unterstützt werden zwei Produktionswege mit demselben Verwaltungswerkzeug `jfctl`: **Docker Compose** mit vorgebauten, versionsgebundenen Images und **Debian 13 nativ** (auch in einem Proxmox-LXC). HTTPS richtet `jfctl` mit Caddy selbst ein oder übergibt an einen vorhandenen Reverse Proxy. Vor dem Einsatz mit echten Mitgliederdaten [Sicherheitsupdate und bekannte Mediengrenze](docs/security-upgrade.md) lesen.
+Unterstützt werden zwei Produktionswege mit demselben Verwaltungswerkzeug `jfctl`: **Docker Compose** mit vorgebauten, versionsgebundenen Images und **Debian 13 nativ** (auch in einem Proxmox-LXC). HTTPS richtet `jfctl` mit Caddy selbst ein oder übergibt an einen vorhandenen Reverse Proxy. Vor dem Einsatz mit echten Mitgliederdaten [Produktionsvorgaben](docs/operations/production-security.md) lesen.
 
 ```sh
 VERSION=1.4.0   # gewünschtes Release
@@ -41,7 +41,7 @@ sha256sum -c SHA256SUMS && tar -xzf "jf-manager-$VERSION.tar.gz"
 sudo "./jf-manager-$VERSION/ops/jfctl" install --version "$VERSION" --release-dir .
 ```
 
-Der Assistent fragt alle Angaben vorab ab, prüft das System und installiert erst nach Bestätigung. Danach: `jfctl status`, `jfctl doctor`, `jfctl backup create`, `jfctl update --version …`. Details: [Installation](docs/operations/ops-install.md), [Betrieb mit jfctl](docs/operations/ops-jfctl.md), [Sicherung und Updates](docs/operations/ops-backup-restore-update.md). Bestehende Compose-, Portainer- oder Synology-Installationen werden über [Migration](docs/operations/ops-migration.md) übernommen. Die `docker-compose.yml` im Projektwurzelverzeichnis dient nur der Entwicklung.
+Der Assistent fragt alle Angaben vorab ab, prüft das System und installiert erst nach Bestätigung. Danach: `jfctl status`, `jfctl doctor`, `jfctl backup create`, `jfctl update --version …`. Details: [Installation](docs/operations/ops-install.md), [Betrieb mit jfctl](docs/operations/ops-jfctl.md), [Sicherung und Updates](docs/operations/ops-backup-restore-update.md). Bestehende Compose-, Portainer- oder Synology-Installationen werden über [Migration](docs/operations/ops-migration.md) übernommen. Andere Wege (eigene Compose-Dateien, Portainer, `git pull` auf dem Server) werden nicht unterstützt; `dev/` enthält nur die Entwicklungsumgebung.
 
 ## Ausprobieren mit Beispieldaten
 
@@ -78,7 +78,7 @@ Das [Benutzerhandbuch](docs/user-guide.md) erläutert alle Module mit praktische
 
 ## Technik und Qualität
 
-Das Backend verwendet Django 5 und Django REST Framework, das Frontend Vue 3, TypeScript und PrimeVue. PostgreSQL dient als Produktionsdatenbank, Redis als gemeinsamer Cache; Docker Compose stellt die Dienste bereit. Zugriffsrechte werden für Benutzer, Abteilungen und einzelne API-Routen geprüft. Dieses Update schließt insbesondere fremde Profiländerungen, Rechteausweitung über Benutzer-Routen und wiederverwendbare Passwort-Reset-Links. [Betriebs- und Migrationshinweise](docs/security-upgrade.md)
+Das Backend verwendet Django 5 und Django REST Framework, das Frontend Vue 3, TypeScript und PrimeVue. PostgreSQL 17 dient als Produktionsdatenbank, Redis als gemeinsamer Cache; betrieben wird über `jfctl` mit Docker Compose oder nativ auf Debian 13. Zugriffsrechte werden für Benutzer, Abteilungen und einzelne API-Routen geprüft. [Betrieb](docs/operations/ops-overview.md)
 
 ```sh
 cd backend && PIPENV_DONT_LOAD_ENV=1 DJANGO_SECRET_KEY=local-test-only-secret-key-32-chars FIELD_ENCRYPTION_KEY=$(pipenv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") REDIS_URL=none pipenv run python manage.py test api_tests users departments.tests servicebook.tests.test_attendance_board servicebook.tests.test_attendance_by_member servicebook.tests.test_attendance_race_condition notifications

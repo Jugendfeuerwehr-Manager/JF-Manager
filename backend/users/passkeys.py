@@ -1,4 +1,9 @@
-"""Passkeys (WebAuthn) as second factor next to TOTP (SEC-11).
+"""Passkeys (WebAuthn): sign-in without password and second factor (SEC-11/12).
+
+A passkey with user verification (PIN, fingerprint, face) already combines
+possession and knowledge or biometrics, so it signs local accounts in on its
+own and counts as verified MFA. Without user verification it only confirms a
+password login as second factor.
 
 The relying party is the public address of the web interface (FRONTEND_URL),
 because the browser checks the origin of the page that calls WebAuthn.
@@ -35,6 +40,7 @@ from users.models import PasskeyCredential
 CHALLENGE_TTL = 300
 REGISTRATION_KEY = "_passkey_registration"
 AUTHENTICATION_KEY = "_passkey_authentication"
+DISCOVERABLE_KEY = "_passkey_signin"
 RP_NAME = "JF-Manager"
 
 
@@ -87,12 +93,13 @@ def registration_options(session, user):
     options = generate_registration_options(
         rp_id=rp_id(),
         rp_name=RP_NAME,
-        user_id=f"jf-user-{user.pk}".encode(),
+        user_id=user_handle(user),
         user_name=user.get_username(),
         user_display_name=user.get_full_name() or user.get_username(),
         exclude_credentials=_descriptors(user),
         authenticator_selection=AuthenticatorSelectionCriteria(
-            resident_key=ResidentKeyRequirement.PREFERRED,
+            # Discoverable, so the passkey can sign in without a username.
+            resident_key=ResidentKeyRequirement.REQUIRED,
             user_verification=UserVerificationRequirement.PREFERRED,
         ),
         timeout=CHALLENGE_TTL * 1000,
@@ -148,30 +155,87 @@ def authentication_options(session, user):
 def authenticate(session, user, credential):
     """Verify an assertion for ``user``; raises PasskeyError on any mismatch."""
     challenge = _take_challenge(session, AUTHENTICATION_KEY, user.pk)
-    try:
-        raw_id = base64url_to_bytes(credential["rawId"])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise PasskeyError("Der Passkey konnte nicht bestätigt werden.") from exc
     with transaction.atomic():
-        stored = PasskeyCredential.objects.select_for_update().filter(user=user, credential_id=raw_id).first()
+        stored = (
+            PasskeyCredential.objects.select_for_update().filter(user=user, credential_id=_raw_id(credential)).first()
+        )
         if stored is None:
             raise PasskeyError("Dieser Passkey gehört nicht zu diesem Konto.")
-        try:
-            verified = verify_authentication_response(
-                credential=credential,
-                expected_challenge=challenge,
-                expected_rp_id=rp_id(),
-                expected_origin=expected_origins(),
-                credential_public_key=bytes(stored.public_key),
-                credential_current_sign_count=stored.sign_count,
-            )
-        except (InvalidAuthenticationResponse, ValueError, KeyError, TypeError) as exc:
-            # Includes a signature counter that did not increase (cloned key).
-            raise PasskeyError("Der Passkey konnte nicht bestätigt werden.") from exc
-        stored.sign_count = verified.new_sign_count
-        stored.backed_up = bool(verified.credential_backed_up)
-        stored.last_used_at = timezone.now()
-        stored.save(update_fields=["sign_count", "backed_up", "last_used_at"])
+        return _verify(stored, credential, challenge, require_user_verification=False)
+
+
+def signin_options(session):
+    """Options for a sign-in without username: the browser offers its passkeys.
+
+    User verification is required, because the passkey replaces password and
+    second factor.
+    """
+    options = generate_authentication_options(
+        rp_id=rp_id(),
+        user_verification=UserVerificationRequirement.REQUIRED,
+        timeout=CHALLENGE_TTL * 1000,
+    )
+    _store_challenge(session, DISCOVERABLE_KEY, options.challenge, None)
+    return options_to_json(options)
+
+
+def signin(session, credential):
+    """Verify a discoverable assertion and return its stored credential.
+
+    The account follows from the credential id; a user handle sent by the
+    authenticator must name the same account.
+    """
+    challenge = _take_challenge(session, DISCOVERABLE_KEY, None)
+    raw_id = _raw_id(credential)
+    with transaction.atomic():
+        stored = (
+            PasskeyCredential.objects.select_for_update().select_related("user").filter(credential_id=raw_id).first()
+        )
+        if stored is None:
+            raise PasskeyError("Dieser Passkey ist hier nicht registriert.")
+        handle = (credential.get("response") or {}).get("userHandle")
+        if handle and _user_handle_bytes(handle) != user_handle(stored.user):
+            raise PasskeyError("Der Passkey konnte nicht bestätigt werden.")
+        return _verify(stored, credential, challenge, require_user_verification=True)
+
+
+def user_handle(user):
+    return f"jf-user-{user.pk}".encode()
+
+
+def _user_handle_bytes(handle):
+    try:
+        return base64url_to_bytes(handle)
+    except (TypeError, ValueError) as exc:
+        raise PasskeyError("Der Passkey konnte nicht bestätigt werden.") from exc
+
+
+def _raw_id(credential):
+    try:
+        return base64url_to_bytes(credential["rawId"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise PasskeyError("Der Passkey konnte nicht bestätigt werden.") from exc
+
+
+def _verify(stored, credential, challenge, *, require_user_verification):
+    """Check signature, origin and counter; caller holds the row lock."""
+    try:
+        verified = verify_authentication_response(
+            credential=credential,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id(),
+            expected_origin=expected_origins(),
+            credential_public_key=bytes(stored.public_key),
+            credential_current_sign_count=stored.sign_count,
+            require_user_verification=require_user_verification,
+        )
+    except (InvalidAuthenticationResponse, ValueError, KeyError, TypeError) as exc:
+        # Includes a signature counter that did not increase (cloned key).
+        raise PasskeyError("Der Passkey konnte nicht bestätigt werden.") from exc
+    stored.sign_count = verified.new_sign_count
+    stored.backed_up = bool(verified.credential_backed_up)
+    stored.last_used_at = timezone.now()
+    stored.save(update_fields=["sign_count", "backed_up", "last_used_at"])
     return stored
 
 

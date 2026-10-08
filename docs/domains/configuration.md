@@ -13,6 +13,13 @@ auch ohne Abteilungen arbeiten.
 **Bezeichnungen** passt die drei Modulnamen für Mitglieder, Dienstbuch und Ausbildungsplanung
 in der Navigation an. Änderungen an Bezeichnungen ändern keine Daten oder Berechtigungen.
 
+**Anmeldeseite** ändert die Texte der öffentlichen Anmeldeseite: Kopfzeile, Überschrift,
+Einleitung, Fußzeile und den Hinweis unter dem Formular (etwa, wen man um einen Zugang bittet).
+Standard sind die bisherigen Texte. Erlaubt ist nur reiner Text (Kopfzeile und Fußzeile höchstens
+80 bzw. 120 Zeichen, Überschrift 120, Einleitung 400, Hinweis 300); Zeilenumbrüche bleiben
+erhalten, HTML wird als Text angezeigt. Ein leeres Feld blendet den Text aus. Die Änderung gilt
+beim nächsten Aufruf der Anmeldeseite; nötig ist dasselbe Recht wie für **Allgemein**.
+
 **Dienste** und **Übungsstandards** verwalten die Start-/Endzeiten neuer Termine;
 Übungsstandards zusätzlich die Dauer neuer Bausteine (1–480 Minuten). Vorhandene Termine,
 Bausteine, Serien und Vorlagen behalten ihre eigenen Werte. Beginn muss vor Ende liegen.
