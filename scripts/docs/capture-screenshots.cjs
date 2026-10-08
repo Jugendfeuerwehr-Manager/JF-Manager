@@ -62,6 +62,7 @@ const login = JSON.parse(fs.readFileSync(path.join(demoDir, 'login.json'), 'utf8
     await capture('report', '/servicebook/report', 'Anwesenheitsauswertung');
     await capture('profile', '/profile', 'Profil');
     await page.locator('#device-heading').evaluate(node => node.scrollIntoView({block:'start'}));
+    await page.evaluate(() => window.scrollBy(0, -120));
     await page.locator('.device-settings').screenshot({path:path.join(out,'devices.png')});
     const user = await (await page.request.get(base + '/api/v1/users/me/')).json();
     const scope = '?department=' + user.favorite_department;

@@ -1,0 +1,22 @@
+:root { --bs-primary: #a52a22; }
+body { background-image: none; font-size: 1.05rem; line-height: 1.65; }
+.navbar { background: #24343d !important; }
+a { text-underline-offset: .16em; }
+a:focus-visible, button:focus-visible { outline: 3px solid #cf641e; outline-offset: 3px; }
+.nav-link, .dropdown-item { min-height: 44px; }
+.dropdown-item { white-space: normal; }
+.dropdown-menu { max-height: 80vh; overflow-y: auto; }
+img { max-width: 100%; height: auto; border: 1px solid #bcc7cd; border-radius: .4rem; }
+table { display: block; overflow-x: auto; width: 100%; }
+pre { overflow-x: auto; }
+@media (max-width: 767px) {
+  body { background-image: none; font-size: 1rem; }
+  .container { padding-left: 1rem; padding-right: 1rem; }
+}
+@media print {
+  .navbar, .bs-sidebar, .modal, .headerlink, footer { display: none !important; }
+  body { padding-top: 0; color: #000; background: #fff; font-size: 10pt; }
+  .container, .col-md-9 { width: 100%; max-width: none; margin: 0; }
+  img, tr, pre { break-inside: avoid; }
+  a { color: #000; }
+}

@@ -33,6 +33,7 @@ Eine Liste eignet sich beispielsweise für die Anmeldung zum Zeltlager oder den 
 5. Ergänze Anhänge oder exportiere die Liste als PDF beziehungsweise Excel. Über **E-Mail** kannst du den Versand anstoßen.
 
 **Alle haken** und **Zurücksetzen** wirken auf mehrere Einträge. Verwende sie nur, wenn diese Änderung wirklich für die ganze Liste gelten soll. Für dauerhafte Dienst-Anwesenheiten verwende das Dienstbuch; dort stehen die dafür vorgesehenen Status und Auswertungen zur Verfügung.
+
 ## Qualifikationen und Sonderaufgaben
 
 Im Bereich **Qualifikationen** findest du Nachweise, abgelaufene beziehungsweise bald ablaufende Qualifikationen und aktive Sonderaufgaben.

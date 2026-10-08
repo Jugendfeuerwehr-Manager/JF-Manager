@@ -82,6 +82,8 @@ Passkeys sind an die Adresse der Oberfläche gebunden. Relying-Party-ID und erla
 
 Browser erlauben Passkeys nur über HTTPS (Ausnahme `http://localhost` für die Entwicklung). **Ändert sich die Domain, funktionieren bestehende Passkeys nicht mehr**; betroffene Personen melden sich mit Authenticator-App oder Wiederherstellungscode an oder ihre MFA wird zurückgesetzt (siehe unten).
 
+<a id="zwei-faktor-anmeldung-zurücksetzen"></a>
+
 ### Zwei-Faktor-Anmeldung zurücksetzen
 
 Für Personen, die Passkey, App und Wiederherstellungscodes verloren haben. Das Zurücksetzen entfernt Authenticator-App, alle Passkeys und Wiederherstellungscodes und beendet alle Sitzungen des Kontos; bei der nächsten Anmeldung wird MFA neu eingerichtet (bei Pflichtkonten ist bis dahin nur die Einrichtung erreichbar). Vorher die Identität der Person auf einem anderen Weg prüfen.

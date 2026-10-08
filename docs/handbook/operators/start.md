@@ -38,6 +38,7 @@ Ansehen, Anlegen, Bearbeiten und Löschen können unterschiedliche Rechte erford
 | Qualifikationen | Nachweise und Sonderaufgaben verwalten |
 | E-Mail | Mitglieder und Eltern anschreiben, Versand prüfen |
 | Verwaltung, Einstellungen | Konten, Rechte, Abteilungen und Konfiguration verwalten |
+
 ## Auf dem Smartphone installieren
 
 Der JF-Manager kann als Web-App vom Startbildschirm geöffnet werden. Die produktive Adresse muss über **HTTPS** erreichbar sein. Installationsmöglichkeiten und Menübezeichnungen hängen vom Browser ab.
