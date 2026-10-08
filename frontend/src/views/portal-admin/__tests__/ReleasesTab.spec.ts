@@ -30,7 +30,10 @@ function overview(editable = true): PolicyOverview {
 
 async function render(data = overview()) {
   vi.mocked(portalAdminApi.policies).mockResolvedValue({ data } as never)
-  const wrapper = mount(ReleasesTab, { global: { stubs: { Button: { props: ['label', 'disabled'], template: '<button :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>' } } } })
+  const wrapper = mount(ReleasesTab, { global: { stubs: {
+    Button: { props: ['label', 'disabled'], template: '<button :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>' },
+    Select: { name: 'Select', props: ['modelValue', 'options'], emits: ['update:modelValue'], template: '<div class="scope-stub">{{ options.flatMap(g => g.items.map(i => i.label + (i.deviates ? \' (weicht ab)\' : \'\'))).join(\'|\') }}</div>' },
+  } } })
   await flushPromises()
   return wrapper
 }
@@ -52,7 +55,8 @@ describe('ReleasesTab', () => {
 
   it('shows locked cells, stats and the inherit option in a department', async () => {
     const w = await render()
-    await scopeButton(w, 'Mitte').trigger('click')
+    w.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', '5')
+    await flushPromises()
     expect(w.find('[data-cell="swimming.members"]').text()).toContain('gesperrt')
     expect(w.find('[data-cell="swimming.members"] .pi-lock').exists()).toBe(true)
     expect(w.find('[data-cell="swimming.parents"]').text()).toContain('Wie Organisation (sichtbar)')
@@ -87,5 +91,13 @@ describe('ReleasesTab', () => {
     expect(w.find('[data-cell="swimming.parents"] .segmented').exists()).toBe(false)
     expect(w.text()).toContain('nicht ändern')
     expect(w.findAll('button').some(b => b.text() === 'Speichern')).toBe(false)
+  })
+
+  it('offers a searchable scope list that flags deviating departments', async () => {
+    const data = overview()
+    data.departments.push({ ...data.departments[0]!, id: 6, name: 'Nord', member_portal_mode: '', overrides: {} })
+    const w = await render(data)
+    expect(w.find('.scope-stub').text()).toBe('Organisation (Vorgaben)|Mitte (weicht ab)|Nord')
+    expect(w.text()).toContain('1 Abteilung weicht von den Vorgaben ab.')
   })
 })

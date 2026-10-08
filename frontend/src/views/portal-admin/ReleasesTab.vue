@@ -3,7 +3,32 @@
     <StateView v-if="store.policyLoading && !overview" kind="loading" />
     <StateView v-else-if="store.policyError && !overview" kind="error" :message="store.policyError" @retry="store.loadPolicies()" />
     <template v-else-if="overview && draft">
-      <SegmentedControl :model-value="scopeValue" :options="scopeOptions" label="Geltungsbereich der Freigaben" @update:model-value="onScope" />
+      <div class="scope">
+        <label for="release-scope" class="scope__label">Geltungsbereich</label>
+        <!-- Searchable: organisations may have a hundred departments. -->
+        <Select
+          input-id="release-scope"
+          :model-value="scopeValue"
+          :options="scopeGroups"
+          option-group-label="label"
+          option-group-children="items"
+          option-label="label"
+          option-value="value"
+          filter
+          filter-placeholder="Abteilung suchen …"
+          empty-filter-message="Keine Abteilung gefunden"
+          class="scope__select"
+          @update:model-value="onScope"
+        >
+          <template #option="{ option }">
+            <span class="scope__option">
+              <span>{{ option.label }}</span>
+              <span v-if="option.deviates" class="scope__badge"><i class="pi pi-sliders-h" aria-hidden="true" />weicht ab</span>
+            </span>
+          </template>
+        </Select>
+        <span v-if="deviating > 0" class="muted small">{{ deviating }} {{ deviating === 1 ? 'Abteilung weicht' : 'Abteilungen weichen' }} von den Vorgaben ab.</span>
+      </div>
 
       <Message v-if="store.policyNotice" :severity="store.policyNotice.severity" :closable="false" role="status">{{ store.policyNotice.text }}</Message>
       <Message v-if="!editable" severity="info" :closable="false">Du kannst die Freigaben einsehen, aber nicht ändern.</Message>
@@ -88,6 +113,7 @@
 import { computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Select from 'primevue/select'
 import SegmentedControl from '@/components/common/SegmentedControl.vue'
 import StateView from '@/components/common/StateView.vue'
 import type { Audience, MemberPortalMode, Visibility } from '@/api/portalAdmin'
@@ -104,10 +130,16 @@ const editable = computed(() => (scopeIsOrg.value ? overview.value?.organization
 const stats = computed(() => (department.value?.member_portal.mode === 'min_age' ? department.value.member_portal : null))
 
 const audiences: { value: Audience, label: string }[] = [{ value: 'parents', label: 'Eltern' }, { value: 'members', label: 'Mitglieder' }]
-const scopeOptions = computed(() => [
-  { value: 'org', label: 'Organisation (Vorgaben)' },
-  ...(overview.value?.departments ?? []).map(d => ({ value: String(d.id), label: d.name })),
+const deviates = (d: { overrides: Record<string, unknown>, member_portal_mode: string }) =>
+  Object.keys(d.overrides ?? {}).length > 0 || !!d.member_portal_mode
+const scopeGroups = computed(() => [
+  { label: 'Organisation', items: [{ value: 'org', label: 'Organisation (Vorgaben)', deviates: false }] },
+  {
+    label: 'Abteilungen',
+    items: (overview.value?.departments ?? []).map(d => ({ value: String(d.id), label: d.name, deviates: deviates(d) })),
+  },
 ])
+const deviating = computed(() => (overview.value?.departments ?? []).filter(deviates).length)
 const modeOptions = computed<{ value: '' | MemberPortalMode, label: string }[]>(() => [
   ...(scopeIsOrg.value ? [] : [{ value: '' as const, label: 'Wie Organisation' }]),
   { value: 'off', label: 'Keine Mitgliederkonten' },
@@ -144,6 +176,11 @@ onMounted(() => { if (!store.overview) void store.loadPolicies() })
 
 <style scoped>
 .releases { display: flex; flex-direction: column; gap: var(--jf-space-2); }
+.scope { display: flex; flex-direction: column; gap: var(--jf-space-0-5); max-width: 32rem; }
+.scope__label { font-weight: var(--jf-weight-semibold); font-size: var(--jf-text-sm); }
+.scope__select { width: 100%; min-height: var(--jf-touch-target); }
+.scope__option { display: flex; align-items: center; justify-content: space-between; gap: var(--jf-space-1); width: 100%; }
+.scope__badge { display: inline-flex; align-items: center; gap: var(--jf-space-0-5); font-size: var(--jf-text-xs, 0.75rem); color: var(--jf-color-text-muted); }
 .card { display: flex; flex-direction: column; gap: var(--jf-space-1-5); padding: var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-lg); background: var(--jf-color-card); }
 h2 { margin: 0; font-size: var(--jf-text-lg, 1.125rem); font-weight: var(--jf-weight-semibold); }
 p { margin: 0; }
