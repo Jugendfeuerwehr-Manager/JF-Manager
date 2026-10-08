@@ -4,8 +4,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import loader from '@monaco-editor/loader'
 import type * as Monaco from 'monaco-editor'
+import { loadMonaco } from './loadMonaco'
 
 interface Props {
   modelValue: string
@@ -41,10 +41,7 @@ onMounted(async () => {
   if (!editorContainer.value) return
 
   try {
-    // Load Monaco
-    monaco = await loader.init() as typeof Monaco
-    
-    if (!monaco) return
+    monaco = await loadMonaco()
 
     // Wait a tick to ensure DOM is ready
     await new Promise(resolve => setTimeout(resolve, 0))

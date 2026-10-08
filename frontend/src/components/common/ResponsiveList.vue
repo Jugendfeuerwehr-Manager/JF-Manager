@@ -24,11 +24,15 @@
           </template>
           <div v-else class="mobile-list-empty">
             <slot name="empty">
-              <i class="pi pi-inbox"></i>
-              <p>Keine Einträge gefunden</p>
+              <StateView kind="empty" title="Keine Einträge gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
             </slot>
           </div>
         </div>
+      </template>
+      <template #empty>
+        <slot name="empty">
+          <StateView kind="empty" title="Keine Einträge gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
+        </slot>
       </template>
     </DataView>
   </div>
@@ -36,6 +40,7 @@
 
 <script setup lang="ts">
 import DataView from 'primevue/dataview'
+import StateView from './StateView.vue'
 import type { DataViewPageEvent } from 'primevue/dataview'
 
 interface Props {
@@ -82,31 +87,21 @@ const resolveKey = (item: Record<string, unknown>) => {
 .mobile-list-grid {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--jf-space-2);
+}
+
+.responsive-list :deep(.p-dataview-content),
+.responsive-list :deep(.p-dataview-emptymessage) {
+  background: transparent;
 }
 
 @media (max-width: 768px) {
   .mobile-list-grid {
-    gap: 0.75rem;
+    gap: var(--jf-space-1-5);
   }
 }
 
 .mobile-list-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  gap: 0.5rem;
-  color: var(--text-color-secondary);
-}
-
-.mobile-list-empty i {
-  font-size: 2rem;
-}
-
-.mobile-list-empty p {
-  margin: 0;
-  font-weight: 500;
+  display: block;
 }
 </style>

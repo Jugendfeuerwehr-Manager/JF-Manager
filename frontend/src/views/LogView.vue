@@ -285,7 +285,6 @@
       </template>
     </Dialog>
 
-    <Toast />
   </div>
 </template>
 
@@ -313,7 +312,6 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
-import Toast from 'primevue/toast'
 
 const eventsStore = useEventsStore()
 const membersStore = useMembersStore()

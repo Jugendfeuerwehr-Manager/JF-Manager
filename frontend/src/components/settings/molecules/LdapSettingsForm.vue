@@ -197,10 +197,10 @@
 
       <SettingsCheckbox
         v-model="formData.mirror_groups"
-        label="LDAP Gruppen spiegeln"
+        label="Alte LDAP-Gruppenspiegelung"
         field-id="ldap_mirror_groups"
-        help-text="LDAP Gruppen werden bei jedem Login in Django Gruppen synchronisiert"
-        :disabled="!canEdit"
+        help-text="Deaktiviert: Rollen werden ausschließlich über die expliziten Zuordnungen unten vergeben. Lokale Rollen bleiben unabhängig."
+        :disabled="true"
       />
 
       <!-- Require Group with browse -->
@@ -277,7 +277,7 @@
         <template #body="{ data }"><code class="text-sm">{{ data.ldap_group_dn }}</code></template>
       </Column>
       <Column field="department_name" header="Abteilung" style="min-width: 10rem" />
-      <Column field="auth_groups" header="Berechtigungsgruppen" style="min-width: 10rem">
+      <Column field="auth_groups" header="Rollenvorlagen" style="min-width: 10rem">
         <template #body="{ data }">
           <Tag v-for="g in data.auth_groups" :key="g.id" :value="g.name" class="mr-1" severity="secondary" />
           <span v-if="!data.auth_groups.length" class="text-color-secondary text-sm">–</span>
@@ -459,14 +459,12 @@
     </template>
   </Dialog>
 
-  <ConfirmDialog />
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
-import ConfirmDialog from 'primevue/confirmdialog'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
@@ -484,6 +482,7 @@ import SettingsCheckbox from '../atoms/SettingsCheckbox.vue'
 import { useSettingsStore } from '@/stores/settings'
 import type { LdapSettings, LdapBrowseEntry, LdapDepartmentRoleMapping } from '@/types/settings'
 import apiClient from '@/api/index'
+import { listAssignableRoleGroups } from '@/api/role-templates'
 
 interface Props {
   settings: LdapSettings | null
@@ -624,10 +623,6 @@ function handleSubmit() {
   if (formData.bind_password) payload.bind_password = formData.bind_password
   if (Object.keys(payload).length === 0) return
   emit('save', payload)
-  successMessage.value = 'LDAP Einstellungen gespeichert'
-  setTimeout(() => {
-    successMessage.value = ''
-  }, 3000)
 }
 
 function handleCancel() {
@@ -748,13 +743,10 @@ interface Department {
   id: number
   name: string
 }
-interface AuthGroup {
-  id: number
-  name: string
-}
 
 const departments = ref<Department[]>([])
-const authGroups = ref<AuthGroup[]>([])
+const roleGroups = ref<{ id: number; name: string; scope: string }[]>([])
+const authGroups = computed(() => roleGroups.value.filter(group => group.scope === 'department'))
 const loadingDepartments = ref(false)
 const loadingAuthGroups = ref(false)
 
@@ -767,6 +759,8 @@ const newMapping = reactive({
   auth_group_ids: [] as number[],
   revoke_on_mismatch: false,
 })
+watch(() => newMapping.department, () => { newMapping.auth_group_ids = [] })
+
 
 onMounted(async () => {
   loadingMappings.value = true
@@ -799,16 +793,10 @@ async function openAddMappingDialog() {
     }
   }
 
-  if (authGroups.value.length === 0) {
+  if (roleGroups.value.length === 0) {
     loadingAuthGroups.value = true
     try {
-      const resp = await apiClient.get('/admin/groups/')
-      const data = resp.data
-      if (Array.isArray(data)) {
-        authGroups.value = data as AuthGroup[]
-      } else if (data && typeof data === 'object' && 'results' in data) {
-        authGroups.value = (data as { results: AuthGroup[] }).results
-      }
+      roleGroups.value = await listAssignableRoleGroups()
     } finally {
       loadingAuthGroups.value = false
     }

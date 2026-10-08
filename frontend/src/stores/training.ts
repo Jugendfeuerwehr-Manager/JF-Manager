@@ -86,6 +86,9 @@ export const useTrainingStore = defineStore('training', () => {
       // Add to list
       const listItem: TrainingSessionList = {
         id: response.data.id,
+        status: response.data.status,
+        can_manage_plan: response.data.can_manage_plan,
+        requires_service_confirmation: response.data.requires_service_confirmation,
         title: response.data.title,
         date: response.data.date,
         start_time: response.data.start_time,
@@ -98,6 +101,8 @@ export const useTrainingStore = defineStore('training', () => {
         linked_service_id: response.data.linked_service_id,
         linked_service_start: response.data.linked_service_start,
         series_parent: response.data.series_parent,
+        series_uuid: response.data.series_uuid,
+        original_date: response.data.original_date,
         recurrence_rule: response.data.recurrence_rule,
       }
       sessions.value.push(listItem)
@@ -135,6 +140,7 @@ export const useTrainingStore = defineStore('training', () => {
           department: response.data.department,
           linked_service_id: response.data.linked_service_id,
           linked_service_start: response.data.linked_service_start,
+          recurrence_rule: response.data.recurrence_rule,
         }
       }
       if (currentSession.value?.id === id) {
@@ -166,20 +172,6 @@ export const useTrainingStore = defineStore('training', () => {
     }
   }
 
-  async function generateSeries(id: number) {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await trainingSessionsApi.generateSeries(id)
-      return response.data
-    } catch (e: unknown) {
-      error.value = 'Fehler beim Erstellen der Terminserie'
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
   function clearCurrentSession() {
     currentSession.value = null
     handout.value = null
@@ -200,7 +192,6 @@ export const useTrainingStore = defineStore('training', () => {
     createSession,
     updateSession,
     deleteSession,
-    generateSeries,
     clearCurrentSession,
   }
 })

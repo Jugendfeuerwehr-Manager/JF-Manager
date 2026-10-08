@@ -163,8 +163,6 @@
       </Tabs>
     </div>
 
-    <ConfirmDialog />
-    <Toast />
   </div>
 </template>
 
@@ -183,8 +181,6 @@ import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
-import ConfirmDialog from 'primevue/confirmdialog'
-import Toast from 'primevue/toast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import LibraryBlockList from '@/components/training/organisms/LibraryBlockList.vue'

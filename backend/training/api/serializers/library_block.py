@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from jf_manager_backend.html_safety import SanitizedHTMLField
 from training.models import LibraryBlock, LibraryBlockCategory, LibraryBlockTag, TrainingMedia
 
 
@@ -26,7 +27,7 @@ class TrainingMediaSerializer(serializers.ModelSerializer):
 
     def get_url(self, obj):
         if obj.file:
-            return obj.file.url  # Relative path (e.g. /uploads/…); proxied by nginx/Vite
+            return obj.url
         return obj.url
 
 
@@ -58,6 +59,7 @@ class LibraryBlockListSerializer(serializers.ModelSerializer):
 
 
 class LibraryBlockDetailSerializer(serializers.ModelSerializer):
+    content = SanitizedHTMLField(required=False, allow_blank=True)
     category = LibraryBlockCategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=LibraryBlockCategory.objects.all(),
@@ -127,6 +129,7 @@ class LibraryBlockDetailSerializer(serializers.ModelSerializer):
 class LibraryBlockExportSerializer(serializers.ModelSerializer):
     """Federation-ready export format."""
 
+    content = SanitizedHTMLField(read_only=True)
     category = serializers.CharField(source="category.name", default=None)
     tags = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
@@ -143,6 +146,7 @@ class LibraryBlockExportSerializer(serializers.ModelSerializer):
             "tags",
             "color",
             "nextcloud_folder_url",
+            "media",
         ]
 
     def get_tags(self, obj):
@@ -157,7 +161,7 @@ class LibraryBlockExportSerializer(serializers.ModelSerializer):
         return [
             {
                 "original_filename": m.original_filename,
-                "url": request.build_absolute_uri(m.file.url) if (request and m.file) else m.url,
+                "url": request.build_absolute_uri(m.url) if (request and m.file) else m.url,
             }
             for m in qs
         ]

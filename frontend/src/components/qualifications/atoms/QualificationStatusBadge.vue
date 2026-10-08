@@ -22,7 +22,7 @@ const badgeText = computed(() => {
 
 const badgeSeverity = computed<BadgeSeverity>(() => {
   if (props.isExpired) return 'danger'
-  if (props.expiresSoon) return 'warning'
+  if (props.expiresSoon) return 'warn'
   return 'success'
 })
 </script>

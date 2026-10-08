@@ -131,11 +131,50 @@ export interface LibraryBlockUsageSession {
 
 // ─── Training Block ───────────────────────────────────────────────────────────
 
+export type BlockKind = 'block' | 'station' | 'transition' | 'break' | 'free'
+
+export const BLOCK_KIND_LABELS: Record<BlockKind, string> = {
+  block: 'Baustein',
+  station: 'Station',
+  transition: 'Wechsel',
+  break: 'Pause',
+  free: 'Freie Runde',
+}
+
+export interface InstructorMini {
+  id: number
+  name: string
+}
+
+// Planned material need: inventory item/variant or free text. Never books stock.
+export interface BlockMaterial {
+  id?: number
+  item: number | null
+  variant: number | null
+  quantity: number
+  label: string
+}
+
+export interface MaterialOption {
+  id: number
+  name: string
+  unit: string
+  variants: Array<{ id: number; label: string }>
+}
+
 export interface TrainingBlock {
   id: number
   title: string
   content: string
   session: number
+  kind?: BlockKind
+  location?: string
+  learning_objective?: string
+  safety_notes?: string
+  /** Rotation: blocks of the same station share this key and are edited together. */
+  station_key?: string | null
+  instructors?: InstructorMini[]
+  materials?: BlockMaterial[]
   groups: GroupMini[]
   library_block: number | null
   library_block_title: string | null
@@ -154,6 +193,14 @@ export interface TrainingBlockCreate {
   title: string
   content?: string
   session: number
+  kind?: BlockKind
+  location?: string
+  learning_objective?: string
+  safety_notes?: string
+  /** Rotation: blocks of the same station share this key and are edited together. */
+  station_key?: string | null
+  instructor_ids?: number[]
+  materials?: BlockMaterial[]
   group_ids?: number[]
   library_block?: number | null
   duration_minutes?: number
@@ -172,6 +219,8 @@ export interface TrainingBlockMove {
 
 // ─── Training Session ─────────────────────────────────────────────────────────
 
+export type TrainingStatus = 'draft' | 'published' | 'completed' | 'cancelled'
+
 export type RecurrenceFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
 
 export interface RecurrenceRule {
@@ -180,6 +229,7 @@ export interface RecurrenceRule {
 }
 
 export interface TrainingSessionList {
+  status: TrainingStatus
   id: number
   title: string
   date: string
@@ -192,12 +242,27 @@ export interface TrainingSessionList {
   department: number | null
   linked_service_id: number | null
   linked_service_start: string | null
+  requires_service_confirmation: boolean
+  can_manage_plan: boolean
   series_parent: number | null
+  series_uuid: string | null
+  original_date: string | null
   recurrence_rule: RecurrenceRule | null
 }
 
+export interface PlanWarning {
+  code: 'group' | 'instructor' | 'location' | 'material'
+  message: string
+  blocks: string[]
+  other_session: { id: number; title: string } | null
+}
+
 export interface TrainingSessionDetail {
+  status: TrainingStatus
+  publish_justification?: string
+  publish_warnings?: string[]
   id: number
+  revision: number
   title: string
   description: string
   date: string
@@ -211,7 +276,11 @@ export interface TrainingSessionDetail {
   department: number | null
   linked_service_id: number | null
   linked_service_start: string | null
+  requires_service_confirmation: boolean
+  can_manage_plan: boolean
   series_parent: number | null
+  series_uuid: string | null
+  original_date: string | null
   recurrence_rule: RecurrenceRule | null
   created_by: number | null
   created_by_name: string | null
@@ -220,6 +289,9 @@ export interface TrainingSessionDetail {
 }
 
 export interface TrainingSessionCreate {
+  status?: TrainingStatus
+  publish_justification?: string
+  confirm_service_change?: boolean
   title: string
   description?: string
   date: string
@@ -235,6 +307,8 @@ export interface TrainingSessionCreate {
 export type TrainingSessionUpdate = Partial<TrainingSessionCreate>
 
 export interface TrainingSessionHandout {
+  revision: number
+  status: TrainingStatus
   id: number
   title: string
   description: string
@@ -245,6 +319,7 @@ export interface TrainingSessionHandout {
   notes: string
   groups: GroupMini[]
   blocks: TrainingBlock[]
+  updated_at?: string
 }
 
 // ─── Planner ui state ────────────────────────────────────────────────────────
@@ -260,6 +335,92 @@ export interface GenerateSeriesResult {
   session_ids: number[]
 }
 
+export type SeriesOccurrenceAction = 'new' | 'preserved' | 'skipped' | 'conflict'
+
+export interface SeriesOccurrence {
+  date: string
+  action: SeriesOccurrenceAction
+  session_id: number | null
+  actual_date: string | null
+  reason: string
+  warnings: string[]
+}
+
+// Complete, bounded preview; the token binds generation to exactly this state.
+export interface SeriesPreview {
+  series_id: string | null
+  root_id: number
+  root_revision: number
+  frequency: RecurrenceFrequency
+  anchor_date: string
+  window_start: string
+  window_end: string
+  preview_token: string
+  occurrences: SeriesOccurrence[]
+  counts: Record<SeriesOccurrenceAction, number>
+}
+
+export type PropagationAction = 'update' | 'unchanged' | 'deviating' | 'history' | 'conflict'
+
+export interface PropagationRow {
+  session_id: number | null
+  date: string
+  original_date: string
+  title: string
+  status: TrainingStatus
+  action: PropagationAction
+  reason: string
+  changes: string[]
+  overridable: boolean
+}
+
+// 'This and following': applies the saved state of one occurrence to later ones.
+export interface PropagationPreview {
+  source_id: number
+  source_revision: number
+  preview_token: string
+  occurrences: PropagationRow[]
+  counts: Record<PropagationAction, number>
+}
+
+// Whole-exercise template with its own copies of content, images and attachments.
+export interface TrainingTemplate {
+  id: number
+  title: string
+  description: string
+  start_time: string
+  end_time: string
+  location: string
+  department: number | null
+  groups: GroupMini[]
+  block_count: number
+  source_session: number | null
+  created_by_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TrainingTemplateBlock {
+  id: number
+  title: string
+  content: string
+  groups: GroupMini[]
+  duration_minutes: number
+  start_offset_minutes: number
+  position_order: number
+  color: string
+}
+
+export interface TrainingTemplateDetail extends TrainingTemplate {
+  notes: string
+  blocks: TrainingTemplateBlock[]
+}
+
+export interface SeriesWindow {
+  window_start?: string
+  window_end?: string
+}
+
 // ─── Paginated responses ─────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
@@ -267,4 +428,36 @@ export interface PaginatedResponse<T> {
   next: string | null
   previous: string | null
   results: T[]
+}
+
+// A complete writable snapshot; existing block IDs retain their media/attachments.
+export interface TrainingPlanDraft {
+  expected_revision: number
+  session: TrainingSessionCreate
+  blocks: Array<TrainingBlockCreate & { id?: number }>
+}
+
+// ─── Follow-up (TRAIN-04.3) ───────────────────────────────────────────────────
+
+export interface TrainingDebrief {
+  actual_start: string | null
+  actual_end: string | null
+  actual_minutes: number | null
+  reflection: string
+  improvements: string
+  revision: number
+  updated_by_name: string | null
+  updated_at: string | null
+  planned_minutes: number
+  session_status: TrainingStatus
+  session_revision: number
+}
+
+export interface TrainingDebriefInput {
+  expected_revision: number
+  actual_start: string | null
+  actual_end: string | null
+  reflection: string
+  improvements: string
+  complete?: boolean
 }

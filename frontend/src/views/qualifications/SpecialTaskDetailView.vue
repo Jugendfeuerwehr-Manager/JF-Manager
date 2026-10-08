@@ -28,9 +28,9 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleDateString('de-DE')
 }
 
-function getStatusSeverity(): 'success' | 'warning' {
+function getStatusSeverity(): 'success' | 'warn' {
   if (!specialTask.value) return 'success'
-  return specialTask.value.is_active ? 'success' : 'warning'
+  return specialTask.value.is_active ? 'success' : 'warn'
 }
 
 function getStatusLabel(): string {
@@ -72,7 +72,7 @@ function handleEndTask() {
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Beenden',
     rejectLabel: 'Abbrechen',
-    acceptClass: 'p-button-warning',
+    acceptClass: 'p-button-warn',
     accept: async () => {
       try {
         await qualificationsStore.endSpecialTask(taskId.value)
@@ -154,7 +154,7 @@ watch(
           <Button
             label="Beenden"
             icon="pi pi-check"
-            severity="warning"
+            severity="warn"
             outlined
             :disabled="!specialTask.is_active"
             @click="handleEndTask"

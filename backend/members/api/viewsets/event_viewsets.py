@@ -6,12 +6,35 @@ from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from members.api_serializers import EventSerializer, EventTypeSerializer
 from members.models import Event, EventType
+
+
+class EventRolePermissions(DepartmentRoleModelPermissions):
+    """Check an event against the departments of its actual member."""
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_superuser:
+            return True
+        required = self._required_permissions(request, view)
+        if required is None:
+            return False
+        department_ids = set(obj.member.departments.values_list("id", flat=True))
+        if not view._user_is_org_wide(user):
+            department_ids &= set(view._user_department_ids(user))
+        return any(
+            all(
+                user.has_perm(name) or name in self._department_role_permissions(request, department_id)
+                for name in required
+            )
+            for department_id in department_ids
+        )
 
 
 @extend_schema_view(
@@ -50,6 +73,14 @@ class EventTypeViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         return qs.filter(Q(department_id__in=allowed_ids) | Q(department__isnull=True)).order_by("name")
 
+    def perform_create(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_update(serializer)
+
 
 @extend_schema_view(
     list=extend_schema(summary="List all events"),
@@ -62,7 +93,7 @@ class EventTypeViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 class EventViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Event.objects.select_related("member", "type").order_by("-datetime")
     serializer_class = EventSerializer
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, EventRolePermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["member", "type"]
     search_fields = ["member__name", "member__lastname", "notes", "type__name"]
@@ -72,16 +103,39 @@ class EventViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = Event.objects.select_related("member", "type").prefetch_related("member__departments")
-
-        if self._user_is_org_wide(user):
-            requested_dept = self._resolve_requested_department(user)
-            if requested_dept is not None:
-                return base_qs.filter(member__departments__id=requested_dept).distinct()
+        requested_dept = self._resolve_requested_department(user)
+        org_wide = self._user_is_org_wide(user)
+        if org_wide and requested_dept is None and user.has_perm("members.view_event"):
             return base_qs
 
-        requested_dept = self._resolve_requested_department(user)
-        if requested_dept is not None:
-            return base_qs.filter(member__departments__id=requested_dept).distinct()
-
-        allowed_ids = self._user_department_ids(user)
+        allowed_ids = {requested_dept} if requested_dept is not None else set(self._user_department_ids(user))
+        if org_wide and requested_dept is None:
+            allowed_ids = set(user.department_roles.values_list("department_id", flat=True))
+        if self.request.method in ("GET", "HEAD", "OPTIONS") and not user.has_perm("members.view_event"):
+            permitted_ids = set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label="members",
+                    groups__permissions__codename="view_event",
+                ).values_list("department_id", flat=True)
+            )
+            allowed_ids &= permitted_ids
         return base_qs.filter(member__departments__id__in=allowed_ids).distinct()
+
+    def _validate_target_member(self, serializer):
+        """The event's member must belong to a department where the caller may
+        add (create) or change (update) events; shared members need one."""
+        member = serializer.validated_data.get("member", getattr(serializer.instance, "member", None))
+        permission = "members.add_event" if serializer.instance is None else "members.change_event"
+        department_ids = list(member.departments.values_list("id", flat=True)) if member else []
+        if not department_ids:
+            department_ids = [None]
+        if not any(self._has_right_in_department(self.request.user, permission, pk) for pk in department_ids):
+            raise ValidationError({"member": "Keine Berechtigung für Ereignisse dieses Mitglieds."})
+
+    def perform_create(self, serializer):
+        self._validate_target_member(serializer)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._validate_target_member(serializer)
+        serializer.save()

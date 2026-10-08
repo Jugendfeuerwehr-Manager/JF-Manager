@@ -10,76 +10,34 @@
     @page="emit('page', $event)"
   >
     <template #item="{ item: member }">
-      <Card
-        class="member-card mobile-entity-card"
-        @click="emit('view', member)"
-      >
-        <template #content>
-          <div class="mobile-entity-card__header">
-            <div>
-              <h3 class="mobile-entity-card__title">{{ member.full_name }}</h3>
-              <p class="mobile-entity-card__meta">
-                {{ formatDate(member.birthday) }} · {{ member.age }} Jahre
-              </p>
-            </div>
-            <Tag
-              v-if="member.status"
-              :value="member.status.name"
-              :style="{ backgroundColor: member.status.color, color: 'white' }"
-            />
-          </div>
-
-          <ParentContacts :member="member" variant="compact" />
-
-          <div class="mobile-entity-card__actions" @click.stop>
-            <Button
-              label="Ansehen"
-              icon="pi pi-eye"
-              size="small"
-              outlined
-              class="member-card-action"
-              aria-label="Mitglied ansehen"
-              @click="emit('view', member)"
-            />
-            <Button
-              label="Bearbeiten"
-              icon="pi pi-pencil"
-              size="small"
-              outlined
-              severity="secondary"
-              class="member-card-action"
-              aria-label="Mitglied bearbeiten"
-              @click="emit('edit', member)"
-            />
-            <Button
-              icon="pi pi-trash"
-              size="small"
-              outlined
-              severity="danger"
-              class="member-card-action"
-              aria-label="Mitglied löschen"
-              @click="emit('delete', member)"
-            />
-          </div>
-        </template>
-      </Card>
-    </template>
-
-    <template #empty>
-      <div class="mobile-list-empty">
-        <i class="pi pi-users"></i>
-        <p>Keine Mitglieder gefunden</p>
+      <div class="member-row">
+        <button type="button" class="member-row__main" :aria-label="`${member.full_name} öffnen`" @click="emit('view', member)">
+          <MemberIdentity :member="member">
+            <span>{{ metaFor(member) }}</span>
+            <MemberStatusBadge :status="member.status" />
+          </MemberIdentity>
+        </button>
+        <a
+          v-if="contactFor(member)"
+          class="member-row__call"
+          :href="`tel:${contactFor(member)!.number}`"
+          :aria-label="`${contactFor(member)!.name} anrufen (Kontakt von ${member.full_name})`"
+        >
+          <i class="pi pi-phone" aria-hidden="true"></i>
+        </a>
       </div>
+    </template>
+    <template #empty>
+      <StateView kind="empty" title="Keine Mitglieder gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
     </template>
   </ResponsiveList>
 </template>
 
 <script setup lang="ts">
-import Card from 'primevue/card'
-import Button from 'primevue/button'
-import Tag from 'primevue/tag'
+import StateView from '@/components/common/StateView.vue'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
-import ParentContacts from '@/components/members/ParentContacts.vue'
+import MemberIdentity from '@/components/members/atoms/MemberIdentity.vue'
+import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
 import type { Member } from '@/types/members'
 
 interface Props {
@@ -98,50 +56,60 @@ const emit = defineEmits<{
   delete: [member: Member]
 }>()
 
-function formatDate(dateString: string | null) {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+function metaFor(member: Member) {
+  return [member.age ? `${member.age} J.` : '', member.group?.name ?? ''].filter(Boolean).join(' · ')
+}
+
+/** First parent with a phone number; members without one get no call button. */
+function contactFor(member: Member) {
+  for (const parent of member.parents ?? []) {
+    const number = parent.mobile || parent.phone
+    if (number) return { name: parent.full_name, number }
+  }
+  return null
 }
 </script>
 
 <style scoped>
-.member-card {
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  padding-right: var(--jf-space-0-5);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+}
+
+.member-row__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 64px;
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 0;
+  border-radius: var(--jf-radius-lg);
+  background: transparent;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  border-radius: calc(var(--border-radius) - 2px);
 }
 
-.member-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+.member-row__main:active {
+  background: var(--surface-hover);
 }
 
-@media (max-width: 768px) {
-  .member-card .mobile-entity-card__actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.member-row__call {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--jf-touch-target);
+  height: var(--jf-touch-target);
+  border-radius: 999px;
+  color: var(--jf-color-primary);
+  text-decoration: none;
+}
 
-  .member-card .member-card-action :deep(.p-button-label) {
-    display: none;
-  }
-
-  .member-card .member-card-action :deep(.p-button-icon) {
-    margin-right: 0;
-  }
-
-  .member-card .member-card-action :deep(.p-button) {
-    justify-content: center;
-    min-height: 2.15rem;
-    padding: 0.35rem;
-  }
-
-  .member-card :deep(.parent-contacts--compact) {
-    margin-top: -0.15rem;
-  }
+.member-row__call:hover {
+  background: var(--jf-color-selected);
 }
 </style>

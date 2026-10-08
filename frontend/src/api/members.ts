@@ -27,6 +27,8 @@ export interface MemberListParams {
   status?: number
   group?: number
   gender?: string
+  /** Exact birthday, YYYY-MM-DD (UX-02.2 duplicate check). */
+  birthday?: string
   ordering?: string
 }
 

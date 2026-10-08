@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, status, viewsets
@@ -7,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from users.api.permissions import IsAdminUser
+from users.api.permissions import IdentityModelPermissions
 from users.api.serializers.admin_serializers import (
     AdminUserDetailSerializer,
     AdminUserListSerializer,
@@ -16,7 +18,12 @@ from users.api.serializers.admin_serializers import (
     AuthGroupListSerializer,
     AuthGroupWriteSerializer,
     PermissionSerializer,
+    mfa_reset_blocker,
+    mfa_summary,
 )
+from users.mfa import reset_mfa
+from users.models import MFADevice, PasskeyCredential
+from users.step_up import StepUpForWrites
 
 User = get_user_model()
 
@@ -144,12 +151,22 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     """Admin-only viewset for managing users, groups, and permissions."""
 
     queryset = User.objects.prefetch_related("groups", "user_permissions").order_by("username")
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IdentityModelPermissions, StepUpForWrites]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering_fields = ["username", "email", "date_joined", "last_login", "is_active"]
     ordering = ["username"]
     filterset_fields = ["is_active", "is_staff", "is_superuser"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == "list":
+            totp = MFADevice.objects.filter(user=OuterRef("pk"), confirmed_at__isnull=False)
+            keys = PasskeyCredential.objects.filter(user=OuterRef("pk"))
+            queryset = queryset.annotate(_totp=Exists(totp), _keys=Exists(keys)).annotate(
+                mfa_enabled=Q(_totp=True) | Q(_keys=True)
+            )
+        return queryset
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -166,28 +183,87 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         instance.is_active = False
         instance.save()
 
+    def get_object(self):
+        user = super().get_object()
+        if (
+            self.request.method not in ("GET", "HEAD", "OPTIONS")
+            and user.is_superuser
+            and not self.request.user.is_superuser
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Notfallkonten verwalten ausschließlich Superuser.")
+        return user
+
+    @extend_schema(summary="Reset the second factor of a non-administrative account")
+    @action(detail=True, methods=["post"], url_path="reset-mfa")
+    def reset_mfa(self, request, pk=None):
+        """POST /api/v1/admin/users/<id>/reset-mfa/ (superuser, step-up; SEC-11.4)."""
+        user = self.get_object()
+        blocker = mfa_reset_blocker(user, request.user)
+        if blocker == "self":
+            return Response(
+                {"detail": "Die eigene Zwei-Faktor-Anmeldung wird im Profil verwaltet.", "code": "mfa_reset_self"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if blocker == "console_only":
+            return Response(
+                {
+                    "detail": "Bei Administrationskonten wird die Zwei-Faktor-Anmeldung nur auf dem Server "
+                    f"zurückgesetzt: jfctl admin reset-mfa --user {user.get_username()}",
+                    "code": "mfa_reset_console_only",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        result = reset_mfa(user, actor=request.user, channel="admin-ui")
+        return Response({"mfa": mfa_summary(user, request.user), "removed": result})
+
     @extend_schema(summary="Set user groups")
     @action(detail=True, methods=["patch"], url_path="set-groups")
     def set_groups(self, request, pk=None):
         user = self.get_object()
-        group_ids = request.data.get("group_ids", [])
-        try:
-            groups = Group.objects.filter(id__in=group_ids)
-            user.groups.set(groups)
-            return Response(AdminUserDetailSerializer(user).data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        from rest_framework.exceptions import PermissionDenied
+
+        if user.pk == request.user.pk:
+            raise PermissionDenied("Eigene Rollenzuweisungen können nicht geändert werden.")
+        serializer = AdminUserWriteSerializer(
+            user, data={"group_ids": request.data.get("group_ids", [])}, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(AdminUserDetailSerializer(user, context={"request": request}).data)
 
 
 class AuthGroupViewSet(viewsets.ModelViewSet):
     """Admin-only viewset for managing Django auth groups and their permissions."""
 
     queryset = Group.objects.prefetch_related("permissions", "user_set").order_by("name")
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IdentityModelPermissions, StepUpForWrites]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ["name"]
     ordering = ["name"]
+
+    @transaction.atomic
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.method not in ("GET", "HEAD", "OPTIONS"):
+            queryset = queryset.select_for_update()
+        return queryset
+
+    def get_object(self):
+        group = super().get_object()
+        if self.request.method not in ("GET", "HEAD", "OPTIONS") and (
+            group.user_set.filter(pk=self.request.user.pk).exists()
+            or group.department_assignments.filter(user=self.request.user).exists()
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Eigene Rollengruppen können nicht geändert werden.")
+        return group
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -200,7 +276,7 @@ class AuthGroupViewSet(viewsets.ModelViewSet):
 class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only viewset listing available Django permissions with descriptions."""
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IdentityModelPermissions, StepUpForWrites]
     serializer_class = PermissionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "codename"]

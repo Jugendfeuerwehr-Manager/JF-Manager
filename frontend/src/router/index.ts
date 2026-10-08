@@ -50,7 +50,7 @@ const router = createRouter({
           path: 'groups',
           name: 'group-management',
           component: () => import('@/views/GroupManagementView.vue'),
-          meta: { requiresPerm: 'view_group' }
+          meta: { requiresPerm: 'members.view_group' }
         },
         // Lists
         {
@@ -64,6 +64,12 @@ const router = createRouter({
           name: 'list-detail',
           component: () => import('@/views/ListDetailView.vue'),
           meta: { requiresPerm: 'view_memberlist' }
+        },
+        {
+          path: 'lists/legacy-resolution',
+          name: 'legacy-list-resolution',
+          component: () => import('@/views/LegacyListResolutionView.vue'),
+          meta: { requiresSuperuser: true }
         },
         {
           path: 'members/create',
@@ -114,6 +120,11 @@ const router = createRouter({
           component: () => import('@/views/ServicesListView.vue')
         },
         {
+          path: 'servicebook/report',
+          name: 'service-report',
+          component: () => import('@/views/ServiceReportView.vue')
+        },
+        {
           path: 'servicebook/create',
           name: 'service-create',
           component: () => import('@/views/ServiceFormView.vue')
@@ -122,6 +133,11 @@ const router = createRouter({
           path: 'servicebook/:id/edit',
           name: 'service-edit',
           component: () => import('@/views/ServiceFormView.vue')
+        },
+        {
+          path: 'servicebook/:id/attendance',
+          name: 'service-attendance',
+          component: () => import('@/views/ServiceAttendanceView.vue')
         },
         // Inventory - Stock Management & Loans
         {
@@ -247,7 +263,7 @@ const router = createRouter({
         {
           path: 'settings',
           component: () => import('@/views/SettingsView.vue'),
-          meta: { requiresStaff: true },
+          meta: { requiresSettings: true },
           children: [
             {
               path: '',
@@ -255,6 +271,13 @@ const router = createRouter({
               component: () =>
                 import('@/components/settings/organisms/SettingsOverview.vue'),
             },
+            { path: 'setup', name: 'settings-setup', component: () => import('@/components/settings/organisms/sections/SetupSection.vue') },
+            { path: 'catalog', name: 'settings-catalog', component: () => import('@/components/settings/organisms/sections/CatalogSection.vue') },
+            { path: 'operations', name: 'settings-operations', component: () => import('@/components/settings/organisms/sections/OperationsSection.vue') },
+            ...['training', 'vocabulary', 'login', 'security', 'push'].map(kind => ({
+              path: kind, name: `settings-${kind}`, props: { kind },
+              component: () => import('@/components/settings/organisms/sections/ConfigurationSection.vue'),
+            })),
             {
               path: 'general',
               name: 'settings-general',
@@ -309,11 +332,20 @@ const router = createRouter({
           path: 'users',
           name: 'admin-users',
           component: () => import('@/components/admin/organisms/UserManagementView.vue'),
-          meta: { requiresStaff: true }
+          meta: { requiresPerm: 'users.view_customuser' }
+        },
+        {
+          path: 'roles', name: 'roles', component: () => import('@/views/RoleAssignmentsView.vue'),
+        },
+        {
+          path: 'role-templates',
+          name: 'role-templates',
+          component: () => import('@/views/RoleTemplatesAdminView.vue'),
+          meta: { requiresPerm: 'departments.view_roletemplate' }
         },
         {
           path: 'departments',
-          redirect: '/users'
+          redirect: { path: '/users', query: { tab: 'departments' } }
         },
         {
           path: 'log',
@@ -341,6 +373,7 @@ const router = createRouter({
           path: 'training/sessions/:id/plan',
           name: 'training-planner',
           component: () => import('@/views/training/TrainingPlannerView.vue'),
+          meta: { fullWidth: true, workspace: true },
           props: (route) => ({ sessionId: Number(route.params.id) })
         },
         {
@@ -350,6 +383,14 @@ const router = createRouter({
           props: (route) => ({ sessionId: Number(route.params.id) })
         }
       ]
+    },
+    // Field execution on the phone — full-screen, read-only (TRAIN-04)
+    {
+      path: '/training/sessions/:id/run',
+      name: 'training-run',
+      component: () => import('@/views/training/TrainingRunView.vue'),
+      meta: { requiresAuth: true },
+      props: (route) => ({ sessionId: Number(route.params.id) })
     },
     // Mobile training planner — full-screen, no shell chrome
     {
@@ -366,20 +407,33 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const settingsStore = useSettingsStore()
   const requiresAuth = to.meta.requiresAuth !== false
+  await authStore.initialize()
 
   if (requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
+    next(to.fullPath === '/' ? '/login' : { path: '/login', query: { next: to.fullPath } })
   } else if (to.path === '/login' && authStore.isAuthenticated) {
     next('/')
+  } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
+    // Accounts with mandatory MFA can only reach the setup until it is done.
+    next({ path: '/profile', query: { mfa: 'setup' } })
+  } else if (to.meta.requiresSettings && authStore.isAuthenticated) {
+    try {
+      await settingsStore.fetchPermissions()
+      if (settingsStore.canViewAnySettings) next()
+      else next('/')
+    } catch { next('/') }
   } else if (to.meta.requiresStaff && authStore.isAuthenticated && !authStore.isOrgWide) {
     // Non-staff user trying to access a staff-only route → redirect to dashboard
+    next('/')
+  } else if (to.meta.requiresSuperuser && authStore.isAuthenticated && !authStore.user?.is_superuser) {
     next('/')
   } else if (to.meta.requiresPerm && authStore.isAuthenticated && !authStore.hasPerm(to.meta.requiresPerm)) {
     // Missing permission for this route → redirect to dashboard
     next('/')
   } else {
-    // Load settings if authenticated and not already loaded
-    if (authStore.isAuthenticated && !settingsStore.general) {
+    // Load settings if authenticated and not already loaded. Accounts that must
+    // still set up MFA get 403 for everything except the setup itself.
+    if (authStore.isAuthenticated && !authStore.mfaSetupRequired && !settingsStore.general) {
       try {
         await settingsStore.fetchPermissions()
         if (settingsStore.canViewCategory('general')) {

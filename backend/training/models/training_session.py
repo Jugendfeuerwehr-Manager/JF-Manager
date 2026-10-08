@@ -11,12 +11,25 @@ class TrainingSession(models.Model):
         verbose_name = "Trainingseinheit"
         verbose_name_plural = "Trainingseinheiten"
         ordering = ["-date", "start_time"]
+        constraints = [
+            models.UniqueConstraint(fields=["series_uuid", "original_date"], name="unique_training_series_occurrence")
+        ]
+        permissions = [
+            ("can_manage_training", "Kann Trainingseinheiten verwalten"),
+        ]
 
     class RecurrenceFrequency(models.TextChoices):
         WEEKLY = "WEEKLY", "Wöchentlich"
         BIWEEKLY = "BIWEEKLY", "Zweiwöchentlich"
         MONTHLY = "MONTHLY", "Monatlich"
 
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Entwurf"
+        PUBLISHED = "published", "Veröffentlicht"
+        COMPLETED = "completed", "Abgeschlossen"
+        CANCELLED = "cancelled", "Abgesagt"
+
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT, verbose_name="Status")
     title = models.CharField(max_length=300, verbose_name="Titel")
     description = models.TextField(blank=True, verbose_name="Beschreibung")
 
@@ -66,6 +79,15 @@ class TrainingSession(models.Model):
         verbose_name="Abteilung",
         related_name="training_sessions",
     )
+    series_uuid = models.UUIDField(null=True, blank=True, db_index=True, editable=False)
+    original_date = models.DateField(null=True, blank=True, editable=False)
+    series_baseline_hash = models.CharField(max_length=64, blank=True, editable=False)
+    # Documented when publishing despite planning warnings (TRAIN-02).
+    publish_justification = models.TextField(blank=True, verbose_name="Begründung der Veröffentlichung")
+    publish_warnings = models.JSONField(
+        default=list, blank=True, editable=False, verbose_name="Warnungen bei Veröffentlichung"
+    )
+    revision = models.PositiveBigIntegerField(default=1, editable=False, verbose_name="Planversion")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

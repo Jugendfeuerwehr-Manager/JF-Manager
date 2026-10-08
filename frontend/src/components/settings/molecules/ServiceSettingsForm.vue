@@ -154,11 +154,7 @@ function handleSubmit() {
   
   if (Object.keys(changes).length > 0) {
     emit('save', changes)
-    successMessage.value = 'Dienst Einstellungen erfolgreich gespeichert'
     errorMessage.value = ''
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
   }
 }
 

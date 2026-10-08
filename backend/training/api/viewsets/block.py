@@ -4,25 +4,28 @@ import io
 import os
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image as PilImage
-from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from members.models import Attachment
 from training.api.filters import TrainingBlockFilter
-from training.api.permissions import CanManageTraining
+from training.api.permissions import CanManageTraining, filter_training_queryset
+from training.api.plan import advance_revision, lock_sessions
 from training.api.serializers import (
     TrainingBlockCreateSerializer,
     TrainingBlockMoveSerializer,
     TrainingBlockSerializer,
     TrainingMediaSerializer,
 )
+from training.api.serializers.block import validate_block_target
 from training.models import TrainingBlock, TrainingMedia
+from training.workflow import validate_documented_change
 
 # ── Image processing helper ───────────────────────────────────────────────────
 
@@ -62,15 +65,71 @@ def _resize_and_optimise(original_file, filename: str):
 
 
 class TrainingBlockViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageTraining]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = TrainingBlockFilter
     ordering_fields = ["start_offset_minutes", "position_order", "title"]
     ordering = ["start_offset_minutes", "position_order"]
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            with transaction.atomic():
+                return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self):
+        block = super().get_object()
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            ids = {block.session_id}
+            target = self.request.data.get("session")
+            if str(target).isdigit():
+                ids.add(int(target))
+            lock_sessions(ids)
+            try:
+                block.refresh_from_db()
+            except TrainingBlock.DoesNotExist as exc:
+                raise NotFound() from exc
+            if block.session_id not in ids:
+                exc = APIException("Die Übungszuordnung wurde inzwischen geändert. Bitte erneut versuchen.")
+                exc.status_code = 409
+                raise exc
+            self.check_object_permissions(self.request, block)
+            confirmed = serializers.BooleanField().run_validation(
+                self.request.data.get("confirm_service_change", False)
+            )
+            validate_documented_change(block.session, confirmed)
+        return block
+
+    def perform_create(self, serializer):
+        locked = lock_sessions([serializer.validated_data["session"].pk])
+        if not locked:
+            raise NotFound()
+        session = locked[0]
+        confirmed = serializers.BooleanField().run_validation(self.request.data.get("confirm_service_change", False))
+        validate_documented_change(session, confirmed)
+        serializer.validated_data["session"] = session
+        validate_block_target(serializer, serializer.validated_data)
+        serializer.save()
+        advance_revision(session)
+
+    def perform_update(self, serializer):
+        previous_session = serializer.instance.session
+        target = serializer.validated_data.get("session", previous_session)
+        confirmed = serializers.BooleanField().run_validation(self.request.data.get("confirm_service_change", False))
+        validate_documented_change(target, confirmed)
+        block = serializer.save()
+        advance_revision(previous_session)
+        if block.session_id != previous_session.pk:
+            advance_revision(block.session)
+
+    def perform_destroy(self, instance):
+        session = instance.session
+        instance.delete()
+        advance_revision(session)
+
     def get_queryset(self):
-        return TrainingBlock.objects.select_related("session", "library_block").prefetch_related("groups")
+        queryset = TrainingBlock.objects.select_related("session", "library_block").prefetch_related("groups")
+        return filter_training_queryset(self.request, queryset, "session__")
 
     def get_serializer_class(self):
         if self.action in ["create"]:
@@ -81,7 +140,7 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Override create to return full TrainingBlockSerializer response (with nested groups)."""
-        serializer = TrainingBlockCreateSerializer(data=request.data)
+        serializer = TrainingBlockCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         full_serializer = TrainingBlockSerializer(serializer.instance, context={"request": request})
@@ -95,9 +154,9 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         Update position fields for drag-and-drop in the swimlane planner.
         """
         block = self.get_object()
-        serializer = TrainingBlockMoveSerializer(block, data=request.data, partial=True)
+        serializer = TrainingBlockMoveSerializer(block, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        self.perform_update(serializer)
         return Response(TrainingBlockSerializer(block, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser])
@@ -116,6 +175,10 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
         if image_file.size > 20 * 1024 * 1024:
             return Response({"detail": "Bild zu groß (max 20 MB)."}, status=status.HTTP_400_BAD_REQUEST)
 
+        from jf_manager_backend.upload_safety import validate_upload
+
+        validate_upload(image_file, image_only=True)
+
         # ── Resize / optimise before saving ──────────────────────────────────
         original_name = image_file.name
         try:
@@ -125,7 +188,7 @@ class TrainingBlockViewSet(viewsets.ModelViewSet):
             content_type = "image/jpeg" if new_name.endswith(".jpg") else "image/png"
             image_file = InMemoryUploadedFile(buf, "file", new_name, content_type, buf.getbuffer().nbytes, None)
         except Exception:
-            image_file.seek(0)  # fall back to original
+            return Response({"detail": "Bild konnte nicht verarbeitet werden."}, status=status.HTTP_400_BAD_REQUEST)
 
         ct = ContentType.objects.get_for_model(block)
         media = TrainingMedia.objects.create(

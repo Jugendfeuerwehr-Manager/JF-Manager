@@ -18,6 +18,9 @@ export interface MemberList {
   name: string
   description: string
   color: string
+  department: number | null
+  /** Lists of an organization without departments; `department` is null. */
+  organization_wide: boolean
   member_count: number
   checked_count: number
   created_at: string
@@ -32,12 +35,15 @@ export interface MemberListCreate {
   name: string
   description?: string
   color?: string
+  /** `null` creates an organization-wide list (only while no active department exists). */
+  department: number | null
 }
 
 export type MemberListUpdate = Partial<MemberListCreate>
 
 export interface CreateFromEventTypeParams {
   name: string
+  department?: number | null
   description?: string
   event_type_id?: number | null
   invert: boolean

@@ -1,5 +1,6 @@
 <template>
   <form class="user-detail-form" @submit.prevent="handleSubmit">
+    <fieldset :disabled="!authStore.hasPerm(isNew ? 'users.add_customuser' : 'users.change_customuser')" style="border: 0; padding: 0; margin: 0; min-width: 0">
     <!-- Header -->
     <div class="form-header flex align-items-center justify-between mb-4">
       <div class="flex align-items-center gap-2">
@@ -17,6 +18,7 @@
           @click="emit('cancel')"
         />
         <Button
+          v-if="authStore.hasPerm(isNew ? 'users.add_customuser' : 'users.change_customuser')"
           type="submit"
           :label="isNew ? 'Erstellen' : 'Speichern'"
           icon="pi pi-check"
@@ -97,7 +99,7 @@
             v-model="localData.is_superuser"
             input-id="is_superuser"
             binary
-            :disabled="isSelfSuperuser"
+            :disabled="isSelfSuperuser || !authStore.user?.is_superuser"
           />
           <label for="is_superuser">
             Superuser
@@ -176,6 +178,7 @@
         </div>
       </div>
     </Fieldset>
+    </fieldset>
   </form>
 </template>
 
@@ -244,7 +247,6 @@ function buildDefault(): AdminUserWrite & { password?: string } {
     dsgvo_internal: false,
     dsgvo_external: false,
     email_signature: '',
-    theme_mode: '',
     group_ids: [],
     password: '',
   }
@@ -267,7 +269,6 @@ function fromUser(u: AdminUserDetail): AdminUserWrite & { password?: string } {
     dsgvo_internal: u.dsgvo_internal ?? false,
     dsgvo_external: u.dsgvo_external ?? false,
     email_signature: u.email_signature ?? '',
-    theme_mode: u.theme_mode ?? '',
     group_ids: u.groups.map((g) => g.id),
     password: '',
   }

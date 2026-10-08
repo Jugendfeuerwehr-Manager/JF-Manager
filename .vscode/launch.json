@@ -1,43 +1,31 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // Local development. Secrets (DJANGO_SECRET_KEY, FIELD_ENCRYPTION_KEY) come
+    // from the git-ignored backend/.env; the preLaunchTask creates missing ones and
+    // checks stored secrets against the key, see docs/getting-started.md.
+    // Open the app at http://localhost:5173: Vite proxies /api, /admin and
+    // /static to Django so session and CSRF cookies share one origin.
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Django: Run Server",
+            "name": "Backend: Django",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/backend/manage.py",
             "cwd": "${workspaceFolder}/backend",
-            "args": [
-                "runserver"
-            ],
+            "args": ["runserver", "127.0.0.1:8000"],
             "django": true,
             "justMyCode": true,
-            "preLaunchTask": "rq: worker - backend",
+            "preLaunchTask": "backend: worker",
+            "envFile": "${workspaceFolder}/backend/.env",
             "env": {
                 "PYTHONUNBUFFERED": "1",
-                "DJANGO_DEBUG": "True",
-                "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
-                "DJANGO_SECRET_KEY": "ABCdefGheiasdjkn13njkasndk1n3kjnkjansd",
-                "REDIS_URL": "redis://localhost:6379"
+                "DEBUG": "True",
+                "DEV_ALLOW_UNREADABLE_SMTP": "True",
+                "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings"
             }
         },
         {
-            "name": "Django: Debug Tests",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/backend/manage.py",
-            "cwd": "${workspaceFolder}/backend",
-            "args": [
-                "test"
-            ],
-            "django": true,
-            "justMyCode": true
-        },
-        {
-            "name": "Vue: Debug Dev Server",
+            "name": "Frontend: Vite",
             "type": "node",
             "request": "launch",
             "cwd": "${workspaceFolder}/frontend",
@@ -51,28 +39,105 @@
             }
         },
         {
-            "name": "Vue: Debug in Chrome",
+            "name": "Frontend: Chrome",
             "type": "chrome",
             "request": "launch",
             "url": "http://localhost:5173",
             "webRoot": "${workspaceFolder}/frontend/src",
             "skipFiles": ["<node_internals>/**"],
             "sourceMaps": true,
-            "preLaunchTask": "npm: dev - frontend"
+            "preLaunchTask": "frontend: vite"
         },
         {
-            "name": "Vue: Debug Unit Tests",
+            "name": "Demo: Backend mit Beispieldaten",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/demo.py",
+            "cwd": "${workspaceFolder}/backend",
+            "args": ["--port", "8011"],
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "Demo: Frontend",
             "type": "node",
             "request": "launch",
             "cwd": "${workspaceFolder}/frontend",
             "runtimeExecutable": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin/npm",
-            "runtimeArgs": ["run", "test:unit"],
+            "runtimeArgs": ["run", "dev"],
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "development",
+                "VITE_BACKEND_URL": "http://127.0.0.1:8011",
+                "PATH": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin:/usr/local/bin:/usr/bin:/bin"
+            }
+        },
+        {
+            "name": "Backend: Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/manage.py",
+            "cwd": "${workspaceFolder}/backend",
+            "args": ["test", "api_tests"],
+            "django": true,
+            "justMyCode": true,
+            "preLaunchTask": "backend: env",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "jf_manager_backend.settings",
+                "REDIS_URL": "none"
+            }
+        },
+        {
+            // Deletes the local SQLite database, uploads and cache, then loads demo data (asks first).
+            "name": "Dev: Zurücksetzen und Demodaten",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/dev_env.py",
+            "cwd": "${workspaceFolder}/backend",
+            "args": ["reset", "--confirm", "${input:confirmReset}"],
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "preLaunchTask": "redis: start locally"
+        },
+        {
+            "name": "Frontend: Unit-Tests",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "runtimeExecutable": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin/npm",
+            "runtimeArgs": ["run", "test:unit", "--", "--run"],
             "skipFiles": ["<node_internals>/**"],
             "console": "integratedTerminal",
             "env": {
                 "NODE_ENV": "test",
                 "PATH": "/Users/lukasbisdorf/.nvm/versions/node/v24.9.0/bin:/usr/local/bin:/usr/bin:/bin"
             }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "confirmReset",
+            "type": "pickString",
+            "description": "Lokale Datenbank, Uploads und Cache löschen und Demodaten laden?",
+            "options": ["nein", "ja"],
+            "default": "nein"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "JF-Manager: Backend + Frontend",
+            "configurations": ["Backend: Django", "Frontend: Chrome"],
+            "stopAll": true
+        },
+        {
+            "name": "Demo: Backend + Frontend",
+            "configurations": ["Demo: Backend mit Beispieldaten", "Demo: Frontend"],
+            "stopAll": true
         }
     ]
 }

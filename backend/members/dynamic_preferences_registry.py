@@ -7,6 +7,7 @@ general = Section("general")
 members = Section("members")
 service = Section("service")
 email = Section("email")  # New section for email settings
+training = Section("training")
 orders = Section("orders")  # New section for order settings
 
 
@@ -36,6 +37,16 @@ class SiteLogoUrl(StringPreference):
     verbose_name = "Logo URL"
     help_text = "Öffentlich erreichbare URL zum Logo der Organisation. Wird auf der Loginseite angezeigt."
     default = ""
+    required = False
+
+
+@global_preferences_registry.register
+class SiteBrandColor(StringPreference):
+    section = general
+    name = "brand_color"
+    verbose_name = "Farbschema"
+    help_text = "Grundfarbe der Oberfläche als Hex-Wert (#rrggbb). Kontraststarke Abstufungen werden daraus abgeleitet."
+    default = "#b91c1c"
     required = False
 
 
@@ -133,6 +144,9 @@ class EmailHostUser(StringPreference):
 
 @global_preferences_registry.register
 class EmailHostPassword(StringPreference):
+    from settings_manager.secret_preferences import EncryptedPreferenceSerializer
+
+    serializer = EncryptedPreferenceSerializer
     section = email
     name = "email_host_password"
     verbose_name = "SMTP Passwort"
@@ -140,10 +154,7 @@ class EmailHostPassword(StringPreference):
     default = ""
     required = False
     field_kwargs = {
-        "widget": forms.PasswordInput(render_value=True),
-    }
-    field_kwargs = {
-        "widget": forms.PasswordInput(render_value=True),
+        "widget": forms.PasswordInput(render_value=False),
     }
 
 
@@ -166,3 +177,81 @@ class EquipmentManagerEmail(StringPreference):
     help_text = "E-Mail-Adresse des Gerätewarts für Bestellübersichten"
     default = ""
     required = False
+
+
+# Defaults apply only when creating new records; existing plans remain unchanged.
+for preference_name, preference_default, preference_label in [
+    ("training_start_time", "18:00", "Standardbeginn neuer Übungen"),
+    ("training_end_time", "20:00", "Standardende neuer Übungen"),
+]:
+    global_preferences_registry.register(
+        type(
+            preference_name,
+            (StringPreference,),
+            {
+                "section": training,
+                "name": preference_name,
+                "default": preference_default,
+                "verbose_name": preference_label,
+                "required": False,
+            },
+        )
+    )
+
+
+@global_preferences_registry.register
+class TrainingBlockDuration(IntegerPreference):
+    section = training
+    name = "default_block_duration_minutes"
+    default = 15
+    verbose_name = "Standarddauer neuer Bausteine (Minuten)"
+    required = False
+
+
+for preference_name, preference_default in [
+    ("member_label", "Mitglieder"),
+    ("service_label", "Dienstbuch"),
+    ("training_label", "Ausbildung"),
+]:
+    global_preferences_registry.register(
+        type(
+            preference_name,
+            (StringPreference,),
+            {
+                "section": general,
+                "name": preference_name,
+                "default": preference_default,
+                "verbose_name": "Modulbezeichnung",
+                "required": False,
+            },
+        )
+    )
+
+
+# Texts of the public login page (CFG-02). Plain text only; the page renders
+# them escaped. An empty value hides the text.
+LOGIN_PAGE_TEXTS = [
+    ("login_eyebrow", "Für eure Jugendfeuerwehr"),
+    ("login_headline", "Mehr Zeit für\neuer Team."),
+    (
+        "login_intro",
+        "Mitglieder, Dienste und Ausbildung. Alles an einem Ort, damit ihr euch auf das Wesentliche konzentrieren könnt.",
+    ),
+    ("login_footer", "Gemeinsam organisiert. Gemeinsam stark."),
+    ("login_help", "Noch keinen Zugang? Wende dich an die Administration deiner Jugendfeuerwehr."),
+]
+
+for preference_name, preference_default in LOGIN_PAGE_TEXTS:
+    global_preferences_registry.register(
+        type(
+            preference_name,
+            (StringPreference,),
+            {
+                "section": general,
+                "name": preference_name,
+                "default": preference_default,
+                "verbose_name": "Text der Anmeldeseite",
+                "required": False,
+            },
+        )
+    )

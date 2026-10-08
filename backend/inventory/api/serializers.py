@@ -43,6 +43,57 @@ class ItemVariantSerializer(serializers.ModelSerializer):
             "total_stock",
         ]
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or getattr(request, "method", "GET") in ("GET", "HEAD", "OPTIONS"):
+            return attrs
+
+        parent_item = attrs.get("parent_item", getattr(self.instance, "parent_item", None))
+        permission = "inventory.change_itemvariant" if self.instance else "inventory.add_itemvariant"
+        if parent_item is None or not can_manage_department(user, parent_item.department_id, permission):
+            raise serializers.ValidationError({"parent_item": "Keine Schreibberechtigung für diesen Artikel."})
+        return attrs
+
+
+class ItemVariantBulkCreateSerializer(serializers.Serializer):
+    """Create one variant per value of a single attribute, e.g. all sizes S-XXXL."""
+
+    MAX_VALUES = 100
+
+    parent_item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
+    attribute = serializers.CharField(max_length=50)
+    values = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), allow_empty=False)
+
+    def validate_attribute(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Attributname darf nicht leer sein.")
+        return value
+
+    def validate_values(self, values):
+        cleaned = []
+        seen = set()
+        for raw in values:
+            value = raw.strip()
+            if value and value.casefold() not in seen:
+                seen.add(value.casefold())
+                cleaned.append(value)
+        if not cleaned:
+            raise serializers.ValidationError("Mindestens ein Wert ist erforderlich.")
+        if len(cleaned) > self.MAX_VALUES:
+            raise serializers.ValidationError(f"Höchstens {self.MAX_VALUES} Werte pro Vorgang.")
+        return cleaned
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        user = getattr(self.context.get("request"), "user", None)
+        parent_item = attrs["parent_item"]
+        if not user or not can_manage_department(user, parent_item.department_id, "inventory.add_itemvariant"):
+            raise serializers.ValidationError({"parent_item": "Keine Schreibberechtigung für diesen Artikel."})
+        return attrs
+
 
 class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
@@ -81,10 +132,17 @@ class ItemSerializer(serializers.ModelSerializer):
         department = attrs.get("department", getattr(self.instance, "department", None))
         department_id = getattr(department, "id", None)
 
-        if not can_manage_department(user, department_id):
+        permission = "inventory.change_item" if self.instance else "inventory.add_item"
+        if not can_manage_department(user, department_id, permission):
             raise serializers.ValidationError(
                 {"department": "Artikel dürfen nur in der eigenen Abteilung verwaltet werden."}
             )
+
+        rented_by = attrs.get("rented_by", getattr(self.instance, "rented_by", None))
+        if rented_by is not None and department_id is not None and not rented_by.departments.filter(
+            pk=department_id
+        ).exists():
+            raise serializers.ValidationError({"rented_by": "Das Mitglied gehört nicht zur Artikelabteilung."})
 
         return attrs
 
@@ -120,10 +178,21 @@ class StorageLocationSerializer(serializers.ModelSerializer):
         department = attrs.get("department", getattr(self.instance, "department", None))
         department_id = getattr(department, "id", None)
 
-        if not can_manage_department(user, department_id):
+        permission = "inventory.change_storagelocation" if self.instance else "inventory.add_storagelocation"
+        if not can_manage_department(user, department_id, permission):
             raise serializers.ValidationError(
                 {"department": "Lagerorte dürfen nur in der eigenen Abteilung verwaltet werden."}
             )
+
+        parent = attrs.get("parent", getattr(self.instance, "parent", None))
+        if parent is not None and parent.department_id != department_id:
+            raise serializers.ValidationError({"parent": "Der Elternlagerort gehört zu einem anderen Bereich."})
+
+        member = attrs.get("member", getattr(self.instance, "member", None))
+        if member is not None:
+            member_department_ids = set(member.departments.values_list("id", flat=True))
+            if department_id not in member_department_ids and (department_id is not None or member_department_ids):
+                raise serializers.ValidationError({"member": "Das Mitglied gehört nicht zur Lagerortabteilung."})
 
         return attrs
 
@@ -179,7 +248,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        read_only_fields = ["date", "user", "former_member_name"]
+        read_only_fields = ["date", "user", "former_member_name", "reverses"]
         fields = [
             "id",
             "transaction_type",
@@ -198,6 +267,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "discard_reason",
             "discard_reason_display",
             "former_member_name",
+            "reverses",
         ]
 
     def get_source_name(self, obj):
@@ -244,17 +314,19 @@ class TransactionSerializer(serializers.ModelSerializer):
         elif item_variant is not None:
             item_department_id = item_variant.parent_item.department_id
 
-        if user and not is_org_wide_user(user):
-            if not can_manage_department(user, item_department_id):
+        if user:
+            permission = "inventory.change_transaction" if self.instance else "inventory.add_transaction"
+            if not can_manage_department(user, item_department_id, permission):
                 raise serializers.ValidationError(
                     {"item": "Transaktionen sind nur für Artikel der eigenen Abteilung erlaubt."}
                 )
 
-            for field_name, location in (("source", source), ("target", target)):
-                if location is None:
-                    continue
-                if not is_location_allowed_for_item_department(location, item_department_id):
-                    raise serializers.ValidationError({field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."})
+            if not is_org_wide_user(user):
+                for field_name, location in (("source", source), ("target", target)):
+                    if location is None:
+                        continue
+                    if not is_location_allowed_for_item_department(location, item_department_id):
+                        raise serializers.ValidationError({field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."})
 
         return attrs
 

@@ -1,6 +1,6 @@
 /**
  * Servicebook TypeScript Type Definitions
- * 
+ *
  * Models for managing services (Dienste) and attendance tracking
  */
 
@@ -12,9 +12,9 @@
  * Attendance state enum matching Django model choices
  */
 export enum AttendanceState {
-  PRESENT = 'A',    // Anwesend
-  EXCUSED = 'E',    // Entschuldigt
-  ABSENT = 'F'      // Fehlend
+  PRESENT = 'A', // Anwesend
+  EXCUSED = 'E', // Entschuldigt
+  ABSENT = 'F', // Fehlend
 }
 
 /**
@@ -23,7 +23,7 @@ export enum AttendanceState {
 export const AttendanceStateLabels: Record<AttendanceState, string> = {
   [AttendanceState.PRESENT]: 'Anwesend',
   [AttendanceState.EXCUSED]: 'Entschuldigt',
-  [AttendanceState.ABSENT]: 'Fehlend'
+  [AttendanceState.ABSENT]: 'Fehlend',
 }
 
 /**
@@ -32,7 +32,7 @@ export const AttendanceStateLabels: Record<AttendanceState, string> = {
 export const AttendanceStateColors: Record<AttendanceState, string> = {
   [AttendanceState.PRESENT]: 'success',
   [AttendanceState.EXCUSED]: 'warn',
-  [AttendanceState.ABSENT]: 'danger'
+  [AttendanceState.ABSENT]: 'danger',
 }
 
 // ============================================================================
@@ -64,11 +64,12 @@ export interface AttendanceSummary {
  */
 export interface Service {
   id: number
-  start: string  // ISO datetime
-  end: string    // ISO datetime
+  start: string // ISO datetime
+  end: string // ISO datetime
   place: string | null
   topic: string | null
   department?: number | null
+  training_status?: import('./training').TrainingStatus | null
   training_session?: number | null
   operations_manager: OperationsManager[]
   attendance_summary: AttendanceSummary
@@ -97,8 +98,9 @@ export interface ServiceDetail {
   place: string | null
   topic: string | null
   description: string | null
-  events: string | null  // Special occurrences
+  events: string | null // Special occurrences
   department?: number | null
+  training_status?: import('./training').TrainingStatus | null
   training_session?: number | null
   operations_manager: OperationsManager[]
   attendance_summary: AttendanceSummary
@@ -179,42 +181,15 @@ export interface BulkAttendanceUpdateResult {
 // ============================================================================
 
 /**
- * Top List Entry (for most present/excused/absent)
- */
-export interface TopListEntry {
-  person__name: string
-  person__lastname: string
-  num_services: number
-}
-
-/**
- * Top Lists by Attendance State
- */
-export interface TopLists {
-  most_present: TopListEntry[]
-  most_excused: TopListEntry[]
-  most_absent: TopListEntry[]
-}
-
-/**
- * Service Statistics Overview
- */
-export interface ServiceStatistics {
-  total_services: number
-  recent_services: Service[]
-  top_lists: TopLists
-}
-
-/**
  * Attendance Chart Data (for visualization)
  */
 export interface AttendanceChartData {
   service_labels: string[]
   service_dates: string[]
   attendance_data: {
-    A: number[]  // Present
-    E: number[]  // Excused
-    F: number[]  // Absent
+    A: number[] // Present
+    E: number[] // Excused
+    F: number[] // Absent
   }
 }
 
@@ -316,4 +291,51 @@ export interface AttendanceButtonState {
   currentState: AttendanceState | null
   loading: boolean
   error: string | null
+}
+
+export interface AttendanceBoardPerson {
+  id: number
+  full_name: string
+  state: AttendanceState | null
+}
+
+export interface AttendanceBoard {
+  members: AttendanceBoardPerson[]
+  staff: AttendanceBoardPerson[]
+}
+
+export type AttendanceWarning = 'low_rate' | 'declining' | 'missed_in_a_row'
+
+export interface AttendanceCounts {
+  present: number
+  excused: number
+  absent: number
+  recorded: number
+}
+
+/** One person in the attendance evaluation; rates are percent of recorded entries. */
+export interface AttendanceReportPerson extends AttendanceCounts {
+  id: number
+  full_name: string
+  rate: number | null
+  hours: number
+  /** Rate per month, aligned with the group's months; null without entries. */
+  months: (number | null)[]
+  trend: { previous: number; recent: number; delta: number } | null
+  missed_in_a_row: number
+  warnings: AttendanceWarning[]
+}
+
+export interface AttendanceReportGroup {
+  summary: AttendanceCounts & { rate: number | null; people: number; with_warnings: number }
+  months: (AttendanceCounts & { month: string; rate: number | null })[]
+  people: AttendanceReportPerson[]
+}
+
+export interface AttendanceReport {
+  period: { date_from: string; date_to: string }
+  services: { count: number; hours: number }
+  thresholds: { low_rate: number; low_rate_min_records: number; decline_points: number; missed_in_a_row: number }
+  members: AttendanceReportGroup
+  staff: AttendanceReportGroup
 }

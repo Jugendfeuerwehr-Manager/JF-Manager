@@ -2,6 +2,7 @@ import apiClient from './index'
 import type {
   BlockAttachment,
   GenerateSeriesResult,
+  InstructorMini,
   LibraryBlockCategory,
   LibraryBlockCreate,
   LibraryBlockDetail,
@@ -11,21 +12,37 @@ import type {
   LibraryBlockUpdate,
   LibraryBlockUsageSession,
   LibraryImportResult,
+  MaterialOption,
   PaginatedResponse,
+  PlanWarning,
+  PropagationPreview,
+  SeriesPreview,
+  SeriesWindow,
   TrainingBlock,
   TrainingBlockCreate,
   TrainingBlockMove,
   TrainingMedia,
+  TrainingPlanDraft,
   TrainingSessionCreate,
   TrainingSessionDetail,
   TrainingSessionHandout,
   TrainingSessionList,
   TrainingSessionUpdate,
+  TrainingTemplate,
+  TrainingTemplateDetail,
+  TrainingDebrief,
+  TrainingDebriefInput,
 } from '@/types/training'
 
 // ─── Session API ──────────────────────────────────────────────────────────────
 
 export const trainingSessionsApi = {
+  plan(id: number) {
+    return apiClient.get<TrainingSessionDetail>(`/training/sessions/${id}/plan/`)
+  },
+  savePlan(id: number, data: TrainingPlanDraft) {
+    return apiClient.put<TrainingSessionDetail>(`/training/sessions/${id}/plan/`, data)
+  },
   list(params?: Record<string, unknown>) {
     return apiClient.get<PaginatedResponse<TrainingSessionList>>('/training/sessions/', { params })
   },
@@ -44,8 +61,58 @@ export const trainingSessionsApi = {
   handout(id: number) {
     return apiClient.get<TrainingSessionHandout>(`/training/sessions/${id}/handout/`)
   },
-  generateSeries(id: number) {
-    return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`)
+  seriesPreview(id: number, params?: SeriesWindow) {
+    return apiClient.get<SeriesPreview>(`/training/sessions/${id}/series_preview/`, { params })
+  },
+  generateSeries(id: number, data: SeriesWindow & { preview_token: string }) {
+    return apiClient.post<GenerateSeriesResult>(`/training/sessions/${id}/generate_series/`, data)
+  },
+  debrief(id: number) {
+    return apiClient.get<TrainingDebrief>(`/training/sessions/${id}/debrief/`)
+  },
+  saveDebrief(id: number, data: TrainingDebriefInput) {
+    return apiClient.put<TrainingDebrief>(`/training/sessions/${id}/debrief/`, data)
+  },
+  checkPlan(id: number, data: TrainingPlanDraft) {
+    return apiClient.post<{ warnings: PlanWarning[] }>(`/training/sessions/${id}/check_plan/`, data)
+  },
+  instructorOptions(id: number) {
+    return apiClient.get<InstructorMini[]>(`/training/sessions/${id}/instructor_options/`)
+  },
+  materialOptions(id: number, search = '') {
+    return apiClient.get<MaterialOption[]>(`/training/sessions/${id}/material_options/`, { params: search ? { search } : {} })
+  },
+  saveAsTemplate(id: number, data: { title?: string }) {
+    return apiClient.post<TrainingTemplate>(`/training/sessions/${id}/save_as_template/`, data)
+  },
+  copy(id: number, data: { date: string; title?: string }) {
+    return apiClient.post<TrainingSessionDetail>(`/training/sessions/${id}/copy/`, data)
+  },
+  propagationPreview(id: number, data: { include_deviating?: number[] }) {
+    return apiClient.post<PropagationPreview>(`/training/sessions/${id}/propagation_preview/`, data)
+  },
+  propagateSeries(id: number, data: { include_deviating?: number[]; preview_token: string }) {
+    return apiClient.post<{ updated: number; session_ids: number[] }>(`/training/sessions/${id}/propagate_series/`, data)
+  },
+}
+
+// ─── Exercise templates ─────────────────────────────────────────────────────
+
+export const trainingTemplatesApi = {
+  list(params?: Record<string, unknown>) {
+    return apiClient.get<PaginatedResponse<TrainingTemplate>>('/training/templates/', { params })
+  },
+  get(id: number) {
+    return apiClient.get<TrainingTemplateDetail>(`/training/templates/${id}/`)
+  },
+  update(id: number, data: { title?: string; description?: string }) {
+    return apiClient.patch<TrainingTemplate>(`/training/templates/${id}/`, data)
+  },
+  delete(id: number) {
+    return apiClient.delete(`/training/templates/${id}/`)
+  },
+  instantiate(id: number, data: { date: string; title?: string }) {
+    return apiClient.post<TrainingSessionDetail>(`/training/templates/${id}/instantiate/`, data)
   },
 }
 

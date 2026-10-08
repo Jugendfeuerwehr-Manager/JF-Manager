@@ -20,13 +20,13 @@ Examples:
 - one installation serves several youth fire brigade departments
 - a central or main organisation maintains shared master data
 - local departments can manage only their own operational data
-- staff or explicitly org-wide users can work across all departments
+- users with explicit organisation-wide scope and the required global model permissions can work across departments
 
 The core rule is:
 
 > Visibility may be broader than mutability.
 
-Shared or central records can be visible across departments, while create/update/delete and workflow actions stay restricted to the owning department unless the user has org-wide access.
+Shared or central records can be visible across departments, while create/update/delete and workflow actions stay restricted to the owning department unless the user has organisation-wide scope and the required global model permission.
 
 ## Core Concepts
 
@@ -49,11 +49,10 @@ Those groups contribute permissions only within that department context.
 
 A user is treated as org-wide when one of these conditions is true:
 
-- `is_staff`
 - `is_superuser`
 - permission `departments.can_access_all_departments`
 
-Org-wide users can see and manage data across departments.
+Organisation-wide scope does not grant model permissions. Read/write access also requires the matching global permission; department-role permissions remain confined to their department. `is_staff` alone grants neither scope nor model permissions.
 
 ### Active Department
 
@@ -179,7 +178,7 @@ Relevant classes:
 - `OrgWideWritePermission`
   Allows read access for authenticated users but limits write access to org-wide users.
 
-Use `OrgWideWritePermission` for shared master data such as categories or types that should be visible everywhere but editable only centrally.
+Use `GlobalModelWritePermission` for shared catalogs such as categories and types: writes require both organisation-wide scope and the matching global model permission. `OrgWideWritePermission` alone checks scope, not the model permission.
 
 ### Department Queryset Scoping
 
@@ -188,7 +187,7 @@ The base scoping logic lives in [backend/departments/mixins.py](/Users/lukasbisd
 `DepartmentScopeViewSetMixin` provides:
 
 - validation for `?department=`
-- unrestricted access for org-wide users
+- organisation-wide scope with separate model/action permission enforcement
 - per-department filtering for department-scoped users
 - optional inclusion of central records via `include_central_records = True`
 - default department assignment during creation
@@ -211,7 +210,7 @@ Examples:
 
 - `Stock` visibility is derived from the owning item or variant parent item.
 - `Transaction` visibility is derived from the transacted item.
-- mutating a central inventory record is still restricted to org-wide users.
+- mutating a central inventory record requires organisation-wide scope and the matching global inventory permission.
 
 ## Frontend Building Blocks
 
@@ -235,8 +234,9 @@ Default behavior:
 
 Behavior:
 
-- org-wide users always use the full permission set from the backend
-- department-scoped users use the role permissions for the currently active department
+- all users combine global permissions with role permissions for the currently active department
+- organisation-wide scope never promotes department permissions to global permissions
+- use qualified `app_label.codename` permissions to distinguish identity groups from member groups
 - UI guards and button states should rely on `hasPerm()` or `canAccessModule()`
 
 ### API Client
@@ -257,9 +257,9 @@ Because this parameter is injected broadly, backend endpoints that surface centr
 
 | Record Type | Department-scoped user can view own dept | Department-scoped user can view central | Department-scoped user can modify own dept | Department-scoped user can modify central | Org-wide user can modify all |
 |---|---|---|---|---|---|
-| Regular department-owned records | Yes | No, unless feature explicitly allows | Yes, if role grants model permission | No | Yes |
-| Shared master data | Depends on endpoint design | Yes | Usually No | No | Yes |
-| Central inventory records | Yes, where endpoint allows central visibility | Yes | No | No | Yes |
+| Regular department-owned records | Yes | No, unless feature explicitly allows | Yes, if role grants model permission | No | Yes, with matching global permission |
+| Shared master data | Depends on endpoint design | Yes | Usually No | No | Yes, with matching global permission |
+| Central inventory records | Yes, where endpoint allows central visibility | Yes | No | No | Yes, with matching global permission |
 
 ### Inventory Rules
 
@@ -276,7 +276,7 @@ Inventory is intentionally more nuanced than simple CRUD scoping.
 
 - visibility follows the owning item department
 - stock for central items remains visible across departments
-- transaction creation is allowed only for items owned by the caller's department, unless the caller is org-wide
+- transaction creation is allowed only for items owned by the caller's department, unless the caller has organisation-wide scope and the matching global inventory permission
 - source and target locations must fit the owning department rules
 - personal member locations may be used as target/source when allowed by the transaction flow
 
@@ -375,3 +375,7 @@ Check:
 - [frontend/src/api/index.ts](/Users/lukasbisdorf/Dev/JF-Manager/frontend/src/api/index.ts)
 - [frontend/src/stores/auth.ts](/Users/lukasbisdorf/Dev/JF-Manager/frontend/src/stores/auth.ts)
 - [frontend/src/stores/departments.ts](/Users/lukasbisdorf/Dev/JF-Manager/frontend/src/stores/departments.ts)
+
+## Standard Roles And Assignment
+
+All 16 standard role templates are created automatically after migrations. Repeating installation adds missing templates without overwriting customised rights. Role creation, template copies, reviewed assignment, delegation approval and local/LDAP/OIDC provenance are described in the [roles handbook](../domains/roles-and-permissions.md).

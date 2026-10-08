@@ -4,6 +4,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from departments.models import Department
 from inventory.models import Category, Item, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -13,13 +14,16 @@ class InventoryAPITest(APITestCase):
         self.user = User.objects.create_user(username="tester", password="pw12345")
         self.user.is_staff = True
         self.user.save(update_fields=["is_staff"])
-        self.user.user_permissions.add(*Permission.objects.filter(codename__in=["view_item", "add_transaction"]))
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            *Permission.objects.filter(codename__in=["view_item", "view_stock", "add_transaction"]),
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.category = Category.objects.create(name="Helm")
         self.item = Item.objects.create(name="Helm A", category=self.category)
         self.location = StorageLocation.objects.create(name="Lager 1")
-        Stock.objects.create(item=self.item, location=self.location, quantity=5)
+        book_opening_stock(self.location, 5, item=self.item)
         self.department = Department.objects.create(name="Abteilung Test", code="dept-test")
 
     def test_list_items(self):
@@ -55,7 +59,7 @@ class InventoryAPITest(APITestCase):
 
     def test_batch_loan_issues_multiple_items(self):
         second_item = Item.objects.create(name="Handschuhe", category=self.category)
-        Stock.objects.create(item=second_item, location=self.location, quantity=3)
+        book_opening_stock(self.location, 3, item=second_item)
         member = Member.objects.create(name="Max", lastname="Mustermann")
 
         response = self.client.post(
@@ -77,9 +81,32 @@ class InventoryAPITest(APITestCase):
         self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 3)
         self.assertEqual(Stock.objects.get(item=second_item, location=self.location).quantity, 2)
 
+    def test_batch_loan_idempotency_replays_without_second_movement(self):
+        member = Member.objects.create(name="Erika", lastname="Beispiel")
+        payload = {"member": member.pk, "items": [{"item": self.item.pk, "quantity": 2}], "note": "Ausgabe"}
+        headers = {"HTTP_IDEMPOTENCY_KEY": "batch-loan-test-1"}
+
+        first = self.client.post("/api/v1/inventory/transactions/batch-loan/", payload, format="json", **headers)
+        second = self.client.post("/api/v1/inventory/transactions/batch-loan/", payload, format="json", **headers)
+
+        self.assertEqual(first.status_code, 201, first.data)
+        self.assertEqual(second.status_code, 201, second.data)
+        self.assertEqual(second.data["transactions"][0]["id"], first.data["transactions"][0]["id"])
+        self.assertEqual(Transaction.objects.filter(transaction_type="LOAN").count(), 1)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.location).quantity, 3)
+
+        changed = self.client.post(
+            "/api/v1/inventory/transactions/batch-loan/",
+            {**payload, "items": [{"item": self.item.pk, "quantity": 1}]},
+            format="json",
+            **headers,
+        )
+        self.assertEqual(changed.status_code, 409)
+        self.assertEqual(Transaction.objects.filter(transaction_type="LOAN").count(), 1)
+
     def test_batch_loan_uses_selected_source(self):
         other = StorageLocation.objects.create(name="Lager 2")
-        Stock.objects.create(item=self.item, location=other, quantity=4)
+        book_opening_stock(other, 4, item=self.item)
         member = Member.objects.create(name="Max", lastname="Mustermann")
 
         response = self.client.post(

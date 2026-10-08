@@ -1,113 +1,43 @@
 <template>
   <div class="inventory-view">
-    <OverviewHeader
-      title="Inventar & Ausleihen"
-      subtitle="Bestandsverwaltung und Ausleihen für die Jugendfeuerwehr"
-    >
+    <OverviewHeader title="Inventar" subtitle="Bestand, Ausgabe und Rücknahme von Material">
       <template #meta>
-        <Tag severity="info" :value="`${totalStock} Artikel insgesamt`" />
-        <Tag severity="warning" :value="`${itemsOnLoan} ausgeliehen`" />
+        <span class="inventory-meta">{{ totalStock }} Teile im Bestand · {{ itemsOnLoan }} ausgegeben</span>
       </template>
       <template #actions>
-        <Button
-          label="Ausleihe & Einkleidung"
-          icon="pi pi-user"
-          severity="primary"
-          @click="navigateToTab('lending')"
-        />
-        <Button
-          label="Rückgabe"
-          icon="pi pi-replay"
-          severity="success"
-          @click="showQuickReturnDialog = true"
-        />
+        <Button label="Rücknahme" icon="pi pi-replay" severity="secondary" outlined @click="showQuickReturnDialog = true" />
+        <Button label="Ausgeben" icon="pi pi-user-plus" @click="navigateToTab('lending')" />
       </template>
     </OverviewHeader>
 
-    <!-- Navigation Tabs -->
-    <TabView v-model:active-index="activeTab" class="inventory-tabs">
-      <!-- Dashboard / Quick Overview -->
-      <TabPanel :value="0">
-        <template #header>
-          <i class="pi pi-home tab-icon"></i>
-          <span>Übersicht</span>
-        </template>
-        <InventoryDashboard v-if="activeTab === 0" @navigate="navigateToTab" />
-      </TabPanel>
+    <div class="inventory-tabs" role="tablist" aria-label="Inventarbereiche" @keydown.left.prevent="moveTab(-1)" @keydown.right.prevent="moveTab(1)">
+      <button
+        v-for="(tab, index) in tabs"
+        :id="`inventory-tab-${tab.name}`"
+        :key="tab.name"
+        type="button"
+        role="tab"
+        class="inventory-tab"
+        :aria-selected="activeTab === index"
+        :tabindex="activeTab === index ? 0 : -1"
+        aria-controls="inventory-panel"
+        @click="activeTab = index"
+      >
+        <i :class="tab.icon" aria-hidden="true"></i>{{ tab.label }}<span v-if="tab.count" class="inventory-tab__count">{{ tab.count }}</span>
+      </button>
+    </div>
 
-      <!-- Lending & Outfitting Workbench -->
-      <TabPanel :value="1">
-        <template #header>
-          <i class="pi pi-user tab-icon"></i>
-          <span>Ausleihe & Einkleidung</span>
-        </template>
-        <LendingWorkbench v-if="activeTab === 1" />
-      </TabPanel>
-
-      <!-- Member Loans -->
-      <TabPanel :value="2">
-        <template #header>
-          <i class="pi pi-users tab-icon"></i>
-          <span>Aktive Ausleihen</span>
-          <Badge v-if="memberLoansCount > 0" :value="memberLoansCount" severity="info" class="ml-2" />
-        </template>
-        <MemberLoansList v-if="activeTab === 2" />
-      </TabPanel>
-
-      <!-- Stock Overview -->
-      <TabPanel :value="3">
-        <template #header>
-          <i class="pi pi-box tab-icon"></i>
-          <span>Bestand</span>
-        </template>
-        <StockOverview v-if="activeTab === 3" />
-      </TabPanel>
-
-      <!-- Items Management -->
-      <TabPanel :value="4">
-        <template #header>
-          <i class="pi pi-list tab-icon"></i>
-          <span>Artikel</span>
-        </template>
-        <ItemsManagement v-if="activeTab === 4" />
-      </TabPanel>
-
-      <!-- Locations Management -->
-      <TabPanel :value="5">
-        <template #header>
-          <i class="pi pi-map-marker tab-icon"></i>
-          <span>Lagerorte</span>
-        </template>
-        <LocationFileBrowser v-if="activeTab === 5" />
-      </TabPanel>
-
-      <!-- Categories Management -->
-      <TabPanel :value="6">
-        <template #header>
-          <i class="pi pi-tags tab-icon"></i>
-          <span>Kategorien</span>
-        </template>
-        <CategoriesManagement v-if="activeTab === 6" />
-      </TabPanel>
-
-      <!-- Transactions History -->
-      <TabPanel :value="7">
-        <template #header>
-          <i class="pi pi-history tab-icon"></i>
-          <span>Verlauf</span>
-        </template>
-        <TransactionsHistory v-if="activeTab === 7" />
-      </TabPanel>
-
-      <!-- Orders -->
-      <TabPanel :value="8">
-        <template #header>
-          <i class="pi pi-shopping-cart tab-icon"></i>
-          <span>Bestellungen</span>
-        </template>
-        <InventoryOrdersTab v-if="activeTab === 8" />
-      </TabPanel>
-    </TabView>
+    <div id="inventory-panel" role="tabpanel" :aria-labelledby="`inventory-tab-${tabNames[activeTab]}`" class="inventory-panel">
+      <InventoryDashboard v-if="activeTab === 0" @navigate="navigateToTab" />
+      <LendingWorkbench v-else-if="activeTab === 1" />
+      <MemberLoansList v-else-if="activeTab === 2" />
+      <StockOverview v-else-if="activeTab === 3" />
+      <ItemsManagement v-else-if="activeTab === 4" />
+      <LocationFileBrowser v-else-if="activeTab === 5" />
+      <CategoriesManagement v-else-if="activeTab === 6" />
+      <TransactionsHistory v-else-if="activeTab === 7" />
+      <InventoryOrdersTab v-else-if="activeTab === 8" />
+    </div>
 
     <!-- Global Transaction Dialog -->
     <TransactionDialog
@@ -121,22 +51,13 @@
       @success="onTransactionSuccess"
     />
 
-    <!-- Toast for notifications -->
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
-import Badge from 'primevue/badge'
-import Toast from 'primevue/toast'
-import ConfirmDialog from 'primevue/confirmdialog'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 
 // Organisms
@@ -198,6 +119,23 @@ const memberLoansCount = computed(() => {
   return inventoryStore.memberLoans.length
 })
 
+const tabs = computed(() => [
+  { name: 'overview', label: 'Übersicht', icon: 'pi pi-home' },
+  { name: 'lending', label: 'Ausgabe', icon: 'pi pi-user-plus' },
+  { name: 'loans', label: 'Ausgegeben', icon: 'pi pi-users', count: memberLoansCount.value },
+  { name: 'stock', label: 'Bestand', icon: 'pi pi-box' },
+  { name: 'items', label: 'Artikel', icon: 'pi pi-list' },
+  { name: 'locations', label: 'Lagerorte', icon: 'pi pi-map-marker' },
+  { name: 'categories', label: 'Kategorien', icon: 'pi pi-tags' },
+  { name: 'history', label: 'Verlauf', icon: 'pi pi-history' },
+  { name: 'orders', label: 'Bestellungen', icon: 'pi pi-shopping-cart' },
+])
+
+function moveTab(step: number) {
+  activeTab.value = (activeTab.value + step + tabs.value.length) % tabs.value.length
+  document.getElementById(`inventory-tab-${tabNames[activeTab.value]}`)?.focus()
+}
+
 // Watch route for tab changes
 watch(
   () => route.query.tab,
@@ -254,72 +192,76 @@ onMounted(async () => {
 
 <style scoped>
 .inventory-view {
-  padding: 0;
-  animation: fadeIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-2);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.inventory-view :deep(.overview-header) {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.inventory-meta {
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
 }
 
 .inventory-tabs {
-  margin-top: 1rem;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--jf-color-border);
+  scrollbar-width: thin;
 }
 
-.inventory-tabs :deep(.p-tabview-nav) {
-  border-bottom: 2px solid var(--surface-border);
-  gap: 0;
+.inventory-tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  padding: 0 var(--jf-space-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--jf-color-text-muted);
+  font: inherit;
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.inventory-tabs :deep(.p-tabview-nav-link) {
-  padding: 1rem 1.25rem;
-  border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
-}
-
-.inventory-tabs :deep(.p-tabview-nav-link:hover) {
+.inventory-tab:hover {
+  color: var(--jf-color-text);
   background: var(--surface-hover);
 }
 
-.inventory-tabs :deep(.p-highlight .p-tabview-nav-link) {
-  border-bottom-color: var(--primary-color);
-  background: transparent;
+.inventory-tab[aria-selected='true'] {
+  border-bottom-color: var(--jf-color-primary);
+  color: var(--jf-color-text);
 }
 
-.inventory-tabs :deep(.p-tabview-panels) {
-  padding: 1.5rem 0;
-  background: transparent;
+.inventory-tab i {
+  font-size: 0.85rem;
 }
 
-.tab-icon {
-  margin-right: 0.5rem;
+.inventory-tab__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--jf-color-text);
+  font-size: var(--jf-text-xs);
 }
 
-.ml-2 {
-  margin-left: 0.5rem;
-}
-
-@media (max-width: 768px) {
-  .inventory-tabs :deep(.p-tabview-nav) {
-    flex-wrap: wrap;
-  }
-
-  .inventory-tabs :deep(.p-tabview-nav-link) {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  .tab-icon {
-    margin-right: 0.25rem;
+@media (max-width: 767px) {
+  .inventory-tab {
+    padding: 0 var(--jf-space-1-5);
   }
 }
 </style>

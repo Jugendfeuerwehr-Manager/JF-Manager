@@ -5,7 +5,9 @@
       <p class="text-color-secondary mt-1 mb-0">Benutzer, Gruppen und Berechtigungen verwalten</p>
     </div>
 
-    <TabView lazy>
+    <p v-if="!authStore.hasPerm('users.change_customuser')" role="status" class="mb-3 text-color-secondary">Lesemodus: Für Änderungen sind die jeweiligen Verwaltungsrechte erforderlich.</p>
+
+    <TabView v-model:activeIndex="activeTab" lazy>
       <TabPanel value="0">
         <template #header>
           <i class="pi pi-users mr-2" />
@@ -35,6 +37,19 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
+
+/** `?tab=departments` opens the departments tab directly, e.g. from the lists module. */
+const TABS = ['users', 'groups', 'departments'] as const
+const activeTab = ref(Math.max(0, TABS.indexOf(route.query.tab as (typeof TABS)[number])))
+watch(activeTab, (index) => {
+  router.replace({ query: { ...route.query, tab: index ? TABS[index] : undefined } })
+})
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import UsersPanel from '@/components/admin/organisms/UsersPanel.vue'

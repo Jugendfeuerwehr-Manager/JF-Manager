@@ -110,7 +110,6 @@
       </div>
     </div>
 
-    <ConfirmDialog />
   </SettingsCategoryCard>
 </template>
 
@@ -121,7 +120,6 @@ import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import SettingsCategoryCard from '../atoms/SettingsCategoryCard.vue'
 import { eventTypesApi } from '@/api/members'
 import type { EventType } from '@/types/api'

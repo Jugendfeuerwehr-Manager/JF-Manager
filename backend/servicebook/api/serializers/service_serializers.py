@@ -28,6 +28,7 @@ class AttendanceSummarySerializer(serializers.Serializer):
 
 
 class ServiceListSerializer(serializers.ModelSerializer):
+    training_status = serializers.CharField(source="training_session.status", read_only=True, default=None)
     """Lightweight serializer for service lists with attendance summary."""
 
     operations_manager = OperationsManagerSerializer(many=True, read_only=True)
@@ -49,6 +50,7 @@ class ServiceListSerializer(serializers.ModelSerializer):
             "topic",
             "department",
             "training_session",
+            "training_status",
             "operations_manager",
             "operations_manager_ids",
             "attendance_summary",
@@ -101,6 +103,7 @@ class AttendeeDetailSerializer(serializers.ModelSerializer):
 
 
 class ServiceDetailSerializer(serializers.ModelSerializer):
+    training_status = serializers.CharField(source="training_session.status", read_only=True, default=None)
     """Detailed serializer for individual service view."""
 
     operations_manager = OperationsManagerSerializer(many=True, read_only=True)
@@ -128,6 +131,7 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
             "events",
             "department",
             "training_session",
+            "training_status",
             "operations_manager",
             "operations_manager_ids",
             "attendance_summary",

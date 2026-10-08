@@ -1,5 +1,6 @@
 <template>
   <div class="lending-workbench">
+    <Message v-if="memberChoices.error.value" severity="error" :closable="false">{{ memberChoices.error.value }}</Message>
     <div class="workbench-grid">
       <!-- Left: Ausgabe-Formular -->
       <Card class="form-card">
@@ -83,13 +84,17 @@
                 placeholder="Lagerort wählen"
                 class="variant-select"
               />
-              <InputNumber v-model="line.quantity" :min="1" show-buttons class="quantity-input" />
-              <Tag
-                v-if="getAvailable(line) >= line.quantity"
-                :value="`${getAvailable(line)} verfügbar`"
-                severity="success"
+              <InputNumber
+                v-model="line.quantity"
+                :min="1"
+                show-buttons
+                button-layout="horizontal"
+                increment-button-icon="pi pi-plus"
+                decrement-button-icon="pi pi-minus"
+                :input-id="`quantity-${line.id}`"
+                aria-label="Menge"
+                class="quantity-input"
               />
-              <Tag v-else :value="`${getAvailable(line)} verfügbar · ${line.quantity - getAvailable(line)} werden bestellt`" severity="warn" />
               <Button
                 icon="pi pi-trash"
                 severity="danger"
@@ -99,6 +104,11 @@
                 :disabled="lines.length === 1"
                 @click="removeLine(index)"
               />
+              <p v-if="line.itemId" class="line-availability" :class="{ 'line-availability--short': getAvailable(line) < line.quantity }" role="status">
+                <i :class="getAvailable(line) >= line.quantity ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" aria-hidden="true"></i>
+                <template v-if="getAvailable(line) >= line.quantity">{{ getAvailable(line) }} verfügbar</template>
+                <template v-else>Nur {{ getAvailable(line) }} verfügbar – {{ line.quantity - getAvailable(line) }} werden zur Bestellung vorgemerkt</template>
+              </p>
             </div>
 
             <div class="field-footer">
@@ -246,16 +256,15 @@ import InputIcon from 'primevue/inputicon'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { useInventoryStore } from '@/stores/inventory'
-import { useMembersStore } from '@/stores/members'
+import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import StockBadge from '../atoms/StockBadge.vue'
 import type { BatchLoanResponse } from '@/types/inventory'
 
 const inventoryStore = useInventoryStore()
-const membersStore = useMembersStore()
+const memberChoices = useRoleMemberOptions('inventory')
 const toast = useToast()
 
 const loading = ref(false)
@@ -286,7 +295,7 @@ function createLine(itemId: number | null = null): LoanLine {
 const lines = ref<LoanLine[]>([createLine()])
 
 const memberOptions = computed(() =>
-  membersStore.members.map((member) => ({ value: member.id, label: member.full_name }))
+  memberChoices.members.value.map((member) => ({ value: member.id, label: member.full_name }))
 )
 
 const itemOptions = computed(() =>
@@ -598,10 +607,30 @@ async function submit() {
 
 .loan-line {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1);
+  margin-bottom: var(--jf-space-1-5);
+  padding-bottom: var(--jf-space-1-5);
+  border-bottom: 1px solid var(--jf-color-border);
 }
+
+.line-availability {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--p-green-800);
+}
+
+.line-availability--short {
+  color: var(--p-amber-900);
+}
+
+.app-dark .line-availability { color: var(--p-green-300); }
+.app-dark .line-availability--short { color: var(--p-amber-300); }
 
 .item-select {
   flex: 2;
@@ -613,7 +642,14 @@ async function submit() {
   min-width: 140px;
 }
 .quantity-input {
+  flex: none;
+  width: 9.5rem;
+}
 
+.quantity-input :deep(input) {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
 }
 .form-actions {
   display: flex;

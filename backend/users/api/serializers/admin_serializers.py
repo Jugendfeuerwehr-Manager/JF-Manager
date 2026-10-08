@@ -4,7 +4,41 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
+from departments.assignment_sources import set_local_groups
+from jf_manager_backend.html_safety import SanitizedHTMLField
+
 User = get_user_model()
+
+
+def mfa_reset_blocker(user, actor=None):
+    """Why the web interface may not reset this account's MFA, or None (SEC-11.4).
+
+    Administrative accounts (superuser, staff, mandatory MFA) are reset only on
+    the console, so a hijacked admin session cannot strip another admin's
+    second factor. Own factors are managed in the profile.
+    """
+    from users.mfa_policy import mfa_required
+
+    if actor is not None and actor.pk == user.pk:
+        return "self"
+    if user.is_superuser or user.is_staff or mfa_required(user):
+        return "console_only"
+    return None
+
+
+def mfa_summary(user, actor=None):
+    from users import mfa
+
+    totp = mfa.has_totp(user)
+    passkeys = user.passkeys.count()
+    blocker = mfa_reset_blocker(user, actor)
+    return {
+        "enabled": totp or passkeys > 0,
+        "totp": totp,
+        "passkeys": passkeys,
+        "ui_reset_allowed": blocker is None,
+        "reset_blocker": blocker,
+    }
 
 
 class PermissionSerializer(serializers.ModelSerializer):
@@ -78,6 +112,8 @@ class AuthGroupWriteSerializer(serializers.ModelSerializer):
 class AdminUserListSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     groups = AuthGroupListSerializer(many=True, read_only=True)
+    # Annotated in AdminUserViewSet.get_queryset (no query per row).
+    mfa_enabled = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = User
@@ -94,13 +130,16 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
             "groups",
+            "mfa_enabled",
         ]
 
 
 class AdminUserDetailSerializer(serializers.ModelSerializer):
+    email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     groups = AuthGroupListSerializer(many=True, read_only=True)
     permissions = serializers.SerializerMethodField()
+    mfa = serializers.SerializerMethodField()
     phone = serializers.CharField(allow_blank=True, required=False)
     mobile_phone = serializers.CharField(allow_blank=True, required=False)
 
@@ -129,8 +168,13 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
             "last_login",
             "groups",
             "permissions",
+            "mfa",
         ]
         read_only_fields = ["id", "date_joined", "last_login"]
+
+    def get_mfa(self, obj):
+        request = self.context.get("request")
+        return mfa_summary(obj, getattr(request, "user", None))
 
     def get_permissions(self, obj):
         if obj.is_superuser:
@@ -141,6 +185,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
 
 
 class AdminUserWriteSerializer(serializers.ModelSerializer):
+    email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, min_length=8, allow_blank=True)
     group_ids = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(),
@@ -194,6 +239,24 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"is_superuser": "Sie koennen Ihre eigene Superuser-Berechtigung nicht entfernen."}
             )
+        if request:
+            if "is_superuser" in data and data["is_superuser"] and not request.user.is_superuser:
+                raise serializers.ValidationError({"is_superuser": "Notfallrechte vergeben ausschließlich Superuser."})
+            if "groups" in data:
+                if not request.user.has_perm("departments.can_assign_roles"):
+                    raise serializers.ValidationError(
+                        {"group_ids": "Ein globales Rollenzuweisungsrecht ist erforderlich."}
+                    )
+                if self.instance and self.instance.pk == request.user.pk:
+                    raise serializers.ValidationError(
+                        {"group_ids": "Eigene Rollenzuweisungen können nicht geändert werden."}
+                    )
+        for group in data.get("groups", []):
+            template = getattr(group, "role_template", None)
+            if template and (template.is_archived or template.scope != "organization"):
+                raise serializers.ValidationError(
+                    {"group_ids": "Globale Zuweisungen benötigen aktive Organisationsvorlagen."}
+                )
         return data
 
     def create(self, validated_data):
@@ -212,7 +275,7 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             user.set_unusable_password()
         user.save()
         if groups:
-            user.groups.set(groups)
+            set_local_groups(user, None, groups)
         return user
 
     def update(self, instance, validated_data):
@@ -230,5 +293,5 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         if groups is not None:
-            instance.groups.set(groups)
+            set_local_groups(instance, None, groups)
         return instance

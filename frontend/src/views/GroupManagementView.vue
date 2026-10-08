@@ -236,8 +236,6 @@
       </template>
     </Dialog>
 
-    <ConfirmDialog />
-    <Toast />
   </div>
 </template>
 
@@ -246,14 +244,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
-import Toast from 'primevue/toast'
 import MemberGroupCard from '@/components/members/atoms/MemberGroupCard.vue'
 import { useGroupsStore } from '@/stores/groups'
 import type { Group, Member } from '@/types/members'

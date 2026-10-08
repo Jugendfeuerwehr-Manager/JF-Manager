@@ -18,6 +18,7 @@ class QualificationListSerializer(serializers.ModelSerializer):
     is_expired = serializers.SerializerMethodField()
     expires_soon = serializers.SerializerMethodField()
     status_class = serializers.CharField(source="get_status_class", read_only=True)
+    has_evidence = serializers.SerializerMethodField()
 
     class Meta:
         model = Qualification
@@ -25,6 +26,7 @@ class QualificationListSerializer(serializers.ModelSerializer):
             "id",
             "type",
             "type_name",
+            "member",
             "person_name",
             "date_acquired",
             "date_expires",
@@ -32,7 +34,12 @@ class QualificationListSerializer(serializers.ModelSerializer):
             "expires_soon",
             "status_class",
             "issued_by",
+            "has_evidence",
         ]
+
+    def get_has_evidence(self, obj):
+        # Uses the viewset's prefetch; no extra query per row.
+        return bool(obj.attachments.all())
 
     def get_is_expired(self, obj):
         return obj.is_expired()

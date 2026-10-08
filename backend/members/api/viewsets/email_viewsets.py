@@ -5,13 +5,14 @@ API viewsets for email messaging system.
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
-from members.api.permissions import CanSendEmails
+from members.api.permissions import CanSendEmails, sending_department_ids
 from members.api.serializers.email_serializers import (
     EmailMessageCreateSerializer,
     EmailMessageDetailSerializer,
@@ -52,9 +53,10 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Filter queryset based on user permissions."""
         queryset = super().get_queryset()
 
-        # Non-staff users can only see their own emails
-        if not self.request.user.is_staff:
+        if not self.request.user.is_superuser:
             queryset = queryset.filter(sender=self.request.user)
+        if not self.request.user.has_perm("members.can_send_member_emails"):
+            queryset = queryset.filter(department_id__in=sending_department_ids(self.request.user))
 
         return queryset
 
@@ -63,22 +65,56 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         Return a Member queryset filtered to the departments accessible
         to the current user, mirroring MemberViewSet.get_queryset() logic.
         """
-        user = self.request.user
         base_qs = Member.objects.prefetch_related("departments")
-
-        if self._user_is_org_wide(user):
-            requested_dept = self._resolve_requested_department(user)
-            if requested_dept is not None:
-                return base_qs.filter(departments__id=requested_dept).distinct()
+        allowed_ids = self._sending_department_ids()
+        if allowed_ids is None:
             return base_qs
-
-        allowed_ids = self._user_department_ids(user)
-        requested_dept = self._resolve_requested_department(user)
-
-        if requested_dept is not None:
-            return base_qs.filter(departments__id=requested_dept).distinct()
-
         return base_qs.filter(departments__id__in=allowed_ids).distinct()
+
+    def _sending_department_ids(self):
+        """Departments the caller may send to; ``None`` means every department."""
+        user = self.request.user
+        has_global_right = user.has_perm("members.can_send_member_emails")
+        requested_dept = self._resolve_requested_department(user)
+        if self._user_is_org_wide(user) and has_global_right:
+            return None if requested_dept is None else [requested_dept]
+        allowed_ids = list(self._user_department_ids(user) if has_global_right else sending_department_ids(user))
+        if requested_dept is not None:
+            allowed_ids = [requested_dept] if requested_dept in allowed_ids else []
+        return allowed_ids
+
+    def _validate_targets(self, data, member_qs):
+        """Reject recipients and a department label outside the sending scope
+        before anything is stored or sent."""
+        errors = {}
+        member = data.get("recipient_member")
+        if member is not None and not member_qs.filter(pk=member.pk).exists():
+            errors["recipient_member"] = "Mitglied nicht gefunden oder kein Versandrecht."
+        members = data.get("recipient_members") or []
+        if members and member_qs.filter(pk__in=[m.pk for m in members]).count() != len({m.pk for m in members}):
+            errors["recipient_members"] = "Mindestens ein Mitglied liegt außerhalb Ihres Versandbereichs."
+        allowed_ids = self._sending_department_ids()
+        department = data.get("department")
+        if department is not None and allowed_ids is not None and department.pk not in allowed_ids:
+            errors["department"] = "Kein Versandrecht für diese Abteilung."
+        group = data.get("recipient_group")
+        if (
+            group is not None
+            and group.department_id is not None
+            and allowed_ids is not None
+            and group.department_id not in allowed_ids
+        ):
+            errors["recipient_group"] = "Kein Versandrecht für die Abteilung dieser Gruppe."
+        if errors:
+            raise ValidationError(errors)
+
+    def perform_create(self, serializer):
+        self._validate_targets(serializer.validated_data, self._get_accessible_member_queryset())
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._validate_targets(serializer.validated_data, self._get_accessible_member_queryset())
+        serializer.save()
 
     @action(detail=False, methods=["post"])
     def send(self, request):
@@ -93,46 +129,24 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """
         create_serializer = EmailMessageCreateSerializer(data=request.data, context={"request": request})
         create_serializer.is_valid(raise_exception=True)
+        self._validate_targets(create_serializer.validated_data, self._get_accessible_member_queryset())
 
-        # Create email message
-        email_message = create_serializer.save()
-
-        # Handle file attachments
-        ALLOWED_CONTENT_TYPES = {
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-            "image/svg+xml",
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/plain",
-            "text/csv",
-        }
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+        from jf_manager_backend.upload_safety import validate_batch
 
         files = request.FILES.getlist("attachments")
-        for f in files:
-            if f.content_type not in ALLOWED_CONTENT_TYPES:
-                email_message.delete()
-                return Response(
-                    {"error": f'Dateityp "{f.content_type}" ist nicht erlaubt für "{f.name}".'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if f.size > MAX_FILE_SIZE:
-                email_message.delete()
-                return Response(
-                    {"error": f'Datei "{f.name}" ist zu groß (max. 10 MB).'}, status=status.HTTP_400_BAD_REQUEST
-                )
+        try:
+            content_types = validate_batch(files)
+        except ValidationError as exc:
+            return Response({"error": str(exc.detail["file"])}, status=status.HTTP_400_BAD_REQUEST)
+        # Validate the entire batch before creating the message or storing any file.
+        email_message = create_serializer.save()
+        for f, content_type in zip(files, content_types, strict=True):
             EmailAttachment.objects.create(
                 email_message=email_message,
                 file=f,
                 original_filename=f.name,
                 file_size=f.size,
-                content_type=f.content_type or "",
+                content_type=content_type,
             )
 
         try:

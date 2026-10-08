@@ -6,6 +6,7 @@ from datetime import date
 from io import BytesIO
 
 import openpyxl
+from django.db import transaction as db_transaction
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -14,12 +15,15 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from jf_manager_backend.renderers import PassthroughRenderer
+from jf_manager_backend.safe_exports import write_safe_cell
 from members.api_serializers import (
     AttachmentSerializer,
     EventSerializer,
@@ -28,7 +32,18 @@ from members.api_serializers import (
     MemberListSerializer,
     ParentSerializer,
 )
-from members.models import Attachment, Event, Group, Member, Status
+from members.models import Attachment, Group, Member, Status
+from users.step_up import StepUpForExports
+
+
+class MemberActionPermissions(DepartmentRoleModelPermissions):
+    def _required_permissions(self, request, view):
+        if getattr(view, "action", None) == "export_excel" and request.method in ("GET", "HEAD"):
+            return ["members.view_member", "members.export_member"]
+        if getattr(view, "action", None) == "delete_with_strategy":
+            return ["members.delete_member"]
+        return super()._required_permissions(request, view)
+
 
 MEMBER_EXPORT_COLUMNS = {
     "name": "Vorname",
@@ -86,16 +101,6 @@ MEMBER_EXPORT_DEFAULT_COLUMNS = [
 ]
 
 
-class PassthroughRenderer(BaseRenderer):
-    """Return data as-is for binary responses."""
-
-    media_type = "*/*"
-    format = "binary"
-
-    def render(self, data, accepted_media_type=None, renderer_context=None):
-        return data
-
-
 @extend_schema_view(
     list=extend_schema(
         summary="List all members",
@@ -120,13 +125,13 @@ class PassthroughRenderer(BaseRenderer):
         responses={204: None, 409: None},
     ),
 )
-class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
+class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Member.objects.select_related("status", "group", "storage_location").prefetch_related(
         "parent_set", "departments"
     )
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, MemberActionPermissions, StepUpForExports]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "group", "canSwimm", "gender"]
+    filterset_fields = ["status", "group", "canSwimm", "gender", "birthday"]
     search_fields = ["name", "lastname", "email", "identityCardNumber"]
     ordering_fields = ["name", "lastname", "birthday", "joined"]
     ordering = ["lastname", "name"]
@@ -143,21 +148,37 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         if self._user_is_org_wide(user):
             requested_dept = self._resolve_requested_department(user)
             if requested_dept is not None:
-                return base_qs.filter(departments__id=requested_dept).distinct()
-            return base_qs
+                base_qs = base_qs.filter(departments__id=requested_dept)
+            return self._filter_by_action_permission(base_qs.distinct(), user)
 
         allowed_ids = self._user_department_ids(user)
         requested_dept = self._resolve_requested_department(user)
 
         if requested_dept is not None:
-            return base_qs.filter(departments__id=requested_dept).distinct()
+            return self._filter_by_action_permission(base_qs.filter(departments__id=requested_dept).distinct(), user)
 
         # Department-scoped users only see members in their departments.
         # Members with no department are NOT surfaced (include_central_records=False).
-        return base_qs.filter(departments__id__in=allowed_ids).distinct()
+        return self._filter_by_action_permission(base_qs.filter(departments__id__in=allowed_ids).distinct(), user)
+
+    def _validate_department_changes(self, serializer):
+        """Adding or removing a department needs the write right there, so a
+        role in A cannot move a member into (or out of) department B."""
+        if "departments" not in serializer.validated_data:
+            return
+        new_ids = {department.pk for department in serializer.validated_data["departments"]}
+        old_ids = set(serializer.instance.departments.values_list("id", flat=True)) if serializer.instance else set()
+        permission = "members.add_member" if serializer.instance is None else "members.change_member"
+        if any(not self._has_right_in_department(self.request.user, permission, pk) for pk in new_ids ^ old_ids):
+            raise ValidationError({"departments": "Keine Schreibberechtigung für diese Abteilungszuordnung."})
+
+    def perform_update(self, serializer):
+        self._validate_department_changes(serializer)
+        serializer.save()
 
     def perform_create(self, serializer):
         """Auto-assign department on create for dept-scoped users."""
+        self._validate_department_changes(serializer)
         instance = serializer.save()
         user = self.request.user
         requested_dept = self._resolve_requested_department(user)
@@ -198,7 +219,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         from django.db.models import Count
 
-        qs = self.queryset
+        qs = self.get_queryset()
         total = qs.count()
 
         # Gender distribution
@@ -208,7 +229,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Status distribution
         by_status = []
-        for status_obj in Status.objects.all():
+        for status_obj in Status.objects.filter(pk__in=qs.values_list("status_id", flat=True)):
             count = qs.filter(status=status_obj).count()
             by_status.append({"name": status_obj.name, "color": status_obj.color, "count": count})
         no_status_count = qs.filter(status__isnull=True).count()
@@ -217,7 +238,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Group distribution
         by_group = []
-        for group_obj in Group.objects.all():
+        for group_obj in Group.objects.filter(pk__in=qs.values_list("group_id", flat=True)):
             count = qs.filter(group=group_obj).count()
             by_group.append({"name": group_obj.name, "count": count})
         no_group_count = qs.filter(group__isnull=True).count()
@@ -260,25 +281,59 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     @extend_schema(summary="Get member's parents")
     @action(detail=True, methods=["get"])
     def parents(self, request, pk=None):
+        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
+
         member = self.get_object()
-        serializer = ParentSerializer(member.parent_set.all(), many=True, context={"request": request})
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        if not DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen von Elternkontakten.")
+        serializer = ParentSerializer(
+            parent_view.get_queryset().filter(children=member), many=True, context={"request": request}
+        )
         return Response(serializer.data)
 
     @extend_schema(summary="Get member's events")
     @action(detail=True, methods=["get"])
     def events(self, request, pk=None):
+        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.event_viewsets import EventRolePermissions, EventViewSet
+
         member = self.get_object()
-        events = Event.objects.filter(member=member).order_by("-datetime")
+        event_view = EventViewSet()
+        event_view.request = clone_request(request, "GET")
+        event_view.action = "list"
+        if not EventRolePermissions().has_permission(event_view.request, event_view):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen von Ereignissen.")
+        events = event_view.get_queryset().filter(member=member).order_by("-datetime")
         serializer = EventSerializer(events, many=True, context={"request": request})
         return Response(serializer.data)
 
-    @extend_schema(summary="Get member's attachments")
-    @action(detail=True, methods=["get"])
+    @extend_schema(summary="Get or upload member attachments")
+    @action(detail=True, methods=["get", "post"], permission_classes=[IsAuthenticated])
     def attachments(self, request, pk=None):
         from django.contrib.contenttypes.models import ContentType
+        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.request import clone_request
 
+        permission_request = clone_request(request, "PATCH" if request.method == "POST" else request.method)
+        permission = DepartmentRoleModelPermissions()
+        if not permission.has_permission(permission_request, self):
+            raise PermissionDenied("Keine Berechtigung für die Anhänge dieses Mitglieds.")
         member = self.get_object()
+        if not permission.has_object_permission(permission_request, self, member):
+            raise PermissionDenied("Keine Berechtigung für die Anhänge dieses Mitglieds.")
         content_type = ContentType.objects.get_for_model(Member)
+        if request.method == "POST":
+            serializer = AttachmentSerializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save(content_type=content_type, object_id=member.pk, uploaded_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         attachments = Attachment.objects.filter(content_type=content_type, object_id=member.id).order_by("-uploaded_at")
         serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
         return Response(serializer.data)
@@ -291,6 +346,8 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         # Avoid hitting model-level ProtectedError in the default delete flow.
         if transaction_count:
             return self._member_protected_response(instance, transaction_count)
+        if self._has_member_stock(instance):
+            return self._member_stock_response()
 
         try:
             self.perform_destroy(instance)
@@ -324,6 +381,19 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         return list(storage_ids)
 
+    def _has_member_stock(self, member):
+        from inventory.models import Stock
+
+        return Stock.objects.filter(
+            location_id__in=self._get_member_storage_location_ids(member), quantity__gt=0
+        ).exists()
+
+    def _member_stock_response(self):
+        return Response(
+            {"detail": "Vor dem Löschen müssen alle Bestände des Mitglieds zurückgebucht werden."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
     def _member_protected_response(self, member, transaction_count):
         return Response(
             {
@@ -339,16 +409,16 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         )
 
     class _DeleteWithStrategySerializer(serializers.Serializer):
-        STRATEGY_CHOICES = ["unlink", "anonymize", "delete_transactions"]
+        STRATEGY_CHOICES = ["unlink", "anonymize"]
         strategy = serializers.ChoiceField(choices=STRATEGY_CHOICES)
 
     @extend_schema(
         summary="Delete member with strategy for linked transactions",
         description=(
             "Deletes the member and handles linked inventory transactions according to the chosen strategy:\n"
-            "- **unlink**: Stores the member's full name as a string on each transaction, then removes the link.\n"
-            "- **anonymize**: Marks transactions as 'Ehemaliges Mitglied' (no name stored, DSGVO-compliant).\n"
-            "- **delete_transactions**: Permanently deletes all linked transactions (destructive, history lost)."
+            "- **unlink**: Keeps the former personal storage location and its name in the booking history.\n"
+            "- **anonymize**: Removes the member name from the former personal storage location.\n"
+            "Locations with remaining stock must be cleared by a return booking first."
         ),
         request=_DeleteWithStrategySerializer,
         responses={204: None, 400: None},
@@ -361,29 +431,25 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         strategy = serializer.validated_data["strategy"]
-        self._apply_deletion_strategy(member, strategy)
         try:
-            member.delete()
+            with db_transaction.atomic():
+                from inventory.models import StorageLocation
+
+                member = Member.objects.select_for_update().get(pk=member.pk)
+                personal_locations = list(StorageLocation.objects.select_for_update().filter(member=member))
+                if self._has_member_stock(member):
+                    return self._member_stock_response()
+                for location in personal_locations:
+                    location.member = None
+                    location.is_member = False
+                    if strategy == "anonymize":
+                        location.name = f"Ehemaliges Mitglied #{location.pk}"
+                    location.save(update_fields=["member", "is_member", "name"])
+                member.delete()
         except ProtectedError:
             transaction_count = self._get_member_transaction_count(member)
             return self._member_protected_response(member, transaction_count)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def _apply_deletion_strategy(self, member, strategy):
-        """Apply the chosen transaction strategy before deleting the member."""
-        from inventory.models import Transaction
-
-        storage_ids = self._get_member_storage_location_ids(member)
-        if not storage_ids:
-            return
-
-        if strategy == "delete_transactions":
-            Transaction.objects.filter(Q(source_id__in=storage_ids) | Q(target_id__in=storage_ids)).delete()
-        elif strategy in ("unlink", "anonymize"):
-            former_name = f"{member.name} {member.lastname}" if strategy == "unlink" else "Ehemaliges Mitglied"
-            # Use bulk update to bypass model-level clean() validation
-            Transaction.objects.filter(source_id__in=storage_ids).update(source=None, former_member_name=former_name)
-            Transaction.objects.filter(target_id__in=storage_ids).update(target=None, former_member_name=former_name)
 
     @extend_schema(
         summary="Export members to Excel with column selection",
@@ -401,8 +467,9 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request):
-        if not request.user.has_perm("members.view_member"):
-            return Response({"error": "Keine Berechtigung für Mitglieder-Export"}, status=403)
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
 
         # Determine which columns to export
         columns_param = request.query_params.get("columns", "")
@@ -416,6 +483,14 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         # Apply the same filters as the list view
         qs = self.filter_queryset(self.get_queryset())
+        self.export_department_ids = sorted(set(qs.values_list("departments__id", flat=True)) - {None})
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        parent_view.action = "list"
+        if DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
+            visible_parents = parent_view.get_queryset().filter(children__in=qs).distinct()
+        else:
+            visible_parents = parent_view.queryset.none()
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -433,7 +508,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         today = date.today()
 
         for row_idx, member in enumerate(qs, start=2):
-            parents = list(member.parent_set.all()[:2])
+            parents = list(visible_parents.filter(children=member)[:2])
             p1 = parents[0] if len(parents) > 0 else None
             p2 = parents[1] if len(parents) > 1 else None
 
@@ -446,7 +521,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 elif col_key == "gender":
                     value = {"male": "Männlich", "female": "Weiblich", "diverse": "Divers"}.get(member.gender, "")
                 elif col_key == "birthday":
-                    value = member.birthday.strftime("%d.%m.%Y") if member.birthday else ""
+                    value = member.birthday or ""
                 elif col_key == "age":
                     if member.birthday:
                         value = (
@@ -467,7 +542,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 elif col_key == "city":
                     value = member.city
                 elif col_key == "joined":
-                    value = member.joined.strftime("%d.%m.%Y") if member.joined else ""
+                    value = member.joined or ""
                 elif col_key == "status":
                     value = member.status.name if member.status else ""
                 elif col_key == "group":
@@ -517,7 +592,7 @@ class MemberViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 elif col_key == "parent2_city":
                     value = p2.city if p2 else ""
 
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                write_safe_cell(ws, row_idx, col_idx, value)
 
         # Auto-fit column widths (capped at 50)
         for col in ws.columns:

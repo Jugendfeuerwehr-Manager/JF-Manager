@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from jf_manager_backend.encrypted_fields import EncryptedJSONField
+
 
 class SyncJob(models.Model):
     class Provider(models.TextChoices):
@@ -50,7 +52,7 @@ class SyncJob(models.Model):
     )
     enabled = models.BooleanField(default=True, verbose_name="Aktiv")
     config = models.JSONField(default=dict, blank=True, verbose_name="Konfiguration")
-    credentials = models.JSONField(default=dict, blank=True, verbose_name="Zugangsdaten")
+    credentials = EncryptedJSONField(default=dict, blank=True, verbose_name="Zugangsdaten")
     created_by = models.ForeignKey(
         "users.CustomUser",
         on_delete=models.SET_NULL,

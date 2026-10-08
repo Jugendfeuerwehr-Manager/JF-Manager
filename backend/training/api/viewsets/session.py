@@ -1,25 +1,49 @@
 """ViewSet for TrainingSession."""
 
-import datetime
+from datetime import datetime
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from inventory.models import Item
 from training.api.filters import TrainingSessionFilter
-from training.api.permissions import CanManageTraining
+from training.api.permissions import CanManageTraining, can_manage_training_department, filter_training_queryset
+from training.api.plan import PlanInputSerializer, advance_revision, lock_sessions, prepare_plan, save_plan
 from training.api.serializers import (
     TrainingSessionCreateSerializer,
     TrainingSessionDetailSerializer,
     TrainingSessionHandoutSerializer,
     TrainingSessionListSerializer,
 )
-from training.models import TrainingSession
+from training.api.serializers.block import InstructorMiniSerializer
+from training.api.serializers.debrief import DebriefInputSerializer, TrainingDebriefSerializer
+from training.api.serializers.template import CopyToDateSerializer, SaveAsTemplateSerializer, TrainingTemplateSerializer
+from training.conflicts import draft_blocks, find_conflicts, saved_blocks
+from training.copying import copied_files, copy_session, eligible_instructors, session_to_template
+from training.models import TrainingDebrief, TrainingSession
+from training.series import (
+    PropagationInputSerializer,
+    SeriesInputSerializer,
+    generate_missing,
+    generation_preview,
+    lock_series,
+    propagate,
+    propagation_preview,
+    series_root,
+)
+from training.workflow import service_is_documented, sync_linked_service
+
+SERIES_ACTIONS = {"generate_series", "propagate_series"}
+# Read-only checks of a posted draft never lock the plan row.
+UNLOCKED_ACTIONS = SERIES_ACTIONS | {"check_plan"}
 
 
 class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
@@ -27,13 +51,29 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
     CRUD for training sessions + handout + generate_series actions.
     """
 
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageTraining]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = TrainingSessionFilter
     ordering_fields = ["date", "start_time", "title"]
     ordering = ["date", "start_time"]
     queryset = TrainingSession.objects.all()  # required by mixin; overridden in get_queryset
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            with transaction.atomic():
+                return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self):
+        session = super().get_object()
+        # Series actions lock the series root before any occurrence.
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE") and self.action not in UNLOCKED_ACTIONS:
+            locked = lock_sessions([session.pk])
+            if not locked:
+                raise NotFound()
+            session = locked[0]
+            self.check_object_permissions(self.request, session)
+        return session
 
     def get_queryset(self):
         qs = TrainingSession.objects.select_related(
@@ -45,49 +85,13 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
             "groups",
             "blocks__groups",
             "blocks__library_block",
+            "blocks__instructors",
+            "blocks__materials",
         )
         self.queryset = qs
-        return super().get_queryset()
+        return filter_training_queryset(self.request, super().get_queryset())
 
-    def _to_aware_datetime(self, date_value, time_value):
-        dt = datetime.datetime.combine(date_value, time_value)
-        if timezone.is_naive(dt):
-            return timezone.make_aware(dt, timezone.get_current_timezone())
-        return dt
-
-    def _sync_linked_servicebook_entry(self, session):
-        from servicebook.models import Service
-
-        start = self._to_aware_datetime(session.date, session.start_time)
-        end = self._to_aware_datetime(session.date, session.end_time)
-
-        service, _ = Service.objects.get_or_create(
-            training_session=session,
-            defaults={
-                "start": start,
-                "end": end,
-                "topic": session.title,
-                "place": session.location,
-                "description": session.description,
-                "department": session.department,
-            },
-        )
-        service.start = start
-        service.end = end
-        service.topic = session.title
-        service.place = session.location
-        service.description = session.description
-        service.department = session.department
-        service.save(
-            update_fields=[
-                "start",
-                "end",
-                "topic",
-                "place",
-                "description",
-                "department",
-            ]
-        )
+    _sync_linked_servicebook_entry = staticmethod(sync_linked_service)
 
     def perform_create(self, serializer):
         session = serializer.save()
@@ -95,6 +99,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
 
     def perform_update(self, serializer):
         session = serializer.save()
+        advance_revision(session)
         self._sync_linked_servicebook_entry(session)
 
     def destroy(self, request, *args, **kwargs):
@@ -111,7 +116,7 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
             }
             is_future_service = linked_service.start >= timezone.now()
 
-            if is_future_service and should_delete_linked_service:
+            if is_future_service and should_delete_linked_service and not service_is_documented(linked_service):
                 linked_service.delete()
             else:
                 linked_service.training_session = None
@@ -128,6 +133,28 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
             return TrainingSessionHandoutSerializer
         return TrainingSessionDetailSerializer
 
+    @action(detail=True, methods=["get", "put"])
+    def plan(self, request, pk=None):
+        """Read/replace the full plan. Omitted existing blocks are removed."""
+        session = self.get_object()
+        if request.method == "GET":
+            return Response(TrainingSessionDetailSerializer(session, context=self.get_serializer_context()).data)
+        payload = PlanInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        if payload.validated_data["expected_revision"] != session.revision:
+            return Response(
+                {
+                    "code": "plan_revision_conflict",
+                    "detail": "Der Plan wurde inzwischen geändert. Lokalen Entwurf vergleichen.",
+                    "current": TrainingSessionDetailSerializer(session, context=self.get_serializer_context()).data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        session = save_plan(
+            session, payload.validated_data, self.get_serializer_context(), self._sync_linked_servicebook_entry
+        )
+        return Response(TrainingSessionDetailSerializer(session, context=self.get_serializer_context()).data)
+
     @action(detail=True, methods=["get"])
     def handout(self, request, pk=None):
         """
@@ -138,86 +165,225 @@ class TrainingSessionViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet)
         serializer = self.get_serializer(session)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"])
+    def series_preview(self, request, pk=None):
+        """Complete, bounded preview of missing occurrences; nothing is changed."""
+        session = self.get_object()
+        payload = SeriesInputSerializer(data=request.query_params)
+        payload.is_valid(raise_exception=True)
+        root = series_root(session)
+        children = list(root.series_children.order_by("pk"))
+        return Response(generation_preview(root, children, payload.validated_data, request.user))
+
     @action(detail=True, methods=["post"])
     def generate_series(self, request, pk=None):
         """
         POST /api/v1/training/sessions/{id}/generate_series/
-        Creates child sessions from the recurrence_rule on this session.
-        Idempotent: deletes existing children before regenerating.
+        Adds missing occurrences of the confirmed preview. Existing sessions,
+        plans, services and attendances are never deleted or regenerated.
         """
-        parent = self.get_object()
-        if not parent.recurrence_rule:
+        session = self.get_object()
+        payload = SeriesInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        if not payload.validated_data.get("preview_token"):
+            raise ValidationError({"preview_token": "Vorschau bestätigen, bevor Termine erzeugt werden."})
+        root, children = lock_series(session)
+        result, preview = generate_missing(root, children, payload.validated_data, request.user)
+        if result is None:
             return Response(
-                {"detail": "Diese Einheit hat keine Wiederholungsregel."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {
+                    "code": "series_preview_changed",
+                    "detail": "Die Serie wurde inzwischen geändert. Aktualisierte Vorschau prüfen.",
+                    "preview": preview,
+                },
+                status=status.HTTP_409_CONFLICT,
             )
+        return Response(result, status=status.HTTP_201_CREATED)
 
-        rule = parent.recurrence_rule
-        frequency = rule.get("frequency", "WEEKLY")
-        end_date_str = rule.get("end_date")
-        if not end_date_str:
+    @action(detail=True, methods=["post"])
+    def propagation_preview(self, request, pk=None):
+        """'This and following': complete preview of the saved state; nothing is changed."""
+        session = self.get_object()
+        payload = PropagationInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        root = series_root(session)
+        children = list(root.series_children.order_by("pk"))
+        return Response(propagation_preview(session, root, children, payload.validated_data, request.user))
+
+    @action(detail=True, methods=["post"])
+    def propagate_series(self, request, pk=None):
+        """Applies the confirmed preview; deviating dates only when explicitly listed."""
+        session = self.get_object()
+        payload = PropagationInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        if not payload.validated_data.get("preview_token"):
+            raise ValidationError({"preview_token": "Vorschau bestätigen, bevor Folgetermine geändert werden."})
+        root, children = lock_series(session)
+        result, preview = propagate(session, root, children, payload.validated_data, request.user)
+        if result is None:
             return Response(
-                {"detail": "recurrence_rule benötigt ein end_date."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {
+                    "code": "series_preview_changed",
+                    "detail": "Serie oder Termine wurden inzwischen geändert. Aktualisierte Vorschau prüfen.",
+                    "preview": preview,
+                },
+                status=status.HTTP_409_CONFLICT,
             )
+        return Response(result)
 
-        try:
-            end_date = datetime.date.fromisoformat(end_date_str)
-        except ValueError:
-            return Response(
-                {"detail": "Ungültiges end_date Format (erwartet YYYY-MM-DD)."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    @action(detail=True, methods=["post"])
+    def save_as_template(self, request, pk=None):
+        """Save the stored plan as an independent exercise template (own file copies)."""
+        session = self.get_object()
+        payload = SaveAsTemplateSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        with copied_files() as files:
+            template = session_to_template(session, request.user, files, payload.validated_data.get("title", ""))
+        return Response(TrainingTemplateSerializer(template).data, status=status.HTTP_201_CREATED)
 
-        delta_map = {
-            "WEEKLY": datetime.timedelta(weeks=1),
-            "BIWEEKLY": datetime.timedelta(weeks=2),
-            "MONTHLY": None,  # handled separately
-        }
-        delta = delta_map.get(frequency)
-
-        # Delete previous children
-        parent.series_children.all().delete()
-
-        current_date = parent.date
-        created = []
-
-        while True:
-            # Advance to next occurrence
-            if frequency == "MONTHLY":
-                month = current_date.month + 1
-                year = current_date.year + (month - 1) // 12
-                month = ((month - 1) % 12) + 1
-                try:
-                    current_date = current_date.replace(year=year, month=month)
-                except ValueError:
-                    import calendar
-
-                    last_day = calendar.monthrange(year, month)[1]
-                    current_date = current_date.replace(year=year, month=month, day=last_day)
-            else:
-                current_date = current_date + delta
-
-            if current_date > end_date:
-                break
-
-            child = TrainingSession.objects.create(
-                title=parent.title,
-                description=parent.description,
-                date=current_date,
-                start_time=parent.start_time,
-                end_time=parent.end_time,
-                location=parent.location,
-                notes=parent.notes,
-                series_parent=parent,
-                department=parent.department,
-                created_by=request.user if request.user.is_authenticated else None,
-            )
-            child.groups.set(parent.groups.all())
-            self._sync_linked_servicebook_entry(child)
-            created.append(child.pk)
-
+    @action(detail=True, methods=["post"])
+    def copy(self, request, pk=None):
+        """Independent draft copy on another date; not part of any series."""
+        session = self.get_object()
+        payload = CopyToDateSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        title = payload.validated_data.get("title") or session.title
+        with copied_files() as files:
+            copy = copy_session(session, payload.validated_data["date"], request.user, files, title=title)
         return Response(
-            {"created": len(created), "session_ids": created},
+            TrainingSessionDetailSerializer(copy, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
         )
+
+    def _planning_session(self):
+        session = self.get_object()
+        if not can_manage_training_department(self.request.user, session.department_id):
+            raise PermissionDenied("Nur Planer dieser Übungsabteilung.")
+        return session
+
+    @action(detail=True, methods=["get"])
+    def instructor_options(self, request, pk=None):
+        """Minimal list: active accounts with a role in the exercise department."""
+        session = self._planning_session()
+        users = eligible_instructors(get_user_model().objects.all(), session.department_id).order_by(
+            "last_name", "first_name", "username"
+        )
+        return Response(InstructorMiniSerializer(users[:500], many=True).data)
+
+    @action(detail=True, methods=["get"])
+    def material_options(self, request, pk=None):
+        """Minimal item lookup (department items and shared items) for material needs."""
+        session = self._planning_session()
+        items = Item.objects.filter(Q(department_id=session.department_id) | Q(department__isnull=True))
+        search = request.query_params.get("search", "").strip()
+        if search:
+            items = items.filter(name__icontains=search)
+        items = items.prefetch_related("variants").order_by("name", "pk")[:30]
+        return Response(
+            [
+                {
+                    "id": item.pk,
+                    "name": item.name or f"Artikel #{item.pk}",
+                    "unit": item.base_unit,
+                    "variants": [{"id": variant.pk, "label": str(variant)} for variant in item.variants.all()],
+                }
+                for item in items
+            ]
+        )
+
+    @action(detail=True, methods=["get", "put"])
+    def debrief(self, request, pk=None):
+        """Actual times, reflection and improvements (planners only); optionally completes the exercise."""
+        session = self._planning_session()
+        debrief = TrainingDebrief.objects.filter(session=session).first()
+        if request.method == "GET":
+            return Response(self._debrief_data(session, debrief))
+        payload = DebriefInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        if session.status not in (TrainingSession.Status.PUBLISHED, TrainingSession.Status.COMPLETED):
+            raise ValidationError(
+                {"status": "Nachbereitung ist nur für veröffentlichte oder abgeschlossene Übungen möglich."}
+            )
+        begin = timezone.make_aware(datetime.combine(session.date, session.start_time))
+        if timezone.now() < begin:
+            raise ValidationError({"status": "Die Übung hat noch nicht begonnen."})
+        with transaction.atomic():
+            # The session row is locked by get_object; the debrief row follows it.
+            debrief = TrainingDebrief.objects.select_for_update().filter(session=session).first()
+            current = debrief.revision if debrief else 0
+            if data["expected_revision"] != current:
+                return Response(
+                    {
+                        "code": "debrief_revision_conflict",
+                        "detail": "Die Nachbereitung wurde inzwischen geändert. Eingaben vergleichen.",
+                        "current": self._debrief_data(session, debrief),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            debrief = debrief or TrainingDebrief(session=session)
+            for name in ("actual_start", "actual_end", "reflection", "improvements"):
+                setattr(debrief, name, data[name])
+            debrief.revision = current + 1
+            debrief.updated_by = request.user
+            debrief.save()
+            if data["complete"] and session.status == TrainingSession.Status.PUBLISHED:
+                serializer = TrainingSessionDetailSerializer(
+                    session,
+                    # Ticking "complete" is the explicit confirmation; attendance stays.
+                    data={"status": TrainingSession.Status.COMPLETED, "confirm_service_change": True},
+                    partial=True,
+                    context=self.get_serializer_context(),
+                )
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+        session.refresh_from_db()
+        return Response(self._debrief_data(session, debrief))
+
+    def _debrief_data(self, session, debrief):
+        data = (
+            TrainingDebriefSerializer(debrief).data
+            if debrief
+            else {
+                "actual_start": None,
+                "actual_end": None,
+                "actual_minutes": None,
+                "reflection": "",
+                "improvements": "",
+                "revision": 0,
+                "updated_by_name": None,
+                "updated_at": None,
+            }
+        )
+        planned = (session.end_time.hour * 60 + session.end_time.minute) - (
+            session.start_time.hour * 60 + session.start_time.minute
+        )
+        return {
+            **data,
+            "planned_minutes": planned,
+            "session_status": session.status,
+            "session_revision": session.revision,
+        }
+
+    @action(detail=True, methods=["get"])
+    def conflicts(self, request, pk=None):
+        """Planning warnings of the saved plan (planners only)."""
+        session = self._planning_session()
+        groups = {group.pk: group.name for group in session.groups.all()}
+        return Response({"warnings": find_conflicts(session, groups, saved_blocks(session), request.user)})
+
+    @action(detail=True, methods=["post"])
+    def check_plan(self, request, pk=None):
+        """Validate an unsaved complete draft and return its planning warnings; nothing is saved."""
+        session = self._planning_session()
+        payload = PlanInputSerializer(data={"expected_revision": session.revision, **request.data})
+        payload.is_valid(raise_exception=True)
+        data = dict(payload.validated_data)
+        # Checking is no change: documented services need no confirmation here.
+        data["session"] = {**data["session"], "confirm_service_change": True}
+        session_serializer, candidate, prepared, _ = prepare_plan(session, data, self.get_serializer_context())
+        groups = session_serializer.validated_data.get("groups")
+        if groups is None:
+            groups = list(session.groups.all())
+        names = {group.pk: group.name for group in groups}
+        return Response({"warnings": find_conflicts(candidate, names, draft_blocks(prepared), request.user)})

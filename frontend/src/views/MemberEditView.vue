@@ -1,49 +1,88 @@
 <template>
-  <div class="member-edit-view">
-    <div class="header">
-      <Button 
-        icon="pi pi-arrow-left" 
-        text 
-        rounded 
-        @click="router.push('/members')"
-        aria-label="Zurück"
-      />
-      <h1>{{ isEditMode ? 'Mitglied bearbeiten' : 'Neues Mitglied' }}</h1>
-    </div>
+  <div class="member-edit">
+    <StateView v-if="loading" kind="loading" title="Mitglied wird geladen …" />
 
-    <Card v-if="!loading || formData">
-      <template #content>
-        <form @submit.prevent="handleSubmit" class="member-form">
-          <!-- Basic Information -->
-          <Panel header="Persönliche Daten" :toggleable="true" class="panel">
+    <template v-else>
+      <nav aria-label="Brotkrumen" class="breadcrumb">
+        <router-link to="/members">Mitglieder</router-link>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+        <template v-if="isEditMode">
+          <router-link :to="`/members/${memberId}`">{{ displayName }}</router-link>
+          <i class="pi pi-angle-right" aria-hidden="true"></i>
+          <span aria-current="page">Bearbeiten</span>
+        </template>
+        <span v-else aria-current="page">Neu</span>
+      </nav>
+
+      <header class="edit-head">
+        <PrivateAvatar
+          :image="avatarPreview || formData.avatar_url"
+          :label="avatarPreview || formData.avatar_url ? undefined : initials"
+          shape="circle"
+          class="edit-head__avatar"
+        />
+        <div class="edit-head__text">
+          <h1>{{ isEditMode ? 'Mitglied bearbeiten' : 'Mitglied anlegen' }}</h1>
+          <div class="edit-head__badges">
+            <MemberStatusBadge v-if="selectedStatus" :status="selectedStatus" />
+            <StatusBadge v-if="isDirty" severity="warning" icon="pi pi-pencil" label="Ungespeicherte Änderungen" />
+          </div>
+        </div>
+      </header>
+
+      <div class="edit-layout">
+        <nav class="section-nav" aria-label="Abschnitte">
+          <p class="section-nav__title">Abschnitte</p>
+          <a
+            v-for="section in sections"
+            :key="section.id"
+            :href="`#${section.id}`"
+            class="section-nav__link"
+            :class="{ 'section-nav__link--active': activeSection === section.id }"
+            @click.prevent="goToSection(section.id)"
+          >
+            {{ section.label }}
+            <span v-if="section.errors" class="section-nav__errors" :aria-label="`${section.errors} Fehler`">{{ section.errors }}</span>
+          </a>
+        </nav>
+
+        <form id="member-form" class="edit-form" novalidate @submit.prevent="handleSubmit">
+          <section id="section-master" class="form-card" aria-labelledby="section-master-title">
+            <h2 id="section-master-title" tabindex="-1">Stammdaten</h2>
             <div class="form-grid">
               <div class="field">
-                <label for="name">Vorname *</label>
-                <InputText 
-                  id="name" 
-                  v-model="formData.name" 
+                <label for="name">Vorname</label>
+                <InputText
+                  id="name"
+                  v-model="formData.name"
                   :invalid="!!errors.name"
+                  :aria-invalid="!!errors.name || undefined"
+                  :aria-describedby="errors.name ? 'name-error' : undefined"
+                  autocomplete="off"
                   required
                 />
-                <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
+                <p v-if="errors.name" id="name-error" class="field__error"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.name }}</p>
               </div>
 
               <div class="field">
-                <label for="lastname">Nachname *</label>
-                <InputText 
-                  id="lastname" 
-                  v-model="formData.lastname" 
+                <label for="lastname">Nachname</label>
+                <InputText
+                  id="lastname"
+                  v-model="formData.lastname"
                   :invalid="!!errors.lastname"
+                  :aria-invalid="!!errors.lastname || undefined"
+                  :aria-describedby="errors.lastname ? 'lastname-error' : undefined"
+                  autocomplete="off"
                   required
                 />
-                <small v-if="errors.lastname" class="p-error">{{ errors.lastname }}</small>
+                <p v-if="errors.lastname" id="lastname-error" class="field__error"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.lastname }}</p>
               </div>
 
               <div class="field">
-                <label for="birthday">Geburtsdatum</label>
-                <Calendar 
-                  id="birthday" 
-                  :model-value="formData.birthday" 
+                <label for="birthday">Geburtsdatum <span class="field__optional">(TT.MM.JJJJ)</span></label>
+                <Calendar
+                  input-id="birthday"
+                  :model-value="formData.birthday"
                   date-format="dd.mm.yy"
                   :show-icon="true"
                   :max-date="new Date()"
@@ -53,101 +92,142 @@
                   @input="(e: Event) => onDateTextInput('birthday', e)"
                   @blur="(e: { value: string }) => commitDateField('birthday', e.value)"
                 />
-                <small v-if="errors.birthday" class="p-error">{{ errors.birthday }}</small>
+                <p v-if="errors.birthday" class="field__error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.birthday }}</p>
+              </div>
+
+              <div v-if="duplicates.length" class="duplicate-notice" role="status">
+                <i class="pi pi-users" aria-hidden="true"></i>
+                <div>
+                  <strong>Möglicherweise schon angelegt</strong>
+                  <p>Gleicher Name und gleiches Geburtsdatum:
+                    <template v-for="(duplicate, index) in duplicates" :key="duplicate.id">
+                      <router-link :to="`/members/${duplicate.id}`">{{ duplicate.name }}</router-link><span v-if="index < duplicates.length - 1">, </span>
+                    </template>.
+                    Speichern bleibt möglich, etwa bei Zwillingen.
+                  </p>
+                </div>
               </div>
 
               <div class="field">
-                <label for="identityCardNumber">Ausweisnummer</label>
-                <InputText 
-                  id="identityCardNumber" 
-                  v-model="formData.identityCardNumber" 
-                />
-              </div>
-
-              <div class="field">
-                <label for="email">E-Mail</label>
-                <InputText 
-                  id="email" 
-                  v-model="formData.email" 
-                  type="email"
-                />
-              </div>
-
-              <div class="field">
-                <label for="phone">Telefon</label>
-                <InputText 
-                  id="phone" 
-                  v-model="formData.phone" 
-                />
-              </div>
-
-              <div class="field">
-                <label for="mobile">Mobiltelefon</label>
-                <InputText 
-                  id="mobile" 
-                  v-model="formData.mobile" 
-                />
-              </div>
-
-              <div class="field col-12">
-                <label>Geschlecht</label>
-                <SelectButton
+                <label for="gender">Geschlecht</label>
+                <Select
+                  input-id="gender"
                   v-model="formData.gender"
+                  placeholder="Keine Angabe"
                   :options="genderOptions"
                   option-label="label"
                   option-value="value"
-                  class="gender-select-button"
                 />
               </div>
 
-              <div class="field field-checkbox">
-                <Checkbox 
-                  id="canSwimm" 
-                  v-model="formData.canSwimm" 
-                  :binary="true"
-                />
+              <div class="field">
+                <label for="identityCardNumber">Ausweisnummer <span class="field__optional">(optional)</span></label>
+                <InputText id="identityCardNumber" v-model="formData.identityCardNumber" />
+              </div>
+
+              <div class="field field--check">
+                <Checkbox input-id="canSwimm" v-model="formData.canSwimm" :binary="true" />
                 <label for="canSwimm">Kann schwimmen</label>
               </div>
             </div>
-          </Panel>
+          </section>
 
-          <!-- Address Information -->
-          <Panel header="Adresse" :toggleable="true" class="panel mt-3">
+          <section id="section-contact" class="form-card" aria-labelledby="section-contact-title">
+            <h2 id="section-contact-title" tabindex="-1">Kontakt</h2>
             <div class="form-grid">
-              <div class="field col-12">
-                <label for="street">Straße</label>
-                <InputText 
-                  id="street" 
-                  v-model="formData.street" 
-                />
+              <div class="field">
+                <label for="email">E-Mail <span class="field__optional">(optional)</span></label>
+                <InputText id="email" v-model="formData.email" type="email" autocomplete="off" />
               </div>
-
+              <div class="field">
+                <label for="phone">Telefon <span class="field__optional">(optional)</span></label>
+                <InputText id="phone" v-model="formData.phone" type="tel" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="mobile">Mobiltelefon <span class="field__optional">(optional)</span></label>
+                <InputText id="mobile" v-model="formData.mobile" type="tel" autocomplete="off" />
+              </div>
+              <div class="field field--wide">
+                <label for="street">Straße und Hausnummer</label>
+                <InputText id="street" v-model="formData.street" autocomplete="off" />
+              </div>
               <div class="field">
                 <label for="zip_code">PLZ</label>
-                <InputText 
-                  id="zip_code" 
-                  v-model="formData.zip_code" 
-                />
+                <InputText id="zip_code" v-model="formData.zip_code" inputmode="numeric" autocomplete="off" />
               </div>
-
               <div class="field">
-                <label for="city">Stadt</label>
-                <InputText 
-                  id="city" 
-                  v-model="formData.city" 
-                />
+                <label for="city">Ort</label>
+                <InputText id="city" v-model="formData.city" autocomplete="off" />
               </div>
             </div>
-          </Panel>
+          </section>
 
-          <!-- Member Information -->
-          <Panel header="Mitgliedschaft" :toggleable="true" class="panel mt-3">
+          <section v-if="isEditMode" id="section-parents" class="form-card" aria-labelledby="section-parents-title">
+            <div class="form-card__header">
+              <h2 id="section-parents-title" tabindex="-1">Erziehungsberechtigte</h2>
+              <router-link to="/parents/create" class="secondary-link"><i class="pi pi-plus" aria-hidden="true"></i>Kontakt anlegen</router-link>
+            </div>
+            <ul v-if="memberParents.length" class="parent-list">
+              <li v-for="parent in memberParents" :key="parent.id" class="parent">
+                <span class="parent__text">
+                  <span class="parent__name">{{ parent.full_name }}</span>
+                  <span class="parent__meta">{{ reachableNumber(parent) || 'Keine Telefonnummer' }}{{ parent.email ? ` · ${parent.email}` : '' }}</span>
+                </span>
+                <StatusBadge v-if="reachableNumber(parent)" severity="success" label="Erreichbar" />
+                <StatusBadge v-else severity="warning" label="Notfallnummer fehlt" />
+                <router-link :to="`/parents/${parent.id}/edit`" class="icon-link" :aria-label="`${parent.full_name} bearbeiten`">
+                  <i class="pi pi-pencil" aria-hidden="true"></i>
+                </router-link>
+              </li>
+            </ul>
+            <p v-else class="hint">Noch keine Erziehungsberechtigten verknüpft. Kontakte werden beim Elternteil dem Mitglied zugeordnet.</p>
+          </section>
+
+          <section id="section-membership" class="form-card" aria-labelledby="section-membership-title">
+            <h2 id="section-membership-title" tabindex="-1">Mitgliedschaft</h2>
             <div class="form-grid">
               <div class="field">
-                <label for="joined">Eintrittsdatum</label>
-                <Calendar 
-                  id="joined" 
-                  :model-value="formData.joined" 
+                <template v-if="canChangeDepartments">
+                  <label for="departments">Abteilungen</label>
+                  <MultiSelect
+                    input-id="departments"
+                    v-model="formData.departments"
+                    :options="departmentOptions"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="Abteilungen auswählen"
+                    display="chip"
+                    :loading="departmentsStore.loading"
+                  />
+                </template>
+                <template v-else>
+                  <span id="departments-label" class="field__label">Abteilungen</span>
+                  <p class="locked-value" aria-labelledby="departments-label">
+                    <i class="pi pi-lock" aria-hidden="true"></i>{{ departmentNames || '–' }}
+                  </p>
+                  <p class="hint">Abteilungen ändert die Organisationsverwaltung.</p>
+                </template>
+              </div>
+
+              <div class="field">
+                <label for="group">Gruppe</label>
+                <Select
+                  input-id="group"
+                  v-model="formData.group"
+                  :options="groupOptions"
+                  option-label="label"
+                  option-value="value"
+                  placeholder="Keine Gruppe"
+                  show-clear
+                  :loading="membersStore.loading"
+                />
+              </div>
+
+              <div class="field">
+                <label for="joined">Eintrittsdatum <span class="field__optional">(TT.MM.JJJJ)</span></label>
+                <Calendar
+                  input-id="joined"
+                  :model-value="formData.joined"
                   date-format="dd.mm.yy"
                   :show-icon="true"
                   :max-date="new Date()"
@@ -157,78 +237,54 @@
                   @input="(e: Event) => onDateTextInput('joined', e)"
                   @blur="(e: { value: string }) => commitDateField('joined', e.value)"
                 />
-                <small v-if="errors.joined" class="p-error">{{ errors.joined }}</small>
-              </div>
-
-              <div class="field">
-                <label for="status">Status</label>
-                <Dropdown 
-                  id="status" 
-                  v-model="formData.status" 
-                  :options="statusOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Status auswählen"
-                  :loading="membersStore.loading"
-                />
-              </div>
-
-              <div class="field">
-                <label for="group">Gruppe</label>
-                <Dropdown 
-                  id="group" 
-                  v-model="formData.group" 
-                  :options="groupOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Gruppe auswählen"
-                  :loading="membersStore.loading"
-                />
-              </div>
-
-              <div class="field col-12">
-                <label for="departments">Abteilungen</label>
-                <MultiSelect
-                  id="departments"
-                  v-model="formData.departments"
-                  :options="departmentOptions"
-                  option-label="label"
-                  option-value="value"
-                  placeholder="Abteilungen auswählen"
-                  display="chip"
-                  :loading="departmentsStore.loading"
-                />
-              </div>
-
-              <div class="field col-12">
-                <label for="notes">Notizen</label>
-                <Textarea 
-                  id="notes" 
-                  v-model="formData.notes" 
-                  rows="4"
-                  autoResize
-                />
+                <p v-if="errors.joined" class="field__error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.joined }}</p>
               </div>
             </div>
-          </Panel>
 
-          <!-- Avatar Upload -->
-          <Panel header="Profilbild" :toggleable="true" class="panel mt-3">
+            <fieldset v-if="statusOptions.length" class="choice-group">
+              <legend>Status</legend>
+              <div class="choice-group__options">
+                <label
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  class="choice"
+                  :class="{ 'choice--selected': formData.status === option.value }"
+                >
+                  <input v-model="formData.status" type="radio" name="status" :value="option.value" />
+                  {{ option.label }}
+                </label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section id="section-notes" class="form-card" aria-labelledby="section-notes-title">
+            <h2 id="section-notes-title" tabindex="-1">Hinweise</h2>
+            <div class="field">
+              <label for="notes">Bemerkungen</label>
+              <Textarea id="notes" v-model="formData.notes" rows="4" auto-resize aria-describedby="notes-hint" />
+              <p id="notes-hint" class="hint">Sichtbar für alle, die dieses Mitglied ansehen dürfen. In der Detailansicht erst auf Abruf eingeblendet.</p>
+            </div>
+          </section>
+
+          <section id="section-photo" class="form-card" aria-labelledby="section-photo-title">
+            <h2 id="section-photo-title" tabindex="-1">Profilbild</h2>
             <div class="avatar-upload">
               <div v-if="avatarPreview || formData.avatar_url" class="avatar-preview">
-                <Image 
-                  :src="(avatarPreview || formData.avatar_url) as string" 
-                  alt="Avatar" 
+                <Image
+                  :src="(avatarPreview || formData.avatar_url) as string"
+                  alt="Profilbild"
                   width="150"
                   preview
                 />
-                <Button 
-                  icon="pi pi-times" 
-                  rounded 
-                  text 
+                <Button
+                  icon="pi pi-times"
+                  rounded
+                  text
                   severity="danger"
-                  @click="removeAvatar"
+                  aria-label="Profilbild entfernen"
                   class="remove-avatar"
+                  type="button"
+                  @click="removeAvatar"
                 />
               </div>
               <div v-if="avatarPreview" class="avatar-controls">
@@ -251,50 +307,55 @@
                   :disabled="saving"
                 />
               </div>
-              <FileUpload
-                mode="basic"
-                accept="image/*"
-                :maxFileSize="5000000"
-                :auto="false"
-                chooseLabel="Bild auswählen"
-                @select="onFileSelect"
-                :disabled="saving"
-              />
-              <Button
-                icon="pi pi-camera"
-                label="Kamera öffnen"
-                severity="secondary"
-                outlined
-                type="button"
-                @click="openCamera"
-                :disabled="saving"
-              />
+              <div class="avatar-controls">
+                <FileUpload
+                  mode="basic"
+                  accept="image/*"
+                  :maxFileSize="5000000"
+                  :auto="false"
+                  chooseLabel="Bild auswählen"
+                  @select="onFileSelect"
+                  :disabled="saving"
+                />
+                <Button
+                  icon="pi pi-camera"
+                  label="Kamera öffnen"
+                  severity="secondary"
+                  outlined
+                  type="button"
+                  @click="openCamera"
+                  :disabled="saving"
+                />
+              </div>
             </div>
-          </Panel>
-
-          <!-- Action Buttons -->
-          <div class="form-actions">
-            <Button 
-              label="Abbrechen" 
-              icon="pi pi-times" 
-              severity="secondary"
-              @click="router.push('/members')"
-              :disabled="saving"
-            />
-            <Button 
-              label="Speichern" 
-              icon="pi pi-check" 
-              type="submit"
-              :loading="saving"
-            />
-          </div>
+          </section>
         </form>
-      </template>
-    </Card>
+      </div>
 
-    <div v-else class="loading-container">
-      <ProgressSpinner />
-    </div>
+      <div class="action-bar">
+        <p class="action-bar__status" :class="{ 'action-bar__status--error': errorCount, 'action-bar__status--idle': !errorCount && !isDirty }" role="status">
+          <template v-if="errorCount">
+            <i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errorCount === 1 ? '1 Feld braucht' : `${errorCount} Felder brauchen` }} deine Aufmerksamkeit
+          </template>
+          <template v-else-if="isDirty">
+            <i class="pi pi-pencil" aria-hidden="true"></i>Ungespeicherte Änderungen
+          </template>
+          <template v-else-if="isEditMode">
+            <i class="pi pi-check" aria-hidden="true"></i>Keine Änderungen
+          </template>
+        </p>
+        <div class="action-bar__buttons">
+          <Button label="Abbrechen" severity="secondary" text type="button" :disabled="saving" @click="cancel" />
+          <Button
+            :label="isEditMode ? 'Änderungen speichern' : 'Mitglied anlegen'"
+            icon="pi pi-check"
+            type="submit"
+            form="member-form"
+            :loading="saving"
+          />
+        </div>
+      </div>
+    </template>
 
     <Dialog
       v-model:visible="cameraVisible"
@@ -328,37 +389,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick, toRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
 import { useDepartmentsStore } from '@/stores/departments'
-import Card from 'primevue/card'
-import Panel from 'primevue/panel'
+import { useAuthStore } from '@/stores/auth'
+import type { Parent } from '@/types/parents'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
-import SelectButton from 'primevue/selectbutton'
 import FileUpload from 'primevue/fileupload'
-import Image from 'primevue/image'
+import Image from '@/components/common/PrivateImage.vue'
+import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
+import StateView from '@/components/common/StateView.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
 import Dialog from 'primevue/dialog'
-import ProgressSpinner from 'primevue/progressspinner'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { parseFlexibleDate, formatDateGerman } from '@/utils/dateParsing'
+import { useMemberDuplicates } from '@/composables/useMemberDuplicates'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const membersStore = useMembersStore()
 const departmentsStore = useDepartmentsStore()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const saving = ref(false)
 const isEditMode = computed(() => !!route.params.id)
+const memberId = computed(() => Number(route.params.id))
+const memberParents = ref<Parent[]>([])
+const activeSection = ref('section-master')
+/** Serialised form state right after loading; compared to detect unsaved changes. */
+const savedSnapshot = ref('')
 const avatarFile = ref<File | null>(null)
 const avatarPreview = ref<string | null>(null)
 const cameraVisible = ref(false)
@@ -368,6 +438,7 @@ const cameraVideo = ref<HTMLVideoElement | null>(null)
 let cameraStream: MediaStream | null = null
 
 const genderOptions = [
+  { label: 'Keine Angabe', value: '' },
   { label: 'Männlich', value: 'male' },
   { label: 'Weiblich', value: 'female' },
   { label: 'Divers', value: 'diverse' }
@@ -412,6 +483,57 @@ const departmentOptions = computed(() =>
   departmentsStore.departments.map((d) => ({ label: `${d.name} (${d.code})`, value: d.id })),
 )
 
+/** Department assignments of existing members are changed by organisation-wide administrators only. */
+const { duplicates } = useMemberDuplicates(
+  toRef(formData, 'name'),
+  toRef(formData, 'lastname'),
+  toRef(formData, 'birthday'),
+  computed(() => !isEditMode.value)
+)
+const canChangeDepartments = computed(() => !isEditMode.value || authStore.isOrgWide)
+const departmentNames = computed(() => formData.departments
+  .map((id) => departmentsStore.departments.find((d) => d.id === id))
+  .map((d) => (d ? `${d.code} · ${d.name}` : ''))
+  .filter(Boolean)
+  .join(', '))
+
+const displayName = computed(() => [formData.name, formData.lastname].filter(Boolean).join(' ') || 'Mitglied')
+const initials = computed(() => `${formData.name[0] ?? ''}${formData.lastname[0] ?? ''}`.toUpperCase())
+const selectedStatus = computed(() => membersStore.statuses.find((status) => status.id === formData.status) ?? null)
+const reachableNumber = (parent: Parent) => parent.mobile || parent.phone || ''
+
+const snapshot = () => JSON.stringify({ ...formData, birthday: birthdayText.value, joined: joinedText.value })
+const isDirty = computed(() => !!avatarFile.value || (savedSnapshot.value !== '' && snapshot() !== savedSnapshot.value))
+
+const sections = computed(() => [
+  { id: 'section-master', label: 'Stammdaten', errors: [errors.name, errors.lastname, errors.birthday].filter(Boolean).length },
+  { id: 'section-contact', label: 'Kontakt', errors: 0 },
+  ...(isEditMode.value ? [{ id: 'section-parents', label: 'Erziehungsberechtigte', errors: 0 }] : []),
+  { id: 'section-membership', label: 'Mitgliedschaft', errors: errors.joined ? 1 : 0 },
+  { id: 'section-notes', label: 'Hinweise', errors: 0 },
+  { id: 'section-photo', label: 'Profilbild', errors: 0 },
+])
+const errorCount = computed(() => sections.value.reduce((sum, section) => sum + section.errors, 0))
+
+function goToSection(id: string) {
+  activeSection.value = id
+  const section = document.getElementById(id)
+  section?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById(`${id}-title`)?.focus({ preventScroll: true })
+}
+
+function focusFirstError() {
+  const firstInvalid = ['name', 'lastname', 'birthday', 'joined'].find((field) => errors[field as keyof typeof errors])
+  if (!firstInvalid) return
+  const input = document.getElementById(firstInvalid)
+  input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  input?.focus({ preventScroll: true })
+}
+
+function cancel() {
+  router.push(isEditMode.value ? `/members/${memberId.value}` : '/members')
+}
+
 onMounted(async () => {
   // Load statuses, groups and departments
   await Promise.all([
@@ -446,6 +568,7 @@ onMounted(async () => {
         avatar_url: member.avatar_url,
         departments: member.department_ids ?? [],
       })
+      memberParents.value = member.parents ?? []
 
       const groupStillAvailable =
         formData.group === null || membersStore.groups.some((group) => group.id === formData.group)
@@ -467,6 +590,7 @@ onMounted(async () => {
       loading.value = false
     }
   }
+  savedSnapshot.value = snapshot()
 })
 
 type DateField = 'birthday' | 'joined'
@@ -642,6 +766,8 @@ async function handleSubmit() {
       detail: 'Bitte korrigieren Sie die markierten Felder',
       life: 3000
     })
+    await nextTick()
+    focusFirstError()
     return
   }
 
@@ -681,9 +807,11 @@ async function handleSubmit() {
     if (formData.group !== null) formDataToSend.append('group', String(formData.group))
     if (formData.storage_location !== null) formDataToSend.append('storage_location', String(formData.storage_location))
 
-    // M2M departments — append each ID as a separate entry
-    for (const deptId of formData.departments) {
-      formDataToSend.append('departments', String(deptId))
+    // M2M departments — append each ID as a separate entry; omitted when locked so they stay unchanged
+    if (canChangeDepartments.value) {
+      for (const deptId of formData.departments) {
+        formDataToSend.append('departments', String(deptId))
+      }
     }
 
     if (avatarFile.value) {
@@ -708,7 +836,9 @@ async function handleSubmit() {
       })
     }
 
-    router.push('/members')
+    savedSnapshot.value = snapshot()
+    avatarFile.value = null
+    router.push(isEditMode.value ? `/members/${memberId.value}` : '/members')
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -725,118 +855,409 @@ onBeforeUnmount(closeCamera)
 </script>
 
 <style scoped>
-.panel {
-  margin-bottom: 1.5rem;
-}
-.member-edit-view {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.header {
+.duplicate-notice {
+  grid-column: 1 / -1;
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
 }
+.duplicate-notice i { margin-top: 3px; color: var(--jf-color-text-muted); }
+.duplicate-notice p { margin: 2px 0 0; font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
 
-.header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-}
-
-.member-form {
+.member-edit {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--jf-space-2);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1);
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
+}
+
+.breadcrumb a {
+  color: var(--jf-color-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+}
+
+.breadcrumb i {
+  font-size: 0.75rem;
+}
+
+.edit-head {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-2);
+}
+
+.edit-head__avatar {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  background: var(--surface-hover);
+  color: var(--p-surface-700);
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-bold);
+}
+
+.app-dark .edit-head__avatar {
+  color: var(--p-surface-200);
+}
+
+.edit-head__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-0-5);
+  min-width: 0;
+}
+
+.edit-head h1 {
+  margin: 0;
+  font-size: var(--jf-text-2xl);
+  line-height: var(--jf-leading-tight);
+  letter-spacing: -0.015em;
+}
+
+.edit-head__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jf-space-1);
+}
+
+.edit-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--jf-space-3);
+}
+
+.section-nav {
+  position: sticky;
+  top: calc(var(--topbar-height, 64px) + var(--jf-space-3));
+  flex: 1 1 200px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.section-nav__title {
+  margin: 0 var(--jf-space-1-5) var(--jf-space-1);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jf-color-text-muted);
+}
+
+.section-nav__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  padding: 0 var(--jf-space-1-5);
+  border-radius: var(--jf-radius-md);
+  color: var(--jf-color-text);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-medium);
+  text-decoration: none;
+}
+
+.section-nav__link:hover {
+  background: var(--surface-hover);
+}
+
+.section-nav__link--active {
+  background: var(--jf-color-selected);
+  color: var(--jf-color-selected-text);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.section-nav__errors {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--p-red-100);
+  color: var(--p-red-800);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+}
+
+.app-dark .section-nav__errors {
+  background: color-mix(in srgb, var(--p-red-400), transparent 84%);
+  color: var(--p-red-300);
+}
+
+.edit-form {
+  flex: 999 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-3);
+}
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-3);
+  padding: var(--jf-space-3);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  box-shadow: var(--jf-shadow-sm);
+  scroll-margin-top: calc(var(--topbar-height, 64px) + var(--jf-space-2));
+}
+
+.form-card h2 {
+  margin: 0;
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.form-card h2:focus {
+  outline: none;
+}
+
+.form-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-1-5);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  padding: 1rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--jf-space-2) 20px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 6px;
+  min-width: 0;
 }
 
-.field.col-12 {
+.field--wide {
   grid-column: 1 / -1;
 }
 
-.field label {
-  font-weight: 500;
-  color: var(--text-color);
+.field label,
+.field__label {
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text);
 }
 
-.field-checkbox {
+.field__optional {
+  font-weight: 400;
+  color: var(--jf-color-text-muted);
+}
+
+.field--check {
   flex-direction: row;
   align-items: center;
-  gap: 0.75rem;
+  align-self: end;
+  gap: var(--jf-space-1-5);
+  min-height: var(--jf-touch-target);
 }
 
-.field-checkbox label {
-  margin: 0;
-}
-
-.gender-select-button :deep(.p-selectbutton) {
+.field :deep(.p-inputtext),
+.field :deep(.p-select),
+.field :deep(.p-multiselect),
+.field :deep(.p-datepicker),
+.field :deep(.p-textarea) {
   width: 100%;
+}
+
+.field__error {
   display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-semibold);
+  color: var(--p-red-700);
 }
 
-.gender-select-button :deep(.p-togglebutton) {
-  flex: 1;
+.app-dark .field__error {
+  color: var(--p-red-300);
 }
 
-.p-error {
-  color: var(--red-500);
-  font-size: 0.875rem;
+.hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
+}
+
+.locked-value {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  margin: 0;
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+  color: var(--jf-color-text);
+  font-size: var(--jf-text-sm);
+}
+
+.locked-value i {
+  color: var(--jf-color-text-muted);
+}
+
+.choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-group legend {
+  margin-bottom: var(--jf-space-1);
+  padding: 0;
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.choice-group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jf-space-1);
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  padding: 0 14px;
+  border: 1px solid var(--p-surface-300);
+  border-radius: var(--jf-radius-md);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-medium);
+  cursor: pointer;
+}
+
+.choice input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--jf-color-primary);
+}
+
+.choice--selected {
+  border-color: var(--jf-color-primary);
+  background: var(--jf-color-selected);
+  color: var(--jf-color-selected-text);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.choice:has(input:focus-visible) {
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
+}
+
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target);
+  padding: 0 var(--jf-space-2);
+  border: 1px solid var(--p-surface-300);
+  border-radius: var(--jf-radius-md);
+  color: var(--jf-color-text);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+}
+
+.parent-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+}
+
+.parent__text {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.parent__name {
+  font-weight: var(--jf-weight-semibold);
+}
+
+.parent__meta {
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.icon-link {
+  display: inline-grid;
+  place-items: center;
+  width: var(--jf-touch-target);
+  height: var(--jf-touch-target);
+  border-radius: var(--jf-radius-md);
+  color: var(--jf-color-text-muted);
+  text-decoration: none;
+}
+
+.icon-link:hover {
+  background: var(--surface-hover);
+  color: var(--jf-color-text);
 }
 
 .avatar-upload {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem 0;
+  gap: var(--jf-space-2);
 }
 
 .avatar-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.camera-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.camera-video {
-  width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
-  background: var(--surface-900);
+  gap: var(--jf-space-1-5);
 }
 
 .avatar-preview {
   position: relative;
-  display: inline-block;
+  align-self: flex-start;
 }
 
 .remove-avatar {
@@ -845,33 +1266,108 @@ onBeforeUnmount(closeCamera)
   right: -0.5rem;
 }
 
-.form-actions {
+.camera-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.camera-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--surface-border);
+  gap: var(--jf-space-1);
 }
 
-.loading-container {
+.camera-video {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  background: #000;
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
   align-items: center;
-  min-height: 400px;
+  justify-content: space-between;
+  gap: var(--jf-space-1-5);
+  margin: 0 calc(-1 * var(--jf-space-4)) calc(-1 * var(--jf-space-3));
+  padding: var(--jf-space-1-5) var(--jf-space-4);
+  background: var(--jf-color-card);
+  border-top: 1px solid var(--jf-color-border);
+  box-shadow: 0 -4px 12px rgba(23, 32, 51, 0.06);
 }
 
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
+.action-bar__status {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  margin: 0;
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
+}
+
+.action-bar__status--error {
+  color: var(--p-red-700);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.app-dark .action-bar__status--error {
+  color: var(--p-red-300);
+}
+
+.action-bar__buttons {
+  display: flex;
+  gap: var(--jf-space-1);
+  margin-left: auto;
+}
+
+@media (max-width: 1023px) {
+  .section-nav {
+    display: none;
   }
-  
-  .form-actions {
-    flex-direction: column-reverse;
+
+  .action-bar {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    margin: 0 calc(-1 * var(--jf-space-2));
+    padding: var(--jf-space-1) var(--jf-space-2);
   }
-  
-  .form-actions button {
-    width: 100%;
+}
+
+@media (max-width: 767px) {
+  .form-card {
+    padding: var(--jf-space-2);
+    gap: var(--jf-space-2);
+  }
+
+  .edit-head h1 {
+    font-size: var(--jf-text-xl);
+  }
+
+  .action-bar__status {
+    flex: 1 1 100%;
+  }
+
+  .action-bar__status--idle {
+    display: none;
+  }
+
+  .action-bar__buttons {
+    flex: 1 1 100%;
+  }
+
+  .action-bar__buttons :deep(.p-button:last-child) {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .action-bar {
+    margin: 0 calc(-1 * var(--jf-space-1-5));
+    padding: var(--jf-space-1) var(--jf-space-1-5);
   }
 }
 </style>

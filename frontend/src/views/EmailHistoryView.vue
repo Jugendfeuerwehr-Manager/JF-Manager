@@ -121,7 +121,7 @@
                   icon="pi pi-refresh"
                   rounded
                   text
-                  severity="warning"
+                  severity="warn"
                   @click="resendEmail(data)"
                   :title="'Fehlgeschlagene erneut senden'"
                 />
@@ -229,7 +229,7 @@
 
         <div class="detail-section">
           <h4>Nachricht</h4>
-          <div class="email-body" v-html="emailDetails?.body_html || currentEmail.body_html"></div>
+          <SafeHtml class="email-body" :html="emailDetails?.body_html || currentEmail.body_html" />
         </div>
 
         <Divider v-if="emailDetails?.recipients && emailDetails.recipients.length > 0" />
@@ -248,7 +248,7 @@
               <template #body="{ data }">
                 <Tag
                   :value="data.status === 'sent' ? 'Gesendet' : data.status === 'failed' ? 'Fehlgeschlagen' : 'Ausstehend'"
-                  :severity="data.status === 'sent' ? 'success' : data.status === 'failed' ? 'danger' : 'warning'"
+                  :severity="data.status === 'sent' ? 'success' : data.status === 'failed' ? 'danger' : 'warn'"
                 />
               </template>
             </Column>
@@ -263,7 +263,7 @@
           label="Fehlgeschlagene erneut senden"
           icon="pi pi-refresh"
           @click="resendEmail(currentEmail)"
-          severity="warning"
+          severity="warn"
         />
         <Button label="Schließen" @click="showDetailDialog = false" />
       </template>
@@ -272,6 +272,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeHtml from '@/components/common/SafeHtml.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
@@ -455,7 +456,7 @@ const getStatusSeverity = (status: string) => {
     case 'failed':
       return 'danger'
     case 'partial':
-      return 'warning'
+      return 'warn'
     case 'sending':
       return 'info'
     default:

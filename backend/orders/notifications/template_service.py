@@ -12,6 +12,8 @@ from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
+from jf_manager_backend.html_safety import sanitize_rich_html
+
 from ..models import EmailTemplate
 from .base import BaseNotificationService, TemplateNotFoundError
 
@@ -151,6 +153,8 @@ class TemplateRenderer(BaseNotificationService):
             else:
                 html_message = content_html
 
+            html_message = sanitize_rich_html(html_message)
+
             # Use custom text template if available, otherwise strip HTML
             if email_template.text_template:
                 plain_message = cls.render_template_string(email_template.text_template, context)
@@ -227,7 +231,7 @@ class TemplateRenderer(BaseNotificationService):
             subject = cls._render_subject_template(subject_template, context)
 
             # Render HTML template
-            html_message = render_to_string(default_config["template"], context)
+            html_message = sanitize_rich_html(render_to_string(default_config["template"], context))
             plain_message = strip_tags(html_message)
 
             return subject, html_message, plain_message

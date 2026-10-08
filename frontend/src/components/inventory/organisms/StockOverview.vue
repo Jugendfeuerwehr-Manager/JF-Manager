@@ -60,9 +60,9 @@
               <div class="item-cell">
                 <div class="item-name-row">
                   <span class="item-name">{{ data.display_name || 'Unbekannt' }}</span>
-                  <Tag v-if="isGlobalItem(data)" value="G" icon="pi pi-globe" severity="contrast" size="small" />
+                  <ScopeBadge v-if="isGlobalItem(data)" />
                 </div>
-                <Tag v-if="data.category_name" :value="data.category_name" severity="secondary" size="small" />
+                <span v-if="data.category_name" class="item-category">{{ data.category_name }}</span>
               </div>
             </template>
           </Column>
@@ -72,7 +72,7 @@
               <div class="location-cell">
                 <i :class="isLocationMember(data.location) ? 'pi pi-user' : 'pi pi-box'"></i>
                 <span>{{ data.location_name }}</span>
-                <Tag v-if="isGlobalLocation(data.location)" value="G" icon="pi pi-globe" severity="contrast" size="small" />
+                <ScopeBadge v-if="isGlobalLocation(data.location)" />
               </div>
             </template>
           </Column>
@@ -89,42 +89,42 @@
                 <Button
                   v-if="!isLocationMember(data.location)"
                   icon="pi pi-user"
-                  size="small"
                   text
                   rounded
-                  severity="primary"
-                  title="Ausleihen"
+                  severity="secondary"
+                  :aria-label="`${data.display_name}: Ausleihen`"
+                  v-tooltip.top="'Ausleihen'"
                   @click="openLoanDialog(data)"
                   :disabled="data.quantity === 0"
                 />
                 <Button
                   v-if="isLocationMember(data.location)"
                   icon="pi pi-replay"
-                  size="small"
                   text
                   rounded
-                  severity="success"
-                  title="Rückgabe"
+                  severity="secondary"
+                  :aria-label="`${data.display_name}: Rückgabe`"
+                  v-tooltip.top="'Rückgabe'"
                   @click="openReturnDialog(data)"
                   :disabled="data.quantity === 0"
                 />
                 <Button
                   icon="pi pi-arrows-h"
-                  size="small"
                   text
                   rounded
-                  severity="info"
-                  title="Umlagern"
+                  severity="secondary"
+                  :aria-label="`${data.display_name}: Umlagern`"
+                  v-tooltip.top="'Umlagern'"
                   @click="openMoveDialog(data)"
                   :disabled="data.quantity === 0"
                 />
                 <Button
                   icon="pi pi-trash"
-                  size="small"
                   text
                   rounded
                   severity="danger"
-                  title="Aussortieren"
+                  :aria-label="`${data.display_name}: Aussortieren`"
+                  v-tooltip.top="'Aussortieren'"
                   @click="openDiscardDialog(data)"
                   :disabled="data.quantity === 0"
                 />
@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import ScopeBadge from '@/components/inventory/atoms/ScopeBadge.vue'
 import { ref, computed } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -162,7 +163,6 @@ import InputIcon from 'primevue/inputicon'
 import Dropdown from 'primevue/dropdown'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
 import StockBadge from '../atoms/StockBadge.vue'
 import TransactionDialog from '../molecules/TransactionDialog.vue'
 import { useInventoryStore } from '@/stores/inventory'
@@ -283,6 +283,11 @@ function onTransactionSuccess() {
 </script>
 
 <style scoped>
+.item-category {
+  font-size: 0.8125rem;
+  color: var(--jf-color-text-muted);
+}
+
 .stock-overview {
   display: flex;
   flex-direction: column;

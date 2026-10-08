@@ -7,6 +7,7 @@
       <Button icon="pi pi-file-pdf" label="PDF herunterladen" size="small" :loading="generatingPdf" @click="downloadPdf" />
     </div>
 
+    <p v-if="pdfError" role="alert">{{ pdfError }}</p>
     <div v-if="loading" class="loading-state">
       <ProgressSpinner />
     </div>
@@ -22,17 +23,22 @@
 </template>
 
 <script setup lang="ts">
+import { mediaBlob } from '@/utils/privateMedia'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import TrainingHandout from '@/components/training/organisms/TrainingHandout.vue'
+import { materialSummary, stationCards } from '@/components/training/utils/handoutSummary'
 import { useTrainingStore } from '@/stores/training'
 import type { Content, ContentText } from 'pdfmake/interfaces'
 
+// PDF output cannot use theme tokens; one light fill for all table headers.
+const PDF_HEADER_FILL = '#f1f5f9'
 const route = useRoute()
 const trainingStore = useTrainingStore()
 const generatingPdf = ref(false)
+const pdfError = ref('')
 const sessionId = computed(() => Number(route.params.id))
 const handout = computed(() => trainingStore.handout)
 const loading = computed(() => trainingStore.loading)
@@ -56,9 +62,7 @@ function isLightColor(hex: string): boolean {
 /** Fetches an image URL and returns a base64 data URL, or null on error. */
 async function fetchImageDataUrl(src: string): Promise<string | null> {
   try {
-    const resp = await fetch(src, { credentials: 'include' })
-    if (!resp.ok) return null
-    const blob = await resp.blob()
+    const blob = await mediaBlob(src)
     return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result as string)
@@ -111,13 +115,13 @@ async function htmlToPdfContent(html: string): Promise<Content[]> {
 
 async function downloadPdf() {
   generatingPdf.value = true
+  pdfError.value = ''
   try {
     const { default: pdfMake } = await import('pdfmake/build/pdfmake')
     const { default: pdfFonts } = await import('pdfmake/build/vfs_fonts')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfMakeTyped = pdfMake as any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pdfMakeTyped.vfs = (pdfFonts as any).pdfMake?.vfs ?? (pdfFonts as any).vfs
+    pdfMakeTyped.addVirtualFileSystem(pdfFonts)
 
     if (!handout.value) return
     const h = handout.value
@@ -155,7 +159,7 @@ async function downloadPdf() {
             (showGroupColumn
               ? ['Zeit', 'Ausbildungspunkt', 'Dauer', 'Gruppe']
               : ['Zeit', 'Ausbildungspunkt', 'Dauer']
-            ).map((label) => ({ text: label, bold: true, fillColor: '#f1f5f9' })),
+            ).map((label) => ({ text: label, bold: true, fillColor: PDF_HEADER_FILL })),
             ...blocks.map((b) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const groupNames = (b as any).groups?.length
@@ -179,8 +183,9 @@ async function downloadPdf() {
     // ── First page: title + meta + Ablaufplan (swimlane overview) ─────────
     const content: Content[] = [
       { text: h.title, style: 'h1' } as ContentText,
+      { text: `Version ${h.revision}${h.updated_at ? ` · Stand ${new Date(h.updated_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''} · ${{draft: 'Entwurf', published: 'Veröffentlicht', completed: 'Abgeschlossen', cancelled: 'Abgesagt'}[h.status]}`, style: 'meta' } as ContentText,
       {
-        text: `${dateStr}${h.start_time ? ' · ' + h.start_time : ''}${h.location ? ' · ' + h.location : ''}`,
+        text: `${dateStr}${h.start_time ? ` · ${h.start_time.slice(0, 5)}–${h.end_time.slice(0, 5)}` : ''}${h.location ? ' · ' + h.location : ''}`,
         style: 'meta',
       } as ContentText,
       { text: '\n' } as ContentText,
@@ -204,8 +209,8 @@ async function downloadPdf() {
       const sortedTimes = [...timeBoundaries].sort((a, b) => a - b)
 
       const tableHeader = [
-        { text: 'Zeit', bold: true, fillColor: '#f1f5f9', fontSize: 9 },
-        ...laneGroups.map((lane) => ({ text: lane.label, bold: true, fillColor: '#f1f5f9', fontSize: 9 })),
+        { text: 'Zeit', bold: true, fillColor: PDF_HEADER_FILL, fontSize: 9 },
+        ...laneGroups.map((lane) => ({ text: lane.label, bold: true, fillColor: PDF_HEADER_FILL, fontSize: 9 })),
       ]
 
       // covered: cells already accounted for by a rowSpan above
@@ -266,6 +271,48 @@ async function downloadPdf() {
         },
         layout: 'lightHorizontalLines',
         margin: [0, 0, 0, 16],
+      } as unknown as Content)
+    }
+
+    // ── Station cards and material list (TRAIN-04.4) ───────────────────────
+    const cards = stationCards(h.blocks)
+    if (cards.length) {
+      content.push({ text: 'Stationskarten', style: 'h2' } as ContentText)
+      for (const card of cards) {
+        const rows: unknown[][] = []
+        const add = (label: string, value: string) => { if (value) rows.push([{ text: label, bold: true, fontSize: 9 }, { text: value, fontSize: 9 }]) }
+        add('Ort', card.location)
+        add('Ausbilder', card.instructors.map((i) => i.name).join(', '))
+        add('Gruppen', card.slots.map((slot) => `${offsetToTime(slot.start, h.start_time)}–${offsetToTime(slot.end, h.start_time)} ${slot.groups}`).join('\n'))
+        add('Lernziel', card.learningObjective)
+        add('Sicherheit', card.safetyNotes)
+        add('Material', card.materials.map((m) => `${m.quantity} × ${m.label}`).join(', '))
+        content.push({
+          unbreakable: true,
+          margin: [0, 0, 0, 8],
+          table: {
+            widths: [70, '*'],
+            body: [[{ text: card.title, bold: true, colSpan: 2, fillColor: PDF_HEADER_FILL }, ''], ...rows],
+          },
+          layout: 'lightHorizontalLines',
+        } as unknown as Content)
+      }
+    }
+    const materials = materialSummary(h.blocks)
+    if (materials.length) {
+      content.push({ text: 'Materialliste', style: 'h2' } as ContentText)
+      content.push({ text: 'Planungswerte; Material einer Station zählt einmal, weil die Gruppen nacheinander üben. Bestand wird nicht gebucht.', style: 'meta' } as ContentText)
+      content.push({
+        table: {
+          headerRows: 1,
+          widths: [40, '*', '*'],
+          body: [
+            ['Menge', 'Material', 'Verwendet bei'].map((label) => ({ text: label, bold: true, fillColor: PDF_HEADER_FILL })),
+            ...materials.map((line) => [String(line.quantity), line.label, line.usedAt.join(', ')]),
+          ],
+        },
+        layout: 'lightHorizontalLines',
+        margin: [0, 4, 0, 16],
       } as unknown as Content)
     }
 
@@ -348,7 +395,9 @@ async function downloadPdf() {
       pageMargins: [40, 40, 40, 40] as [number, number, number, number],
     }
 
-    pdfMakeTyped.createPdf(docDef).download(`handout-${sessionId.value}.pdf`)
+    await pdfMakeTyped.createPdf(docDef).download(`handout-${sessionId.value}.pdf`)
+  } catch {
+    pdfError.value = 'PDF konnte nicht erstellt werden. Bitte erneut versuchen.'
   } finally {
     generatingPdf.value = false
   }
@@ -366,6 +415,9 @@ function offsetToTime(offsetMinutes: number | null | undefined, startTime?: stri
 
 <style scoped>
 .handout-page { display: flex; flex-direction: column; min-height: 100vh; }
+/* Auto margins disable stretching in the flex column; without a width the
+   area grew to its content and widened the page on phones. */
+#handout-print-area { width: 100%; min-width: 0; box-sizing: border-box; }
 
 .handout-toolbar {
   display: flex;

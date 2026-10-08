@@ -9,12 +9,11 @@ from django.db.models import Count, Max
 from django_filters.rest_framework import DjangoFilterBackend
 from PIL import Image as PilImage
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from jf_manager_backend.html_safety import sanitize_rich_html
 from jf_manager_backend.permissions import OrgWideWritePermission
 from members.models import Attachment
 from training.api.filters import LibraryBlockFilter
@@ -62,7 +61,6 @@ def _resize_and_optimise(original_file, filename: str):
 
 
 class LibraryBlockCategoryViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageLibrary, OrgWideWritePermission]
     queryset = LibraryBlockCategory.objects.all()
     serializer_class = LibraryBlockCategorySerializer
@@ -71,7 +69,6 @@ class LibraryBlockCategoryViewSet(viewsets.ModelViewSet):
 
 
 class LibraryBlockTagViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageLibrary, OrgWideWritePermission]
     queryset = LibraryBlockTag.objects.all()
     serializer_class = LibraryBlockTagSerializer
@@ -80,7 +77,6 @@ class LibraryBlockTagViewSet(viewsets.ModelViewSet):
 
 
 class LibraryBlockViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [CanManageLibrary]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = LibraryBlockFilter
@@ -139,6 +135,10 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
         if image_file.size > 20 * 1024 * 1024:
             return Response({"detail": "Bild zu groß (max 20 MB)."}, status=status.HTTP_400_BAD_REQUEST)
 
+        from jf_manager_backend.upload_safety import validate_upload
+
+        validate_upload(image_file, image_only=True)
+
         # ── Resize / optimise before saving ──────────────────────────────────
         original_name = image_file.name
         try:
@@ -148,7 +148,7 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
             content_type = "image/jpeg" if new_name.endswith(".jpg") else "image/png"
             image_file = InMemoryUploadedFile(buf, "file", new_name, content_type, buf.getbuffer().nbytes, None)
         except Exception:
-            image_file.seek(0)  # fall back to original
+            return Response({"detail": "Bild konnte nicht verarbeitet werden."}, status=status.HTTP_400_BAD_REQUEST)
 
         ct = ContentType.objects.get_for_model(block)
         media = TrainingMedia.objects.create(
@@ -222,7 +222,7 @@ class LibraryBlockViewSet(viewsets.ModelViewSet):
             defaults = {
                 "title": item.get("title", ""),
                 "description": item.get("description", ""),
-                "content": item.get("content", ""),
+                "content": sanitize_rich_html(item.get("content", "")),
                 "default_duration_minutes": item.get("default_duration_minutes", 15),
                 "category": category,
                 "color": item.get("color", ""),

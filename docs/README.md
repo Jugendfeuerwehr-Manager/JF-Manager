@@ -1,5 +1,7 @@
 # JF-Manager Documentation
 
+- [Rollen und Berechtigungen](domains/roles-and-permissions.md) – Zuweisung, Delegation, Herkunft und sicheres Upgrade vorhandener Gruppen
+
 ## Getting Started
 
 - [Getting Started](getting-started.md) – Local development setup, environment variables, first steps
@@ -17,13 +19,17 @@
 
 - [API Reference](api/reference.md) – REST API endpoints, authentication, pagination, Swagger/ReDoc
 
-## Deployment
+## Betrieb (Produktion)
 
-- [Docker Deployment](deployment/docker.md) – Docker Compose setup, SSL, backup/restore, CI/CD
-- [Production Checklist](deployment/production-checklist.md) – Quick reference, environment config, security checklist
-- [Portainer Deployment](deployment/portainer.md) – Deploy via Portainer UI or API
-- [Portainer Migration](deployment/portainer-migration.md) – Migrate existing setup to new Docker architecture
-- [Synology NAS](deployment/synology.md) – Manual Docker build on Synology NAS
+Unterstützt: Docker Compose und Debian 13 nativ (auch im Proxmox-LXC), beide über `jfctl`.
+
+- [Überblick und Layout](operations/ops-overview.md) – Aufbau, Verzeichnisse, HTTPS und Proxy-Vertrauen, beide Betriebswege
+- [Installation](operations/ops-install.md) – Assistent, Vorabprüfung, Antwortdatei, Proxmox-LXC
+- [jfctl](operations/ops-jfctl.md) – Befehle, Rückgabecodes, Protokoll, Wartungsplan
+- [Sicherung, Wiederherstellung und Updates](operations/ops-backup-restore-update.md)
+- [Migration bestehender Installationen](operations/ops-migration.md) – Compose/Portainer/Synology, PostgreSQL 15 → 17, Wechsel Docker ↔ nativ
+- [Releasepakete und Herkunftsnachweis](operations/ops-release.md)
+- [Produktionsvorgaben](operations/production-security.md), [Cookie-Sitzungen](operations/session-auth.md), [Schlüsselrotation](operations/encryption-rotation.md)
 
 ## Domain Guides
 
@@ -40,4 +46,3 @@
 
 - [API Testing](development/testing.md) – Test structure, running tests, adding new tests
 - [Build Pipeline](development/build-pipeline.md) – CI, GHCR image build/push, manual deployment workflow
-- [Systemd Services](development/systemd.md) – Systemd service files for production servers

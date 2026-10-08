@@ -87,8 +87,6 @@
       </form>
     </Dialog>
 
-    <!-- Confirm delete -->
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -108,7 +106,6 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
-import ConfirmDialog from 'primevue/confirmdialog'
 
 const toast = useToast()
 const confirm = useConfirm()

@@ -241,7 +241,7 @@
           <strong>Betreff:</strong> {{ form.subject }}
         </div>
         <Divider />
-        <div class="preview-body" v-html="previewData.rendered_html"></div>
+        <SafeEmailPreview class="preview-body" :html="previewData.rendered_html" />
       </div>
       <template #footer>
         <Button label="Schließen" @click="showPreviewDialog = false" />
@@ -251,6 +251,7 @@
 </template>
 
 <script setup lang="ts">
+import SafeEmailPreview from '@/components/common/SafeEmailPreview.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'

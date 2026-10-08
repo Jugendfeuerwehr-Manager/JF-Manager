@@ -21,16 +21,6 @@ export interface OIDCLoginResponse {
   authorization_url: string
 }
 
-export interface OIDCExchangeRequest {
-  exchange_code: string
-}
-
-export interface OIDCTokenResponse {
-  access: string
-  refresh: string
-  next: string
-}
-
 // ============================================================================
 // Settings (admin UI)
 // ============================================================================
@@ -49,6 +39,7 @@ export interface OIDCSettings {
   admin_group: string
   require_group_mapping: boolean
   hide_local_login: boolean
+  trust_provider_mfa: boolean
 }
 
 // ============================================================================

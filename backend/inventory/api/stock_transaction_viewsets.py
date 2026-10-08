@@ -6,13 +6,16 @@ from datetime import timedelta
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction as db_transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from inventory.models import Stock, StorageLocation, Transaction
+from inventory.services.booking_idempotency import run_idempotent_booking
 from jf_manager_backend.mixins import BasePermissionedViewSet
 from members.models import Member
 from orders.api.serializers.order import OrderCreateSerializer, OrderDetailSerializer
@@ -42,10 +45,16 @@ class StockViewSet(BasePermissionedViewSet, mixins.ListModelMixin, mixins.Retrie
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return filter_item_department_queryset_for_user(queryset, self.request.user)
+        return filter_item_department_queryset_for_user(queryset, self.request.user, "inventory.view_stock")
 
 
-class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
+class TransactionViewSet(
+    BasePermissionedViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = Transaction.objects.select_related(
         "item",
         "item_variant",
@@ -60,13 +69,91 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return filter_item_department_queryset_for_user(queryset, self.request.user)
+        action = {
+            "GET": "view",
+            "HEAD": "view",
+            "OPTIONS": "view",
+            "POST": "add",
+            "PUT": "change",
+            "PATCH": "change",
+            "DELETE": "delete",
+        }.get(self.request.method)
+        if action is None:
+            return queryset.none()
+        return filter_item_department_queryset_for_user(queryset, self.request.user, f"inventory.{action}_transaction")
 
     def perform_create(self, serializer):
         serializer.save()  # user is injected in serializer.create
 
+    def create(self, request, *args, **kwargs):
+        return run_idempotent_booking(
+            request,
+            lambda: super(TransactionViewSet, self).create(request, *args, **kwargs),
+            replay_allowed=lambda data: self.get_queryset().filter(pk=data.get("id")).exists(),
+        )
+
+    @action(detail=True, methods=["post"], url_path="reverse")
+    def reverse(self, request, pk=None):
+        """Correct a booked movement by posting one linked compensating movement."""
+        original = self.get_object()
+        item = original.item or original.item_variant.parent_item
+        if not can_manage_department(request.user, item.department_id, "inventory.change_transaction"):
+            raise PermissionDenied("Kein Recht zur Korrektur dieser Bestandsbewegung.")
+        reason = request.data.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            raise serializers.ValidationError({"reason": "Ein Korrekturgrund ist erforderlich."})
+
+        with db_transaction.atomic():
+            original = Transaction.objects.select_for_update().get(pk=original.pk)
+            if original.reverses_id or Transaction.objects.filter(reverses=original).exists():
+                return Response(
+                    {"detail": "Diese Buchung ist bereits eine Gegenbuchung oder wurde korrigiert."}, status=409
+                )
+
+            if original.transaction_type == "IN":
+                kind, source, target = "OUT", original.target, None
+            elif original.transaction_type in ("OUT", "DISCARD"):
+                kind, source, target = "IN", None, original.source
+            else:
+                kind, source, target = "MOVE", original.target, original.source
+            if (kind == "IN" and target is None) or (kind != "IN" and source is None):
+                raise serializers.ValidationError({"detail": "Quell- oder Zielort der ursprünglichen Buchung fehlt."})
+            if kind == "MOVE" and target is None:
+                raise serializers.ValidationError({"detail": "Quellort der ursprünglichen Buchung fehlt."})
+            if not is_org_wide_user(request.user) and any(
+                location is not None and not is_location_allowed_for_item_department(location, item.department_id)
+                for location in (source, target)
+            ):
+                raise PermissionDenied("Kein Recht für Quell- oder Zielort der Gegenbuchung.")
+
+            correction = Transaction(
+                transaction_type=kind,
+                item=original.item,
+                item_variant=original.item_variant,
+                source=source,
+                target=target,
+                quantity=original.quantity,
+                note=f"Gegenbuchung zu #{original.pk}: {reason.strip()}",
+                user=request.user,
+                reverses=original,
+            )
+            try:
+                correction.save()
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({"detail": exc.messages}) from exc
+        return Response(TransactionSerializer(correction).data, status=status.HTTP_201_CREATED)
+
     @action(detail=False, methods=["post"], url_path="batch-loan")
     def batch_loan(self, request):
+        return run_idempotent_booking(
+            request,
+            lambda: self._batch_loan_impl(request),
+            replay_allowed=lambda data: all(
+                self.get_queryset().filter(pk=movement["id"]).exists() for movement in data.get("transactions", [])
+            ),
+        )
+
+    def _batch_loan_impl(self, request):
         """Issue several already available items to one member atomically."""
         input_serializer = BatchLoanSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -84,21 +171,26 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
                 return Response({"detail": "Kein Zugriff auf dieses Mitglied."}, status=status.HTTP_403_FORBIDDEN)
 
         with db_transaction.atomic():
-            member_location = StorageLocation.objects.filter(member=member, is_member=True).first()
-            if member_location is None:
-                member_location = StorageLocation.objects.create(
-                    name=f"{member.name} {member.lastname}",
-                    is_member=True,
-                    member=member,
-                    department=member.departments.first(),
-                )
-
+            # Lock every candidate row up front in one stable order. Locking per
+            # line let parallel batches with a different line order deadlock.
+            candidates = Q()
+            for line in data["items"]:
+                line_filter = Q(item=line.get("item"), item_variant=line.get("item_variant"))
+                if line.get("source"):
+                    line_filter &= Q(location=line["source"])
+                candidates |= line_filter
+            list(
+                Stock.objects.select_for_update()
+                .filter(candidates, location__is_member=False)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
             source_stocks = []
             missing_lines = []
             for line in data["items"]:
                 inventory_item = line.get("item") or line["item_variant"].parent_item
-                if not can_manage_department(request.user, inventory_item.department_id):
-                    raise serializers.ValidationError({"items": "Kein Zugriff auf diesen Artikel."})
+                if not can_manage_department(request.user, inventory_item.department_id, "inventory.add_transaction"):
+                    raise PermissionDenied("Kein Inventar-Ausgaberecht für diesen Artikel.")
                 if (
                     line.get("source")
                     and not is_org_wide_user(request.user)
@@ -129,6 +221,15 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
                     missing_lines.append({**line, "quantity": line["quantity"] - available})
                     continue
                 source_stocks.append((line, stocks))
+
+            member_location = StorageLocation.objects.filter(member=member, is_member=True).first()
+            if member_location is None:
+                member_location = StorageLocation.objects.create(
+                    name=f"{member.name} {member.lastname}",
+                    is_member=True,
+                    member=member,
+                    department=member.departments.first(),
+                )
 
             order = None
             if missing_lines:
@@ -262,7 +363,8 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
             }
         )
 
-    @action(detail=False, methods=["post"], url_path="clear-former-member-names")
+    # Own global privacy right; booking rights are deliberately not required.
+    @action(detail=False, methods=["post"], url_path="clear-former-member-names", permission_classes=[IsAuthenticated])
     def clear_former_member_names(self, request):
         """Clear all former member names from transactions (DSGVO compliance).
 
@@ -274,5 +376,5 @@ class TransactionViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
                 {"detail": "Keine Berechtigung zum Löschen ehemaliger Mitgliedsnamen."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        cleared_count = Transaction.objects.exclude(former_member_name="").update(former_member_name="")
+        cleared_count = Transaction.objects.clear_former_member_names()
         return Response({"cleared_count": cleared_count})

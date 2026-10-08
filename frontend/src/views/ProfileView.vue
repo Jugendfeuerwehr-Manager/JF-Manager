@@ -68,6 +68,15 @@
 
           <Divider />
 
+          <MfaSettings :setup-requested="route.query.mfa === 'setup'" />
+          <Divider />
+
+          <SessionDevices />
+          <Divider />
+
+          <DeviceSettings />
+          <Divider />
+
           <!-- Email Signature -->
           <div class="profile-section">
             <h3>
@@ -169,7 +178,12 @@ import ProgressSpinner from 'primevue/progressspinner'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import { userApi } from '@/api/user'
+import DeviceSettings from '@/components/DeviceSettings.vue'
+import MfaSettings from '@/components/MfaSettings.vue'
+import SessionDevices from '@/components/security/SessionDevices.vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const toast = useToast()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()

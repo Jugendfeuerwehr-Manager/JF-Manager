@@ -3,7 +3,7 @@ Department scoping permission tests.
 
 Covers:
   - Unauthenticated users are denied access
-  - Org-wide users (is_staff / can_access_all_departments) see all data
+  - Org-wide users with model view rights see all data
   - Department-scoped users only see data belonging to their departments
   - Transitive parent scoping via children's department memberships
   - The ?department= query param is validated for dept-scoped users
@@ -30,7 +30,10 @@ def _make_user(username, *, is_staff=False):
 
 
 def _assign_dept(user, department):
-    """Create a UserDepartmentRole (no groups needed for scoping tests)."""
+    """Give the fixture read permissions; the tests isolate department scoping."""
+    user.user_permissions.add(
+        *Permission.objects.filter(content_type__app_label="members", codename__in=["view_member", "view_parent"])
+    )
     return UserDepartmentRole.objects.create(user=user, department=department)
 
 
@@ -56,7 +59,7 @@ def _make_parent(name, children=None):
 class DeptScopingFixture(APITestCase):
     """
     Two departments (Dept A, Dept B), three users:
-      - staff_user   : is_staff=True (org-wide)
+      - staff_user   : is_staff=True with explicit org scope and model view rights
       - user_a       : scoped to Dept A only
       - user_b       : scoped to Dept B only
     """
@@ -67,6 +70,10 @@ class DeptScopingFixture(APITestCase):
         cls.dept_b = Department.objects.create(name="Abteilung B", code="dept-b")
 
         cls.staff_user = _make_user("staff", is_staff=True)
+        cls.staff_user.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            *Permission.objects.filter(content_type__app_label="members", codename__in=["view_member", "view_parent"]),
+        )
         cls.user_a = _make_user("user_a")
         cls.user_b = _make_user("user_b")
 
@@ -203,7 +210,7 @@ class ParentScopingTest(DeptScopingFixture):
         ids = self._ids(resp)
         self.assertIn(self.parent_a.id, ids)
         self.assertIn(self.parent_both.id, ids)  # child is in dept A too
-        self.assertIn(self.parent_orphan.id, ids)  # no children — still visible
+        self.assertNotIn(self.parent_orphan.id, ids)  # no department to authorize
         self.assertNotIn(self.parent_b.id, ids)  # child is only in dept B
 
     def test_user_b_sees_parents_of_dept_b_children(self):
@@ -278,7 +285,7 @@ class DepartmentEndpointTest(DeptScopingFixture):
 
 
 class UserDepartmentRoleAdminTest(DeptScopingFixture):
-    """GET /api/v1/admin/department-roles/ — staff only."""
+    """Identity APIs require explicit permissions; staff alone has no access."""
 
     URL = "/api/v1/admin/department-roles/"
 
@@ -291,17 +298,15 @@ class UserDepartmentRoleAdminTest(DeptScopingFixture):
         resp = self.client.get(self.URL)
         self.assertIn(resp.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED))
 
-    def test_staff_can_list_roles(self):
+    def test_staff_without_identity_permissions_cannot_list_roles(self):
         self.client.force_authenticate(user=self.staff_user)
         resp = self.client.get(self.URL)
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        # Both roles from setUpTestData should be present
-        ids = {item["id"] for item in resp.data["results"]}
-        self.assertGreaterEqual(len(ids), 2)
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_staff_can_create_role(self):
+    def test_superuser_can_create_role(self):
         new_user = _make_user("new_user_for_role")
-        self.client.force_authenticate(user=self.staff_user)
+        admin = User.objects.create_superuser(username="role_admin", password="safe-regression-42!")
+        self.client.force_authenticate(user=admin)
         resp = self.client.post(
             self.URL, {"user": new_user.id, "department": self.dept_a.id, "group_ids": []}, format="json"
         )
@@ -325,7 +330,10 @@ class OrgWidePermissionTest(DeptScopingFixture):
 
         cls.perm_user = _make_user("perm_user", is_staff=False)
         perm = Permission.objects.get(codename="can_access_all_departments")
-        cls.perm_user.user_permissions.add(perm)
+        cls.perm_user.user_permissions.add(
+            perm,
+            *Permission.objects.filter(content_type__app_label="members", codename__in=["view_member", "view_parent"]),
+        )
 
     def _ids(self, response):
         return {item["id"] for item in response.data["results"]}

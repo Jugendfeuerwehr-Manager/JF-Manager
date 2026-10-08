@@ -24,16 +24,63 @@ from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 
 class ExternalSyncScopeMixin:
     def _user_is_org_wide(self, user):
-        return user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        return user.is_superuser or user.has_perm("departments.can_access_all_departments")
 
     def _user_department_ids(self, user):
         return list(user.department_roles.values_list("department_id", flat=True))
+
+    def _filter_by_scope_permission(self, queryset, department_field, permission):
+        user = self.request.user
+        org_wide = self._user_is_org_wide(user)
+        if org_wide and user.has_perm(permission):
+            return queryset
+
+        allowed_ids = set(self._user_department_ids(user))
+        if not user.has_perm(permission):
+            app_label, codename = permission.split(".", 1)
+            role_ids = set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label=app_label,
+                    groups__permissions__codename=codename,
+                ).values_list("department_id", flat=True)
+            )
+            allowed_ids = role_ids if org_wide else allowed_ids & role_ids
+        return queryset.filter(**{f"{department_field}__in": allowed_ids})
+
+
+class SyncJobActionPermissions(DepartmentRoleModelPermissions):
+    action_permissions = {
+        "run_now": "external_sync.run_syncjob",
+        "test_connection": "external_sync.test_syncjob",
+        "spond_top_level_groups": "external_sync.test_syncjob",
+        "garbage_collect": "external_sync.garbage_collect_syncjob",
+        "garbage_collection_preview": "external_sync.garbage_collect_syncjob",
+    }
+
+    def _required_permissions(self, request, view):
+        action_permission = self.action_permissions.get(view.action)
+        if action_permission:
+            return [action_permission]
+        return super()._required_permissions(request, view)
+
+    def has_permission(self, request, view):
+        if view.action == "spond_top_level_groups":
+            return view._user_is_org_wide(request.user) and request.user.has_perm("external_sync.test_syncjob")
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        if obj.department_id is None:
+            required = self._required_permissions(request, view)
+            return view._user_is_org_wide(request.user) and required is not None and all(
+                request.user.has_perm(permission) for permission in required
+            )
+        return super().has_object_permission(request, view, obj)
 
 
 class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
     queryset = SyncJob.objects.select_related("department", "created_by").prefetch_related("runs")
     lookup_value_regex = r"\d+"
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, SyncJobActionPermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["provider", "scope", "department", "run_mode", "enabled", "deletion_mode"]
     search_fields = ["name", "provider"]
@@ -41,17 +88,15 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
     ordering = ["name"]
 
     def get_queryset(self):
-        user = self.request.user
         queryset = super().get_queryset()
-
-        if self._user_is_org_wide(user):
-            department_id = self.request.query_params.get("department")
-            if department_id:
-                return queryset.filter(department_id=department_id)
-            return queryset
-
-        allowed_department_ids = self._user_department_ids(user)
-        return queryset.filter(department_id__in=allowed_department_ids)
+        required = SyncJobActionPermissions()._required_permissions(self.request, self)
+        if required is None:
+            return queryset.none()
+        queryset = self._filter_by_scope_permission(queryset, "department_id", required[0])
+        department_id = self.request.query_params.get("department")
+        if department_id:
+            queryset = queryset.filter(department_id=department_id)
+        return queryset
 
     def get_serializer_class(self):
         if self.action in {"list"}:
@@ -197,11 +242,5 @@ class SyncRunViewSet(ExternalSyncScopeMixin, viewsets.ReadOnlyModelViewSet):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        user = self.request.user
         queryset = super().get_queryset()
-
-        if self._user_is_org_wide(user):
-            return queryset
-
-        allowed_department_ids = self._user_department_ids(user)
-        return queryset.filter(job__department_id__in=allowed_department_ids)
+        return self._filter_by_scope_permission(queryset, "job__department_id", "external_sync.view_syncrun")

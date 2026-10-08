@@ -22,9 +22,6 @@ export type {
   AppSettings,
   PaginatedResponse,
   LoginRequest,
-  LoginResponse,
-  TokenRefreshRequest,
-  TokenRefreshResponse,
 } from '@/types/common'
 
 // Attachment types (kept here — no dedicated file yet)

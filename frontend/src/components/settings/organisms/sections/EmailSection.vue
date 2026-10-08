@@ -21,6 +21,7 @@
       :saving="settingsStore.loading"
       @save="handleSave"
     />
+    <SMTPTestPanel :can-edit="settingsStore.canChangeCategory('email')" />
   </div>
 </template>
 
@@ -31,6 +32,7 @@ import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import { useSettingsStore } from '@/stores/settings'
 import EmailSettingsForm from '../../molecules/EmailSettingsForm.vue'
+import SMTPTestPanel from '../../molecules/SMTPTestPanel.vue'
 import type { EmailSettings } from '@/types/settings'
 import { useMobile } from '@/composables/useMobile'
 

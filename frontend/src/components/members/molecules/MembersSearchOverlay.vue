@@ -78,7 +78,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Avatar from 'primevue/avatar'
+import Avatar from '@/components/common/PrivateAvatar.vue'
 import type { Member } from '@/types/members'
 import type { Department } from '@/types/departments'
 

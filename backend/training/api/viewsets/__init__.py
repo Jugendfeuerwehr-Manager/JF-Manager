@@ -1,6 +1,7 @@
 from .block import TrainingBlockViewSet
 from .library import LibraryBlockCategoryViewSet, LibraryBlockTagViewSet, LibraryBlockViewSet
 from .session import TrainingSessionViewSet
+from .template import TrainingTemplateBlockViewSet, TrainingTemplateViewSet
 
 __all__ = [
     "LibraryBlockCategoryViewSet",
@@ -8,4 +9,6 @@ __all__ = [
     "LibraryBlockViewSet",
     "TrainingBlockViewSet",
     "TrainingSessionViewSet",
+    "TrainingTemplateBlockViewSet",
+    "TrainingTemplateViewSet",
 ]

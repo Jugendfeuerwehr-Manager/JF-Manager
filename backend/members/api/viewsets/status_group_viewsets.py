@@ -40,3 +40,11 @@ class GroupViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     ordering = ["name"]
+
+    def perform_create(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_update(serializer)

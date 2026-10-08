@@ -24,6 +24,17 @@ class ExternalSyncApiTests(APITestCase):
             password="staff123!",
             is_staff=True,
         )
+        # These workflows require explicit sync rights and organization scope;
+        # is_staff only permits access to Django's administration interface.
+        self.staff_user.user_permissions.add(
+            Permission.objects.get(codename="can_access_all_departments"),
+            *Permission.objects.filter(
+                content_type__app_label="external_sync",
+                codename__in=[
+                    "view_syncjob", "add_syncjob", "change_syncjob", "view_syncrun", "run_syncjob", "test_syncjob"
+                ],
+            ),
+        )
 
         self.department_user = User.objects.create_user(
             username="sync_department",

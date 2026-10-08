@@ -1,0 +1,7 @@
+# ShellCheck settings for the jfctl sources (OPS-03.3 runs this in CI).
+# Libraries are sourced by ops/jfctl, so variables defined in one file are
+# used in another (SC2034); "a && b || c" is used deliberately for checks.
+shell=bash
+external-sources=true
+disable=SC2034,SC2015
+source-path=SCRIPTDIR

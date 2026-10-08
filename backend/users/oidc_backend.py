@@ -12,6 +12,8 @@ Subclasses mozilla_django_oidc.auth.OIDCAuthenticationBackend to:
 
 import logging
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 logger = logging.getLogger("users.oidc_backend")
@@ -24,6 +26,12 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
     Returns None from authenticate() when OIDC is disabled so Django falls
     through to the next backend (ModelBackend / local login).
     """
+
+    def __init__(self, *args, **kwargs):
+        # Django instantiates every backend for each permission check. Provider
+        # settings, including the encrypted client secret, are read only while a
+        # login is actually processed (get_settings), never eagerly here.
+        self.UserModel = get_user_model()
 
     # ---------------------------------------------------------------------------
     # Config helpers
@@ -63,6 +71,10 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
     # ---------------------------------------------------------------------------
 
     def authenticate(self, request, **kwargs):
+        # Only the OIDC callback supplies verified claims; password logins pass
+        # through without touching the OIDC configuration or its secret.
+        if not getattr(request, "_oidc_claims", None):
+            return None
         config = self._get_config()
         if not config or not config.enabled:
             logger.debug("OIDC is disabled — skipping JFManagerOIDCBackend")
@@ -106,31 +118,33 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
     # ---------------------------------------------------------------------------
 
     def filter_users_by_claims(self, claims):
+        """Identify accounts by the stable issuer/subject pair.
+
+        Never auto-link local/LDAP accounts or match a provider-controlled subject
+        to a local username: either would let the provider take over that account.
         """
-        Find existing user by email first (case-insensitive), then by sub claim.
-        """
+        from django.core.exceptions import PermissionDenied
+
+        issuer = claims.get("iss", "").rstrip("/")
+        subject = claims.get("sub", "")
+        if not issuer or not subject:
+            raise PermissionDenied("OIDC-Identität fehlt.")
+        bound = self.UserModel.objects.filter(oidc_issuer=issuer, oidc_subject=subject, auth_source="oidc")
+        if bound.exists():
+            return bound
         email = claims.get("email", "").strip()
-        if email:
-            users = self.UserModel.objects.filter(email__iexact=email)
-            if users.exists():
-                logger.debug("OIDC: found existing user by email '%s'", email)
-                return users
-
-        # Fall back to sub claim stored as username
-        sub = claims.get("sub", "")
-        if sub:
-            users = self.UserModel.objects.filter(username=sub)
-            if users.exists():
-                logger.debug("OIDC: found existing user by sub '%s'", sub)
-                return users
-
-        logger.debug("OIDC: no existing user found for email='%s' sub='%s'", email, sub)
-        return self.UserModel.objects.none()
+        if not email or claims.get("email_verified") is not True:
+            raise PermissionDenied("Der OIDC-Anbieter muss eine bestätigte E-Mail-Adresse liefern.")
+        users = self.UserModel.objects.filter(email__iexact=email)
+        if users.exists():
+            raise PermissionDenied("Ein vorhandenes Konto darf nicht automatisch mit OIDC verknüpft werden.")
+        return users
 
     # ---------------------------------------------------------------------------
     # User creation / update
     # ---------------------------------------------------------------------------
 
+    @transaction.atomic
     def create_user(self, claims):
         config = self._get_config()
         email = claims.get("email", "").strip()
@@ -202,10 +216,13 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
 
     def _apply_claims(self, user, claims, groups, config):
         """Apply name, email, staff/superuser flags and group mappings to user."""
+        # Persist provider identity; subsequent logins no longer depend on mutable email.
+        user.oidc_issuer = claims.get("iss", "").rstrip("/")
+        user.oidc_subject = claims.get("sub", "")
         user.first_name = claims.get("given_name", claims.get("first_name", user.first_name)) or user.first_name
         user.last_name = claims.get("family_name", claims.get("last_name", user.last_name)) or user.last_name
         email = claims.get("email", "").strip()
-        if email:
+        if email and claims.get("email_verified") is True:
             user.email = email
 
         # Staff / superuser flags from group membership
@@ -259,63 +276,13 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
             )
 
     def _sync_group_mappings(self, user, groups, config):
-        """
-        Sync UserDepartmentRole records from OIDCGroupMapping after login.
-        Mirrors ConfigurableLDAPBackend._sync_department_roles().
-        """
-        import contextlib
-
-        from departments.models import UserDepartmentRole
+        """Project independently owned OIDC grants after verified login."""
+        from departments.assignment_sources import sync_external_groups
         from settings_manager.models import OIDCGroupMapping
 
         mappings = list(
             OIDCGroupMapping.objects.filter(oidc_config=config)
             .select_related("department")
-            .prefetch_related("auth_groups")
+            .prefetch_related("auth_groups__role_template")
         )
-
-        if not mappings:
-            logger.debug("OIDC: no group mappings configured — skipping department role sync")
-            return
-
-        logger.debug(
-            "OIDC: syncing %d group mapping(s) for user '%s' (groups=%s)",
-            len(mappings),
-            user.username,
-            groups,
-        )
-
-        for mapping in mappings:
-            is_member = mapping.group_claim_value in groups
-
-            if is_member and mapping.department:
-                role, created = UserDepartmentRole.objects.get_or_create(user=user, department=mapping.department)
-                existing_ids = set(role.groups.values_list("id", flat=True))
-                mapped_ids = set(mapping.auth_groups.values_list("id", flat=True))
-                role.groups.set(list(existing_ids | mapped_ids))
-
-                if created:
-                    logger.info(
-                        "OIDC: created UserDepartmentRole for user '%s' in department '%s'",
-                        user.username,
-                        mapping.department,
-                    )
-                else:
-                    logger.debug(
-                        "OIDC: updated UserDepartmentRole for user '%s' in department '%s'",
-                        user.username,
-                        mapping.department,
-                    )
-
-            elif not is_member and mapping.revoke_on_mismatch and mapping.department:
-                with contextlib.suppress(UserDepartmentRole.DoesNotExist):
-                    deleted_count, _ = UserDepartmentRole.objects.filter(
-                        user=user, department=mapping.department
-                    ).delete()
-                    if deleted_count:
-                        logger.info(
-                            "OIDC: revoked UserDepartmentRole for user '%s' in department '%s' "
-                            "(revoke_on_mismatch=True)",
-                            user.username,
-                            mapping.department,
-                        )
+        sync_external_groups(user, "oidc", mappings, lambda mapping: mapping.group_claim_value in groups)

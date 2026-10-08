@@ -2,44 +2,89 @@
   <Dialog
     :visible="visible"
     :header="block ? block.title : 'Block bearbeiten'"
-    :style="{ width: '900px' }"
+    :style="{ width: '900px', maxWidth: 'calc(100vw - 24px)' }"
     modal
     @update:visible="emit('update:visible', $event)"
   >
     <div v-if="block" class="block-edit-layout">
       <!-- Main editor -->
       <div class="edit-main">
+        <div v-if="linked.length" class="linked-note" role="note">
+          <p>
+            <i class="pi pi-link" aria-hidden="true"></i>
+            <strong>Verknüpfte Station.</strong>
+            Titel, Ablauf, Ort, Lernziel, Sicherheit, Ausbilder und Material gelten auch für
+            {{ linkedGroups }}. Zeiten und Gruppen bleiben je Baustein.
+          </p>
+          <div class="linked-note__detach">
+            <Checkbox v-model="detach" input-id="block-detach" binary />
+            <label for="block-detach">Nur für diese Gruppe ändern (Verknüpfung lösen)</label>
+          </div>
+        </div>
+        <div class="field-row field-row--two mb-3">
+          <div class="field">
+            <label for="block-title">Titel</label>
+            <InputText id="block-title" v-model="form.title" class="w-full" />
+          </div>
+          <div class="field">
+            <label for="block-kind">Art</label>
+            <Select input-id="block-kind" v-model="form.kind" :options="kindOptions" option-label="label" option-value="value" />
+          </div>
+        </div>
+
         <div class="field mb-3">
-          <label>Titel</label>
-          <InputText v-model="form.title" class="w-full" />
+          <label for="block-location">Ort</label>
+          <InputText id="block-location" v-model="form.location" class="w-full" placeholder="z. B. Übungshof, Hydrant Nord" />
         </div>
 
         <div class="field-row mb-3">
           <div class="field">
-            <label>Dauer (Min.)</label>
-            <InputNumber v-model="form.duration_minutes" :min="1" :max="480" class="w-full" />
+            <label for="block-duration">Dauer (Min.)</label>
+            <InputNumber input-id="block-duration" v-model="form.duration_minutes" :min="1" :max="480" class="w-full" />
           </div>
           <div class="field">
-            <label>Start-Offset (Min.)</label>
-            <InputNumber v-model="form.start_offset_minutes" :min="0" class="w-full" />
+            <label for="block-offset">Start-Offset (Min.)</label>
+            <InputNumber input-id="block-offset" v-model="form.start_offset_minutes" :min="0" class="w-full" />
           </div>
           <div class="field">
-            <label>Farbe</label>
-            <input type="color" v-model="form.color" class="color-input" />
+            <label for="block-color">Farbe</label>
+            <input id="block-color" type="color" v-model="form.color" class="color-input" />
           </div>
         </div>
 
         <div class="field mb-3">
-          <label>Nextcloud-Ordner-URL</label>
-          <InputText v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
+          <label for="block-groups">Gruppen (leer = alle Gruppen)</label>
+          <MultiSelect input-id="block-groups" v-model="form.group_ids" :options="groupChoices" option-label="name" option-value="id" />
+        </div>
+
+        <div v-if="form.kind === 'station' || form.kind === 'block'" class="field-row field-row--two mb-3">
+          <div class="field">
+            <label for="block-objective">Lernziel</label>
+            <Textarea id="block-objective" v-model="form.learning_objective" rows="2" auto-resize />
+          </div>
+          <div class="field">
+            <label for="block-safety">Sicherheitshinweise</label>
+            <Textarea id="block-safety" v-model="form.safety_notes" rows="2" auto-resize />
+          </div>
+        </div>
+
+        <BlockResourcesFields
+          v-model:instructors="form.instructors"
+          v-model:materials="form.materials"
+          :session-id="plannerStore.sessionId"
+        />
+
+        <div class="field mb-3">
+          <label for="block-folder">Nextcloud-Ordner-URL</label>
+          <InputText id="block-folder" v-model="form.nextcloud_folder_url" class="w-full" placeholder="https://..." />
         </div>
 
         <div class="field">
-          <label>Inhalt</label>
+          <label>{{ form.kind === 'station' ? 'Ablauf' : 'Inhalt' }}</label>
           <BlockEditor
             v-model="form.content"
             block-type="training"
-            :block-id="block.id"
+            :block-id="block.id > 0 ? block.id : null"
             min-height="260px"
           />
         </div>
@@ -47,7 +92,8 @@
 
       <!-- Asset panel -->
       <div class="edit-panel">
-        <AssetPanel block-type="training" :block-id="block.id" />
+        <AssetPanel v-if="block.id > 0" block-type="training" :block-id="block.id" />
+        <p v-else role="status">Speichere den Plan zuerst, um Bilder und Anhänge hinzuzufügen.</p>
       </div>
     </div>
 
@@ -87,7 +133,7 @@
         />
       </div>
       <Button label="Abbrechen" severity="secondary" outlined @click="emit('update:visible', false)" />
-      <Button label="Speichern" icon="pi pi-check" :loading="saving" @click="save" />
+      <Button label="Übernehmen" icon="pi pi-check" :loading="saving" :disabled="plannerStore.saving" @click="save" />
     </template>
   </Dialog>
 </template>
@@ -97,13 +143,18 @@ import { ref, watch, computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
+import MultiSelect from 'primevue/multiselect'
+import Select from 'primevue/select'
+import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import { useToast } from 'primevue/usetoast'
 import BlockEditor from '../atoms/BlockEditor.vue'
 import AssetPanel from './AssetPanel.vue'
+import BlockResourcesFields from './BlockResourcesFields.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import { useLibraryStore } from '@/stores/library'
-import type { PlannerBlock } from '@/types/training'
+import { BLOCK_KIND_LABELS, type BlockKind, type BlockMaterial, type InstructorMini, type PlannerBlock } from '@/types/training'
 
 interface Props {
   visible: boolean
@@ -122,6 +173,10 @@ const toast = useToast()
 const saving = ref(false)
 const savingToLibrary = ref(false)
 
+const groupChoices = computed(() => Array.from(new Map([
+  ...(plannerStore.session?.groups ?? []), ...plannerStore.blocks.flatMap((b) => b.groups),
+].map((g) => [g.id, g])).values()))
+
 const isAlreadyInLibrary = computed(() => props.block?.library_block != null)
 
 const form = ref({
@@ -130,18 +185,43 @@ const form = ref({
   duration_minutes: 15,
   start_offset_minutes: 0,
   color: '',
+  group_ids: [] as number[],
   nextcloud_folder_url: '',
+  kind: 'block' as BlockKind,
+  location: '',
+  learning_objective: '',
+  safety_notes: '',
+  instructors: [] as InstructorMini[],
+  materials: [] as BlockMaterial[],
 })
 
-watch(() => props.block, (b) => {
-  if (b) {
+// Rotation: same station for other groups, edited together unless detached.
+const linked = computed(() => (props.block ? plannerStore.linkedBlocks(props.block.id) : []))
+const linkedGroups = computed(() => {
+  const names = linked.value.map((b) => (b.allGroups ? 'alle Gruppen' : b.groups.map((g) => g.name).join(', ')))
+  return [...new Set(names)].join(' und ') || 'die anderen Gruppen'
+})
+const detach = ref(false)
+
+const kindOptions = (Object.entries(BLOCK_KIND_LABELS) as Array<[BlockKind, string]>).map(([value, label]) => ({ value, label }))
+
+watch(() => [props.block, props.visible] as const, ([b, visible]) => {
+  if (b && visible) {
+    detach.value = false
     form.value = {
       title: b.title,
       content: b.content ?? '',
       duration_minutes: b.duration_minutes,
       start_offset_minutes: b.start_offset_minutes ?? 0,
       color: b.color ?? '',
+      group_ids: [...b.groupIds],
       nextcloud_folder_url: b.nextcloud_folder_url ?? '',
+      kind: b.kind ?? 'block',
+      location: b.location ?? '',
+      learning_objective: b.learning_objective ?? '',
+      safety_notes: b.safety_notes ?? '',
+      instructors: [...(b.instructors ?? [])],
+      materials: (b.materials ?? []).map((m) => ({ ...m })),
     }
   }
 }, { immediate: true })
@@ -150,9 +230,14 @@ async function save() {
   if (!props.block) return
   saving.value = true
   try {
-    await plannerStore.updateBlockContent(props.block.id, form.value)
+    const materials = form.value.materials.filter((m) => m.item || m.label.trim())
+    await plannerStore.updateBlockContent(props.block.id, {
+      ...form.value, materials, ...(detach.value ? { station_key: null } : {}),
+    })
     emit('saved', props.block.id)
     emit('update:visible', false)
+  } catch {
+    toast.add({ severity: 'error', summary: 'Nicht übernommen', detail: 'Bitte warte, bis der Plan gespeichert ist.', life: 4000 })
   } finally {
     saving.value = false
   }
@@ -204,13 +289,22 @@ async function updateLibraryBlock() {
   gap: 1rem;
 }
 .edit-main { display: flex; flex-direction: column; gap: 0.75rem; }
+.linked-note { display: grid; gap: var(--jf-space-1); padding: var(--jf-space-1-5) var(--jf-space-2); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); background: var(--jf-color-ground); font-size: var(--jf-text-sm); }
+.linked-note p { margin: 0; }
+.linked-note .pi { margin-right: 0.35rem; }
+.linked-note__detach { display: flex; align-items: center; gap: var(--jf-space-1); min-height: var(--jf-touch-target); }
 .edit-panel { }
 
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field label { font-size: 0.875rem; font-weight: 500; color: var(--text-color-secondary); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.field-row--two { grid-template-columns: 2fr 1fr; }
 
 .color-input { width: 2.5rem; height: 2rem; border: none; background: none; cursor: pointer; }
 
 .footer-left { flex: 1; display: flex; align-items: center; gap: 0.5rem; }
+</style>
+
+<style scoped>
+@media (max-width: 640px) { .block-edit-layout { grid-template-columns: 1fr; } .edit-panel { width: 100%; border-left: 0; } .field-row { grid-template-columns: 1fr; } }
 </style>

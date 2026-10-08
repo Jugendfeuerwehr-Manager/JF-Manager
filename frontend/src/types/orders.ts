@@ -149,6 +149,7 @@ export interface OrderDetailed extends Order {
 }
 
 export interface OrderCreate {
+  department?: number
   member: number
   notes?: string
   items: OrderItemCreate[]

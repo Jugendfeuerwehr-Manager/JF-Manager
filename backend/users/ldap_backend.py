@@ -1,9 +1,14 @@
+import logging
+
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django_auth_ldap.backend import LDAPBackend
 from django_auth_ldap.config import ActiveDirectoryGroupType, GroupOfNamesType, LDAPSearch
 
 from settings_manager.models import LDAPConfig
 from users.ldap_tls import apply_ldap_tls_options
+
+logger = logging.getLogger("users.ldap_backend")
 
 
 def _set_setting(name, value):
@@ -18,7 +23,8 @@ class ConfigurableLDAPBackend(LDAPBackend):
     """
 
     def _active_config(self):
-        return LDAPConfig.objects.order_by("id").first()
+        # The bind password is decrypted only once LDAP is known to be enabled.
+        return LDAPConfig.objects.order_by("id").defer("bind_password").first()
 
     def _configure_runtime(self):
         config = self._active_config()
@@ -26,6 +32,13 @@ class ConfigurableLDAPBackend(LDAPBackend):
             return False
 
         if not config.server_uri or not config.user_search_base_dn or not config.user_search_filter:
+            return False
+
+        try:
+            bind_password = config.bind_password or ""
+        except ImproperlyConfigured:
+            # Fail closed for LDAP only; local accounts must still be able to sign in.
+            logger.error("LDAP-Anmeldung deaktiviert: Bind-Passwort ist mit dem Schlüsselring nicht lesbar.")
             return False
 
         try:
@@ -41,7 +54,7 @@ class ConfigurableLDAPBackend(LDAPBackend):
         _set_setting("AUTH_LDAP_SERVER_URI", config.server_uri)
         _set_setting("AUTH_LDAP_START_TLS", config.start_tls)
         _set_setting("AUTH_LDAP_BIND_DN", config.bind_dn)
-        _set_setting("AUTH_LDAP_BIND_PASSWORD", config.bind_password or "")
+        _set_setting("AUTH_LDAP_BIND_PASSWORD", bind_password)
         _set_setting("AUTH_LDAP_ALWAYS_UPDATE_USER", True)
 
         _set_setting(
@@ -59,7 +72,7 @@ class ConfigurableLDAPBackend(LDAPBackend):
             else:
                 _set_setting("AUTH_LDAP_GROUP_TYPE", GroupOfNamesType())
 
-            _set_setting("AUTH_LDAP_MIRROR_GROUPS", config.mirror_groups)
+            _set_setting("AUTH_LDAP_MIRROR_GROUPS", False)  # ROLE-02: explicit mappings preserve local roles
             _set_setting("AUTH_LDAP_REQUIRE_GROUP", config.require_group or None)
         else:
             _set_setting("AUTH_LDAP_GROUP_SEARCH", None)
@@ -85,18 +98,7 @@ class ConfigurableLDAPBackend(LDAPBackend):
         return user
 
     def _sync_department_roles(self, user):
-        """
-        After a successful LDAP login, sync UserDepartmentRole records based on
-        the LDAPDepartmentRoleMapping configuration.
-
-        For every mapping where the user is a member of the LDAP group:
-        - Ensure a UserDepartmentRole exists for user+department
-        - Merge the mapped auth groups into the role
-
-        If ``revoke_on_mismatch=True`` is set on a mapping and the user is NOT
-        in the LDAP group, the corresponding UserDepartmentRole is removed.
-        """
-        from departments.models import UserDepartmentRole
+        """Sync verified LDAP memberships into independent, scoped grants."""
         from settings_manager.models import LDAPDepartmentRoleMapping
 
         config = self._active_config()
@@ -108,8 +110,6 @@ class ConfigurableLDAPBackend(LDAPBackend):
             .select_related("department")
             .prefetch_related("auth_groups")
         )
-        if not mappings:
-            return
 
         # Retrieve the user's LDAP groups (requires AUTH_LDAP_GROUP_SEARCH)
         ldap_user = getattr(user, "ldap_user", None)
@@ -121,19 +121,6 @@ class ConfigurableLDAPBackend(LDAPBackend):
         except Exception:
             return
 
-        for mapping in mappings:
-            is_member = mapping.ldap_group_dn in user_group_dns
+        from departments.assignment_sources import sync_external_groups
 
-            if is_member:
-                role, _ = UserDepartmentRole.objects.get_or_create(
-                    user=user,
-                    department=mapping.department,
-                )
-                existing_ids = set(role.groups.values_list("id", flat=True))
-                mapped_ids = set(mapping.auth_groups.values_list("id", flat=True))
-                role.groups.set(list(existing_ids | mapped_ids))
-            elif mapping.revoke_on_mismatch:
-                UserDepartmentRole.objects.filter(
-                    user=user,
-                    department=mapping.department,
-                ).delete()
+        sync_external_groups(user, "ldap", mappings, lambda mapping: mapping.ldap_group_dn in user_group_dns)

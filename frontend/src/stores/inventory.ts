@@ -26,6 +26,7 @@ import type {
   ItemVariant,
   ItemVariantCreate,
   ItemVariantUpdate,
+  ItemVariantBulkCreate,
   ItemVariantListParams,
   StorageLocation,
   StorageLocationCreate,
@@ -256,6 +257,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     try {
       const response = await itemsApi.get(id)
       currentItem.value = response.data
+      const index = items.value.findIndex((i) => i.id === id)
+      if (index !== -1) {
+        items.value[index] = response.data
+      }
       return currentItem.value
     } catch (err: unknown) {
       error.value = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Failed to fetch item'
@@ -365,6 +370,21 @@ export const useInventoryStore = defineStore('inventory', () => {
       return response.data
     } catch (err: unknown) {
       error.value = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Failed to create variant'
+      throw err
+    } finally {
+      variantsLoading.value = false
+    }
+  }
+
+  async function bulkCreateVariants(data: ItemVariantBulkCreate) {
+    variantsLoading.value = true
+    error.value = null
+    try {
+      const response = await variantsApi.bulkCreate(data)
+      variants.value.push(...response.data.created)
+      return response.data
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Failed to create variants'
       throw err
     } finally {
       variantsLoading.value = false
@@ -685,6 +705,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     // Actions - Variants
     fetchVariants,
     createVariant,
+    bulkCreateVariants,
     updateVariant,
     deleteVariant,
 

@@ -11,8 +11,7 @@ export function useListPdf() {
     ])
     const pdfMake = pdfMakeModule.default
     const pdfFonts = pdfFontsModule.default
-    // @ts-expect-error pdfmake vfs
-    pdfMake.vfs = pdfFonts.pdfMake?.vfs ?? pdfFonts.vfs
+    pdfMake.addVirtualFileSystem(pdfFonts)
 
     const now = new Date().toLocaleDateString('de-DE', {
       day: '2-digit',
@@ -188,7 +187,7 @@ export function useListPdf() {
     }
 
     const safeFileName = list.name.replace(/[^a-z0-9äöüÄÖÜß\s_-]/gi, '').trim() || 'Liste'
-    pdfMake.createPdf((docDefinition as unknown) as Parameters<typeof pdfMake.createPdf>[0]).download(
+    await pdfMake.createPdf((docDefinition as unknown) as Parameters<typeof pdfMake.createPdf>[0]).download(
       `${safeFileName}_${now.replace(/\./g, '-')}.pdf`,
     )
   }

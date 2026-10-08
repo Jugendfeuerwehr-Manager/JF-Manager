@@ -1,49 +1,47 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authApi } from '@/api/auth'
+import { authApi, type SessionStatus } from '@/api/auth'
+import { onSessionProblem } from '@/api'
 import { userApi } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 import router from '@/router'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { getPasskeyAssertion, passkeyErrorMessage } from '@/utils/webauthn'
+import { hardNavigate } from '@/utils/navigation'
 import { useDepartmentsStore } from '@/stores/departments'
+
+// Credentials from the former JWT login; removed on every start.
+const LEGACY_STORAGE_KEYS = ['accessToken', 'refreshToken']
+// Only the most recently initialised store reacts to session problems (HMR, tests).
+let unsubscribeSessionProblems: (() => void) | null = null
 
 export const useAuthStore = defineStore('auth', () => {
   // State
-  const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
-  const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))
+  const session = ref<SessionStatus | null>(null)
   const user = ref<UserInfo | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  let initializing: Promise<void> | null = null
 
   // Getters
-  const isAuthenticated = computed(() => !!accessToken.value)
+  const isAuthenticated = computed(() => !!session.value?.authenticated && !!user.value)
+  const mfaPending = computed(() => !!session.value?.mfa_required && !session.value.authenticated)
+  const mfaMethods = computed(() => session.value?.mfa_methods ?? { totp: true, passkey: false })
+  const mfaSetupRequired = computed(() => !!session.value?.authenticated && !!session.value.mfa_setup_required)
   const userFullName = computed(() => user.value?.full_name || '')
 
-  /**
-   * Effective permissions for the currently active department context.
-   * - If the user is org-wide (staff/superuser) or "All Departments" is active,
-   *   returns the full union of permissions from the server.
-   * - If a specific department is active, returns only the permissions the user
-   *   has through their groups in that department.
-   */
-  const permissions = computed((): string[] => {
-    if (!user.value) return []
-    // org-wide users always get all their permissions regardless of active dept
-    if (user.value.has_org_wide_access || user.value.is_superuser) {
-      return user.value.permissions
-    }
-    const deptStore = useDepartmentsStore()
-    const activeDeptId = deptStore.activeDepartmentId
-    if (activeDeptId === null) {
-      // No specific dept selected → union of all dept permissions
-      return user.value.permissions
-    }
-    // A concrete department narrows the effective permission set to the role
-    // groups assigned for that department only. UI guards and button states
-    // intentionally follow this context-sensitive permission view.
-    const role = user.value.department_roles.find((r) => r.department_id === activeDeptId)
-    return role?.permissions ?? []
+  // Global rights remain global; department rights follow the selected area.
+  // Organisation visibility never turns a scoped right into a global right.
+  const contextualRoles = computed(() => {
+    const id = useDepartmentsStore().activeDepartmentId
+    return user.value?.department_roles.filter(role => id === null || role.department_id === id) ?? []
   })
+  const permissions = computed((): string[] => [...new Set([
+    ...(user.value?.permissions ?? []), ...contextualRoles.value.flatMap(role => role.permissions),
+  ])])
+  const qualifiedPermissions = computed((): string[] => [...new Set([
+    ...(user.value?.qualified_permissions ?? []), ...contextualRoles.value.flatMap(role => role.qualified_permissions ?? []),
+  ])])
 
   /** True for staff / superuser / users with can_access_all_departments permission */
   const isOrgWide = computed(() => user.value?.has_org_wide_access ?? false)
@@ -67,50 +65,102 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * Check app-label-qualified permission, e.g. 'members.view_member'.
-   * Also strips the app label and checks the bare codename.
+   * Legacy profiles without qualified names retain compatibility.
    */
   const hasPerm = (appPerm: string): boolean => {
     if (!user.value) return false
     if (user.value.is_superuser || permissions.value.includes('superuser')) return true
     const codename = appPerm.includes('.') ? (appPerm.split('.')[1] ?? appPerm) : appPerm
+    if (appPerm.includes('.') && user.value.qualified_permissions !== undefined) return qualifiedPermissions.value.includes(appPerm)
     return permissions.value.includes(appPerm) || permissions.value.includes(codename)
   }
 
   /**
    * Returns true if the user can access the given module.
-   * Staff/org-wide users can access everything.
-   * Other users need at least view permission for the relevant model.
+   * Requires the explicit subject permission in the selected context.
    */
   const canAccessModule = (viewPerm: string): boolean => {
-    if (isOrgWide.value) return true
     return hasPerm(viewPerm)
   }
 
   // Actions
+  async function applySession(status: SessionStatus) {
+    session.value = status
+    if (status.authenticated) {
+      if (!user.value) await fetchUser()
+    } else {
+      user.value = null
+    }
+    return status
+  }
+
+  /** Password step; resolves with `mfa_required` when a code must follow. */
   async function login(username: string, password: string) {
     loading.value = true
     error.value = null
-
     try {
       const response = await authApi.login({ username, password })
-
-      accessToken.value = response.data.access
-      refreshToken.value = response.data.refresh
-
-      // Store tokens in localStorage
-      localStorage.setItem('accessToken', response.data.access)
-      localStorage.setItem('refreshToken', response.data.refresh)
-
-      // Fetch user data
-      await fetchUser()
-
-      return true
+      return await applySession(response.data)
     } catch (err) {
-      error.value = getApiErrorMessage(err, 'Login failed')
+      error.value = getApiErrorMessage(err, 'Anmeldung fehlgeschlagen.')
       throw err
     } finally {
       loading.value = false
     }
+  }
+
+  async function verifyMfa(code: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await authApi.verifyMfa(code)
+      return await applySession(response.data)
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Der Code ist ungültig.')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Finishes the pending login with a passkey (SEC-11). */
+  async function verifyMfaPasskey() {
+    loading.value = true
+    error.value = null
+    try {
+      const options = (await authApi.loginPasskeyOptions()).data
+      const assertion = await getPasskeyAssertion(options)
+      const response = await authApi.verifyMfaPasskey(assertion)
+      return await applySession(response.data)
+    } catch (err) {
+      error.value = passkeyErrorMessage(err) ?? getApiErrorMessage(err, 'Der Passkey konnte nicht bestätigt werden.')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Signs in with a passkey alone; it replaces password and second factor (SEC-12). */
+  async function signInWithPasskey() {
+    loading.value = true
+    error.value = null
+    try {
+      const options = (await authApi.passkeySignInOptions()).data
+      const assertion = await getPasskeyAssertion(options)
+      const response = await authApi.passkeySignIn(assertion)
+      return await applySession(response.data)
+    } catch (err) {
+      error.value = passkeyErrorMessage(err) ?? getApiErrorMessage(err, 'Die Anmeldung mit Passkey ist fehlgeschlagen.')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Reads the session state without counting as user activity. */
+  async function refreshSession() {
+    const response = await authApi.session()
+    return applySession(response.data)
   }
 
   async function fetchUser() {
@@ -136,26 +186,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function refreshAccessToken() {
-    if (!refreshToken.value) {
-      throw new Error('No refresh token available')
-    }
-
-    try {
-      const response = await authApi.refresh(refreshToken.value)
-      accessToken.value = response.data.access
-      localStorage.setItem('accessToken', response.data.access)
-      if (response.data.refresh) {
-        refreshToken.value = response.data.refresh
-        localStorage.setItem('refreshToken', response.data.refresh)
-      }
-    } catch (err) {
-      // Refresh failed, logout
-      logout()
-      throw err
-    }
-  }
-
   async function updateProfile(data: Partial<UserInfo>) {
     try {
       const response = await userApi.updateProfile(data)
@@ -167,64 +197,76 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    accessToken.value = null
-    refreshToken.value = null
+  function clearLocalState() {
+    session.value = null
     user.value = null
+    useDepartmentsStore().clearDepartments()
+    sessionStorage.removeItem('oidc_return_url')
+  }
 
-    const departmentsStore = useDepartmentsStore()
-    departmentsStore.clearDepartments()
+  /** Ends the server session, then reloads so no store keeps previous data. */
+  async function logout() {
+    try {
+      await authApi.logout()
+    } catch {
+      // The local state is discarded regardless; the session expires server-side.
+    }
+    clearLocalState()
+    hardNavigate('/login')
+  }
 
-    authApi.logout()
-    router.push('/login')
+  function handleSessionExpired() {
+    if (!session.value?.authenticated) return
+    clearLocalState()
+    hardNavigate('/login?expired=1')
   }
 
   /**
-   * Initiate an OIDC login by redirecting the browser to the IdP.
-   * Saves the intended destination URL in sessionStorage so the callback
-   * view can restore it after a successful login.
+   * Initiate an OIDC login by redirecting the browser to the IdP. The backend
+   * keeps state, nonce, PKCE verifier and return path in the session.
    */
   async function loginWithOidc(next?: string) {
     const { oidcApi } = await import('@/api/oidc')
     const targetNext = next || router.currentRoute.value.fullPath || '/'
-    sessionStorage.setItem('oidc_return_url', targetNext)
     const response = await oidcApi.getLoginUrl(targetNext)
     window.location.href = response.data.authorization_url
   }
 
-  /**
-   * Store OIDC-issued JWT tokens (called from OIDCCallbackView after exchange).
-   * Triggers the same user-fetch flow as a normal login.
-   */
-  async function setOIDCTokens(access: string, refresh: string) {
-    accessToken.value = access
-    refreshToken.value = refresh
-    localStorage.setItem('accessToken', access)
-    localStorage.setItem('refreshToken', refresh)
-    await fetchUser()
-  }
-
-  // Initialize - Check if tokens exist and fetch user
-  async function initialize() {
-    if (accessToken.value) {
-      try {
-        await fetchUser()
-      } catch {
-        // Token invalid, logout
-        logout()
-      }
+  /** Loads session and user once; the router guard awaits this before deciding. */
+  function initialize() {
+    if (!initializing) {
+      LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
+      unsubscribeSessionProblems?.()
+      unsubscribeSessionProblems = onSessionProblem(problem => {
+        if (problem === 'expired') handleSessionExpired()
+        else if (session.value) {
+          // Several requests may report this at once; redirect only once and
+          // never from the setup page itself (that would loop via the guard).
+          const alreadyKnown = session.value.mfa_setup_required
+          session.value = { ...session.value, mfa_setup_required: true }
+          if (!alreadyKnown && router.currentRoute.value.path !== '/profile') {
+            void router.push({ path: '/profile', query: { mfa: 'setup' } })
+          }
+        }
+      })
+      initializing = refreshSession().then(() => undefined).catch(() => {
+        session.value = { authenticated: false }
+      })
     }
+    return initializing
   }
 
   return {
     // State
-    accessToken,
-    refreshToken,
+    session,
     user,
     loading,
     error,
     // Getters
     isAuthenticated,
+    mfaPending,
+    mfaMethods,
+    mfaSetupRequired,
     userFullName,
     permissions,
     isOrgWide,
@@ -235,12 +277,15 @@ export const useAuthStore = defineStore('auth', () => {
     canAccessModule,
     // Actions
     login,
+    verifyMfa,
+    verifyMfaPasskey,
+    signInWithPasskey,
+    refreshSession,
     fetchUser,
-    refreshAccessToken,
     updateProfile,
     logout,
+    handleSessionExpired,
     initialize,
     loginWithOidc,
-    setOIDCTokens,
   }
 })

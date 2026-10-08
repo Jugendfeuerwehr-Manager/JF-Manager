@@ -6,13 +6,20 @@ from django.db.models import Q, Sum
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from inventory.models import Stock, StorageLocation, Transaction
 from jf_manager_backend.mixins import BasePermissionedViewSet
 
-from .access import get_user_department_ids, is_org_wide_user
+from .access import (
+    can_manage_department,
+    filter_item_department_queryset_for_user,
+    get_user_department_ids,
+    is_org_wide_user,
+    visible_item_department_ids,
+)
 from .serializers import StockSerializer, StorageLocationSerializer, TransactionSerializer
 
 
@@ -22,6 +29,23 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
     include_central_records = True
     search_fields = ["name", "parent__name", "member__name", "member__lastname"]
     filterset_fields = ["parent", "is_member", "member"]
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method not in SAFE_METHODS:
+            codename = "delete" if request.method == "DELETE" else "change"
+            permission = f"inventory.{codename}_storagelocation"
+            if not can_manage_department(request.user, obj.department_id, permission):
+                raise PermissionDenied("Keine Berechtigung für diesen Lagerort.")
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.method != "GET":
+            return queryset
+        allowed_ids = visible_item_department_ids(self.request.user, "inventory.view_storagelocation")
+        if allowed_ids is None:
+            return queryset
+        return queryset.filter(Q(member__isnull=True) | Q(member__departments__id__in=allowed_ids)).distinct()
 
     def _assert_member_access(self, member):
         '''Assert that the current user has access to the given member. Raises PermissionDenied if not.
@@ -33,13 +57,22 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
             PermissionDenied: If the current user does not have access to the member.
         '''
         user = self.request.user
-        if is_org_wide_user(user):
-            return
-
-        allowed_department_ids = get_user_department_ids(user)
         member_department_ids = set(member.departments.values_list("id", flat=True))
+        if self.request.method != "GET":
+            allowed_department_ids = None if is_org_wide_user(user) else get_user_department_ids(user)
+        else:
+            allowed_department_ids = visible_item_department_ids(user, "inventory.view_storagelocation")
+
+        if allowed_department_ids is None:
+            return
         if not member_department_ids.intersection(allowed_department_ids):
             raise PermissionDenied("Kein Zugriff auf dieses Mitglied.")
+        try:
+            location_department_id = member.personal_storage_location.department_id
+        except StorageLocation.DoesNotExist:
+            return
+        if location_department_id is not None and location_department_id not in allowed_department_ids:
+            raise PermissionDenied("Kein Leserecht für diesen persönlichen Lagerort.")
 
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):
@@ -50,6 +83,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
             "item_variant__parent_item",
             "location",
         )
+        qs = filter_item_department_queryset_for_user(qs, request.user, "inventory.view_stock")
         serializer = StockSerializer(qs, many=True)
         total = qs.aggregate(total=Sum("quantity"))["total"] or 0
         return Response({"total": total, "rows": serializer.data})
@@ -81,8 +115,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
     @action(detail=False, methods=["get", "post"], url_path="for-member/(?P<member_id>[^/.]+)")
     def for_member(self, request, member_id=None):
         """
-        GET/POST: Return (or auto-create) the storage location for a member.
-        Auto-creation avoids manual location management for member equipment.
+        GET returns an existing personal location; POST creates it if needed.
         """
         from members.models import Member
 
@@ -93,7 +126,22 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
 
         self._assert_member_access(member)
 
-        location, created = self._get_or_create_personal_storage_location(request, member)
+        if request.method == "GET":
+            try:
+                location = member.personal_storage_location
+            except StorageLocation.DoesNotExist:
+                return Response({"detail": "Persönlicher Lagerort nicht vorhanden."}, status=status.HTTP_404_NOT_FOUND)
+            created = False
+        else:
+            try:
+                target_department_id = member.personal_storage_location.department_id
+            except StorageLocation.DoesNotExist:
+                target_department_id = member.departments.values_list("id", flat=True).first()
+            if not can_manage_department(
+                request.user, target_department_id, "inventory.add_storagelocation"
+            ):
+                raise PermissionDenied("Keine Anlegeberechtigung in der Mitgliedsabteilung.")
+            location, created = self._get_or_create_personal_storage_location(request, member)
         serializer = self.get_serializer(location)
         return_status = status.HTTP_201_CREATED if created and request.method == "POST" else status.HTTP_200_OK
         return Response(serializer.data, status=return_status)
@@ -110,18 +158,34 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
 
         self._assert_member_access(member)
 
-        location, _ = self._get_or_create_personal_storage_location(request, member)
+        try:
+            location = member.personal_storage_location
+        except StorageLocation.DoesNotExist:
+            return Response(
+                {
+                    "member_id": int(member_id),
+                    "member_name": f"{member.name} {member.lastname}",
+                    "location_id": None,
+                    "equipment": [],
+                    "total_items": 0,
+                    "recent_transactions": [],
+                }
+            )
 
         stock_qs = Stock.objects.filter(location=location, quantity__gt=0).select_related(
             "item", "item_variant", "item_variant__parent_item", "location"
         )
+        stock_qs = filter_item_department_queryset_for_user(
+            stock_qs, request.user, "inventory.view_stock"
+        )
         total_items = sum(s.quantity for s in stock_qs)
 
-        transactions_qs = (
-            Transaction.objects.filter(Q(source=location) | Q(target=location))
-            .select_related("item", "item_variant", "item_variant__parent_item", "source", "target", "user")
-            .order_by("-date")[:20]
+        transactions_qs = Transaction.objects.filter(Q(source=location) | Q(target=location)).select_related(
+            "item", "item_variant", "item_variant__parent_item", "source", "target", "user"
         )
+        transactions_qs = filter_item_department_queryset_for_user(
+            transactions_qs, request.user, "inventory.view_transaction"
+        ).order_by("-date")[:20]
 
         return Response(
             {

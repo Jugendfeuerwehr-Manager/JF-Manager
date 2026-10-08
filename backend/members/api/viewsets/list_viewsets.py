@@ -6,40 +6,43 @@ from datetime import date
 from io import BytesIO
 
 import openpyxl
+from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
-from rest_framework import status, viewsets
+from openpyxl.workbook.child import INVALID_TITLE_REGEX
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
+from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from jf_manager_backend.renderers import PassthroughRenderer
+from jf_manager_backend.safe_exports import write_safe_cell
 from members.api.serializers.list_serializers import (
     CreateFromEventTypeInputSerializer,
+    LegacyListPendingSerializer,
+    LegacyListResolutionResultSerializer,
     MemberListCreateUpdateSerializer,
     MemberListDetailSerializer,
     MemberListSerializer,
+    ResolveLegacyListInputSerializer,
+    can_write_list_department,
+    validate_organization_wide_target,
 )
 from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_EXPORT_DEFAULT_COLUMNS
 from members.api_serializers import AttachmentSerializer
-from members.models import Attachment, Event, Member, MemberList, MemberListEntry
-
-
-class PassthroughRenderer(BaseRenderer):
-    """Return data as-is for binary responses."""
-
-    media_type = "*/*"
-    format = "binary"
-
-    def render(self, data, accepted_media_type=None, renderer_context=None):
-        return data
-
+from members.models import Attachment, Event, EventType, Member, MemberList, MemberListEntry
+from members.services.legacy_list_resolution import pending_resolution_data, resolve_legacy_list
+from users.step_up import StepUpForExports
 
 LIST_EXTRA_COLUMNS = {
     "list_checked": "Anwesend",
@@ -51,6 +54,43 @@ LIST_EXTRA_DEFAULT_COLUMNS = ["list_checked", "list_notes"]
 ALL_LIST_EXPORT_COLUMNS = {**MEMBER_EXPORT_COLUMNS, **LIST_EXTRA_COLUMNS}
 
 
+class MemberListRolePermissions(DepartmentRoleModelPermissions):
+    """List actions use their actual write or export permission."""
+
+    def has_permission(self, request, view):
+        if getattr(view, "action", None) in ("pending_resolution", "resolve_legacy"):
+            return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+        return super().has_permission(request, view)
+
+    def _required_permissions(self, request, view):
+        if request.method == "OPTIONS":
+            return []
+        action = getattr(view, "action", None)
+        if action in ("create", "create_from_event_type") and request.method == "POST":
+            codenames = ("add_memberlist",)
+        elif action == "destroy" and request.method == "DELETE":
+            codenames = ("delete_memberlist",)
+        elif action == "export_excel" and request.method in ("GET", "HEAD"):
+            codenames = ("view_memberlist", "export_memberlist")
+        elif action in ("list", "retrieve", "attachments") and request.method in ("GET", "HEAD"):
+            codenames = ("view_memberlist",)
+        elif (
+            (action in ("update", "partial_update") and request.method in ("PUT", "PATCH"))
+            or (action == "attachments" and request.method == "POST")
+            or (action == "delete_attachment" and request.method == "DELETE")
+            or (
+                action
+                in ("add_member", "remove_member", "bulk_add", "toggle_check", "set_check", "check_all", "uncheck_all")
+                and request.method == "POST"
+            )
+            or (action == "update_entry_notes" and request.method == "PATCH")
+        ):
+            codenames = ("change_memberlist",)
+        else:
+            return None
+        return [f"members.{codename}" for codename in codenames]
+
+
 @extend_schema_view(
     list=extend_schema(summary="List all member lists"),
     retrieve=extend_schema(summary="Get a member list with all entries"),
@@ -59,9 +99,111 @@ ALL_LIST_EXPORT_COLUMNS = {**MEMBER_EXPORT_COLUMNS, **LIST_EXTRA_COLUMNS}
     partial_update=extend_schema(summary="Partially update a member list"),
     destroy=extend_schema(summary="Delete a member list"),
 )
-class MemberListViewSet(viewsets.ModelViewSet):
+class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
     queryset = MemberList.objects.all()
-    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    permission_classes = [IsAuthenticated, MemberListRolePermissions, StepUpForExports]
+
+    def destroy(self, request, *args, **kwargs):
+        member_list = self.get_object()
+        if (
+            member_list.is_unresolved_legacy
+            or hasattr(member_list, "legacy_source_mapping")
+            or member_list.legacy_targets.exists()
+        ):
+            return Response(
+                {"detail": "Altlisten und ihre Zuordnungen dürfen nicht gelöscht werden."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(responses=LegacyListPendingSerializer(many=True))
+    @action(detail=False, methods=["get"], url_path="pending-resolution", pagination_class=None)
+    def pending_resolution(self, request):
+        sources = MemberList.objects.filter(
+            department__isnull=True, organization_wide=False, legacy_resolved_at__isnull=True
+        ).order_by("pk")
+        return Response([pending_resolution_data(source) for source in sources])
+
+    @extend_schema(responses=LegacyListPendingSerializer, methods=["GET"])
+    @extend_schema(
+        request=ResolveLegacyListInputSerializer,
+        responses=LegacyListResolutionResultSerializer,
+        methods=["POST"],
+    )
+    @action(detail=True, methods=["get", "post"], url_path="resolve-legacy")
+    def resolve_legacy(self, request, pk=None):
+        source = get_object_or_404(
+            MemberList, pk=pk, department__isnull=True, organization_wide=False, legacy_resolved_at__isnull=True
+        )
+        if request.method == "GET":
+            return Response(pending_resolution_data(source))
+        serializer = ResolveLegacyListInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(resolve_legacy_list(source.pk, serializer.validated_data))
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        requested = self.request.query_params.get("department")
+        if requested is not None:
+            try:
+                department_id = int(requested)
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError({"department": "Ungültige Abteilung."}) from exc
+            if (
+                not user.is_superuser
+                and not user.has_perm("departments.can_access_all_departments")
+                and not (user.department_roles.filter(department_id=department_id).exists())
+            ):
+                raise PermissionDenied("Keine Berechtigung für diese Abteilung.")
+            queryset = queryset.filter(department_id=department_id)
+
+        # Unassigned legacy lists remain in a superuser-only migration queue.
+        if user.is_superuser:
+            return queryset
+        queryset = queryset.filter(Q(department__isnull=False) | Q(organization_wide=True))
+        invalid_entries = MemberListEntry.objects.filter(member_list_id=OuterRef("pk")).exclude(
+            member__departments__id=OuterRef("department_id")
+        )
+        queryset = queryset.annotate(_has_invalid_entries=Exists(invalid_entries)).filter(
+            Q(organization_wide=True) | Q(_has_invalid_entries=False)
+        )
+
+        required = MemberListRolePermissions()._required_permissions(self.request, self)
+        if required is None:
+            return queryset.none()
+        if user.has_perm("departments.can_access_all_departments") and all(
+            user.has_perm(permission) for permission in required
+        ):
+            return queryset
+        # Organization-wide lists need the organization-wide scope and global rights.
+        queryset = queryset.filter(organization_wide=False)
+
+        allowed_ids = set(user.department_roles.values_list("department_id", flat=True))
+        for permission in required:
+            if user.has_perm(permission):
+                continue
+            app_label, codename = permission.split(".", 1)
+            allowed_ids &= set(
+                user.department_roles.filter(
+                    groups__permissions__content_type__app_label=app_label,
+                    groups__permissions__codename=codename,
+                ).values_list("department_id", flat=True)
+            )
+        return queryset.filter(department_id__in=allowed_ids)
+
+    def _require_list_write(self, member_list):
+        if member_list.is_unresolved_legacy or not can_write_list_department(
+            self.request.user, member_list.department, "change"
+        ):
+            raise PermissionDenied("Keine Schreibberechtigung für die Listenabteilung.")
+
+    @staticmethod
+    def _require_member_in_list_department(member_list, member):
+        if member_list.organization_wide:
+            return
+        if not member.departments.filter(pk=member_list.department_id).exists():
+            raise serializers.ValidationError({"member_id": "Das Mitglied gehört nicht zur Listenabteilung."})
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
@@ -83,8 +225,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
             serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
             return Response(serializer.data)
 
-        if not request.user.has_perm("members.change_memberlist"):
-            return Response({"detail": "Keine Berechtigung zum Bearbeiten."}, status=status.HTTP_403_FORBIDDEN)
+        self._require_list_write(member_list)
 
         file_obj = request.FILES.get("file")
         name = request.data.get("name") or (file_obj.name if file_obj else None)
@@ -104,13 +245,13 @@ class MemberListViewSet(viewsets.ModelViewSet):
         serializer = AttachmentSerializer(attachment, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(parameters=[OpenApiParameter("attachment_id", OpenApiTypes.INT, location=OpenApiParameter.PATH)])
     @action(detail=True, methods=["delete"], url_path="attachments/(?P<attachment_id>[^/.]+)")
     def delete_attachment(self, request, pk=None, attachment_id=None):
         """Delete an attachment from a member list."""
         member_list = self.get_object()
 
-        if not request.user.has_perm("members.change_memberlist"):
-            return Response({"detail": "Keine Berechtigung zum Löschen."}, status=status.HTTP_403_FORBIDDEN)
+        self._require_list_write(member_list)
 
         attachment = get_object_or_404(member_list.attachments, pk=attachment_id)
         attachment.delete()
@@ -123,19 +264,16 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def add_member(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/add_member/ — add a member to this list."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         if not member_id:
             return Response({"error": "member_id erforderlich."}, status=status.HTTP_400_BAD_REQUEST)
+        member_id = serializers.IntegerField(min_value=1).run_validation(member_id)
+        member = get_object_or_404(Member, pk=member_id)
+        self._require_member_in_list_department(member_list, member)
 
-        try:
-            member = Member.objects.get(pk=member_id)
-        except Member.DoesNotExist:
-            return Response({"error": "Mitglied nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
-
-        _, created = MemberListEntry.objects.get_or_create(
-            member_list=member_list,
-            member=member,
-        )
+        with transaction.atomic():
+            _, created = MemberListEntry.objects.get_or_create(member_list=member_list, member=member)
         return Response(
             {"added": created, "member_count": member_list.member_count},
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
@@ -145,6 +283,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def remove_member(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/remove_member/ — remove a member from this list."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         deleted, _ = MemberListEntry.objects.filter(member_list=member_list, member_id=member_id).delete()
         return Response({"removed": bool(deleted), "member_count": member_list.member_count})
@@ -153,19 +292,23 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def bulk_add(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/bulk_add/ — add multiple members at once."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_ids = request.data.get("member_ids", [])
         if not isinstance(member_ids, list):
             return Response({"error": "member_ids muss eine Liste sein."}, status=status.HTTP_400_BAD_REQUEST)
+        member_ids = set(serializers.ListField(child=serializers.IntegerField(min_value=1)).run_validation(member_ids))
+        members = Member.objects.filter(pk__in=member_ids)
+        if not member_list.organization_wide:
+            members = members.filter(departments=member_list.department)
+        members = list(members.distinct())
+        if {member.pk for member in members} != member_ids:
+            raise serializers.ValidationError({"member_ids": "Alle Mitglieder müssen zur Listenabteilung gehören."})
 
-        added = 0
-        for member_id in member_ids:
-            try:
-                member = Member.objects.get(pk=member_id)
+        with transaction.atomic():
+            added = 0
+            for member in members:
                 _, created = MemberListEntry.objects.get_or_create(member_list=member_list, member=member)
-                if created:
-                    added += 1
-            except Member.DoesNotExist:
-                pass
+                added += int(created)
 
         return Response({"added": added, "member_count": member_list.member_count})
 
@@ -175,6 +318,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def toggle_check(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/toggle_check/ — toggle checked state for one member."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         try:
             entry = MemberListEntry.objects.get(member_list=member_list, member_id=member_id)
@@ -187,6 +331,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def set_check(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/set_check/ — set checked state for one member explicitly."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         checked = request.data.get("checked")
         if checked is None:
@@ -204,6 +349,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def check_all(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/check_all/ — mark all members as checked."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         now = timezone.now()
         member_list.entries.update(checked=True, checked_at=now)
         return Response({"checked_count": member_list.member_count})
@@ -212,6 +358,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def uncheck_all(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/uncheck_all/ — reset all check states."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_list.entries.update(checked=False, checked_at=None)
         return Response({"checked_count": 0})
 
@@ -219,6 +366,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
     def update_entry_notes(self, request, pk=None):
         """PATCH /api/v1/member-lists/{id}/update_entry_notes/ — set notes on a list entry."""
         member_list = self.get_object()
+        self._require_list_write(member_list)
         member_id = request.data.get("member_id")
         notes = request.data.get("notes", "")
         updated = MemberListEntry.objects.filter(member_list=member_list, member_id=member_id).update(notes=notes)
@@ -226,6 +374,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
             return Response({"error": "Eintrag nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
         return Response({"notes": notes})
 
+    @extend_schema(request=CreateFromEventTypeInputSerializer, responses={201: MemberListSerializer})
     @action(detail=False, methods=["post"], url_path="create_from_event_type")
     def create_from_event_type(self, request):
         """
@@ -240,46 +389,39 @@ class MemberListViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
 
         name = data["name"]
+        department = data["department"]
         description = data.get("description", "")
         event_type_id = data.get("event_type_id")
         invert = data.get("invert", False)
         date_from = data.get("date_from")
         date_to = data.get("date_to")
 
-        user = request.user
-        is_org_wide = user.is_staff or user.is_superuser or user.has_perm("departments.can_access_all_departments")
+        if department is None:
+            validate_organization_wide_target()
+        if not can_write_list_department(request.user, department, "add"):
+            raise PermissionDenied("Keine Schreibberechtigung für die Listenabteilung.")
 
-        # Determine member base set scoped to the user's accessible departments
+        # The query parameter can narrow a request, but must never select a
+        # different owner than the explicit body field.
         dept_raw = request.query_params.get("department")
-        if is_org_wide:
-            if dept_raw:
-                try:
-                    dept_id = int(dept_raw)
-                    base_members = Member.objects.filter(departments__id=dept_id)
-                except (ValueError, TypeError):
-                    base_members = Member.objects.all()
-            else:
-                base_members = Member.objects.all()
-        else:
-            dept_ids = list(user.department_roles.values_list("department_id", flat=True))
-            if dept_raw:
-                try:
-                    dept_id = int(dept_raw)
-                    if dept_id not in dept_ids:
-                        return Response(
-                            {"detail": "Keine Berechtigung für diese Abteilung."},
-                            status=status.HTTP_403_FORBIDDEN,
-                        )
-                    base_members = Member.objects.filter(departments__id=dept_id)
-                except (ValueError, TypeError):
-                    base_members = Member.objects.filter(departments__id__in=dept_ids)
-            else:
-                base_members = Member.objects.filter(departments__id__in=dept_ids)
+        if dept_raw is not None and (department is None or dept_raw != str(department.pk)):
+            raise serializers.ValidationError({"department": "Abteilung in URL und Inhalt stimmen nicht überein."})
 
-        base_members = base_members.distinct()
+        if event_type_id is not None:
+            event_type = get_object_or_404(EventType, pk=event_type_id)
+            if department is not None and event_type.department_id not in (None, department.pk):
+                raise serializers.ValidationError({"event_type_id": "Ereignistyp gehört zu einer anderen Abteilung."})
+
+        if department is None:
+            base_members = Member.objects.all()
+            events_qs = Event.objects.filter(member__in=base_members, type__isnull=False)
+        else:
+            base_members = Member.objects.filter(departments=department).distinct()
+            events_qs = Event.objects.filter(member__in=base_members).filter(
+                Q(type__department=department) | Q(type__isnull=False, type__department__isnull=True)
+            )
 
         # Filter events matching the criteria
-        events_qs = Event.objects.filter(member__in=base_members)
         if event_type_id is not None:
             events_qs = events_qs.filter(type_id=event_type_id)
         if date_from:
@@ -294,10 +436,13 @@ class MemberListViewSet(viewsets.ModelViewSet):
         else:
             selected_members = list(base_members.filter(id__in=member_ids_with_events))
 
-        member_list = MemberList.objects.create(name=name, description=description)
-        MemberListEntry.objects.bulk_create(
-            [MemberListEntry(member_list=member_list, member=m) for m in selected_members]
-        )
+        with transaction.atomic():
+            member_list = MemberList.objects.create(
+                name=name, description=description, department=department, organization_wide=department is None
+            )
+            MemberListEntry.objects.bulk_create(
+                [MemberListEntry(member_list=member_list, member=m) for m in selected_members]
+            )
 
         output_serializer = MemberListSerializer(member_list)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
@@ -315,13 +460,23 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 ),
             ),
         ],
+        responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
     )
     @action(detail=True, methods=["get"], url_path="export-excel", renderer_classes=[PassthroughRenderer])
     def export_excel(self, request, pk=None):
-        if not request.user.has_perm("members.view_memberlist"):
-            return Response({"error": "Keine Berechtigung für Listen-Export"}, status=403)
-
         member_list = self.get_object()
+        self.export_department_ids = [member_list.department_id] if member_list.department_id else []
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
+
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        parent_view.action = "list"
+        if DepartmentRoleModelPermissions().has_permission(parent_view.request, parent_view):
+            visible_parents = parent_view.get_queryset()
+        else:
+            visible_parents = parent_view.queryset.none()
 
         # Determine which columns to export
         columns_param = request.query_params.get("columns", "")
@@ -342,7 +497,9 @@ class MemberListViewSet(viewsets.ModelViewSet):
 
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = member_list.name[:31]  # Excel sheet name limit
+        # List names are free text; worksheet titles have additional restrictions.
+        sheet_name = ILLEGAL_CHARACTERS_RE.sub("", member_list.name)
+        ws.title = INVALID_TITLE_REGEX.sub("-", sheet_name).strip()[:31] or "Liste"
 
         header_fill = PatternFill(start_color="CC0000", end_color="CC0000", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)
@@ -357,7 +514,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
 
         for row_idx, entry in enumerate(entries, start=2):
             member = entry.member
-            parents = list(member.parent_set.all()[:2])
+            parents = list(visible_parents.filter(children=member)[:2])
             p1 = parents[0] if len(parents) > 0 else None
             p2 = parents[1] if len(parents) > 1 else None
 
@@ -366,7 +523,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 if col_key == "list_checked":
                     value = "Ja" if entry.checked else "Nein"
                 elif col_key == "list_checked_at":
-                    value = entry.checked_at.astimezone().strftime("%d.%m.%Y %H:%M") if entry.checked_at else ""
+                    value = entry.checked_at or ""
                 elif col_key == "list_notes":
                     value = entry.notes or ""
                 elif col_key == "name":
@@ -376,7 +533,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 elif col_key == "gender":
                     value = {"male": "Männlich", "female": "Weiblich", "diverse": "Divers"}.get(member.gender, "")
                 elif col_key == "birthday":
-                    value = member.birthday.strftime("%d.%m.%Y") if member.birthday else ""
+                    value = member.birthday or ""
                 elif col_key == "age":
                     if member.birthday:
                         value = (
@@ -397,7 +554,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 elif col_key == "city":
                     value = member.city
                 elif col_key == "joined":
-                    value = member.joined.strftime("%d.%m.%Y") if member.joined else ""
+                    value = member.joined or ""
                 elif col_key == "status":
                     value = member.status.name if member.status else ""
                 elif col_key == "group":
@@ -447,7 +604,7 @@ class MemberListViewSet(viewsets.ModelViewSet):
                 elif col_key == "parent2_city":
                     value = p2.city if p2 else ""
 
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                write_safe_cell(ws, row_idx, col_idx, value)
 
         # Auto-fit column widths (capped at 50)
         for col in ws.columns:

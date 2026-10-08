@@ -87,10 +87,6 @@ function handleSubmit() {
   
   if (Object.keys(changes).length > 0) {
     emit('save', changes)
-    successMessage.value = 'Bestellungs Einstellungen erfolgreich gespeichert'
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
   }
 }
 

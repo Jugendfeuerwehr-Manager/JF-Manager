@@ -6,6 +6,9 @@ from rest_framework import serializers
 
 from departments.api.serializers.department import UserDepartmentRoleMiniSerializer
 from departments.models import Department
+from jf_manager_backend.html_safety import SanitizedHTMLField
+from jf_manager_backend.media_fields import PrivateAvatarField
+from jf_manager_backend.private_media import private_media_url
 
 User = get_user_model()
 
@@ -23,9 +26,12 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class UserInfoSerializer(serializers.ModelSerializer):
+    avatar = PrivateAvatarField(kind="user-avatar", required=False, allow_null=True)
     """Complete user information including permissions"""
 
+    email_signature = SanitizedHTMLField(required=False, allow_blank=True)
     permissions = serializers.SerializerMethodField()
+    qualified_permissions = serializers.SerializerMethodField()
     groups = GroupSerializer(many=True, read_only=True)
     avatar_url = serializers.SerializerMethodField()
     full_name = serializers.CharField(source="get_full_name", read_only=True)
@@ -63,6 +69,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "auth_source",
             "groups",
             "permissions",
+            "qualified_permissions",
             "department_roles",
             "has_org_wide_access",
             "favorite_department",
@@ -73,16 +80,23 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
             "is_staff",
+            "is_active",
             "is_superuser",
             "groups",
             "permissions",
+            "qualified_permissions",
             "department_roles",
             "has_org_wide_access",
             "auth_source",
         ]
 
+    def validate_email(self, value):
+        if self.instance and self.instance.auth_source != "local" and value != self.instance.email:
+            raise serializers.ValidationError("Die E-Mail-Adresse wird durch den Anmeldedienst verwaltet.")
+        return value
+
     def get_has_org_wide_access(self, obj):
-        return obj.is_staff or obj.is_superuser or obj.has_perm("departments.can_access_all_departments")
+        return obj.is_superuser or obj.has_perm("departments.can_access_all_departments")
 
     def validate_favorite_department(self, value):
         """Non-org-wide users can only pick one of their assigned departments."""
@@ -91,7 +105,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             return value
 
         actor = request.user
-        is_org_wide = actor.is_staff or actor.is_superuser or actor.has_perm("departments.can_access_all_departments")
+        is_org_wide = actor.is_superuser or actor.has_perm("departments.can_access_all_departments")
 
         # Only org-wide users may store "All Departments" as favorite (null)
         if value is None:
@@ -120,11 +134,14 @@ class UserInfoSerializer(serializers.ModelSerializer):
         all_perms = set(list(user_perms) + list(group_perms))
         return list(all_perms)
 
+    def get_qualified_permissions(self, obj):
+        return sorted(obj.get_all_permissions())
+
     def get_avatar_url(self, obj):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("user-avatar", obj.pk, request)
         return None
 
 
@@ -153,7 +170,7 @@ class UserSerializer(serializers.ModelSerializer):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("user-avatar", obj.pk, request)
         return None
 
 
@@ -161,14 +178,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     """Serializer for requesting password reset"""
 
     email = serializers.EmailField(required=True)
-
-    def validate_email(self, value):
-        """Check if user with this email exists"""
-        import contextlib
-
-        with contextlib.suppress(User.DoesNotExist):
-            User.objects.get(email=value, is_active=True)
-        return value
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
@@ -214,7 +223,7 @@ class PasswordChangeSerializer(serializers.Serializer):
 
         # Validate password strength
         try:
-            validate_password(data["new_password"])
+            validate_password(data["new_password"], user=self.context["request"].user)
         except ValidationError as e:
             raise serializers.ValidationError({"new_password": list(e.messages)}) from e
 

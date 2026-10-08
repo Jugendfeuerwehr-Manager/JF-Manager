@@ -1,5 +1,9 @@
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
+
+from jf_manager_backend.media_fields import PrivateAvatarField
+from jf_manager_backend.private_media import private_media_url
 
 from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 
@@ -41,12 +45,45 @@ class ParentSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "full_name"]
 
 
+def visible_parent_data(member, context, root_instance):
+    """Serialize visible contacts once for all members in the response."""
+    request = context.get("request")
+    if request is None or not request.user.is_authenticated:
+        return []
+
+    if "_visible_parent_data_by_member" not in context:
+        from rest_framework.request import clone_request
+
+        from members.api.viewsets.parent_viewsets import ParentViewSet
+        from members.models import MemberList
+
+        if isinstance(root_instance, Member):
+            members = [root_instance]
+        elif isinstance(root_instance, MemberList):
+            members = list(Member.objects.filter(list_entries__member_list=root_instance).distinct())
+        else:
+            members = list(root_instance)
+        parent_data = {item.pk: [] for item in members}
+        parent_view = ParentViewSet()
+        parent_view.request = clone_request(request, "GET")
+        parents = parent_view.get_queryset().filter(children__pk__in=parent_data).distinct()
+        for parent in parents:
+            serialized = ParentSerializer(parent, context=context).data
+            for child in parent.children.all():
+                if child.pk in parent_data:
+                    parent_data[child.pk].append(serialized)
+        context["_visible_parent_data_by_member"] = parent_data
+
+    return context["_visible_parent_data_by_member"].get(member.pk, [])
+
+
+@extend_schema_serializer(component_name="MemberSummary")
 class MemberListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for list views"""
 
     status = StatusSerializer(read_only=True)
     group = GroupSerializer(read_only=True)
-    parents = ParentSerializer(source="parent_set", many=True, read_only=True)
+    parents = serializers.SerializerMethodField()
     age = serializers.IntegerField(source="get_age", read_only=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar_url = serializers.SerializerMethodField()
@@ -77,13 +114,19 @@ class MemberListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "has_alert"]
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_avatar_url(self, obj):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("member-avatar", obj.pk, request)
         return None
 
+    @extend_schema_field(ParentSerializer(many=True))
+    def get_parents(self, obj):
+        return visible_parent_data(obj, self.context, self.root.instance)
+
+    @extend_schema_field(serializers.BooleanField())
     def get_has_alert(self, obj):
         try:
             from servicebook.selectors import get_attandance_alert_by_member
@@ -94,6 +137,7 @@ class MemberListSerializer(serializers.ModelSerializer):
 
 
 class MemberDetailSerializer(serializers.ModelSerializer):
+    avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
     """Detailed serializer for single member views"""
 
     status = StatusSerializer(read_only=True)
@@ -104,7 +148,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
     group_id = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(), source="group", write_only=True, required=False
     )
-    parents = ParentSerializer(source="parent_set", many=True, read_only=True)
+    parents = serializers.SerializerMethodField()
     age = serializers.IntegerField(source="get_age", read_only=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar_url = serializers.SerializerMethodField()
@@ -145,11 +189,15 @@ class MemberDetailSerializer(serializers.ModelSerializer):
         if obj.avatar:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.avatar.url)
+                return private_media_url("member-avatar", obj.pk, request)
         return None
+
+    def get_parents(self, obj):
+        return visible_parent_data(obj, self.context, self.root.instance)
 
 
 class MemberCreateUpdateSerializer(serializers.ModelSerializer):
+    avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
     """Serializer for create/update operations"""
 
     def validate(self, attrs):
@@ -280,10 +328,18 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
     def get_file_url(self, obj):
         if obj.file:
+            from members.attachment_links import preview_url
+
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.file.url)
+                return request.build_absolute_uri(preview_url(obj))
+            return preview_url(obj)
         return None
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["file"] = representation["file_url"]
+        return representation
 
     def get_mime_type(self, obj):
         if obj.file:

@@ -7,10 +7,12 @@ import type { Qualification, QualificationListParams } from '@/types/qualificati
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
+import StateView from '@/components/common/StateView.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import { formatDate, qualificationStatus } from '../utils/qualificationStatus'
 
 interface Props {
   showFilters?: boolean
@@ -19,6 +21,8 @@ interface Props {
   statusFilter?: 'all' | 'active' | 'expired' | 'expiring'
   sortField?: string
   sortOrder?: 1 | -1
+  /** Extra list parameters chosen by the page, e.g. an expiry window (UX-06.2). */
+  query?: Partial<QualificationListParams>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,7 +31,8 @@ const props = withDefaults(defineProps<Props>(), {
   pageSize: 20,
   statusFilter: 'all',
   sortField: 'date_expires',
-  sortOrder: 1
+  sortOrder: 1,
+  query: () => ({})
 })
 
 const emit = defineEmits<{
@@ -76,7 +81,7 @@ const typeOptions = computed(() => {
   return [
     { label: 'Alle Typen', value: null },
     ...qualificationsStore.qualificationTypes.map(type => ({
-      label: `${type.name} [G]`,
+      label: type.name,
       value: type.id
     }))
   ]
@@ -92,12 +97,6 @@ const userOptions = computed(() => {
   ]
 })
 
-const statusOptions = [
-  { label: 'Alle', value: 'all' },
-  { label: 'Gültig', value: 'active' },
-  { label: 'Läuft bald ab', value: 'expiring' },
-  { label: 'Abgelaufen', value: 'expired' }
-]
 
 // Load data
 onMounted(async () => {
@@ -121,7 +120,8 @@ async function fetchQualifications() {
       user: filters.value.user || undefined,
       type: filters.value.type || undefined,
       status: filters.value.status !== 'all' ? filters.value.status : undefined,
-      ordering: sortOrder.value === 1 ? sortField.value : `-${sortField.value}`
+      ordering: sortOrder.value === 1 ? sortField.value : `-${sortField.value}`,
+      ...props.query
     }
 
     const results = await qualificationsStore.fetchQualifications(params)
@@ -153,7 +153,7 @@ function clearFilters() {
     member: null,
     user: null,
     type: null,
-    status: 'all'
+    status: props.statusFilter
   }
   first.value = 0
   sortField.value = props.sortField
@@ -183,6 +183,15 @@ watch(
     filters.value.status = newStatus
     first.value = 0
   }
+)
+
+watch(
+  () => props.query,
+  () => {
+    first.value = 0
+    fetchQualifications()
+  },
+  { deep: true }
 )
 
 watch(
@@ -231,43 +240,6 @@ function reload(reset = false) {
 
 defineExpose({ reload })
 
-// Status helpers
-function getStatusSeverity(qualification: Qualification): 'success' | 'warning' | 'danger' {
-  if (qualification.is_expired) return 'danger'
-  if (qualification.expires_soon) return 'warning'
-  return 'success'
-}
-
-function getStatusLabel(qualification: Qualification): string {
-  if (qualification.is_expired) return 'Abgelaufen'
-  if (qualification.expires_soon) return 'Läuft bald ab'
-  return 'Gültig'
-}
-
-function getRowClass(qualification: Qualification) {
-  if (qualification.is_expired) return 'row-expired'
-  if (qualification.expires_soon) return 'row-expiring'
-  return ''
-}
-
-function getDaysUntilExpiry(qualification: Qualification): string {
-  if (!qualification.date_expires) return 'Unbegrenzt'
-  if (qualification.is_expired) return '-'
-  
-  const now = new Date()
-  const expires = new Date(qualification.date_expires)
-  const diffTime = expires.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
-  return `${diffDays} Tage`
-}
-
-function formatDate(dateString: string | null): string {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('de-DE')
-}
-
 function handleView(qualification: Qualification) {
   emit('view', qualification.id)
 }
@@ -297,7 +269,7 @@ function handleDelete(qualification: Qualification) {
 
         <div class="filter-field">
           <label for="member">Person</label>
-          <Dropdown
+          <Select
             id="member"
             v-model="filters.member"
             :options="memberOptions"
@@ -311,7 +283,7 @@ function handleDelete(qualification: Qualification) {
 
         <div class="filter-field">
           <label for="user">Benutzer</label>
-          <Dropdown
+          <Select
             id="user"
             v-model="filters.user"
             :options="userOptions"
@@ -325,7 +297,7 @@ function handleDelete(qualification: Qualification) {
 
         <div class="filter-field">
           <label for="type">Typ</label>
-          <Dropdown
+          <Select
             id="type"
             v-model="filters.type"
             :options="typeOptions"
@@ -336,17 +308,6 @@ function handleDelete(qualification: Qualification) {
           />
         </div>
 
-        <div class="filter-field">
-          <label for="status">Status</label>
-          <Dropdown
-            id="status"
-            v-model="filters.status"
-            :options="statusOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Status wählen"
-          />
-        </div>
       </div>
 
       <div class="filter-actions">
@@ -367,17 +328,13 @@ function handleDelete(qualification: Qualification) {
       @sort="onSort"
       :sortField="sortField"
       :sortOrder="sortOrder"
-      :rowClass="getRowClass"
       stripedRows
       responsiveLayout="stack"
       breakpoint="960px"
       scrollable
     >
       <template #empty>
-        <div class="empty-state">
-          <i class="pi pi-inbox" style="font-size: 2rem"></i>
-          <p>Keine Qualifikationen gefunden</p>
-        </div>
+        <StateView kind="empty" title="Keine Qualifikationen in dieser Ansicht" message="Passe Ansicht oder Filter an." />
       </template>
 
       <template #loading>
@@ -408,50 +365,21 @@ function handleDelete(qualification: Qualification) {
         </template>
       </Column>
 
-      <Column header="Status" style="min-width: 120px">
+      <Column header="Gültigkeit" style="min-width: 200px">
         <template #body="{ data }">
-          <Tag :severity="getStatusSeverity(data)" :value="getStatusLabel(data)" />
+          <div class="validity">
+            <StatusBadge v-bind="qualificationStatus(data)" />
+            <StatusBadge v-if="data.has_evidence === false" label="Nachweis fehlt" severity="neutral" icon="pi pi-file" />
+          </div>
         </template>
       </Column>
 
-      <Column header="Tage bis Ablauf" style="min-width: 140px">
-        <template #body="{ data }">
-          <span :class="{ 'text-danger': data.is_expired, 'text-warning': data.expires_soon }">
-            {{ getDaysUntilExpiry(data) }}
-          </span>
-        </template>
-      </Column>
-
-      <Column header="Aktionen" style="min-width: 180px">
+      <Column header="Aktionen" style="min-width: 140px">
         <template #body="{ data }">
           <div class="action-buttons">
-            <Button
-              icon="pi pi-eye"
-              severity="info"
-              size="small"
-              text
-              rounded
-              @click="handleView(data)"
-              v-tooltip.top="'Details'"
-            />
-            <Button
-              icon="pi pi-pencil"
-              severity="secondary"
-              size="small"
-              text
-              rounded
-              @click="handleEdit(data)"
-              v-tooltip.top="'Bearbeiten'"
-            />
-            <Button
-              icon="pi pi-trash"
-              severity="danger"
-              size="small"
-              text
-              rounded
-              @click="handleDelete(data)"
-              v-tooltip.top="'Löschen'"
-            />
+            <Button icon="pi pi-eye" severity="secondary" size="small" text rounded :aria-label="`${data.type_name} von ${data.person_name} ansehen`" v-tooltip.top="'Ansehen'" @click="handleView(data)" />
+            <Button icon="pi pi-pencil" severity="secondary" size="small" text rounded :aria-label="`${data.type_name} von ${data.person_name} bearbeiten`" v-tooltip.top="'Bearbeiten'" @click="handleEdit(data)" />
+            <Button icon="pi pi-trash" severity="danger" size="small" text rounded :aria-label="`${data.type_name} von ${data.person_name} löschen`" v-tooltip.top="'Löschen'" @click="handleDelete(data)" />
           </div>
         </template>
       </Column>
@@ -460,95 +388,19 @@ function handleDelete(qualification: Qualification) {
 </template>
 
 <style scoped>
-.qualifications-table-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+.qualifications-table-container { display: flex; flex-direction: column; gap: var(--jf-space-2); }
 
-.filters-panel {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
+.filters-panel { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--jf-space-2); }
 .filters-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  gap: var(--jf-space-2);
 }
+.filter-field { display: flex; flex-direction: column; gap: var(--jf-space-0-5); }
+.filter-field label { font-size: var(--jf-text-sm); font-weight: var(--jf-weight-semibold); color: var(--jf-color-text); }
+.filter-actions { display: flex; gap: var(--jf-space-1); }
 
-.filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-field label {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--text-color);
-}
-
-.filter-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  color: var(--text-color-secondary);
-}
-
-.empty-state i {
-  margin-bottom: 1rem;
-  color: var(--text-color-secondary);
-}
-
-.text-danger {
-  color: var(--red-500);
-  font-weight: 600;
-}
-
-.text-warning {
-  color: var(--yellow-600, #ca8a04);
-  font-weight: 600;
-}
-
-.row-expiring {
-  background-color: rgba(250, 204, 21, 0.18);
-}
-
-.row-expired {
-  background-color: rgba(248, 113, 113, 0.16);
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  .filters-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .filter-actions {
-    flex-direction: column;
-  }
-
-  .filter-actions :deep(.p-button) {
-    width: 100%;
-  }
-}
+.validity { display: flex; flex-wrap: wrap; gap: var(--jf-space-0-5); }
+.action-buttons { display: flex; gap: var(--jf-space-0-5); }
 </style>

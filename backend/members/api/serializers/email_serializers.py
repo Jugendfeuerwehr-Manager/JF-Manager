@@ -4,17 +4,25 @@ API serializers for email messaging system.
 
 from rest_framework import serializers
 
+from jf_manager_backend.html_safety import SanitizedHTMLField
+from jf_manager_backend.private_media import private_media_url
 from members.models import EmailAttachment, EmailMessage, EmailRecipient, Member
 
 
 class EmailAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for EmailAttachment model."""
 
+    file_url = serializers.SerializerMethodField()
+
+    def get_file_url(self, obj):
+        return private_media_url("email-attachment", obj.pk, self.context.get("request"))
+
     class Meta:
         model = EmailAttachment
         fields = [
             "id",
             "original_filename",
+            "file_url",
             "file_size",
             "content_type",
             "created_at",
@@ -104,6 +112,7 @@ class EmailMessageDetailSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     recipients = EmailRecipientSerializer(many=True, read_only=True)
     attachments = EmailAttachmentSerializer(many=True, read_only=True)
+    body_html = SanitizedHTMLField()
 
     class Meta:
         model = EmailMessage
@@ -156,6 +165,7 @@ class EmailMessageCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating email messages."""
 
     recipient_members = serializers.PrimaryKeyRelatedField(queryset=Member.objects.all(), many=True, required=False)
+    body_html = SanitizedHTMLField()
 
     class Meta:
         model = EmailMessage
@@ -215,7 +225,7 @@ class EmailPreviewRequestSerializer(serializers.Serializer):
     """Serializer for email preview requests."""
 
     subject = serializers.CharField(required=False, allow_blank=True)
-    body_html = serializers.CharField()
+    body_html = SanitizedHTMLField()
     body_text = serializers.CharField(required=False, allow_blank=True)
     member_id = serializers.IntegerField()
     layout = serializers.CharField(required=False, allow_blank=True, default="none")
@@ -230,7 +240,7 @@ class EmailPreviewRequestSerializer(serializers.Serializer):
 class EmailPreviewResponseSerializer(serializers.Serializer):
     """Serializer for email preview response."""
 
-    rendered_html = serializers.CharField()
+    rendered_html = SanitizedHTMLField()
     rendered_text = serializers.CharField()
     member_name = serializers.CharField()
     recipient_count = serializers.IntegerField()

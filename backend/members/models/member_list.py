@@ -10,9 +10,24 @@ class MemberList(models.Model):
     """
 
     name = models.CharField(max_length=200, verbose_name="Listenname")
+    department = models.ForeignKey(
+        "departments.Department",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="member_lists",
+        verbose_name="Abteilung",
+        help_text="Ohne Abteilung nur für organisationsweite Listen oder ungeklärte Altlisten.",
+    )
+    organization_wide = models.BooleanField(
+        default=False,
+        verbose_name="Organisationsweit",
+        help_text="Liste einer Organisation ohne Abteilungen; nur mit organisationsweitem Recht sichtbar.",
+    )
     description = models.TextField(blank=True, default="", verbose_name="Beschreibung")
     color = models.CharField(max_length=7, default="#3B82F6", verbose_name="Farbe")
     attachments = GenericRelation("Attachment", related_query_name="memberlist")
+    legacy_resolved_at = models.DateTimeField(null=True, blank=True, verbose_name="Altlistenklärung abgeschlossen")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -20,9 +35,20 @@ class MemberList(models.Model):
         verbose_name = "Mitgliederliste"
         verbose_name_plural = "Mitgliederlisten"
         ordering = ["name"]
+        permissions = [("export_memberlist", "Kann Mitgliederlisten exportieren")]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(organization_wide=False) | models.Q(department__isnull=True),
+                name="organization_wide_list_without_department",
+            )
+        ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_unresolved_legacy(self):
+        return self.department_id is None and not self.organization_wide
 
     @property
     def member_count(self):
@@ -68,3 +94,14 @@ class MemberListEntry(models.Model):
         self.checked = not self.checked
         self.checked_at = timezone.now() if self.checked else None
         self.save(update_fields=["checked", "checked_at"])
+
+
+class MemberListLegacyTarget(models.Model):
+    """Stable destination for an explicitly resolved legacy source and department."""
+
+    source = models.ForeignKey(MemberList, on_delete=models.PROTECT, related_name="legacy_targets")
+    department = models.ForeignKey("departments.Department", on_delete=models.PROTECT)
+    target = models.OneToOneField(MemberList, on_delete=models.PROTECT, related_name="legacy_source_mapping")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["source", "department"], name="unique_legacy_list_target")]

@@ -5,6 +5,7 @@
  */
 
 import apiClient from './index'
+import { withIdempotencyKey } from './idempotency'
 import type {
   Category,
   CategoryCreate,
@@ -17,6 +18,8 @@ import type {
   ItemVariant,
   ItemVariantCreate,
   ItemVariantUpdate,
+  ItemVariantBulkCreate,
+  ItemVariantBulkCreateResult,
   ItemVariantListParams,
   StorageLocation,
   StorageLocationCreate,
@@ -175,6 +178,13 @@ export const variantsApi = {
   },
 
   /**
+   * Create one variant per value (e.g. all sizes) in one atomic request
+   */
+  bulkCreate(data: ItemVariantBulkCreate) {
+    return apiClient.post<ItemVariantBulkCreateResult>('/inventory/variants/bulk-create/', data)
+  },
+
+  /**
    * Update existing variant
    */
   update(id: number, data: ItemVariantUpdate) {
@@ -241,10 +251,7 @@ export const locationsApi = {
     return apiClient.get<StockResponse>(`/inventory/locations/${id}/stock/`)
   },
 
-  /**
-   * Get or create storage location for a member
-   * Auto-creates the location if it doesn't exist
-   */
+  /** Get an existing storage location for a member. */
   getForMember(memberId: number) {
     return apiClient.get<StorageLocation>(`/inventory/locations/for-member/${memberId}/`)
   },
@@ -296,14 +303,16 @@ export const transactionsApi = {
    * Create new transaction
    */
   create(data: TransactionCreate) {
-    return apiClient.post<Transaction>('/inventory/transactions/', data)
+    const url = '/inventory/transactions/'
+    return withIdempotencyKey('post', url, data, headers => apiClient.post<Transaction>(url, data, { headers }))
   },
 
   /**
    * Issue multiple available items to one member atomically
    */
   batchLoan(data: BatchLoanCreate) {
-    return apiClient.post<BatchLoanResponse>('/inventory/transactions/batch-loan/', data)
+    const url = '/inventory/transactions/batch-loan/'
+    return withIdempotencyKey('post', url, data, headers => apiClient.post<BatchLoanResponse>(url, data, { headers }))
   },
 
   /**

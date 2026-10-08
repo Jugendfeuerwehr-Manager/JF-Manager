@@ -2,7 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from inventory.models import Category, Item, StorageLocation, Transaction
+from inventory.models import Category, Item, Stock, StorageLocation, Transaction
+from inventory.opening_stock import book_opening_stock
 from members.models import Member
 
 
@@ -49,6 +50,9 @@ class MemberDeleteWorkflowApiTest(TestCase):
 
     def test_delete_with_strategy_unlink_deletes_member_and_preserves_history(self):
         transaction = self._create_transaction_for_member_storage()
+        outgoing = Transaction.objects.create(
+            transaction_type="OUT", item=self.item, source=self.personal_storage, quantity=1, user=self.user
+        )
 
         response = self.client.post(
             f"/api/v1/members/{self.member.id}/delete-with-strategy/",
@@ -61,8 +65,69 @@ class MemberDeleteWorkflowApiTest(TestCase):
 
         transaction.refresh_from_db()
         self.assertIsNone(transaction.source)
-        self.assertIsNone(transaction.target)
-        self.assertEqual(transaction.former_member_name, "Lukas Bisdorf")
+        self.assertEqual(transaction.target_id, self.personal_storage.pk)
+        self.assertEqual(outgoing.source_id, self.personal_storage.pk)
+        self.assertEqual(transaction.former_member_name, "")
+        self.personal_storage.refresh_from_db()
+        self.assertIsNone(self.personal_storage.member_id)
+        self.assertFalse(self.personal_storage.is_member)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.personal_storage).quantity, 0)
+
+    def test_delete_with_strategy_rejects_remaining_stock_without_changes(self):
+        transaction = self._create_transaction_for_member_storage()
+
+        response = self.client.post(
+            f"/api/v1/members/{self.member.id}/delete-with-strategy/",
+            {"strategy": "anonymize"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+        self.personal_storage.refresh_from_db()
+        self.assertEqual(self.personal_storage.member_id, self.member.pk)
+        self.assertEqual(Transaction.objects.get(pk=transaction.pk).target_id, self.personal_storage.pk)
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.personal_storage).quantity, 1)
+
+    def test_delete_with_strategy_anonymizes_location_and_keeps_bookings(self):
+        transaction = self._create_transaction_for_member_storage()
+        Transaction.objects.create(
+            transaction_type="OUT", item=self.item, source=self.personal_storage, quantity=1, user=self.user
+        )
+
+        response = self.client.post(
+            f"/api/v1/members/{self.member.id}/delete-with-strategy/",
+            {"strategy": "anonymize"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.personal_storage.refresh_from_db()
+        self.assertEqual(self.personal_storage.name, f"Ehemaliges Mitglied #{self.personal_storage.pk}")
+        self.assertFalse(Member.objects.filter(pk=self.member.pk).exists())
+        self.assertEqual(Transaction.objects.get(pk=transaction.pk).target_id, self.personal_storage.pk)
+
+    def test_delete_transactions_strategy_is_rejected(self):
+        transaction = self._create_transaction_for_member_storage()
+
+        response = self.client.post(
+            f"/api/v1/members/{self.member.id}/delete-with-strategy/",
+            {"strategy": "delete_transactions"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+        self.assertTrue(Transaction.objects.filter(pk=transaction.pk).exists())
+
+    def test_direct_delete_rejects_stock_without_transactions(self):
+        book_opening_stock(self.personal_storage, 1, item=self.item)
+
+        response = self.client.delete(f"/api/v1/members/{self.member.id}/")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+        self.assertEqual(Stock.objects.get(item=self.item, location=self.personal_storage).quantity, 1)
 
     def test_delete_member_without_storage_relations(self):
         member = Member.objects.create(name="Ohne", lastname="Lager")

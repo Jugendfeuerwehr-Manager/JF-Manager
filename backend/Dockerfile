@@ -1,5 +1,5 @@
 # --- Build stage ---
-FROM python:3.10-slim-bookworm AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -26,20 +26,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip install --no-cache-dir pipenv uwsgi mysqlclient psycopg2-binary
-
 WORKDIR /app
 
 # Copy dependency files
-COPY Pipfile Pipfile.lock ./
+COPY Pipfile Pipfile.lock requirements-server.txt ./
 
-# Install dependencies
-RUN pipenv install --deploy --system && \
+# Install pinned application servers, then the locked application dependencies
+RUN pip install --no-cache-dir --require-hashes -r requirements-server.txt && \
+    pip install --no-cache-dir pipenv==2026.5.2 && \
+    pipenv install --deploy --system && \
     pip uninstall -y pipenv
 
 # --- Final stage ---
-FROM python:3.10-slim-bookworm AS production
+FROM python:3.12-slim-bookworm AS production
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -70,7 +69,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Create non-root user and group

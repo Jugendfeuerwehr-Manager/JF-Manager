@@ -11,9 +11,10 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
-from datetime import timedelta
 
 import environ
+
+from .encryption_config import cache_key_prefix, encryption_keys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,22 +22,32 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
-# Encryption key for encrypted model fields (Fernet-compatible key)
-FIELD_ENCRYPTION_KEY = os.environ.get(
-    "FIELD_ENCRYPTION_KEY",
-    "6nezABVCRB5Yn3ztsae1jkqg3THUUul-OWww-ZHqYc8=",
-)
+# Explicit primary key and optional old keys for controlled rotation.
+FIELD_ENCRYPTION_KEY = encryption_keys(os.environ)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+# Explicit local-only recovery: preserve opaque SMTP data and block delivery.
+DEV_ALLOW_UNREADABLE_SMTP = os.environ.get("DEV_ALLOW_UNREADABLE_SMTP", "False").lower() in ("true", "1", "yes")
 
 if not DEBUG and not SECRET_KEY:
     raise Exception("DJANGO_SECRET_KEY must be set in production (DEBUG=False)")
 
+AUDIT_RETENTION_DAYS = max(1, int(os.environ.get("AUDIT_RETENTION_DAYS", "180")))
+# Replay window for booking idempotency keys; stored responses contain booking details.
+BOOKING_REPLAY_RETENTION_DAYS = max(1, int(os.environ.get("BOOKING_REPLAY_RETENTION_DAYS", "30")))
+
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+
+def _env_flag(name, default):
+    return os.environ.get(name, "true" if default else "false").strip().lower() in ("true", "1", "yes")
+
+
 # Nginx forwards the original scheme when TLS terminates at a reverse proxy.
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Only trust it when every request passes through a proxy that overwrites
+# X-Forwarded-Proto; direct access to the backend must then be impossible.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if _env_flag("TRUST_PROXY_SSL_HEADER", True) else None
 
 # CSRF Trusted Origins - required for POST requests from frontend
 # Must include full URL scheme (https:// or http://)
@@ -45,6 +56,10 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.sp
 
 # Frontend URL for password reset emails
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# Passkeys (SEC-11): relying party and accepted origins; both default to the
+# address of FRONTEND_URL. Changing the domain invalidates registered passkeys.
+WEBAUTHN_RP_ID = os.environ.get("WEBAUTHN_RP_ID", "")
+WEBAUTHN_ORIGINS = [o.strip() for o in os.environ.get("WEBAUTHN_ORIGINS", "").split(",") if o.strip()]
 
 # CORS settings for Vue.js frontend
 CORS_ALLOWED_ORIGINS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "")
@@ -81,8 +96,6 @@ INSTALLED_APPS = [
     "guardian",
     "mptt",
     "rest_framework",
-    "rest_framework.authtoken",
-    "rest_framework_simplejwt",
     "drf_spectacular",
     "django_filters",
     "import_export",
@@ -102,6 +115,7 @@ INSTALLED_APPS = [
     "settings_manager.apps.SettingsManagerConfig",
     "django_rq",
     "health",
+    "notifications.apps.NotificationsConfig",
     "mozilla_django_oidc",
 ]
 
@@ -112,6 +126,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "users.session_policy.SessionPolicyMiddleware",
+    "users.mfa_policy.MFAPolicyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "jf_manager_backend.email_middleware.EmailConfigMiddleware",
@@ -126,6 +142,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # Media files configuration
 MEDIA_URL = "/uploads/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Public status copy written by jfctl (OPS-03.4); empty outside jfctl installations.
+OPS_STATUS_FILE = os.environ.get("OPS_STATUS_FILE", "")
 
 # Upload folder configuration (can be overridden via environment variables)
 MEMBER_UPLOAD_FOLDER = os.environ.get("MEMBER_UPLOAD_FOLDER", "members/avatars")
@@ -193,6 +211,68 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Session Serializer auf JSON setzen (robuster, verhindert Pickle Probleme)
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
+# Browser sessions: host-only cookies, never readable by scripts. Secure by
+# default; only an explicit development override may disable it.
+_SECURE_COOKIES = _env_flag("SECURE_COOKIES", not DEBUG)
+SESSION_COOKIE_SECURE = _SECURE_COOKIES
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_DOMAIN = None
+# The SPA reads the CSRF cookie and returns it as X-CSRFToken.
+CSRF_COOKIE_SECURE = _SECURE_COOKIES
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_DOMAIN = None
+
+# Transport security. HTTPS is mandatory whenever cookies are secure; the
+# container health check calls the backend directly over HTTP.
+SECURE_SSL_REDIRECT = _env_flag("SECURE_SSL_REDIRECT", _SECURE_COOKIES)
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
+SECURE_HSTS_SECONDS = max(0, int(os.environ.get("SECURE_HSTS_SECONDS", "31536000" if _SECURE_COOKIES else "0")))
+# Subdomains of the organisation's domain may still be served over HTTP, so
+# extending HSTS to them (and preloading) stays an explicit decision.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_flag("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
+SECURE_HSTS_PRELOAD = _env_flag("SECURE_HSTS_PRELOAD", False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SILENCED_SYSTEM_CHECKS = [
+    "security.W005",  # HSTS includeSubDomains, see above
+    "security.W021",  # HSTS preload, see above
+]
+
+
+def _bounded_seconds(name, default, minimum, maximum):
+    try:
+        value = int(os.environ.get(name, default))
+    except ValueError as exc:
+        raise Exception(f"{name} muss eine ganze Zahl (Sekunden) sein.") from exc
+    return max(minimum, min(maximum, value))
+
+
+# Ordinary accounts: long-running sessions (default 30 days idle, 90 days
+# absolute); actions that widen access need a fresh confirmation instead.
+# Accounts with mandatory MFA (admins, leadership): default 8 hours.
+# Enforced server-side by users.session_policy; values are clamped.
+SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds("SESSION_IDLE_TIMEOUT_SECONDS", 30 * 86400, 300, 90 * 86400)
+SESSION_MAX_AGE_SECONDS = _bounded_seconds("SESSION_MAX_AGE_SECONDS", 90 * 86400, 3600, 365 * 86400)
+PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds(
+    "PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS", 8 * 3600, 300, 86400
+)
+PRIVILEGED_SESSION_MAX_AGE_SECONDS = _bounded_seconds("PRIVILEGED_SESSION_MAX_AGE_SECONDS", 8 * 3600, 3600, 7 * 86400)
+SESSION_COOKIE_AGE = SESSION_MAX_AGE_SECONDS
+CONFIGURATION_ENV_OVERRIDES = frozenset(
+    name
+    for name in (
+        "SESSION_IDLE_TIMEOUT_SECONDS",
+        "SESSION_MAX_AGE_SECONDS",
+        "PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS",
+        "PRIVILEGED_SESSION_MAX_AGE_SECONDS",
+    )
+    if name in os.environ
+)
+
 AUTHENTICATION_BACKENDS = (
     "users.ldap_backend.ConfigurableLDAPBackend",
     "users.oidc_backend.JFManagerOIDCBackend",
@@ -218,10 +298,9 @@ OIDC_RP_CLIENT_ID = ""  # populated at runtime from DB
 OIDC_RP_CLIENT_SECRET = ""  # populated at runtime from DB
 
 REST_FRAMEWORK = {
+    # Browser sessions only; JWT and DRF tokens were retired in SEC-07.7.
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        "users.session_auth.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "jf_manager_backend.permissions.CustomDefaultPermissions",
@@ -236,23 +315,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-# JWT Settings
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": True,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
-    "VERIFYING_KEY": None,
-    "AUDIENCE": None,
-    "ISSUER": None,
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-}
+# Password reset links expire after one hour.
+PASSWORD_RESET_TIMEOUT = 3600
 
 # drf-spectacular settings for API documentation
 SPECTACULAR_SETTINGS = {
@@ -261,11 +325,12 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1/",
+    # Schema completeness is not a deployment safety check; keep
+    # `check --deploy` focused on security settings.
+    "ENABLE_DJANGO_DEPLOY_CHECK": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "SERVE_AUTHENTICATION": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        "users.session_auth.SessionAuthentication",
     ],
     "SWAGGER_UI_SETTINGS": {
         "deepLinking": True,
@@ -291,6 +356,8 @@ USE_L10N = True
 
 USE_TZ = True
 
+TEST_RUNNER = "jf_manager_backend.test_runner.CacheIsolatedRunner"
+
 
 # Cache configuration
 # Default to local memory cache for development
@@ -301,7 +368,7 @@ if REDIS_URL != "none":
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-            "KEY_PREFIX": "jf_manager_backend",
+            "KEY_PREFIX": cache_key_prefix(FIELD_ENCRYPTION_KEY),
         }
     }
 else:
@@ -329,8 +396,8 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = "webmaster@localhost"
 
-# For development - use console backend to see emails in terminal
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# SMTP settings are DB-backed for web requests, workers and management commands.
+EMAIL_BACKEND = "jf_manager_backend.email_backend.ConfiguredSMTPBackend"
 
 
 # Logging
@@ -366,3 +433,15 @@ LOGGING = {
         },
     },
 }
+
+# Web Push: opt-in per device; private key never leaves the backend.
+WEB_PUSH_PUBLIC_KEY = os.environ.get("WEB_PUSH_PUBLIC_KEY", "")
+WEB_PUSH_PRIVATE_KEY = os.environ.get("WEB_PUSH_PRIVATE_KEY", "")
+WEB_PUSH_SUBJECT = os.environ.get("WEB_PUSH_SUBJECT", "")
+WEB_PUSH_ALLOWED_HOSTS = [
+    "fcm.googleapis.com",
+    "updates.push.services.mozilla.com",
+    "push.services.mozilla.com",
+    "web.push.apple.com",
+    "notify.windows.com",
+]

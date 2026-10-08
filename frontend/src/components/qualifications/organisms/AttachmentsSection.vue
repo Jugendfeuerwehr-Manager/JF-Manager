@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { downloadMedia } from '@/utils/privateMedia'
+import PrivateMedia from '@/components/common/PrivateMedia.vue'
 import { computed, ref, watch, onMounted } from 'vue'
 import { useQualificationsStore } from '@/stores/qualifications'
 import { useMemberListsStore } from '@/stores/lists'
@@ -10,7 +12,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import ProgressSpinner from 'primevue/progressspinner'
-import Image from 'primevue/image'
+import Image from '@/components/common/PrivateImage.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { getApiErrorMessage } from '@/utils/apiError'
@@ -191,7 +193,7 @@ function handlePreview(attachment: Attachment) {
 async function handleDownload(attachment: Attachment) {
   const fileUrl = attachment.file_url || attachment.file
   if (fileUrl) {
-    window.open(fileUrl, '_blank')
+    await downloadMedia(fileUrl, attachment.name)
   }
 }
 
@@ -460,12 +462,12 @@ function formatDate(dateString: string): string {
         width="100%"
         preview
       />
-      <iframe 
+      <PrivateMedia pdf
         v-else-if="previewAttachment && isPDF(previewAttachment)"
         :src="previewAttachment.file_url || previewAttachment.file"
         width="100%"
         height="600px"
-      ></iframe>
+      ></PrivateMedia>
       <div v-else class="no-preview">
         <i class="pi pi-file"></i>
         <p>Keine Vorschau verfügbar</p>

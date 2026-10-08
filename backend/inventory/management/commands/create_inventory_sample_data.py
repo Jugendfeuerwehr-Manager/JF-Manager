@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from inventory.models import Category, Item, StorageLocation, Transaction
 from members.models.member import Member
@@ -19,8 +19,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options["clear"]:
+            # Booked movements are immutable (SEC-09); an empty test system needs a fresh database.
+            if Transaction.objects.exists():
+                raise CommandError(
+                    "--clear ist nicht möglich, weil bereits Buchungen existieren. "
+                    "Für leere Testdaten eine neue Datenbank verwenden."
+                )
             self.stdout.write("Lösche bestehende Inventardaten...")
-            Transaction.objects.all().delete()
             Item.objects.filter(name__isnull=False).exclude(name="").delete()
             StorageLocation.objects.all().delete()
             Category.objects.filter(

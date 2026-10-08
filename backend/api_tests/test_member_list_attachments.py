@@ -4,6 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from departments.models import Department, UserDepartmentRole
 from members.models import MemberList
 
 
@@ -22,7 +23,9 @@ class MemberListAttachmentsApiTest(TestCase):
             name="Ausflug 2026",
             description="Packliste",
             color="#10B981",
+            department=Department.objects.create(name="Anhangstest", code="attachment-list-test"),
         )
+        UserDepartmentRole.objects.create(user=self.user, department=self.member_list.department)
 
         self.view_perm = Permission.objects.get(codename="view_memberlist")
         self.add_perm = Permission.objects.get(codename="add_memberlist")

@@ -2,123 +2,68 @@
 
 ## Overview
 
-JF-Manager uses GitHub Actions for CI, image build/push, and deployment.
-Workflows live in `.github/workflows/`.
+Three GitHub Actions workflows in `.github/workflows/` take a change from a pull request to a running installation. Production servers never build or `git pull`; they install published, verified releases with `jfctl` (OPS-03.3).
 
-## Pipeline Stages
-
-```mermaid
-flowchart LR
-  A[CI: ci.yml] --> B[Build/Push: build-push.yml]
-  B --> C[Deploy: deploy.yml (manual)]
+```text
+push/PR ──> ci.yml ──(main, success)──> build-push.yml: images (branch tags)
+tag vX.Y.Z ──> build-push.yml: ci.yml (tests) ─> images ─> Trivy ─> release package + attestation ─> GitHub release
+manual ──> deploy.yml ──ssh──> jfctl update --version X.Y.Z (verify, backup, migrate, check, rollback)
 ```
 
 ## 1. Continuous Integration (`ci.yml`)
 
-Triggers:
+Runs on pushes to `main`, pull requests against `main`, and as a reusable workflow before every release tag.
 
-- push to `main` and `nextgeneration-frontend`
-- pull requests to `main`
+| Job | Checks |
+| --- | --- |
+| Backend Tests | Full suite on PostgreSQL 17 (same major version as both production paths), migration check, coverage |
+| Backend Lint | Ruff |
+| Dependency Audit | `pip-audit --strict` on the lock file, `npm audit` (runtime clean, tooling below critical) |
+| Frontend Tests & Lint | Type check, ESLint, Vitest with coverage |
+| Operations Tooling | ShellCheck of `ops/` and the container entrypoint, bats tests of `jfctl` (`ops/tests`), production compose file, `nginx -t` with the shipped configuration, `caddy validate`, release package build and checksum verification |
+| Frontend Build Check | Production bundle |
 
-Jobs:
+## 2. Images and Release (`build-push.yml`)
 
-- Backend tests
-  - PostgreSQL service container
-  - `coverage run manage.py test api_tests`
-- Backend lint
-  - `ruff check .`
-- Frontend quality gates
-  - `npm run type-check`
-  - `npm run lint -- --no-fix`
-  - `npm run test:unit -- --coverage`
-  - `npm run build-only`
-
-Artifacts:
-
-- backend coverage XML
-- frontend coverage output
-
-## 2. Container Build And Push (`build-push.yml`)
-
-Triggers:
-
-- after CI success (`workflow_run`)
-- semantic tags (`v*`)
-
-Outputs:
-
-- GHCR backend image: `ghcr.io/<owner>/<repo>/backend`
-- GHCR frontend image: `ghcr.io/<owner>/<repo>/frontend`
-
-Tag strategy includes:
-
-- branch refs
-- semver tags
-- short SHA tags
-- `latest` on default branch
-
-Security and supply-chain features:
-
-- Docker Buildx cache
-- SBOM + provenance enabled
-- Trivy image scan (high/critical)
-- SARIF upload to GitHub Security tab
+- **Branches** (`main`, after successful CI): backend and frontend images on GHCR, tagged with branch name and commit; `latest` for the default branch. For development and testing only – `jfctl` installs releases, not branch images.
+- **Version tags `vX.Y.Z`:**
+  1. The complete CI runs first (tag pushes do not trigger `ci.yml` on their own).
+  2. Images are built with SBOM and provenance and tagged `X.Y.Z` and `X.Y`.
+  3. Trivy scans both images; critical/high findings with a fix stop the release.
+  4. The release job builds the frontend, then `ops/release/build-release.sh` creates `jf-manager-X.Y.Z.tar.gz`, `release-manifest.json` (image references **by digest**, checked to contain `@sha256:`) and `SHA256SUMS`.
+  5. `actions/attest-build-provenance` attests the package; `jfctl` verifies this attestation with `gh attestation verify` when the `gh` CLI is available ([ops-release.md](../operations/ops-release.md)).
+  6. A GitHub release with all three files is published.
 
 ## 3. Deployment (`deploy.yml`)
 
-Trigger:
+Manual dispatch with environment and version. The workflow validates the version format and runs on the server via SSH:
 
-- manual (`workflow_dispatch`)
+```sh
+sudo /usr/local/sbin/jfctl --non-interactive --yes update --version X.Y.Z
+```
 
-Inputs:
-
-- environment (`production` or `staging`)
-- image_tag (default: `latest`)
-
-Remote deploy steps (SSH action):
-
-1. pull repository changes
-2. pull selected image tag
-3. run backup container
-4. `docker-compose up -d --remove-orphans`
-5. backend health check
-6. migrations
-7. collectstatic
-8. frontend health check
-9. image prune
+`jfctl` loads and verifies the release, takes a full backup in maintenance mode, migrates, verifies backend/workers before reopening and rolls back application **and** database schema on failure (exit code 7). Exit code 3 means a precheck failed and nothing changed; 4 means another `jfctl` operation is running. Deployments per environment are serialised.
 
 ## Required Secrets
 
-Deployment workflow expects:
+| Secret | Used by | Purpose |
+| --- | --- | --- |
+| `GITHUB_TOKEN` (automatic) | build-push | GHCR push, SARIF upload, GitHub release |
+| `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` | deploy | SSH access; the user needs `sudo` for `/usr/local/sbin/jfctl` only |
 
-- `DEPLOY_HOST`
-- `DEPLOY_USER`
-- `DEPLOY_SSH_KEY`
-- `DEPLOY_PATH`
+`DEPLOY_PATH` is no longer needed: there is no checkout on the server.
 
 ## Local Commands That Mirror CI
 
-Backend:
-
-```bash
-cd backend
-pipenv run python manage.py test api_tests --verbosity=2
-pipenv run ruff check .
-pipenv run ruff format --check .
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm run type-check
-npm run lint -- --no-fix
-npm run test:unit -- --coverage
-npm run build-only
+```sh
+make ops-check                                  # ShellCheck + bats for jfctl
+make release-local VERSION=0.0.1                # release package from the working tree (tests only)
+cd backend && pipenv run python manage.py test  # backend suite
+cd frontend && npm run type-check && npm run lint -- --no-fix && npm run test:unit
 ```
 
 ## Related Docs
 
-- `docs/architecture/overview.md`
-- `docs/deployment/docker.md`
-- `docs/deployment/portainer.md`
+- [Releasepakete und Herkunftsnachweis](../operations/ops-release.md)
+- [jfctl](../operations/ops-jfctl.md)
+- [Sicherung, Wiederherstellung und Updates](../operations/ops-backup-restore-update.md)

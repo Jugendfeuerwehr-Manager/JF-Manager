@@ -3,6 +3,7 @@ from datetime import date
 from django.core.management.base import BaseCommand
 
 from inventory.models import Category, Item, Stock, StorageLocation
+from inventory.opening_stock import book_opening_stock
 from members.models import Group, Member, Status
 
 
@@ -95,7 +96,7 @@ class Command(BaseCommand):
             hauptlager = StorageLocation.objects.filter(name="Hauptlager").first()
             if hauptlager:
                 for item in Item.objects.all()[:3]:
-                    Stock.objects.get_or_create(item=item, location=hauptlager, defaults={"quantity": 10})
+                    book_opening_stock(hauptlager, 10, item=item, note="Testbestand")
 
                 self.stdout.write("Created test stock entries")
 

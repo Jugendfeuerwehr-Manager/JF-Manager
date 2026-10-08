@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
-from jf_manager_backend.permissions import DepartmentRoleModelPermissions, OrgWideWritePermission
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions, GlobalModelWritePermission
 from orders.api.filters import OrderStatusFilter
 from orders.api.serializers import OrderStatusSerializer
 from orders.models import OrderStatus
@@ -23,7 +23,7 @@ class OrderStatusViewSet(viewsets.ModelViewSet):
 
     queryset = OrderStatus.objects.all()
     serializer_class = OrderStatusSerializer
-    permission_classes = [permissions.IsAuthenticated, DepartmentRoleModelPermissions, OrgWideWritePermission]
+    permission_classes = [permissions.IsAuthenticated, DepartmentRoleModelPermissions, GlobalModelWritePermission]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = OrderStatusFilter
     search_fields = ["name", "code", "description"]

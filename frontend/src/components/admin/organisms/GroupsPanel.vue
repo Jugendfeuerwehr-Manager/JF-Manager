@@ -17,6 +17,7 @@
         </template>
         <template #end>
           <Button
+            v-if="authStore.hasPerm('auth.add_group')"
             icon="pi pi-plus"
             label="Neu"
             size="small"
@@ -94,6 +95,7 @@
         <h3 class="detail-empty-title">Keine Gruppe ausgewählt</h3>
         <p class="detail-empty-sub">Wähle eine Gruppe aus der Liste oder erstelle eine neue.</p>
         <Button
+          v-if="authStore.hasPerm('auth.add_group')"
           label="Neue Gruppe erstellen"
           icon="pi pi-plus"
           size="small"
@@ -103,7 +105,7 @@
 
       <!-- Delete button in detail footer (only for existing groups) -->
       <div
-        v-if="selectedGroupId !== null && !showNew && !detailLoading && selectedGroupDetail"
+        v-if="authStore.hasPerm('auth.delete_group') && selectedGroupId !== null && !showNew && !detailLoading && selectedGroupDetail"
         class="detail-footer flex justify-content-end mt-4 pt-3 border-top-1 border-200"
       >
         <Button
@@ -122,6 +124,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useAdminStore } from '@/stores/admin'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -133,6 +136,7 @@ import GroupDetailForm from '@/components/admin/molecules/GroupDetailForm.vue'
 import type { AuthGroupDetail } from '@/types/admin'
 
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
 const confirm = useConfirm()
 const toast = useToast()
 

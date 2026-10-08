@@ -4,6 +4,7 @@
     <!-- ── Session header ──────────────────────────────────────────── -->
     <div class="mobile-header">
       <div class="header-main">
+        <div v-if="session"><TrainingStatusBadge :status="session.status" /> · Version {{ session.revision }}</div>
         <h1 class="session-title">{{ session?.title ?? 'Trainingsplanung' }}</h1>
         <div v-if="session" class="session-meta">
           <span class="meta-item">
@@ -21,6 +22,14 @@
         </div>
       </div>
       <div class="header-buttons">
+        <Button
+          v-if="session && (session.status === 'published' || session.status === 'completed') && plannerStore.blocks.length"
+          label="Durchführen"
+          icon="pi pi-play"
+          @click="router.push({ name: 'training-run', params: { id: sessionId } })"
+        />
+        <Button v-if="session?.can_manage_plan" label="Plan bearbeiten" icon="pi pi-pencil" severity="secondary" outlined @click="router.push({ name: 'training-planner', params: { id: sessionId }, query: { edit: '1' } })" />
+        <router-link v-if="session?.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
         <Button
           icon="pi pi-file-pdf"
           label="Handout"
@@ -41,11 +50,15 @@
     </div>
 
     <!-- ── Loading ─────────────────────────────────────────────────── -->
-    <div v-if="plannerStore.loading || trainingStore.loading" class="loading-state">
+    <div v-if="plannerStore.loading" class="loading-state">
       <i class="pi pi-spin pi-spinner" />
       <span>Lade Trainingsplan…</span>
     </div>
 
+    <div v-else-if="plannerStore.error" role="alert" class="empty-state">
+      <p>{{ plannerStore.error }}</p>
+      <Button label="Erneut laden" @click="plannerStore.loadBlocks(sessionId).catch(() => {})" />
+    </div>
     <!-- ── No blocks ───────────────────────────────────────────────── -->
     <div v-else-if="plannerStore.blocks.length === 0" class="empty-state">
       <i class="pi pi-calendar-times" style="font-size: 2.5rem; color: var(--p-text-muted-color)" />
@@ -114,13 +127,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import MobileBlockDetailSheet from '@/components/training/molecules/MobileBlockDetailSheet.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import { useTrainingStore } from '@/stores/training'
-import type { PlannerBlock, TrainingSessionDetail } from '@/types/training'
+import type { PlannerBlock } from '@/types/training'
 
 interface Props {
   sessionId: number
@@ -129,14 +142,13 @@ const props = defineProps<Props>()
 const router = useRouter()
 
 const plannerStore = useTrainingPlannerStore()
-const trainingStore = useTrainingStore()
 
 const activeTab = ref(0)
 const tabBarRef = ref<HTMLElement | null>(null)
 const selectedBlock = ref<PlannerBlock | null>(null)
 
 // ── Session & blocks ────────────────────────────────────────────────────────
-const session = computed(() => trainingStore.currentSession as TrainingSessionDetail | null)
+const session = computed(() => plannerStore.session)
 
 const sessionStartMin = computed(() => {
   const t = session.value?.start_time
@@ -215,12 +227,13 @@ function formatDate(dateStr: string) {
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
-onMounted(async () => {
-  await Promise.all([
-    plannerStore.loadBlocks(props.sessionId),
-    trainingStore.fetchSession(props.sessionId),
-  ])
-})
+watch(() => props.sessionId, async (id) => {
+  selectedBlock.value = null
+  activeTab.value = 0
+  plannerStore.reset()
+  try { await plannerStore.loadBlocks(id) } catch { /* visible store error */ }
+}, { immediate: true })
+onBeforeUnmount(() => plannerStore.reset())
 </script>
 
 <style scoped>

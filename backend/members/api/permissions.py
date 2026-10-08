@@ -5,12 +5,19 @@ Custom permissions for email messaging system.
 from rest_framework import permissions
 
 
+def sending_department_ids(user):
+    """Departments where a role grants the email sending permission."""
+    return user.department_roles.filter(
+        groups__permissions__content_type__app_label="members",
+        groups__permissions__codename="can_send_member_emails",
+    ).values_list("department_id", flat=True)
+
+
 class CanSendEmails(permissions.BasePermission):
     """
     Permission to check if user can send emails to members.
 
-    Staff users can always send emails.
-    Non-staff users need the 'can_send_member_emails' permission.
+    Sending requires the explicit global or department role permission.
     """
 
     def has_permission(self, request, view):
@@ -18,9 +25,4 @@ class CanSendEmails(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        # Staff users can always send emails
-        if request.user.is_staff:
-            return True
-
-        # Check for specific permission
-        return request.user.has_perm("members.can_send_member_emails")
+        return request.user.has_perm("members.can_send_member_emails") or sending_department_ids(request.user).exists()

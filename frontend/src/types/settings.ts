@@ -11,12 +11,25 @@ export interface GeneralSettings {
   title: string
   slug: string
   logo_url: string
+  /** Base colour as #rrggbb; accessible shades are derived in the browser. */
+  brand_color?: string
+}
+
+export interface LoginTexts {
+  eyebrow: string
+  headline: string
+  intro: string
+  footer: string
+  help: string
 }
 
 export interface PublicBranding {
   title: string
   slug: string
   logo_url: string
+  brand_color?: string
+  /** Plain texts of the login page (CFG-02); empty hides the element. */
+  login_texts?: LoginTexts
 }
 
 export interface EmailSettings {
@@ -26,6 +39,8 @@ export interface EmailSettings {
   email_use_ssl: boolean
   email_host_user: string
   email_host_password?: string  // Write-only field
+  has_email_host_password?: boolean
+  email_credentials_unavailable?: boolean
   default_from_email: string
 }
 
@@ -164,7 +179,7 @@ export interface SettingsPermissions {
 // API Request/Response Types
 // ============================================================================
 
-export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap' | 'oidc'
+export type SettingsCategory = 'general' | 'email' | 'email-templates' | 'member' | 'service' | 'order' | 'ldap' | 'oidc' | 'training' | 'vocabulary' | 'login' | 'security' | 'push' | 'setup' | 'catalog' | 'operations'
 
 export interface CategorySettingsUpdate {
   category: SettingsCategory

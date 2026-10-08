@@ -240,7 +240,8 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     const departmentsStore = useDepartmentsStore()
     const activeDeptId = departmentsStore.activeDepartmentId
     try {
-      const response = await memberListsApi.createFromEventType(params, activeDeptId)
+      // The body names the owner explicitly; null creates an organization-wide list.
+      const response = await memberListsApi.createFromEventType({ ...params, department: activeDeptId ?? null }, activeDeptId)
       lists.value = [...lists.value, response.data].sort((a, b) => a.name.localeCompare(b.name))
       return response.data
     } finally {

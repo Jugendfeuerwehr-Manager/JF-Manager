@@ -3,15 +3,16 @@
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from servicebook.models import Attendance
+from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from servicebook.models import Attendance, Service
 from servicebook.selectors import get_attandance_list
 
+from ..attendance_permissions import filter_by_permission, has_department_permission
 from ..serializers import (
     AttendanceBulkUpdateSerializer,
     AttendanceCreateSerializer,
@@ -19,7 +20,31 @@ from ..serializers import (
 )
 
 
-class AttendanceViewSet(viewsets.ModelViewSet):
+class AttendanceRolePermissions(DepartmentRoleModelPermissions):
+    """Check an attendance record against the department of its service."""
+
+    def _required_permissions(self, request, view):
+        if getattr(view, "action", None) == "bulk_update":
+            # Same right as the attendance board: record, change and clear.
+            return ["servicebook.change_attendance"]
+        return super()._required_permissions(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_superuser:
+            return True
+        required = self._required_permissions(request, view)
+        if required is None:
+            return False
+        department_id = obj.service.department_id if obj.service_id else None
+        if department_id is None:
+            return view._user_is_org_wide(user) and all(user.has_perm(name) for name in required)
+        if not view._user_is_org_wide(user) and department_id not in view._user_department_ids(user):
+            return False
+        return all(has_department_permission(user, name, department_id) for name in required)
+
+
+class AttendanceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing attendance records.
 
@@ -30,8 +55,9 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     - Bulk update endpoint for efficient attendance marking
     """
 
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated, DjangoModelPermissions]
+    department_field = "service__department"
+
+    permission_classes = [IsAuthenticated, AttendanceRolePermissions]
     queryset = Attendance.objects.all()  # Base queryset for router registration
     serializer_class = AttendanceSerializer  # Default serializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -42,7 +68,26 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get attendance list with optimized queries."""
-        return get_attandance_list().select_related("person", "service")
+        self.queryset = get_attandance_list().select_related("person", "service")
+        return super().get_queryset()
+
+    def get_serializer(self, *args, **kwargs):
+        serializer = super().get_serializer(*args, **kwargs)
+        if "data" not in kwargs:
+            return serializer
+        services = Service.objects.all()
+        user = self.request.user
+        requested = self._resolve_requested_department(user)
+        if not self._user_is_org_wide(user):
+            services = services.filter(department_id__in=self._user_department_ids(user))
+        if requested is not None:
+            services = services.filter(department_id=requested)
+        # Target services: only where the caller may write attendance.
+        needed = "servicebook.add_attendance" if self.action == "create" else "servicebook.change_attendance"
+        services = filter_by_permission(services, user, needed)
+        if "service" in serializer.fields:
+            serializer.fields["service"].queryset = services
+        return serializer
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""

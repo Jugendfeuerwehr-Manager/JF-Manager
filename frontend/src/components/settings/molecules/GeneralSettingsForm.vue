@@ -26,7 +26,8 @@
         help-text="Öffentlich erreichbare URL zum Logo der Organisation. Wird auf der Loginseite angezeigt."
         :disabled="!canEdit"
       />
-      
+      <ColorSchemePicker v-model="formData.brand_color" :disabled="!canEdit" />
+
       <div class="flex justify-content-end gap-2 mt-4">
         <Button
           label="Abbrechen"
@@ -42,19 +43,16 @@
         />
       </div>
     </form>
-
-    <template #footer v-if="successMessage">
-      <Message severity="success" :closable="false">{{ successMessage }}</Message>
-    </template>
   </SettingsCategoryCard>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
 import SettingsCategoryCard from '../atoms/SettingsCategoryCard.vue'
 import SettingsTextField from '../atoms/SettingsTextField.vue'
+import ColorSchemePicker from './ColorSchemePicker.vue'
+import { DEFAULT_BRAND_COLOR } from '@/theme/brand'
 import type { GeneralSettings } from '@/types/settings'
 
 interface Props {
@@ -72,14 +70,14 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emit = defineEmits<Emits>()
 
-const formData = reactive<GeneralSettings>({
+const formData = reactive<Required<GeneralSettings>>({
   title: '',
   slug: '',
-  logo_url: ''
+  logo_url: '',
+  brand_color: DEFAULT_BRAND_COLOR
 })
 
 const originalData = ref<GeneralSettings | null>(null)
-const successMessage = ref('')
 
 // Watch for settings changes from parent
 watch(() => props.settings, (newSettings) => {
@@ -87,7 +85,8 @@ watch(() => props.settings, (newSettings) => {
     formData.title = newSettings.title || ''
     formData.slug = newSettings.slug || ''
     formData.logo_url = newSettings.logo_url || ''
-    originalData.value = { ...newSettings }
+    formData.brand_color = newSettings.brand_color || DEFAULT_BRAND_COLOR
+    originalData.value = { ...newSettings, brand_color: formData.brand_color }
   }
 }, { immediate: true })
 
@@ -96,7 +95,8 @@ const hasChanges = computed(() => {
   return (
     formData.title !== originalData.value.title ||
     formData.slug !== originalData.value.slug ||
-    formData.logo_url !== originalData.value.logo_url
+    formData.logo_url !== originalData.value.logo_url ||
+    formData.brand_color !== originalData.value.brand_color
   )
 })
 
@@ -112,14 +112,12 @@ function handleSubmit() {
   if (formData.logo_url !== originalData.value?.logo_url) {
     changes.logo_url = formData.logo_url
   }
-  
-  if (Object.keys(changes).length > 0) {
-    emit('save', changes)
-    successMessage.value = 'Einstellungen erfolgreich gespeichert'
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
+  if (formData.brand_color !== originalData.value?.brand_color) {
+    changes.brand_color = formData.brand_color
   }
+
+  // Success or failure is reported by the parent once the server answered.
+  if (Object.keys(changes).length > 0) emit('save', changes)
 }
 
 function handleCancel() {
@@ -127,6 +125,7 @@ function handleCancel() {
     formData.title = originalData.value.title || ''
     formData.slug = originalData.value.slug || ''
     formData.logo_url = originalData.value.logo_url || ''
+    formData.brand_color = originalData.value.brand_color || DEFAULT_BRAND_COLOR
   }
 }
 </script>

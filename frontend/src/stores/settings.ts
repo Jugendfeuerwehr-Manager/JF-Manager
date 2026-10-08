@@ -151,6 +151,21 @@ export const useSettingsStore = defineStore('settings', () => {
       })
     }
     
+    for (const tab of [
+      { id: 'setup' as const, title: 'Einrichtung', icon: 'pi pi-compass', description: 'Organisation Schritt für Schritt einrichten' },
+      { id: 'vocabulary' as const, title: 'Bezeichnungen', icon: 'pi pi-language', description: 'Modulnamen anpassen' },
+      { id: 'login' as const, title: 'Anmeldeseite', icon: 'pi pi-sign-in', description: 'Texte der Anmeldeseite anpassen' },
+      { id: 'training' as const, title: 'Übungsstandards', icon: 'pi pi-calendar', description: 'Zeiten und Bausteindauer für neue Übungen' },
+      { id: 'security' as const, title: 'Sitzungen', icon: 'pi pi-shield', description: 'Wirksame Sicherheitsrichtlinien' },
+      { id: 'push' as const, title: 'Push', icon: 'pi pi-bell', description: 'Push aktivieren und Versandschlüssel einrichten' },
+      { id: 'catalog' as const, title: 'Einstellungsübersicht', icon: 'pi pi-list', description: 'Herkunft, Regeln und Speicherorte' },
+    ]) {
+      if (canViewCategory.value(tab.id) || (tab.id === 'catalog' && canViewAnySettings.value)) tabs.push(tab)
+    }
+    // Host status written by jfctl; read-only and reserved for system administration.
+    if (permissions.value.can_view_all) {
+      tabs.push({ id: 'operations', title: 'Betriebsstatus', icon: 'pi pi-server', description: 'Version, Sicherung und Hintergrundaufgaben' })
+    }
     return tabs
   })
 
@@ -158,11 +173,12 @@ export const useSettingsStore = defineStore('settings', () => {
     const tabMap = new Map(availableTabs.value.map((t) => [t.id, t]))
 
     const groupDefs: Array<{ label: string; icon: string; ids: SettingsCategory[] }> = [
-      { label: 'Organisation', icon: 'pi pi-building', ids: ['general'] },
-      { label: 'Kommunikation', icon: 'pi pi-envelope', ids: ['email', 'email-templates'] },
+      { label: 'Organisation', icon: 'pi pi-building', ids: ['setup', 'general', 'vocabulary', 'login', 'catalog'] },
+      { label: 'Kommunikation', icon: 'pi pi-envelope', ids: ['email', 'email-templates', 'push'] },
       { label: 'Mitglieder', icon: 'pi pi-users', ids: ['member'] },
-      { label: 'Betrieb', icon: 'pi pi-briefcase', ids: ['service', 'order'] },
-      { label: 'Sicherheit', icon: 'pi pi-shield', ids: ['ldap', 'oidc'] },
+      { label: 'Betrieb', icon: 'pi pi-briefcase', ids: ['service', 'training', 'order'] },
+      { label: 'Sicherheit', icon: 'pi pi-shield', ids: ['security', 'ldap', 'oidc'] },
+      { label: 'System', icon: 'pi pi-server', ids: ['operations'] },
     ]
 
     return groupDefs

@@ -1,0 +1,11 @@
+# Integrated HTTPS for the Docker Compose installation (jfctl, tls=caddy).
+# Caddy obtains and renews certificates automatically and replaces any
+# client-supplied X-Forwarded-Proto/-For header before proxying.
+{
+	email {$JF_ACME_EMAIL}
+}
+
+{$JF_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy frontend:8080
+}

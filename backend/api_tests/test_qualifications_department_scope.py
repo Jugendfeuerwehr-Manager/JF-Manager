@@ -114,12 +114,12 @@ class QualificationDeptScopeBase(APITestCase):
 
     def _login(self, username, password):
         response = self.client.post(
-            "/api/v1/auth/login/",
+            "/api/v1/auth/session/login/",
             {"username": username, "password": password},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        self.assertTrue(response.data["authenticated"])
 
 
 class OrgWideQualificationTests(QualificationDeptScopeBase):
@@ -127,7 +127,8 @@ class OrgWideQualificationTests(QualificationDeptScopeBase):
 
     def setUp(self):
         super().setUp()
-        self._login("org_wide", "OrgWide!123")
+        # Superusers must enrol MFA first; this test covers data scope only.
+        self.client.force_authenticate(self.org_wide_user)
 
     def test_org_wide_sees_all_qualifications(self):
         response = self.client.get("/api/v1/qualifications/")
@@ -274,18 +275,19 @@ class SpecialTaskDeptScopeBase(APITestCase):
 
     def _login(self, username, password):
         response = self.client.post(
-            "/api/v1/auth/login/",
+            "/api/v1/auth/session/login/",
             {"username": username, "password": password},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        self.assertTrue(response.data["authenticated"])
 
 
 class OrgWideSpecialTaskTests(SpecialTaskDeptScopeBase):
     def setUp(self):
         super().setUp()
-        self._login("st_org_wide", "STOrgWide!123")
+        # Superusers must enrol MFA first; this test covers data scope only.
+        self.client.force_authenticate(self.org_wide_user)
 
     def test_org_wide_sees_all_special_tasks(self):
         response = self.client.get("/api/v1/qualifications/specialtasks/")

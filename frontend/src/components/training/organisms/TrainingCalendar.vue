@@ -21,10 +21,14 @@
         />
         <Button icon="pi pi-book" label="Bibliothek" size="small" severity="secondary" outlined @click="router.push('/training/library')" />
         <Button label="Heute" size="small" outlined @click="goToday" />
-        <Button icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
+        <Button v-if="canCreate" icon="pi pi-bookmark" label="Vorlagen" size="small" severity="secondary" outlined @click="openTemplates(null)" />
+        <Button v-if="canCreate" icon="pi pi-plus" label="Übung erstellen" size="small" @click="openCreate" />
       </div>
     </div>
 
+    <div v-if="trainingStore.error" role="alert">
+      <p>{{ trainingStore.error }}</p><Button label="Erneut laden" severity="secondary" @click="loadSessions" />
+    </div>
     <!-- List view -->
     <div v-if="showListView" class="session-list-view">
       <div class="list-search-bar">
@@ -48,7 +52,7 @@
           <div class="list-item-info">
             <strong class="session-title-with-icon">
               <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" title="Terminserie" />
-              {{ session.title }}
+              {{ session.title }} <TrainingStatusBadge :status="session.status" />
             </strong>
             <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
               {{ departmentMeta(session.id).label }}
@@ -56,7 +60,7 @@
             <span v-if="session.location" class="text-color-secondary text-sm">{{ session.location }}</span>
           </div>
           <div class="list-item-actions">
-            <Button icon="pi pi-trash" text size="small" severity="danger" @click.stop="confirmDeleteSession(session)" />
+            <Button v-if="session.can_manage_plan" icon="pi pi-trash" text size="small" severity="danger" @click.stop="confirmDeleteSession(session)" />
             <Button icon="pi pi-arrow-right" text size="small" @click.stop="openSession(session)" />
           </div>
         </div>
@@ -91,7 +95,7 @@
             @click.stop="openSession(session)"
           >
             <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" />
-            {{ session.title }}
+            {{ session.title }} <TrainingStatusBadge :status="session.status" />
           </div>
           <div v-if="cell.sessions.length > 3" class="more-pill">
             +{{ cell.sessions.length - 3 }} weitere
@@ -108,17 +112,20 @@
     <Dialog
       v-model:visible="showCreate"
       header="Übung erstellen"
-      :style="{ width: '640px' }"
+      :style="{ width: '640px', maxWidth: 'calc(100vw - 24px)' }"
       modal
     >
       <TrainingSessionForm :initial-data="prefillDate ? { date: prefillDate } as any : null" @success="onSessionCreated" @cancel="showCreate = false" />
     </Dialog>
 
+    <TrainingTemplatesDialog v-model:visible="showTemplates" :default-date="templateDate" :department="departmentsStore.activeDepartmentId" @created="(created) => router.push(`/training/sessions/${created.id}/plan`)" />
+    <SeriesDialog v-model:visible="showSeries" :session-id="seriesSessionId" @changed="loadSessions" />
+
     <!-- Day detail panel -->
     <Dialog
       v-model:visible="showDayDetail"
       :header="dayDetailTitle"
-      :style="{ width: '500px' }"
+      :style="{ width: '500px', maxWidth: 'calc(100vw - 24px)' }"
       modal
     >
       <div class="day-sessions">
@@ -132,7 +139,7 @@
           <div class="session-info">
             <strong class="session-title-with-icon">
               <i v-if="session.is_recurring" class="pi pi-sync recurrence-icon" title="Terminserie" />
-              {{ session.title }}
+              {{ session.title }} <TrainingStatusBadge :status="session.status" />
             </strong>
             <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
               {{ departmentMeta(session.id).label }}
@@ -141,18 +148,20 @@
           </div>
           <div class="session-actions">
             <Button icon="pi pi-calendar" text size="small" title="Planer" @click.stop="goToPlanner(session.id)" />
-            <Button icon="pi pi-trash" text size="small" severity="danger" title="Löschen" @click.stop="confirmDeleteSession(session)" />
+            <Button v-if="session.can_manage_plan" icon="pi pi-trash" text size="small" severity="danger" title="Löschen" @click.stop="confirmDeleteSession(session)" />
           </div>
         </div>
       </div>
       <template #footer>
-        <Button label="Übung erstellen" icon="pi pi-plus" size="small" @click="openCreateForDay" />
+        <Button v-if="canCreate" label="Aus Vorlage" icon="pi pi-bookmark" size="small" severity="secondary" @click="openTemplates(selectedCell?.dateStr ?? null)" />
+        <Button v-if="canCreate" label="Übung erstellen" icon="pi pi-plus" size="small" @click="openCreateForDay" />
       </template>
     </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
@@ -161,10 +170,13 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
+import SeriesDialog from '../molecules/SeriesDialog.vue'
+import TrainingTemplatesDialog from './TrainingTemplatesDialog.vue'
 import { useTrainingStore } from '@/stores/training'
+import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
 import {
-  expandTrainingSessionsForRange,
+  calendarSessionsForRange,
   type TrainingCalendarSession,
 } from '../utils/recurrence'
 
@@ -172,6 +184,8 @@ const router = useRouter()
 const confirm = useConfirm()
 const trainingStore = useTrainingStore()
 const departmentsStore = useDepartmentsStore()
+const auth = useAuthStore()
+const canCreate = computed(() => auth.hasPerm('training.can_manage_training'))
 
 const today = new Date()
 const currentYear = ref(today.getFullYear())
@@ -179,6 +193,16 @@ const currentMonth = ref(today.getMonth()) // 0-based
 
 const showCreate = ref(false)
 const showDayDetail = ref(false)
+const showSeries = ref(false)
+const seriesSessionId = ref<number | null>(null)
+const showTemplates = ref(false)
+const templateDate = ref<string | null>(null)
+
+function openTemplates(date: string | null) {
+  templateDate.value = date
+  showDayDetail.value = false
+  showTemplates.value = true
+}
 const prefillDate = ref<string | null>(null)
 const selectedCell = ref<CalendarCell | null>(null)
 
@@ -198,7 +222,7 @@ async function toggleListView() {
   showListView.value = !showListView.value
   if (showListView.value) {
     // Load all upcoming sessions for list mode
-    await trainingStore.fetchSessions({ limit: 500 })
+    try { await trainingStore.fetchSessions({ limit: 500 }) } catch { /* visible store error */ }
   }
 }
 
@@ -235,7 +259,7 @@ const visibleDateRange = computed(() => {
 })
 
 const displaySessions = computed(() =>
-  expandTrainingSessionsForRange(
+  calendarSessionsForRange(
     sessions.value,
     visibleDateRange.value.fromIso,
     visibleDateRange.value.toIso,
@@ -311,11 +335,11 @@ function makeCell(date: Date, inMonth: boolean): CalendarCell {
 async function loadSessions() {
   const from = visibleDateRange.value.fromIso
   const to = visibleDateRange.value.toIso
-  await trainingStore.fetchSessions({
+  try { await trainingStore.fetchSessions({
     date_from: from,
     date_to: to,
     limit: 200,
-  })
+  }) } catch { /* visible store error, retry button */ }
 }
 
 function toIsoDate(date: Date): string {
@@ -339,11 +363,13 @@ function goToday() {
 }
 
 function openCreate() {
+  if (!canCreate.value) return
   prefillDate.value = null
   showCreate.value = true
 }
 
 function openCreateForDay() {
+  if (!canCreate.value) return
   if (selectedCell.value) prefillDate.value = selectedCell.value.dateStr
   showDayDetail.value = false
   showCreate.value = true
@@ -359,7 +385,7 @@ function openSession(session: TrainingCalendarSession) {
 }
 
 function hasFutureLinkedService(session: TrainingCalendarSession): boolean {
-  if (!session.linked_service_id || !session.linked_service_start) {
+  if (session.requires_service_confirmation || !session.linked_service_id || !session.linked_service_start) {
     return false
   }
   return new Date(session.linked_service_start) >= new Date()
@@ -377,6 +403,7 @@ async function runDeleteSession(
 }
 
 function confirmDeleteSession(session: TrainingCalendarSession) {
+  if (!session.can_manage_plan) return
   if (hasFutureLinkedService(session)) {
     confirm.require({
       header: 'Verknüpften Dienst löschen?',
@@ -408,9 +435,15 @@ function goToPlanner(sessionId: number) {
   router.push(`/training/sessions/${sessionId}/plan`)
 }
 
-function onSessionCreated(_sessionId: number) {
+async function onSessionCreated(sessionId: number) {
   showCreate.value = false
-  loadSessions()
+  // A new recurring exercise only gets further dates through the explicit preview.
+  const recurring = !!trainingStore.sessions.find((s) => s.id === sessionId)?.recurrence_rule
+  await loadSessions()
+  if (recurring) {
+    seriesSessionId.value = sessionId
+    showSeries.value = true
+  }
 }
 
 function departmentMeta(sessionId: number): { label: string | null; color: string | null } {

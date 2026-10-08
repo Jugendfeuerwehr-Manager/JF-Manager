@@ -1,263 +1,373 @@
 <template>
-  <div class="attendance-manager">
-    <div class="manager-header">
-      <IconField iconPosition="left">
-        <InputIcon>
-          <i class="pi pi-search" />
-        </InputIcon>
-        <InputText
-          v-model="searchQuery"
-          placeholder="Mitglied suchen..."
-          class="search-input"
-        />
-      </IconField>
+  <section class="attendance-manager" aria-label="Anwesenheit erfassen">
+    <div class="manager-head">
+      <div class="manager-head__row">
+        <div class="kind-switch" role="group" aria-label="Personengruppe">
+          <button type="button" :aria-pressed="kind === 'member'" @click="kind = 'member'">Teilnehmende ({{ board.members.length }})</button>
+          <button type="button" :aria-pressed="kind === 'staff'" @click="kind = 'staff'">Team ({{ board.staff.length }})</button>
+        </div>
+        <span class="save-state" :class="`save-state--${syncState}`" role="status">
+          <i :class="syncIcon" aria-hidden="true"></i>{{ syncMessage }}
+        </span>
+      </div>
+
+      <div class="progress">
+        <div class="progress__labels">
+          <span><strong>{{ marked }}</strong> von {{ people.length }} erfasst</span>
+          <span class="muted">{{ counts.present }} anwesend · {{ counts.excused }} entschuldigt · {{ counts.absent }} {{ counts.absent === 1 ? 'fehlt' : 'fehlen' }}</span>
+        </div>
+        <div
+          class="progress__track"
+          role="progressbar"
+          aria-label="Erfasste Anwesenheiten"
+          aria-valuemin="0"
+          :aria-valuemax="people.length"
+          :aria-valuenow="marked"
+          :aria-valuetext="`${marked} von ${people.length} erfasst`"
+        >
+          <div class="progress__bar" :style="{ width: `${people.length ? (marked / people.length) * 100 : 0}%` }"></div>
+        </div>
+      </div>
+
+      <div class="manager-head__row">
+        <div class="segmented" role="group" aria-label="Anzeige">
+          <button type="button" :aria-pressed="onlyUnmarked" @click="setOnlyUnmarked(true)">Offen ({{ counts.open }})</button>
+          <button type="button" :aria-pressed="!onlyUnmarked" @click="setOnlyUnmarked(false)">Alle ({{ people.length }})</button>
+        </div>
+        <InputText v-model="searchQuery" placeholder="Person suchen …" aria-label="Person suchen" class="search" />
+      </div>
     </div>
 
-    <Divider />
-
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
-      <ProgressSpinner />
-    </div>
-
-    <!-- Member List -->
-    <div v-else class="members-list">
-      <div
-        v-for="member in filteredMembers"
-        :key="member.id"
-        class="member-item"
-      >
-        <div class="member-info">
-          <span class="member-name">{{ member.full_name }}</span>
+    <div v-if="loading" class="empty-state"><ProgressSpinner /></div>
+    <ul v-else class="people">
+      <li v-for="person in filteredPeople" :key="`${kind}-${person.id}`" class="person">
+        <div class="person__identity">
+          <span class="person__initials" aria-hidden="true">{{ initials(person.full_name) }}</span>
+          <span class="person__name">{{ person.full_name }}</span>
+          <span class="person__state" :class="{ 'person__state--done': person.state }">{{ person.state ? 'erfasst' : 'offen' }}</span>
         </div>
         <AttendanceButtonGroup
-          :current-state="getAttendanceState(member.id)"
-          :loading="updatingMemberId === member.id"
-          @select="(state) => handleAttendanceUpdate(member.id, state)"
+          :current-state="person.state"
+          :person-name="person.full_name"
+          :loading="pending.has(`${kind}-${person.id}`)"
+          @select="(state) => update(person, state)"
         />
-      </div>
+      </li>
+      <li v-if="!filteredPeople.length" class="empty-state">
+        <template v-if="onlyUnmarked && !searchQuery && people.length">Alle Anwesenheiten sind erfasst.</template>
+        <template v-else>Keine passenden Personen.</template>
+      </li>
+    </ul>
+    <p class="hint">Erneutes Antippen des gewählten Status setzt ihn zurück. Änderungen anderer werden alle 3 Sekunden übernommen.</p>
 
-      <!-- Empty State -->
-      <div v-if="filteredMembers.length === 0" class="empty-state">
-        <p>Keine Mitglieder gefunden</p>
-      </div>
-    </div>
-  </div>
+    <router-link
+      class="report-link"
+      :to="{ name: 'service-report', query: kind === 'staff' ? { group: 'staff' } : {} }"
+    >
+      <i class="pi pi-chart-bar" aria-hidden="true"></i>Zur Anwesenheitsauswertung
+    </router-link>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
-import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import AttendanceButtonGroup from '../atoms/AttendanceButtonGroup.vue'
-import type { AttendanceState } from '@/types/servicebook'
-import { useMembersStore } from '@/stores/members'
-import { useServicebookStore } from '@/stores/servicebook'
+import { servicesApi } from '@/api/servicebook'
+import type {
+  AttendanceBoard,
+  AttendanceBoardPerson,
+  AttendanceState,
+} from '@/types/servicebook'
 import { getApiErrorMessage } from '@/utils/apiError'
 
-interface Props {
-  serviceId: number
-}
-
-const props = defineProps<Props>()
-
+const props = defineProps<{ serviceId: number }>()
 const toast = useToast()
-const membersStore = useMembersStore()
-const servicebookStore = useServicebookStore()
-
+const board = ref<AttendanceBoard>({ members: [], staff: [] })
+const kind = ref<'member' | 'staff'>('member')
 const searchQuery = ref('')
-const updatingMemberId = ref<number | null>(null)
-
-// Local attendance state
-const localAttendance = ref<Map<number, AttendanceState | null>>(new Map())
-const initialAttendance = ref<Map<number, AttendanceState | null>>(new Map())
-
-// Computed loading state
-const loading = computed(() => membersStore.loading)
-
-// Load members and initialize attendance on mount
-onMounted(async () => {
-  // Always fetch all members with no pagination limit for attendance control
-  await membersStore.fetchMembers({ limit: 10000 })
-  initializeAttendance()
-})
-
-// Watch for current service changes to reload attendance
-watch(
-  () => servicebookStore.currentService,
-  (newService) => {
-    if (newService && newService.id === props.serviceId) {
-      initializeAttendance()
-    }
-  },
-  { deep: true }
+const onlyUnmarked = ref(true)
+const pending = ref(new Set<string>())
+const loading = ref(true)
+const syncMessage = ref('Wird geladen …')
+const syncState = ref<'loading' | 'saving' | 'saved' | 'error' | 'offline'>('loading')
+const syncIcon = computed(() => ({
+  loading: 'pi pi-spin pi-spinner',
+  saving: 'pi pi-spin pi-spinner',
+  saved: 'pi pi-check',
+  error: 'pi pi-exclamation-triangle',
+  offline: 'pi pi-wifi',
+})[syncState.value])
+/** Rows marked while "Offen" is shown stay visible until the filter changes, so a mis-tap can be corrected. */
+const keepVisible = ref(new Set<string>())
+let timer: ReturnType<typeof setInterval> | undefined
+let refreshing = false
+let disposed = false
+let revision = 0
+const people = computed(() => (kind.value === 'member' ? board.value.members : board.value.staff))
+const filteredPeople = computed(() =>
+  people.value.filter(
+    (p) =>
+      (!onlyUnmarked.value || p.state === null || keepVisible.value.has(`${kind.value}-${p.id}`)) &&
+      p.full_name.toLocaleLowerCase().includes(searchQuery.value.toLocaleLowerCase()),
+  ),
 )
+const marked = computed(() => people.value.filter((p) => p.state !== null).length)
+const counts = computed(() => ({
+  present: people.value.filter((p) => p.state === 'A').length,
+  excused: people.value.filter((p) => p.state === 'E').length,
+  absent: people.value.filter((p) => p.state === 'F').length,
+  open: people.value.filter((p) => p.state === null).length,
+}))
 
-const initializeAttendance = () => {
-  localAttendance.value.clear()
-  initialAttendance.value.clear()
-
-  const currentService = servicebookStore.currentService
-  if (!currentService || currentService.id !== props.serviceId) return
-
-  // Map attendees by person ID
-  if (currentService.attendees_with_status) {
-    currentService.attendees_with_status.forEach((attendee) => {
-      localAttendance.value.set(attendee.id, attendee.state)
-      initialAttendance.value.set(attendee.id, attendee.state)
-    })
-  }
-}
-
-const filteredMembers = computed(() => {
-  const query = searchQuery.value.toLowerCase()
-  if (!query) return membersStore.members
-
-  return membersStore.members.filter((member) => {
-    const fullName = `${member.name} ${member.lastname}`.toLowerCase()
-    return fullName.includes(query)
-  })
-})
-
-const getAttendanceState = (memberId: number): AttendanceState | null => {
-  return localAttendance.value.get(memberId) || null
-}
-
-const handleAttendanceUpdate = async (memberId: number, state: AttendanceState) => {
-  updatingMemberId.value = memberId
-  
-  // Toggle behavior: if same state clicked, clear it
-  const currentState = localAttendance.value.get(memberId)
-  const newState = currentState === state ? null : state
-  
-  // Update local state immediately for UI responsiveness
-  if (newState === null) {
-    localAttendance.value.delete(memberId)
-  } else {
-    localAttendance.value.set(memberId, newState)
-  }
-
-  // Save to server immediately
+async function refresh() {
+  if (refreshing || disposed || pending.value.size) return
+  refreshing = true
+  const serviceId = props.serviceId
+  const requestRevision = revision
   try {
-    console.log('AttendanceManager: Updating attendance for member', memberId, 'to state', newState)
-    
-    // Build the full attendance list from current state
-    const attendances = Array.from(localAttendance.value.entries()).map(([person_id, state]) => ({
-      person_id,
-      state
-    }))
-    
-    // If we're clearing this member's attendance, explicitly send null
-    if (newState === null) {
-      attendances.push({ person_id: memberId, state: null })
+    const { data } = await servicesApi.getAttendanceBoard(serviceId)
+    // A response started before a local edit must never roll that edit back.
+    if (
+      !disposed &&
+      serviceId === props.serviceId &&
+      requestRevision === revision &&
+      !pending.value.size
+    ) {
+      board.value = data
+      if (syncState.value !== 'error') {
+        syncState.value = 'saved'
+        syncMessage.value = 'Gespeichert'
+      }
     }
+  } catch {
+    if (!disposed) {
+      syncState.value = 'offline'
+      syncMessage.value = 'Offline – Abgleich unterbrochen'
+    }
+  } finally {
+    refreshing = false
+    loading.value = false
+  }
+}
 
-    await servicebookStore.bulkUpdateAttendance({
-      service: props.serviceId,
-      attendances
+async function update(person: AttendanceBoardPerson, state: AttendanceState) {
+  const selectedKind = kind.value
+  const key = `${selectedKind}-${person.id}`
+  if (pending.value.has(key)) return
+  const serviceId = props.serviceId
+  const previous = person.state
+  const next = previous === state ? null : state
+  pending.value.add(key)
+  revision++
+  person.state = next
+  if (onlyUnmarked.value) keepVisible.value.add(key)
+  syncState.value = 'saving'
+  syncMessage.value = 'Speichert …'
+  try {
+    await servicesApi.updateAttendanceBoard(serviceId, {
+      kind: selectedKind,
+      person_id: person.id,
+      state: next,
+      expected_state: previous,
     })
-    
-    // Update initial state to reflect saved state
-    if (newState === null) {
-      initialAttendance.value.delete(memberId)
-    } else {
-      initialAttendance.value.set(memberId, newState)
-    }
-    
-    console.log('AttendanceManager: Attendance updated successfully')
+    syncState.value = 'saved'
+    syncMessage.value = 'Gespeichert'
   } catch (error) {
-    
-    // Revert local state on error
-    if (currentState === null || currentState === undefined) {
-      localAttendance.value.delete(memberId)
-    } else {
-      localAttendance.value.set(memberId, currentState)
-    }
-    
+    person.state = previous
+    syncState.value = 'error'
+    syncMessage.value = 'Nicht gespeichert'
     toast.add({
       severity: 'error',
-      summary: 'Fehler',
-      detail: getApiErrorMessage(error, 'Fehler beim Speichern der Anwesenheit'),
-      life: 5000
+      summary: 'Anwesenheit prüfen',
+      detail: getApiErrorMessage(
+        error,
+        'Speichern fehlgeschlagen. Der aktuelle Stand wird neu geladen.',
+      ),
+      life: 7000,
     })
   } finally {
-    updatingMemberId.value = null
+    pending.value.delete(key)
+    revision++
+    await refresh()
   }
 }
+
+function setOnlyUnmarked(value: boolean) {
+  onlyUnmarked.value = value
+  keepVisible.value = new Set()
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
+}
+
+function onVisibility() {
+  if (!document.hidden) void refresh()
+}
+onMounted(() => {
+  void refresh()
+  timer = setInterval(() => {
+    if (!document.hidden) void refresh()
+  }, 3000)
+  document.addEventListener('visibilitychange', onVisibility)
+})
+watch(
+  () => props.serviceId,
+  () => {
+    revision++
+    board.value = { members: [], staff: [] }
+    loading.value = true
+    void refresh()
+  },
+)
+onUnmounted(() => {
+  disposed = true
+  clearInterval(timer)
+  document.removeEventListener('visibilitychange', onVisibility)
+})
 </script>
 
 <style scoped>
 .attendance-manager {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: var(--surface-0);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--surface-border);
+  gap: var(--jf-space-1-5);
+  min-height: 0;
 }
-
-.manager-header {
-  padding: 1rem;
+.manager-head {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--jf-space-1-5);
 }
-
-.manager-header h3 {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.search-input {
-  width: 100%;
-}
-
-.loading-container {
+.manager-head__row {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 3rem;
-}
-
-.members-list {
-  flex: 1;
-  min-height: 0; /* Critical for flex child with overflow */
-  overflow-y: auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.member-item {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  background: var(--surface-50);
-  border-radius: var(--border-radius);
+  gap: var(--jf-space-1);
 }
-
-.member-info {
+.kind-switch,
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-border);
+}
+.segmented { flex: 1 1 240px; }
+.kind-switch button,
+.segmented button {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 var(--jf-space-1-5);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--jf-color-text-muted);
+  font: inherit;
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.kind-switch button[aria-pressed='true'],
+.segmented button[aria-pressed='true'] {
+  background: var(--jf-color-card);
+  color: var(--jf-color-text);
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.12);
+}
+.search { flex: 1 1 200px; }
+.save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-semibold);
+  background: var(--p-green-100);
+  color: var(--p-green-800);
+}
+.save-state--saving,
+.save-state--loading { background: var(--surface-hover); color: var(--jf-color-text-muted); }
+.save-state--error,
+.save-state--offline { background: var(--p-red-100); color: var(--p-red-800); }
+.app-dark .save-state { background: color-mix(in srgb, var(--p-green-400), transparent 84%); color: var(--p-green-300); }
+.app-dark .save-state--saving,
+.app-dark .save-state--loading { background: var(--surface-hover); color: var(--jf-color-text-muted); }
+.app-dark .save-state--error,
+.app-dark .save-state--offline { background: color-mix(in srgb, var(--p-red-400), transparent 84%); color: var(--p-red-300); }
+.progress { display: flex; flex-direction: column; gap: var(--jf-space-1); }
+.progress__labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--jf-space-0-5) var(--jf-space-1);
+  font-size: var(--jf-text-sm);
+}
+.progress__track { height: 8px; border-radius: 999px; background: var(--jf-color-border); overflow: hidden; }
+.progress__bar { height: 100%; border-radius: 999px; background: var(--p-green-700); transition: width var(--jf-duration); }
+.app-dark .progress__bar { background: var(--p-green-400); }
+.muted { margin: 0; font-size: 0.8125rem; color: var(--jf-color-text-muted); }
+.people {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  flex: 1;
+  gap: var(--jf-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-
-.member-name {
-  font-weight: 500;
-  color: var(--text-color);
+.person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1) var(--jf-space-2);
+  padding: var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  background: var(--jf-color-card);
 }
-
-.empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-color-secondary);
+.person__identity {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+}
+.person__initials {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-bold);
+}
+.person__name { flex: 1; min-width: 0; font-weight: var(--jf-weight-semibold); overflow-wrap: anywhere; }
+.person__state { font-size: 0.8125rem; color: var(--jf-color-text-muted); }
+.person__state--done { color: var(--p-green-800); }
+.app-dark .person__state--done { color: var(--p-green-300); }
+.person :deep(.attendance-button-group) { flex: 1 1 320px; }
+.empty-state { padding: var(--jf-space-4) var(--jf-space-2); text-align: center; color: var(--jf-color-text-muted); }
+.hint { margin: 0; font-size: 0.8125rem; color: var(--jf-color-text-muted); }
+.report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  align-self: flex-start;
+  min-height: var(--jf-touch-target);
+  color: var(--jf-color-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+}
+.report-link:hover { text-decoration: underline; }
+@media (max-width: 767px) {
+  .person { padding: var(--jf-space-1-5) var(--jf-space-1); }
+  .person :deep(.attendance-button-group) { flex-basis: 100%; }
 }
 </style>

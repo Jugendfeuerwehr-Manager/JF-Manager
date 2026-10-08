@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
-from jf_manager_backend.permissions import DepartmentRoleModelPermissions, OrgWideWritePermission
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions, GlobalModelWritePermission
 from orders.api.filters import OrderableItemFilter
 from orders.api.serializers import OrderableItemCreateUpdateSerializer, OrderableItemSerializer
 from orders.models import OrderableItem
@@ -24,7 +24,7 @@ class OrderableItemViewSet(viewsets.ModelViewSet):
 
     queryset = OrderableItem.objects.all()
     serializer_class = OrderableItemSerializer
-    permission_classes = [permissions.IsAuthenticated, DepartmentRoleModelPermissions, OrgWideWritePermission]
+    permission_classes = [permissions.IsAuthenticated, DepartmentRoleModelPermissions, GlobalModelWritePermission]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = OrderableItemFilter
     search_fields = ["name", "category", "description"]

@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
-from django.db import models
-from encrypted_model_fields.fields import EncryptedCharField
+from django.db import IntegrityError, models, transaction
+
+from jf_manager_backend.encrypted_fields import StrictEncryptedCharField as EncryptedCharField
 
 
 class OIDCConfig(models.Model):
@@ -108,6 +109,16 @@ class OIDCConfig(models.Model):
         ),
     )
 
+    trust_provider_mfa = models.BooleanField(
+        default=False,
+        verbose_name="MFA des Providers anerkennen",
+        help_text=(
+            "Nur aktivieren, wenn der Provider einen zweiten Faktor erzwingt und dies im ID-Token "
+            "per 'amr'-Claim (z. B. 'mfa', 'otp', 'hwk') bestätigt. Sonst verlangt JF-Manager "
+            "für MFA-pflichtige Konten zusätzlich den eigenen zweiten Faktor."
+        ),
+    )
+
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -136,5 +147,12 @@ class OIDCConfig(models.Model):
 
     @classmethod
     def get_or_create_default(cls):
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
+        config = cls.objects.order_by("id").first()
+        if config:
+            return config
+        # Parallel first requests race to create the singleton; the loser reads it.
+        try:
+            with transaction.atomic():
+                return cls.objects.create(pk=1)
+        except (IntegrityError, ValidationError):
+            return cls.objects.get(pk=1)

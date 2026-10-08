@@ -4,20 +4,16 @@ from django.core.cache import cache
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from servicebook.models import Attendance, Service
-from servicebook.selectors import (
-    get_attendance_over_time_data,
-    get_services_with_attendance_summary,
-    get_top_lists_by_state,
-)
+from servicebook.selectors import get_top_lists_by_state
 
+from ..attendance_permissions import filter_by_permission, has_department_permission
 from ..serializers import (
     ServiceCreateSerializer,
     ServiceDetailSerializer,
@@ -37,8 +33,7 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     - Statistics endpoints for attendance summaries
     """
 
-    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated, DjangoModelPermissions]
+    permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
     queryset = Service.objects.all()  # Base queryset for router registration
     serializer_class = ServiceDetailSerializer  # Default serializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -49,11 +44,18 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get services filtered by department scope."""
-        # Apply department filtering over the selector queryset
-        qs = get_services_with_attendance_summary()
-        # Temporarily set base queryset for the mixin
-        self.queryset = qs
-        return super().get_queryset()
+        self.queryset = Service.objects.select_related("training_session").prefetch_related("operations_manager")
+        queryset = super().get_queryset()
+        if self.action in ("attendance_board", "staff_statistics"):
+            # These actions enforce attendance rights instead of service rights.
+            return queryset
+        permission = {
+            "create": "servicebook.add_service",
+            "update": "servicebook.change_service",
+            "partial_update": "servicebook.change_service",
+            "destroy": "servicebook.delete_service",
+        }.get(self.action, "servicebook.view_service")
+        return filter_by_permission(queryset, self.request.user, permission)
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""
@@ -69,6 +71,19 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Create service and return detailed response."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        from rest_framework.exceptions import PermissionDenied
+
+        department = serializer.validated_data.get("department")
+        department_id = department.pk if department else self._resolve_requested_department(request.user)
+        if department_id is None and not self._user_is_org_wide(request.user):
+            assigned = self._user_department_ids(request.user)
+            department_id = assigned[0] if len(assigned) == 1 else None
+        if not has_department_permission(request.user, "servicebook.add_service", department_id):
+            raise PermissionDenied("Keine Berechtigung zum Anlegen in dieser Abteilung.")
+        if department is None and department_id is not None:
+            from departments.models import Department
+
+            serializer.validated_data["department"] = Department.objects.get(pk=department_id)
         service = self.perform_create(serializer)
 
         # Use DetailSerializer for response to include all fields including id
@@ -86,13 +101,14 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         - Recent services summary
         - Top attendance lists (most present, excused, absent)
         """
-        services_count = Service.objects.count()
-        recent_services = Service.objects.order_by("-start")[:5]
+        services = self.get_queryset()
+        services_count = services.count()
+        recent_services = services.order_by("-start")[:5]
 
         # Get top lists
-        top_present = get_top_lists_by_state("A", max_entries=7)
-        top_excused = get_top_lists_by_state("E", max_entries=7)
-        top_absent = get_top_lists_by_state("F", max_entries=7)
+        top_present = get_top_lists_by_state("A", max_entries=7, services=services)
+        top_excused = get_top_lists_by_state("E", max_entries=7, services=services)
+        top_absent = get_top_lists_by_state("F", max_entries=7, services=services)
 
         return Response(
             {
@@ -113,7 +129,9 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         Returns time-series data of attendance across services.
         """
-        chart_data = get_attendance_over_time_data()
+        from servicebook.selectors import get_attendance_over_time_data
+
+        chart_data = get_attendance_over_time_data(services=self.get_queryset())
         return Response(chart_data)
 
     @action(detail=True, methods=["get"])
@@ -160,6 +178,61 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=True, methods=["get", "patch"], permission_classes=[IsAuthenticated])
+    def attendance_board(self, request, pk=None):
+        from rest_framework.exceptions import PermissionDenied
+
+        from ..attendance_board import board_response, update_board
+
+        service = self.get_object()
+        if not (
+            has_department_permission(request.user, "servicebook.view_attendance", service.department_id)
+            or has_department_permission(request.user, "servicebook.change_attendance", service.department_id)
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen der Anwesenheit.")
+        if request.method == "PATCH":
+            return update_board(request, service)
+        return board_response(service)
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def staff_statistics(self, request):
+        from rest_framework.exceptions import PermissionDenied
+
+        from ..attendance_board import staff_report
+
+        if not (
+            request.user.is_superuser
+            or request.user.has_perm("servicebook.view_attendance")
+            or request.user.has_perm("servicebook.change_attendance")
+            or request.user.department_roles.filter(
+                groups__permissions__content_type__app_label="servicebook",
+                groups__permissions__codename__in=["view_attendance", "change_attendance"],
+            ).exists()
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen der Anwesenheit.")
+        from rest_framework import serializers
+
+        class DateRange(serializers.Serializer):
+            date_from = serializers.DateField(required=False)
+            date_to = serializers.DateField(required=False)
+
+        dates = DateRange(data=request.query_params)
+        dates.is_valid(raise_exception=True)
+        services = self.filter_queryset(self.get_queryset())
+        if not request.user.is_superuser and not request.user.has_perm("servicebook.view_attendance") and not request.user.has_perm("servicebook.change_attendance"):
+            from django.db.models import Q
+
+            allowed = request.user.department_roles.filter(
+                groups__permissions__codename__in=["view_attendance", "change_attendance"],
+                groups__permissions__content_type__app_label="servicebook",
+            ).values_list("department_id", flat=True)
+            services = services.filter(Q(department_id__in=allowed))
+        if dates.validated_data.get("date_from"):
+            services = services.filter(start__date__gte=dates.validated_data["date_from"])
+        if dates.validated_data.get("date_to"):
+            services = services.filter(start__date__lte=dates.validated_data["date_to"])
+        return staff_report(services)
+
     def perform_create(self, serializer):
         """Handle service creation and clear cache."""
         service = serializer.save()
@@ -169,6 +242,11 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """Handle service update and clear cache."""
+        from rest_framework.exceptions import PermissionDenied
+
+        department = serializer.validated_data.get("department", serializer.instance.department)
+        if not has_department_permission(self.request.user, "servicebook.change_service", department.pk if department else None):
+            raise PermissionDenied("Keine Berechtigung zum Verschieben in diese Abteilung.")
         service = serializer.save()
         # Clear attendance cache when service is updated
         cache.delete("attendance_over_time_data")

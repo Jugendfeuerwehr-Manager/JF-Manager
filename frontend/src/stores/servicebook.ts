@@ -11,7 +11,6 @@ import type {
   ServiceDetail,
   ServiceFormData,
   ServiceListParams,
-  ServiceStatistics,
   AttendanceChartData,
   Attendance,
   AttendanceCreate,
@@ -39,11 +38,6 @@ export const useServicebookStore = defineStore('servicebook', () => {
   const attendancesLoading = ref(false)
   const attendancesError = ref<string | null>(null)
   const attendancesTotalCount = ref(0)
-
-  // Statistics
-  const statistics = ref<ServiceStatistics | null>(null)
-  const statisticsLoading = ref(false)
-  const statisticsError = ref<string | null>(null)
 
   // Chart Data
   const chartData = ref<AttendanceChartData | null>(null)
@@ -247,30 +241,6 @@ export const useServicebookStore = defineStore('servicebook', () => {
     }
   }
 
-  // ============================================================================
-  // Actions - Statistics
-  // ============================================================================
-
-  /**
-   * Fetch servicebook statistics
-   */
-  async function fetchStatistics() {
-    statisticsLoading.value = true
-    statisticsError.value = null
-
-    try {
-      const response = await servicebookApi.services.getStatistics()
-      statistics.value = response.data
-      return statistics.value
-    } catch (error) {
-      statisticsError.value =
-        getApiErrorMessage(error, 'Fehler beim Laden der Statistiken')
-      throw error
-    } finally {
-      statisticsLoading.value = false
-    }
-  }
-
   /**
    * Fetch attendance chart data
    */
@@ -430,10 +400,6 @@ export const useServicebookStore = defineStore('servicebook', () => {
     attendancesError.value = null
     attendancesTotalCount.value = 0
 
-    statistics.value = null
-    statisticsLoading.value = false
-    statisticsError.value = null
-
     chartData.value = null
     chartLoading.value = false
     chartError.value = null
@@ -454,9 +420,6 @@ export const useServicebookStore = defineStore('servicebook', () => {
     attendancesLoading,
     attendancesError,
     attendancesTotalCount,
-    statistics,
-    statisticsLoading,
-    statisticsError,
     chartData,
     chartLoading,
     chartError,
@@ -474,7 +437,6 @@ export const useServicebookStore = defineStore('servicebook', () => {
     updateService,
     partialUpdateService,
     deleteService,
-    fetchStatistics,
     fetchChartData,
     fetchAttendances,
     createAttendance,

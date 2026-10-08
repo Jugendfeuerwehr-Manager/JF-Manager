@@ -1,5 +1,6 @@
 <template>
   <form class="group-detail-form" @submit.prevent="handleSubmit">
+    <fieldset :disabled="!authStore.hasPerm(isNew ? 'auth.add_group' : 'auth.change_group')" style="border: 0; padding: 0; margin: 0; min-width: 0">
     <!-- Header -->
     <div class="form-header flex align-items-center justify-between mb-4">
       <div class="flex align-items-center gap-2">
@@ -17,6 +18,7 @@
           @click="emit('cancel')"
         />
         <Button
+          v-if="authStore.hasPerm(isNew ? 'auth.add_group' : 'auth.change_group')"
           type="submit"
           :label="isNew ? 'Erstellen' : 'Speichern'"
           icon="pi pi-check"
@@ -47,10 +49,13 @@
         :categories="permissionCategories"
       />
     </Fieldset>
+    </fieldset>
   </form>
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 import { ref, computed, watch, onMounted } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import InputText from 'primevue/inputtext'

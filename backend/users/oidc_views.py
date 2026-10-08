@@ -1,31 +1,29 @@
 """
 OIDC authentication views for JF-Manager.
 
-These views implement the backend-side of the OIDC Authorization Code Flow
-and bridge mozilla-django-oidc with the simplejwt token system used by the
-Vue 3 frontend — without exposing the client_secret to the browser.
+Authorization Code Flow with PKCE (S256). The flow is bound to the browser
+session that started it and can be completed exactly once. On success the
+backend creates the normal Django session (with the same MFA rules as local
+login); the browser never receives provider or application tokens.
 
 Flow:
-  1. Frontend calls GET /api/v1/auth/oidc/public-config/
-     → Returns { enabled, provider_name, hide_local_login }
-  2. Frontend calls GET /api/v1/auth/oidc/login/?next=/dashboard
-     → Backend builds authorization_url with state/nonce stored in cache
-     → Returns { authorization_url }
-  3. Browser is redirected to IdP → user authenticates → IdP redirects back to
-     GET /api/v1/auth/oidc/callback/?code=...&state=...
-     → Backend exchanges code for tokens, authenticates user, issues simplejwt tokens
-     → Stores {access, refresh} under a short-lived exchange_code in cache
-     → Redirects browser to {FRONTEND_URL}/auth/oidc/callback?exchange_code=<uuid>
-  4. Frontend OIDCCallbackView POSTs exchange_code to
-     POST /api/v1/auth/oidc/exchange/
-     → Returns { access, refresh } (consumed, one-time use)
+  1. GET /api/v1/auth/oidc/public-config/ → { enabled, provider_name, hide_local_login }
+  2. GET /api/v1/auth/oidc/login/?next=/dashboard → { authorization_url }
+     State, nonce, PKCE verifier and the relative return path are stored in the
+     caller's session.
+  3. IdP redirects to GET /api/v1/auth/oidc/callback/?code=...&state=...
+     → state checked against the session, code exchanged with the verifier,
+       id_token verified, session established or MFA step started
+     → redirect to {FRONTEND_URL}/auth/oidc/callback?result=...&next=...
 """
 
-import json
+import base64
+import hashlib
+import hmac
 import logging
 import secrets
-import uuid
-from urllib.parse import quote, urlencode, urlparse
+import time
+from urllib.parse import urlencode, urlparse
 
 import requests
 from django.conf import settings
@@ -39,11 +37,36 @@ from rest_framework.views import APIView
 
 logger = logging.getLogger("users.oidc_views")
 
-# How long (seconds) the state/nonce stay valid
-OIDC_STATE_TIMEOUT = 300  # 5 minutes
+# How long (seconds) a started login may take at the provider.
+OIDC_STATE_TIMEOUT = 300
+OIDC_FLOW_KEY = "_oidc_flow"
+# Asymmetric signatures only; never trust the algorithm named in the token.
+ALLOWED_ID_TOKEN_ALGORITHMS = ("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512")
+# `amr` values that state the provider performed a second factor (RFC 8176).
+PROVIDER_MFA_METHODS = frozenset({"mfa", "otp", "hwk", "swk", "sc", "fpt", "face", "iris", "retina", "vbm"})
+# Fixed error codes for the frontend; no exception texts or personal data in URLs.
+ERROR_MESSAGES = {
+    "provider_error": "Der Identity Provider hat die Anmeldung abgebrochen.",
+    "invalid_response": "Ungültige Antwort des Identity Providers.",
+    "expired": "Die Anmeldung ist abgelaufen. Bitte erneut anmelden.",
+    "disabled": "SSO ist deaktiviert.",
+    "unavailable": "Der Identity Provider ist nicht erreichbar.",
+    "verification_failed": "Die Anmeldung konnte nicht bestätigt werden.",
+    "account_rejected": "Für dieses Konto ist keine Anmeldung möglich.",
+}
 
-# How long (seconds) the exchange_code → token pair stays in cache
-OIDC_EXCHANGE_TIMEOUT = 60  # 1 minute
+
+def safe_next(value):
+    """Allow only same-origin relative paths as post-login target."""
+    value = str(value or "/")
+    if not value.startswith("/") or value.startswith("//") or "\\" in value or any(ord(ch) < 32 for ch in value):
+        return "/"
+    return value
+
+
+def _pkce_challenge(verifier):
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +141,7 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
     """
     Verify the id_token JWT signature using the provider's JWKS and return claims.
 
-    Uses PyJWT (already available via djangorestframework-simplejwt) so we do
+    Uses PyJWT (installed as dependency of the API stack) so we do
     not rely on mozilla-django-oidc's internal URL resolution or settings access.
     """
     import jwt as pyjwt
@@ -155,14 +178,14 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
     # Decode header without verification to find the signing key.
     header = pyjwt.get_unverified_header(id_token)
     kid = header.get("kid")
-    alg = header.get("alg", "RS256")
+    alg = header.get("alg")
+    if alg not in ALLOWED_ID_TOKEN_ALGORITHMS:
+        raise ValueError(f"Nicht zugelassener Signaturalgorithmus {alg!r}.")
 
     matching_key = None
     for key_data in jwks.get("keys", []):
         if kid is None or key_data.get("kid") == kid:
-            if alg.startswith("RS"):
-                matching_key = pyjwt.algorithms.RSAAlgorithm.from_jwk(key_data)
-            elif alg.startswith("EC"):
+            if alg.startswith("ES"):
                 matching_key = pyjwt.algorithms.ECAlgorithm.from_jwk(key_data)
             else:
                 matching_key = pyjwt.algorithms.RSAAlgorithm.from_jwk(key_data)
@@ -176,6 +199,7 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
         key=matching_key,
         algorithms=[alg],
         audience=config.client_id,
+        options={"require": ["exp", "iat", "iss", "aud", "sub"]},
     )
 
     # Verify issuer (lenient about trailing slash differences).
@@ -192,26 +216,13 @@ def _verify_id_token(id_token: str, discovery: dict, config, nonce: str) -> dict
     return claims
 
 
-def _build_debug_info(claims: dict, config) -> dict:
-    """
-    Extract non-sensitive claim fields for display on the error page.
-    Helps admins verify which user/groups Nextcloud sent vs. what is configured.
-    """
-    groups = claims.get(config.groups_claim, [])
-    if isinstance(groups, str):
-        groups = [g.strip() for g in groups.split(",") if g.strip()]
-
-    sub = claims.get("sub", "")
-    sub_display = sub[:12] + "…" if len(sub) > 12 else sub
-
-    return {
-        "email": claims.get("email", ""),
-        "name": claims.get("name", claims.get("preferred_username", "")),
-        "sub": sub_display,
-        "issuer": claims.get("iss", ""),
-        "groups_claim": config.groups_claim,
-        "groups": groups if isinstance(groups, list) else [],
-    }
+def _provider_verified_mfa(claims, config):
+    if not getattr(config, "trust_provider_mfa", False):
+        return False
+    methods = claims.get("amr") or []
+    if isinstance(methods, str):
+        methods = [methods]
+    return bool(PROVIDER_MFA_METHODS & {str(method).lower() for method in methods})
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +243,12 @@ class OIDCPublicConfigView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        config = _get_oidc_config()
+        # Public fields only; the client secret is not even decrypted here.
+        from settings_manager.models import OIDCConfig
+
+        config = OIDCConfig.objects.filter(pk=1).only("enabled", "provider_name", "hide_local_login").first()
+        if config is None:
+            return Response({"enabled": False, "provider_name": "SSO", "hide_local_login": False})
         return Response(
             {
                 "enabled": config.enabled,
@@ -251,8 +267,9 @@ class OIDCLoginView(APIView):
     """
     GET /api/v1/auth/oidc/login/?next=/dashboard
 
-    Builds the OIDC authorization URL with a fresh state + nonce.
-    State and nonce are stored in the Django cache for later verification.
+    Builds the authorization URL with fresh state, nonce and PKCE challenge.
+    The secrets stay in this browser's session; a new login replaces any
+    unfinished one.
 
     Returns: { authorization_url: "https://provider/authorize?..." }
     """
@@ -270,54 +287,44 @@ class OIDCLoginView(APIView):
 
         try:
             discovery = _fetch_discovery_document(config.issuer_url)
-        except Exception as exc:
-            logger.error("OIDC: Failed to fetch discovery document: %s", exc)
+            authorization_endpoint = _validate_oidc_url(
+                discovery.get("authorization_endpoint", ""),
+                "Authorization-Endpunkt",
+                allowed_host=urlparse(config.issuer_url).hostname,
+            )
+        except (requests.RequestException, ValueError) as exc:
+            logger.error("OIDC: provider configuration unusable: %s", exc)
             return Response(
                 {"detail": "OIDC Provider nicht erreichbar. Bitte versuche es später erneut."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        authorization_endpoint = discovery.get("authorization_endpoint")
-        if not authorization_endpoint:
-            return Response(
-                {"detail": "OIDC Provider hat keinen authorization_endpoint."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
-
-        # Store state → nonce in cache so callback can verify
-        next_url = request.GET.get("next", "/")
-        cache.set(
-            f"oidc_state_{state}",
-            {"nonce": nonce, "next": next_url},
-            OIDC_STATE_TIMEOUT,
-        )
-
-        # Build callback URL — always points to our backend callback view
-        callback_url = request.build_absolute_uri("/api/v1/auth/oidc/callback/")
+        verifier = secrets.token_urlsafe(64)
+        request._request.session[OIDC_FLOW_KEY] = {
+            "state": state,
+            "nonce": nonce,
+            "verifier": verifier,
+            "next": safe_next(request.GET.get("next")),
+            "started_at": int(time.time()),
+        }
 
         params = {
             "response_type": "code",
             "client_id": config.client_id,
-            "redirect_uri": callback_url,
+            "redirect_uri": request.build_absolute_uri("/api/v1/auth/oidc/callback/"),
             "scope": config.scope,
             "state": state,
             "nonce": nonce,
+            "code_challenge": _pkce_challenge(verifier),
+            "code_challenge_method": "S256",
         }
-        authorization_url = authorization_endpoint + "?" + urlencode(params)
-
-        logger.debug(
-            "OIDC: generated authorization URL for provider '%s' (state=%s)",
-            config.provider_name,
-            state[:8] + "...",
-        )
-        return Response({"authorization_url": authorization_url})
+        return Response({"authorization_url": authorization_endpoint + "?" + urlencode(params)})
 
 
 # ---------------------------------------------------------------------------
-# OIDC callback (handles IdP redirect, issues simplejwt tokens)
+# OIDC callback (handles IdP redirect, establishes the Django session)
 # ---------------------------------------------------------------------------
 
 
@@ -325,200 +332,111 @@ class OIDCCallbackView(View):
     """
     GET /api/v1/auth/oidc/callback/?code=...&state=...
 
-    This is a plain Django view (not a DRF APIView) because it needs to:
-    - Handle a browser redirect from the IdP (not an AJAX request)
-    - Issue an HTTP redirect back to the frontend
-
-    Process:
-    1. Validate state (CSRF protection)
-    2. Exchange code for tokens via IdP token endpoint
-    3. Authenticate user (creates/updates via JFManagerOIDCBackend)
-    4. Issue simplejwt access + refresh tokens
-    5. Store them under a short-lived exchange_code in cache
-    6. Redirect browser to {FRONTEND_URL}/auth/oidc/callback?exchange_code=...
+    Plain Django view: the browser arrives via redirect from the IdP and is
+    redirected to the frontend afterwards.
     """
 
     def get(self, request):
-        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+        flow = request.session.pop(OIDC_FLOW_KEY, None)
 
-        # --- Error from IdP ---
         if "error" in request.GET:
-            error = request.GET.get("error", "unknown_error")
-            error_description = request.GET.get("error_description", "")
-            logger.warning("OIDC: IdP returned error '%s': %s", error, error_description)
-            return self._redirect_to_frontend_error(frontend_url, f"IdP-Fehler: {error}")
+            logger.warning("OIDC: IdP returned error %r", request.GET.get("error", "")[:64])
+            return self._redirect_error("provider_error")
 
         code = request.GET.get("code")
         state = request.GET.get("state")
-
         if not code or not state:
-            logger.warning("OIDC callback: missing code or state parameter")
-            return self._redirect_to_frontend_error(frontend_url, "Ungültige OIDC-Antwort (fehlende Parameter).")
+            return self._redirect_error("invalid_response")
 
-        # --- Validate state ---
-        state_data = cache.get(f"oidc_state_{state}")
-        if not state_data:
-            logger.warning("OIDC callback: unknown or expired state '%s'", state[:8] + "...")
-            return self._redirect_to_frontend_error(frontend_url, "Sitzung abgelaufen. Bitte erneut anmelden.")
-        cache.delete(f"oidc_state_{state}")
-
-        nonce = state_data.get("nonce")
-        next_url = state_data.get("next", "/")
+        # Bound to this browser, unexpired and usable only once — even if two
+        # callbacks race with the same session.
+        if (
+            not flow
+            or not hmac.compare_digest(str(flow.get("state", "")), state)
+            or time.time() - flow.get("started_at", 0) > OIDC_STATE_TIMEOUT
+            or not cache.add(f"oidc_state_used_{hashlib.sha256(state.encode()).hexdigest()}", 1, OIDC_STATE_TIMEOUT)
+        ):
+            logger.warning("OIDC callback: unknown, foreign, expired or reused state")
+            return self._redirect_error("expired")
 
         config = _get_oidc_config()
         if not config.enabled:
-            return self._redirect_to_frontend_error(frontend_url, "OIDC ist deaktiviert.")
+            return self._redirect_error("disabled")
 
-        # --- Fetch discovery document ---
+        issuer_host = urlparse(config.issuer_url).hostname
         try:
             discovery = _fetch_discovery_document(config.issuer_url)
-        except Exception as exc:
-            logger.error("OIDC callback: failed to fetch discovery document: %s", exc)
-            return self._redirect_to_frontend_error(frontend_url, "OIDC Provider nicht erreichbar.")
+            token_endpoint = _validate_oidc_url(
+                discovery.get("token_endpoint", ""), "Token-Endpunkt", allowed_host=issuer_host
+            )
+        except (requests.RequestException, ValueError) as exc:
+            logger.error("OIDC callback: provider configuration unusable: %s", exc)
+            return self._redirect_error("unavailable")
 
-        token_endpoint = discovery.get("token_endpoint")
-        if not token_endpoint:
-            return self._redirect_to_frontend_error(frontend_url, "OIDC Provider hat keinen token_endpoint.")
-
-        # --- Exchange authorization code for tokens ---
-        callback_url = request.build_absolute_uri("/api/v1/auth/oidc/callback/")
         try:
             token_response = requests.post(
                 token_endpoint,
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "redirect_uri": callback_url,
+                    "redirect_uri": request.build_absolute_uri("/api/v1/auth/oidc/callback/"),
                     "client_id": config.client_id,
                     "client_secret": config.client_secret,
+                    "code_verifier": flow["verifier"],
                 },
                 timeout=15,
+                allow_redirects=False,
             )
             token_response.raise_for_status()
-        except requests.RequestException as exc:
-            logger.error("OIDC callback: token exchange failed: %s", exc)
-            return self._redirect_to_frontend_error(frontend_url, "Token-Austausch fehlgeschlagen.")
-
-        token_data = token_response.json()
-        id_token = token_data.get("id_token")
+            id_token = token_response.json().get("id_token")
+        except (requests.RequestException, ValueError) as exc:
+            logger.error("OIDC callback: token exchange failed: %s", type(exc).__name__)
+            return self._redirect_error("unavailable")
 
         if not id_token:
             logger.error("OIDC callback: no id_token in token response")
-            return self._redirect_to_frontend_error(frontend_url, "Kein ID-Token erhalten.")
+            return self._redirect_error("invalid_response")
 
-        # --- Verify id_token signature and extract claims ---
         try:
-            claims = _verify_id_token(id_token, discovery, config, nonce)
+            claims = _verify_id_token(id_token, discovery, config, flow["nonce"])
         except Exception as exc:
-            logger.warning("OIDC callback: id_token verification failed: %s", exc)
-            return self._redirect_to_frontend_error(frontend_url, f"ID-Token Verifikation fehlgeschlagen: {exc}")
+            logger.warning("OIDC callback: id_token verification failed: %s", type(exc).__name__)
+            return self._redirect_error("verification_failed")
 
-        debug_info = _build_debug_info(claims, config)
-
-        # --- Create/update user via OIDC backend ---
         try:
             from users.oidc_backend import JFManagerOIDCBackend
 
             backend = JFManagerOIDCBackend()
-            # Store pre-decoded claims; authenticate() reads them instead of
-            # re-exchanging the already-consumed authorization code.
+            # authenticate() reads the verified claims instead of re-exchanging the code.
             request._oidc_claims = claims
             user = backend.authenticate(request)
         except Exception as exc:
-            logger.warning("OIDC callback: authentication failed: %s", exc)
-            return self._redirect_to_frontend_error(frontend_url, str(exc), debug=debug_info)
+            logger.warning("OIDC callback: account rejected: %s", type(exc).__name__)
+            return self._redirect_error("account_rejected")
 
-        if user is None:
-            logger.warning("OIDC callback: backend returned None (user not authenticated)")
-            return self._redirect_to_frontend_error(
-                frontend_url,
-                "Anmeldung fehlgeschlagen. Bitte überprüfe dein Konto.",
-                debug=debug_info,
-            )
+        if user is None or not user.is_active:
+            return self._redirect_error("account_rejected")
 
-        # --- Issue simplejwt tokens ---
-        from rest_framework_simplejwt.tokens import RefreshToken
+        from users.session_views import begin_login
 
-        refresh = RefreshToken.for_user(user)
-        jwt_access = str(refresh.access_token)
-        jwt_refresh = str(refresh)
-
-        # Store tokens under a one-time exchange code
-        exchange_code = str(uuid.uuid4())
-        cache.set(
-            f"oidc_exchange_{exchange_code}",
-            {"access": jwt_access, "refresh": jwt_refresh, "next": next_url},
-            OIDC_EXCHANGE_TIMEOUT,
-        )
-
-        logger.info(
-            "OIDC: user '%s' authenticated successfully via provider '%s'",
-            user.username,
-            config.provider_name,
-        )
-
-        redirect_url = f"{frontend_url}/auth/oidc/callback?exchange_code={exchange_code}"
-        response = HttpResponse(status=302)
-        response["Location"] = redirect_url
-        return response
+        user.backend = "users.oidc_backend.JFManagerOIDCBackend"
+        begin_login(request, user, mfa_satisfied=_provider_verified_mfa(claims, config))
+        logger.info("OIDC: user id %s authenticated via provider", user.pk)
+        result = "ok" if request.user.is_authenticated else "mfa_required"
+        return self._redirect(result=result, next=flow["next"])
 
     @staticmethod
-    def _redirect_to_frontend_error(frontend_url: str, message: str, debug: dict | None = None) -> HttpResponse:
-        redirect_url = f"{frontend_url}/auth/oidc/callback?error={quote(message)}"
-        if debug:
-            redirect_url += f"&debug={quote(json.dumps(debug, ensure_ascii=False))}"
+    def _redirect(**params) -> HttpResponse:
+        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173").rstrip("/")
         response = HttpResponse(status=302)
-        response["Location"] = redirect_url
+        response["Location"] = f"{frontend_url}/auth/oidc/callback?{urlencode(params)}"
+        response["Cache-Control"] = "no-store"
         return response
 
-
-# ---------------------------------------------------------------------------
-# Token exchange (one-time, consumes exchange_code from cache)
-# ---------------------------------------------------------------------------
-
-
-class OIDCTokenExchangeView(APIView):
-    """
-    POST /api/v1/auth/oidc/exchange/
-    Body: { "exchange_code": "<uuid>" }
-
-    Returns: { "access": "...", "refresh": "...", "next": "/..." }
-
-    This is the only endpoint the frontend JS calls after the OIDC callback.
-    The exchange_code is one-time and expires after OIDC_EXCHANGE_TIMEOUT seconds.
-    """
-
-    permission_classes = [AllowAny]
-    authentication_classes = []
-
-    def post(self, request):
-        exchange_code = request.data.get("exchange_code", "")
-        if not exchange_code:
-            return Response(
-                {"detail": "exchange_code fehlt."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        cache_key = f"oidc_exchange_{exchange_code}"
-        token_data = cache.get(cache_key)
-        if not token_data:
-            logger.warning("OIDC exchange: unknown or expired exchange_code '%s'", exchange_code[:8] + "...")
-            return Response(
-                {"detail": "Ungültiger oder abgelaufener Exchange-Code."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # One-time use — delete immediately
-        cache.delete(cache_key)
-        logger.debug("OIDC exchange: tokens issued for exchange_code '%s'", exchange_code[:8] + "...")
-
-        return Response(
-            {
-                "access": token_data["access"],
-                "refresh": token_data["refresh"],
-                "next": token_data.get("next", "/"),
-            }
-        )
+    @classmethod
+    def _redirect_error(cls, error_code: str) -> HttpResponse:
+        assert error_code in ERROR_MESSAGES
+        return cls._redirect(error=error_code)
 
 
 # ---------------------------------------------------------------------------
@@ -542,7 +460,6 @@ class OIDCTestDiscoveryView(APIView):
         if not (
             request.user.has_perm("settings_manager.change_oidc_settings")
             or request.user.has_perm("settings_manager.change_all_settings")
-            or request.user.is_staff
         ):
             return Response(
                 {"detail": "Keine Berechtigung."},

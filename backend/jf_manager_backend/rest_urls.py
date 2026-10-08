@@ -1,6 +1,9 @@
 from rest_framework import routers
 
 from departments.api.viewsets.departments import DepartmentViewSet
+from departments.api.viewsets.member_options import RoleMemberOptionsViewSet
+from departments.api.viewsets.role_assignments import RoleAssignmentViewSet
+from departments.api.viewsets.role_templates import RoleTemplateViewSet
 from departments.api.viewsets.user_department_roles import UserDepartmentRoleViewSet
 from external_sync.api import SyncJobViewSet, SyncRunViewSet
 from inventory.api import (
@@ -29,7 +32,7 @@ from qualifications.api.viewsets import (
     SpecialTaskTypeViewSet,
     SpecialTaskViewSet,
 )
-from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
+from servicebook.api.viewsets import AttendanceReportViewSet, AttendanceViewSet, ServiceViewSet
 from settings_manager.api import (
     EmailLayoutTemplateViewSet,
     EmailTemplateViewSet,
@@ -43,6 +46,8 @@ from training.api.viewsets import (
     LibraryBlockViewSet,
     TrainingBlockViewSet,
     TrainingSessionViewSet,
+    TrainingTemplateBlockViewSet,
+    TrainingTemplateViewSet,
 )
 from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
 from users.api_views import UserViewSet
@@ -56,6 +61,9 @@ api.register(r"admin/permissions", PermissionViewSet, basename="admin-permission
 # Department management
 api.register(r"departments", DepartmentViewSet, basename="departments")
 api.register(r"admin/department-roles", UserDepartmentRoleViewSet, basename="department-roles")
+api.register(r"admin/role-templates", RoleTemplateViewSet, basename="role-templates")
+api.register(r"role-assignments", RoleAssignmentViewSet, basename="role-assignments")
+api.register(r"role-member-options", RoleMemberOptionsViewSet, basename="role-member-options")
 api.register(r"sync-jobs", SyncJobViewSet, basename="sync-jobs")
 api.register(r"sync-runs", SyncRunViewSet, basename="sync-runs")
 api.register(r"members", MemberViewSet)
@@ -79,6 +87,7 @@ api.register(r"inventory/transactions", TransactionViewSet)
 
 api.register(r"servicebook/services", ServiceViewSet)
 api.register(r"servicebook/attendances", AttendanceViewSet)
+api.register(r"servicebook/attendance-report", AttendanceReportViewSet, basename="attendance-report")
 
 # Orders endpoints
 api.register(r"orders", OrderViewSet)
@@ -106,3 +115,5 @@ api.register(r"training/library/tags", LibraryBlockTagViewSet, basename="trainin
 api.register(r"training/library", LibraryBlockViewSet, basename="training-library")
 api.register(r"training/sessions", TrainingSessionViewSet, basename="training-sessions")
 api.register(r"training/blocks", TrainingBlockViewSet, basename="training-blocks")
+api.register(r"training/templates", TrainingTemplateViewSet, basename="training-templates")
+api.register(r"training/template-blocks", TrainingTemplateBlockViewSet, basename="training-template-blocks")

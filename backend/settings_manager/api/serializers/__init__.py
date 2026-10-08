@@ -34,6 +34,15 @@ class GeneralSettingsSerializer(serializers.Serializer):
     logo_url = serializers.URLField(
         required=False, allow_blank=True, help_text="Publicly accessible URL to the organisation logo"
     )
+    brand_color = serializers.RegexField(
+        r"^#[0-9a-fA-F]{6}$",
+        required=False,
+        help_text="Base colour of the interface as #rrggbb; accessible shades are derived in the browser",
+        error_messages={"invalid": "Bitte eine Farbe im Format #rrggbb angeben."},
+    )
+
+    def validate_brand_color(self, value):
+        return value.lower()
 
 
 class EmailSettingsSerializer(serializers.Serializer):
@@ -55,6 +64,8 @@ class EmailSettingsSerializer(serializers.Serializer):
     email_host_password = serializers.CharField(
         required=False, allow_blank=True, write_only=True, help_text="Password for SMTP authentication"
     )
+    has_email_host_password = serializers.BooleanField(read_only=True)
+    email_credentials_unavailable = serializers.BooleanField(read_only=True)
     default_from_email = serializers.EmailField(
         required=False, allow_blank=True, help_text="Email address used as sender"
     )
@@ -91,6 +102,46 @@ class ServiceSettingsSerializer(serializers.Serializer):
         if start_time and end_time and start_time >= end_time:
             raise serializers.ValidationError("Start time must be before end time")
         return data
+
+
+class TrainingSettingsSerializer(serializers.Serializer):
+    training_start_time = serializers.TimeField(required=False)
+    training_end_time = serializers.TimeField(required=False)
+    default_block_duration_minutes = serializers.IntegerField(required=False, min_value=1, max_value=480)
+
+    def validate(self, data):
+        if data["training_start_time"] >= data["training_end_time"]:
+            raise serializers.ValidationError({"training_end_time": "Das Ende muss nach dem Beginn liegen."})
+        return data
+
+
+class VocabularySettingsSerializer(serializers.Serializer):
+    member_label = serializers.CharField(required=False, max_length=80)
+    service_label = serializers.CharField(required=False, max_length=80)
+    training_label = serializers.CharField(required=False, max_length=80)
+
+
+def _login_text(max_length, help_text, multiline=False):
+    style = {"base_template": "textarea.html", "rows": 3} if multiline else {}
+    return serializers.CharField(
+        required=False, allow_blank=True, max_length=max_length, help_text=help_text, style=style
+    )
+
+
+class LoginPageSettingsSerializer(serializers.Serializer):
+    """Public texts of the login page; plain text, rendered escaped, empty hides the text."""
+
+    login_eyebrow = _login_text(80, "Kleine Zeile über der Überschrift. Leer blendet sie aus.")
+    login_headline = _login_text(120, "Große Überschrift; Zeilenumbrüche bleiben erhalten.", multiline=True)
+    login_intro = _login_text(400, "Einleitender Text unter der Überschrift.", multiline=True)
+    login_footer = _login_text(120, "Zeile am unteren Rand der Begrüßungsfläche.")
+    login_help = _login_text(
+        300, "Hinweis unter dem Anmeldeformular, etwa wen man um einen Zugang bittet.", multiline=True
+    )
+
+    def validate(self, data):
+        # Windows line breaks from pasted text; keep the stored value canonical.
+        return {name: value.replace("\r\n", "\n").strip() for name, value in data.items()}
 
 
 class OrderSettingsSerializer(serializers.Serializer):
@@ -148,7 +199,20 @@ class AuthGroupMiniSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-class LDAPDepartmentRoleMappingSerializer(serializers.ModelSerializer):
+class RoleMappingValidation:
+    def validate(self, attrs):
+        from departments.assignment_sources import valid_mapping_group
+
+        department = attrs.get("department", getattr(self.instance, "department", None))
+        groups = attrs.get("auth_groups", self.instance.auth_groups.all() if self.instance else [])
+        if not groups or any(not valid_mapping_group(group, getattr(department, "pk", None)) for group in groups):
+            raise serializers.ValidationError(
+                {"auth_group_ids": "Aktive Rollenvorlagen des gewählten Bereichs sind erforderlich."}
+            )
+        return attrs
+
+
+class LDAPDepartmentRoleMappingSerializer(RoleMappingValidation, serializers.ModelSerializer):
     """Serializer for LDAP group → Department role mappings"""
 
     department_name = serializers.CharField(source="department.name", read_only=True)
@@ -204,6 +268,7 @@ class OIDCSettingsSerializer(serializers.Serializer):
     admin_group = serializers.CharField(required=False, allow_blank=True, max_length=255)
     require_group_mapping = serializers.BooleanField(required=False)
     hide_local_login = serializers.BooleanField(required=False)
+    trust_provider_mfa = serializers.BooleanField(required=False)
 
 
 class OIDCDiscoveryResultSerializer(serializers.Serializer):
@@ -220,7 +285,7 @@ class OIDCDiscoveryResultSerializer(serializers.Serializer):
     claims_supported = serializers.ListField(child=serializers.CharField(), required=False)
 
 
-class OIDCGroupMappingSerializer(serializers.ModelSerializer):
+class OIDCGroupMappingSerializer(RoleMappingValidation, serializers.ModelSerializer):
     """Serializer for OIDC group → Department role mappings"""
 
     department_name = serializers.CharField(source="department.name", read_only=True)
@@ -266,6 +331,11 @@ class AllSettingsSerializer(serializers.Serializer):
     Used for GET /api/v1/settings/ to return all settings at once
     """
 
+    training = TrainingSettingsSerializer(required=False)
+    vocabulary = VocabularySettingsSerializer(required=False)
+    login = LoginPageSettingsSerializer(required=False)
+    security = serializers.DictField(required=False)
+    push = serializers.DictField(required=False)
     general = GeneralSettingsSerializer(required=False)
     email = EmailSettingsSerializer(required=False)
     member = MemberSettingsSerializer(required=False)

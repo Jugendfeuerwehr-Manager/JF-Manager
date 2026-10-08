@@ -1,5 +1,10 @@
 name: Deploy
 
+# Updates an installation managed by jfctl to a published release. The server
+# verifies the release itself (checksums, provenance), backs up, migrates and
+# rolls back on failure; this workflow only triggers "jfctl update".
+# No git checkout, pull or build happens on the server (OPS-03.3).
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,75 +16,42 @@ on:
         options:
           - production
           - staging
-      image_tag:
-        description: 'Image tag to deploy (default: latest)'
-        required: false
-        default: 'latest'
+      version:
+        description: 'Release version to install (X.Y.Z, must exist as release v<X.Y.Z>)'
+        required: true
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
-    name: Deploy to ${{ github.event.inputs.environment }}
+    name: Deploy ${{ github.event.inputs.version }} to ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     environment: ${{ github.event.inputs.environment }}
+    concurrency:
+      group: deploy-${{ github.event.inputs.environment }}
+      cancel-in-progress: false
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Validate version
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          [[ ${VERSION#v} =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || { echo "Ungültige Version: $VERSION"; exit 1; }
+          echo "VERSION=${VERSION#v}" >>"$GITHUB_ENV"
 
-      - name: Deploy to server
+      - name: Run jfctl update on the server
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          VERSION: ${{ env.VERSION }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: VERSION
           script: |
             set -euo pipefail
-            cd "${{ secrets.DEPLOY_PATH }}"
-
-            echo "==> Pulling repo changes..."
-            git pull origin ${{ github.ref_name }}
-
-            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
-            echo "==> Deploying image tag: ${IMAGE_TAG}"
-
-            # Record current image digests for potential rollback
-            PREV_BACKEND=$(docker inspect --format='{{.Id}}' $(docker-compose ps -q backend 2>/dev/null) 2>/dev/null || echo "none")
-            PREV_FRONTEND=$(docker inspect --format='{{.Id}}' $(docker-compose ps -q frontend 2>/dev/null) 2>/dev/null || echo "none")
-
-            echo "==> Pulling latest images..."
-            IMAGE_TAG="${IMAGE_TAG}" docker-compose pull
-
-            echo "==> Backing up database..."
-            docker-compose run --rm backup || { echo "WARNING: backup failed, aborting deploy"; exit 1; }
-
-            echo "==> Starting services..."
-            IMAGE_TAG="${IMAGE_TAG}" docker-compose up -d --remove-orphans
-
-            echo "==> Waiting for backend to be healthy..."
-            RETRIES=30
-            until docker-compose exec -T backend curl -sf http://localhost:8000/health/ > /dev/null 2>&1; do
-              RETRIES=$((RETRIES - 1))
-              if [ "$RETRIES" -eq 0 ]; then
-                echo "ERROR: Backend health check failed after 60s. Rolling back..."
-                IMAGE_TAG="${IMAGE_TAG}" docker-compose up -d --no-deps backend frontend || true
-                exit 1
-              fi
-              sleep 2
-            done
-
-            echo "==> Running migrations..."
-            docker-compose exec -T backend python manage.py migrate --noinput
-
-            echo "==> Collecting static files..."
-            docker-compose exec -T backend python manage.py collectstatic --noinput
-
-            echo "==> Verifying frontend health..."
-            curl -sf http://localhost/health || { echo "ERROR: Frontend health check failed"; exit 1; }
-
-            echo "==> Cleaning up old images..."
-            docker image prune -f
-
-            echo "==> Deployment complete!"
-
+            # Exit codes: 0 updated, 3 precheck failed (nothing changed),
+            # 4 another jfctl operation runs, 7 rolled back, others: see jfctl log.
+            sudo /usr/local/sbin/jfctl --non-interactive --yes update --version "$VERSION"
+            sudo /usr/local/sbin/jfctl status

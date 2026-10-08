@@ -1,15 +1,18 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
-import Aura from '@primeuix/themes/aura'
 import ConfirmationService from 'primevue/confirmationservice'
 import ToastService from 'primevue/toastservice'
 import Tooltip from 'primevue/tooltip'
 
 import App from './App.vue'
 import router from './router'
+import { JfPreset } from './theme/preset'
+import { applyBrandColor, applyRememberedBrandColor } from './theme/applyBrand'
+import { brandingApi } from './api/branding'
 
 import 'primeicons/primeicons.css'
+import './assets/tokens.css'
 import './assets/styles.css'
 
 // Import German locale for PrimeVue
@@ -133,13 +136,16 @@ const deLocale = {
   }
 }
 
+import { registerPwa } from './utils/pwa'
+registerPwa()
+
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
 app.use(PrimeVue, {
   theme: {
-    preset: Aura,
+    preset: JfPreset,
     options: {
       darkModeSelector: '.app-dark',
       cssLayer: false
@@ -147,6 +153,10 @@ app.use(PrimeVue, {
   },
   locale: deLocale
 })
+// Organisation colour: remembered value first (no flash), then the server value.
+applyRememberedBrandColor()
+void brandingApi.getPublicBranding().then(response => applyBrandColor(response.data.brand_color)).catch(() => {})
+
 app.use(ConfirmationService)
 app.use(ToastService)
 app.directive('tooltip', Tooltip)
@@ -155,7 +165,7 @@ app.directive('tooltip', Tooltip)
 // Initialize auth store
 import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
-authStore.initialize()
+void authStore.initialize()
 
 // Initialize theme
 import { useTheme } from './composables/useTheme'

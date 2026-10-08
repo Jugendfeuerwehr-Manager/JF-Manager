@@ -78,6 +78,15 @@ class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             return OrderUpdateSerializer
         return OrderSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            OrderDetailSerializer(serializer.instance, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )
+
     def perform_create(self, serializer):
         """Create order and send notification"""
         order = serializer.save()
@@ -213,8 +222,26 @@ class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         if not member_id or not item_ids:
             return Response({"error": "member and items are required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        department_id = request.data.get("department")
+        if department_id is None:
+            from members.models import Member
+
+            try:
+                member = Member.objects.filter(pk=member_id).first()
+            except (TypeError, ValueError):
+                member = None
+            if member is None:
+                return Response({"member": "Mitglied nicht gefunden."}, status=status.HTTP_400_BAD_REQUEST)
+            member_departments = list(member.departments.values_list("id", flat=True))
+            if len(member_departments) != 1:
+                return Response(
+                    {"department": "Bei mehreren oder fehlenden Abteilungen muss das Ziel angegeben werden."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            department_id = member_departments[0]
+
         # Build order data
-        order_data = {"member": member_id, "notes": notes, "items": []}
+        order_data = {"member": member_id, "department": department_id, "notes": notes, "items": []}
 
         # Get default status
         default_status = OrderStatus.objects.filter(code="NEW").first()
@@ -234,7 +261,7 @@ class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             )
 
         # Create using serializer
-        serializer = OrderCreateSerializer(data=order_data, context={"request": request})
+        serializer = OrderCreateSerializer(data=order_data, context={"request": request, "view": self})
 
         if serializer.is_valid():
             order = serializer.save()

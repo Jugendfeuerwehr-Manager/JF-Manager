@@ -18,7 +18,7 @@
         <div class="text-sm line-height-3">
 
           <p class="font-semibold mb-1 mt-0">Anmeldeprozess</p>
-          <p class="mb-3">Benutzer klickt auf "Mit SSO anmelden" → wird zum Identity Provider weitergeleitet → kehrt nach erfolgreichem Login zurück. JF-Manager nutzt den <strong>Authorization Code Flow</strong> (PKCE-kompatibel).</p>
+          <p class="mb-3">Benutzer klickt auf "Mit SSO anmelden" → wird zum Identity Provider weitergeleitet → kehrt nach erfolgreichem Login zurück. JF-Manager nutzt den <strong>Authorization Code Flow</strong> mit PKCE (S256).</p>
 
           <p class="font-semibold mb-1">Nextcloud als OIDC-Provider einrichten</p>
           <ol class="mb-3 pl-3">
@@ -196,6 +196,14 @@
         :disabled="!canEdit"
       />
 
+      <SettingsCheckbox
+        v-model="formData.trust_provider_mfa"
+        label="MFA des Providers anerkennen"
+        field-id="oidc_trust_provider_mfa"
+        help-text="Nur aktivieren, wenn der Provider einen zweiten Faktor erzwingt und im ID-Token per 'amr' bestätigt. Sonst verlangt JF-Manager für MFA-pflichtige Konten zusätzlich den eigenen zweiten Faktor."
+        :disabled="!canEdit"
+      />
+
       <div class="flex justify-content-end gap-2 mt-3">
         <Button label="Abbrechen" severity="secondary" @click="handleCancel" :disabled="!hasChanges" />
         <Button label="Speichern" type="submit" :loading="saving" :disabled="!canEdit || !hasChanges" />
@@ -233,7 +241,7 @@
       <Column field="department_name" header="Abteilung" style="min-width: 10rem">
         <template #body="{ data }">{{ data.department_name || '–' }}</template>
       </Column>
-      <Column field="auth_groups" header="Berechtigungsgruppen" style="min-width: 10rem">
+      <Column field="auth_groups" header="Rollenvorlagen" style="min-width: 10rem">
         <template #body="{ data }">
           <Tag v-for="g in data.auth_groups" :key="g.id" :value="g.name" class="mr-1" severity="secondary" />
           <span v-if="!data.auth_groups?.length" class="text-color-secondary text-sm">–</span>
@@ -349,14 +357,12 @@
     </template>
   </Dialog>
 
-  <ConfirmDialog />
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
-import ConfirmDialog from 'primevue/confirmdialog'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
@@ -373,6 +379,7 @@ import SettingsCheckbox from '../atoms/SettingsCheckbox.vue'
 import { oidcApi } from '@/api/oidc'
 import type { OIDCSettings, OIDCGroupMapping, OIDCDiscoveryResult } from '@/types/oidc'
 import apiClient from '@/api/index'
+import { listAssignableRoleGroups } from '@/api/role-templates'
 
 interface Props {
   settings: OIDCSettings | null
@@ -416,6 +423,7 @@ const formData = reactive<OIDCSettings>({
   admin_group: '',
   require_group_mapping: false,
   hide_local_login: false,
+  trust_provider_mfa: false,
 })
 
 const originalData = ref<OIDCSettings | null>(null)
@@ -451,9 +459,9 @@ async function handleSubmit() {
   if (!payload.client_secret) {
     delete payload.client_secret
   }
+  delete payload.has_client_secret
+  delete payload.callback_url
   emit('save', payload)
-  successMessage.value = 'OIDC Einstellungen gespeichert.'
-  originalData.value = { ...formData }
 }
 
 async function handleTestDiscovery() {
@@ -492,10 +500,13 @@ const newMapping = reactive<NewMapping>({
   auth_group_ids: [],
   revoke_on_mismatch: false,
 })
+watch(() => newMapping.department, () => { newMapping.auth_group_ids = [] })
+
 
 const departments = ref<{ id: number; name: string }[]>([])
 const loadingDepartments = ref(false)
-const authGroups = ref<{ id: number; name: string }[]>([])
+const roleGroups = ref<{ id: number; name: string; scope: string }[]>([])
+const authGroups = computed(() => roleGroups.value.filter(group => group.scope === (newMapping.department ? 'department' : 'organization')))
 const loadingAuthGroups = ref(false)
 
 onMounted(async () => {
@@ -534,16 +545,10 @@ async function openAddMappingDialog() {
   }
 
   // Lazy-load Django auth groups
-  if (authGroups.value.length === 0) {
+  if (roleGroups.value.length === 0) {
     loadingAuthGroups.value = true
     try {
-      const resp = await apiClient.get('/admin/groups/')
-      const data = resp.data
-      if (Array.isArray(data)) {
-        authGroups.value = data
-      } else if (data && typeof data === 'object' && 'results' in data) {
-        authGroups.value = (data as { results: { id: number; name: string }[] }).results
-      }
+      roleGroups.value = await listAssignableRoleGroups()
     } finally {
       loadingAuthGroups.value = false
     }

@@ -21,20 +21,6 @@ export interface LoginRequest {
   password: string
 }
 
-export interface LoginResponse {
-  access: string
-  refresh: string
-}
-
-export interface TokenRefreshRequest {
-  refresh: string
-}
-
-export interface TokenRefreshResponse {
-  access: string
-  refresh?: string
-}
-
 // ── User profile ─────────────────────────────────────────────────────────────
 
 export interface UserGroup {
@@ -43,6 +29,7 @@ export interface UserGroup {
 }
 
 export interface UserInfo {
+  qualified_permissions?: string[]
   id: number
   username: string
   email: string

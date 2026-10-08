@@ -104,10 +104,6 @@ function handleSubmit() {
   
   if (Object.keys(changes).length > 0) {
     emit('save', changes)
-    successMessage.value = 'Mitglieder Einstellungen erfolgreich gespeichert'
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
   }
 }
 

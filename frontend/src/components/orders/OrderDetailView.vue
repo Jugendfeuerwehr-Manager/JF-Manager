@@ -133,7 +133,7 @@
               <template #body="{ data }">
                 <Button
                   icon="pi pi-pencil"
-                  severity="warning"
+                  severity="warn"
                   text
                   rounded
                   @click="openStatusDialog(data)"

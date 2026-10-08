@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Card from 'primevue/card'
-import Avatar from 'primevue/avatar'
+import Avatar from '@/components/common/PrivateAvatar.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'

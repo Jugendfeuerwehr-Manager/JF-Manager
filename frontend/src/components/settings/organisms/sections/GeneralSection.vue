@@ -33,6 +33,7 @@ import { useSettingsStore } from '@/stores/settings'
 import GeneralSettingsForm from '../../molecules/GeneralSettingsForm.vue'
 import type { GeneralSettings } from '@/types/settings'
 import { useMobile } from '@/composables/useMobile'
+import { applyBrandColor } from '@/theme/applyBrand'
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
@@ -52,6 +53,7 @@ onMounted(async () => {
 async function handleSave(data: Partial<GeneralSettings>) {
   try {
     await settingsStore.updateGeneral(data)
+    if (data.brand_color) applyBrandColor(settingsStore.general?.brand_color ?? data.brand_color)
     toast.add({ severity: 'success', summary: 'Erfolgreich', detail: 'Allgemeine Einstellungen gespeichert', life: 3000 })
   } catch {
     toast.add({ severity: 'error', summary: 'Fehler', detail: 'Fehler beim Speichern', life: 5000 })

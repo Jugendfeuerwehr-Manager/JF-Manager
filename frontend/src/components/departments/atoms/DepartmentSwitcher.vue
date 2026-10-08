@@ -4,7 +4,8 @@
       v-if="compact"
       :label="compactLabel"
       :icon="selectedDeptId === null ? 'pi pi-globe' : 'pi pi-building'"
-      size="small"
+      :aria-label="`Abteilung wechseln, aktuell: ${labelFor(selectedDeptId)}`"
+      aria-haspopup="menu"
       severity="secondary"
       outlined
       class="dept-compact-button"
@@ -113,14 +114,16 @@ function colorFor(id: number | null): string {
   return departmentsStore.departments.find((d) => d.id === id)?.color || '#64748B'
 }
 
+/** Code first, so the distinguishing part survives truncation on narrow screens. */
+const compactLabel = computed(() => {
+  if (selectedDeptId.value === null) return 'Alle Abteilungen'
+  const dept = departmentsStore.departments.find((d) => d.id === selectedDeptId.value)
+  return dept ? `${dept.code} · ${dept.name}` : ''
+})
+
 function onSelect() {
   departmentsStore.setActiveDepartment(selectedDeptId.value)
 }
-
-const compactLabel = computed(() => {
-  const label = labelFor(selectedDeptId.value)
-  return label.length > 10 ? `${label.slice(0, 10)}…` : label
-})
 
 const compactMenuItems = computed<MenuItem[]>(() =>
   options.value.map((option) => ({
@@ -169,9 +172,10 @@ function toggleCompactMenu(event: Event) {
 }
 
 .dept-compact-button {
-  max-width: 120px;
+  max-width: 100%;
   min-width: 0;
   flex-shrink: 1;
+  border-radius: 999px;
 }
 
 .dept-compact-button :deep(.p-button-label) {

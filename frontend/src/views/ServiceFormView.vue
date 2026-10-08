@@ -1,43 +1,62 @@
 <template>
-  <div class="service-detail-view">
-    <Toolbar class="view-toolbar">
-      <template #start>
-        <Button icon="pi pi-arrow-left" text @click="handleBack" class="mr-2" />
-        <div class="toolbar-title">
-          <h1>Dienst bearbeiten</h1>
-        </div>
-      </template>
-    </Toolbar>
+  <div class="service-edit">
+    <nav aria-label="Brotkrumen" class="breadcrumb">
+      <router-link :to="{ name: 'servicebook' }">Dienstbuch</router-link>
+      <i class="pi pi-angle-right" aria-hidden="true"></i>
+      <span aria-current="page">{{ isEdit ? 'Dienst bearbeiten' : 'Neuer Dienst' }}</span>
+    </nav>
 
-    <div v-if="loading" class="loading-container">
-      <ProgressSpinner />
-    </div>
+    <StateView v-if="loading" kind="loading" title="Dienst wird geladen …" />
+    <StateView v-else-if="error" kind="error" title="Dienst konnte nicht geladen werden" :message="error" :retry="false" />
 
-    <Message v-else-if="error" severity="error" :closable="false">
-      {{ error }}
-    </Message>
+    <template v-else>
+      <header class="edit-head">
+        <p v-if="dateLine" class="edit-head__eyebrow">{{ dateLine }}</p>
+        <h1>{{ isEdit ? (service?.topic || 'Dienst ohne Thema') : 'Neuer Dienst' }}</h1>
+        <p v-if="isEdit && service?.place" class="edit-head__meta">{{ service.place }}</p>
+      </header>
 
-    <div v-else class="form-layout">
-      <Card class="form-card">
-        <template #title>Dienst-Details</template>
-        <template #content>
-          <ServiceForm
-            :initial-data="servicebookStore.currentService"
-            :loading="saving"
-            :submit-label="isEdit ? 'Aktualisieren' : 'Erstellen'"
-            @submit="handleSubmit"
-            @cancel="handleBack"
-          />
-        </template>
-      </Card>
+      <div v-if="isEdit" class="segmented" role="tablist" aria-label="Bereich" @keydown.left.prevent="switchByKey" @keydown.right.prevent="switchByKey">
+        <button
+          id="tab-details"
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'details'"
+          :tabindex="tab === 'details' ? 0 : -1"
+          aria-controls="panel-details"
+          @click="setTab('details')"
+        >Dienstdaten</button>
+        <button
+          id="tab-attendance"
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'attendance'"
+          :tabindex="tab === 'attendance' ? 0 : -1"
+          aria-controls="panel-attendance"
+          @click="setTab('attendance')"
+        >Anwesenheit</button>
+      </div>
 
-      <Card v-if="isEdit && serviceId !== null && servicebookStore.currentService" class="attendance-card">
-        <template #title>Anwesenheit</template>
-        <template #content>
-          <AttendanceManager :service-id="serviceId" />
-        </template>
-      </Card>
-    </div>
+      <div v-show="tab === 'details'" id="panel-details" :role="isEdit ? 'tabpanel' : undefined" :aria-labelledby="isEdit ? 'tab-details' : undefined">
+        <ServiceForm
+          :initial-data="servicebookStore.currentService"
+          :loading="saving"
+          :submit-label="isEdit ? 'Änderungen speichern' : 'Dienst anlegen'"
+          @submit="handleSubmit"
+          @cancel="handleBack"
+        />
+      </div>
+
+      <div
+        v-if="isEdit && serviceId !== null && service"
+        v-show="tab === 'attendance'"
+        id="panel-attendance"
+        role="tabpanel"
+        aria-labelledby="tab-attendance"
+      >
+        <AttendanceManager :service-id="serviceId" />
+      </div>
+    </template>
   </div>
 </template>
 
@@ -45,11 +64,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
-import Toolbar from 'primevue/toolbar'
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import Message from 'primevue/message'
-import ProgressSpinner from 'primevue/progressspinner'
+import StateView from '@/components/common/StateView.vue'
 import ServiceForm from '@/components/servicebook/organisms/ServiceForm.vue'
 import AttendanceManager from '@/components/servicebook/organisms/AttendanceManager.vue'
 import { useServicebookStore } from '@/stores/servicebook'
@@ -71,6 +86,26 @@ const isEdit = computed(() => serviceId.value !== null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const saving = ref(false)
+const tab = ref<'details' | 'attendance'>(route.query.tab === 'attendance' ? 'attendance' : 'details')
+const service = computed(() => (isEdit.value ? servicebookStore.currentService : null))
+
+const dateLine = computed(() => {
+  if (!service.value) return ''
+  const start = new Date(service.value.start)
+  const end = new Date(service.value.end)
+  const time = (d: Date) => d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  return `${start.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })} · ${time(start)}–${time(end)}`
+})
+
+function switchByKey() {
+  setTab(tab.value === 'details' ? 'attendance' : 'details')
+  document.getElementById(`tab-${tab.value}`)?.focus()
+}
+
+function setTab(next: 'details' | 'attendance') {
+  tab.value = next
+  router.replace({ query: { ...route.query, tab: next === 'details' ? undefined : next } })
+}
 
 onMounted(async () => {
   if (isEdit.value && serviceId.value) {
@@ -128,70 +163,95 @@ const handleBack = () => {
 </script>
 
 <style scoped>
-.service-detail-view {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.view-toolbar {
-  margin-bottom: 1.5rem;
-  border-radius: var(--border-radius);
-}
-
-.toolbar-title h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-}
-
-.loading-container {
+.service-edit {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: var(--jf-space-2);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  min-height: 400px;
+  gap: var(--jf-space-1);
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
 }
 
-.form-layout {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 1.5rem;
-  max-width: 100%;
-  overflow: hidden;
+.breadcrumb a {
+  color: var(--jf-color-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
 }
 
-.form-card,
-.attendance-card {
-  height: fit-content;
-  min-width: 0;
-  max-width: 100%;
+.breadcrumb i {
+  font-size: 0.75rem;
 }
 
-.attendance-card {
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
-  overflow: hidden;
-  overflow-y: auto;
+.edit-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-@media (max-width: 1024px) {
-  .form-layout {
-    grid-template-columns: 1fr;
-    max-width: 100%;
-    overflow: hidden;
+.edit-head__eyebrow {
+  margin: 0;
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jf-color-text-muted);
+}
+
+.edit-head h1 {
+  margin: 0;
+  font-size: var(--jf-text-2xl);
+  line-height: var(--jf-leading-tight);
+  letter-spacing: -0.015em;
+}
+
+.edit-head__meta {
+  margin: 0;
+  color: var(--jf-color-text-muted);
+}
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  max-width: 420px;
+  padding: 4px;
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-border);
+}
+
+.segmented button {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--jf-color-text-muted);
+  font: inherit;
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  cursor: pointer;
+}
+
+.segmented button[aria-selected='true'] {
+  background: var(--jf-color-card);
+  color: var(--jf-color-text);
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.12);
+}
+
+@media (max-width: 767px) {
+  .edit-head h1 {
+    font-size: var(--jf-text-xl);
   }
 
-  .attendance-card {
-    position: relative;
-    top: auto;
-    max-height: none;
-    min-width: 0;
-    max-width: 100%;
-  }
-  
-  .form-card {
-    min-width: 0;
-    max-width: 100%;
+  .segmented {
+    max-width: none;
   }
 }
 </style>

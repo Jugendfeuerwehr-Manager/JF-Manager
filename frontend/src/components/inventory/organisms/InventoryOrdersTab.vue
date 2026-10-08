@@ -2,7 +2,7 @@
   <div class="inventory-orders-tab">
     <div class="orders-stats">
       <Tag severity="info" :value="`${ordersCount} Bestellungen gesamt`" />
-      <Tag v-if="newOrdersCount" severity="warning" :value="`${newOrdersCount} neue Eingänge`" />
+      <Tag v-if="newOrdersCount" severity="warn" :value="`${newOrdersCount} neue Eingänge`" />
     </div>
 
     <OrdersList

@@ -1,16 +1,18 @@
 /**
  * Servicebook API Client
- * 
+ *
  * HTTP client for servicebook endpoints (services and attendance)
  */
 
 import apiClient from './index'
 import type {
+  AttendanceBoard,
+  AttendanceState,
+  AttendanceReport,
   Service,
   ServiceDetail,
   ServiceFormData,
   ServiceListParams,
-  ServiceStatistics,
   AttendanceChartData,
   ServiceAttendanceSummaryResponse,
   Attendance,
@@ -20,13 +22,36 @@ import type {
   BulkAttendanceUpdateResult,
   MemberAttendanceParams,
   MemberAttendanceResponse,
-  PaginatedResponse
+  PaginatedResponse,
 } from '@/types/servicebook'
 
 /**
  * Services API
  */
 export const servicesApi = {
+  getAttendanceBoard(id: number) {
+    return apiClient.get<AttendanceBoard>(`/servicebook/services/${id}/attendance_board/`)
+  },
+  updateAttendanceBoard(
+    id: number,
+    data: {
+      kind: 'member' | 'staff'
+      person_id: number
+      state: AttendanceState | null
+      expected_state: AttendanceState | null
+    },
+  ) {
+    return apiClient.patch<{ state: AttendanceState | null }>(
+      `/servicebook/services/${id}/attendance_board/`,
+      data,
+    )
+  },
+  /**
+   * Attendance evaluation for members and team within a period
+   */
+  getAttendanceReport(params: { date_from: string; date_to: string }) {
+    return apiClient.get<AttendanceReport>('/servicebook/attendance-report/', { params })
+  },
   /**
    * List services with optional filtering and pagination
    */
@@ -70,13 +95,6 @@ export const servicesApi = {
   },
 
   /**
-   * Get servicebook statistics (total services, top lists, etc.)
-   */
-  getStatistics() {
-    return apiClient.get<ServiceStatistics>('/servicebook/services/statistics/')
-  },
-
-  /**
    * Get attendance chart data for visualization
    */
   getAttendanceChart() {
@@ -88,9 +106,9 @@ export const servicesApi = {
    */
   getAttendanceSummary(id: number) {
     return apiClient.get<ServiceAttendanceSummaryResponse>(
-      `/servicebook/services/${id}/attendance_summary/`
+      `/servicebook/services/${id}/attendance_summary/`,
     )
-  }
+  },
 }
 
 /**
@@ -144,10 +162,7 @@ export const attendanceApi = {
    * This is the most efficient way to mark attendance for multiple members
    */
   bulkUpdate(data: BulkAttendanceUpdate) {
-    return apiClient.post<BulkAttendanceUpdateResult>(
-      '/servicebook/attendances/bulk_update/',
-      data
-    )
+    return apiClient.post<BulkAttendanceUpdateResult>('/servicebook/attendances/bulk_update/', data)
   },
 
   /**
@@ -155,9 +170,9 @@ export const attendanceApi = {
    */
   getByMember(params: MemberAttendanceParams) {
     return apiClient.get<MemberAttendanceResponse>('/servicebook/attendances/by_member/', {
-      params
+      params,
     })
-  }
+  },
 }
 
 /**
@@ -165,7 +180,7 @@ export const attendanceApi = {
  */
 export const servicebookApi = {
   services: servicesApi,
-  attendance: attendanceApi
+  attendance: attendanceApi,
 }
 
 export default servicebookApi

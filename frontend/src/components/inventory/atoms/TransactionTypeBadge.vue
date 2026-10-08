@@ -20,5 +20,11 @@ const typeInfo = computed(() => {
 
 const label = computed(() => typeInfo.value.label)
 const icon = computed(() => `pi ${typeInfo.value.icon}`)
-const severity = computed(() => typeInfo.value.color as 'success' | 'warning' | 'info' | 'danger' | 'secondary' | 'contrast' | undefined)
+/** PrimeVue 4 calls the warning tone `warn` and has no `primary` severity (that is the default). */
+const severity = computed(() => {
+  const color = typeInfo.value.color
+  if (color === 'warning') return 'warn'
+  if (color === 'primary') return undefined
+  return color as 'success' | 'info' | 'danger' | 'secondary' | 'contrast'
+})
 </script>

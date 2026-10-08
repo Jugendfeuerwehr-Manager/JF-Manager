@@ -11,74 +11,42 @@
       @page="handlePage"
     >
       <template #item="{ item: qualification }">
-        <article class="qual-mobile-row">
-          <div class="qual-mobile-row__header">
-            <div>
-              <p class="qual-mobile-row__person">{{ qualification.person_name }}</p>
-              <p class="qual-mobile-row__type">{{ qualification.type_name }}</p>
-            </div>
-            <Tag :value="getStatusLabel(qualification)" :severity="getStatusSeverity(qualification)" />
-          </div>
-
-          <div class="qual-mobile-row__meta">
-            <div>
-              <span>Erworben</span>
-              <strong>{{ formatDate(qualification.date_acquired) }}</strong>
-            </div>
-            <div>
-              <span>Gültig bis</span>
-              <strong>{{ formatExpiry(qualification) }}</strong>
-            </div>
-          </div>
-
-          <div class="qual-mobile-row__notes" v-if="qualification.issued_by || qualification.note">
-            <span v-if="qualification.issued_by">Ausgestellt von {{ qualification.issued_by }}</span>
-            <span v-if="qualification.note">{{ qualification.note }}</span>
-          </div>
-
-          <div class="qual-mobile-row__actions">
-            <Button
-              icon="pi pi-eye"
-              label="Ansehen"
-              size="small"
-              outlined
-              @click="emit('view', qualification.id)"
-            />
-            <Button
-              icon="pi pi-pencil"
-              label="Bearbeiten"
-              size="small"
-              outlined
-              severity="secondary"
-              @click="emit('edit', qualification.id)"
-            />
-            <Button
-              icon="pi pi-trash"
-              size="small"
-              outlined
-              severity="danger"
-              @click="emit('delete', qualification.id)"
-            />
-          </div>
-        </article>
+        <button
+          type="button"
+          class="qual-mobile-row"
+          :aria-label="`${qualification.type_name} von ${qualification.person_name} öffnen`"
+          @click="emit('view', qualification.id)"
+        >
+          <span class="qual-mobile-row__main">
+            <span class="qual-mobile-row__person">{{ qualification.person_name }}</span>
+            <span class="qual-mobile-row__type">{{ qualification.type_name }}</span>
+            <span class="qual-mobile-row__badges">
+              <StatusBadge v-bind="qualificationStatus(qualification)" />
+              <StatusBadge v-if="qualification.has_evidence === false" label="Nachweis fehlt" severity="neutral" icon="pi pi-file" />
+            </span>
+          </span>
+          <span class="qual-mobile-row__date">
+            <span>Gültig bis</span>
+            <strong>{{ qualification.date_expires ? formatDate(qualification.date_expires) : 'unbefristet' }}</strong>
+          </span>
+          <i class="pi pi-chevron-right qual-mobile-row__chevron" aria-hidden="true"></i>
+        </button>
       </template>
 
       <template #empty>
-        <div class="mobile-list-empty">
-          <i class="pi pi-certificate"></i>
-          <p>Keine Qualifikationen gefunden</p>
-        </div>
+        <StateView kind="empty" title="Keine Qualifikationen gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
       </template>
     </ResponsiveList>
   </div>
 </template>
 
 <script setup lang="ts">
-import Tag from 'primevue/tag'
-import Button from 'primevue/button'
+import StateView from '@/components/common/StateView.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import type { Qualification } from '@/types/qualifications'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import type { DataViewPageEvent } from 'primevue/dataview'
+import { formatDate, qualificationStatus } from '../utils/qualificationStatus'
 
 interface Props {
   items: Qualification[]
@@ -95,8 +63,6 @@ withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'view', id: number): void
-  (e: 'edit', id: number): void
-  (e: 'delete', id: number): void
   (e: 'page-change', page: number, rows: number): void
 }>()
 
@@ -105,100 +71,34 @@ const handlePage = (event: DataViewPageEvent) => {
   emit('page-change', page, event.rows)
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return '-'
-  return new Date(value).toLocaleDateString('de-DE')
-}
-
-function formatExpiry(qualification: Qualification): string {
-  if (!qualification.date_expires) return 'Unbegrenzt'
-  const date = formatDate(qualification.date_expires)
-  if (qualification.is_expired) return `${date} (abgelaufen)`
-  return date
-}
-
-function getStatusLabel(qualification: Qualification): string {
-  if (qualification.is_expired) return 'Abgelaufen'
-  if (qualification.expires_soon) return 'Läuft bald ab'
-  return 'Gültig'
-}
-
-function getStatusSeverity(qualification: Qualification): 'success' | 'warning' | 'danger' {
-  if (qualification.is_expired) return 'danger'
-  if (qualification.expires_soon) return 'warning'
-  return 'success'
-}
 </script>
 
 <style scoped>
-.qual-mobile-list {
-  width: 100%;
-}
+.qual-mobile-list { width: 100%; }
 
+/* Tapping a card opens the detail view; editing and deleting live there (as in the member list). */
 .qual-mobile-row {
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
-  padding: 0.9rem 1rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  background: var(--surface-card);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  align-items: center;
+  gap: var(--jf-space-1-5);
+  width: 100%;
+  min-height: var(--jf-touch-target);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-card);
+  color: var(--jf-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-
-.qual-mobile-row__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.qual-mobile-row__person {
-  margin: 0;
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.qual-mobile-row__type {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--text-color-secondary);
-}
-
-.qual-mobile-row__meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  font-size: 0.85rem;
-}
-
-.qual-mobile-row__meta span {
-  display: block;
-  color: var(--text-color-secondary);
-  font-size: 0.75rem;
-  margin-bottom: 0.15rem;
-}
-
-.qual-mobile-row__meta strong {
-  font-size: 0.95rem;
-}
-
-.qual-mobile-row__notes {
-  font-size: 0.85rem;
-  color: var(--text-color-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.qual-mobile-row__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-@media (max-width: 480px) {
-  .qual-mobile-row__actions {
-    flex-direction: column;
-  }
-}
+.qual-mobile-row:hover { background: var(--p-content-hover-background); }
+.qual-mobile-row:focus-visible { outline: var(--jf-focus-ring); outline-offset: 2px; }
+.qual-mobile-row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.qual-mobile-row__person { font-weight: var(--jf-weight-semibold); }
+.qual-mobile-row__type { font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
+.qual-mobile-row__badges { display: flex; flex-wrap: wrap; gap: var(--jf-space-0-5); margin-top: var(--jf-space-0-5); }
+.qual-mobile-row__date { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--jf-text-sm); white-space: nowrap; }
+.qual-mobile-row__date span { font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
+.qual-mobile-row__chevron { color: var(--jf-color-text-muted); font-size: var(--jf-text-xs); }
 </style>

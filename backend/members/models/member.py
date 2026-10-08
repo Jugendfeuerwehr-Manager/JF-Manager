@@ -10,6 +10,9 @@ from .utils import get_file_path
 
 
 class Member(models.Model):
+    class Meta:
+        permissions = [("export_member", "Kann Mitglieder exportieren")]
+
     class Gender(models.TextChoices):
         MALE = "male", "Männlich"
         FEMALE = "female", "Weiblich"

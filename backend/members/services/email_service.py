@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.html import strip_tags
 
+from jf_manager_backend.html_safety import escape_html_text, sanitize_rich_html
 from members.models import EmailMessage, EmailRecipient, Group, Member, Parent
 
 logger = logging.getLogger(__name__)
@@ -166,18 +167,18 @@ class EmailTemplateRenderer:
         }
 
         # Simple string replacement for variables
-        rendered_html = template_html
+        rendered_html = sanitize_rich_html(template_html)
         rendered_text = template_text
 
         for key, value in context_data.items():
-            rendered_html = rendered_html.replace(f"{{{{{key}}}}}", value or "")
+            rendered_html = rendered_html.replace(f"{{{{{key}}}}}", escape_html_text(value))
             rendered_text = rendered_text.replace(f"{{{{{key}}}}}", value or "")
 
         # Add signature if provided
         if signature:
-            rendered_html += f"<br><br>{signature}"
+            rendered_html += f"<br><br>{sanitize_rich_html(signature)}"
             # Strip HTML from signature for text version
-            text_signature = strip_tags(signature)
+            text_signature = strip_tags(sanitize_rich_html(signature))
             rendered_text += f"\n\n{text_signature}"
 
         # Wrap in layout template if requested
@@ -203,7 +204,7 @@ class EmailTemplateRenderer:
             except Exception:
                 logger.warning("Layout template '%s' not found; sending without layout.", layout)
 
-        return rendered_html, rendered_text
+        return sanitize_rich_html(rendered_html), rendered_text
 
 
 class MemberEmailService:
@@ -242,8 +243,8 @@ class MemberEmailService:
         email_message = EmailMessage.objects.create(
             sender=sender,
             subject=subject,
-            body_html=body_html,
-            body_text=body_text or strip_tags(body_html),
+            body_html=sanitize_rich_html(body_html),
+            body_text=body_text or strip_tags(sanitize_rich_html(body_html)),
             recipient_type=recipient_type,
             recipient_group=recipient_group,
             recipient_member=recipient_member,
@@ -277,7 +278,11 @@ class MemberEmailService:
                 email_message.recipient_group, member_qs=member_qs
             )
         elif email_message.recipient_type == "individual":
-            recipients = EmailRecipientCollector.get_recipients_for_member(email_message.recipient_member)
+            member = email_message.recipient_member
+            # The single recipient obeys the same department scope as all others.
+            if member is not None and member_qs is not None and not member_qs.filter(pk=member.pk).exists():
+                member = None
+            recipients = EmailRecipientCollector.get_recipients_for_member(member) if member else []
         elif email_message.recipient_type == "multiple":
             recipients = EmailRecipientCollector.get_recipients_for_members(
                 email_message.recipient_members.all(), member_qs=member_qs
@@ -353,7 +358,7 @@ class MemberEmailService:
                 )
 
                 # Attach HTML version
-                email.attach_alternative(recipient.personalized_body_html, "text/html")
+                email.attach_alternative(sanitize_rich_html(recipient.personalized_body_html), "text/html")
 
                 # Attach files
                 for attachment in attachments:

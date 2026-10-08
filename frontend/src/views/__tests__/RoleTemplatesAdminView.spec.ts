@@ -1,0 +1,151 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import RoleTemplatesAdminView from '../RoleTemplatesAdminView.vue'
+
+const { list, compare, update, applyPermissions, archive, duplicate, delegation, create, permissions } = vi.hoisted(() => ({
+  list: vi.fn(), compare: vi.fn(), update: vi.fn(), applyPermissions: vi.fn(), archive: vi.fn(), duplicate: vi.fn(), delegation: vi.fn(), create: vi.fn(), permissions: vi.fn(),
+}))
+vi.mock('@/api/role-templates', () => ({ roleTemplatesApi: { list, compare, update, applyPermissions, archive, duplicate, delegation, create, permissions } }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPerm: () => true }) }))
+
+const template = { id: 1, key: 'leader', name: 'Leitung', description: 'Leitung', template_version: 1,
+  scope: 'organization', is_delegable: true, is_archived: false, group: { id: 10, name: 'Leitung' } }
+const comparison = { ...template, actual_permissions: ['members.view_member'], expected_permissions: ['members.view_member'],
+  expected_metadata: null, metadata_differences: null, missing_permissions: [], extra_permissions: [],
+  assignment_counts: { global_users: 2, staff_users: 0, department_roles: 0, ldap_mappings: 0, oidc_mappings: 0 },
+  fingerprint: 'current-fingerprint' }
+
+function render() {
+  return mount(RoleTemplatesAdminView, { global: { stubs: {
+    Card: { template: '<div><slot name="title" /><slot name="content" /></div>' },
+    Button: { props: ['label', 'disabled'], emits: ['click'], template: '<button :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>' },
+    Dialog: { props: ['visible'], template: '<div v-if="visible"><slot /></div>' },
+    InputText: { props: ['modelValue'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">' },
+    Textarea: { props: ['modelValue'], template: '<textarea :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
+    Message: { template: '<div><slot /></div>' }, ProgressSpinner: true,
+    Tag: { props: ['value'], template: '<span>{{ value }}</span>' },
+  } } })
+}
+
+function button(wrapper: ReturnType<typeof render>, label: string) {
+  return wrapper.findAll('button').find((element) => element.text().includes(label))!
+}
+
+describe('RoleTemplatesAdminView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    list.mockResolvedValue({ data: { count: 1, next: null, results: [template] } })
+    compare.mockResolvedValue({ data: comparison })
+    update.mockResolvedValue({ data: template })
+    applyPermissions.mockResolvedValue({ data: comparison })
+    archive.mockResolvedValue({ data: { ...template, is_archived: true } })
+    duplicate.mockResolvedValue({ data: { ...template, id: 2 } })
+    create.mockResolvedValue({ data: { ...template, id: 2 } })
+    permissions.mockResolvedValue({ data: { results: [{ full_codename: 'members.view_member', name: 'Can view member' }], next: null } })
+  })
+
+  it('creates a role using a name, area and readable rights without a technical key', async () => {
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Neue Rolle').trigger('click')
+    await flushPromises()
+    await wrapper.get('#duplicate-name').setValue('Neue Betreuung')
+    await wrapper.get('#new-role-scope').setValue('department')
+    await wrapper.get('form').get('.permission-row input').setValue(true)
+    expect(wrapper.get('form').text()).toContain('Mitglieder Ansehen')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Neue Betreuung', key: undefined, scope: 'department', permissions: ['members.view_member'] }))
+  })
+
+  it('preserves the new role fields when creation fails', async () => {
+    create.mockRejectedValueOnce(new Error('Failure'))
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Neue Rolle').trigger('click')
+    await flushPromises()
+    await wrapper.get('#duplicate-name').setValue('Bleibt erhalten')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect((wrapper.get('#duplicate-name').element as HTMLInputElement).value).toBe('Bleibt erhalten')
+  })
+
+  it('loads all pages and shows the comparison with assignment counts', async () => {
+    list.mockResolvedValueOnce({ data: { count: 2, next: '/next', results: [template] } })
+      .mockResolvedValueOnce({ data: { count: 2, next: null, results: [{ ...template, id: 2, name: 'Stellvertretung' }] } })
+    const wrapper = render()
+    await flushPromises()
+    expect(list).toHaveBeenNthCalledWith(1, 0)
+    expect(list).toHaveBeenNthCalledWith(2, 1)
+    expect(wrapper.text()).toContain('Stellvertretung')
+    expect(wrapper.text()).toContain('Fehlende Rechte')
+    expect(wrapper.text()).toContain('2Konten')
+    wrapper.unmount()
+  })
+
+  it('selects readable tasks from the catalog and sends the full selection with its fingerprint', async () => {
+    permissions.mockResolvedValue({ data: { results: [
+      { full_codename: 'members.view_member', name: 'Can view member' },
+      { full_codename: 'orders.view_order', name: 'Can view order' },
+    ], next: null } })
+    const wrapper = render()
+    await flushPromises()
+    const row = wrapper.findAll('.permission-row').find(row => row.text().includes('Bestellungen'))!
+    await row.get('input').setValue(true)
+    await button(wrapper, 'Auswahl prüfen und übernehmen').trigger('click')
+    await flushPromises()
+    expect(applyPermissions).toHaveBeenCalledWith(1, {
+      fingerprint: 'current-fingerprint', permissions: ['members.view_member', 'orders.view_order'],
+    })
+    wrapper.unmount()
+  })
+
+  it('retains unsaved metadata after a stale comparison response', async () => {
+    update.mockRejectedValueOnce({ response: { status: 409, data: { detail: 'Vergleich veraltet.' } } })
+    const wrapper = render()
+    await flushPromises()
+    await wrapper.get('#role-name').setValue('Neue Leitung')
+    await button(wrapper, 'Beschreibung speichern').trigger('click')
+    await flushPromises()
+    expect(update).toHaveBeenCalledWith(1, expect.objectContaining({ fingerprint: 'current-fingerprint', name: 'Neue Leitung' }))
+    expect(wrapper.text()).toContain('Vergleich veraltet.')
+    expect((wrapper.get('#role-name').element as HTMLInputElement).value).toBe('Neue Leitung')
+    wrapper.unmount()
+  })
+
+  it('approves delegation for the currently compared permission selection', async () => {
+    compare.mockResolvedValue({ data: { ...comparison, scope: 'department', delegation_approved: false } })
+    delegation.mockResolvedValue({ data: template })
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Für Abteilungsleitungen freigeben').trigger('click')
+    await flushPromises()
+    expect(delegation).toHaveBeenCalledWith(1, 'current-fingerprint', true)
+    wrapper.unmount()
+  })
+
+  it('explains assignment by department leaders without presenting organisation roles as delegable', async () => {
+    const wrapper = render()
+    await flushPromises()
+    const checkbox = wrapper.get('.metadata-form input[type="checkbox"]')
+    expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+    expect(checkbox.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Anschließend muss die Systemadministration die konkrete Rechteauswahl freigeben')
+    expect(wrapper.text()).toContain('Organisationsrollen weist nur die Systemadministration zu')
+  })
+
+  it('requires confirmation for archive and duplicate actions', async () => {
+    const wrapper = render()
+    await flushPromises()
+    await button(wrapper, 'Archivieren').trigger('click')
+    await flushPromises()
+    expect(archive).toHaveBeenCalledWith(1, 'current-fingerprint')
+    await button(wrapper, 'Vorlage kopieren').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(duplicate).toHaveBeenCalledWith(1, expect.objectContaining({ key: undefined, fingerprint: 'current-fingerprint' }))
+    expect(window.confirm).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+})

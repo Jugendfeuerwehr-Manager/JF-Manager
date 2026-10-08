@@ -11,7 +11,8 @@
 ```bash
 git clone <repo>
 cd JF-Manager
-./setup.sh          # installs backend + frontend dependencies
+(cd backend && pipenv install --dev) && (cd frontend && npm install)
+cp backend/example.env backend/.env   # then set the keys, see docs/getting-started.md
 
 ./start-dev.sh      # starts both servers
 # Backend:  http://localhost:8000
