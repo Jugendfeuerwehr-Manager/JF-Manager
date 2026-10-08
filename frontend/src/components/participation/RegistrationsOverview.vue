@@ -9,6 +9,7 @@
       <p v-if="store.registrationsError" class="reg-overview__error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ store.registrationsError }}</p>
       <ul class="reg-overview__counts" aria-label="Zusammenfassung">
         <li v-for="item in countItems" :key="item.key"><StatusBadge :label="`${item.label}: ${item.value}`" :severity="item.severity" :icon="item.icon" /></li>
+        <li v-if="data.counts.conflicts > 0"><StatusBadge :label="`Voraussetzung nicht mehr erfüllt: ${data.counts.conflicts}`" severity="warning" icon="pi pi-exclamation-triangle" /></li>
         <li v-if="data.counts.max_participants !== null">Plätze: {{ data.counts.seated }} von {{ data.counts.max_participants }} belegt<template v-if="data.counts.free !== null">, {{ data.counts.free }} frei</template></li>
         <li v-if="data.counts.min_participants">Mindestzahl: {{ data.counts.min_participants }}<template v-if="data.counts.seated < data.counts.min_participants"> (noch nicht erreicht)</template></li>
       </ul>

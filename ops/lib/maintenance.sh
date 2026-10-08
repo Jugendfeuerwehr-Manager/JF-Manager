@@ -12,6 +12,7 @@ MAINT_TASKS=(
     "portal-access|*-*-* 03:40:00|portal_access_lifecycle|1|Elternzugänge nach Volljährigkeit der Kinder beenden (PORTAL-01.4)"
     "inbox|*-*-* 04:10:00|purge_inbox|1|Erledigte und gelesene Eingangseinträge nach 180 Tagen löschen (NOTIF-01)"
     "registration-notes|*-*-* 03:50:00|purge_registration_notes|1|Abmelde-Kurztexte 90 Tage nach dem Dienst löschen (PART-01.4)"
+    "registration-check|*-*-* 04:00:00|recheck_registrations|1|Teilnahmevoraussetzungen kommender Meldungen nachprüfen (PART-03.5)"
     "order-reminders|Mon *-*-* 07:00:00|send_pending_reminders|0|Erinnerungs-E-Mails für offene Bestellungen (optional)"
 )
 

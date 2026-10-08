@@ -6,4 +6,4 @@ class ParticipationConfig(AppConfig):
     verbose_name = "Teilnahme an Diensten"
 
     def ready(self):
-        from . import receivers  # noqa: F401
+        from . import conflict_receivers, receivers  # noqa: F401

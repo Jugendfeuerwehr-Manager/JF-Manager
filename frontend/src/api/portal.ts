@@ -73,6 +73,8 @@ export interface PortalSessionItem {
   reason_category: PortalReason | ''
   version: number
   late: boolean
+  /** Requirement lapsed after registering (PART-03.5); neutral, no reasons. */
+  conflict?: boolean
   deadlines: { registration_opens_at: string | null, registration_closes_at: string | null, cancellation_closes_at: string | null }
   limited: boolean
   free_places: number | null

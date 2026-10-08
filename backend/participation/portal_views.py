@@ -137,6 +137,8 @@ def build_items(member, sessions, *, now=None):
                 "reason_category": registration.reason_category if registration else "",
                 "version": registration.version if registration else 0,
                 "late": bool(registration and registration.late),
+                # PART-03.5: neutral flag only, the reasons stay with the staff
+                "conflict": bool(registration and registration.conflict),
                 "deadlines": {
                     "registration_opens_at": due.opens_at,
                     "registration_closes_at": due.registration_closes_at,

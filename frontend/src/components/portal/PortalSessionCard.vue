@@ -26,6 +26,7 @@ const blockedId = computed(() => `blocked-${props.item.id}`)
       <PortalStatusChip :status="view.chip" />
     </div>
 
+    <p v-if="view.notice" class="hint strong notice" role="status"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ view.notice }}</p>
     <p v-if="view.hint" class="hint">{{ view.hint }}</p>
     <div v-if="places" class="places">
       <div class="row"><span>{{ places.text }}</span><span v-if="deadline" class="muted">{{ deadline }}</span></div>

@@ -39,6 +39,7 @@ describe('RegistrationsOverview', () => {
     expect(text).toContain('Warteliste, Platz 1')
     expect(text).toContain('Krankheit')
     expect(text).toContain('Nach Frist erfasst')
+    expect(text).toContain('Voraussetzung nicht mehr erfüllt: 1')
     expect(text).toContain('Voraussetzung nicht mehr erfüllt: Qualifikation abgelaufen')
     expect(text).toContain('Voraussetzungen nicht erfüllt: Alter fehlt')
     expect(text).toContain('Plätze: 1 von 1 belegt, 0 frei')

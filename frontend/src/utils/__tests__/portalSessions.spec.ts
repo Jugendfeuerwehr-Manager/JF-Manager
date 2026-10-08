@@ -7,6 +7,11 @@ const mia: PortalPerson = { id: 2, relation: 'child', first_name: 'Mia', last_na
 const me: PortalPerson = { id: 1, relation: 'self', first_name: 'Anna', last_name: 'B' }
 
 describe('describeSession', () => {
+  it('shows a neutral note without reasons when the requirement lapsed', () => {
+    expect(describeSession(makeItem({ conflict: true }), mia).notice).toBe('Bitte Rücksprache mit der Dienstleitung.')
+    expect(describeSession(makeItem(), mia).notice).toBeNull()
+  })
+
   it('offers "Mia anmelden" for opt-in without response and "Anmelden" for the own account', () => {
     expect(describeSession(makeItem(), mia).action).toMatchObject({ label: 'Mia anmelden', target: 'registered', opensSheet: false, kind: 'register' })
     expect(describeSession(makeItem(), me).action?.label).toBe('Anmelden')

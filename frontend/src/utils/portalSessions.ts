@@ -34,9 +34,12 @@ export interface SessionView {
   blocked: string | null
   hint: string | null
   unavailableReasons: string[] | null
+  /** Neutral note when the requirement lapsed after registering (PART-03.5). */
+  notice: string | null
 }
 
 const CANCEL_DEADLINE = 'Abmeldung nur noch direkt bei der Dienstleitung.'
+export const CONFLICT_NOTICE = 'Bitte Rücksprache mit der Dienstleitung.'
 const MAX_FREE_HINT = 'Alle Plätze sind vergeben. Du kommst auf die Warteliste.'
 
 /** Name for button labels: the child's first name, nothing for the member's own account. */
@@ -91,7 +94,7 @@ function actionFor(item: PortalSessionItem, name: string | null): { action: Sess
 
 export function describeSession(item: PortalSessionItem, person: PortalPerson | null): SessionView {
   const chip = chipFor(item)
-  const view: SessionView = { chip, action: null, enabled: false, blocked: null, hint: null, unavailableReasons: null }
+  const view: SessionView = { chip, action: null, enabled: false, blocked: null, hint: null, unavailableReasons: null, notice: item.conflict ? CONFLICT_NOTICE : null }
   if (chip === 'unavailable') {
     view.unavailableReasons = item.eligibility.reasons.length ? item.eligibility.reasons : [item.eligibility.audience_notice ?? 'Voraussetzung nicht erfüllt.']
     return view
