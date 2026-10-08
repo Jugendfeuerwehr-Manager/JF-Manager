@@ -108,6 +108,7 @@ INSTALLED_APPS = [
     "inventory.apps.InventoryConfig",
     "members.apps.MembersConfig",
     "portal.apps.PortalConfig",
+    "participation.apps.ParticipationConfig",
     "servicebook.apps.ServicebookConfig",
     "orders.apps.OrdersConfig",
     "qualifications.apps.QualificationsConfig",
