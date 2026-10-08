@@ -29,6 +29,12 @@ class RenderTests(TestCase):
                 if kind != "portal_invite":
                     self.assertIn("Benachrichtigungen einstellen", text)
 
+    def test_text_part_keeps_link_targets(self):
+        sample = CATALOG["waitlist_placed"]["sample_data"]
+        _subject, _html, text = render("waitlist_placed", sample)
+        self.assertIn(f"Von der Warteliste abmelden: {sample['links']['withdraw']}", text)
+        self.assertIn(f"Benachrichtigungen einstellen: {sample['links']['preferences']}", text)
+
     def test_values_are_escaped(self):
         sample = {**CATALOG["waitlist_promoted"]["sample_data"]}
         sample["person"] = {"first_name": XSS}

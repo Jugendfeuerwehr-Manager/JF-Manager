@@ -41,6 +41,22 @@ def ensure_flat(value, path="context"):
     raise NotFlatContext(f"{path}: {type(value).__name__} ist kein flacher Wert")
 
 
+LINK = re.compile(r"<a\b[^>]*?href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>", re.IGNORECASE | re.DOTALL)
+
+
+def html_to_text(html):
+    """Plain-text part that keeps every link as "Label: URL" (appendix A)."""
+    from html import unescape
+
+    def link(match):
+        url, label = unescape(match.group(1)), strip_tags(match.group(2)).strip()
+        return url if not label or label == url else f"{label}: {url}"
+
+    text = unescape(strip_tags(LINK.sub(link, html)))
+    lines = [line.strip() for line in text.splitlines()]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
 def _subject(text):
     # Subjects are single header lines.
     return re.sub(r"\s+", " ", text).strip()
@@ -56,13 +72,15 @@ def render(kind, context):
     custom = TemplateRenderer.get_email_template(kind)
     if custom is not None:
         subject, html, text = TemplateRenderer._render_custom_template(custom, context)
+        if not custom.text_template:
+            text = html_to_text(html)
         return _subject(subject), html, text
     entry = CATALOG[kind]
     subject = _subject(Template(entry["subject"]).render(Context(context, autoescape=False)))
     content = render_to_string(template_path(kind), context)
     html = TemplateRenderer._apply_layout(entry["layout"], content, context, subject)
     html = sanitize_rich_html(html)
-    return subject, html, strip_tags(html)
+    return subject, html, html_to_text(html)
 
 
 def default_source(kind):
