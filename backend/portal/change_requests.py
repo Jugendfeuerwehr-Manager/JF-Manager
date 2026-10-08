@@ -12,9 +12,11 @@ import unicodedata
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
+from django.utils import timezone
 from django.utils.html import strip_tags
 
-from members.models import Parent
+from members.models import Member, Parent
 
 from .models import ChangeRequest
 
@@ -176,3 +178,112 @@ def payload(change_request, record=None, with_current=False):
         "updated_at": change_request.updated_at,
         "decided_at": change_request.decided_at,
     }
+
+
+# ------------------------------------------------------------------ review (PORTAL-03.3)
+REVIEW = "portal.review_changerequest"
+
+
+def reviewable(user):
+    """Requests of people in departments where ``user`` holds the review right (D9; parents via children)."""
+    from .invitations import departments_with_permission
+
+    requests = ChangeRequest.objects.select_related("target_member", "target_parent", "requested_by")
+    allowed = departments_with_permission(user, REVIEW)
+    if allowed is None:  # superuser or the right in every department
+        return requests
+    if not allowed:
+        return requests.none()
+    ids = ChangeRequest.objects.filter(
+        Q(target_member__departments__in=allowed) | Q(target_parent__children__departments__in=allowed)
+    ).values("pk")
+    return requests.filter(pk__in=ids)
+
+
+def own_request(change_request, user):
+    """Four-eyes: nobody decides a request they filed or one about their own linked record."""
+    from .models import AccountLink
+
+    if change_request.requested_by_id == user.pk:
+        return True
+    lookup = (
+        {"parent_id": change_request.target_parent_id}
+        if change_request.target_parent_id
+        else {"member_id": change_request.target_member_id}
+    )
+    return AccountLink.objects.filter(user=user, **lookup).exists()
+
+
+def decide(change_request, user, decisions, *, version, note="", confirm_conflicts=()):
+    """Apply or reject every field at once; locks request and target, writes the change log.
+
+    ``decisions`` maps each requested field to ``"apply"`` or ``"reject"``. Fields whose current
+    value differs from both old and new (conflict) are only applied when listed in
+    ``confirm_conflicts``. ``version`` must match, so a reviewer never decides an outdated version.
+    """
+    from .models import ChangeLog
+
+    if own_request(change_request, user):
+        raise ChangeRequestError("Eigene Anträge gibt eine andere Person frei.", code="own_request", status=403)
+    note = clean_text(note)[:1000]
+    with transaction.atomic():
+        locked = ChangeRequest.objects.select_for_update().get(pk=change_request.pk)
+        if locked.status != ChangeRequest.Status.OPEN:
+            raise ChangeRequestError("Der Antrag ist bereits entschieden.", code="decided", status=409)
+        if locked.version != version:
+            raise ChangeRequestError(
+                "Der Antrag wurde inzwischen geändert. Bitte die neue Fassung prüfen.", code="outdated", status=409
+            )
+        record_model = Parent if locked.target_parent_id else Member
+        record = record_model.objects.select_for_update().get(pk=locked.target_parent_id or locked.target_member_id)
+        requested = [entry["field"] for entry in locked.fields]
+        if not isinstance(decisions, dict) or set(decisions) != set(requested):
+            raise ChangeRequestError(
+                "Bitte über jedes Feld entscheiden.", fields={f: "Entscheidung fehlt." for f in requested}
+            )
+        if any(value not in {"apply", "reject"} for value in decisions.values()):
+            raise ChangeRequestError("Ungültige Entscheidung.")
+        unconfirmed = {}
+        for entry in locked.fields:
+            current = getattr(record, entry["field"]) or ""
+            conflict = current != entry["old"] and current != entry["new"]
+            if conflict and decisions[entry["field"]] == "apply" and entry["field"] not in confirm_conflicts:
+                unconfirmed[entry["field"]] = "Wert wurde inzwischen geändert; Übernahme ausdrücklich bestätigen."
+        if unconfirmed:
+            raise ChangeRequestError(
+                "Konflikte müssen ausdrücklich bestätigt werden.", code="conflict", status=409, fields=unconfirmed
+            )
+        changed, entries = [], []
+        kind = locked.kind
+        for entry in locked.fields:
+            field = entry["field"]
+            current = getattr(record, field) or ""
+            entries.append({**entry, "decision": decisions[field], "current_at_decision": current})
+            if decisions[field] == "apply" and current != entry["new"]:
+                setattr(record, field, entry["new"])
+                changed.append(field)
+                ChangeLog.objects.create(
+                    target_kind=kind,
+                    target_id=record.pk,
+                    field=field,
+                    old=current,
+                    new=entry["new"],
+                    change_request=locked,
+                    applied_by=user,
+                )
+        if changed:
+            record.save(update_fields=changed)
+        applied = [e for e in entries if e["decision"] == "apply"]
+        locked.status = (
+            ChangeRequest.Status.APPLIED
+            if len(applied) == len(entries)
+            else ChangeRequest.Status.REJECTED
+            if not applied
+            else ChangeRequest.Status.PARTIAL
+        )
+        locked.fields = entries
+        locked.decided_by = user
+        locked.decided_at = timezone.now()
+        locked.decision_note = note
+        locked.save()
+    return locked

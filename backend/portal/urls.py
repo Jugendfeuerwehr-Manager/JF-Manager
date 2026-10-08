@@ -5,6 +5,8 @@ from notifications.inbox_views import PortalNotificationReadView, PortalNotifica
 
 from .views import (
     BulkInviteView,
+    ChangeRequestDecideView,
+    ChangeRequestReviewListView,
     InvitationAcceptView,
     InvitationViewSet,
     PortalAccessActionView,
@@ -33,6 +35,8 @@ urlpatterns = [
         PortalChangeRequestWithdrawView.as_view(),
         name="portal-change-request-withdraw",
     ),
+    path("reviews/", ChangeRequestReviewListView.as_view(), name="portal-reviews"),
+    path("reviews/<int:pk>/decide/", ChangeRequestDecideView.as_view(), name="portal-review-decide"),
     path("people/<int:member_id>/", PortalPersonView.as_view(), name="portal-person"),
     path("policies/", PortalPolicyView.as_view(), name="portal-policies"),
     path("policies/org/", PortalPolicyUpdateView.as_view(), name="portal-policy-org"),

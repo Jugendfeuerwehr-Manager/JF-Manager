@@ -21,7 +21,10 @@ from users.auth_security import PasswordActionThrottle
 from users.session_views import SessionCsrfMixin
 
 from .change_requests import ChangeRequestError
+from .change_requests import decide as decide_change
+from .change_requests import own_request as own_change_request
 from .change_requests import payload as change_payload
+from .change_requests import reviewable as reviewable_changes
 from .change_requests import submit as submit_change
 from .change_requests import withdraw as withdraw_change
 from .disclosure import parent_contact, person_payload
@@ -599,3 +602,56 @@ class PortalChangeRequestWithdrawView(APIView):
         except ChangeRequestError as error:
             return _cr_fail(error)
         return Response(change_payload(change))
+
+
+def _review_payload(change, user):
+    data = change_payload(change, with_current=True)
+    requester = change.requested_by
+    data["requested_by"] = (requester.get_full_name() or requester.username) if requester else ""
+    data["own"] = own_change_request(change, user)
+    return data
+
+
+class ChangeRequestReviewListView(APIView):
+    """GET /portal/reviews/?status=open|decided — requests in the reviewer's departments (D9)."""
+
+    permission_classes = [StaffAccountRequired, IsAuthenticated]
+
+    def get(self, request):
+        requests = reviewable_changes(request.user)
+        if request.query_params.get("status", "open") == "open":
+            requests = requests.filter(status=ChangeRequest.Status.OPEN).order_by("created_at")
+        else:
+            requests = requests.exclude(status=ChangeRequest.Status.OPEN).order_by("-decided_at", "-updated_at")[:50]
+        return Response({"results": [_review_payload(change, request.user) for change in requests]})
+
+
+class ChangeRequestDecideView(APIView):
+    """POST /portal/reviews/<id>/decide/ — field-wise decision, applied atomically with a change log."""
+
+    permission_classes = [StaffAccountRequired, IsAuthenticated]
+
+    def post(self, request, pk):
+        change = reviewable_changes(request.user).filter(pk=pk).first()
+        if change is None:
+            raise NotFound()
+        version = request.data.get("version")
+        if not isinstance(version, int):
+            raise ValidationError({"version": "Version fehlt."})
+        confirm = request.data.get("confirm_conflicts") or []
+        try:
+            change = decide_change(
+                change,
+                request.user,
+                request.data.get("decisions"),
+                version=version,
+                note=request.data.get("note") or "",
+                confirm_conflicts=confirm if isinstance(confirm, list) else [],
+            )
+        except ChangeRequestError as error:
+            return _cr_fail(error)
+        security_log.info(
+            "change request decided",
+            extra={"change_request": change.pk, "actor": request.user.pk, "status": change.status},
+        )
+        return Response(_review_payload(change, request.user))
