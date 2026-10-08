@@ -24,6 +24,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/a/:token',
+      name: 'quick-action',
+      component: () => import('@/views/ActionLandingView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/PasswordResetRequestView.vue'),

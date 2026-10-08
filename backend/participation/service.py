@@ -307,6 +307,7 @@ def set_registration(
     version=None,
     accept_waitlist=True,
     now=None,
+    via=None,
 ):
     """Apply ``target`` for one person atomically. Returns ``(registration or None, changed, plan)``."""
     now = now or timezone.now()
@@ -375,7 +376,7 @@ def set_registration(
             registration.source, registration.created_by = source, actor
             registration.version += 1
             registration.save()
-        _record(registration, previous, plan.state, actor, source, now)
+        _record(registration, previous, plan.state, actor, via or source, now)
         if previous in SEATED and plan.state not in SEATED:
             promote_waitlist(session, participation, now=now)
         return registration, True, plan

@@ -145,6 +145,8 @@ class PortalAllowlistTests(TestCase):
                 "push-config",
                 "push-subscription",
                 "push-test",
+                "action-resolve",
+                "action-execute",
             },
         )
 

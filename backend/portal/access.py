@@ -44,6 +44,9 @@ PORTAL_ALLOWED_VIEW_NAMES = frozenset(
         "push-config",
         "push-subscription",
         "push-test",
+        # Quick-action links work for both account kinds; each action checks its own rights.
+        "action-resolve",
+        "action-execute",
     }
 )
 

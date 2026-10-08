@@ -208,14 +208,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /** Ends the server session, then reloads so no store keeps previous data. */
-  async function logout() {
+  async function logout(next?: string) {
     try {
       await authApi.logout()
     } catch {
       // The local state is discarded regardless; the session expires server-side.
     }
     clearLocalState()
-    hardNavigate('/login')
+    // `next` lets a signed link survive the switch to the right account.
+    hardNavigate(typeof next === 'string' && next ? `/login?next=${encodeURIComponent(next)}` : '/login')
   }
 
   function handleSessionExpired() {
