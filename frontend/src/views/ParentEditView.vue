@@ -11,6 +11,8 @@
       <h1>{{ isEditMode ? 'Elternteil bearbeiten' : 'Neuer Elternteil' }}</h1>
     </div>
 
+    <ParentPortalAccessCard v-if="isEditMode" :parent-id="Number(route.params.id)" />
+
     <Card v-if="!loading || formData">
       <template #content>
         <form @submit.prevent="handleSubmit" class="parent-form">
@@ -180,6 +182,7 @@ import { useToast } from 'primevue/usetoast'
 import { useParentsStore } from '@/stores/parents'
 import { useMembersStore } from '@/stores/members'
 import Card from 'primevue/card'
+import ParentPortalAccessCard from '@/views/portal-admin/ParentPortalAccessCard.vue'
 import Panel from 'primevue/panel'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'

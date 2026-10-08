@@ -28,6 +28,7 @@ const sections: { label: string; items: NavItem[] }[] = [
   { label: 'Mitglieder', items: [
     { label: 'Mitglieder', icon: 'pi pi-users', to: '/members', permission: 'view_member' },
     { label: 'Eltern', icon: 'pi pi-user', to: '/parents', permission: 'view_parent' },
+    { label: 'Portal', icon: 'pi pi-id-card', to: '/portal-verwaltung', permission: 'portal.invite_portal_account' },
     { label: 'Gruppen', icon: 'pi pi-sitemap', to: '/groups', permission: 'members.view_group' },
     { label: 'Listen', icon: 'pi pi-list-check', to: '/lists', permission: 'view_memberlist' },
   ] },

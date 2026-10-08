@@ -108,6 +108,12 @@ const router = createRouter({
           name: 'parent-edit',
           component: () => import('@/views/ParentEditView.vue')
         },
+        {
+          path: 'portal-verwaltung',
+          name: 'portal-admin',
+          component: () => import('@/views/portal-admin/PortalAdminView.vue'),
+          meta: { requiresPerm: 'portal.invite_portal_account' }
+        },
         // Emails
         {
           path: 'emails/compose',
