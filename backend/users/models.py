@@ -16,7 +16,14 @@ class CustomUser(AbstractUser):
                 fields=["oidc_issuer", "oidc_subject"],
                 condition=~models.Q(oidc_subject=""),
                 name="unique_oidc_identity",
-            )
+            ),
+            # Portal accounts (parents, members) never become staff and never come
+            # from LDAP/OIDC; the portal boundary relies on this (PORTAL-01).
+            models.CheckConstraint(
+                condition=models.Q(account_kind="staff")
+                | models.Q(is_staff=False, is_superuser=False, auth_source="local"),
+                name="portal_account_is_plain_local",
+            ),
         ]
 
     class AuthSource(models.TextChoices):
@@ -30,6 +37,18 @@ class CustomUser(AbstractUser):
         default=AuthSource.LOCAL,
         verbose_name="Authentifizierungsquelle",
         help_text="Gibt an, ob der Benutzer lokal oder über ein externes System (LDAP/OIDC) verwaltet wird.",
+    )
+
+    class AccountKind(models.TextChoices):
+        STAFF = "staff", "Verwaltung"
+        PORTAL = "portal", "Portal (Eltern/Mitglied)"
+
+    account_kind = models.CharField(
+        max_length=10,
+        choices=AccountKind.choices,
+        default=AccountKind.STAFF,
+        verbose_name="Kontoart",
+        help_text="Portalkonten (Eltern, Mitglieder) erreichen nur Portalfunktionen und erhalten nie Rollen.",
     )
 
     oidc_issuer = models.CharField(max_length=500, blank=True, default="", editable=False)
@@ -74,6 +93,10 @@ class CustomUser(AbstractUser):
         verbose_name="Bevorzugte Abteilung",
         help_text="Wird beim Login als Standard-Abteilung gewählt",
     )
+
+    @property
+    def is_portal_account(self):
+        return self.account_kind == self.AccountKind.PORTAL
 
     def __str__(self):
         if self.last_name and self.first_name:
