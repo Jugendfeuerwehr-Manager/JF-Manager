@@ -6,4 +6,4 @@ class NotificationsConfig(AppConfig):
     name = "notifications"
 
     def ready(self):
-        from . import signals  # noqa: F401
+        from . import producers, signals  # noqa: F401  (NOTIF-01.5b: participation events)

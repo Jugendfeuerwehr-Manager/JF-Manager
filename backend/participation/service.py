@@ -281,6 +281,18 @@ def _record(registration, from_state, to_state, actor, via, now):
     RegistrationEvent.objects.create(
         registration=registration, actor=actor, from_state=from_state or "", to_state=to_state, at=now, via=via
     )
+    from .signals import registration_changed
+
+    payload = {
+        "registration_id": registration.pk,
+        "session_id": registration.session_id,
+        "member_id": registration.member_id,
+        "from_state": from_state or "",
+        "to_state": to_state,
+        "actor_id": getattr(actor, "pk", None),
+        "via": via,
+    }
+    transaction.on_commit(lambda: registration_changed.send(sender=Registration, **payload))
 
 
 def set_registration(

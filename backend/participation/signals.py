@@ -14,3 +14,7 @@ eligibility_conflict = Signal()
 # registered, waitlisted, applied or assigned people and, in opt-out services, the target group minus the
 # cancelled ones). Eligibility is not applied; receivers decide whom to notify.
 session_changed = Signal()
+
+# Sent after commit for every recorded state change (NOTIF-01.5): ``registration_id``, ``session_id``,
+# ``member_id``, ``from_state``, ``to_state``, ``actor_id`` and ``via`` (a source or "system").
+registration_changed = Signal()
