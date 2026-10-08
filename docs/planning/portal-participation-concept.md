@@ -51,6 +51,7 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | E17 | Abmeldelink | **Jede Teilnahme-E-Mail enthält immer einen Abmeldelink** passend zum Status (Abmelden, Von der Warteliste abmelden, Bewerbung zurückziehen); er funktioniert nach Login mit Bestätigung (E12). Zusätzlich enthält jede E-Mail den Link zu den Benachrichtigungseinstellungen (Nutzerangabe 07.10.2026). |
 | E15 | Status im Eingang | **Team + persönlich.** Aufgaben haben einen teamweiten Status (offen/erledigt mit Name und Zeit); Hinweise einen persönlichen Gelesen-Status. |
 | E18 | Aufbauende Qualifikationen | **Höhere Qualifikationen schließen niedrigere ein** (Nutzerangabe 08.10.2026): Wer „Truppmann“ voraussetzt, lässt auch „Truppführer“ zu. Qualifikationstypen erhalten „schließt ein“ (transitiv, zyklenfrei, in der Qualifikationsverwaltung gepflegt). Umsetzung als PART-03.7 vor PART-04. |
+| E19 | Neue Dienste | **Zielgruppe wird über neu veröffentlichte Dienste informiert** (Nutzerangabe 08.10.2026): Sobald ein geplanter Dienst veröffentlicht wird und im Portal sichtbar ist, erhalten die Konten der Zielgruppe (Elternkonten der Kinder, Mitgliedskonten, gebundene Verwaltendenkonten) einen Portal-Hinweis sowie E-Mail und Push, je Konto abschaltbar. Serien werden als eine Nachricht gebündelt; keine Mitteilung für Dienste mit Beginn in der Vergangenheit; Personen, die die Voraussetzungen nicht erfüllen, erhalten keine Einladung zum Anmelden. |
 
 ### 2.1 Vom Konzept festgelegte Standards (änderbar, aber vorbelegt)
 
@@ -285,6 +286,7 @@ Regeln: Tab-Leiste oben (Meldungen · Anwesenheit · Betreuende · Vorkommnisse)
 | Nachgerückt | Betroffene (E16) | Portal-Hinweis | sofort (`waitlist_promoted`) | `participation` |
 | Zuteilung veröffentlicht: zugeteilt / nicht berücksichtigt | Betroffene (E16) | Portal-Hinweis | sofort (`assign_published`) | `participation` |
 | Dienst geändert/abgesagt | Gemeldete, Wartende, Erwartete | Portal-Hinweis | sofort (`session_changed`) | `participation` |
+| Neuer Dienst veröffentlicht (E19) | Zielgruppe (Kinder → Elternkonten, Mitgliedskonten, gebundene Verwaltende), nur bei erfüllten Voraussetzungen | Portal-Hinweis | sofort, Serie gebündelt (`session_published`) | `participation` |
 | Voraussetzungskonflikt | Dienstverantwortliche | Aufgabe „Besetzung“ | sofort (`eligibility_conflict`) | `participation` |
 | Einladung | eingeladene Person | — | sofort (`portal_invite`) | — |
 | Einladung angenommen/abgelaufen | Einladende | Hinweis „Konten“ | — | — |
@@ -324,7 +326,7 @@ Basis ist das vorhandene System: `orders.EmailTemplate` (eindeutiger `template_t
 
 Erweiterung:
 
-1. Neue `template_type`-Werte (Feldlänge 20 beachten): `portal_invite`, `account_link`, `cr_submitted`, `cr_decided`, `reg_cancelled`, `reg_digest`, `slot_free_manual`, `staffing_at_risk`, `waitlist_promoted`, `assign_published`, `session_changed`, `eligibility_conflict`, `parent_access_end`. Choices-Migration in `orders`.
+1. Neue `template_type`-Werte (Feldlänge 20 beachten): `portal_invite`, `session_published`, `account_link`, `cr_submitted`, `cr_decided`, `reg_cancelled`, `reg_digest`, `slot_free_manual`, `staffing_at_risk`, `waitlist_promoted`, `assign_published`, `session_changed`, `eligibility_conflict`, `parent_access_end`. Choices-Migration in `orders`.
 2. Standardvorlagen als Dateien unter `backend/templates/notifications/emails/<typ>.html` und `<typ>.txt`, eingetragen in `TemplateRenderer.DEFAULT_TEMPLATES`. Eine Datenbankvorlage desselben Typs überschreibt sie; „Auf Standard zurücksetzen“ löscht die Datenbankvorlage.
 3. Variablenkatalog je Typ mit Beispieldaten in `TEMPLATE_VARIABLES` (empfohlen: Katalog in ein eigenes Modul `notifications/email_catalog.py` verschieben und dort registrieren lassen, damit Portal-/Teilnahme-Apps eigene Typen ohne Änderung der Settings-View ergänzen).
 4. **Kontext nur aus vorbereiteten, flachen Werten** (Zeichenketten, Zahlen, Listen von Dicts), keine Modellinstanzen: Django-Templates dürfen keine Methoden oder Relationen der Modelle erreichen. Alle Werte werden automatisch maskiert; HTML entsteht nur aus Vorlage und Layout, Ergebnis läuft durch `sanitize_rich_html` (SEC-04).
@@ -599,7 +601,7 @@ Jeder Teilschritt ist ein eigener Commit nach EXEC-01 (Format `feat(PART-01.3): 
 | PART-01.2 | Fristen- und Meldefähigkeitslogik (nur veröffentlicht + Zukunft; getrennte Fristen; Betreuende nach Frist; Einfrieren ab Beginn) | Grenzwerttests Sommerzeit |
 | PART-01.3 | Betreuenden-API und Konfiguration „Teilnahme“-Tab im Planer (Modus, Fristen, Hinweis) | Browser |
 | PART-01.4 | Portal: Termine je Person, An-/Abmelden, Grund, Zeitraum-Abmeldung | Browser mobil, Netzfehler, Frist abgelaufen |
-| PART-01.5 | Serien und Terminänderungen (Kopie der Konfiguration je Termin, Benachrichtigung bei Verschiebung/Absage) | TRAIN-03-Serientests erweitert |
+| PART-01.5 | Serien und Terminänderungen (Kopie der Konfiguration je Termin, Benachrichtigung bei Verschiebung/Absage); Ereignis „Dienst veröffentlicht“ (E19) für NOTIF-01 | TRAIN-03-Serientests erweitert |
 | PART-01.6 | Paketabnahme | — |
 
 **PART-02: Dienstbuch-Integration**
@@ -723,6 +725,7 @@ Die Texte sind Ausgangspunkte für `backend/templates/notifications/emails/`. Al
 | `waitlist_promoted` | events | `{{ person.first_name }} ist nachgerückt: {{ session.title }}` | `person.first_name`, `session.*`, `session.public_note`, `deadlines.cancellation` | Termin ansehen (direkt), Abmelden (bestätigen) |
 | `assign_published` | events | `{% if assignment.result == "assigned" %}Zugeteilt{% else %}Nicht berücksichtigt{% endif %}: {{ session.title }}` | `person.first_name`, `assignment.result` (`assigned`/`not_selected`), `assignment.slot`, `assignment.open_for_backfill`, `session.*` | Termin ansehen (direkt); Abmeldelink nach E17: Abmelden / Bewerbung zurückziehen / Keine weiteren Nachrichten (bestätigen) |
 | `session_changed` | important | `Geändert: {{ session.title }}` bzw. `Abgesagt: …` | `session.*`, `change.kind` (verschoben/abgesagt/geändert), `change.old`, `change.new`, `person.first_name` | Termin ansehen (direkt), Abmelden (bestätigen, nur bei Verschiebung) |
+| `session_published` | events | `Neuer Termin: {{ session.title }} am {{ session.date }}` (Serie: `Neue Termine: {{ series.title }}`) | `person.first_name`, `session.*` bzw. `series.dates`, `deadlines.registration`, `participation.mode` | Termin ansehen (direkt); je nach Modus Anmelden/Bewerben (bestätigen) oder Abmelden (bestätigen) |
 | `eligibility_conflict` | important | `Voraussetzung nicht mehr erfüllt: {{ session.title }}` | `session.*`, `conflicts` (`name`, `reason`) | Meldungen ansehen (direkt) |
 | `parent_access_end` | general | `Elternzugang für {{ person.first_name }} endet am {{ access.ends_at }}` | `person.first_name`, `access.ends_at`, `recipient.kind` | Ansehen (direkt); für Verwaltende: Mitglied einladen (bestätigen) |
 
