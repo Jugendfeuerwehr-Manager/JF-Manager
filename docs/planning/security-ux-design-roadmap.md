@@ -592,7 +592,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | PORTAL-01 | abgenommen | Claude (Portal-Sitzung) | PORTAL-01.7 Paketabnahme: PostgreSQL 17 1044/1044 bestanden; Browserabnahme bestanden; offen nur echte E-Mail-Zustellung (SMTP) als Nutzerabnahme. |
 | PORTAL-02 | abgenommen | Claude (Portal-Sitzung, Frontend per Subagent) | PORTAL-02.5: PostgreSQL 17 1044/1044 (Backend-Stand inkl. 02.1/02.2), Frontend 420/420, Browser bestanden. |
 | PORTAL-03 | geplant | — | Änderungsanträge mit feldweiser Freigabe. |
-| PART-01 | geplant | — | An-/Abmeldung zu geplanten Diensten, Modi, getrennte Fristen, Zeitraum-Abmeldung. |
+| PART-01 | in Arbeit | Claude (Portal-Sitzung, Backend per Subagent) | PART-01.1 Modelle und Zustandsmaschine. |
 | PART-02 | geplant | — | Meldestatus im Dienstbuch, mobil zuerst (Abstimmung UX-04), Übernahme „entschuldigt“ als Bottom-Sheet. |
 | PART-03 | in Arbeit | Claude (Portal-Sitzung, Subagent) | PART-03.1–03.3 und 03.7 (aufbauende Qualifikationen) umgesetzt; offen 03.4 RuleBuilder-UI, 03.5 Nachprüfung, 03.6 Abnahme. |
 | PART-04 | geplant | — | Positionen, Mindestbesetzung, Warteliste, Zuteilungsboard, Besetzungsvorlagen. |
@@ -1429,6 +1429,24 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **PORTAL-01.7 Paketabnahme:** (1) Rechte-Matrix Portal × alle Module über den Routen-Audit-Test (jede Route außerhalb der Allowlist 403, Portalendpunkte nur mit `PortalAccountRequired`), Gegenprobe ohne Middleware schlägt fehl. (2) Neuer Datenleck-Test `portal/tests/test_acceptance.py`: Testdaten mit Markertexten in Notizen, Ereignissen, Dienstbuch (Vorkommnisse/Beschreibung), Anwesenheit und Ausweisnummer; alle für Portalkonten erreichbaren GET-Routen werden automatisch aufgerufen, kein Marker und keiner der Schlüssel notes/events/attachments/attendance in einer Antwort. (3) PostgreSQL 17 (eigener Container): 1044/1044 bestanden. Ein erster Lauf war ungültig, weil während des Laufs eine neue Migration (PORTAL-02) entstand (Leeren der Testdatenbank scheiterte an der unbekannten Tabelle, Folgefehler in 11 Tests); Wiederholung auf stabilem Stand. (4) Browser (Chrome): Eltern-/Mitgliedszugang auf 360, 390, 720 px (200 % Zoom), 1440 px, hell und dunkel; Portal-Verwaltung 360/1440 dunkel: keine horizontale Scrollleiste, keine API-Fehler; Anmeldedrosselung griff bei zu vielen Logins des Prüfskripts (erwartetes Verhalten). Nicht ausgeführt: echte SMTP-Zustellung, echtes Mobilgerät, Screenreader.
 - **Nächster konkreter Schritt:** PORTAL-02 (Freigaben, Selbstauskunft), danach PART-01.
 
+### PART-01: Teilnahme an geplanten Diensten
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Portal-Sitzung); Backend 01.1–01.4 per Subagent im Worktree `wt/part-01`, geprüft und per Cherry-Pick übernommen; Frontend folgt.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Abhängigkeiten:** PORTAL-01/02 (Personenbindung, Portalgrenze), PART-03.1–03.3/03.7 (Regeln, Auswertung), TRAIN-01/03 (Sitzungen, Veröffentlichung, Serien); Konzept 4.5, E3, E4, E5, E11, E19, D1, D4–D8.
+- **Entscheidung Q1 (08.10.2026, Konzeptvorschlag übernommen):** Zielgruppe = Mitglieder der Gruppen des Dienstes; ohne Gruppen alle Mitglieder der Abteilung.
+- **Ziel und Abnahmekriterien:** Meldungen nur für veröffentlichte, zukünftige, im Portal sichtbare Dienste; Modi Abmeldung/Anmeldung/Zuteilung mit vollständig getesteter Zustandsmaschine; getrennte An- und Abmeldefristen (Abteilung → Organisation → Standard, je Dienst überschreibbar), sommerzeitsicher; ab Beginn eingefroren, Betreuende nach Frist mit Kennzeichen; Voraussetzungen sperren mit Begründung; Höchstzahl mit Warteliste und automatischem Nachrücken der ersten passenden Person; Zeitraum-Abmeldung; Portal sieht nur freie Plätze und eigene Wartelistenposition; Abmeldegrund-Kurztext nur für Verantwortliche, Löschung nach 90 Tagen; Ereignis „Dienst veröffentlicht“ für NOTIF-01 (E19).
+- **Teilschritte mit stabilen IDs:** `PART-01.0` Detailblock (in diesem Commit); `PART-01.1` Modelle und Zustandsmaschine; `PART-01.2` Fristen, Voraussetzungen, Kapazität, Zeitraum-Abmeldung; `PART-01.3` Betreuenden-API (Backend) und Teilnahme-Tab im Planer (Frontend, offen); `PART-01.4` Portal-API (Backend) und Portal-Termine (Frontend, offen); `PART-01.5` Serien und Terminänderungen; `PART-01.6` Paketabnahme.
+- **Festlegungen der Umsetzung:** Standardmodus ohne Abteilungsvorgabe „Abmeldung“ (alle erwartet). Zurücknehmen einer Abmeldung setzt die Zeile auf `registered` (bestätigt/erwartet), nichts wird gelöscht. Fristen in UTC gerechnet (48 h bleiben 48 h über den Zeitwechsel), höchstens bis Dienstbeginn. Warteliste nach Zeitpunkt der Statusänderung; Nachrücken überspringt Personen, die die Voraussetzungen nicht erfüllen. Teilnahmekonfiguration wird beim ersten Schreiben angelegt, Lesen nutzt Standardwerte. Ort = `TrainingSession.location`.
+- **Letzter dauerhafter Checkpoint:** `PART-01.1` mit diesem Commit.
+- **Geänderte Dateien / Commit-Bezug:** siehe Commits je Teilschritt.
+- **Umgesetzte Teilschritte:** `PART-01.0`, `PART-01.1`.
+- **Ausgeführte Prüfungen mit Ergebnis:** siehe Journal.
+- **Offene Fehler / Risiken:** Konfliktkennzeichnung bei nachträglich wegfallender Voraussetzung (E11) folgt mit PART-03.5; Sicherheitsprotokoll für Betreuendenmeldungen nach Frist fehlt noch; Positionen, Zuteilung und `extra_places` sind PART-04; Betreuende können Kapazität und Voraussetzungen nicht übersteuern.
+- **Laufende Prozesse und sichere Fortsetzung:** keine.
+- **Nächster konkreter Schritt:** `PART-01.2`.
+
 ### PORTAL-02: Freigaben und Selbstauskunft
 
 - **Status:** abgenommen (PORTAL-02.5).
@@ -1952,3 +1970,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 08.10.2026 | PORTAL-02.4 | Portal-Seite „Daten“ mit freigegebenen Kategorien übernommen (Details im Detailblock). | Bestanden: Frontend 420/420, Typecheck, ESLint (Hauptstand nach Übernahme); Browser (Chrome, Scratch-Instanz mit neuen Demodaten): Elternzugang Chips „Mila · 10“/„Pia · 8“, eigene Kontaktdaten, Kinderdaten; Mitgliedszugang mit Ausrüstung (in Mitte für Mitglieder freigegeben); Reiter „Freigaben“ für Leitung Mitte (Organisation nur lesend); Mitglieder einladbar; keine API-Fehler. | Dieser Commit: `feat(PORTAL-02.4): show released data in the portal` | PORTAL-02.5 |
 | 08.10.2026 | PORTAL-02.5 | Paketabnahme PORTAL-02 (Details im Detailblock); PORTAL-02 abgenommen. | Bestanden wie im Detailblock; nicht ausgeführt: echtes Mobilgerät, Screenreader. | Dieser Commit: `docs(PORTAL-02.5): accept the portal release package` | PART-01 |
 | 08.10.2026 | PORTAL-02.3b | Nutzerhinweis: Reiterleiste für Abteilungen ungeeignet bei bis zu 100 Abteilungen. Ersetzt durch durchsuchbare Auswahl (PrimeVue `Select` mit Filter und Gruppen), Kennzeichen „weicht ab“, Zählzeile. | Bestanden: 9/9 Portal-Verwaltungstests (neuer Test für Liste und Kennzeichen), Typecheck, ESLint; Browser: geschlossen „Organisation (Vorgaben)“, Suche „nord“ → ein Treffer, Auswahl wechselt Bereich. | Dieser Commit: `fix(PORTAL-02.3b): pick the release scope from a searchable list` | PART-01 |
+| 08.10.2026 | PART-01.0/01.1 | Detailblock PART-01, Q1 nach Konzeptvorschlag. Modelle `ParticipationDefaults`, `SessionParticipation`, `Registration`, `RegistrationEvent` (Migration `participation/0001`), reine Zustandsmaschine `participation/states.py` (Tabelle für alle Modi × Zustände × Ziele). | Subagent: Zustandsmaschinen-Tabellentest über alle 3×7×4×2 Kombinationen, Modelltests, `makemigrations --check`, Ruff bestanden. | Dieser Commit: `feat(PART-01.1): model participation and the registration state machine` | PART-01.2 |
