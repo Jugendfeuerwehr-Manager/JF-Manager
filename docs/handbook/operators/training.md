@@ -1,7 +1,5 @@
 # Übungsplanung von der Idee bis zur Nachbereitung
 
-## Ausbildung planen und wiederverwenden
-
 Die **Ausbildung** zeigt einen Kalender mit allen gespeicherten Übungen. Lege eine Übung mit Datum, Beginn, Ende, Ort, Beschreibung und teilnehmenden Gruppen an. Im Planer stellst du den Ablauf aus Bausteinen zusammen: eigene Inhalte oder Bausteine aus der **Bibliothek**, je Gruppe in einer eigenen Bahn. Ein Baustein ohne Gruppe gilt für alle Gruppen. Änderungen sammelt der Planer als Entwurf; **Speichern** übernimmt den ganzen Plan auf einmal, **Rückgängig** und **Wiederholen** helfen beim Ausprobieren. Hat jemand anderes inzwischen gespeichert, bleibt dein Entwurf erhalten und du vergleichst ihn mit dem Serverstand.
 
 ![Übungsplaner mit Gruppenbahnen und gespeicherten Bausteinen](../images/planner.png)

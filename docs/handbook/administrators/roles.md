@@ -33,7 +33,7 @@ Für eine Rolle mit ähnlichen Aufgaben die bestehende Vorlage auswählen und **
 
 ![Wirkungsvorschau für eine fiktive Betreuerzuweisung](../images/roles.png)
 
-*Die Zuweisungsseite führt von Person und Bereich über die Wirkungsvorschau zur Bestätigung. Alle Daten im Bild sind fiktiv.*
+*Die ungespeicherte Wirkungsvorschau zeigt eine zusätzliche Betreuerrolle für das fiktive Ausbildungskonto Mira Brandt. Erst die ausdrückliche Bestätigung speichert.*
 
 ## Rechte einer bestehenden Rolle ändern
 

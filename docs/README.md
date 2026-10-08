@@ -1,48 +1,30 @@
-# JF-Manager Documentation
+# Dokumentation und Benutzerhandbuch
 
-- [Rollen und Berechtigungen](domains/roles-and-permissions.md) – Zuweisung, Delegation, Herkunft und sicheres Upgrade vorhandener Gruppen
+Das [Benutzerhandbuch](handbook/index.md) beschreibt die täglichen Aufgaben und die Einrichtung in deutscher Sprache. Die Markdown-Version ist direkt auf GitHub lesbar; dieselben Inhalte bilden die navigierbare Website mit Suche.
 
-## Getting Started
+| Bereich | Inhalt |
+| --- | --- |
+| [Grundlegende Konzepte](handbook/concepts.md) | Organisation, Abteilung, Konto, Rollen, Übungen und Speichern |
+| [Jugendleiter / Bediener](handbook/operators/index.md) | Mitglieder, Eltern, Listen, Dienstbuch, Ausbildung, Inventar, Qualifikationen und E-Mail |
+| [Administratoren](handbook/administrators/index.md) | Einrichtung, Konten, Rollen, Einstellungen und Integrationen |
+| [Server & Operations](handbook/server/index.md) | Installation, Regelbetrieb, Sicherung, Update und Notfälle |
+| [Auslieferung und Pflege](handbook/publishing.md) | Website bauen, ZIP ausliefern, GitHub Pages einrichten und Screenshots erneuern |
 
-- [Getting Started](getting-started.md) – Local development setup, environment variables, first steps
+## Technische Referenzen im Repository
 
-## Architecture
+- [Entwicklungseinstieg](getting-started.md)
+- [Architekturübersicht](architecture/overview.md), [Backend](architecture/backend-structure.md), [Frontend](architecture/frontend-structure.md)
+- [Abteilungen und Berechtigungen](architecture/departments-and-permissions.md)
+- [API-Referenz](api/reference.md)
+- [Tests](development/testing.md) und [Build-Pipeline](development/build-pipeline.md)
+- [Rollen und Upgrade bestehender Gruppen](domains/roles-and-permissions.md)
+- [Konfiguration](domains/configuration.md) und [externe Synchronisation](domains/external-sync-spond.md)
 
-- [Architecture Overview](architecture/overview.md) – Docker architecture, network flow, security layers, build process
-- [Backend Structure](architecture/backend-structure.md) – Django app/module layout, ViewSet conventions, API registration pattern
-- [Frontend Structure](architecture/frontend-structure.md) – Vue 3 layers, Pinia pattern, atomic design implementation
-- [Departments And Permissions](architecture/departments-and-permissions.md) – Department scoping, active department context, backend enforcement, shared data rules
-- [Vue.js Integration](architecture/vue-integration.md) – Vue 3 + Pinia integration patterns, API service layer, stores
-- [Training Module Architecture](architecture/training-module.md) – Training models, API viewsets, permission model, frontend integration
+## Betriebsreferenzen
 
-## API
-
-- [API Reference](api/reference.md) – REST API endpoints, authentication, pagination, Swagger/ReDoc
-
-## Betrieb (Produktion)
-
-Unterstützt: Docker Compose und Debian 13 nativ (auch im Proxmox-LXC), beide über `jfctl`.
-
-- [Überblick und Layout](operations/ops-overview.md) – Aufbau, Verzeichnisse, HTTPS und Proxy-Vertrauen, beide Betriebswege
-- [Installation](operations/ops-install.md) – Assistent, Vorabprüfung, Antwortdatei, Proxmox-LXC
-- [jfctl](operations/ops-jfctl.md) – Befehle, Rückgabecodes, Protokoll, Wartungsplan
+- [Installation](operations/ops-install.md) und [Aufbau](operations/ops-overview.md)
+- [jfctl-Befehle](operations/ops-jfctl.md)
 - [Sicherung, Wiederherstellung und Updates](operations/ops-backup-restore-update.md)
-- [Migration bestehender Installationen](operations/ops-migration.md) – Compose/Portainer/Synology, PostgreSQL 15 → 17, Wechsel Docker ↔ nativ
-- [Releasepakete und Herkunftsnachweis](operations/ops-release.md)
-- [Produktionsvorgaben](operations/production-security.md), [Cookie-Sitzungen](operations/session-auth.md), [Schlüsselrotation](operations/encryption-rotation.md)
-
-## Domain Guides
-
-- [Inventory System](domains/inventory.md) – Inventory models, transactions, permissions, discard tracking
-- [Order Notifications](domains/orders-notifications.md) – Notification system architecture, workflow, templates
-- [Qualifications](domains/qualifications.md) – Qualification and special task management
-- [Members, Lists, Group Editor, Excel Export](domains/members-lists-groups-exports.md) – Member lists, group management, export column selection
-- [Settings, LDAP, SSO](domains/settings-ldap-sso.md) – Runtime settings API, LDAP config, OIDC flow and mappings
-- [Departments (Operational Guide)](domains/departments.md) – Department-level operation model and integrations
-- [External Sync With Spond](domains/external-sync-spond.md) – Sync jobs, Spond modes, provider extension guide
-- [Training Module](domains/training-module.md) – Calendar/planner workflow, library usage, handout and mobile mode
-
-## Development
-
-- [API Testing](development/testing.md) – Test structure, running tests, adding new tests
-- [Build Pipeline](development/build-pipeline.md) – CI, GHCR image build/push, manual deployment workflow
+- [Migration einschließlich Portainer](operations/ops-migration.md)
+- [Releasepakete](operations/ops-release.md)
+- [Produktionsvorgaben](operations/production-security.md), [Sitzungen und MFA](operations/session-auth.md), [Schlüsselrotation](operations/encryption-rotation.md)

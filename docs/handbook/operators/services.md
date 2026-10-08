@@ -1,24 +1,24 @@
 # Dienstbuch und Anwesenheit
 
-## Dienstbuch und gemeinsame Anwesenheitserfassung
-
 ### Einen Dienst dokumentieren
 
 Öffne **Dienstbuch** und erstelle einen Dienst mit Beginn, Ende, Ort und Thema. Ergänze Übungsleitung, Beschreibung und besondere Vorkommnisse, soweit erforderlich. Nach dem ersten Speichern steht die Anwesenheitserfassung für diesen Dienst zur Verfügung. Vorhandene Dienste kannst du über die Übersicht wieder öffnen und bearbeiten.
 
 Die **Übungsleitung** beschreibt die verantwortlichen Personen. Die Anwesenheit von Jugendleitern und Ausbildern wird zusätzlich erfasst: Eine Zuordnung zur Übungsleitung setzt niemanden automatisch auf „anwesend“.
 
-![Jugendliche und Team im Anwesenheitsbereich eines Dienstes](../images/attendance.png)
+![Teilnehmende und Team im Anwesenheitsbereich eines Dienstes](../images/attendance.png)
+
+*Die Ansicht zeigt offene Personen. Ein Statusknopf speichert nur die ausgewählte Person.*
 
 ### Jugendliche erfassen
 
-Wähle im Anwesenheitsbereich **Jugendliche**. Suche nach einem Namen oder aktiviere **Nur noch nicht erfasst**, um die offenen Personen nacheinander abzuarbeiten.
+Wähle im Anwesenheitsbereich **Teilnehmende**. Suche nach einem Namen oder aktiviere **Offen**, um die offenen Personen nacheinander abzuarbeiten.
 
 | Schaltfläche | Bedeutung |
 | --- | --- |
-| **A** | Anwesend |
-| **E** | Entschuldigt |
-| **F** | Fehlend |
+| **Anwesend** | Anwesend |
+| **Entschuldigt** | Entschuldigt |
+| **Fehlt** | Fehlend |
 | Keine Auswahl | Noch nicht erfasst |
 
 Ein Antippen speichert die Auswahl sofort. Tippe denselben Status erneut an, um ihn zurückzusetzen. Die Zähler zeigen anwesende, entschuldigte, fehlende und noch offene Personen. **Nicht erfasst** wird nicht automatisch als **fehlend** gewertet.
@@ -27,7 +27,7 @@ Während des Speicherns ist die betroffene Zeile kurz beschäftigt. Andere Perso
 
 ### Jugendleiter und Ausbilder erfassen
 
-Wechsle zu **Jugendleiter / Ausbilder** und verwende dieselben Schaltflächen. Die Teamliste basiert auf aktiven Benutzerkonten. Bei einem Dienst mit Abteilung werden zugehörige Benutzer dieser Abteilung berücksichtigt; bereits erfasste aktive Teammitglieder bleiben in der Dienstliste sichtbar.
+Wechsle zu **Team** und verwende dieselben Schaltflächen. Die Teamliste basiert auf aktiven Benutzerkonten. Bei einem Dienst mit Abteilung werden zugehörige Benutzer dieser Abteilung berücksichtigt; bereits erfasste aktive Teammitglieder bleiben in der Dienstliste sichtbar.
 
 Fehlt jemand, lasse das Benutzerkonto und die Abteilungszuordnung durch die Administration prüfen. Jugendliche und Teammitglieder bleiben getrennt, auch wenn Namen ähnlich sind.
 

@@ -1,0 +1,19 @@
+{
+  "captured_on": "2026-10-08",
+  "source": "backend/demo.py + seed_demo (isolated SQLite, fictitious data)",
+  "source_commit": "5f9d78dde6d9958b5d10d85c7039df3d3ac6a68d",
+  "viewports": {
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ]
+  },
+  "accounts": [
+    "admin (synthetic demo superuser)"
+  ],
+  "scope": "Existing staff UI; portal changes in progress are not documented."
+}

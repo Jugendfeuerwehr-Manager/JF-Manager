@@ -10,6 +10,8 @@
 
 ![Anmeldung mit Benutzername und Passwort](../images/login.png)
 
+*Lokale Anmeldung mit Passwort oder eingerichtetem Passkey; ein zweiter Faktor wird bei Bedarf anschließend abgefragt.*
+
 ## Anmelden und zurechtfinden
 
 Gib Benutzername und Passwort ein und wähle **Anmelden**. Hast du im Profil unter **Zwei-Faktor-Anmeldung** einen Passkey hinzugefügt, genügt **Mit Passkey anmelden**: Das Gerät fragt Fingerabdruck, Gesicht oder Geräte-PIN ab, Benutzername, Passwort und Code entfallen (gilt für lokale Konten; bei LDAP- und SSO-Konten bestätigt der Passkey die Anmeldung als zweiter Faktor). Wenn eure Organisation Single Sign-On eingerichtet hat, steht zusätzlich die konfigurierte externe Anmeldung zur Verfügung. Bei einem lokalen Konto hilft der Link zum Zurücksetzen des Passworts. Bei extern verwalteten Konten änderst du das Passwort beim jeweiligen Identitätsanbieter.
@@ -17,6 +19,8 @@ Gib Benutzername und Passwort ein und wähle **Anmelden**. Hast du im Profil unt
 Am Computer stehen die Module in einer dauerhaften Seitenleiste. Auf dem Smartphone findest du häufige Ziele unten; **Alle Module** oder **Module** öffnet die vollständige Navigation. Über die Modulsuche findest du auch selten verwendete Bereiche. Das Benutzermenü führt zu deinem Profil, dem Farbschema und **Abmelden**.
 
 ![Übersicht und dauerhaft sichtbare Modulnavigation](../images/dashboard.png)
+
+*Das Dashboard bietet nächste Aufgaben und den Abteilungswechsel. Die Modulsuche steht in der linken Navigation.*
 
 ### Abteilungen und Berechtigungen
 
@@ -40,6 +44,8 @@ Der JF-Manager kann als Web-App vom Startbildschirm geöffnet werden. Die produk
 
 ![Mobile Navigation mit Schnellzugriff und allen Modulen](../images/mobile.png)
 
+*Alle Module öffnet die vollständige mobile Navigation, auch für selten verwendete Aufgaben.*
+
 ### Android und Desktop
 
 Öffne **Mein Profil → App & Mitteilungen**. Wird **App installieren** angeboten, wähle die Schaltfläche und bestätige den Browserdialog. Alternativ öffne das Browsermenü und suche nach **App installieren** beziehungsweise einer vergleichbaren Installationsfunktion.
@@ -52,7 +58,9 @@ Die Installation ersetzt keine Internetverbindung: Daten laden und Änderungen s
 
 ## Push-Mitteilungen pro Gerät einstellen
 
-![Profil mit Installation und freiwilligen Mitteilungen](../images/profile.png)
+![Profilabschnitt App und Mitteilungen mit Hinweis zur Servereinrichtung](../images/devices.png)
+
+*In der isolierten Demo ist Push ausgeschaltet. Auf dem Produktivserver erscheinen nach Einrichtung die freiwilligen Geräteoptionen.*
 
 Unter **Mein Profil → App & Mitteilungen** aktivierst du Mitteilungen freiwillig für das aktuelle Gerät und den aktuellen Browser:
 
@@ -65,6 +73,10 @@ Unter **Mein Profil → App & Mitteilungen** aktivierst du Mitteilungen freiwill
 **Dienste** betrifft neue oder geänderte Dienstbucheinträge. **Bestellungen** betrifft neue Bestellungen und Statuswechsel. Die Mitteilungen verwenden allgemeine Texte ohne Mitgliedernamen auf dem Sperrbildschirm. Öffne die Anwendung, um die berechtigten Details zu sehen.
 
 Die Auswahl gilt nicht automatisch für weitere Geräte. Nach dem Abmelden musst du Push auf dem Gerät erneut aktivieren. Wenn der Browser Mitteilungen blockiert, korrigiere die Freigabe in seinen Einstellungen. Meldet das Profil, dass Push noch nicht eingerichtet ist, muss die Administration zuerst die Serverkonfiguration und den Versand einrichten. Geräteeinstellungen, Browserunterstützung und Verbindung können die Zustellung beeinflussen.
+
+![Persönliches Profil mit Zwei-Faktor-Anmeldung und Passkeys](../images/profile.png)
+
+*Im Profil lassen sich Faktoren und aktive Sitzungen verwalten. Wiederherstellungscodes sicher außerhalb der Anwendung aufbewahren.*
 
 ## Persönliches Profil
 
