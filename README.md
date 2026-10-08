@@ -1,59 +1,89 @@
 # JF-Manager
 
-**Mehr Zeit für eure Jugendfeuerwehr.** JF-Manager bringt Mitglieder, Eltern, Dienste, Ausbildung und Ausstattung an einen Ort. Jugendleiterinnen und Jugendleiter können Anwesenheiten gemeinsam erfassen; die Anwendung ist auf dem Smartphone als Web-App installierbar.
+**Mehr Zeit für euer Team.** JF-Manager verbindet Mitglieder, Elternkontakte, Dienste, Ausbildung und Ausstattung. Entwickelt für Jugendfeuerwehren, unterstützt die Anwendung auch Organisationen mit mehreren Abteilungen und anderen Teamstrukturen. Die drei Modulnamen für Mitglieder, Dienstbuch und Ausbildung lassen sich anpassen.
 
-![JF-Manager: Übersicht mit dauerhaft sichtbarer Modulnavigation und fiktiven Beispieldaten](docs/images/dashboard.png)
+![Dashboard mit nächsten Aufgaben, Abteilungswechsel und Modulnavigation](docs/handbook/images/dashboard.png)
 
-Die Abbildungen stammen aus einer eigens erzeugten Demo mit **ausschließlich fiktiven Daten**. [Benutzerhandbuch](docs/user-guide.md) · [Installation](#installation) · [Mitmachen](CONTRIBUTING.md)
+*Aktuelle Oberfläche vom 8. Oktober 2026, aufgenommen in einer isolierten Demo mit ausschließlich fiktiven Daten.*
+
+## Benutzerhandbuch
+
+Das bebilderte Handbuch erklärt Grundkonzepte und führt schrittweise durch die Aufgaben. Es ist direkt auf GitHub lesbar und als statische Website mit deutscher Suche, Rollennavigation und Druckansicht auslieferbar.
+
+| Für wen? | Einstieg |
+| --- | --- |
+| Alle, die neu beginnen | [Grundlegende Konzepte](docs/handbook/concepts.md) und [Anmelden / mobile Bedienung](docs/handbook/operators/start.md) |
+| Jugendleiter / Bediener | [Mitglieder, Dienstbuch, Übungsplanung, Material und Kommunikation](docs/handbook/operators/index.md) |
+| Administratoren | [Organisation, Konten, Rollen, Einstellungen und Integrationen](docs/handbook/administrators/index.md) |
+| Server & Operations | [Installation, Regelbetrieb, Sicherung und Notfälle](docs/handbook/server/index.md) |
+
+[Gesamtes Handbuch](docs/handbook/index.md) · [Website/ZIP bauen und GitHub Pages einrichten](docs/handbook/publishing.md) · [Technische Dokumentation](docs/README.md)
 
 ## Was ihr damit erledigt
 
-| Alltag | Im JF-Manager |
+| Aufgabe | Funktionen |
 | --- | --- |
-| Mitglieder begleiten | Stammdaten, Gruppen, Elternkontakte, Notizen, Anhänge und auswählbare Excel-Exporte |
-| Dienste dokumentieren | Termine, Themen, Übungsleitung, besondere Vorkommnisse und Anwesenheiten |
-| Gemeinsam abhaken | Jugendliche und Betreuungspersonen getrennt erfassen; Änderungen einzelner Personen sofort speichern und alle drei Sekunden abgleichen |
-| Betreuungsarbeit auswerten | Anwesenheit von Jugendleitern/Ausbildern nach Zeitraum und geleisteten Stunden auswerten |
-| Ausbildung planen | Ausbildungskalender, wiederkehrende Termine, Planer, Bausteinbibliothek und Handouts |
-| Ausstattung verwalten | Inventar, Lagerorte, Ausleihen, Barcode-Erfassung und Bestellabläufe |
-| Kommunikation organisieren | Listen mit Check-Workflow, E-Mails, Versandhistorie und Benachrichtigungen für Dienst- und Bestellereignisse |
-| Verantwortlichkeiten abbilden | Abteilungen, Rollen, Qualifikationen, Sonderaufgaben, LDAP und OIDC-SSO |
+| Mitglieder begleiten | Stammdaten, Elternkontakte, Gruppen, Notizen, geschützte Anhänge und berechtigte Exporte |
+| Dienste dokumentieren | Termine, Themen, Übungsleitung, Vorkommnisse und Anwesenheiten für Teilnehmende und Team |
+| Gemeinsam erfassen | Sofortiges Speichern je Person, regelmäßiger Abgleich und Konflikthinweise |
+| Teilnahme auswerten | Eigene Dienstbuch-Auswertung mit Zeitraum, Quote, Stunden, Monatsverlauf und Hinweisen |
+| Ausbildung organisieren | Kalender, Bausteinbibliothek, Stationen, Rotation, Ressourcenwarnungen, Serien und Vorlagen |
+| Übungen durchführen | Mobile Durchführung, Stationsansicht, Handouts mit Materialliste und Nachbereitung |
+| Ausstattung verwalten | Artikel/Varianten, Lager, Bestände, Ausleihen, Einkleidung, Gegenbuchungen und Bestellungen |
+| Nachweise verfolgen | Qualifikationen, Gültigkeit und Sonderaufgaben |
+| Kommunizieren | Empfängerauswahl, E-Mail-Vorschau, Vorlagen, Versandhistorie und freiwillige Gerätemitteilungen |
+| Zuständigkeiten regeln | Abteilungsrechte, 16 Standardrollen, Wirkungsvorschau, Delegation, LDAP und OIDC-SSO |
 
-Die Modulnavigation ist auf dem Desktop dauerhaft sichtbar und durchsuchbar. Mobil führen **Module** und **Alle Module** zur vollständigen Übersicht.
+Bestellungen findet ihr unter **Inventar → Bestellungen**, im Dashboard oder per Direktlink. Die **Anwesenheitsauswertung** ist eine eigene Seite im Dienstbuch. Ein Mitglieds-/Elterndatensatz ist kein Benutzerkonto. Eltern-/Mitgliederportal und erweiterte Teilnahmesteuerung befinden sich noch in Entwicklung und sind im Handbuch als solche gekennzeichnet.
 
-![Anwesenheit von Jugendleitern und Ausbildern im Dienstbuch](docs/images/attendance.png)
+![Übungsplan mit Stationen, Gruppenbahnen und Planungswarnungen](docs/handbook/images/planner.png)
 
-Beim Abhaken wird nur die ausgewählte Person gespeichert. Bearbeiten zwei Personen gleichzeitig denselben Eintrag, fordert die Anwendung zur Prüfung des aktuellen Stands auf. Die Team-Auswertung zählt anwesend, entschuldigt und fehlend sowie Stunden aus der Dienstdauer. [Schrittweise Anleitung im Handbuch](docs/user-guide.md#dienstbuch-und-gemeinsame-anwesenheitserfassung)
+*Der Planer sammelt Änderungen als Entwurf. Materialbedarf erzeugt keine Bestandsbuchung oder Reservierung.*
 
-![Alle Module in der mobilen Web-App](docs/images/mobile.png)
+Die Web-App lässt sich unter HTTPS zum Startbildschirm hinzufügen. Push-Mitteilungen für Dienste und Bestellungen werden pro Gerät freiwillig aktiviert. Datenzugriff und Änderungen brauchen eine Internetverbindung; es gibt keine Warteschlange für Offline-Änderungen. [Mobile Einrichtung](docs/handbook/operators/start.md#auf-dem-smartphone-installieren)
 
-Die Web-App lässt sich unter HTTPS zum Startbildschirm hinzufügen. Push-Mitteilungen werden **pro Gerät freiwillig** im Profil aktiviert; wählbar sind Dienste und Bestellungen. Der Sperrbildschirm zeigt allgemeine Hinweise ohne Mitgliedernamen. Für Datenzugriff und Änderungen ist eine Internetverbindung nötig. [Einrichtung und technische Grenzen](docs/push-and-pwa.md)
+## Installation und Betrieb
 
-## Installation
+Unterstützt werden **Docker Compose** mit vorgebauten Releaseimages und **Debian 13 nativ**, auch im Proxmox-LXC. Beide Wege verwenden `jfctl`. HTTPS wird mit Caddy eingerichtet oder über einen vorhandenen Reverse Proxy betrieben. Fachliche Einstellungen verwaltet ihr in der Weboberfläche.
 
-Unterstützt werden zwei Produktionswege mit demselben Verwaltungswerkzeug `jfctl`: **Docker Compose** mit vorgebauten, versionsgebundenen Images und **Debian 13 nativ** (auch in einem Proxmox-LXC). HTTPS richtet `jfctl` mit Caddy selbst ein oder übergibt an einen vorhandenen Reverse Proxy. Vor dem Einsatz mit echten Mitgliederdaten [Produktionsvorgaben](docs/operations/production-security.md) lesen.
+1. [Produktionsvorgaben](docs/operations/production-security.md) und [Installationsanleitung](docs/operations/ops-install.md) lesen.
+2. Das gewünschte [Release](https://github.com/Jugendfeuerwehr-Manager/JF-Manager/releases) auswählen und dessen Paket, Manifest und Prüfsummen auf Verfügbarkeit prüfen.
+3. Im folgenden Beispiel `X.Y.Z` durch diese Version ersetzen und den Installationsassistenten ausführen:
 
 ```sh
-VERSION=1.4.0   # gewünschtes Release
+VERSION=X.Y.Z
 BASE=https://github.com/Jugendfeuerwehr-Manager/JF-Manager/releases/download/v$VERSION
 curl -fsSLO "$BASE/jf-manager-$VERSION.tar.gz" -O "$BASE/SHA256SUMS" -O "$BASE/release-manifest.json"
 sha256sum -c SHA256SUMS && tar -xzf "jf-manager-$VERSION.tar.gz"
 sudo "./jf-manager-$VERSION/ops/jfctl" install --version "$VERSION" --release-dir .
 ```
 
-Der Assistent fragt alle Angaben vorab ab, prüft das System und installiert erst nach Bestätigung. Danach: `jfctl status`, `jfctl doctor`, `jfctl backup create`, `jfctl update --version …`. Details: [Installation](docs/operations/ops-install.md), [Betrieb mit jfctl](docs/operations/ops-jfctl.md), [Sicherung und Updates](docs/operations/ops-backup-restore-update.md). Bestehende Compose-, Portainer- oder Synology-Installationen werden über [Migration](docs/operations/ops-migration.md) übernommen. Andere Wege (eigene Compose-Dateien, Portainer, `git pull` auf dem Server) werden nicht unterstützt; `dev/` enthält nur die Entwicklungsumgebung.
+Der Assistent sammelt Angaben, prüft das System und zeigt vor der Installation eine Zusammenfassung. Danach:
 
-## Ausprobieren mit Beispieldaten
+```sh
+sudo jfctl status
+sudo jfctl doctor
+sudo jfctl backup create
+sudo jfctl backup verify latest
+```
 
-Die lokale Demo erzeugt eine **neue temporäre SQLite-Datenbank** mit zwölf fiktiven Mitgliedern, vier Betreuungspersonen und Beispieldiensten. Sie benutzt weder die vorhandene Anwendungsdatenbank noch echten E-Mail- oder Push-Versand. Voraussetzungen sind Python 3.12+, Pipenv und Node.js 20.19+ beziehungsweise 22.12+.
+[Befehlsreferenz](docs/operations/ops-jfctl.md) · [Backup, Restore und Updates](docs/operations/ops-backup-restore-update.md) · [Migration von Portainer/Compose/Synology](docs/operations/ops-migration.md)
+
+`dev/` enthält ausschließlich Entwicklungscontainer. Produktivänderungen und Updates laufen über `jfctl`; bestehende Installationen werden nach der Migrationsanleitung übernommen.
+
+## Lokal mit fiktiven Daten ausprobieren
+
+Die Demo erstellt eine **neue temporäre SQLite-Datenbank**, isolierte Uploads und eigene Schlüssel. Sie verwendet keine vorhandene Anwendungsdatenbank und verschickt keine echten E-Mails oder Push-Nachrichten. Der aktuelle Seed enthält drei Abteilungen, 53 Mitglieder, Dienste, Übungen, Ausstattung und mehrere Testrollen.
+
+Voraussetzungen: Python 3.12+, Pipenv und Node.js 20.19+ beziehungsweise 22.12+.
 
 ```sh
 cd backend
 pipenv install
-pipenv run python demo.py --port 8011
+PIPENV_DONT_LOAD_ENV=1 pipenv run python demo.py --port 8011
 ```
 
-Benutzername und zufälliges Demopasswort erscheinen im Terminal. In einem zweiten Terminal:
+In einem zweiten Terminal:
 
 ```sh
 cd frontend
@@ -61,28 +91,30 @@ npm ci
 VITE_BACKEND_URL=http://127.0.0.1:8011 npm run dev
 ```
 
-Anschließend `http://localhost:5173` öffnen. Die Demo lauscht nur lokal. Für die reguläre Entwicklung stehen [Startanleitung](docs/getting-started.md), `./start-dev.sh` und die VS-Code-Startkonfiguration „JF-Manager: Backend + Frontend“ bereit. In VS Code startet „Demo: Backend + Frontend“ die Demo samt Oberfläche. Das Demokonto ist Administrator und muss beim ersten Login eine Authenticator-App einrichten.
+Öffne die vom Frontend gemeldete lokale Adresse. Das Demo-Terminal nennt Konten, zufälliges Passwort und den Befehl für den aktuellen Authenticator-Code. Für das Administrationskonto ist der Demo-Faktor bereits eingerichtet. Die Demo lauscht nur lokal. Weitere Entwicklung: [Startanleitung](docs/getting-started.md), `./start-dev.sh` und die VS-Code-Konfigurationen. [Screenshots reproduzieren](docs/handbook/publishing.md#aktuelle-screenshots-erzeugen)
 
-## Einstieg für das Team
+## Handbuch als Website und ZIP bauen
 
-1. Persönlich anmelden; bei eingerichtetem SSO den entsprechenden Knopf verwenden.
-2. Die richtige Abteilung auswählen und über die Modulnavigation **Mitglieder** und **Dienstbuch** öffnen.
-3. Einen Dienst speichern, anschließend Jugendliche und Betreuungspersonen im Anwesenheitsbereich erfassen.
-4. Im Profil die Standard-Abteilung, E-Mail-Signatur sowie Installation und Mitteilungen verwalten.
-
-![Klarer Anmeldebildschirm ohne künstliche Wartezeit](docs/images/login.png)
-
-![Geräteeinstellungen im persönlichen Profil](docs/images/profile.png)
-
-Das [Benutzerhandbuch](docs/user-guide.md) erläutert alle Module mit praktischen Abläufen. Die [Architektur](docs/architecture/overview.md), [API-Referenz](docs/api/reference.md) und [Entwicklungsdokumentation](docs/development/build-pipeline.md) helfen bei Erweiterungen.
-
-## Technik und Qualität
-
-Das Backend verwendet Django 5 und Django REST Framework, das Frontend Vue 3, TypeScript und PrimeVue. PostgreSQL 17 dient als Produktionsdatenbank, Redis als gemeinsamer Cache; betrieben wird über `jfctl` mit Docker Compose oder nativ auf Debian 13. Zugriffsrechte werden für Benutzer, Abteilungen und einzelne API-Routen geprüft. [Betrieb](docs/operations/ops-overview.md)
+Im Repository-Wurzelverzeichnis:
 
 ```sh
-cd backend && PIPENV_DONT_LOAD_ENV=1 DJANGO_SECRET_KEY=local-test-only-secret-key-32-chars FIELD_ENCRYPTION_KEY=$(pipenv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") REDIS_URL=none pipenv run python manage.py test api_tests users departments.tests servicebook.tests.test_attendance_board servicebook.tests.test_attendance_by_member servicebook.tests.test_attendance_race_condition notifications
-cd ../frontend && npm run build && npm run test:unit -- --run
+python3 -m venv .venv-docs
+.venv-docs/bin/python -m pip install -r requirements-docs.txt
+.venv-docs/bin/python scripts/docs/build.py
 ```
 
-JF-Manager ist unter der [GNU Affero General Public License](backend/LICENSE) veröffentlicht. Beiträge sind willkommen: [CONTRIBUTING.md](CONTRIBUTING.md).
+Das Ergebnis liegt unter `.docs-build/site/`; `.docs-build/jf-manager-handbook.zip` enthält die auslieferbare Website. Der Build prüft interne Links, Anker und Assets. Für eine lokale Vorschau mit funktionierender Suche:
+
+```sh
+.venv-docs/bin/python -m http.server 8088 --bind 127.0.0.1 --directory .docs-build/site
+```
+
+Der Workflow **Benutzerhandbuch** erstellt bei Dokumentationsänderungen ein Artefakt; GitHub Pages wird nur durch einen ausdrücklich gestarteten Veröffentlichungslauf auf `main` aktiviert. [Auslieferung und Pflege](docs/handbook/publishing.md)
+
+## Entwicklung und Mitmachen
+
+Backend: Django 5.2 und Django REST Framework; Frontend: Vue 3, TypeScript, Pinia und PrimeVue. Produktion: PostgreSQL 17 und Redis. Anmeldung: serverseitige Cookie-Sitzungen mit CSRF, MFA und Passkeys. Fachliche Rechte werden für Aktion und tatsächliche Abteilung geprüft.
+
+[Architektur](docs/architecture/overview.md) · [API](docs/api/reference.md) · [Testanleitung](docs/development/testing.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
+
+JF-Manager ist unter der [GNU Affero General Public License](backend/LICENSE) veröffentlicht. Beiträge sind willkommen.

@@ -13,6 +13,7 @@ Zuerst Identität und Berechtigung der Person prüfen. Mit autorisiertem Hostzug
 
 ```sh
 sudo jfctl admin reset-mfa --user NAME
+
 # Nur wenn zusätzlich das Passwort zurückgesetzt werden muss:
 sudo jfctl admin recover --user NAME --reset-mfa
 ```

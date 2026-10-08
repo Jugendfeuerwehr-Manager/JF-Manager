@@ -30,9 +30,9 @@ Eine Liste eignet sich beispielsweise für die Anmeldung zum Zeltlager oder den 
 2. Füge einzelne Mitglieder oder die benötigten Mitglieder einer Gruppe hinzu.
 3. Hake Einträge ab, sobald der jeweilige Schritt erledigt ist. Ergänze bei Bedarf Notizen.
 4. Nutze die Filter, um offene Einträge zu finden.
-5. Ergänze Anhänge oder exportiere die Liste als PDF beziehungsweise Excel. Über **E-Mail** kannst du den Versand anstoßen.
+5. Ergänze Anhänge oder exportiere die Liste als PDF beziehungsweise Excel. Unter **Weitere Aktionen → E-Mail an alle** kannst du den Versand anstoßen.
 
-**Alle haken** und **Zurücksetzen** wirken auf mehrere Einträge. Verwende sie nur, wenn diese Änderung wirklich für die ganze Liste gelten soll. Für dauerhafte Dienst-Anwesenheiten verwende das Dienstbuch; dort stehen die dafür vorgesehenen Status und Auswertungen zur Verfügung.
+**Weitere Aktionen → Alle abhaken** und **Alle Haken entfernen …** wirken auf mehrere Einträge. Verwende sie nur, wenn diese Änderung wirklich für die ganze Liste gelten soll. Für dauerhafte Dienst-Anwesenheiten verwende das Dienstbuch; dort stehen die dafür vorgesehenen Status und Auswertungen zur Verfügung.
 
 ## Qualifikationen und Sonderaufgaben
 
