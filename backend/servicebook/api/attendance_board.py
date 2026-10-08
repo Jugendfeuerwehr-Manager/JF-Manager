@@ -25,7 +25,14 @@ def roster_people(service):
     members = Member.objects.all()
     staff = person_accounts()
     if service.department_id:
-        members = members.filter(departments=service.department_id)
+        # Guests (registered or assigned from outside the department) and anyone already recorded stay listed.
+        guests = Q(attendance__service=service)
+        if service.training_session_id:
+            guests |= Q(
+                registrations__session_id=service.training_session_id,
+                registrations__state__in=["registered", "assigned"],
+            )
+        members = members.filter(Q(departments=service.department_id) | guests)
         staff = staff.filter(
             Q(department_roles__department_id=service.department_id) | Q(service_attendances__service=service)
         )
@@ -51,6 +58,23 @@ def board_response(service):
     )
 
 
+def set_attendance(service, model, person_id, state, expected_state):
+    """Compare-and-set one attendance value; returns ``(applied, current_state)``. The only write path."""
+    with transaction.atomic():
+        # Lock the parent even when no attendance exists yet; serializes concurrent inserts.
+        Service.objects.select_for_update().get(pk=service.pk)
+        records = model.objects.filter(service=service, person_id=person_id)
+        current = records.values_list("state", flat=True).first()
+        if current != expected_state:
+            return False, current
+        if state is None:
+            records.delete()
+        else:
+            model.objects.update_or_create(service=service, person_id=person_id, defaults={"state": state})
+    cache.delete("attendance_over_time_data")
+    return True, state
+
+
 def update_board(request, service):
     if not has_department_permission(request.user, "servicebook.change_attendance", service.department_id):
         raise PermissionDenied("Keine Berechtigung zum Bearbeiten der Anwesenheit.")
@@ -62,26 +86,15 @@ def update_board(request, service):
     if not people.filter(pk=change["person_id"]).exists():
         raise serializers.ValidationError({"person_id": "Person gehört nicht zur Teilnehmerliste dieses Dienstes."})
     model = Attendance if change["kind"] == "member" else StaffAttendance
-    with transaction.atomic():
-        # Lock the parent even when no attendance exists yet; serializes concurrent inserts.
-        Service.objects.select_for_update().get(pk=service.pk)
-        records = model.objects.filter(service=service, person_id=change["person_id"])
-        current = records.values_list("state", flat=True).first()
-        if current != change["expected_state"]:
-            return Response(
-                {
-                    "detail": "Diese Anwesenheit wurde inzwischen geändert. Bitte den aktuellen Stand prüfen.",
-                    "state": current,
-                },
-                status=409,
-            )
-        if change["state"] is None:
-            records.delete()
-        else:
-            model.objects.update_or_create(
-                service=service, person_id=change["person_id"], defaults={"state": change["state"]}
-            )
-    cache.delete("attendance_over_time_data")
+    applied, current = set_attendance(service, model, change["person_id"], change["state"], change["expected_state"])
+    if not applied:
+        return Response(
+            {
+                "detail": "Diese Anwesenheit wurde inzwischen geändert. Bitte den aktuellen Stand prüfen.",
+                "state": current,
+            },
+            status=409,
+        )
     return Response({"state": change["state"]})
 
 

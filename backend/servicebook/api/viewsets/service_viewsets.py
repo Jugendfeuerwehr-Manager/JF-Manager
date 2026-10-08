@@ -5,11 +5,13 @@ from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
+from portal.permissions import StaffAccountRequired
 from servicebook.models import Attendance, Service
 from servicebook.selectors import get_top_lists_by_state
 
@@ -53,7 +55,7 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Get services filtered by department scope."""
         self.queryset = Service.objects.select_related("training_session").prefetch_related("operations_manager")
         queryset = super().get_queryset()
-        if self.action in ("attendance_board", "staff_statistics"):
+        if self.action in ("attendance_board", "staff_statistics", "registrations", "apply_excused"):
             # These actions enforce attendance rights instead of service rights.
             return queryset
         permission = {
@@ -200,6 +202,49 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         if request.method == "PATCH":
             return update_board(request, service)
         return board_response(service)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated, StaffAccountRequired, DepartmentRoleModelPermissions],
+    )
+    def overview(self, request):
+        """Mobile list: today, the next 14 days and past services with incomplete attendance."""
+        from ..registrations import overview_payload
+
+        return Response(overview_payload(self.get_queryset()))
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated, StaffAccountRequired])
+    def registrations(self, request, pk=None):
+        from ..registrations import registrations_payload
+
+        service = self.get_object()
+        if not (
+            has_department_permission(request.user, "servicebook.view_attendance", service.department_id)
+            or has_department_permission(request.user, "servicebook.change_attendance", service.department_id)
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Anzeigen der Anwesenheit.")
+        return Response(registrations_payload(service, request.user))
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="registrations/apply-excused",
+        permission_classes=[IsAuthenticated, StaffAccountRequired],
+    )
+    def apply_excused(self, request, pk=None):
+        from ..registrations import ApplyExcusedSerializer, apply_excused
+
+        service = self.get_object()
+        if not has_department_permission(request.user, "servicebook.change_attendance", service.department_id):
+            raise PermissionDenied("Keine Berechtigung zum Bearbeiten der Anwesenheit.")
+        data = ApplyExcusedSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        return Response(
+            apply_excused(
+                service, dry_run=data.validated_data["dry_run"], member_ids=data.validated_data.get("member_ids")
+            )
+        )
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def staff_statistics(self, request):
