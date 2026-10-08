@@ -11,6 +11,8 @@ const { auth, servicebook, summary } = vi.hoisted(() => ({
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => ({ activeDepartment: { code: 'NORD' } }) }))
 vi.mock('@/stores/servicebook', () => ({ useServicebookStore: () => servicebook }))
+const { inboxList } = vi.hoisted(() => ({ inboxList: vi.fn() }))
+vi.mock('@/api/inbox', () => ({ inboxApi: { list: inboxList } }))
 vi.mock('@/api/dashboard', () => ({ dashboardApi: { summary } }))
 
 const today = new Date()
@@ -34,6 +36,7 @@ describe('DashboardView', () => {
     auth.canAccessModule.mockImplementation(() => true)
     summary.mockResolvedValue({ data: full })
     servicebook.fetchChartData.mockResolvedValue(null)
+    inboxList.mockResolvedValue({ data: { count: 0, results: [] } })
   })
 
   it('loads counts from one summary and links every key figure', async () => {
@@ -80,5 +83,20 @@ describe('DashboardView', () => {
     expect(summary).toHaveBeenCalledTimes(2)
     expect(wrapper.find('.dashboard-notice').exists()).toBe(false)
     expect(wrapper.findAll('.task')).toHaveLength(5)
+  })
+
+  it('shows the three most urgent inbox tasks and hides the tile without any', async () => {
+    const task = (id: number) => ({ id, title: `Aufgabe ${id}`, category: 'requests', department: 'Mitte', link: `/x/${id}` })
+    inboxList.mockResolvedValue({ data: { count: 4, results: [task(1), task(2), task(3), task(4)] } })
+    const wrapper = render()
+    await flushPromises()
+    expect(inboxList).toHaveBeenCalledWith({ type: 'task' })
+    const tile = wrapper.get('[aria-labelledby="inbox-title"]')
+    expect(tile.findAll('.task')).toHaveLength(3)
+    expect(tile.get('a[href="/eingang"]').text()).toContain('Zum Eingang')
+    inboxList.mockResolvedValue({ data: { count: 0, results: [] } })
+    const empty = render()
+    await flushPromises()
+    expect(empty.find('[aria-labelledby="inbox-title"]').exists()).toBe(false)
   })
 })

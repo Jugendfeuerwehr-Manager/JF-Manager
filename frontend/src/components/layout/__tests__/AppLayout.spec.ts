@@ -7,6 +7,8 @@ const { auth, sessionTimeout } = vi.hoisted(() => ({
   auth: { canAccessModule: vi.fn(() => true), logout: vi.fn() },
   sessionTimeout: vi.fn(),
 }))
+const { inbox } = vi.hoisted(() => ({ inbox: { counts: { total: 0 }, startPolling: vi.fn(), stopPolling: vi.fn() } }))
+vi.mock('@/stores/inbox', () => ({ useInboxStore: () => inbox }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => ({ activeDepartmentId: 1, departments: [{ id: 1 }] }) }))
 vi.mock('@/composables/useAppSettings', () => ({ useAppSettings: () => ({ websiteTitle: 'JF-Manager' }) }))

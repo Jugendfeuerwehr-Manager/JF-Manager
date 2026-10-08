@@ -114,6 +114,11 @@ const router = createRouter({
           component: () => import('@/views/portal-admin/PortalAdminView.vue'),
           meta: { requiresPerm: 'portal.invite_portal_account' }
         },
+        {
+          path: 'eingang',
+          name: 'inbox',
+          component: () => import('@/views/InboxView.vue')
+        },
         // Emails
         {
           path: 'emails/compose',

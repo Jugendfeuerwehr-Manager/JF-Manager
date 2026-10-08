@@ -42,6 +42,23 @@
         </ul>
       </section>
 
+      <section v-if="inboxTasks.length" class="dashboard-card" aria-labelledby="inbox-title">
+        <header class="dashboard-card__header">
+          <h2 id="inbox-title">Offene Aufgaben</h2>
+          <router-link to="/eingang" class="dashboard-link">Zum Eingang<i class="pi pi-arrow-right" aria-hidden="true"></i></router-link>
+        </header>
+        <ul class="task-list">
+          <li v-for="entry in inboxTasks" :key="entry.id" class="task">
+            <span class="task__icon task__icon--warning" aria-hidden="true"><i class="pi pi-bolt"></i></span>
+            <span class="task__text">
+              <span class="task__title">{{ entry.title }}</span>
+              <span class="task__meta">{{ [categoryLabel(entry.category), entry.department].filter(Boolean).join(' · ') }}</span>
+            </span>
+            <router-link :to="entry.link || '/eingang'" class="task__action" :aria-label="`Öffnen: ${entry.title}`">Öffnen</router-link>
+          </li>
+        </ul>
+      </section>
+
       <section class="dashboard-card" aria-labelledby="shortcuts-title">
         <header class="dashboard-card__header">
           <h2 id="shortcuts-title">Schnellzugriff</h2>
@@ -105,6 +122,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
 import { useServicebookStore } from '@/stores/servicebook'
 import { dashboardApi, type DashboardSummary } from '@/api/dashboard'
+import { inboxApi, type InboxEntry } from '@/api/inbox'
+import { categoryLabel } from '@/utils/inbox'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -146,6 +165,11 @@ const loading = ref(true)
 const chartScroll = ref<HTMLElement | null>(null)
 const failedSources = ref<StatSource[]>([])
 const summary = ref<DashboardSummary | null>(null)
+/** The three most urgent open inbox tasks; the tile stays hidden without any (or on errors). */
+const inboxTasks = ref<InboxEntry[]>([])
+async function loadInboxTasks() {
+  try { inboxTasks.value = (await inboxApi.list({ type: 'task' })).data.results.slice(0, 3) } catch { inboxTasks.value = [] }
+}
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -314,7 +338,7 @@ async function loadStats() {
   if (chartScroll.value) chartScroll.value.scrollLeft = chartScroll.value.scrollWidth
 }
 
-onMounted(loadStats)
+onMounted(() => { void loadInboxTasks(); void loadStats() })
 </script>
 
 <style scoped>

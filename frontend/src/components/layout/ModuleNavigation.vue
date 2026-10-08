@@ -5,6 +5,7 @@
       <h2>{{ section.label }}</h2>
       <router-link v-for="item in section.items" :key="item.to" :to="item.to" class="nav-link" :class="{ active: isActive(item.to) }" :aria-current="isActive(item.to) ? 'page' : undefined" @click="$emit('navigate')">
         <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
+        <span v-if="item.to === '/eingang' && inbox.counts.total > 0" class="nav-badge" :aria-label="`Eingang, ${inbox.counts.total} offen`">{{ inbox.counts.total }}</span>
       </router-link>
     </section>
     <p v-if="!visibleSections.length" class="nav-empty">Kein passendes Modul gefunden.</p>
@@ -14,17 +15,19 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useInboxStore } from '@/stores/inbox'
 import { useClientConfiguration } from '@/composables/useClientConfiguration'
 defineEmits<{ navigate: [] }>()
 const { configuration, refresh } = useClientConfiguration()
 onMounted(() => { void refresh().catch(() => { /* Existing labels remain usable when offline. */ }) })
 const route = useRoute()
 const auth = useAuthStore()
+const inbox = useInboxStore()
 const search = ref('')
 const settingsRights = ['all', 'general', 'email', 'member', 'service', 'order', 'ldap', 'oidc'].map(category => `settings_manager.view_${category}_settings`)
 interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean }
 const sections: { label: string; items: NavItem[] }[] = [
-  { label: 'Überblick', items: [{ label: 'Dashboard', icon: 'pi pi-home', to: '/' }] },
+  { label: 'Überblick', items: [{ label: 'Dashboard', icon: 'pi pi-home', to: '/' }, { label: 'Eingang', icon: 'pi pi-inbox', to: '/eingang' }] },
   { label: 'Mitglieder', items: [
     { label: 'Mitglieder', icon: 'pi pi-users', to: '/members', permission: 'view_member' },
     { label: 'Eltern', icon: 'pi pi-user', to: '/parents', permission: 'view_parent' },
@@ -76,5 +79,6 @@ h2 { margin: 0 var(--jf-space-1-5) var(--jf-space-1); color: var(--jf-color-text
 .nav-link.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--jf-color-primary); }
 .nav-link.active i { color: var(--jf-color-primary); }
 .nav-link:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; }
+.nav-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--jf-color-primary); color: var(--jf-color-on-primary); font-size: var(--jf-text-xs); font-weight: var(--jf-weight-bold); }
 .nav-empty { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); padding: var(--jf-space-1); }
 </style>
