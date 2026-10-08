@@ -590,7 +590,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | DEV-01 | abgeschlossen | Claude (Merge-/DEV-Sitzung) | DEV-01.4: 890/890 Backend auf PostgreSQL 17, Live-Login mit 2FA-Demo-Code, frischer lokaler Bestand. |
 | DOC-01 | abgeschlossen (aktueller Verwaltungsumfang) | Codex (Handbuch) | DOC-01.4: rollenbasiertes Handbuch/README ausgeliefert, zwölf aktuelle Demoabbildungen; statische Website und ZIP geprüft. Pages vorbereitet, nicht veröffentlicht. Portal/Teilnahme nach deren Fachabnahme ergänzen. Globale Backend-Formatprüfung: 58 vorbestehende Dateien mit Befund. |
 | PORTAL-01 | abgenommen | Claude (Portal-Sitzung) | PORTAL-01.7 Paketabnahme: PostgreSQL 17 1044/1044 bestanden; Browserabnahme bestanden; offen nur echte E-Mail-Zustellung (SMTP) als Nutzerabnahme. |
-| PORTAL-02 | in Arbeit | Claude (Portal-Sitzung, Frontend per Subagent) | PORTAL-02.1–02.4 umgesetzt; 02.5 Abnahme folgt. |
+| PORTAL-02 | abgenommen | Claude (Portal-Sitzung, Frontend per Subagent) | PORTAL-02.5: PostgreSQL 17 1044/1044 (Backend-Stand inkl. 02.1/02.2), Frontend 420/420, Browser bestanden. |
 | PORTAL-03 | geplant | — | Änderungsanträge mit feldweiser Freigabe. |
 | PART-01 | geplant | — | An-/Abmeldung zu geplanten Diensten, Modi, getrennte Fristen, Zeitraum-Abmeldung. |
 | PART-02 | geplant | — | Meldestatus im Dienstbuch, mobil zuerst (Abstimmung UX-04), Übernahme „entschuldigt“ als Bottom-Sheet. |
@@ -1431,7 +1431,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### PORTAL-02: Freigaben und Selbstauskunft
 
-- **Status:** in Arbeit.
+- **Status:** abgenommen (PORTAL-02.5).
 - **Verantwortlicher Agent:** Claude (Portal-Sitzung); Frontend 02.3/02.4 per Subagent im Worktree `wt/portal-02-ui`, Übernahme per Cherry-Pick.
 - **Branch:** `feat/security-roles-training-operations`.
 - **Abhängigkeiten:** PORTAL-01 (abgenommen), Konzept 4.2 (Kategorien, E7, D2, D3), Mockups „Einstellungen · Portal & Freigaben“ und „Portal · Daten“.
@@ -1446,7 +1446,8 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Ausgeführte Prüfungen mit Ergebnis:** siehe Journal.
 - **Offene Fehler / Risiken:** 02.1 und 02.2 in einem Commit, weil Freigabe- und Personen-Views in denselben Dateien entstanden (Abweichung von „ein Commit je Teilschritt“, bewusst dokumentiert).
 - **Laufende Prozesse und sichere Fortsetzung:** Subagent für 02.3/02.4 im Worktree.
-- **Nächster konkreter Schritt:** `PORTAL-02.3`/`02.4` übernehmen, Browserprüfung, `PORTAL-02.5`.
+- **PORTAL-02.5 Abnahme:** Backend-Tests auf PostgreSQL 17 (1044/1044, gleicher Lauf wie PORTAL-01.7), Datenleck-Test inkl. aller freigegebenen Kategorien mit Markerdaten in Notizen/Qualifikationsnotizen/Ausstellern, Frontend 420/420, Browser Eltern/Mitglied/Leitung. Offen (kein Abnahmehindernis): Mitgliederliste zeigt „Einladen“ auch für noch nicht berechtigte Mitglieder (Server lehnt mit Grund ab; Berechtigung in der Liste anzeigen wäre schöner); Kennzahlen der Mitgliederschwelle aktualisieren sich erst nach dem Speichern.
+- **Nächster konkreter Schritt:** PART-01 übernehmen (Backend per Subagent in Arbeit), danach Frontend PART-01.3/01.4.
 
 ### PART-03: Teilnahmevoraussetzungen und Regel-Konfigurator
 
@@ -1949,3 +1950,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 08.10.2026 | PART-03.7 | Aufbauende Qualifikationen (E18) umgesetzt (Details im Detailblock), Subagent im eigenen Worktree, Übernahme mit diesem Commit. | Subagent: 490/490 Backend (`qualifications participation portal departments`, Qualifikations-Abteilungsscope), `makemigrations --check`, Ruff; Frontend 402/402, Typecheck, ESLint. Nach Übernahme im Hauptstand: 502/502 Backend (inkl. PORTAL-02), `makemigrations --check`, Frontend 402/402, Typecheck. Nicht ausgeführt: PostgreSQL für diesen Schritt, Browser. | Dieser Commit: `feat(PART-03.7): let higher qualifications satisfy lower requirements` | PART-03.4 mit PART-01.3 |
 | 08.10.2026 | PORTAL-02.3 | Freigabe-Oberfläche im Bereich „Portal“ übernommen (Details im Detailblock). | Subagent: Frontend 417/417; nach Übernahme im Hauptstand 415/415 vor eigener Nachbesserung, danach siehe PORTAL-02.4; Typecheck, ESLint bestanden. Browser: mit PORTAL-02.4. | Dieser Commit: `feat(PORTAL-02.3): configure portal releases in the portal administration` | PORTAL-02.4 |
 | 08.10.2026 | PORTAL-02.4 | Portal-Seite „Daten“ mit freigegebenen Kategorien übernommen (Details im Detailblock). | Bestanden: Frontend 420/420, Typecheck, ESLint (Hauptstand nach Übernahme); Browser (Chrome, Scratch-Instanz mit neuen Demodaten): Elternzugang Chips „Mila · 10“/„Pia · 8“, eigene Kontaktdaten, Kinderdaten; Mitgliedszugang mit Ausrüstung (in Mitte für Mitglieder freigegeben); Reiter „Freigaben“ für Leitung Mitte (Organisation nur lesend); Mitglieder einladbar; keine API-Fehler. | Dieser Commit: `feat(PORTAL-02.4): show released data in the portal` | PORTAL-02.5 |
+| 08.10.2026 | PORTAL-02.5 | Paketabnahme PORTAL-02 (Details im Detailblock); PORTAL-02 abgenommen. | Bestanden wie im Detailblock; nicht ausgeführt: echtes Mobilgerät, Screenreader. | Dieser Commit: `docs(PORTAL-02.5): accept the portal release package` | PART-01 |
