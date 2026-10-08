@@ -130,7 +130,7 @@ class PersonDepartmentScopeMixin(DepartmentScopeViewSetMixin):
 class QualificationTypeViewSet(viewsets.ModelViewSet):
     """ViewSet for QualificationType"""
 
-    queryset = QualificationType.objects.all().order_by("name")
+    queryset = QualificationType.objects.prefetch_related("includes").order_by("name")
     permission_classes = [IsAuthenticated, DjangoModelPermissions, OrgWideWritePermission]
     filterset_fields = ["expires"]
     search_fields = ["name", "description"]

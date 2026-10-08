@@ -1,8 +1,25 @@
+from django import forms
 from django.contrib import admin
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
+from .hierarchy import find_cycle
 from .models import Qualification, QualificationType, SpecialTask, SpecialTaskType
+
+
+class QualificationTypeAdminForm(forms.ModelForm):
+    class Meta:
+        model = QualificationType
+        fields = "__all__"
+
+    def clean_includes(self):
+        included = self.cleaned_data["includes"]
+        own_id = self.instance.pk
+        if own_id is not None and find_cycle(own_id, [t.pk for t in included]):
+            raise forms.ValidationError(
+                "Eine Qualifikation kann sich weder selbst noch (über Zwischenstufen) zyklisch einschließen."
+            )
+        return included
 
 
 class QualificationTypeResource(resources.ModelResource):
@@ -36,6 +53,8 @@ class QualificationTypeAdmin(ImportExportModelAdmin):
     list_filter = ["expires"]
     search_fields = ["name", "description"]
     ordering = ["name"]
+    filter_horizontal = ["includes"]
+    form = QualificationTypeAdminForm
 
 
 @admin.register(Qualification)

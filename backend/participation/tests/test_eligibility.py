@@ -1,7 +1,9 @@
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from members.models import Member
 from participation.eligibility import (
@@ -223,3 +225,90 @@ class EvaluationTests(RuleFixtureMixin, TestCase):
         names = Names.for_rule(r)
         with self.assertNumQueries(0):
             self.assertFalse(evaluate(r, person, DAY, names).ok)
+
+
+class HierarchyEvaluationTests(RuleFixtureMixin, TestCase):
+    """E18: higher qualifications satisfy requirements on lower ones."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from qualifications.models import QualificationType
+
+        cls.trupp = QualificationType.objects.create(name="Truppmann")
+        cls.tf = QualificationType.objects.create(name="Truppführer")
+        cls.gruf = QualificationType.objects.create(name="Gruppenführer ")
+        cls.zuf = QualificationType.objects.create(name="Zugführer ")
+        cls.tf.includes.add(cls.trupp)
+        cls.gruf.includes.add(cls.tf)
+        cls.zuf.includes.add(cls.gruf)
+
+    def person(self, qual_type=None, start=date(2020, 1, 1), end=None):
+        m = Member.objects.create(name="Max", lastname="Muster")
+        if qual_type:
+            Qualification.objects.create(type=qual_type, member=m, date_acquired=start, date_expires=end)
+        return m
+
+    def check(self, r, member, day=DAY):
+        return evaluate_members(r, [member.pk], day)[member.pk]
+
+    def has(self, *types, op="has_any"):
+        return rule({"kind": "qualification", "op": op, "values": [t.pk for t in types]})
+
+    def test_three_level_chain(self):
+        for held in (self.trupp, self.tf, self.gruf, self.zuf):
+            self.assertTrue(self.check(self.has(self.trupp), self.person(held)).ok, held)
+        self.assertFalse(self.check(self.has(self.zuf), self.person(self.trupp)).ok)
+        self.assertFalse(self.check(self.has(self.tf), self.person(self.trupp)).ok)
+        self.assertTrue(self.check(self.has(self.tf), self.person(self.zuf)).ok)
+
+    def test_reason_names_substitute(self):
+        res = self.check(self.has(self.trupp, op="has_all"), self.person(self.tf))
+        self.assertTrue(res.ok)
+        self.assertEqual(res.notes, ["Qualifikation ‚Truppmann‘ erfüllt durch ‚Truppführer‘"])
+
+    def test_direct_holder_has_no_note(self):
+        self.assertEqual(self.check(self.has(self.trupp), self.person(self.trupp)).notes, [])
+
+    def test_missing_keeps_existing_reason(self):
+        res = self.check(self.has(self.trupp), self.person())
+        self.assertEqual(res.reasons, ["Qualifikation ‚Truppmann‘ fehlt"])
+
+    def test_higher_expired_and_lower_missing_fails(self):
+        m = self.person(self.zuf, end=date(2026, 1, 31))
+        res = self.check(self.has(self.trupp), m)
+        self.assertFalse(res.ok)
+        self.assertEqual(res.reasons, ["Qualifikation ‚Truppmann‘: Gültig nur bis 31.01.2026"])
+
+    def test_lower_valid_when_higher_expired(self):
+        m = self.person(self.zuf, end=date(2026, 1, 31))
+        Qualification.objects.create(type=self.trupp, member=m, date_acquired=date(2020, 1, 1))
+        self.assertTrue(self.check(self.has(self.trupp), m).ok)
+
+    def test_has_none_excludes_higher(self):
+        r = self.has(self.trupp, op="has_none")
+        res = self.check(r, self.person(self.gruf))
+        self.assertFalse(res.ok)
+        self.assertEqual(
+            res.reasons,
+            ["Qualifikation ‚Gruppenführer ‘ schließt ‚Truppmann‘ ein und schließt die Teilnahme aus"],
+        )
+        self.assertTrue(self.check(r, self.person()).ok)
+        self.assertTrue(self.check(self.has(self.zuf, op="has_none"), self.person(self.trupp)).ok)
+
+    def test_summary_or_higher(self):
+        from participation.rules import summarize
+
+        self.assertEqual(summarize(self.has(self.trupp)), "Truppmann (oder höher)")
+        self.assertEqual(summarize(self.has(self.zuf)), "Zugführer ")
+        self.assertEqual(summarize(self.has(self.trupp, op="has_none")), "ohne Qualifikation Truppmann")
+
+    def test_query_count_constant(self):
+        def count(n):
+            Member.objects.all().delete()
+            ids = [self.person(self.tf).pk for _ in range(n)]
+            with CaptureQueriesContext(connection) as ctx:
+                evaluate_members(self.has(self.trupp), ids, DAY)
+            return len(ctx)
+
+        self.assertEqual(count(3), count(40))

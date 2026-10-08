@@ -23,6 +23,8 @@ NEUTRAL_AUDIENCE_NOTICE = "Dieser Dienst richtet sich an eine bestimmte Teilnehm
 class Result:
     ok: bool
     reasons: list[str] = field(default_factory=list)
+    # informational, also on success: a requirement met by a higher qualification names the substitute (E18)
+    notes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -74,22 +76,58 @@ def _list(parts, word):
     return parts[0] if len(parts) == 1 else f"{', '.join(parts[:-1])} {word} {parts[-1]}"
 
 
+def _candidates(kind, value, names):
+    """Types that satisfy a condition value: for qualifications also all higher ones (E18)."""
+    if kind != "qualification":
+        return [value]
+    others = sorted(names.satisfied_by(value) - {value}, key=lambda pk: names.get(kind, pk))
+    return [value, *others]
+
+
+def _resolve(kind, value, pool, day, names):
+    """Return ``(state, when, holder_id)`` for a condition value.
+
+    ``holder_id`` is the valid type that satisfies it (the value itself preferred, else a higher
+    type). Without a valid holder the state is the best one over the value and all higher types:
+    expired (latest end) before future before missing.
+    """
+    candidates = _candidates(kind, value, names)
+    for pk in candidates:
+        if _entry_state(pool.get(pk), day)[0] == "valid":
+            return "valid", None, pk
+    merged = [entry for pk in candidates for entry in pool.get(pk, ())]
+    state, when = _entry_state(merged, day)
+    return state, when, None
+
+
 def _eval_has(cond, facts, day, names):
     kind, op, values = cond["kind"], cond["op"], cond["values"]
     pool = facts.qualifications if kind == "qualification" else facts.special_tasks
     noun = KIND_LABELS[kind]
-    states = {v: _entry_state(pool.get(v), day) for v in values}
-    valid = [v for v, (state, _) in states.items() if state == "valid"]
+    states = {v: _resolve(kind, v, pool, day, names) for v in values}
+    valid = [v for v, (state, _, _) in states.items() if state == "valid"]
     if op == "has_none":
-        return (
-            Result(True)
-            if not valid
-            else Result(False, [f"{noun} ‚{names.get(kind, v)}‘ schließt die Teilnahme aus" for v in valid])
+        # E18: holders of T or of any type that includes T are excluded.
+        reasons = []
+        for v in valid:
+            holder = states[v][2]
+            if holder == v:
+                reasons.append(f"{noun} ‚{names.get(kind, v)}‘ schließt die Teilnahme aus")
+            else:
+                reasons.append(
+                    f"{noun} ‚{names.get(kind, holder)}‘ schließt ‚{names.get(kind, v)}‘ ein "
+                    "und schließt die Teilnahme aus"
+                )
+        return Result(not valid, reasons)
+    if (op == "has_any" and valid) or (op == "has_all" and len(valid) == len(values)):
+        return Result(
+            True,
+            notes=[
+                f"{noun} ‚{names.get(kind, v)}‘ erfüllt durch ‚{names.get(kind, states[v][2])}‘"
+                for v in valid
+                if states[v][2] != v
+            ],
         )
-    if op == "has_any" and valid:
-        return Result(True)
-    if op == "has_all" and len(valid) == len(values):
-        return Result(True)
     failing = [v for v in values if v not in valid]
     if op == "has_any" and all(states[v][0] == "missing" for v in failing):
         return Result(
@@ -102,7 +140,7 @@ def _eval_has(cond, facts, day, names):
         )
     reasons = []
     for v in failing:
-        state, when = states[v]
+        state, when, _ = states[v]
         label = f"{noun} ‚{names.get(kind, v)}‘"
         if state == "missing":
             reasons.append(f"{label} fehlt")
@@ -168,9 +206,10 @@ def _eval_condition(cond, facts, day, names):
 def _combine(results, match):
     if match == "all":
         reasons = [r for res in results for r in res.reasons]
-        return Result(not reasons and all(r.ok for r in results), reasons)
+        notes = [n for res in results for n in res.notes]
+        return Result(not reasons and all(r.ok for r in results), reasons, notes)
     if not results or any(r.ok for r in results):
-        return Result(True)
+        return Result(True, notes=[n for res in results if res.ok for n in res.notes])
     detail = "; ".join(r for res in results for r in res.reasons)
     return Result(False, [f"Keine der Alternativen erfüllt: {detail}"])
 

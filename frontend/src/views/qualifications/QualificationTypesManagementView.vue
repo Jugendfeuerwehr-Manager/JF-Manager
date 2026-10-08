@@ -71,6 +71,14 @@
               {{ data.validity_period || 'Unbegrenzt' }}
             </template>
           </Column>
+          <Column header="Schließt ein">
+            <template #body="{ data }">
+              <span v-if="data.includes_detail?.length" class="includes-list">
+                {{ data.includes_detail.map((t: { name: string }) => t.name).join(', ') }}
+              </span>
+              <span v-else>-</span>
+            </template>
+          </Column>
           <Column field="description" header="Beschreibung">
             <template #body="{ data }">
               {{ data.description || '-' }}

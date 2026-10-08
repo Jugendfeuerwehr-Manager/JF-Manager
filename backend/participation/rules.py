@@ -93,15 +93,33 @@ def _collect_ids(rule):
 class Names:
     """Display names for the ids used in a rule (one query per used kind)."""
 
-    def __init__(self, names=None):
+    def __init__(self, names=None, satisfying=None):
         self._names = names or {}
+        # E18: qualification type id -> ids of all types whose holders satisfy it (incl. itself)
+        self.satisfying = satisfying or {}
 
     @classmethod
     def for_rule(cls, rule):
         names = {}
-        for kind, ids in _collect_ids(rule).items():
+        collected = _collect_ids(rule)
+        for kind, ids in collected.items():
             names[kind] = dict(_model_for(kind).objects.filter(pk__in=ids).values_list("pk", "name"))
-        return cls(names)
+        satisfying = {}
+        if "qualification" in collected:
+            # one more query for the hierarchy closure and one for the names of substitutes
+            from qualifications.hierarchy import satisfying_types
+
+            satisfying = satisfying_types()
+            extra = {pk for ids in satisfying.values() for pk in ids} - set(names["qualification"])
+            if extra:
+                from qualifications.models import QualificationType
+
+                names["qualification"].update(QualificationType.objects.filter(pk__in=extra).values_list("pk", "name"))
+        return cls(names, satisfying)
+
+    def satisfied_by(self, pk):
+        """Qualification type ids that satisfy a requirement on ``pk`` (itself first-class member)."""
+        return self.satisfying.get(pk, {pk}) | {pk}
 
     def get(self, kind, pk):
         return self._names.get(kind, {}).get(pk, f"#{pk}")
@@ -259,6 +277,12 @@ def _condition_text(cond, names):
         labels = [GENDER_LABELS[v] for v in cond["values"]]
         return f"Geschlecht {_join(labels, 'oder')}", "oder" if len(labels) > 1 else None
     labels = [names.get(kind, v) for v in cond["values"]]
+    if kind == "qualification" and op != "has_none":
+        # E18: a requirement on T is also met by every type that includes T
+        labels = [
+            f"{label} (oder höher)" if len(names.satisfied_by(v)) > 1 else label
+            for label, v in zip(labels, cond["values"], strict=True)
+        ]
     if kind in ("qualification", "special_task"):
         prefix = "" if kind == "qualification" else "Sonderaufgabe "
         if op == "has_none":

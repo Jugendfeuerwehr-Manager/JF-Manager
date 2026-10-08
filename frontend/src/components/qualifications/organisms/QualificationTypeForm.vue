@@ -5,6 +5,7 @@ import type { QualificationTypeCreate, QualificationTypeUpdate, QualificationTyp
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
+import MultiSelect from 'primevue/multiselect'
 import InputSwitch from 'primevue/inputswitch'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -29,7 +30,8 @@ const formData = ref<QualificationTypeCreate>({
   name: '',
   expires: false,
   validity_period: null,
-  description: ''
+  description: '',
+  includes: []
 })
 
 const loading = ref(false)
@@ -38,27 +40,36 @@ const isEditMode = computed(() => !!props.typeId || !!props.initialData)
 
 // Load initial data if editing
 onMounted(async () => {
+  await qualificationsStore.fetchQualificationTypes()
   if (props.initialData) {
     formData.value = {
       name: props.initialData.name,
       expires: props.initialData.expires,
       validity_period: props.initialData.validity_period,
-      description: props.initialData.description || ''
+      description: props.initialData.description || '',
+      includes: [...(props.initialData.includes ?? [])]
     }
   } else if (props.typeId) {
     // Fetch single type
-    await qualificationsStore.fetchQualificationTypes()
     const type = qualificationsStore.qualificationTypes.find(t => t.id === props.typeId)
     if (type) {
       formData.value = {
         name: type.name,
         expires: type.expires,
         validity_period: type.validity_period,
-        description: type.description || ''
+        description: type.description || '',
+        includes: [...(type.includes ?? [])]
       }
     }
   }
 })
+
+// E18: every other type may be included (a type never includes itself)
+const includableTypes = computed(() =>
+  qualificationsStore.qualificationTypes
+    .filter((t) => t.id !== (props.typeId ?? props.initialData?.id))
+    .map((t) => ({ label: t.name, value: t.id }))
+)
 
 // Form validation
 const isFormValid = computed(() => {
@@ -159,6 +170,25 @@ const handleCancel = () => {
             :disabled="loading"
             class="w-full"
           />
+        </div>
+
+        <!-- Includes (E18) -->
+        <div class="flex flex-column gap-2">
+          <label for="includes" class="font-semibold">Schließt ein</label>
+          <MultiSelect
+            inputId="includes"
+            v-model="formData.includes"
+            :options="includableTypes"
+            optionLabel="label"
+            optionValue="value"
+            display="chip"
+            placeholder="Keine"
+            :disabled="loading"
+            class="w-full"
+          />
+          <small class="text-gray-600">
+            Wer diese Qualifikation hat, erfüllt auch die hier gewählten (z. B. Truppführer schließt Truppmann ein)
+          </small>
         </div>
 
         <!-- Action Buttons -->
