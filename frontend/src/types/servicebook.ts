@@ -339,3 +339,92 @@ export interface AttendanceReport {
   members: AttendanceReportGroup
   staff: AttendanceReportGroup
 }
+
+/**
+ * PART-02: registrations next to attendance and the mobile overview.
+ */
+export type RegistrationState =
+  | 'expected'
+  | 'no_response'
+  | 'registered'
+  | 'waitlisted'
+  | 'applied'
+  | 'assigned'
+  | 'not_selected'
+  | 'cancelled'
+
+export interface RegistrationSession {
+  id: number
+  mode: string
+  max_participants: number | null
+  deadlines: {
+    registration_closes_at: string | null
+    cancellation_closes_at: string | null
+  }
+}
+
+export interface RegistrationCounts {
+  expected: number
+  registered: number
+  cancelled: number
+  waitlisted: number
+  applied: number
+  assigned: number
+  no_response: number
+  conflicts: number
+  recorded: number
+  guests: number
+}
+
+export interface RegistrationPerson {
+  member_id: number
+  name: string
+  group: string | null
+  state: RegistrationState | null
+  waitlist_position: number | null
+  reason_category: string | null
+  /** Only delivered to responsible staff. */
+  reason_note: string | null
+  source: string | null
+  at: string | null
+  late: boolean
+  conflict: boolean
+  /** false = guest outside the target group. */
+  in_target: boolean
+  attendance: AttendanceState | null
+}
+
+export interface ServiceRegistrations {
+  session: RegistrationSession | null
+  counts: RegistrationCounts
+  people: RegistrationPerson[]
+}
+
+export interface ApplyExcusedPerson {
+  member_id: number
+  name: string
+}
+
+export interface ApplyExcusedPreview {
+  apply: ApplyExcusedPerson[]
+  skipped: Array<ApplyExcusedPerson & { reason: 'has_attendance' | 'not_cancelled' }>
+  applied: number
+}
+
+export interface ServiceOverviewCard {
+  id: number
+  date: string
+  start: string
+  end: string
+  topic: string | null
+  groups: string[]
+  session_id: number | null
+  mode: string | null
+  counts: { expected: number; cancelled: number; recorded: number; total: number }
+}
+
+export interface ServiceOverview {
+  today: ServiceOverviewCard[]
+  upcoming: ServiceOverviewCard[]
+  open: ServiceOverviewCard[]
+}

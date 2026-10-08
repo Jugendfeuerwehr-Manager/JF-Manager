@@ -23,6 +23,9 @@ import type {
   MemberAttendanceParams,
   MemberAttendanceResponse,
   PaginatedResponse,
+  ServiceRegistrations,
+  ApplyExcusedPreview,
+  ServiceOverview,
 } from '@/types/servicebook'
 
 /**
@@ -45,6 +48,23 @@ export const servicesApi = {
       `/servicebook/services/${id}/attendance_board/`,
       data,
     )
+  },
+  /** PART-02: registrations of the linked planned service next to attendance. */
+  getRegistrations(id: number) {
+    return apiClient.get<ServiceRegistrations>(`/servicebook/services/${id}/registrations/`)
+  },
+  /** PART-02: preview (dry_run) or apply cancellations as excused; never overwrites recorded values. */
+  applyExcused(id: number, data: { dry_run: boolean; member_ids?: number[] }) {
+    return apiClient.post<ApplyExcusedPreview>(
+      `/servicebook/services/${id}/registrations/apply-excused/`,
+      data,
+    )
+  },
+  /** PART-02: mobile list buckets (today, upcoming, attendance open). */
+  getOverview(params?: { department?: number | null }) {
+    return apiClient.get<ServiceOverview>('/servicebook/services/overview/', {
+      params: params?.department ? { department: params.department } : undefined,
+    })
   },
   /**
    * Attendance evaluation for members and team within a period

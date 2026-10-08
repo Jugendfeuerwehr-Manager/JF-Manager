@@ -14,6 +14,9 @@
       </template>
     </OverviewHeader>
 
+    <ServiceMobileList v-if="isMobile" :department="departmentsStore.activeDepartmentId" />
+
+    <template v-else>
     <section v-if="todayServices.length" class="today" aria-labelledby="today-title">
       <h2 id="today-title" class="visually-hidden">Heute</h2>
       <article v-for="service in todayServices" :key="service.id" class="today-card">
@@ -89,15 +92,18 @@
       @open-training="handleOpenTraining"
       @page-change="handlePageChange"
     />
-
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import SegmentedControl from '@/components/common/SegmentedControl.vue'
-import { ref, onMounted, onActivated, computed } from 'vue'
+import { ref, onMounted, onActivated, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import ServiceMobileList from '@/components/servicebook/organisms/ServiceMobileList.vue'
+import { useMobile } from '@/composables/useMobile'
+import { useDepartmentsStore } from '@/stores/departments'
 import ServicesList from '@/components/servicebook/organisms/ServicesList.vue'
 import ServiceFilters from '@/components/servicebook/molecules/ServiceFilters.vue'
 import { useServicebookStore } from '@/stores/servicebook'
@@ -112,6 +118,9 @@ import type { Service } from '@/types/servicebook'
 const router = useRouter()
 const servicebookStore = useServicebookStore()
 const authStore = useAuthStore()
+const departmentsStore = useDepartmentsStore()
+/** PART-02.2: below 768px the servicebook shows the mobile list instead of the table list. */
+const { isMobile } = useMobile(768)
 const canViewReport = computed(() => authStore.hasPerm('servicebook.view_attendance') || authStore.hasPerm('servicebook.change_attendance'))
 const { getInt, getString, syncToUrl } = useQueryTableState()
 
@@ -136,15 +145,19 @@ const activeFilterCount = computed(() => [
   filters.value.dateFrom, filters.value.dateTo,
 ].filter(Boolean).length)
 
+async function loadDesktop() {
+  if (isMobile.value) return
+  await Promise.all([loadServices(), loadToday()])
+}
+
 onMounted(async () => {
   filtersOpen.value = activeFilterCount.value > 0
-  await Promise.all([loadServices(), loadToday()])
+  await loadDesktop()
 })
 
 // Refetch services when returning to this view
-onActivated(async () => {
-  await Promise.all([loadServices(), loadToday()])
-})
+onActivated(loadDesktop)
+watch(isMobile, (mobile) => { if (!mobile) void loadDesktop() })
 
 /** Today's services get their own card with the direct way to take attendance. */
 async function loadToday() {
