@@ -14,9 +14,9 @@ export const actionLabels: Record<RowAction, { label: string, icon: string }> = 
   end: { label: 'Zugang beenden', icon: 'pi pi-user-minus' },
 }
 
-/** Which actions apply to a record; members cannot be invited yet. */
+/** Which actions apply to a record (members can be invited once the member portal is released). */
 export function actionsFor(record: Pick<AccessRecord, 'kind' | 'state' | 'email'>): RowAction[] {
-  const canMail = record.kind === 'parent' && !!record.email
+  const canMail = !!record.email
   switch (record.state) {
     case 'none': return canMail ? ['invite'] : []
     case 'expired': return canMail ? ['invite', 'end'] : ['end']
@@ -47,7 +47,7 @@ export function useAccessActions() {
   function perform(action: RowAction, target: { kind: 'parent' | 'member', id: number, invitationId?: number }): Promise<ActionResult> {
     const subject = target.kind === 'parent' ? { parent: target.id } : { member: target.id }
     switch (action) {
-      case 'invite': return store.invite(target.id)
+      case 'invite': return store.invite(target.id, target.kind)
       case 'resend': return store.resend(target.invitationId as number)
       case 'revoke': return store.revoke(target.invitationId as number)
       case 'suspend': return store.suspend(subject)

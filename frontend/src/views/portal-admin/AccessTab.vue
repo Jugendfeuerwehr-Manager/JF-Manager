@@ -15,9 +15,8 @@
     </div>
 
     <div class="bulk">
-      <Button :label="`Ausgewählte einladen (${store.inviteableSelected.length})`" icon="pi pi-send" :disabled="!store.inviteableSelected.length || store.busy" :loading="store.busy" @click="bulk" />
-      <Button v-if="store.kind === 'member'" label="Mitglieder einladen" icon="pi pi-send" disabled />
-      <small v-if="store.kind === 'member'" class="muted">Mitgliederkonten sind noch nicht freigegeben.</small>
+      <Button v-if="store.kind === 'parent'" :label="`Ausgewählte einladen (${store.inviteableSelected.length})`" icon="pi pi-send" :disabled="!store.inviteableSelected.length || store.busy" :loading="store.busy" @click="bulk" />
+      <small v-if="store.kind === 'member'" class="muted">Mitglieder werden einzeln eingeladen, sobald das Mitgliederportal unter „Freigaben“ freigegeben ist.</small>
       <small v-else-if="store.selectedCount > store.inviteableSelected.length" class="muted">Nur Personen ohne Zugang oder mit abgelaufener Einladung werden eingeladen.</small>
     </div>
 

@@ -96,4 +96,12 @@ describe('portalAdmin store', () => {
     await store.loadInvitations()
     expect(store.invitations.map(i => i.id)).toEqual([3, 2, 1])
   })
+
+  it('invites a member through the member payload and surfaces the server reason on 422', async () => {
+    api.invite.mockRejectedValue(apiError(422, 'member_portal_disabled', 'Das Mitgliederportal ist für dieses Mitglied nicht freigegeben.'))
+    const store = usePortalAdminStore()
+    const result = await store.invite(9, 'member')
+    expect(api.invite).toHaveBeenCalledWith(9, 'member')
+    expect(result).toEqual({ ok: false, code: 'member_portal_disabled', message: 'Das Mitgliederportal ist für dieses Mitglied nicht freigegeben.' })
+  })
 })

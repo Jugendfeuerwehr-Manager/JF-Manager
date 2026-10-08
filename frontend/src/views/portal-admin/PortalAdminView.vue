@@ -1,9 +1,10 @@
 <template>
   <div class="portal-admin">
-    <OverviewHeader title="Portal" subtitle="Zugänge, Einladungen und Elternzugriff der Familienportale verwalten" />
+    <OverviewHeader title="Portal" subtitle="Zugänge, Einladungen, Freigaben und Elternzugriff der Familienportale verwalten" />
     <SegmentedControl :model-value="tab" :options="tabs" label="Bereich der Portalverwaltung" class="tabs" @update:model-value="setTab" />
     <AccessTab v-if="tab === 'zugaenge'" />
     <InvitationsTab v-else-if="tab === 'einladungen'" />
+    <ReleasesTab v-else-if="tab === 'freigaben'" />
     <EndingTab v-else />
   </div>
 </template>
@@ -16,17 +17,24 @@ import SegmentedControl from '@/components/common/SegmentedControl.vue'
 import AccessTab from './AccessTab.vue'
 import EndingTab from './EndingTab.vue'
 import InvitationsTab from './InvitationsTab.vue'
+import ReleasesTab from './ReleasesTab.vue'
+import { useAuthStore } from '@/stores/auth'
 
-const tabs = [
+const auth = useAuthStore()
+// The releases tab needs its own right; the server answers 403 otherwise (PORTAL-02.3).
+const tabs = computed(() => [
   { value: 'zugaenge', label: 'Zugänge' },
   { value: 'einladungen', label: 'Einladungen' },
+  ...(auth.hasPerm('portal.view_portalpolicy') || auth.hasPerm('portal.change_portalpolicy')
+    ? [{ value: 'freigaben', label: 'Freigaben' }]
+    : []),
   { value: 'endet', label: 'Elternzugriff endet' },
-]
+])
 const route = useRoute()
 const router = useRouter()
 const tab = computed(() => {
   const value = String(route.query.tab ?? '')
-  return tabs.some(t => t.value === value) ? value : 'zugaenge'
+  return tabs.value.some(t => t.value === value) ? value : 'zugaenge'
 })
 function setTab(value: string) { void router.replace({ query: value === 'zugaenge' ? {} : { tab: value } }) }
 </script>

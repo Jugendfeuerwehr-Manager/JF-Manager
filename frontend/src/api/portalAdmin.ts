@@ -67,15 +67,60 @@ export interface BulkResult { parent: number, result: 'sent' | 'skipped', code?:
 export interface RecordsQuery { kind: AccessKind, state?: AccessState | '', search?: string, limit?: number, offset?: number }
 export interface Subject { parent?: number, member?: number }
 
+export type Audience = 'parents' | 'members'
+export type Visibility = 'visible' | 'hidden'
+export type Ceiling = 'allowed' | 'locked'
+export type MemberPortalMode = 'off' | 'min_age' | 'all'
+export type PerAudience<T> = Partial<Record<Audience, T>>
+
+export interface PolicyCategory { key: string, label: string, hint: string, fixed: boolean, audiences: Audience[] }
+export interface OrganizationPolicy {
+  editable: boolean
+  version: number
+  member_portal_mode: MemberPortalMode
+  member_portal_min_age: number | null
+  effective: Record<string, PerAudience<Visibility>>
+  ceiling: Record<string, PerAudience<Ceiling>>
+}
+export interface DepartmentPolicy {
+  id: number
+  name: string
+  editable: boolean
+  version: number
+  member_portal_mode: '' | MemberPortalMode
+  member_portal_min_age: number | null
+  overrides: Record<string, PerAudience<Visibility>>
+  effective: Record<string, PerAudience<Visibility>>
+  locked: Record<string, PerAudience<boolean>>
+  member_portal: { mode: MemberPortalMode, min_age: number | null, eligible: number, missing_birthday: number }
+}
+export interface PolicyOverview {
+  categories: PolicyCategory[]
+  never_visible: string
+  organization: OrganizationPolicy
+  departments: DepartmentPolicy[]
+}
+export interface PolicyUpdate {
+  version: number
+  visibility?: Record<string, PerAudience<Visibility | ''>>
+  ceiling?: Record<string, PerAudience<Ceiling | ''>>
+  member_portal_mode?: '' | MemberPortalMode
+  member_portal_min_age?: number | null
+}
+
 export const portalAdminApi = {
+  policies() { return apiClient.get<PolicyOverview>('/portal/policies/') },
+  savePolicy(scope: 'org' | number, data: PolicyUpdate) {
+    return apiClient.put<PolicyOverview>(`/portal/policies/${scope}/`, data)
+  },
   records(params: RecordsQuery) {
     return apiClient.get<Paginated<AccessRecord>>('/portal/access/records/', { params })
   },
   detail(subject: Subject) {
     return apiClient.get<AccessDetail>('/portal/access/', { params: subject })
   },
-  invite(parent: number) {
-    return apiClient.post<PortalInvitation>('/portal/invitations/', { parent })
+  invite(id: number, kind: AccessKind = 'parent') {
+    return apiClient.post<PortalInvitation>('/portal/invitations/', kind === 'parent' ? { parent: id } : { member: id })
   },
   resend(id: number) {
     return apiClient.post<PortalInvitation>(`/portal/invitations/${id}/resend/`)
