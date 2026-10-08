@@ -2,10 +2,11 @@
   <section class="attendance-manager" aria-label="Anwesenheit erfassen">
     <div class="manager-head">
       <div class="manager-head__row">
-        <div class="kind-switch" role="group" aria-label="Personengruppe">
+        <div v-if="!fixedKind" class="kind-switch" role="group" aria-label="Personengruppe">
           <button type="button" :aria-pressed="kind === 'member'" @click="kind = 'member'">Teilnehmende ({{ board.members.length }})</button>
           <button type="button" :aria-pressed="kind === 'staff'" @click="kind = 'staff'">Team ({{ board.staff.length }})</button>
         </div>
+        <span v-else class="head-title">{{ kind === 'staff' ? `Betreuende (${board.staff.length})` : `Teilnehmende (${rows.length})` }}</span>
         <span class="save-state" :class="`save-state--${syncState}`" role="status">
           <i :class="syncIcon" aria-hidden="true"></i>{{ syncMessage }}
         </span>
@@ -13,7 +14,7 @@
 
       <div class="progress">
         <div class="progress__labels">
-          <span><strong>{{ marked }}</strong> von {{ people.length }} erfasst</span>
+          <span><strong>{{ marked }}</strong> von {{ rows.length }} erfasst</span>
           <span class="muted">{{ counts.present }} anwesend · {{ counts.excused }} entschuldigt · {{ counts.absent }} {{ counts.absent === 1 ? 'fehlt' : 'fehlen' }}</span>
         </div>
         <div
@@ -21,40 +22,56 @@
           role="progressbar"
           aria-label="Erfasste Anwesenheiten"
           aria-valuemin="0"
-          :aria-valuemax="people.length"
+          :aria-valuemax="rows.length"
           :aria-valuenow="marked"
-          :aria-valuetext="`${marked} von ${people.length} erfasst`"
+          :aria-valuetext="`${marked} von ${rows.length} erfasst`"
         >
-          <div class="progress__bar" :style="{ width: `${people.length ? (marked / people.length) * 100 : 0}%` }"></div>
+          <div class="progress__bar" :style="{ width: `${rows.length ? (marked / rows.length) * 100 : 0}%` }"></div>
         </div>
       </div>
 
       <div class="manager-head__row">
-        <div class="segmented" role="group" aria-label="Anzeige">
-          <button type="button" :aria-pressed="onlyUnmarked" @click="setOnlyUnmarked(true)">Offen ({{ counts.open }})</button>
-          <button type="button" :aria-pressed="!onlyUnmarked" @click="setOnlyUnmarked(false)">Alle ({{ people.length }})</button>
+        <div v-if="!withRegistrations" class="segmented" role="group" aria-label="Anzeige">
+          <button type="button" :aria-pressed="filter === 'open'" @click="setFilter('open')">Offen ({{ counts.open }})</button>
+          <button type="button" :aria-pressed="filter !== 'open'" @click="setFilter('all')">Alle ({{ rows.length }})</button>
+        </div>
+        <div v-else class="chips" role="group" aria-label="Anzeige">
+          <button v-for="chip in chips" :key="chip.value" type="button" class="chip" :aria-pressed="filter === chip.value" @click="setFilter(chip.value)">
+            {{ chip.label }} <strong>{{ chip.count }}</strong>
+          </button>
         </div>
         <InputText v-model="searchQuery" placeholder="Person suchen …" aria-label="Person suchen" class="search" />
       </div>
+      <button v-if="takeoverCount > 0" type="button" class="takeover" @click="emit('takeover')">
+        <i class="pi pi-check-square" aria-hidden="true"></i>{{ takeoverCount }} {{ takeoverCount === 1 ? 'Abmeldung' : 'Abmeldungen' }} als entschuldigt übernehmen
+      </button>
     </div>
 
     <div v-if="loading" class="empty-state"><ProgressSpinner /></div>
     <ul v-else class="people">
-      <li v-for="person in filteredPeople" :key="`${kind}-${person.id}`" class="person">
+      <li v-for="person in filteredPeople" :key="`${kind}-${person.id}`" class="person" :class="{ 'person--suggest': suggestion(person) }">
         <div class="person__identity">
           <span class="person__initials" aria-hidden="true">{{ initials(person.full_name) }}</span>
-          <span class="person__name">{{ person.full_name }}</span>
+          <div class="person__text">
+            <span class="person__name">{{ person.full_name }}</span>
+            <span v-if="person.reg" class="person__registration">
+              <RegistrationStatus :person="person.reg" />
+              <span v-if="person.reg.conflict" class="person__conflict"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Konflikt</span>
+            </span>
+            <span v-if="person.reg && metaLine(person.reg)" class="person__meta">{{ metaLine(person.reg) }}</span>
+          </div>
           <span class="person__state" :class="{ 'person__state--done': person.state }">{{ person.state ? 'erfasst' : 'offen' }}</span>
         </div>
         <AttendanceButtonGroup
           :current-state="person.state"
+          :suggest="suggestion(person) ? AttendanceState.EXCUSED : null"
           :person-name="person.full_name"
           :loading="pending.has(`${kind}-${person.id}`)"
           @select="(state) => update(person, state)"
         />
       </li>
       <li v-if="!filteredPeople.length" class="empty-state">
-        <template v-if="onlyUnmarked && !searchQuery && people.length">Alle Anwesenheiten sind erfasst.</template>
+        <template v-if="filter === 'open' && !searchQuery && rows.length">Alle Anwesenheiten sind erfasst.</template>
         <template v-else>Keine passenden Personen.</template>
       </li>
     </ul>
@@ -75,20 +92,39 @@ import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import AttendanceButtonGroup from '../atoms/AttendanceButtonGroup.vue'
+import RegistrationStatus from '../atoms/RegistrationStatus.vue'
 import { servicesApi } from '@/api/servicebook'
+import { AttendanceState } from '@/types/servicebook'
 import type {
   AttendanceBoard,
   AttendanceBoardPerson,
-  AttendanceState,
+  RegistrationPerson,
+  ServiceRegistrations,
 } from '@/types/servicebook'
+import { formatDateTime, sourceLabel } from '@/utils/registrationState'
 import { getApiErrorMessage } from '@/utils/apiError'
 
-const props = defineProps<{ serviceId: number }>()
+const props = defineProps<{
+  serviceId: number
+  /** Locks the list to one group (service tabs "Anwesenheit" / "Betreuende"). */
+  fixedKind?: 'member' | 'staff'
+  /** Registrations of the linked planned service (PART-02); enables status, chips, guests and suggestions. */
+  registrations?: ServiceRegistrations | null
+}>()
+const emit = defineEmits<{ takeover: [] }>()
+
+type Filter = 'open' | 'all' | 'cancelled' | 'guests'
+interface Row extends AttendanceBoardPerson {
+  reg: RegistrationPerson | null
+  guest: boolean
+}
 const toast = useToast()
 const board = ref<AttendanceBoard>({ members: [], staff: [] })
-const kind = ref<'member' | 'staff'>('member')
+const kind = ref<'member' | 'staff'>(props.fixedKind ?? 'member')
 const searchQuery = ref('')
-const onlyUnmarked = ref(true)
+const filter = ref<Filter>('open')
+/** Attendance set locally for guests that are not on the board yet. */
+const guestStates = ref<Record<number, AttendanceState | null>>({})
 const pending = ref(new Set<string>())
 const loading = ref(true)
 const syncMessage = ref('Wird geladen …')
@@ -106,21 +142,56 @@ let timer: ReturnType<typeof setInterval> | undefined
 let refreshing = false
 let disposed = false
 let revision = 0
-const people = computed(() => (kind.value === 'member' ? board.value.members : board.value.staff))
+const withRegistrations = computed(() => kind.value === 'member' && !!props.registrations)
+const regById = computed(() => new Map((props.registrations?.people ?? []).map((p) => [p.member_id, p])))
+const rows = computed<Row[]>(() => {
+  if (kind.value === 'staff') return board.value.staff.map((p) => ({ ...p, reg: null, guest: false }))
+  const known = new Set(board.value.members.map((m) => m.id))
+  const list: Row[] = board.value.members.map((m) => {
+    const reg = regById.value.get(m.id) ?? null
+    return { id: m.id, full_name: m.full_name, state: m.state, reg, guest: !!reg && !reg.in_target }
+  })
+  for (const reg of props.registrations?.people ?? []) {
+    if (known.has(reg.member_id) || reg.in_target) continue
+    const state = reg.member_id in guestStates.value ? guestStates.value[reg.member_id]! : reg.attendance
+    list.push({ id: reg.member_id, full_name: reg.name, state, reg, guest: true })
+  }
+  return list
+})
+const isOpen = (p: Row) => p.state === null
+const isCancelled = (p: Row) => p.reg?.state === 'cancelled'
+function suggestion(p: Row) {
+  return kind.value === 'member' && isCancelled(p) && p.state === null
+}
+const takeoverCount = computed(() => (withRegistrations.value ? rows.value.filter(suggestion).length : 0))
+const chips = computed<Array<{ value: Filter; label: string; count: number }>>(() => [
+  { value: 'all', label: 'Alle', count: rows.value.length },
+  { value: 'open', label: 'Offen', count: rows.value.filter(isOpen).length },
+  { value: 'cancelled', label: 'Abgemeldet', count: rows.value.filter(isCancelled).length },
+  { value: 'guests', label: 'Gäste', count: rows.value.filter((p) => p.guest).length },
+])
 const filteredPeople = computed(() =>
-  people.value.filter(
-    (p) =>
-      (!onlyUnmarked.value || p.state === null || keepVisible.value.has(`${kind.value}-${p.id}`)) &&
-      p.full_name.toLocaleLowerCase().includes(searchQuery.value.toLocaleLowerCase()),
-  ),
+  rows.value.filter((p) => {
+    const key = `${kind.value}-${p.id}`
+    const byFilter =
+      filter.value === 'all' ||
+      (filter.value === 'open' && (isOpen(p) || keepVisible.value.has(key))) ||
+      (filter.value === 'cancelled' && isCancelled(p)) ||
+      (filter.value === 'guests' && p.guest)
+    return byFilter && p.full_name.toLocaleLowerCase().includes(searchQuery.value.toLocaleLowerCase())
+  }),
 )
-const marked = computed(() => people.value.filter((p) => p.state !== null).length)
+const marked = computed(() => rows.value.filter((p) => p.state !== null).length)
 const counts = computed(() => ({
-  present: people.value.filter((p) => p.state === 'A').length,
-  excused: people.value.filter((p) => p.state === 'E').length,
-  absent: people.value.filter((p) => p.state === 'F').length,
-  open: people.value.filter((p) => p.state === null).length,
+  present: rows.value.filter((p) => p.state === 'A').length,
+  excused: rows.value.filter((p) => p.state === 'E').length,
+  absent: rows.value.filter((p) => p.state === 'F').length,
+  open: rows.value.filter(isOpen).length,
 }))
+
+function metaLine(reg: RegistrationPerson) {
+  return [sourceLabel(reg.source), formatDateTime(reg.at)].filter(Boolean).join(' · ')
+}
 
 async function refresh() {
   if (refreshing || disposed || pending.value.size) return
@@ -153,7 +224,7 @@ async function refresh() {
   }
 }
 
-async function update(person: AttendanceBoardPerson, state: AttendanceState) {
+async function update(person: Row, state: AttendanceState) {
   const selectedKind = kind.value
   const key = `${selectedKind}-${person.id}`
   if (pending.value.has(key)) return
@@ -162,8 +233,8 @@ async function update(person: AttendanceBoardPerson, state: AttendanceState) {
   const next = previous === state ? null : state
   pending.value.add(key)
   revision++
-  person.state = next
-  if (onlyUnmarked.value) keepVisible.value.add(key)
+  setLocalState(person, next)
+  if (filter.value === 'open') keepVisible.value.add(key)
   syncState.value = 'saving'
   syncMessage.value = 'Speichert …'
   try {
@@ -176,7 +247,7 @@ async function update(person: AttendanceBoardPerson, state: AttendanceState) {
     syncState.value = 'saved'
     syncMessage.value = 'Gespeichert'
   } catch (error) {
-    person.state = previous
+    setLocalState(person, previous)
     syncState.value = 'error'
     syncMessage.value = 'Nicht gespeichert'
     toast.add({
@@ -195,10 +266,22 @@ async function update(person: AttendanceBoardPerson, state: AttendanceState) {
   }
 }
 
-function setOnlyUnmarked(value: boolean) {
-  onlyUnmarked.value = value
+function setLocalState(person: Row, state: AttendanceState | null) {
+  const onBoard = (kind.value === 'staff' ? board.value.staff : board.value.members).find((p) => p.id === person.id)
+  if (onBoard) onBoard.state = state
+  else guestStates.value = { ...guestStates.value, [person.id]: state }
+}
+
+function setFilter(value: Filter) {
+  filter.value = value
   keepVisible.value = new Set()
 }
+
+async function reload() {
+  guestStates.value = {}
+  await refresh()
+}
+defineExpose({ refresh: reload })
 
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
@@ -214,6 +297,7 @@ onMounted(() => {
   }, 3000)
   document.addEventListener('visibilitychange', onVisibility)
 })
+watch(() => props.registrations, () => { guestStates.value = {} })
 watch(
   () => props.serviceId,
   () => {
@@ -280,6 +364,47 @@ onUnmounted(() => {
   box-shadow: 0 1px 2px rgba(23, 32, 51, 0.12);
 }
 .search { flex: 1 1 200px; }
+.head-title { font-weight: var(--jf-weight-bold); font-size: var(--jf-text-md); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--jf-space-1); flex: 1 1 100%; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 var(--jf-space-1-5);
+  border: 1px solid var(--p-surface-300);
+  border-radius: 999px;
+  background: var(--jf-color-card);
+  color: var(--jf-color-text);
+  font: inherit;
+  font-size: var(--jf-text-sm);
+  cursor: pointer;
+}
+.chip[aria-pressed='true'] { border-color: var(--jf-color-primary); background: var(--jf-color-selected); color: var(--jf-color-selected-text); font-weight: var(--jf-weight-semibold); }
+.takeover {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--jf-space-1);
+  min-height: 3rem;
+  padding: 0 var(--jf-space-2);
+  border: 1px dashed var(--jf-color-primary);
+  border-radius: var(--jf-radius-md);
+  background: transparent;
+  color: var(--jf-color-primary);
+  font: inherit;
+  font-weight: var(--jf-weight-semibold);
+  cursor: pointer;
+}
+.person--suggest { border-style: dashed; }
+.person__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.person__registration { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); }
+.person__conflict { display: inline-flex; align-items: center; gap: 4px; font-size: var(--jf-text-sm); color: var(--p-amber-900); font-weight: var(--jf-weight-semibold); }
+.app-dark .person__conflict { color: var(--p-amber-300); }
+.person__meta { display: none; font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
+@media (min-width: 768px) {
+  .person__meta { display: block; }
+}
 .save-state {
   display: inline-flex;
   align-items: center;
@@ -348,7 +473,7 @@ onUnmounted(() => {
   font-size: 0.8125rem;
   font-weight: var(--jf-weight-bold);
 }
-.person__name { flex: 1; min-width: 0; font-weight: var(--jf-weight-semibold); overflow-wrap: anywhere; }
+.person__name { min-width: 0; font-weight: var(--jf-weight-semibold); overflow-wrap: anywhere; }
 .person__state { font-size: 0.8125rem; color: var(--jf-color-text-muted); }
 .person__state--done { color: var(--p-green-800); }
 .app-dark .person__state--done { color: var(--p-green-300); }
