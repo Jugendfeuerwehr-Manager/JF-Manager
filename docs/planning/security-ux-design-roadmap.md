@@ -593,9 +593,9 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | DOC-01 | abgeschlossen (aktueller Verwaltungsumfang) | Codex (Handbuch) | DOC-01.4: rollenbasiertes Handbuch/README ausgeliefert, zwölf aktuelle Demoabbildungen; statische Website und ZIP geprüft. Pages vorbereitet, nicht veröffentlicht. Portal/Teilnahme nach deren Fachabnahme ergänzen. Globale Backend-Formatprüfung: 58 vorbestehende Dateien mit Befund. |
 | PORTAL-01 | abgenommen | Claude (Portal-Sitzung) | PORTAL-01.7 Paketabnahme: PostgreSQL 17 1044/1044 bestanden; Browserabnahme bestanden; offen nur echte E-Mail-Zustellung (SMTP) als Nutzerabnahme. |
 | PORTAL-02 | abgenommen | Claude (Portal-Sitzung, Frontend per Subagent) | PORTAL-02.5: PostgreSQL 17 1044/1044 (Backend-Stand inkl. 02.1/02.2), Frontend 420/420, Browser bestanden. |
-| PORTAL-03 | geplant | — | Änderungsanträge mit feldweiser Freigabe. |
+| PORTAL-03 | in Arbeit | Claude (Portal-Sitzung) | PORTAL-03.0 Detailblock; als Nächstes 03.1 Modelle. |
 | PART-01 | abgenommen | Claude (Portal-Sitzung, per Subagenten) | PART-01.6: PostgreSQL 17 1247/1247 inkl. Nebenläufigkeit, Browser Planer/Portal/Quick Action. |
-| PART-02 | geplant | — | Meldestatus im Dienstbuch, mobil zuerst (Abstimmung UX-04), Übernahme „entschuldigt“ als Bottom-Sheet. |
+| PART-02 | in Arbeit | Claude (Portal-Sitzung, per Subagenten) | PART-02.0 Detailblock; Backend 02.1 und Frontend 02.2–02.4 parallel. |
 | PART-03 | abgenommen | Claude (Portal-Sitzung, Subagent) | PART-03.6: PostgreSQL 17, Browser Konfigurator mit Vorschau; offen (klein): Hinweise „erfüllt durch …“ in der Vorschau anzeigen. |
 | PART-04 | geplant | — | Positionen, Mindestbesetzung, Warteliste, Zuteilungsboard, Besetzungsvorlagen. |
 | NOTIF-01 | abgenommen | Claude (Portal-Sitzung) | NOTIF-01.6: PostgreSQL 17, echter Mailweg mit Quick Action im Browser; offen: echter SMTP-/Push-Versand als Nutzerabnahme. |
@@ -1456,6 +1456,31 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** Subagenten PART-01.5 und PART-03.5 in eigenen Worktrees.
 - **Nächster konkreter Schritt:** `NOTIF-01.6` gemeinsam mit `PART-01.6`/`PART-03.6` abnehmen (PostgreSQL, Browser Ende-zu-Ende).
 
+### PART-02: Dienstbuch-Integration (mobil zuerst)
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Portal-Sitzung); Backend und Frontend je per Subagent in eigenen Worktrees, geprüft und per Cherry-Pick übernommen.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Abhängigkeiten:** PART-01 (Meldungen), PART-03.5 (Konflikte), UX-04 (mobile Erfassung, Design-Sitzung; gemeinsame Bausteine werden wiederverwendet bzw. angelegt), DES-01, bestehende Anwesenheits-API mit Konfliktprüfung; Konzept 4.8, 4.8.1, E9, Mockups „Dienstbuch · Meldungen & Anwesenheit“, „Dienstbuch mobil · Liste/Meldungen/Anwesenheit/Übernahme“.
+- **Ziel und Abnahmekriterien:** Meldungsübersicht am Dienstbucheintrag mit verknüpftem geplantem Dienst (Zähler, Liste mit Meldung/Grundkategorie/Kurztext nur für Verantwortliche/gemeldet von/Anwesenheit); mobile Liste Heute/Demnächst/Anwesenheit offen mit Zählern; Dienst-Reiter Meldungen · Anwesenheit · Betreuende · Vorkommnisse; Anwesenheitszeilen mit Meldestatus (Symbol+Text), A/E/F ≥ 48 px, gemeldete Gäste automatisch in der Liste; „Abmeldungen als entschuldigt übernehmen“ als Bottom-Sheet mit Vorschau, nur ohne vorhandene Anwesenheit, über die bestehende Konfliktprüfung, nie automatisch; Portalkonten ohne Zugriff (403); 360 px ohne horizontales Scrollen, Dunkelmodus, 200 % Zoom.
+- **Teilschritte mit stabilen IDs:** `PART-02.0` Detailblock; `PART-02.1` Meldungs- und Übersichtsendpunkte, Übernahme „entschuldigt“ (Backend); `PART-02.2` mobile Liste und Dienst-Reiter; `PART-02.3` Meldungsansicht, Anwesenheitszeilen mit Meldestatus, Gäste, Desktop als breite Variante; `PART-02.4` Übernahme-Sheet; `PART-02.5` Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** `PART-02.0` mit diesem Commit.
+- **Umgesetzte Teilschritte:** `PART-02.0`.
+- **Offene Fehler / Risiken:** Die Design-Sitzung arbeitet am selben Bereich (UX-04); Übernahme mit Abgleich gegen deren Commits.
+- **Nächster konkreter Schritt:** `PART-02.1` und `PART-02.2`–`02.4` parallel.
+
+### PORTAL-03: Änderungsanträge
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Portal-Sitzung); Backend selbst, Frontend per Subagent.
+- **Branch:** `feat/security-roles-training-operations`.
+- **Abhängigkeiten:** PORTAL-01/02 (Personenbindung, Selbstauskunft, Bereich „Portal“), NOTIF-01 (Aufgabe für Prüfende, Mitteilung an Antragstellende, Quick Actions `cr_apply`/`cr_review`), ROLE-01 (Recht `portal.review_changerequest` nur über Vorlagenvergleich, D9); Konzept 4.4, E2, D9, Mockups „Portal · Daten & Änderungsantrag“, „Änderungsanträge prüfen“.
+- **Ziel und Abnahmekriterien:** Antragsfähige Felder nur Name und Kontakt (Mitglied: Vorname, Nachname, E-Mail, Telefon, Mobil, Straße, PLZ, Ort; Elterndatensatz zusätzlich E-Mail 2); je Zielperson höchstens ein offener Antrag, Bearbeiten aktualisiert ihn (Version), Zurückziehen möglich; Antrag speichert alt/neu, Prüfansicht zeigt aktuell und markiert Konflikte (aktuell ≠ alt) zur ausdrücklichen Entscheidung; feldweise übernehmen/ablehnen mit optionaler Nachricht, atomare Übernahme mit Sperre und Änderungsprotokoll; Validierung (E-Mail, Telefon, PLZ, Längen, HTML/Steuerzeichen entfernt, Formelpräfixe bleiben Text); Prüfende nur mit Recht in einer Abteilung der Person (Eltern: Abteilungen der Kinder), eigene Anträge nie selbst freigeben; Benachrichtigung Prüfende (Aufgabe, E-Mail) und Antragstellende (Entscheidung).
+- **Teilschritte mit stabilen IDs:** `PORTAL-03.0` Detailblock; `PORTAL-03.1` Modelle, Validierung, ein offener Antrag je Ziel; `PORTAL-03.2` Portal-API (Backend) und Formular (Frontend); `PORTAL-03.3` Prüf-Postfach mit feldweiser Entscheidung, Konfliktanzeige, atomarer Übernahme, Vier-Augen; `PORTAL-03.4` Benachrichtigungen und Quick Actions; `PORTAL-03.5` Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** `PORTAL-03.0` mit diesem Commit.
+- **Umgesetzte Teilschritte:** `PORTAL-03.0`.
+- **Nächster konkreter Schritt:** `PORTAL-03.1`.
+
 ### PART-01: Teilnahme an geplanten Diensten
 
 - **Status:** in Arbeit.
@@ -2023,3 +2048,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 08.10.2026 | NOTIF-01.5d | Mitteilungs-Einstellungen, Portal-Glocke und Portal-Push übernommen (Details im Detailblock NOTIF-01). | Subagent: Frontend 509/509; Hauptstand kombiniert 536/536, Typecheck, ESLint. Nicht ausgeführt: Browser (folgt in NOTIF-01.6). | Dieser Commit: `feat(NOTIF-01.5d): manage notification settings and show portal notices` | NOTIF-01.5c, NOTIF-01.6 |
 | 08.10.2026 | NOTIF-01.5c | Elternzugriff endet, Einladung angenommen, Tageszusammenfassung (Details im Detailblock NOTIF-01). Befund im Test: `queue_email` meldete auch bereits vorhandene Ereignisse als neu eingereiht; korrigiert. | Bestanden: 3/3 neue Tests (Warnung genau einmal trotz täglicher Wiederholung, Aufgabe für Einladende, Annahme-Hinweis, Zusammenfassung einmal pro Tag), `notifications participation portal settings_manager` 364/364, Ruff. Nicht ausgeführt: bats. | Dieser Commit: `feat(NOTIF-01.5c): warn before parent access ends and send a daily registration digest` | NOTIF-01.6 |
 | 08.10.2026 | PART-01.6 / PART-03.6 / NOTIF-01.6 | Gemeinsame Paketabnahme. PostgreSQL 17 (eigener Container, frische Testdatenbank): voller CI-Modullauf. Browser (Chrome, Scratch-Instanz mit frischen Demodaten und Datei-Mailversand): Seed erzeugt Portal-Hinweise „Neuer Termin“ (E19); Ausgang versendet 3 Mails (Betreff korrekt kodiert); Abmeldelink aus der echten Elternmail ohne Sitzung → Login → zurück zur Bestätigungsseite (Mockup) → Grund „Urlaub“ → „Mila Hartmann ist abgemeldet“; erneuter Aufruf zeigt den aktuellen Stand; Portal-Glocke „Hinweise, 2 neu“ mit Liste; Leitung Mitte sieht „1 Abmeldung …“ im Eingang mit Zähler, auch dunkel. Korrekturen aus der Abnahme: Punkt direkt hinter dem Abmeldelink in der Mail-Fußzeile entfernt (Mailprogramme nahmen ihn in die URL auf); Pluralform „1 ungelesener Hinweis“ im Eingang. | Bestanden: PostgreSQL 1247/1247; Browser ohne API-Fehler; Eingangstests 5/5. Nicht ausgeführt: echter SMTP- und Push-Versand, echtes Mobilgerät, bats. | Dieser Commit: `test(NOTIF-01.6): accept participation and notification packages` | PART-02, PART-04, PORTAL-03, PORTAL-04 |
+| 08.10.2026 | PART-02.0 / PORTAL-03.0 | Nutzerauftrag: mit PART-02 und PORTAL-03 parallel fortfahren, danach PART-04 und PORTAL-04. Detailblöcke mit Abnahme, Abhängigkeiten und Teilschritten angelegt. | Nur Dokumentation. | Dieser Commit: `docs(PART-02.0): plan servicebook integration and change requests` | PART-02.1, PORTAL-03.1 |
