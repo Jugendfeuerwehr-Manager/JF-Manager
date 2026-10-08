@@ -121,7 +121,25 @@ export interface PortalAbsenceResult {
   skipped: { id: number, title: string, date: string, start_time: string | null, code: string, detail: string }[]
 }
 
+export interface PortalNotice {
+  id: number
+  kind: string
+  category?: string
+  type?: string
+  title: string
+  count?: number
+  link: string
+  updated_at: string
+  read: boolean
+}
+
 export const portalApi = {
+  notifications() {
+    return apiClient.get<{ results: PortalNotice[], unread: number }>('/portal/notifications/')
+  },
+  markNotificationRead(id: number) {
+    return apiClient.post(`/portal/notifications/${id}/read/`)
+  },
   sessions(person: number, params?: { from?: string, to?: string }) {
     return apiClient.get<{ person: number, sessions: PortalSessionItem[] }>('/portal/sessions/', { params: { person, ...params } })
   },

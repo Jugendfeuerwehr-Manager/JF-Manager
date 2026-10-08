@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import { brandingApi } from '@/api/branding'
+import PortalNoticeBell from '@/components/portal/PortalNoticeBell.vue'
 import PortalPersonSwitcher from '@/components/portal/PortalPersonSwitcher.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePortalStore } from '@/stores/portal'
@@ -49,7 +50,10 @@ onMounted(() => {
             <span class="hello">Hallo{{ firstName ? ` ${firstName}` : '' }}</span>
           </div>
         </div>
-        <Button class="logout" icon="pi pi-sign-out" label="Abmelden" text size="small" aria-label="Abmelden" @click="auth.logout()" />
+        <div class="actions">
+          <PortalNoticeBell />
+          <Button class="logout" icon="pi pi-sign-out" label="Abmelden" text size="small" aria-label="Abmelden" @click="auth.logout()" />
+        </div>
       </div>
       <PortalPersonSwitcher />
     </header>
@@ -76,6 +80,7 @@ onMounted(() => {
 .brand-text { display: flex; flex-direction: column; min-width: 0; }
 .org { font-size: 12px; color: var(--p-text-muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hello { font-size: 16px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actions { display: flex; align-items: center; gap: 8px; flex: none; }
 .logout { display: none; min-height: 44px; }
 .content { order: 2; flex: 1; width: 100%; max-width: 40rem; margin: 0 auto; padding: 16px 16px 88px; box-sizing: border-box; }
 .nav { order: 3; position: fixed; left: 0; right: 0; bottom: 0; height: 72px; box-sizing: content-box; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--p-content-background); border-top: 1px solid var(--p-content-border-color); padding-bottom: env(safe-area-inset-bottom); z-index: 10; }

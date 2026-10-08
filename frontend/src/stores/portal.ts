@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { portalApi, type PortalAbsencePayload, type PortalAbsencePreviewRow, type PortalAbsenceResult, type PortalRegistrationPayload, type PortalSessionItem, type PortalMe, type PortalPersonData, type InvitationInfo, type AcceptInvitationPayload } from '@/api/portal'
+import { portalApi, type PortalAbsencePayload, type PortalAbsencePreviewRow, type PortalAbsenceResult, type PortalRegistrationPayload, type PortalSessionItem, type PortalMe, type PortalPersonData, type InvitationInfo, type PortalNotice, type AcceptInvitationPayload } from '@/api/portal'
 import { getApiErrorMessage } from '@/utils/apiError'
 
 export interface PortalActionError { status?: number, code: string, message: string, reasons: string[], sessionId?: number }
@@ -238,7 +238,28 @@ export const usePortalStore = defineStore('portal', () => {
     }
   }
 
+  const notices = ref<PortalNotice[]>([])
+  const unreadNotices = ref(0)
+  async function loadNotices() {
+    try {
+      const { data } = await portalApi.notifications()
+      notices.value = data.results
+      unreadNotices.value = data.unread
+    } catch { /* the bell keeps its last state */ }
+  }
+  async function markNoticeRead(id: number) {
+    const notice = notices.value.find(n => n.id === id)
+    if (!notice || notice.read) return
+    notice.read = true
+    unreadNotices.value = Math.max(0, unreadNotices.value - 1)
+    try { await portalApi.markNotificationRead(id) } catch {
+      notice.read = false
+      unreadNotices.value += 1
+    }
+  }
+
   return {
+    notices, unreadNotices, loadNotices, markNoticeRead,
     sessions, sessionsPersonId, sessionsLoaded, sessionsLoading, sessionsError, pendingSessionIds, actionError, loadSessions, setRegistration,
     absencePreview, absenceBusy, absenceError, previewAbsence, createAbsence, resetAbsence,
     me, loading, error, fetchMe, personData, personLoading, personError, loadPerson, selectedPersonId, selectedPerson, selectPerson,

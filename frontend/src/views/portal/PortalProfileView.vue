@@ -4,6 +4,8 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Password from 'primevue/password'
 import Select from 'primevue/select'
+import NotificationPreferences from '@/components/notifications/NotificationPreferences.vue'
+import PortalPushCard from '@/components/portal/PortalPushCard.vue'
 import MfaSettings from '@/components/MfaSettings.vue'
 import SessionDevices from '@/components/security/SessionDevices.vue'
 import { authApi } from '@/api/auth'
@@ -57,6 +59,9 @@ async function changePassword() {
       <label for="p-theme">Farbschema</label>
       <Select input-id="p-theme" :model-value="themeMode" :options="themes" option-label="label" option-value="value" class="theme-select" @update:model-value="setMode" />
     </section>
+
+    <section class="card"><NotificationPreferences portal /></section>
+    <PortalPushCard />
 
     <section class="card" aria-labelledby="pwd">
       <h2 id="pwd">Passwort ändern</h2>
