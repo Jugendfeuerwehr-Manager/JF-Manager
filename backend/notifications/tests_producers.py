@@ -142,3 +142,23 @@ class ProducerTests(TestCase):
         self.assertTrue(item.title.startswith("Abgesagt"))
         deliver_emails()
         self.assertTrue(any("fällt aus" in m.body for m in mail.outbox))
+
+    def test_mail_links_resolve_for_the_addressed_account(self):
+        import re
+
+        from rest_framework.test import APIClient
+
+        self.publish()
+        deliver_emails()
+        tokens = re.findall(r"/a/([\w:.-]+)", mail.outbox[0].body)
+        self.assertTrue(tokens)
+        client = APIClient()
+        client.force_authenticate(self.parent_user)
+        actions = {
+            t: client.post("/api/v1/actions/resolve/", {"token": t}, format="json").json().get("action") for t in tokens
+        }
+        cancel = [t for t, action in actions.items() if action == "cancel"]
+        self.assertTrue(cancel, f"Abmeldelink fehlt oder ist nicht auflösbar: {actions}")
+        other = APIClient()
+        other.force_authenticate(self.leader)
+        self.assertEqual(other.post("/api/v1/actions/resolve/", {"token": cancel[0]}, format="json").status_code, 403)

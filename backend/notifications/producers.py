@@ -66,11 +66,9 @@ def _frontend(path):
 
 
 def _link(user, action, objects, route, expires_at=None):
-    """Signed quick-action link (NOTIF-01.4) when available, else the plain route."""
-    try:
-        from .actions import make_link
-    except ImportError:  # pragma: no cover - before NOTIF-01.4
-        return _frontend(route)
+    """Signed quick-action link (NOTIF-01.4); ``route`` documents the target for readers."""
+    from .actions import make_link
+
     return make_link(user, action, objects, expires_at)
 
 
@@ -116,12 +114,11 @@ def _participant_mail(
     kind, user, relation, member, session, participation, *, title, extra, withdraw, event_key, bundle_key=""
 ):
     route = f"/portal/termine/{session.pk}"
-    objects = {"session": session.pk, "member": member.pk}
-    open_url = _link(user, "open", objects, route)
+    open_url = _link(user, "open", {"r": route}, route)
     withdraw_action, withdraw_label = withdraw
-    withdraw_url = _link(
-        user, withdraw_action, {**objects, "kind": kind} if withdraw_action == "unsubscribe" else objects, route
-    )
+    # Registry keys (NOTIF-01.4): participation actions take session "s" and member "m", unsubscribe the kind "k".
+    objects = {"k": kind} if withdraw_action == "unsubscribe" else {"s": session.pk, "m": member.pk}
+    withdraw_url = _link(user, withdraw_action, objects, route)
     actions = [{"label": "Termin ansehen", "url": open_url, "style": "secondary"}]
     if withdraw_action != "unsubscribe":
         actions.append({"label": withdraw_label, "url": withdraw_url, "style": "primary"})
@@ -334,7 +331,7 @@ def _staff_cancellation(registration, session, member, participation, stamp):
         return  # earlier cancellations go into the daily digest (NOTIF-01.5c)
     seated = Registration.objects.filter(session=session).exclude(state="cancelled").count()
     for user in primary:
-        open_url = _link(user, "open", {"session": session.pk}, route)
+        open_url = _link(user, "open", {"r": route}, route)
         context = {
             **common_context(
                 user, open_url=open_url, actions=[{"label": "Meldungen ansehen", "url": open_url, "style": "primary"}]
@@ -385,7 +382,7 @@ def on_eligibility_conflict(sender, session, registration_ids, **kwargs):
     ]
     key = "-".join(str(r.pk) for r in registrations)
     for user in primary:
-        open_url = _link(user, "open", {"session": session.pk}, route)
+        open_url = _link(user, "open", {"r": route}, route)
         context = {
             **common_context(
                 user, open_url=open_url, actions=[{"label": "Meldungen ansehen", "url": open_url, "style": "primary"}]
