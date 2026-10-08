@@ -178,7 +178,7 @@ confirm_yes "Container anlegen und JF-Manager darin installieren?" || die "$EX_A
 # --- Changes ----------------------------------------------------------------------------
 if [ -z "$template" ]; then
     step "Template $template_name laden"
-    pveam download "$CT_TEMPLATE_STORAGE" "$template_name" >/dev/null
+    (umask 022; pveam download "$CT_TEMPLATE_STORAGE" "$template_name") >/dev/null
     template="$CT_TEMPLATE_STORAGE:vztmpl/$template_name"
 fi
 
@@ -188,7 +188,9 @@ create_args=(--hostname "$CT_HOSTNAME" --ostype debian --unprivileged 1 --featur
     --rootfs "$CT_STORAGE:$CT_DISK_GB" --net0 "$net0" --onboot 1
     --description "JF-Manager $JF_VERSION (jfctl, nativer Betrieb)")
 [ -n "$CT_DNS" ] && create_args+=(--nameserver "$CT_DNS")
-pct create "$CT_ID" "$template" "${create_args[@]}" >/dev/null
+# Proxmox unpacks the template as the mapped container root (uid 100000): with the
+# restrictive umask of this script the new rootfs would not be writable for it.
+(umask 022; pct create "$CT_ID" "$template" "${create_args[@]}") >/dev/null
 pct start "$CT_ID"
 ok "Container gestartet"
 

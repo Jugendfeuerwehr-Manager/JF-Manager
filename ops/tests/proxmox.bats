@@ -22,6 +22,7 @@ case "$1" in
   list) echo "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst 123" ;;
 esac'
     jf_stub pct 'echo "pct $*" >>"$BATS_TEST_TMPDIR/calls"
+[ "$1" = create ] && echo "pct-create-umask $(umask)" >>"$BATS_TEST_TMPDIR/calls"
 case "$1" in
   status) [ -n "${CT_TAKEN:-}" ] && exit 0; exit 2 ;;
   push) cp "$3" "$BATS_TEST_TMPDIR/pushed-$(basename "$4")"; stat -c %a "$3" >"$BATS_TEST_TMPDIR/pushed-$(basename "$4").mode" ;;
@@ -52,6 +53,8 @@ ANS
     run "$OPS_DIR/proxmox/jf-lxc.sh" --release-dir "$rel" --answers "$ans" --yes
     [ "$status" -eq 0 ]
     grep -q "pct create 123 local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst .*--unprivileged 1 --features nesting=1" "$BATS_TEST_TMPDIR/calls"
+    # the mapped container root must be able to write the new rootfs (real PVE 9 run)
+    grep -q "pct-create-umask 0022" "$BATS_TEST_TMPDIR/calls"
     grep -q "pct exec 123 -- /root/jf-release/jf-manager-1.0.0/ops/jfctl install --answers /root/jf-answers.env --yes" "$BATS_TEST_TMPDIR/calls"
     grep -q "pct exec 123 -- rm -f /root/jf-answers.env" "$BATS_TEST_TMPDIR/calls"
     grep -q "^JF_MODE=native" "$BATS_TEST_TMPDIR/pushed-jf-answers.env"
