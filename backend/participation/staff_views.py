@@ -171,7 +171,10 @@ class SessionConfigView(StaffView):
     def put(self, request, session_id):
         self.session_for(request, session_id, write=True)
         with transaction.atomic():
-            session = TrainingSession.objects.select_for_update().select_related("department").get(pk=session_id)
+            # Lock only the session row: PostgreSQL rejects FOR UPDATE on the nullable side of an outer join.
+            session = (
+                TrainingSession.objects.select_for_update(of=("self",)).select_related("department").get(pk=session_id)
+            )
             participation, _ = service.participation_for(session)
             serializer = ConfigSerializer(
                 data=request.data, context={"participation": participation, "session": session}
