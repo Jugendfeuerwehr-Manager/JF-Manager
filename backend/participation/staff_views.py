@@ -16,7 +16,7 @@ from portal.permissions import StaffAccountRequired
 from training.api.permissions import can_manage_training_department
 from training.models import TrainingSession
 
-from . import service, states
+from . import changes, service, states
 from .eligibility import neutral_audience_notice
 from .models import Mode, Registration, WaitlistMode
 from .rules import Names, summarize, validate_rule
@@ -190,6 +190,7 @@ class SessionConfigView(StaffView):
                     current=config_payload(session, participation),
                 )
                 return error_response(error)
+            previous_mode = participation.mode
             if "eligibility" in data and data["eligibility"] is None:
                 data["eligibility"] = {}
             for name, value in data.items():
@@ -198,6 +199,7 @@ class SessionConfigView(StaffView):
                 participation.max_participants = None
             participation.revision += 1
             participation.save()
+            changes.apply_mode_change(session, previous_mode, participation)
             service.promote_waitlist(session, participation)
         return Response(config_payload(session, participation))
 

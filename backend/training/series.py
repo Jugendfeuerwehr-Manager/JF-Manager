@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from participation.copying import copy_configuration
 from training.api.permissions import can_manage_training_department
 from training.api.plan import advance_revision, delete_plan_blocks
 from training.api.validation import validate_block_times, validate_session_times
@@ -209,6 +210,7 @@ def generate_missing(root, children, data, user):
             )
             child.series_baseline_hash = snapshot_hash(child)
             child.save(update_fields=["series_baseline_hash"])
+            copy_configuration(root, child)
             created.append(child.pk)
     return {"created": len(created), "session_ids": created}, preview
 
