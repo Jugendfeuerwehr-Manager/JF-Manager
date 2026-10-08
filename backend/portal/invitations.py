@@ -23,6 +23,7 @@ from dynamic_preferences.registries import global_preferences_registry
 from members.models import Member, Parent
 
 from .models import AccountLink, Invitation
+from .policy import member_portal_allowed
 
 INVITE_PERMISSION = "portal.invite_portal_account"
 security_log = logging.getLogger("security.portal")
@@ -39,14 +40,6 @@ def hash_token(raw):
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def member_portal_allowed(member):
-    """Whether a member may get an own portal account (D2/D3).
-
-    The organisation default is "off" until the portal policy exists (PORTAL-02.1).
-    """
-    return False
-
-
 # --------------------------------------------------------------------- scope
 def record_department_ids(record):
     if isinstance(record, Parent):
@@ -56,22 +49,26 @@ def record_department_ids(record):
     return set(record.departments.values_list("pk", flat=True))
 
 
-def inviting_department_ids(user):
-    """Departments where ``user`` may invite; None means every department."""
+def departments_with_permission(user, permission):
+    """Departments where ``user`` holds ``permission``; None means every department."""
     if user.is_superuser:
         return None
-    org_wide = user.has_perm("departments.can_access_all_departments")
-    if org_wide and user.has_perm(INVITE_PERMISSION):
+    if user.has_perm("departments.can_access_all_departments") and user.has_perm(permission):
         return None
     assigned = set(user.department_roles.values_list("department_id", flat=True))
-    if user.has_perm(INVITE_PERMISSION):
+    if user.has_perm(permission):
         return assigned
-    app_label, codename = INVITE_PERMISSION.split(".")
+    app_label, codename = permission.split(".")
     return set(
         user.department_roles.filter(
             groups__permissions__content_type__app_label=app_label, groups__permissions__codename=codename
         ).values_list("department_id", flat=True)
     )
+
+
+def inviting_department_ids(user):
+    """Departments where ``user`` may invite; None means every department."""
+    return departments_with_permission(user, INVITE_PERMISSION)
 
 
 def may_invite(user, record):

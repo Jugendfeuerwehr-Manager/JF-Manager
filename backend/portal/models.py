@@ -164,3 +164,43 @@ class ParentAccessExtension(models.Model):
 
     def __str__(self):
         return f"{self.parent} → {self.member} bis {self.until:%d.%m.%Y}"
+
+
+class PortalPolicy(models.Model):
+    """What parents and members see, and who gets a member account (PORTAL-02, E7, D3).
+
+    ``department`` NULL is the organisation row: defaults plus ceiling. Department
+    rows only hold their deviations; an empty value inherits the organisation.
+    """
+
+    MEMBER_PORTAL_MODES = [
+        ("", "Wie Organisation"),
+        ("off", "Keine Mitgliederkonten"),
+        ("min_age", "Ab Alter"),
+        ("all", "Alle"),
+    ]
+
+    department = models.OneToOneField(
+        "departments.Department", null=True, blank=True, on_delete=models.CASCADE, related_name="portal_policy"
+    )
+    member_portal_mode = models.CharField(max_length=10, choices=MEMBER_PORTAL_MODES, blank=True, default="")
+    member_portal_min_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    visibility = models.JSONField(default=dict, blank=True)
+    ceiling = models.JSONField(default=dict, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = "Portal-Freigabe"
+        verbose_name_plural = "Portal-Freigaben"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["department"], condition=models.Q(department__isnull=True), name="one_org_portal_policy"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Portal-Freigabe {self.department or 'Organisation'}"

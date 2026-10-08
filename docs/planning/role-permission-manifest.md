@@ -8,7 +8,7 @@ Jede Vorlage erhält einen unveränderlichen Schlüssel, Anzeigenamen, Beschreib
 
 | Schlüssel | Anzeigename | Bereich | Anfangs delegierbar | Permission-Bausteine |
 | --- | --- | --- | --- | --- |
-| `youth_director` | Jugendwart | Organisation | nein | `member_editor`, `parent_editor`, `portal_inviter`, `group_editor`, `list_editor`, `list_exporter`, `service_editor`, `training_editor`, `qualification_editor`, `task_editor`, `organization_scope`, `delegation`, `leadership_delegation` |
+| `youth_director` | Jugendwart | Organisation | nein | `member_editor`, `parent_editor`, `portal_inviter`, `portal_policy_editor`, `group_editor`, `list_editor`, `list_exporter`, `service_editor`, `training_editor`, `qualification_editor`, `task_editor`, `organization_scope`, `delegation`, `leadership_delegation` |
 | `department_youth_director` | Abteilungsjugendwart | Abteilung | nein | Dieselben Fachbausteine ohne `organization_scope` und `leadership_delegation`, mit `delegation` |
 | `youth_leader` | Jugendleiter | Abteilung | ja, nach Freigabe | `member_reader`, `parent_reader`, `group_reader`, `list_editor`, `service_editor`, `training_editor`, `qualification_reader` |
 | `supervisor` | Betreuer | Abteilung | ja, nach Freigabe | `member_reader`, `parent_reader`, `service_reader`, `attendance_editor`, `training_reader` |
@@ -20,7 +20,7 @@ Jede Vorlage erhält einen unveränderlichen Schlüssel, Anzeigenamen, Beschreib
 | `qualification_manager`, `qualification_manager_organization` | Qualifikationsverwaltung | Abteilung / Organisation | ja, nach Freigabe | `qualification_editor`, `task_editor`, `member_reader`; Organisationsvariante zusätzlich `organization_scope` |
 | `system_administrator` | Systemadministration | Organisation | nein | `identity_admin`, `department_admin`, `organization_scope`; `settings_admin`, keine fachlichen Lese- oder Schreibbausteine |
 
-Die elf fachlichen Rollentypen ergeben sechzehn technische Vorlagen: Bei Inventar, Bestellung, E-Mail, Ausbildungsplanung und Qualifikationen benötigen Abteilung und Organisation wegen ihrer unterschiedlichen Bereichsberechtigung getrennte Gruppen und stabile Schlüssel. Der Schlüssel ohne Suffix bezeichnet die Abteilungsvariante. Jugendwart und Abteilungsjugendwart stehen auf Version 4 (Version 4: Portaleinladung, PORTAL-01.3); Inventar-/Bestellvarianten und Systemadministration auf Version 2; übrige Vorlagen auf Version 1. „Delegierbar“ bezeichnet die Vorlagenfähigkeit: Abteilungsrollen benötigen zusätzlich eine administrative Freigabe ihrer aktuellen Permission-Menge. Organisationsrollen vergibt nur die Systemadministration. Insbesondere Leitungspersonen erhalten keine Inventar-, Bestell- oder Versandberechtigung automatisch. Die endgültige Permission-Menge und Version jeder Vorlage stehen in `backend/departments/role_catalog.py`; die folgenden Bausteine erklären diesen Vertrag lesbar. Der Seed vergleicht bestehende Vorlagen und Gruppen vor jeder Anlage und ändert sie bei Abweichung nicht.
+Die elf fachlichen Rollentypen ergeben sechzehn technische Vorlagen: Bei Inventar, Bestellung, E-Mail, Ausbildungsplanung und Qualifikationen benötigen Abteilung und Organisation wegen ihrer unterschiedlichen Bereichsberechtigung getrennte Gruppen und stabile Schlüssel. Der Schlüssel ohne Suffix bezeichnet die Abteilungsvariante. Jugendwart und Abteilungsjugendwart stehen auf Version 5 (Version 4: Portaleinladung, PORTAL-01.3; Version 5: Portal-Freigaben, PORTAL-02.1); Inventar-/Bestellvarianten und Systemadministration auf Version 2; übrige Vorlagen auf Version 1. „Delegierbar“ bezeichnet die Vorlagenfähigkeit: Abteilungsrollen benötigen zusätzlich eine administrative Freigabe ihrer aktuellen Permission-Menge. Organisationsrollen vergibt nur die Systemadministration. Insbesondere Leitungspersonen erhalten keine Inventar-, Bestell- oder Versandberechtigung automatisch. Die endgültige Permission-Menge und Version jeder Vorlage stehen in `backend/departments/role_catalog.py`; die folgenden Bausteine erklären diesen Vertrag lesbar. Der Seed vergleicht bestehende Vorlagen und Gruppen vor jeder Anlage und ändert sie bei Abweichung nicht.
 
 ## Vorhandene Permission-Bausteine
 
@@ -34,6 +34,7 @@ Die folgenden Namen existieren als Django-Modellpermissions. `view`/`add`/`chang
 | `parent_reader` | `members.view_parent` |
 | `parent_editor` | `members.view_parent`, `members.add_parent`, `members.change_parent` |
 | `portal_inviter` | `portal.invite_portal_account` (PORTAL-01.3) |
+| `portal_policy_editor` | `portal.view_portalpolicy`, `portal.change_portalpolicy` (PORTAL-02.1) |
 | `group_reader` | `members.view_group` |
 | `group_editor` | `members.view_group`, `members.add_group`, `members.change_group` |
 | `list_editor` | `members.view_memberlist`, `members.add_memberlist`, `members.change_memberlist`, `members.view_memberlistentry`, `members.add_memberlistentry`, `members.change_memberlistentry` |

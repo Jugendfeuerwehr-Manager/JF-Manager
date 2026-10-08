@@ -25,6 +25,7 @@ PERMISSION_BLOCKS = {
     "parent_reader": ("members.view_parent",),
     "parent_editor": ("members.view_parent", "members.add_parent", "members.change_parent"),
     "portal_inviter": ("portal.invite_portal_account",),
+    "portal_policy_editor": ("portal.view_portalpolicy", "portal.change_portalpolicy"),
     "group_reader": ("members.view_group",),
     "group_editor": ("members.view_group", "members.add_group", "members.change_group"),
     "list_editor": (
@@ -169,6 +170,7 @@ ROLE_SPECS = (
             "member_editor",
             "parent_editor",
             "portal_inviter",
+            "portal_policy_editor",
             "group_editor",
             "list_editor",
             "list_exporter",
@@ -180,7 +182,7 @@ ROLE_SPECS = (
             "leadership_delegation",
             "organization_scope",
         ),
-        version=4,
+        version=5,
     ),
     RoleSpec(
         "department_youth_director",
@@ -192,6 +194,7 @@ ROLE_SPECS = (
             "member_editor",
             "parent_editor",
             "portal_inviter",
+            "portal_policy_editor",
             "group_editor",
             "list_editor",
             "list_exporter",
@@ -201,7 +204,7 @@ ROLE_SPECS = (
             "task_editor",
             "delegation",
         ),
-        version=4,
+        version=5,
     ),
     RoleSpec(
         "youth_leader",

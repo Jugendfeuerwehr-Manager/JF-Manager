@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -7,19 +8,22 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from departments.models import Department
 from members.models import Member, Parent
 from users.auth_security import PasswordActionThrottle
 from users.session_views import SessionCsrfMixin
 
+from .disclosure import parent_contact, person_payload
 from .invitations import (
     InvitationError,
     accept,
+    departments_with_permission,
     invite,
     may_invite,
     open_invitation,
@@ -27,23 +31,35 @@ from .invitations import (
     revoke,
     scoped_invitations,
     scoped_records,
+    security_log,
 )
 from .lifecycle import LifecycleError, access_state, access_states, child_access, end, extend, link_for, resume, suspend
-from .people import portal_children, portal_self
+from .models import PortalPolicy
+from .people import confirmed_link, portal_children, portal_self
 from .permissions import PortalAccountRequired, StaffAccountRequired
+from .policy import ALLOWED, AUDIENCES, HIDDEN, LOCKED, NEVER_VISIBLE, VISIBLE, PolicySet, age_on
+from .policy import CATEGORIES as POLICY_CATEGORIES
+from .policy import applies as policy_applies
+from .policy import is_fixed as policy_fixed
 from .serializers import (
     BulkInviteSerializer,
     ExtensionSerializer,
     InvitationAcceptSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
+    PolicyWriteSerializer,
     RecordRefSerializer,
 )
 
 
-def _person(member, relation):
-    # Names are always visible to the linked account (concept 4.2); further categories follow in PORTAL-02.
-    return {"id": member.pk, "relation": relation, "first_name": member.name, "last_name": member.lastname}
+def _person(member, relation, policies):
+    # Names are always visible (concept 4.2); the age only where the birthday is released.
+    person = {"id": member.pk, "relation": relation, "first_name": member.name, "last_name": member.lastname}
+    audience = "members" if relation == "self" else "parents"
+    departments = [d.pk for d in member.departments.all()]
+    if member.birthday and policies.visible("birthday", audience, departments):
+        person["age"] = age_on(member.birthday, timezone.localdate())
+    return person
 
 
 class PortalMeView(APIView):
@@ -55,15 +71,19 @@ class PortalMeView(APIView):
     @extend_schema(summary="Portal account and linked people")
     def get(self, request):
         user = request.user
+        policies = PolicySet.load()
         people = []
         member = portal_self(user)
         if member is not None:
-            people.append(_person(member, "self"))
-        people += [_person(child, "child") for child in portal_children(user)]
+            people.append(_person(member, "self", policies))
+        people += [_person(child, "child", policies) for child in portal_children(user).prefetch_related("departments")]
+        link = confirmed_link(user)
         return Response(
             {
                 "account": {"first_name": user.first_name, "last_name": user.last_name, "email": user.email},
                 "people": people,
+                # The parent's own record (always visible contact data; changes go through requests, E2).
+                "parent": parent_contact(link.parent) if link and link.parent_id else None,
             }
         )
 
@@ -310,3 +330,193 @@ class BulkInviteView(PortalAdminMixin, APIView):
             except InvitationError as error:
                 results.append({"parent": pk, "result": "skipped", "code": error.code, "detail": error.detail})
         return Response({"results": results})
+
+
+POLICY_PERMISSION = "portal.change_portalpolicy"
+
+
+def _policy_scope(user):
+    """(org editable, department ids editable or None for all)."""
+    departments = departments_with_permission(user, POLICY_PERMISSION)
+    org_editable = user.is_superuser or (
+        user.has_perm("departments.can_access_all_departments") and user.has_perm(POLICY_PERMISSION)
+    )
+    return org_editable, departments
+
+
+def _matrix(policies, department_id=None):
+    values, locked = {}, {}
+    for key in POLICY_CATEGORIES:
+        for audience in AUDIENCES:
+            if not policy_applies(key, audience):
+                continue
+            value = (
+                policies.org_value(key, audience)
+                if department_id is None
+                else policies.department_value(department_id, key, audience)
+            )
+            values.setdefault(key, {})[audience] = value
+            locked.setdefault(key, {})[audience] = policies.locked(key, audience)
+    return values, locked
+
+
+def _member_portal_stats(policies, department):
+    members = list(Member.objects.filter(departments=department).only("pk", "birthday"))
+    mode, min_age = policies.member_mode(department.pk)
+    eligible = sum(1 for m in members if policies.member_allowed(m, [department.pk]))
+    missing = sum(1 for m in members if m.birthday is None) if mode == "min_age" else 0
+    return {"mode": mode, "min_age": min_age, "eligible": eligible, "missing_birthday": missing}
+
+
+def _policy_overview(user):
+    org_editable, editable_departments = _policy_scope(user)
+    visible_departments = departments_with_permission(user, "portal.view_portalpolicy")
+    if editable_departments is not None and visible_departments is not None:
+        visible_departments = visible_departments | editable_departments
+    elif editable_departments is None:
+        visible_departments = None
+    if not org_editable and visible_departments == set():
+        raise PermissionDenied("Keine Berechtigung für Portal-Freigaben.")
+    policies = PolicySet.load()
+    org_values, org_locked = _matrix(policies)
+    departments = Department.objects.order_by("name")
+    if visible_departments is not None:
+        departments = departments.filter(pk__in=visible_departments)
+    rows = []
+    for department in departments:
+        values, locked = _matrix(policies, department.pk)
+        policy = policies.departments.get(department.pk)
+        rows.append(
+            {
+                "id": department.pk,
+                "name": department.name,
+                "editable": editable_departments is None or department.pk in editable_departments,
+                "version": policy.version if policy else 0,
+                "member_portal_mode": policy.member_portal_mode if policy else "",
+                "member_portal_min_age": policy.member_portal_min_age if policy else None,
+                "overrides": policy.visibility if policy else {},
+                "effective": values,
+                "locked": locked,
+                "member_portal": _member_portal_stats(policies, department),
+            }
+        )
+    org = policies.org
+    return {
+        "categories": [
+            {
+                "key": key,
+                "label": label,
+                "hint": hint,
+                "fixed": fixed,
+                "audiences": [a for a in AUDIENCES if policy_applies(key, a)],
+            }
+            for key, (label, hint, _p, _m, fixed) in POLICY_CATEGORIES.items()
+        ],
+        "never_visible": NEVER_VISIBLE,
+        "organization": {
+            "editable": org_editable,
+            "version": org.version if org else 0,
+            "member_portal_mode": (org.member_portal_mode if org else "") or "off",
+            "member_portal_min_age": org.member_portal_min_age if org else None,
+            "effective": org_values,
+            "ceiling": {
+                key: {a: (LOCKED if org_locked[key][a] else ALLOWED) for a in org_locked[key]} for key in org_locked
+            },
+        },
+        "departments": rows,
+    }
+
+
+class PortalPolicyView(PortalAdminMixin, APIView):
+    """GET /portal/policies/ — release matrix for the organisation and the departments in scope."""
+
+    def get(self, request):
+        return Response(_policy_overview(request.user))
+
+
+def _clean_matrix(raw, allowed_values, policies, department_id):
+    """Validate a {category: {audience: value}} map; returns cleaned map or raises errors dict."""
+    cleaned, errors = {}, {}
+    for key, audiences in (raw or {}).items():
+        if key not in POLICY_CATEGORIES or not isinstance(audiences, dict):
+            errors[key] = "Unbekannte Kategorie."
+            continue
+        for audience, value in audiences.items():
+            where = f"{key}.{audience}"
+            if audience not in AUDIENCES or not policy_applies(key, audience):
+                errors[where] = "Diese Kategorie gibt es für diese Zielgruppe nicht."
+            elif policy_fixed(key):
+                errors[where] = "Diese Kategorie ist immer sichtbar und nicht einstellbar."
+            elif value == "":
+                continue
+            elif value not in allowed_values:
+                errors[where] = "Ungültiger Wert."
+            elif department_id is not None and value == VISIBLE and policies.locked(key, audience):
+                errors[where] = "Von der Organisation gesperrt."
+            else:
+                cleaned.setdefault(key, {})[audience] = value
+    if errors:
+        raise ValidationError(errors)
+    return cleaned
+
+
+class PortalPolicyUpdateView(PortalAdminMixin, APIView):
+    """PUT /portal/policies/org/ or /portal/policies/<department_id>/ with the read version (409 if stale)."""
+
+    @extend_schema(request=PolicyWriteSerializer)
+    @transaction.atomic
+    def put(self, request, department_id=None):
+        org_editable, editable_departments = _policy_scope(request.user)
+        if department_id is None:
+            if not org_editable:
+                raise PermissionDenied("Nur organisationsweite Portalverwaltung kann Vorgaben ändern.")
+            department = None
+        else:
+            department = get_object_or_404(Department, pk=department_id)
+            if editable_departments is not None and department.pk not in editable_departments:
+                raise PermissionDenied("Keine Berechtigung für diese Abteilung.")
+        data = PolicyWriteSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        values = data.validated_data
+        policy, _ = PortalPolicy.objects.select_for_update().get_or_create(
+            department=department, defaults={"version": 0}
+        )
+        if values["version"] != policy.version:
+            return Response({"code": "stale", "detail": "Die Freigaben wurden inzwischen geändert."}, status=409)
+        policies = PolicySet.load()
+        if "visibility" in values:
+            policy.visibility = _clean_matrix(values["visibility"], {VISIBLE, HIDDEN}, policies, department_id)
+        if department is None and "ceiling" in values:
+            policy.ceiling = _clean_matrix(values["ceiling"], {ALLOWED, LOCKED}, policies, None)
+        if "member_portal_mode" in values:
+            mode = values["member_portal_mode"]
+            if department is None and mode == "":
+                raise ValidationError({"member_portal_mode": "Die Organisation braucht einen Wert."})
+            min_age = values.get("member_portal_min_age")
+            if mode == "min_age" and min_age is None:
+                raise ValidationError({"member_portal_min_age": "Bitte ein Mindestalter angeben."})
+            policy.member_portal_mode = mode
+            policy.member_portal_min_age = min_age if mode == "min_age" else None
+        policy.updated_by = request.user
+        policy.version += 1
+        policy.save()
+        security_log.info("portal policy changed", extra={"policy": policy.pk, "actor": request.user.pk})
+        return Response(_policy_overview(request.user))
+
+
+class PortalPersonView(APIView):
+    """GET /portal/people/<member_id>/ — released data of the own member record or a visible child."""
+
+    portal_access = True
+    permission_classes = [PortalAccountRequired]
+
+    def get(self, request, member_id):
+        user = request.user
+        own = portal_self(user)
+        link = confirmed_link(user)
+        if own is not None and own.pk == member_id:
+            return Response(person_payload(own, "self"))
+        child = portal_children(user).filter(pk=member_id).first()
+        if child is None:
+            raise NotFound()  # foreign ids look like missing ones (concept 5.2.3)
+        return Response(person_payload(child, "child", viewer_parent=link.parent if link else None))

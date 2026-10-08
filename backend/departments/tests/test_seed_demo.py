@@ -101,6 +101,9 @@ class SeedDemoTests(TestCase):
         self.assertIsNone(member_user.account_link.parent)
         self.assertEqual(member.email, member_user.email)
         self.assertEqual(member.departments.get().code, "mitte")
+        from portal.policy import member_portal_allowed
+
+        self.assertTrue(member_portal_allowed(member))  # Mitte allows member accounts from 14
         self.assertFalse(Parent.objects.filter(children=member, account_link__isnull=False).exists())
         self.assertIn("eltern@demo.example.invalid", self.output.getvalue())
 

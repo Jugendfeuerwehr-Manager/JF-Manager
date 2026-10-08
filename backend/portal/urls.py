@@ -11,6 +11,9 @@ from .views import (
     PortalAccessRecordsView,
     PortalAccessView,
     PortalMeView,
+    PortalPersonView,
+    PortalPolicyUpdateView,
+    PortalPolicyView,
 )
 
 router = SimpleRouter()
@@ -18,6 +21,10 @@ router.register("invitations", InvitationViewSet, basename="portal-invitations")
 
 urlpatterns = [
     path("me/", PortalMeView.as_view(), name="portal-me"),
+    path("people/<int:member_id>/", PortalPersonView.as_view(), name="portal-person"),
+    path("policies/", PortalPolicyView.as_view(), name="portal-policies"),
+    path("policies/org/", PortalPolicyUpdateView.as_view(), name="portal-policy-org"),
+    path("policies/<int:department_id>/", PortalPolicyUpdateView.as_view(), name="portal-policy-department"),
     # Before the router: "accept" is not an invitation id.
     path("invitations/accept/", InvitationAcceptView.as_view(), name="portal-invitation-accept"),
     path("invitations/bulk/", BulkInviteView.as_view(), name="portal-invitation-bulk"),

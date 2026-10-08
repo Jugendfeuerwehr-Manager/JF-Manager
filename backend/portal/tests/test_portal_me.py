@@ -39,13 +39,16 @@ class PortalMeTests(TestCase):
         self.assertEqual(
             [(p["first_name"], p["relation"]) for p in data["people"]], [("Mia", "child"), ("Ole", "child")]
         )
-        self.assertEqual(set(data["people"][0]), {"id", "relation", "first_name", "last_name"})
+        self.assertEqual(set(data["people"][0]), {"id", "relation", "first_name", "last_name", "age"})
+        self.assertEqual(data["people"][0]["age"], 12)
+        self.assertNotIn("age", data["people"][1])  # no birthday recorded
 
     def test_member_link_lists_self(self):
         AccountLink.objects.filter(pk=self.link.pk).update(parent=None, member=self.adult)
         data = self.client.get("/api/v1/portal/me/").json()
         self.assertEqual(
-            data["people"], [{"id": self.adult.pk, "relation": "self", "first_name": "Tom", "last_name": "Beispiel"}]
+            data["people"],
+            [{"id": self.adult.pk, "relation": "self", "first_name": "Tom", "last_name": "Beispiel", "age": 18}],
         )
 
     def test_pending_link_has_no_effect(self):

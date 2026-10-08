@@ -78,3 +78,11 @@ class ExtensionSerializer(serializers.Serializer):
 
 class BulkInviteSerializer(serializers.Serializer):
     parents = serializers.ListField(child=serializers.IntegerField(), min_length=1, max_length=100)
+
+
+class PolicyWriteSerializer(serializers.Serializer):
+    version = serializers.IntegerField()
+    member_portal_mode = serializers.ChoiceField(choices=["", "off", "min_age", "all"], required=False)
+    member_portal_min_age = serializers.IntegerField(min_value=6, max_value=27, required=False, allow_null=True)
+    visibility = serializers.DictField(child=serializers.DictField(child=serializers.CharField()), required=False)
+    ceiling = serializers.DictField(child=serializers.DictField(child=serializers.CharField()), required=False)

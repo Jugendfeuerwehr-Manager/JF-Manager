@@ -361,6 +361,16 @@ class Command(BaseCommand):
             )
             self.portal_accounts[username] = person
         self.portal_children = [child, sibling]
+        # Releases (PORTAL-02): organisation defaults, member accounts in Mitte from 14.
+        from portal.models import PortalPolicy
+
+        PortalPolicy.objects.create(department=None, member_portal_mode="off")
+        PortalPolicy.objects.create(
+            department=self.departments["mitte"],
+            member_portal_mode="min_age",
+            member_portal_min_age=14,
+            visibility={"equipment": {"members": "visible"}},
+        )
 
     def seed_qualifications(self):
         from qualifications.models import Qualification, QualificationType, SpecialTask, SpecialTaskType
