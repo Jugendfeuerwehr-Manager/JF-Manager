@@ -31,7 +31,7 @@ describe('InboxView', () => {
     const wrapper = render()
     await flushPromises()
     expect(wrapper.text()).toContain('Alles erledigt')
-    expect(wrapper.text()).toContain('1 offene Aufgabe · 1 ungelesene Hinweis')
+    expect(wrapper.text()).toContain('1 offene Aufgabe · 1 ungelesener Hinweis')
   })
 
   it('renders open tasks, done tasks and bundled unread notices', async () => {

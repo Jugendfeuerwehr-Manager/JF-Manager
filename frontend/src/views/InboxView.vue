@@ -80,7 +80,7 @@ const categoryOptions: { value: InboxCategory | '', label: string }[] = [
 
 const summary = computed(() => {
   const { open_tasks: tasks, unread_notices: notices } = store.counts
-  return `${tasks} offene ${tasks === 1 ? 'Aufgabe' : 'Aufgaben'} · ${notices} ungelesene ${notices === 1 ? 'Hinweis' : 'Hinweise'}`
+  return `${tasks} ${tasks === 1 ? 'offene Aufgabe' : 'offene Aufgaben'} · ${notices} ${notices === 1 ? 'ungelesener Hinweis' : 'ungelesene Hinweise'}`
 })
 const filtered = computed(() => !!(store.filters.type || store.filters.category || store.filters.department || store.filters.unread || store.filters.done))
 const groups = computed(() => [
