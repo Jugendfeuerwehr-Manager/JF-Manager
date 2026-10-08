@@ -67,3 +67,79 @@ class AccountLink(models.Model):
     @property
     def is_effective(self):
         return self.status == self.Status.CONFIRMED
+
+
+class Invitation(models.Model):
+    """Invitation of a parent or member record to the portal (E1: invitation only).
+
+    Only a SHA-256 hash of the one-time token is stored. At most one open
+    invitation per record; resending renews token and expiry.
+    """
+
+    VALIDITY_DAYS = 7
+
+    parent = models.ForeignKey(
+        "members.Parent", null=True, blank=True, on_delete=models.CASCADE, related_name="portal_invitations"
+    )
+    member = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.CASCADE, related_name="portal_invitations"
+    )
+    email = models.EmailField(verbose_name="E-Mail")
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Portaleinladung"
+        verbose_name_plural = "Portaleinladungen"
+        ordering = ["-created_at"]
+        permissions = [("invite_portal_account", "Eltern und Mitglieder ins Portal einladen")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(parent__isnull=False, member__isnull=True)
+                | models.Q(parent__isnull=True, member__isnull=False),
+                name="invitation_has_one_target",
+            ),
+            models.UniqueConstraint(
+                fields=["parent"],
+                condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True, parent__isnull=False),
+                name="one_open_invitation_per_parent",
+            ),
+            models.UniqueConstraint(
+                fields=["member"],
+                condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True, member__isnull=False),
+                name="one_open_invitation_per_member",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Einladung {self.email} ({self.state})"
+
+    @property
+    def kind(self):
+        return "parent" if self.parent_id else "member"
+
+    @property
+    def record(self):
+        return self.parent if self.parent_id else self.member
+
+    @property
+    def state(self):
+        from django.utils import timezone
+
+        if self.accepted_at:
+            return "accepted"
+        if self.revoked_at:
+            return "revoked"
+        if self.expires_at <= timezone.now():
+            return "expired"
+        return "open"

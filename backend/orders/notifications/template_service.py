@@ -58,6 +58,10 @@ class TemplateRenderer(BaseNotificationService):
             "subject": "Passwort zurücksetzen – JF-Manager",
             "template": "users/password_reset_email.html",
         },
+        "portal_invite": {
+            "subject": "Dein Zugang zu {org_name}",
+            "template": "portal/invite_email.html",
+        },
     }
 
     @classmethod
@@ -273,6 +277,9 @@ class TemplateRenderer(BaseNotificationService):
 
         if "total_items" in context:
             replacements["total_items"] = str(context["total_items"])
+
+        if "org_name" in context:
+            replacements["org_name"] = str(context["org_name"])
 
         # Simple template variable replacement
         result = subject_template
