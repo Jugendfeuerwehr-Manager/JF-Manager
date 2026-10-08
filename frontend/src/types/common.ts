@@ -53,6 +53,8 @@ export interface UserInfo {
   email_signature?: string
   theme_mode?: 'light' | 'dark' | 'system'
   auth_source: 'local' | 'ldap' | 'oidc'
+  /** Portal accounts (parents, members) only reach the portal area. */
+  account_kind?: 'staff' | 'portal'
   groups: UserGroup[]
   permissions: string[]
   department_roles: UserDepartmentRoleMini[]

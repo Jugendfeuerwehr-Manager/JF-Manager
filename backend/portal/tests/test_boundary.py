@@ -15,7 +15,8 @@ from rest_framework.views import APIView
 
 from departments.models import Department, RoleGrant, UserDepartmentRole
 from members.models import Member
-from portal.access import FORBIDDEN_CODE, PORTAL_ALLOWED_VIEW_NAMES
+from portal.access import FORBIDDEN_CODE, PORTAL_ALLOWED_VIEW_NAMES, portal_route_allowed
+from portal.permissions import PortalAccountRequired
 from portal.signals import PortalAccountRoleDenied
 
 User = get_user_model()
@@ -69,8 +70,8 @@ class PortalRouteAuditTests(TestCase):
             except Resolver404:
                 unresolved.append(pattern)
                 continue
-            if match.view_name in PORTAL_ALLOWED_VIEW_NAMES:
-                continue
+            if portal_route_allowed(match):
+                continue  # allowlisted, or a portal endpoint (see test_portal_endpoints_require_portal_accounts)
             for method in ("get", "post"):
                 response = getattr(self.client, method)(path)
                 checked += 1
@@ -147,6 +148,18 @@ class PortalAllowlistTests(TestCase):
     def test_every_allowlisted_name_exists(self):
         names = {resolve(_concrete_path(pattern)).view_name for pattern, _ in _routes()}
         self.assertEqual(PORTAL_ALLOWED_VIEW_NAMES - names, set())
+
+
+class PortalEndpointTests(TestCase):
+    def test_portal_endpoints_require_portal_accounts(self):
+        # A view that opts into portal access must not be reachable by everyone.
+        endpoints = []
+        for pattern, entry in _routes():
+            view = getattr(entry.callback, "cls", None) or getattr(entry.callback, "view_class", None)
+            if getattr(view, "portal_access", False) is True:
+                endpoints.append(pattern)
+                self.assertIn(PortalAccountRequired, view.permission_classes, pattern)
+        self.assertIn("api/v1/portal/me/", endpoints)
 
 
 class DefaultPermissionView(APIView):

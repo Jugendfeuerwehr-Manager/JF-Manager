@@ -71,7 +71,7 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | ID | Frage | Vorschlag | Betrifft |
 | --- | --- | --- | --- |
 | Q1 | Sollen Eltern Kinder anmelden dürfen, deren Gruppe/Abteilung nicht zum Dienst gehört, wenn der Dienst „für alle der Abteilung“ geöffnet ist? | Ja, Zielgruppe = Gruppen des Dienstes; ohne Gruppen = ganze Abteilung. | PART-01 |
-| Q2 | Darf ein Elternteil die Einladung an ein Mitgliedskonto des eigenen Kindes anstoßen (nicht versenden)? | Nein in Version 1; nur Betreuende laden ein. | PORTAL-01 |
+| Q2 | Darf ein Elternteil die Einladung an ein Mitgliedskonto des eigenen Kindes anstoßen (nicht versenden)? | **Entschieden 08.10.2026:** Nein in Version 1; nur Betreuende laden ein. | PORTAL-01 |
 | Q3 | Sollen Mitglieder im Modus „Zuteilung“ eine Wunschposition angeben dürfen? | Ja, optional; Standard „beliebige passende Position“. | PART-04 |
 | Q4 | Sollen Verwaltendenkonten zusätzlich an einen **Elterndatensatz** gebunden werden können (Verwaltende mit Kindern in der Jugend)? | Ja, gleiche Verknüpfungstabelle und gleiche Bestätigung; im Verwaltungslayout erscheint dann „Meine Kinder“. | PORTAL-04 |
 | Q5 | Gültigkeit von Quick-Action-Links | 14 Tage, bei Teilnahmeaktionen höchstens bis Dienstbeginn, bei Antragsaktionen bis zur Entscheidung. | NOTIF-01 |

@@ -77,6 +77,9 @@ def session_status(request):
         data["absolute_expires_at"] = isoformat(deadlines["absolute_expires_at"])
         data["idle_timeout_seconds"] = lifetimes(request.session)[0]
         data["privileged_session"] = bool(request.session.get(PRIVILEGED_KEY))
+    if authenticated:
+        # The frontend routes portal accounts (parents, members) to their own area.
+        data["account_kind"] = user.account_kind
     return data
 
 

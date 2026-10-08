@@ -28,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
   const mfaPending = computed(() => !!session.value?.mfa_required && !session.value.authenticated)
   const mfaMethods = computed(() => session.value?.mfa_methods ?? { totp: true, passkey: false })
   const mfaSetupRequired = computed(() => !!session.value?.authenticated && !!session.value.mfa_setup_required)
+  const isPortalAccount = computed(() => (user.value?.account_kind ?? session.value?.account_kind) === 'portal')
   const userFullName = computed(() => user.value?.full_name || '')
 
   // Global rights remain global; department rights follow the selected area.
@@ -167,6 +168,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userApi.me()
       user.value = response.data
+      // Portal accounts may not read departments or staff data (403).
+      if (response.data.account_kind === 'portal') return
       // Load departments and set the default active department
       const departmentsStore = useDepartmentsStore()
       await departmentsStore.fetchDepartments()
@@ -268,6 +271,7 @@ export const useAuthStore = defineStore('auth', () => {
     mfaMethods,
     mfaSetupRequired,
     userFullName,
+    isPortalAccount,
     permissions,
     isOrgWide,
     isStaff,

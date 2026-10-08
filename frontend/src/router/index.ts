@@ -392,6 +392,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
       props: (route) => ({ sessionId: Number(route.params.id) })
     },
+    // Portal for parents and members; separate shell, no staff modules
+    {
+      path: '/portal',
+      component: () => import('@/views/portal/PortalLayout.vue'),
+      meta: { requiresAuth: true, portal: true },
+      children: [
+        { path: '', name: 'portal-home', component: () => import('@/views/portal/PortalHomeView.vue') },
+        { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalPlaceholderView.vue'), props: { icon: 'pi pi-calendar', title: 'Termine', text: 'Termine und An-/Abmeldung folgen in Kürze.' } },
+        { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalPlaceholderView.vue'), props: { icon: 'pi pi-id-card', title: 'Daten', text: 'Deine Daten werden hier bald angezeigt; Änderungen kannst du dann direkt beantragen.' } },
+        { path: 'profil', name: 'portal-profile', component: () => import('@/views/portal/PortalProfileView.vue') }
+      ]
+    },
     // Mobile training planner — full-screen, no shell chrome
     {
       path: '/training/sessions/:id/mobile',
@@ -412,6 +424,11 @@ router.beforeEach(async (to, from, next) => {
   if (requiresAuth && !authStore.isAuthenticated) {
     next(to.fullPath === '/' ? '/login' : { path: '/login', query: { next: to.fullPath } })
   } else if (to.path === '/login' && authStore.isAuthenticated) {
+    next(authStore.isPortalAccount ? '/portal' : '/')
+  } else if (authStore.isAuthenticated && authStore.isPortalAccount && requiresAuth && !to.matched.some(r => r.meta.portal)) {
+    // Portal accounts never see staff routes.
+    next('/portal')
+  } else if (authStore.isAuthenticated && !authStore.isPortalAccount && to.matched.some(r => r.meta.portal)) {
     next('/')
   } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
     // Accounts with mandatory MFA can only reach the setup until it is done.
@@ -433,7 +450,7 @@ router.beforeEach(async (to, from, next) => {
   } else {
     // Load settings if authenticated and not already loaded. Accounts that must
     // still set up MFA get 403 for everything except the setup itself.
-    if (authStore.isAuthenticated && !authStore.mfaSetupRequired && !settingsStore.general) {
+    if (authStore.isAuthenticated && !authStore.mfaSetupRequired && !authStore.isPortalAccount && !settingsStore.general) {
       try {
         await settingsStore.fetchPermissions()
         if (settingsStore.canViewCategory('general')) {
