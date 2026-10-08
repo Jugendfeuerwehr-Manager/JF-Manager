@@ -103,3 +103,67 @@ class SubmitTests(TestCase):
         self.assertEqual(rows["city"]["current"], "Siegburg")
         self.assertFalse(rows["phone"]["conflict"])
         self.assertEqual(rows["city"]["label"], "Ort")
+
+
+class PortalApiTests(TestCase):
+    """PORTAL-03.2: a portal account requests changes only for people it may act for."""
+
+    url = "/api/v1/portal/change-requests/"
+
+    @classmethod
+    def setUpTestData(cls):
+        from portal.models import AccountLink
+
+        cls.parent = Parent.objects.create(name="Sandra", lastname="Becker", email="s@example.invalid")
+        cls.child = Member.objects.create(name="Mia", lastname="Becker", city="Bonn")
+        cls.parent.children.add(cls.child)
+        cls.stranger = Member.objects.create(name="Fremd", lastname="Kind")
+        cls.user = User.objects.create_user("sandra", password="x", account_kind="portal")
+        AccountLink.objects.create(user=cls.user, parent=cls.parent, status="confirmed")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def post(self, target, fields):
+        return self.client.post(self.url, {"target": target, "fields": fields}, content_type="application/json")
+
+    def test_submit_for_child_then_update(self):
+        first = self.post({"kind": "member", "id": self.child.pk}, {"city": "Köln"})
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(first.json()["fields"], [{"field": "city", "label": "Ort", "old": "Bonn", "new": "Köln"}])
+        second = self.post({"kind": "member", "id": self.child.pk}, {"city": "Siegburg"})
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["version"], 2)
+        listed = self.client.get(self.url).json()["results"]
+        self.assertEqual([(r["kind"], r["status"]) for r in listed], [("member", "open")])
+        self.assertNotIn("current", listed[0]["fields"][0])  # reviewers only
+
+    def test_own_parent_record_with_second_email(self):
+        response = self.post({"kind": "parent"}, {"email2": "zwei@example.invalid"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["kind"], "parent")
+
+    def test_foreign_people_look_missing(self):
+        self.assertEqual(self.post({"kind": "member", "id": self.stranger.pk}, {"city": "X"}).status_code, 404)
+        self.assertEqual(self.post({"kind": "member", "id": 999999}, {"city": "X"}).status_code, 404)
+        self.assertEqual(self.post("parent", {"city": "X"}).status_code, 404)
+
+    def test_errors_per_field(self):
+        response = self.post({"kind": "member", "id": self.child.pk}, {"email": "kaputt", "birthday": "2000-01-01"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(set(response.json()["fields"]), {"birthday"})  # unknown fields are refused first
+        response = self.post({"kind": "member", "id": self.child.pk}, {"email": "kaputt"})
+        self.assertEqual(set(response.json()["fields"]), {"email"})
+
+    def test_withdraw_only_own_requests(self):
+        mine = self.post({"kind": "member", "id": self.child.pk}, {"city": "Köln"}).json()
+        foreign = ChangeRequest.objects.create(target_member=self.stranger, fields=[])
+        self.assertEqual(self.client.post(f"{self.url}{foreign.pk}/withdraw/").status_code, 404)
+        response = self.client.post(f"{self.url}{mine['id']}/withdraw/")
+        self.assertEqual(response.json()["status"], "withdrawn")
+        self.assertEqual(self.client.post(f"{self.url}{mine['id']}/withdraw/").status_code, 409)
+
+    def test_staff_accounts_cannot_use_the_portal_endpoint(self):
+        staff = User.objects.create_user("leitung", password="x")
+        self.client.force_login(staff)
+        self.assertEqual(self.client.get(self.url).status_code, 403)

@@ -16,9 +16,14 @@ from rest_framework.views import APIView
 
 from departments.models import Department
 from members.models import Member, Parent
+from participation.throttles import PortalWriteThrottle
 from users.auth_security import PasswordActionThrottle
 from users.session_views import SessionCsrfMixin
 
+from .change_requests import ChangeRequestError
+from .change_requests import payload as change_payload
+from .change_requests import submit as submit_change
+from .change_requests import withdraw as withdraw_change
 from .disclosure import parent_contact, person_payload
 from .invitations import (
     InvitationError,
@@ -34,7 +39,7 @@ from .invitations import (
     security_log,
 )
 from .lifecycle import LifecycleError, access_state, access_states, child_access, end, extend, link_for, resume, suspend
-from .models import PortalPolicy
+from .models import ChangeRequest, PortalPolicy
 from .people import confirmed_link, portal_children, portal_self
 from .permissions import PortalAccountRequired, StaffAccountRequired
 from .policy import ALLOWED, AUDIENCES, HIDDEN, LOCKED, NEVER_VISIBLE, VISIBLE, PolicySet, age_on
@@ -520,3 +525,77 @@ class PortalPersonView(APIView):
         if child is None:
             raise NotFound()  # foreign ids look like missing ones (concept 5.2.3)
         return Response(person_payload(child, "child", viewer_parent=link.parent if link else None))
+
+
+def _portal_targets(user):
+    """Records the account may request changes for: own member record, visible children, own parent record."""
+    link = confirmed_link(user)
+    if link is None:
+        return [], None
+    members = list(portal_children(user)) if link.parent_id else []
+    if link.member_id:
+        members.insert(0, link.member)
+    return members, link.parent
+
+
+def _portal_target(user, data):
+    members, parent = _portal_targets(user)
+    kind = data.get("kind") if isinstance(data, dict) else None
+    if kind == "parent" and parent is not None:
+        return parent
+    if kind == "member":
+        match = [m for m in members if str(m.pk) == str(data.get("id"))]
+        if match:
+            return match[0]
+    raise NotFound()  # foreign ids look like missing ones (concept 5.2.3)
+
+
+def _cr_fail(error):
+    return Response({"detail": error.detail, "code": error.code, "fields": error.fields}, status=error.status)
+
+
+class PortalChangeRequestsView(APIView):
+    """GET/POST /portal/change-requests/ — own requests per person; submitting again updates the open one (E2)."""
+
+    portal_access = True
+    permission_classes = [PortalAccountRequired]
+    throttle_classes = [PortalWriteThrottle]
+
+    def get(self, request):
+        members, parent = _portal_targets(request.user)
+        query = Q(target_member__in=members)
+        if parent is not None:
+            query |= Q(target_parent=parent)
+        recent = ChangeRequest.objects.filter(query).select_related("target_member", "target_parent")[:30]
+        return Response({"results": [change_payload(r) for r in recent]})
+
+    def post(self, request):
+        record = _portal_target(request.user, request.data.get("target"))
+        try:
+            change, created = submit_change(record, request.data.get("fields"), request.user)
+        except ChangeRequestError as error:
+            return _cr_fail(error)
+        security_log.info("change request submitted", extra={"change_request": change.pk, "actor": request.user.pk})
+        return Response(change_payload(change, record), status=status.HTTP_201_CREATED if created else 200)
+
+
+class PortalChangeRequestWithdrawView(APIView):
+    """POST /portal/change-requests/<id>/withdraw/ — only for a person the account may act for."""
+
+    portal_access = True
+    permission_classes = [PortalAccountRequired]
+    throttle_classes = [PortalWriteThrottle]
+
+    def post(self, request, pk):
+        members, parent = _portal_targets(request.user)
+        query = Q(target_member__in=members)
+        if parent is not None:
+            query |= Q(target_parent=parent)
+        change = ChangeRequest.objects.filter(query, pk=pk).first()
+        if change is None:
+            raise NotFound()
+        try:
+            change = withdraw_change(change)
+        except ChangeRequestError as error:
+            return _cr_fail(error)
+        return Response(change_payload(change))
