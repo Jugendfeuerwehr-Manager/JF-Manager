@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import { brandingApi } from '@/api/branding'
 import PortalPersonSwitcher from '@/components/portal/PortalPersonSwitcher.vue'
@@ -8,11 +9,15 @@ import { usePortalStore } from '@/stores/portal'
 import type { PublicBranding } from '@/types/settings'
 
 const auth = useAuthStore()
+const route = useRoute()
+const isCurrent = (item: { name: string, also?: string[] }) =>
+  route.name === item.name || (item.also ?? []).includes(String(route.name))
 const portal = usePortalStore()
 const branding = ref<PublicBranding | null>(null)
 const items = [
   { name: 'portal-home', label: 'Übersicht', icon: 'pi pi-home' },
-  { name: 'portal-sessions', label: 'Termine', icon: 'pi pi-calendar' },
+  // The session detail belongs to "Termine" in the navigation.
+  { name: 'portal-sessions', label: 'Termine', icon: 'pi pi-calendar', also: ['portal-session'] },
   { name: 'portal-data', label: 'Daten', icon: 'pi pi-id-card' },
   { name: 'portal-profile', label: 'Profil', icon: 'pi pi-user' },
 ]
@@ -52,8 +57,10 @@ onMounted(() => {
     <main class="content"><RouterView /></main>
 
     <nav class="nav" aria-label="Portal">
-      <RouterLink v-for="item in items" :key="item.name" :to="{ name: item.name }" class="nav-link" active-class="" exact-active-class="">
-        <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
+      <RouterLink v-for="item in items" :key="item.name" v-slot="{ href, navigate }" :to="{ name: item.name }" custom>
+        <a :href="href" class="nav-link" :aria-current="isCurrent(item) ? 'page' : undefined" @click="navigate">
+          <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
+        </a>
       </RouterLink>
     </nav>
   </div>

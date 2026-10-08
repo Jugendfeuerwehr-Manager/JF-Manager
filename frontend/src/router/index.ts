@@ -411,7 +411,8 @@ const router = createRouter({
       meta: { requiresAuth: true, portal: true },
       children: [
         { path: '', name: 'portal-home', component: () => import('@/views/portal/PortalHomeView.vue') },
-        { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalPlaceholderView.vue'), props: { icon: 'pi pi-calendar', title: 'Termine', text: 'Termine und An-/Abmeldung folgen in Kürze.' } },
+        { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalSessionsView.vue') },
+        { path: 'termine/:id(\\d+)', name: 'portal-session', component: () => import('@/views/portal/PortalSessionDetailView.vue'), props: route => ({ id: Number(route.params.id) }) },
         { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalDataView.vue') },
         { path: 'profil', name: 'portal-profile', component: () => import('@/views/portal/PortalProfileView.vue') }
       ]

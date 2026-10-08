@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-export type PortalStatus = 'expected' | 'no-response' | 'declined' | 'unavailable' | 'registered' | 'waitlist' | 'assigned'
+export type PortalStatus = 'expected' | 'no-response' | 'declined' | 'unavailable' | 'registered' | 'waitlist' | 'assigned' | 'applied' | 'not-selected' | 'session-cancelled'
 
 const props = defineProps<{ status: PortalStatus }>()
 
@@ -13,6 +13,9 @@ const variants: Record<PortalStatus, { label: string, icon: string, tone: string
   registered: { label: 'Angemeldet', icon: 'pi pi-check', tone: 'success' },
   waitlist: { label: 'Warteliste', icon: 'pi pi-clock', tone: 'info' },
   assigned: { label: 'Zugeteilt', icon: 'pi pi-check-circle', tone: 'success' },
+  applied: { label: 'Beworben', icon: 'pi pi-send', tone: 'info' },
+  'not-selected': { label: 'Nicht berücksichtigt', icon: 'pi pi-minus-circle', tone: 'neutral' },
+  'session-cancelled': { label: 'Abgesagt', icon: 'pi pi-ban', tone: 'warning' },
 }
 const variant = computed(() => variants[props.status])
 </script>

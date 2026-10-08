@@ -6,14 +6,17 @@ import PortalHomeView from '../PortalHomeView.vue'
 import { portalApi } from '@/api/portal'
 import { usePortalStore } from '@/stores/portal'
 
-vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn() } }))
+vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn(), sessions: vi.fn() } }))
 vi.mock('@/router', () => ({ default: { push: vi.fn(), currentRoute: { value: { path: '/portal' } } } }))
 
 const render = () => mount(PortalHomeView, { global: { plugins: [PrimeVue], stubs: { RouterLink: { template: '<a><slot /></a>' } } } })
 const account = { first_name: 'Anna', last_name: 'Muster', email: 'a@example.org' }
 
 describe('PortalHomeView', () => {
-  beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks() })
+  beforeEach(() => {
+    setActivePinia(createPinia()); vi.clearAllMocks()
+    vi.mocked(portalApi.sessions).mockResolvedValue({ data: { person: 1, sessions: [] } } as never)
+  })
 
   it('shows the empty services card for the selected person', async () => {
     vi.mocked(portalApi.me).mockResolvedValue({ data: { account, people: [

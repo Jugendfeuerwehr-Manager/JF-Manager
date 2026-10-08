@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { portalApi, type PortalMe, type PortalPersonData, type InvitationInfo, type AcceptInvitationPayload } from '@/api/portal'
+import { portalApi, type PortalAbsencePayload, type PortalAbsencePreviewRow, type PortalAbsenceResult, type PortalRegistrationPayload, type PortalSessionItem, type PortalMe, type PortalPersonData, type InvitationInfo, type AcceptInvitationPayload } from '@/api/portal'
 import { getApiErrorMessage } from '@/utils/apiError'
+
+export interface PortalActionError { status?: number, code: string, message: string, reasons: string[], sessionId?: number }
 
 export const usePortalStore = defineStore('portal', () => {
   const me = ref<PortalMe | null>(null)
@@ -41,6 +43,116 @@ export const usePortalStore = defineStore('portal', () => {
       if (seq === personSeq) personLoading.value = false
     }
   }
+
+  // Planned services of the selected person
+  const sessions = ref<PortalSessionItem[]>([])
+  const sessionsPersonId = ref<number | null>(null)
+  const sessionsLoaded = ref(false)
+  const sessionsLoading = ref(false)
+  const sessionsError = ref<string | null>(null)
+  const pendingSessionIds = ref<number[]>([])
+  const actionError = ref<PortalActionError | null>(null)
+  let sessionsSeq = 0
+
+  function status(err: unknown): number | undefined {
+    return (err as { response?: { status?: number } }).response?.status
+  }
+
+  /** Newest request wins; the list always belongs to `sessionsPersonId`. */
+  async function loadSessions(personId: number | null = selectedPersonId.value) {
+    const seq = ++sessionsSeq
+    if (personId !== sessionsPersonId.value) { sessions.value = []; sessionsLoaded.value = false; actionError.value = null }
+    sessionsPersonId.value = personId
+    sessionsError.value = null
+    if (personId === null) { sessionsLoading.value = false; return }
+    sessionsLoading.value = true
+    try {
+      const { data } = await portalApi.sessions(personId)
+      if (seq !== sessionsSeq) return
+      sessions.value = data.sessions
+      sessionsLoaded.value = true
+    } catch (err) {
+      if (seq !== sessionsSeq) return
+      sessionsError.value = status(err) === 429 ? 'Bitte kurz warten und erneut versuchen.' : getApiErrorMessage(err, 'Die Termine konnten nicht geladen werden.')
+    } finally {
+      if (seq === sessionsSeq) sessionsLoading.value = false
+    }
+  }
+
+  function describeActionError(err: unknown, fallback: string): PortalActionError {
+    const code = status(err)
+    const data = (err as { response?: { data?: { code?: string, detail?: string, reasons?: string[] } } }).response?.data
+    if (code === 429) return { status: code, code: 'throttled', message: 'Bitte kurz warten und erneut versuchen.', reasons: [] }
+    if (code === 409) return { status: code, code: 'stale', message: 'Die Meldung wurde inzwischen geändert. Die Ansicht wurde aktualisiert, bitte prüfe sie und versuche es erneut.', reasons: [] }
+    return { status: code, code: data?.code ?? 'error', message: getApiErrorMessage(err, fallback), reasons: Array.isArray(data?.reasons) ? data.reasons : [] }
+  }
+
+  /**
+   * Sends one change for the selected person. The list is only updated with what the server
+   * answered; a 409 or 422 reloads it so the offered actions match the server's view.
+   */
+  async function setRegistration(item: PortalSessionItem, payload: PortalRegistrationPayload): Promise<boolean> {
+    const personId = selectedPersonId.value
+    if (personId === null || pendingSessionIds.value.includes(item.id)) return false
+    pendingSessionIds.value = [...pendingSessionIds.value, item.id]
+    actionError.value = null
+    try {
+      const { data } = await portalApi.setRegistration(item.id, personId, { version: item.version, ...payload })
+      if (sessionsPersonId.value === personId) sessions.value = sessions.value.map(s => (s.id === data.id ? data : s))
+      return true
+    } catch (err) {
+      const failure = describeActionError(err, 'Die Meldung konnte nicht gespeichert werden.')
+      if (failure.status === 409 || failure.status === 422) await loadSessions(personId)
+      actionError.value = { ...failure, sessionId: item.id }
+      return false
+    } finally {
+      pendingSessionIds.value = pendingSessionIds.value.filter(id => id !== item.id)
+    }
+  }
+
+  const absencePreview = ref<PortalAbsencePreviewRow[] | null>(null)
+  const absenceBusy = ref(false)
+  const absenceError = ref<string | null>(null)
+
+  function absenceFailure(err: unknown, fallback: string) {
+    return status(err) === 429 ? 'Bitte kurz warten und erneut versuchen.' : getApiErrorMessage(err, fallback)
+  }
+
+  async function previewAbsence(range: Omit<PortalAbsencePayload, 'person'>): Promise<boolean> {
+    const person = selectedPersonId.value
+    absencePreview.value = null
+    absenceError.value = null
+    if (person === null) return false
+    absenceBusy.value = true
+    try {
+      absencePreview.value = (await portalApi.previewAbsence({ ...range, person })).data.sessions
+      return true
+    } catch (err) {
+      absenceError.value = absenceFailure(err, 'Die Vorschau konnte nicht geladen werden.')
+      return false
+    } finally {
+      absenceBusy.value = false
+    }
+  }
+
+  async function createAbsence(range: Omit<PortalAbsencePayload, 'person'>): Promise<PortalAbsenceResult | null> {
+    const person = selectedPersonId.value
+    absenceError.value = null
+    if (person === null) return null
+    absenceBusy.value = true
+    try {
+      const result = (await portalApi.createAbsence({ ...range, person })).data
+      await loadSessions(person)
+      return result
+    } catch (err) {
+      absenceError.value = absenceFailure(err, 'Die Abmeldung konnte nicht gespeichert werden.')
+      return null
+    } finally {
+      absenceBusy.value = false
+    }
+  }
+
+  function resetAbsence() { absencePreview.value = null; absenceError.value = null }
 
   async function fetchMe() {
     loading.value = true
@@ -127,6 +239,8 @@ export const usePortalStore = defineStore('portal', () => {
   }
 
   return {
+    sessions, sessionsPersonId, sessionsLoaded, sessionsLoading, sessionsError, pendingSessionIds, actionError, loadSessions, setRegistration,
+    absencePreview, absenceBusy, absenceError, previewAbsence, createAbsence, resetAbsence,
     me, loading, error, fetchMe, personData, personLoading, personError, loadPerson, selectedPersonId, selectedPerson, selectPerson,
     invitation, invitationLoading, invitationError, loadInvitation,
     accepting, accepted, acceptError, acceptFieldErrors, acceptInvitation,

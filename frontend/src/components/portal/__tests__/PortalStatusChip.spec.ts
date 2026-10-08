@@ -6,6 +6,7 @@ describe('PortalStatusChip', () => {
   const cases: [PortalStatus, string][] = [
     ['expected', 'Erwartet'], ['no-response', 'Keine Rückmeldung'], ['declined', 'Abgemeldet'],
     ['unavailable', 'Nicht möglich'], ['registered', 'Angemeldet'], ['waitlist', 'Warteliste'], ['assigned', 'Zugeteilt'],
+    ['applied', 'Beworben'], ['not-selected', 'Nicht berücksichtigt'], ['session-cancelled', 'Abgesagt'],
   ]
   it.each(cases)('renders %s with icon and text', (status, label) => {
     const wrapper = mount(PortalStatusChip, { props: { status } })
