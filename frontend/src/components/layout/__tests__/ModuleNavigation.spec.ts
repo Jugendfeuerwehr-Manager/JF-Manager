@@ -10,9 +10,10 @@ describe('Module navigation', () => {
   beforeEach(() => { auth.isOrgWide = true; auth.hasPerm.mockReset().mockReturnValue(true) })
   it('exposes every module without an overflow menu and highlights detail pages', () => {
     const wrapper = render()
-    for (const path of ['/members', '/servicebook', '/training', '/qualifications', '/inventory', '/orders', '/emails/history', '/users', '/settings']) {
+    for (const path of ['/members', '/servicebook', '/training', '/qualifications', '/inventory', '/emails/history', '/users', '/settings']) {
       expect(wrapper.find(`a[href="${path}"]`).exists()).toBe(true)
     }
+    expect(wrapper.find('a[href="/orders"]').exists()).toBe(false)
     expect(wrapper.get('a[href="/members"]').attributes('aria-current')).toBe('page')
     expect(wrapper.get('a[href="/"]').attributes('aria-current')).toBeUndefined()
   })

@@ -32,7 +32,7 @@ from qualifications.api.viewsets import (
     SpecialTaskTypeViewSet,
     SpecialTaskViewSet,
 )
-from servicebook.api.viewsets import AttendanceViewSet, ServiceViewSet
+from servicebook.api.viewsets import AttendanceReportViewSet, AttendanceViewSet, ServiceViewSet
 from settings_manager.api import (
     EmailLayoutTemplateViewSet,
     EmailTemplateViewSet,
@@ -87,6 +87,7 @@ api.register(r"inventory/transactions", TransactionViewSet)
 
 api.register(r"servicebook/services", ServiceViewSet)
 api.register(r"servicebook/attendances", AttendanceViewSet)
+api.register(r"servicebook/attendance-report", AttendanceReportViewSet, basename="attendance-report")
 
 # Orders endpoints
 api.register(r"orders", OrderViewSet)

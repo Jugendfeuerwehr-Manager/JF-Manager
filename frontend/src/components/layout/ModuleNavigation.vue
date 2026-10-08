@@ -38,7 +38,6 @@ const sections: { label: string; items: NavItem[] }[] = [
   ] },
   { label: 'Material', items: [
     { label: 'Inventar', icon: 'pi pi-box', to: '/inventory', permission: 'view_item' },
-    { label: 'Bestellungen', icon: 'pi pi-shopping-cart', to: '/orders', permission: 'view_order' },
   ] },
   { label: 'Kommunikation', items: [
     { label: 'E-Mails schreiben', icon: 'pi pi-envelope', to: '/emails/compose', permission: 'view_emailmessage' },
