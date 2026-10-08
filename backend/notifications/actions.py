@@ -597,5 +597,92 @@ def _not_implemented(user, objects):
     raise NotImplementedError()
 
 
-for _hook in ("cr_apply", "cr_review", "apply_excused"):  # PORTAL-03 and PART-02
-    register(Action(_hook, CONFIRM, _not_implemented, lambda *a: {}, lambda *a: {}))
+register(Action("apply_excused", CONFIRM, _not_implemented, lambda *a: {}, lambda *a: {}))  # PART-02: in-app only
+
+
+# ---------------------------------------------------------------- change requests (PORTAL-03.4)
+
+
+def _change_request(user, objects):
+    """Reviewable request; portal accounts and requests outside the reviewer's scope are gone."""
+    from portal.access import is_portal_account
+    from portal.change_requests import reviewable
+
+    pk = objects.get("c")
+    if is_portal_account(user) or not isinstance(pk, int):
+        raise Gone()
+    change = reviewable(user).filter(pk=pk).first()
+    if change is None:
+        raise Gone()
+    return change
+
+
+def _review_route(change):
+    return f"/portal-verwaltung?tab=antraege&antrag={change.pk}"
+
+
+register(
+    Action(
+        "cr_review",
+        DIRECT,
+        _change_request,
+        lambda user, o, change: {
+            "title": "Änderungsantrag prüfen",
+            "lines": [],
+            "state": READY,
+            "target_route": _review_route(change),
+        },
+        lambda user, o, change, p: {"state": DONE, "message": "", "target_route": _review_route(change)},
+    )
+)
+
+
+def _apply_state(user, objects, change):
+    """``(state, lines)``: decided, changed since the mail, conflicts and four-eyes block the shortcut."""
+    from portal.change_requests import own_request, payload
+
+    data = payload(change, with_current=True)
+    lines = [data["person_name"], *(f"{f['label']}: {f['old'] or '–'} → {f['new'] or '–'}" for f in data["fields"])]
+    if change.status != "open":
+        return DONE, [*lines, f"Bereits entschieden: {change.get_status_display()}."]
+    if own_request(change, user):
+        return NOT_AVAILABLE, [*lines, "Eigene Anträge gibt eine andere Person frei."]
+    if objects.get("v") != change.version:
+        return NOT_AVAILABLE, [*lines, "Der Antrag wurde inzwischen geändert. Bitte in der Prüfansicht entscheiden."]
+    if any(f["conflict"] for f in data["fields"]):
+        return NOT_AVAILABLE, [
+            *lines,
+            "Einzelne Werte wurden inzwischen geändert. Bitte in der Prüfansicht entscheiden.",
+        ]
+    return READY, lines
+
+
+def _apply_preview(user, objects, change):
+    state, lines = _apply_state(user, objects, change)
+    return {
+        "title": "Alle Änderungen übernehmen?",
+        "lines": lines,
+        "state": state,
+        "target_route": _review_route(change),
+    }
+
+
+def _apply_execute(user, objects, change, payload):
+    from portal.change_requests import ChangeRequestError, decide
+
+    state, lines = _apply_state(user, objects, change)
+    if state != READY:
+        return {"state": state, "message": lines[-1], "lines": lines, "target_route": _review_route(change)}
+    try:
+        decided = decide(change, user, {f["field"]: "apply" for f in change.fields}, version=change.version, note="")
+    except ChangeRequestError as error:
+        return {"state": NOT_AVAILABLE, "message": error.detail, "target_route": _review_route(change)}
+    return {
+        "state": DONE,
+        "message": f"Änderungen übernommen ({decided.get_status_display()}).",
+        "lines": lines,
+        "target_route": _review_route(change),
+    }
+
+
+register(Action("cr_apply", CONFIRM, _change_request, _apply_preview, _apply_execute))

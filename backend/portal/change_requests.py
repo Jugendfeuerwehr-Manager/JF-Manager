@@ -47,6 +47,17 @@ def field_labels(kind):
     return PARENT_FIELDS if kind == "parent" else MEMBER_FIELDS
 
 
+def _after_commit(producer, pk, **kwargs):
+    """Notifications (PORTAL-03.4) only for committed state."""
+
+    def run():
+        from notifications import change_request_producers
+
+        getattr(change_request_producers, producer)(pk, **kwargs)
+
+    transaction.on_commit(run)
+
+
 def kind_of(record):
     return "parent" if isinstance(record, Parent) else "member"
 
@@ -118,12 +129,15 @@ def submit(record, raw, user):
                     ChangeRequest.objects.select_for_update().filter(status=ChangeRequest.Status.OPEN, **lookup).first()
                 )
                 if existing is None:
-                    return ChangeRequest.objects.create(requested_by=user, fields=entries, **lookup), True
-                existing.fields = entries
-                existing.version += 1
-                existing.requested_by = user
-                existing.save(update_fields=["fields", "version", "requested_by", "updated_at"])
-                return existing, False
+                    change, created = ChangeRequest.objects.create(requested_by=user, fields=entries, **lookup), True
+                else:
+                    existing.fields = entries
+                    existing.version += 1
+                    existing.requested_by = user
+                    existing.save(update_fields=["fields", "version", "requested_by", "updated_at"])
+                    change, created = existing, False
+                _after_commit("change_request_submitted", change.pk)
+                return change, created
         except IntegrityError:
             continue  # a parallel submit created the open request first; update it
     raise ChangeRequestError("Der Antrag wurde gerade geändert. Bitte erneut versuchen.", code="conflict", status=409)
@@ -136,6 +150,7 @@ def withdraw(change_request):
             raise ChangeRequestError("Der Antrag ist bereits entschieden.", code="decided", status=409)
         locked.status = ChangeRequest.Status.WITHDRAWN
         locked.save(update_fields=["status", "updated_at"])
+        _after_commit("change_request_closed", locked.pk)
     return locked
 
 
@@ -286,4 +301,5 @@ def decide(change_request, user, decisions, *, version, note="", confirm_conflic
         locked.decided_at = timezone.now()
         locked.decision_note = note
         locked.save()
+        _after_commit("change_request_closed", locked.pk, by=user)
     return locked

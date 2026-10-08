@@ -50,10 +50,11 @@ def html_to_text(html):
 
     def link(match):
         url, label = unescape(match.group(1)), strip_tags(match.group(2)).strip()
-        return url if not label or label == url else f"{label}: {url}"
+        # Spaces around: adjacent buttons must never run into the URL (mail clients would extend the link).
+        return f" {url} " if not label or label == url else f" {label}: {url} "
 
     text = unescape(strip_tags(LINK.sub(link, html)))
-    lines = [line.strip() for line in text.splitlines()]
+    lines = [re.sub(r" {2,}", " ", line).strip() for line in text.splitlines()]
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 

@@ -371,6 +371,11 @@ class Command(BaseCommand):
             member_portal_min_age=14,
             visibility={"equipment": {"members": "visible"}},
         )
+        # One open change request (PORTAL-03): the parent reports a new mobile number for the child.
+        from portal.change_requests import submit
+
+        parent_user = model.objects.get(username=f"eltern@{DEMO_DOMAIN}")
+        submit(child, {"mobile": "0170 5550123", "city": child.city}, parent_user)
 
     def seed_qualifications(self):
         from qualifications.models import Qualification, QualificationType, SpecialTask, SpecialTaskType

@@ -117,12 +117,17 @@ class GenericEndpointTests(EndpointBase):
         self.assertEqual(bad["target_route"], "/")
 
     def test_hooks_are_not_available(self):
-        for key in ("cr_apply", "cr_review", "apply_excused"):
-            token = self.link(self.anna, key, {"id": 1})
+        token = self.link(self.anna, "apply_excused", {"id": 1})
+        for path in (RESOLVE, EXECUTE):
+            response = post(client_for(self.anna), path, token)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["state"], "not_available")
+
+    def test_change_request_actions_outside_the_review_scope_are_gone(self):
+        for key in ("cr_apply", "cr_review"):  # PORTAL-03.4; details in tests_change_requests
+            token = self.link(self.anna, key, {"c": 999999, "v": 1})
             for path in (RESOLVE, EXECUTE):
-                response = post(client_for(self.anna), path, token)
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["state"], "not_available")
+                self.assertEqual(post(client_for(self.anna), path, token).status_code, 404)
 
 
 class InboxActionTests(EndpointBase):

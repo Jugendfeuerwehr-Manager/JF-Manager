@@ -107,6 +107,13 @@ class SeedDemoTests(TestCase):
         self.assertFalse(Parent.objects.filter(children=member, account_link__isnull=False).exists())
         self.assertIn("eltern@demo.example.invalid", self.output.getvalue())
 
+    def test_one_open_change_request_from_the_parent(self):
+        from portal.models import ChangeRequest
+
+        request = ChangeRequest.objects.get(status="open")
+        self.assertEqual(request.requested_by.username, "eltern@demo.example.invalid")
+        self.assertEqual([f["field"] for f in request.fields], ["mobile"])
+
     def test_portal_accounts_only_reach_the_allowlist(self):
         self.client.force_login(get_user_model().objects.get(username="eltern@demo.example.invalid"))
         self.assertEqual(self.client.get("/api/v1/users/me/").status_code, 200)

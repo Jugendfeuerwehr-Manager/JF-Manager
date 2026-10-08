@@ -35,6 +35,12 @@ class RenderTests(TestCase):
         self.assertIn(f"Von der Warteliste abmelden: {sample['links']['withdraw']}", text)
         self.assertIn(f"Benachrichtigungen einstellen: {sample['links']['preferences']}", text)
 
+    def test_adjacent_buttons_keep_separate_links(self):
+        from notifications.emails import html_to_text
+
+        html = '<p><a href="https://x.invalid/a/1">Prüfen</a><a href="https://x.invalid/a/2">Alle übernehmen</a></p>'
+        self.assertEqual(html_to_text(html), "Prüfen: https://x.invalid/a/1 Alle übernehmen: https://x.invalid/a/2")
+
     def test_values_are_escaped(self):
         sample = {**CATALOG["waitlist_promoted"]["sample_data"]}
         sample["person"] = {"first_name": XSS}
