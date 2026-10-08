@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { portalApi, type PortalMe, type InvitationInfo, type AcceptInvitationPayload } from '@/api/portal'
+import { portalApi, type PortalMe, type PortalPersonData, type InvitationInfo, type AcceptInvitationPayload } from '@/api/portal'
 import { getApiErrorMessage } from '@/utils/apiError'
 
 export const usePortalStore = defineStore('portal', () => {
@@ -13,6 +13,33 @@ export const usePortalStore = defineStore('portal', () => {
 
   function selectPerson(id: number) {
     if (me.value?.people.some(p => p.id === id)) selectedPersonId.value = id
+  }
+
+  const personData = ref<PortalPersonData | null>(null)
+  const personLoading = ref(false)
+  const personError = ref<{ status?: number, message: string } | null>(null)
+  let personSeq = 0
+
+  /** Released data of one person; only the newest request may write (the switcher changes quickly). */
+  async function loadPerson(id: number | null) {
+    const seq = ++personSeq
+    personData.value = null
+    personError.value = null
+    if (id === null) { personLoading.value = false; return }
+    personLoading.value = true
+    try {
+      const { data } = await portalApi.person(id)
+      if (seq === personSeq) personData.value = data
+    } catch (err) {
+      if (seq !== personSeq) return
+      const status = (err as { response?: { status?: number } }).response?.status
+      personError.value = {
+        status,
+        message: status === 404 ? 'Für diese Person sind keine Daten verfügbar.' : getApiErrorMessage(err, 'Die Daten konnten nicht geladen werden.'),
+      }
+    } finally {
+      if (seq === personSeq) personLoading.value = false
+    }
   }
 
   async function fetchMe() {
@@ -100,7 +127,7 @@ export const usePortalStore = defineStore('portal', () => {
   }
 
   return {
-    me, loading, error, fetchMe, selectedPersonId, selectedPerson, selectPerson,
+    me, loading, error, fetchMe, personData, personLoading, personError, loadPerson, selectedPersonId, selectedPerson, selectPerson,
     invitation, invitationLoading, invitationError, loadInvitation,
     accepting, accepted, acceptError, acceptFieldErrors, acceptInvitation,
   }

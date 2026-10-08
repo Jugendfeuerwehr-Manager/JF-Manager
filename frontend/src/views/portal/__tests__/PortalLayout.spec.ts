@@ -4,10 +4,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import PrimeVue from 'primevue/config'
 import PortalLayout from '../PortalLayout.vue'
+import PortalDataView from '../PortalDataView.vue'
 import PortalPlaceholderView from '../PortalPlaceholderView.vue'
 import { portalApi } from '@/api/portal'
 
-vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn() } }))
+vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn(), person: vi.fn() } }))
 vi.mock('@/api/branding', () => ({ brandingApi: { getPublicBranding: vi.fn().mockResolvedValue({ data: { title: 'Jugendfeuerwehr Musterstadt', logo_url: null } }) } }))
 vi.mock('@/router', () => ({ default: { push: vi.fn(), currentRoute: { value: { path: '/portal' } } } }))
 
@@ -20,7 +21,7 @@ async function mountAt(name: string) {
     path: '/portal', component: PortalLayout, children: [
       { path: '', name: 'portal-home', component: stub },
       { path: 'termine', name: 'portal-sessions', component: PortalPlaceholderView, props },
-      { path: 'daten', name: 'portal-data', component: PortalPlaceholderView, props: { ...props, title: 'Daten' } },
+      { path: 'daten', name: 'portal-data', component: PortalDataView },
       { path: 'profil', name: 'portal-profile', component: stub },
     ] }] })
   await router.push({ name }); await router.isReady()
@@ -36,6 +37,10 @@ describe('PortalLayout', () => {
       { id: 1, relation: 'self', first_name: 'Anna', last_name: 'Muster' },
       { id: 2, relation: 'child', first_name: 'Tim', last_name: 'Muster' },
     ] } } as never)
+    vi.mocked(portalApi.person).mockImplementation((id: number) => Promise.resolve({ data: {
+      id, relation: id === 1 ? 'self' : 'child', categories: ['contact'],
+      contact: { first_name: id === 1 ? 'Anna' : 'Tim', last_name: 'Muster', street: '', zip_code: '', city: '', phone: '', mobile: '', email: '' },
+    } }) as never)
   })
 
   it('renders greeting, org name and four nav items with aria-current on the active one', async () => {

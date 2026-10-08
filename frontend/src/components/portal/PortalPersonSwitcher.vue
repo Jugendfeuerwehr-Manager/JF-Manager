@@ -8,9 +8,10 @@ const people = computed(() => portal.me?.people ?? [])
 function initials(first: string, last: string) {
   return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
 }
-// Age is not part of /portal/me/ yet, so only the first name is shown.
-function label(person: { relation: string, first_name: string }) {
-  return person.relation === 'self' ? 'Ich' : person.first_name
+// The age is only sent when the birthday is released for the portal.
+function label(person: { relation: string, first_name: string, age?: number }) {
+  if (person.relation === 'self') return 'Ich'
+  return person.age === undefined ? person.first_name : `${person.first_name} · ${person.age}`
 }
 </script>
 

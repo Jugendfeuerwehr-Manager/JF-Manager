@@ -34,4 +34,11 @@ describe('PortalPersonSwitcher', () => {
     await store.fetchMe()
     expect(store.selectedPersonId).toBe(2)
   })
+
+  it('shows "Vorname · Alter" only when the age is released', async () => {
+    vi.mocked(portalApi.me).mockResolvedValue({ data: { account, people: [self, { ...child, age: 12 }, { id: 3, relation: 'child', first_name: 'Jo', last_name: 'Muster' }] } } as never)
+    await usePortalStore().fetchMe()
+    const tabs = mount(PortalPersonSwitcher).findAll('[role="tab"]')
+    expect(tabs.map(t => t.text())).toEqual(['Ich', 'TM Tim · 12', 'JM Jo'])
+  })
 })

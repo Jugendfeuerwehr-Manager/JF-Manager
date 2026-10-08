@@ -412,7 +412,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'portal-home', component: () => import('@/views/portal/PortalHomeView.vue') },
         { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalPlaceholderView.vue'), props: { icon: 'pi pi-calendar', title: 'Termine', text: 'Termine und An-/Abmeldung folgen in Kürze.' } },
-        { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalPlaceholderView.vue'), props: { icon: 'pi pi-id-card', title: 'Daten', text: 'Deine Daten werden hier bald angezeigt; Änderungen kannst du dann direkt beantragen.' } },
+        { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalDataView.vue') },
         { path: 'profil', name: 'portal-profile', component: () => import('@/views/portal/PortalProfileView.vue') }
       ]
     },
