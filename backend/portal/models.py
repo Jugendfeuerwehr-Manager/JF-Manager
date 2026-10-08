@@ -102,7 +102,7 @@ class Invitation(models.Model):
         verbose_name = "Portaleinladung"
         verbose_name_plural = "Portaleinladungen"
         ordering = ["-created_at"]
-        permissions = [("invite_portal_account", "Eltern und Mitglieder ins Portal einladen")]
+        permissions = [("invite_portal_account", "Portalzugänge einladen und verwalten")]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(parent__isnull=False, member__isnull=True)
@@ -143,3 +143,24 @@ class Invitation(models.Model):
         if self.expires_at <= timezone.now():
             return "expired"
         return "open"
+
+
+class ParentAccessExtension(models.Model):
+    """Staff-granted parent access beyond the child's 18th birthday (E6, at most 12 months)."""
+
+    parent = models.ForeignKey("members.Parent", on_delete=models.CASCADE, related_name="access_extensions")
+    member = models.ForeignKey("members.Member", on_delete=models.CASCADE, related_name="parent_access_extensions")
+    until = models.DateField(verbose_name="Elternzugriff bis")
+    reason = models.CharField(max_length=500, verbose_name="Begründung")
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Verlängerung Elternzugriff"
+        verbose_name_plural = "Verlängerungen Elternzugriff"
+        ordering = ["-until"]
+
+    def __str__(self):
+        return f"{self.parent} → {self.member} bis {self.until:%d.%m.%Y}"

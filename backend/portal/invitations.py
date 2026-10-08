@@ -9,11 +9,12 @@ import hashlib
 import logging
 import secrets
 from datetime import timedelta
+from smtplib import SMTPException
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
@@ -114,7 +115,16 @@ def _send(invitation, raw_token):
     from orders.notifications.template_service import TemplateRenderer
 
     subject, html_message, plain_message = TemplateRenderer.render_email_content("portal_invite", context)
-    send_mail(subject, plain_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
+    try:
+        send_mail(subject, plain_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
+    except (ImproperlyConfigured, OSError, SMTPException) as exc:
+        # The surrounding transaction rolls back: no open invitation without a delivered link.
+        security_log.warning("portal invitation mail failed", extra={"error": type(exc).__name__})
+        raise InvitationError(
+            "mail_failed",
+            "Die Einladung konnte nicht per E-Mail versendet werden. Bitte den E-Mail-Versand in den Einstellungen prüfen.",
+            503,
+        ) from exc
     invitation.sent_at = timezone.now()
 
 

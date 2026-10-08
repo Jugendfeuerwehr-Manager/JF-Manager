@@ -57,3 +57,24 @@ class InvitationAcceptSerializer(serializers.Serializer):
         if not attrs["privacy_accepted"]:
             raise serializers.ValidationError({"privacy_accepted": "Bitte den Datenschutzhinweis bestätigen."})
         return attrs
+
+
+class RecordRefSerializer(serializers.Serializer):
+    parent = serializers.IntegerField(required=False)
+    member = serializers.IntegerField(required=False)
+
+    def validate(self, attrs):
+        if bool(attrs.get("parent")) == bool(attrs.get("member")):
+            raise serializers.ValidationError("Genau einen Eltern- oder Mitgliedsdatensatz angeben.")
+        return attrs
+
+
+class ExtensionSerializer(serializers.Serializer):
+    parent = serializers.IntegerField()
+    member = serializers.IntegerField()
+    until = serializers.DateField()
+    reason = serializers.CharField(max_length=500)
+
+
+class BulkInviteSerializer(serializers.Serializer):
+    parents = serializers.ListField(child=serializers.IntegerField(), min_length=1, max_length=100)

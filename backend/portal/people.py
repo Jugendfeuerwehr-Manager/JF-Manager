@@ -7,12 +7,12 @@ only through a confirmed AccountLink.
 
 from datetime import date
 
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from members.models import Member
 
-from .models import AccountLink
+from .models import AccountLink, ParentAccessExtension
 
 
 def eighteen_years_before(today):
@@ -29,16 +29,24 @@ def confirmed_link(user):
     return links.filter(user=user, status=AccountLink.Status.CONFIRMED).first()
 
 
-def portal_children(user, today=None):
-    """Minor children of the linked parent record. Access ends on the 18th birthday (E6).
+def visible_children(parent, today=None):
+    """Children a parent may still act for: minors, unknown birthday, or a running extension (E6).
 
-    Children without a birthday stay visible until one is recorded; extensions follow in PORTAL-01.4.
+    Children without a birthday stay visible until one is recorded.
     """
+    today = today or timezone.localdate()
+    extended = ParentAccessExtension.objects.filter(parent=parent, member=OuterRef("pk"), until__gte=today)
+    return parent.children.filter(
+        Q(birthday__isnull=True) | Q(birthday__gt=eighteen_years_before(today)) | Exists(extended)
+    ).order_by("name", "pk")
+
+
+def portal_children(user, today=None):
+    """Children of the linked parent record the account may see (see visible_children)."""
     link = confirmed_link(user)
     if link is None or link.parent_id is None:
         return Member.objects.none()
-    cutoff = eighteen_years_before(today or timezone.localdate())
-    return link.parent.children.filter(Q(birthday__isnull=True) | Q(birthday__gt=cutoff)).order_by("name", "pk")
+    return visible_children(link.parent, today)
 
 
 def portal_self(user):

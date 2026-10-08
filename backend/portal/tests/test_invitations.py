@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core import mail
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -121,6 +122,19 @@ class InviteTests(InvitationTestBase):
         with mock.patch("portal.invitations.member_portal_allowed", return_value=True):
             response = self.client.post("/api/v1/portal/invitations/", {"member": self.child.pk}, format="json")
         self.assertEqual(response.status_code, 201)
+
+    def test_mail_failure_leaves_no_open_invitation(self):
+        with mock.patch("portal.invitations.send_mail", side_effect=ImproperlyConfigured("kein SMTP")):
+            response = self.invite_parent()
+        self.assertEqual((response.status_code, response.json()["code"]), (503, "mail_failed"))
+        self.assertFalse(Invitation.objects.exists())
+        with mock.patch("portal.invitations.send_mail", side_effect=OSError("down")):
+            bulk = self.client.post("/api/v1/portal/invitations/bulk/", {"parents": [self.parent.pk]}, format="json")
+        self.assertEqual(
+            bulk.json()["results"],
+            [{"parent": self.parent.pk, "result": "skipped", "code": "mail_failed", "detail": mock.ANY}],
+        )
+        self.assertEqual(self.invite_parent().status_code, 201)
 
     def test_one_open_invitation_resend_and_revoke(self):
         first = self.invite_parent().json()

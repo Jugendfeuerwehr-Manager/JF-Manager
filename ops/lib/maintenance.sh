@@ -9,6 +9,7 @@ MAINT_TASKS=(
     "export-audits|*-*-* 03:20:00|purge_export_audits|1|Abgelaufene Export-Auditeinträge löschen (SEC-08)"
     "booking-requests|*-*-* 03:30:00|purge_booking_requests|1|Gespeicherte Buchungsantworten nach Aufbewahrungsfrist löschen (SEC-09)"
     "sync-due|*:0/5|run_due_sync_jobs|1|Fällige Synchronisationsaufträge an den Worker übergeben"
+    "portal-access|*-*-* 03:40:00|portal_access_lifecycle|1|Elternzugänge nach Volljährigkeit der Kinder beenden (PORTAL-01.4)"
     "order-reminders|Mon *-*-* 07:00:00|send_pending_reminders|0|Erinnerungs-E-Mails für offene Bestellungen (optional)"
 )
 
