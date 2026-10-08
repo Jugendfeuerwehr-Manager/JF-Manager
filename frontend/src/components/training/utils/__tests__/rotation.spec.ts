@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildRotation, type RotationInput, type RotationStation } from '../rotation'
 
-const station = (title: string): RotationStation => ({ title, location: `${title}-Ort`, instructors: [], libraryBlock: null })
+const station = (title: string): RotationStation => ({ key: title, title, location: `${title}-Ort`, instructors: [], libraryBlock: null })
 const groups = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, name: `G${i + 1}` }))
 
 function input(overrides: Partial<RotationInput> = {}): RotationInput {
