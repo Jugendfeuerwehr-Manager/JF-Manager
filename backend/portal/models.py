@@ -204,3 +204,89 @@ class PortalPolicy(models.Model):
 
     def __str__(self):
         return f"Portal-Freigabe {self.department or 'Organisation'}"
+
+
+class ChangeRequest(models.Model):
+    """Requested change of name and contact data (PORTAL-03, E2: nothing changes before approval).
+
+    ``fields`` holds one entry per requested field: ``{"field", "old", "new", "decision", "current_at_decision"}``;
+    ``old`` is the value when the request was made, so reviewers see conflicts with later changes.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Offen"
+        PARTIAL = "partial", "Teilweise übernommen"
+        APPLIED = "applied", "Übernommen"
+        REJECTED = "rejected", "Abgelehnt"
+        WITHDRAWN = "withdrawn", "Zurückgezogen"
+
+    target_member = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.CASCADE, related_name="change_requests"
+    )
+    target_parent = models.ForeignKey(
+        "members.Parent", null=True, blank=True, on_delete=models.CASCADE, related_name="change_requests"
+    )
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN)
+    version = models.PositiveIntegerField(default=1)
+    fields = models.JSONField(default=list)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.CharField(max_length=1000, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Änderungsantrag"
+        verbose_name_plural = "Änderungsanträge"
+        ordering = ["-updated_at"]
+        permissions = [("review_changerequest", "Änderungsanträge aus dem Portal prüfen")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(target_member__isnull=False, target_parent__isnull=True)
+                | models.Q(target_member__isnull=True, target_parent__isnull=False),
+                name="change_request_has_one_target",
+            ),
+            models.UniqueConstraint(
+                fields=["target_member"],
+                condition=models.Q(status="open", target_member__isnull=False),
+                name="one_open_change_request_per_member",
+            ),
+            models.UniqueConstraint(
+                fields=["target_parent"],
+                condition=models.Q(status="open", target_parent__isnull=False),
+                name="one_open_change_request_per_parent",
+            ),
+        ]
+
+    @property
+    def target(self):
+        return self.target_member if self.target_member_id else self.target_parent
+
+    @property
+    def kind(self):
+        return "member" if self.target_member_id else "parent"
+
+
+class ChangeLog(models.Model):
+    """Append-only record of applied values (who, when, field, old, new, request)."""
+
+    target_kind = models.CharField(max_length=10)  # member | parent
+    target_id = models.PositiveBigIntegerField()
+    field = models.CharField(max_length=30)
+    old = models.CharField(max_length=300, blank=True, default="")
+    new = models.CharField(max_length=300, blank=True, default="")
+    change_request = models.ForeignKey(
+        ChangeRequest, null=True, blank=True, on_delete=models.SET_NULL, related_name="log"
+    )
+    applied_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    applied_at = models.DateTimeField(auto_now_add=True)
+    self_change = models.BooleanField(default=False)  # PORTAL-04 (E14)
+
+    class Meta:
+        verbose_name = "Änderungsprotokoll"
+        verbose_name_plural = "Änderungsprotokoll"
+        ordering = ["-applied_at"]
+        indexes = [models.Index(fields=["target_kind", "target_id"])]
