@@ -64,6 +64,7 @@
         <Menu ref="moreMenu" :model="moreItems" popup />
         <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
         </template>
+        <Button v-if="session && (canManage || session.status !== 'draft')" icon="pi pi-users" label="Teilnahme" severity="secondary" text v-tooltip.bottom="'Anmeldemodus, Fristen, Voraussetzungen und Meldungen'" @click="showParticipation = true" />
         <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
         <template v-if="canManage">
         <Button
@@ -233,6 +234,7 @@
     <RotationDialog v-if="canManage" v-model:visible="showRotation" :duration="sessionDuration" />
     <DebriefDialog v-if="canManage && session && showDebrief" v-model:visible="showDebrief" :session="session" @saved="onDebriefSaved" />
     <SessionCopyDialog v-if="canManage" v-model:visible="showCopy" :mode="copyMode" :session="session" @copied="onCopied" @saved="onTemplateSaved" />
+    <ParticipationDialog v-if="session" v-model:visible="showParticipation" :session-id="session.id" :can-manage="canManage" />
     <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" :can-propagate="!!session?.series_uuid" />
 
     <!-- Session settings dialog -->
@@ -280,6 +282,7 @@ import DebriefDialog from '../molecules/DebriefDialog.vue'
 import SessionCopyDialog from '../molecules/SessionCopyDialog.vue'
 import PlanWarningsPanel from '../molecules/PlanWarningsPanel.vue'
 import PublishJustificationDialog from '../molecules/PublishJustificationDialog.vue'
+import ParticipationDialog from '@/components/participation/ParticipationDialog.vue'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
 import { useToast } from 'primevue/usetoast'
@@ -314,6 +317,7 @@ const showPlanAction = ref(false)
 const showSeries = ref(false)
 const showRotation = ref(false)
 const showDebrief = ref(false)
+const showParticipation = ref(false)
 // Follow-up once the exercise has begun (device time); the server checks again.
 const canDebrief = computed(() => {
   const s = plannerStore.session
