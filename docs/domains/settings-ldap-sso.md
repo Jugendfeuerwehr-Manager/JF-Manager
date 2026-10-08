@@ -35,7 +35,7 @@ Category endpoints:
 Permission model:
 
 - Superuser has full access.
-- Staff has broad access except sensitive auth categories are still checked.
+- Staff alone grants no category permission; use the explicit settings permissions or the Systemadministration role.
 - Fine-grained permissions exist per category (`view_*_settings`, `change_*_settings`) plus global (`view_all_settings`, `change_all_settings`).
 
 ## LDAP Integration
@@ -60,14 +60,13 @@ Behavior:
 
 ## SSO (OIDC)
 
-OIDC is implemented as Authorization Code flow on the backend with JWT handoff for the SPA.
+OIDC is implemented as Authorization Code flow with PKCE on the backend and a server-side cookie session for the SPA. Legacy JWT/token handoff is removed.
 
 Public/login flow endpoints:
 
 - `GET /api/v1/auth/oidc/public-config/`
 - `GET /api/v1/auth/oidc/login/`
 - `GET /api/v1/auth/oidc/callback/`
-- `POST /api/v1/auth/oidc/exchange/`
 
 OIDC settings and validation:
 

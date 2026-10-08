@@ -588,7 +588,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | OPS-04 | in Prüfung | Claude (OPS-Session) | Backup, Restore, Update mit Rollback geprüft; offen: Debian 13. |
 | OPS-05 | in Prüfung | Claude (OPS-Session; 05.3/05.4 Cloud-Session) | Altvarianten abgelöst, Übernahme PostgreSQL 15 → 17 geprüft; OPS-05.3/05.4 Altlasten entfernt, Entwicklungs-Container unter `dev/`. Im Projektwurzelverzeichnis bleibt kein Produktionsartefakt. OPS-05.5: ausführliche Portainer-Migrationsanleitung mit Hostzuordnung, Schlüsseln, Uploads, Import, Proxy, Abnahme und Rückkehr abgeschlossen. |
 | DEV-01 | abgeschlossen | Claude (Merge-/DEV-Sitzung) | DEV-01.4: 890/890 Backend auf PostgreSQL 17, Live-Login mit 2FA-Demo-Code, frischer lokaler Bestand. |
-| DOC-01 | in Arbeit | Codex (Handbuch) | DOC-01.0: Rollengliederung, statische Auslieferung und Abnahme festgelegt; DOC-01.1–4 folgen. |
+| DOC-01 | in Arbeit | Codex (Handbuch) | DOC-01.1: Rollenhandbuch und Grundkonzepte ausgearbeitet; DOC-01.2 aktuelle Screenshots. |
 | PORTAL-01 | in Arbeit | Claude (Portal-Sitzung) | PORTAL-01.2 globaler Ausschluss, PORTAL-01.2b Demozugänge Eltern/Mitglied; nächster Schritt PORTAL-01.3. |
 | PORTAL-02 | geplant | — | Freigaben (Organisation/Abteilung) und Selbstauskunft. |
 | PORTAL-03 | geplant | — | Änderungsanträge mit feldweiser Freigabe. |
@@ -621,7 +621,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Dateiverantwortung:** README, docs/README.md, docs/user-guide.md, docs/handbook/, erforderliche fachliche Dokumentationskorrekturen, mkdocs.yml, requirements-docs.txt, scripts/docs/, eigener Dokumentationsworkflow und .gitignore-Hunks; nur DOC-Zeilen/Detailblock/Journal dieser Roadmap.
 - **Ausgangsstand:** gemeinsamer Branch bestätigt; bestehende Portal-/Auth-Dateien fremd. Bisherige Anleitung verweist auf gelöschtes deployment/, beschreibt entfernte Team-Auswertung und Bestellmenü. Technische LDAP-/OIDC-Doku enthält veralteten JWT-Handoff. Vorhandene Bilder werden nicht als aktuelle Aufnahme ausgegeben.
 - **Prüfungen:** bestanden: Git-/Code-/Quellenabgleich; nicht ausgeführt: Anwendungstests (noch keine Codeänderung), Browser/Build.
-- **Risiken / nächster Schritt:** DOC-01.1. Pages wird vorbereitet, nicht veröffentlicht. Externe Anbieter, reales HTTPS/Passkey-Gerät und produktive Wiederherstellung sind keine Dokumentationsabnahme. Portal-Erweiterung nach deren Fachabnahme ergänzen.
+- **Risiken / nächster Schritt:** DOC-01.2. Pages wird vorbereitet, nicht veröffentlicht. Externe Anbieter, reales HTTPS/Passkey-Gerät und produktive Wiederherstellung sind keine Dokumentationsabnahme. Portal-Erweiterung nach deren Fachabnahme ergänzen.
 
 ### EXEC-01: aktueller Detailstand
 
@@ -1884,3 +1884,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 08.10.2026 | WEB-PLAN.0 | Nutzerauftrag Marketing-Website: Positionierung für Vereine, bebilderte Desktop-/Mobilmockups, Bewegungs- und Wartungskonzept. Detailblock mit Abnahme, Abhängigkeiten und Dateiverantwortung aufgenommen. Tatsächlichen Stand gegen README, Git und Modulnamen-Konfiguration abgeglichen; Portal noch in Entwicklung, öffentliche Demo nicht belegt. | Bestanden: Ausgangsstand-/Quellenabgleich. Nicht ausgeführt: Anwendungstests (nur Planung). | Dieser Commit: `docs(WEB-PLAN.0): scope the marketing website concept` | WEB-PLAN.1; fremde Portal-/Auth-Dateien unverändert lassen. |
 
 | 08.10.2026 | DOC-01.0 | Nutzerauftrag Benutzerhandbuch/README: Rollenbereiche, Grundkonzepte, aktuelle Demoaufnahmen, navigierbare statische Auslieferung und Prüfvertrag festgelegt. | Bestanden: Git-/Quellenabgleich. Nicht ausgeführt: Build, Browser, Anwendungstests (Dokumentation). | Dieser Commit: `docs(DOC-01.0): scope the role-based handbook` | DOC-01.1 |
+
+| 08.10.2026 | DOC-01.1 | Handbuch nach Administration, Jugendleitung/Bedienung und Serverbetrieb gegliedert; Grundkonzepte, alle Fachmodule, Rollen/Delegation, Einstellungen, Integration, Regelbetrieb und Notfallhilfe. Veraltete JWT-/Staff-Aussagen in Fachreferenzen korrigiert. | Bestanden: Abgleich mit Routen, Rollenmanifest, Settings-Permissions und Betriebsreferenzen. Nicht ausgeführt: finaler Link-/Buildtest (Bilder/Build folgen), Anwendungstests (nur Dokumentation). | Dieser Commit: `docs(DOC-01.1): write the role-based user handbook` | DOC-01.2 |
