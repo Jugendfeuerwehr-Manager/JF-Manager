@@ -245,4 +245,7 @@ def accept(raw_token, password):
     invitation.accepted_at, invitation.accepted_user = now, user
     invitation.save(update_fields=["accepted_at", "accepted_user"])
     security_log.info("portal invitation accepted", extra={"invitation": invitation.pk, "user": user.pk})
+    from notifications.account_producers import invitation_accepted
+
+    transaction.on_commit(lambda: invitation_accepted(invitation))
     return user

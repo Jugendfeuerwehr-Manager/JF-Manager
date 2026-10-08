@@ -8,7 +8,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         result = daily()
+        from notifications.account_producers import parent_access_warnings
+
+        warned = parent_access_warnings(result["children_ending_soon"])  # NOTIF-01.5c, once per child and account
         self.stdout.write(
             f"Beendete Elternzugänge: {len(result['ended_accounts'])}; "
-            f"Elternzugriff endet in 30 Tagen für {len(result['children_ending_soon'])} Kinder."
+            f"Elternzugriff endet in 30 Tagen für {len(result['children_ending_soon'])} Kinder; {warned} neue Hinweise."
         )

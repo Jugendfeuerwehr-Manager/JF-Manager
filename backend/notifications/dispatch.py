@@ -83,11 +83,11 @@ def common_context(user, *, open_url, withdraw_url="", withdraw_label="", action
 
 
 def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelta(0)):
-    """Queue one mail; the same event key never yields a second mail."""
+    """Queue one mail and return it; the same event key never yields a second mail (then None)."""
     if not user.is_active or not user.email or not wants(user, kind, "email"):
         return None
     ensure_flat(context)
-    delivery, _ = EmailDelivery.objects.get_or_create(
+    delivery, created = EmailDelivery.objects.get_or_create(
         event_key=event_key[:160],
         defaults={
             "user": user,
@@ -97,7 +97,7 @@ def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelt
             "send_after": timezone.now() + delay,
         },
     )
-    return delivery
+    return delivery if created else None  # None: already queued for this event
 
 
 def queue_push(user, item, category):
