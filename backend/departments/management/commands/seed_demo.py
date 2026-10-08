@@ -167,6 +167,7 @@ class Command(BaseCommand):
         self.seed_organisation()
         self.seed_accounts(password)
         self.seed_members()
+        self.seed_portal(password)
         self.seed_qualifications()
         self.seed_inventory()
         self.seed_orders()
@@ -296,6 +297,70 @@ class Command(BaseCommand):
                     datetime=self.today - timedelta(days=self.rng.randint(20, 400)),
                     notes="Mit Bravour bestanden.",
                 )
+
+    def seed_portal(self, password):
+        """Fictitious portal access (PORTAL-01.2b): one parent with two children, one member.
+
+        The parent's children are in two departments (Mitte and the Kinderfeuerwehr), so
+        portal views can show the person switcher and department-specific data. Links
+        are confirmed as if the invitations had been accepted.
+        """
+        from members.models import Member, Parent
+        from portal.models import AccountLink
+
+        model = get_user_model()
+
+        def age(member):
+            born = member.birthday
+            return self.today.year - born.year - ((self.today.month, self.today.day) < (born.month, born.day))
+
+        by_age = sorted(self.members["mitte"], key=age)
+        child = by_age[0]
+        member = next(m for m in reversed(by_age) if age(m) <= 16)
+        parent = Parent.objects.get(children=child)
+        sibling = Member.objects.create(
+            name="Pia",
+            lastname=child.lastname,
+            gender="female",
+            birthday=self.today.replace(year=self.today.year - 8) - timedelta(days=40),
+            joined=self.today - timedelta(days=200),
+            group=self.groups["kinder"][0],
+            status=self.statuses["Aktiv"],
+            canSwimm=True,
+            street=parent.street,
+            zip_code=parent.zip_code,
+            city=parent.city,
+        )
+        sibling.departments.add(self.departments["kinder"])
+        parent.children.add(sibling)
+        self.members["kinder"].append(sibling)
+
+        self.portal_accounts = {}
+        for username, person, field, first, last in [
+            (f"eltern@{DEMO_DOMAIN}", parent, "parent", parent.name, parent.lastname),
+            (f"mitglied@{DEMO_DOMAIN}", member, "member", member.name, member.lastname),
+        ]:
+            # The portal login is the e-mail address of the record (concept 4.3).
+            person.email = username
+            person.save(update_fields=["email"])
+            user = model.objects.create_user(
+                username=username,
+                email=username,
+                password=password,
+                first_name=first,
+                last_name=last,
+                account_kind=model.AccountKind.PORTAL,
+                dsgvo_external=True,
+            )
+            AccountLink.objects.create(
+                user=user,
+                status=AccountLink.Status.CONFIRMED,
+                linked_by=self.accounts["admin"],
+                confirmed_at=timezone.now(),
+                **{field: person},
+            )
+            self.portal_accounts[username] = person
+        self.portal_children = [child, sibling]
 
     def seed_qualifications(self):
         from qualifications.models import Qualification, QualificationType, SpecialTask, SpecialTaskType
@@ -841,6 +906,11 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(f"Konten: {', '.join(self.accounts)}")
+        children = " und ".join(m.name for m in self.portal_children)
+        self.stdout.write(
+            f"Portalzugänge: eltern@{DEMO_DOMAIN} (Elternteil von {children}), "
+            f"mitglied@{DEMO_DOMAIN} (Mitglied {self.portal_accounts[f'mitglied@{DEMO_DOMAIN}'].get_full_name()})"
+        )
         self.stdout.write(f"Gemeinsames Passwort: {password}")
         if self.totp_accounts:
             self.stdout.write(

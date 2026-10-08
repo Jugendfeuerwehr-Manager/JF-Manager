@@ -24,7 +24,7 @@ class SeedDemoTests(TestCase):
         call_command("seed_demo", password="demo-pass-123", stdout=cls.output)
 
     def test_fills_every_module_consistently(self):
-        self.assertEqual(Member.objects.count(), 52)
+        self.assertEqual(Member.objects.count(), 53)
         self.assertEqual(Member.objects.filter(departments__isnull=True).count(), 0)
         self.assertTrue(Attendance.objects.exists())
         self.assertTrue(Service.objects.filter(training_session__isnull=False).exists())
@@ -46,7 +46,7 @@ class SeedDemoTests(TestCase):
 
     def test_accounts_use_the_given_password_and_privileged_ones_have_an_authenticator(self):
         users = get_user_model().objects.filter(email__endswith="@demo.example.invalid")
-        self.assertEqual(users.count(), 10)
+        self.assertEqual(users.count(), 12)
         for user in users:
             self.assertTrue(user.check_password("demo-pass-123"))
             self.assertEqual(mfa_required(user), hasattr(user, "mfa_device"), user.username)
@@ -71,3 +71,40 @@ class SeedDemoTests(TestCase):
             call_command("demo_totp", "echt", stdout=StringIO())
         with override_settings(DEBUG=False), self.assertRaises(CommandError):
             call_command("demo_totp", "admin", stdout=StringIO())
+
+    def test_parent_and_member_portal_access(self):
+        from members.models import Parent
+        from portal.models import AccountLink
+
+        model = get_user_model()
+        self.assertEqual(
+            model.objects.filter(account_kind="staff", email__endswith="@demo.example.invalid").count(), 10
+        )
+        parent_user = model.objects.get(username="eltern@demo.example.invalid")
+        member_user = model.objects.get(username="mitglied@demo.example.invalid")
+        for user in (parent_user, member_user):
+            self.assertTrue(user.is_portal_account)
+            self.assertTrue(user.check_password("demo-pass-123"))
+            self.assertFalse(user.groups.exists() or user.department_roles.exists() or hasattr(user, "mfa_device"))
+            self.assertEqual(user.account_link.status, AccountLink.Status.CONFIRMED)
+
+        parent = parent_user.account_link.parent
+        self.assertIsNone(parent_user.account_link.member)
+        self.assertEqual(parent.email, parent_user.email)
+        children = list(parent.children.all())
+        self.assertEqual(len(children), 2)
+        self.assertEqual({c.departments.get().code for c in children}, {"mitte", "kinder"})
+        today = self.today()
+        self.assertTrue(all(c.birthday.replace(year=c.birthday.year + 18) > today for c in children))
+
+        member = member_user.account_link.member
+        self.assertIsNone(member_user.account_link.parent)
+        self.assertEqual(member.email, member_user.email)
+        self.assertEqual(member.departments.get().code, "mitte")
+        self.assertFalse(Parent.objects.filter(children=member, account_link__isnull=False).exists())
+        self.assertIn("eltern@demo.example.invalid", self.output.getvalue())
+
+    def test_portal_accounts_only_reach_the_allowlist(self):
+        self.client.force_login(get_user_model().objects.get(username="eltern@demo.example.invalid"))
+        self.assertEqual(self.client.get("/api/v1/users/me/").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/members/").status_code, 403)
