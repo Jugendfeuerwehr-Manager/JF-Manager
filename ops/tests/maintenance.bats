@@ -14,7 +14,7 @@ setup() {
 @test "list shows all tasks and the backup schedule" {
     run "$OPS_DIR/jfctl" maintenance list
     [ "$status" -eq 0 ]
-    for t in sessions export-audits booking-requests sync-due portal-access registration-notes order-reminders backup; do
+    for t in sessions export-audits booking-requests sync-due portal-access inbox registration-notes order-reminders backup; do
         [[ $output == *"$t"* ]]
     done
     grep -q "order-reminders *nein" <<<"$output"

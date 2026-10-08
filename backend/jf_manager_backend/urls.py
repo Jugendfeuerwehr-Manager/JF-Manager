@@ -58,6 +58,7 @@ api_patterns = [
     path("api/v1/security/csp-report/", csp_report, name="csp-report"),
     path("api/v1/attachment-preview/<int:pk>/<str:token>/", attachment_preview, name="attachment-preview"),
     path("api/v1/push/", include("notifications.urls")),
+    path("api/v1/notifications/", include("notifications.inbox_urls")),
     path("api/v1/portal/sessions/", include("participation.portal_urls")),
     path("api/v1/portal/absences/", include("participation.portal_absence_urls")),
     path("api/v1/portal/", include("portal.urls")),

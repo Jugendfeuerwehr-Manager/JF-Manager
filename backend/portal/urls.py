@@ -1,6 +1,8 @@
 from django.urls import include, path, re_path
 from rest_framework.routers import SimpleRouter
 
+from notifications.inbox_views import PortalNotificationReadView, PortalNotificationsView
+
 from .views import (
     BulkInviteView,
     InvitationAcceptView,
@@ -21,6 +23,8 @@ router.register("invitations", InvitationViewSet, basename="portal-invitations")
 
 urlpatterns = [
     path("me/", PortalMeView.as_view(), name="portal-me"),
+    path("notifications/", PortalNotificationsView.as_view(), name="portal-notifications"),
+    path("notifications/<int:item_id>/read/", PortalNotificationReadView.as_view(), name="portal-notification-read"),
     path("people/<int:member_id>/", PortalPersonView.as_view(), name="portal-person"),
     path("policies/", PortalPolicyView.as_view(), name="portal-policies"),
     path("policies/org/", PortalPolicyUpdateView.as_view(), name="portal-policy-org"),
