@@ -74,8 +74,8 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | --- | --- | --- | --- |
 | Q1 | Sollen Eltern Kinder anmelden dürfen, deren Gruppe/Abteilung nicht zum Dienst gehört, wenn der Dienst „für alle der Abteilung“ geöffnet ist? | Ja, Zielgruppe = Gruppen des Dienstes; ohne Gruppen = ganze Abteilung. | PART-01 |
 | Q2 | Darf ein Elternteil die Einladung an ein Mitgliedskonto des eigenen Kindes anstoßen (nicht versenden)? | **Entschieden 08.10.2026:** Nein in Version 1; nur Betreuende laden ein. | PORTAL-01 |
-| Q3 | Sollen Mitglieder im Modus „Zuteilung“ eine Wunschposition angeben dürfen? | Ja, optional; Standard „beliebige passende Position“. | PART-04 |
-| Q4 | Sollen Verwaltendenkonten zusätzlich an einen **Elterndatensatz** gebunden werden können (Verwaltende mit Kindern in der Jugend)? | Ja, gleiche Verknüpfungstabelle und gleiche Bestätigung; im Verwaltungslayout erscheint dann „Meine Kinder“. | PORTAL-04 |
+| Q3 | Sollen Mitglieder im Modus „Zuteilung“ eine Wunschposition angeben dürfen? | **Entschieden 09.10.2026:** Ja, optional; Standard „beliebige passende Position“. | PART-04 |
+| Q4 | Sollen Verwaltendenkonten zusätzlich an einen **Elterndatensatz** gebunden werden können (Verwaltende mit Kindern in der Jugend)? | **Entschieden 09.10.2026:** Ja, gleiche Verknüpfungstabelle und gleiche Bestätigung; im Verwaltungslayout erscheint dann „Meine Kinder“. | PORTAL-04 |
 | Q5 | Gültigkeit von Quick-Action-Links | 14 Tage, bei Teilnahmeaktionen höchstens bis Dienstbeginn, bei Antragsaktionen bis zur Entscheidung. | NOTIF-01 |
 
 ## 3. Ausgangslage im Code (geprüft am 07.10.2026)
@@ -359,7 +359,7 @@ In vielen Feuerwehren und Vereinen sind Verwaltende selbst Mitglied. Ihr Verwalt
   - Zuteilungsboard: Selbstzuteilung möglich, wird gekennzeichnet und protokolliert.
 - **Eigene Daten (E14):** Stammdaten des eigenen Mitglieds mit vorhandenen Rechten direkt änderbar; Änderungsprotokoll mit Kennzeichen „Eigenänderung“, sichtbar in der Verlaufsansicht des Mitglieds. Qualifikationen und Sonderaufgaben am eigenen Mitglied (und `Qualification.user` des eigenen Kontos) darf das Konto **nicht** anlegen, ändern oder löschen: Server lehnt mit 403 und Begründung ab; Oberfläche zeigt „Nachweise pflegt eine andere Person“. Eigene Änderungsanträge (falls über Portal gestellt) gibt eine andere Person frei.
 - **Lösen:** durch Benutzerverwaltung jederzeit, durch das Konto nur als Antrag im Profil; Lösen beendet Selbstmeldungen nicht rückwirkend, bestehende Meldungen bleiben am Mitglied.
-- **Elterndatensatz (Q4, offen):** gleiche Mechanik für `Parent`, dann „Meine Kinder“ im Verwaltungslayout.
+- **Elterndatensatz (Q4, entschieden 09.10.2026: ja):** gleiche Mechanik für `Parent`, dann „Meine Kinder“ im Verwaltungslayout.
 
 ## 5. Technisches Design
 

@@ -17,7 +17,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 | Portal und Teilnahme | PORTAL-01 bis 03, PART-01 bis 03, NOTIF-01 | Abgenommen (PostgreSQL 17, Browser). Offen: PART-04, PORTAL-04, Rückmeldungen UX-10. |
 | Design und Modulabläufe | DES-01, UX-01 bis UX-11 | DES-01 bis 01.10b, 01.11a–c, 01.13a umgesetzt; UX-01/04/06 umgesetzt mit offener Nutzerabnahme; UX-02/05 teilweise; UX-03/07/08 nicht begonnen; UX-10.1–10.6 umgesetzt, Abnahme offen. UX-11.1 E-Mail-Vorlageneditor als Arbeitsfläche umgesetzt, Browserabnahme offen. |
 | Betrieb | OPS-01 bis OPS-05, DEV-01 | OPS-01/02, DEV-01 abgeschlossen (Debian 13 nativ, Proxmox-LXC). OPS-03 bis 05 „in Prüfung“ wegen GitHub-Lauf und öffentlicher Domain. |
-| Dokumentation, Website | DOC-01, WEB-PLAN | Handbuch für den Verwaltungsumfang ausgeliefert, Pages nicht veröffentlicht. WEB-PLAN.0 aufgenommen, WEB-PLAN.1 nicht begonnen (Fortführung klären). |
+| Dokumentation, Website | DOC-01, WEB-PLAN | Handbuch für den Verwaltungsumfang ausgeliefert, Pages nicht veröffentlicht. WEB-PLAN zurückgestellt (Entscheidung 09.10.2026). |
 
 ### 0.2 Offene Punkte
 
@@ -28,17 +28,17 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | Punkt | Art | Inhalt | Voraussetzung |
 | --- | --- | --- | --- |
 | UX-10.7 | Abnahme | Browser: Glocke, Dashboard, Zähler „Portal“/„Anträge“, Abteilungswechsler, Kalender 1280/1440 px hell/dunkel, Mitglieder 360 px, Kontakt-Links; PostgreSQL-Lauf. Lokal vorher `migrate` (`notifications.0004`). | — |
-| PART-04 | Bau | Plätze, Positionen, Mindestbesetzung, Warteliste mit Nachrücken, Zuteilungsboard, Besetzungsvorlagen (PART-04.0–04.6, Konzept 6.2). | Q3 klären (Wunschposition im Modus „Zuteilung“; Vorschlag: ja, optional). |
-| PORTAL-04 | Bau | Verwaltendenkonto 1:1 an Mitglied: Bestätigung beim Login, „Meine Dienste/Daten“, Eigenänderungsprotokoll, Vier-Augen-Sperre für eigene Qualifikationen, Doppelungen zusammenführen (PORTAL-04.0–04.5). | Q4 klären (auch an Elterndatensatz binden; Vorschlag: ja). |
+| PART-04 | Bau | Plätze, Positionen, Mindestbesetzung, Warteliste mit Nachrücken, Zuteilungsboard, Besetzungsvorlagen (PART-04.0–04.6, Konzept 6.2). | Q3 entschieden 09.10.2026: Wunschposition optional. |
+| PORTAL-04 | Bau | Verwaltendenkonto 1:1 an Mitglied: Bestätigung beim Login, „Meine Dienste/Daten“, Eigenänderungsprotokoll, Vier-Augen-Sperre für eigene Qualifikationen, Doppelungen zusammenführen (PORTAL-04.0–04.5). | Q4 entschieden 09.10.2026: auch Elterndatensatz („Meine Kinder“). |
 | PART-03 (Rest) | Bau (klein) | Hinweis „erfüllt durch …“ in der Vorschau des Regel-Konfigurators. | — |
 | PORTAL-01, NOTIF-01 | Abnahme | Echte Zustellung über SMTP und Web-Push (bisher Datei-Mailversand). | Produktivnahe Umgebung |
-| DOC-01 (Portal) | Bau | Handbuch um Portal, Teilnahme, Eingang und Anträge ergänzen. | Fachabnahme Portal |
+| DOC-01 (Portal) | Bau | Handbuch um Portal, Teilnahme, Eingang und Anträge ergänzen, mehr aktuelle Screenshots und bewegte Abläufe für Drag-and-drop (Planer, Zuteilungsboard). | Fachabnahme Portal, PART-04 |
 
 **Übungsplanung und Design**
 
 | Punkt | Art | Inhalt | Voraussetzung |
 | --- | --- | --- | --- |
-| UX-09 | Bau | Kalender skaliert nicht auf großen Bildschirmen, Bibliothek zu klein. UX-10.6 deckt nur Notebookbreiten ab. Laut Nutzervorgabe über die Design-Sitzung. | Basispunkte |
+| UX-09 | Bau | Kalender skaliert nicht auf großen Bildschirmen, Bibliothek zu klein. UX-10.6 deckt nur Notebookbreiten ab. Umsetzung per Subagent dieser Sitzung (Entscheidung 09.10.2026). | — |
 | UX-11.2 | Abnahme | Browser: E-Mail-Vorlagen- und Layout-Editor bei 1280/1440 px mit und ohne Navigation, hell/dunkel, 390 px; Speichern mit Nachbestätigung (MFA). | — |
 | DES-01 Befund | Bau (klein) | Planerkopf bricht bei 390 px in vier Aktionszeilen um. | — |
 | DES-01.11 | Bau | Feste Farben und jugendfeuerwehrspezifische Texte in übrigen Modulen ersetzen (Ratsche aus 01.11c senken), Einstellungskarten vereinheitlichen. | — |
@@ -58,20 +58,33 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | --- | --- | --- | --- |
 | SEC-11, SEC-12 | Abnahme | Passkey als zweiter Faktor und als alleinige Anmeldung mit echtem Gerät unter HTTPS. | HTTPS-Instanz |
 | CFG-02 | Abnahme | Browserprüfung der anpassbaren Anmeldeseiten-Texte. | — |
-| SEC-10 Grenzen | Entscheidung/Bau | CSP von „Report-Only“ auf Durchsetzung umstellen (dafür Monaco-Editor lokal statt von jsDelivr laden); Lauf hinter echtem TLS-Proxy; rund 180 OpenAPI-Warnungen. | Beobachtung im Betrieb |
+| SEC-13 | Bau | CSP durchsetzen (Entscheidung 09.10.2026): Monaco-Editor lokal statt von jsDelivr, alle angemeldeten Seiten im Browser ohne Verstoß, Report-Only nur noch per Schalter. | — |
+| SEC-10 Grenzen | Abnahme | Lauf hinter echtem TLS-Proxy; rund 180 OpenAPI-Warnungen. | Betrieb |
 
 **Betrieb und Integration**
 
 | Punkt | Art | Inhalt | Voraussetzung |
 | --- | --- | --- | --- |
-| Integration nach `main` | Entscheidung | Pull Request des gemeinsamen Branches; löst den ersten GitHub-CI-Lauf aus (OPS-03, SEC-10, SEC-12 PostgreSQL in CI). | Zuschnitt und Zeitpunkt festlegen |
+| Integration nach `main` | Bau | Ein Pull Request des gemeinsamen Branches ganz am Ende, nach allen Paketen (Entscheidung 09.10.2026); löst den ersten GitHub-CI-Lauf aus (OPS-03, SEC-10, SEC-12 PostgreSQL in CI). | Wellen 1–3 |
 | OPS-01 | Abnahme | Caddy/ACME mit öffentlicher Domain. | Domain |
 | OPS-04, OPS-05 | Abgleich | Status „in Prüfung“; Detailblock nennt Debian 13 als offen, obwohl OPS-01.9b Debian 13 abgenommen hat. Prüfen und Status schließen. | — |
-| Backend-Format | Bau | `ruff format --check` meldet 58 vorbestehende Dateien. | — |
-| DOC-01 Pages | Entscheidung | Handbuch-Website ist vorbereitet, aber nicht veröffentlicht. | — |
-| WEB-PLAN | Entscheidung | Marketing-Konzept: nach WEB-PLAN.0 keine Arbeit; fortführen oder streichen. | — |
+| Backend-Format | Bau | `ruff format --check` meldet 58 vorbestehende Dateien; eigener Formatierungscommit, wenn keine parallele Arbeit läuft. | Welle 3 |
+| DOC-01 Pages | Bau | Handbuch-Website zusammen mit dem Merge nach `main` veröffentlichen (Entscheidung 09.10.2026). | Integration nach `main` |
+| WEB-PLAN | zurückgestellt | Marketing-Konzept: nicht in dieser Runde (Entscheidung 09.10.2026). | — |
 
-### 0.3 Arbeitsrahmen
+### 0.3 Entscheidungen und Umsetzungsplan (09.10.2026)
+
+Entscheidungen des Nutzers: Q3 Wunschposition optional; Q4 Verwaltendenkonto auch an Elterndatensatz; ein PR nach `main` erst ganz am Ende; WEB-PLAN zurückgestellt; UX-09 und Design-Punkte per Subagent dieser Sitzung; CSP jetzt durchsetzen; Backend-Format als eigener Commit; Handbuch-Website mit dem Merge veröffentlichen, vorher Portal, mehr Screenshots und Drag-and-drop-Visualisierungen.
+
+Umsetzung per Subagents in eigenen Worktrees auf Basis des aktuellen Branchstands; Übernahme per Cherry-Pick in den gemeinsamen Branch, Roadmap-Pflege bei der Übernahme. Breite Querschnittsänderungen (DES-01.11, Formatierung) erst nach den Fachpaketen, um Konflikte zu vermeiden.
+
+| Welle | Inhalt |
+| --- | --- |
+| 1 | UX-10.7 Abnahme; PART-04 samt PART-03-Rest; PORTAL-04; SEC-13 CSP; UX-09 samt Planerkopf; OPS-04/05-Statusabgleich. |
+| 2 | UX-02.2b/02.3, UX-03, UX-04.1, UX-05.1, UX-07, UX-08, Aufräumen Statistik-Endpunkte. |
+| 3 | DES-01.11 und DES-01.12; Abnahmen UX-01/04/06, CFG-02; DOC-01 Portal, Screenshots, Drag-and-drop-Visualisierungen; Backend-Format; PR nach `main` mit Pages. |
+
+### 0.4 Arbeitsrahmen
 
 | Feld | Wert |
 | --- | --- |
@@ -599,7 +612,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
-| WEB-PLAN | in Arbeit | Codex (Marketing-Konzept) | WEB-PLAN.0: Auftrag, Abnahme und Dateiverantwortung aufgenommen; WEB-PLAN.1 Konzept und Mockups. |
+| WEB-PLAN | zurückgestellt (09.10.2026) | Codex (Marketing-Konzept) | WEB-PLAN.0: Auftrag, Abnahme und Dateiverantwortung aufgenommen; WEB-PLAN.1 Konzept und Mockups. |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | abgeschlossen | Claude (von Codex übernommen) | SEC-01.57c: Anwesenheits-API, Anhang-Schreibzugriffe und Staff-Einstellungen korrigiert, Alt-Views entfernt; 645/645 Backendtests. |
 | SEC-02 | abgeschlossen | Claude (Abnahme, von Codex übernommen) | SEC-02.9: Querschnittsinventar, fünf Zielrelationsfehler (E-Mail, Ereignisse, Ereignistypen, Mitgliedsabteilungen) korrigiert. |
@@ -652,7 +665,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### WEB-PLAN: Marketing-Konzept und wartbare Projektwebsite
 
-- **Status / Verantwortung:** in Arbeit / Codex (Marketing-Konzept).
+- **Status / Verantwortung:** zurückgestellt durch Nutzerentscheidung 09.10.2026 / Codex (Marketing-Konzept).
 - **Abhängigkeiten:** README, fiktive Produktabbildungen unter `docs/images/`, tatsächliche Konfiguration der Modulnamen (CFG-01), Portalstatus. Keine Abhängigkeit von noch unfertigen Portal-/Teilnahmefunktionen für die erste Website.
 - **Ziel / Abnahme:** Positionierung für Jugendfeuerwehren und weitere Vereine, konkrete Seitenstruktur und Texte, bebilderte Desktop-/Mobilmockups, Animationskonzept mit reduziertem Bewegungsmodus, ehrlicher kostenloser Einstieg sowie wartbare Quell-/Inhalts-/Hostingstruktur. Keine Veröffentlichung oder Produktimplementierung im Planungsauftrag.
 - **Stabile Teilschritte:** `WEB-PLAN.0` Ausgangsstand und Abnahme festhalten; `WEB-PLAN.1` Konzept, visuelle Mockups und technische Empfehlung ausarbeiten und prüfen. Spätere Website-Implementierung erhält nach Gestaltungsentscheidung ein eigenes Paket.
@@ -661,7 +674,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Letzter Checkpoint / Commit:** WEB-PLAN.0, dieser Commit: `docs(WEB-PLAN.0): scope the marketing website concept`.
 - **Prüfungen:** bestanden: Git-/README-/Konfigurationsabgleich; nicht ausgeführt: Anwendungstests (reine Planung).
 - **Risiken / Fortsetzung:** öffentliche Demo, Domain und Betreiberangaben sind noch nicht festgelegt; generierte Motiv-/UI-Bilder sind Entwürfe. Keine fremden Änderungen stagen. Bildgenerierung für Desktop und Mobil läuft; anschließend Konzept und Bilder prüfen.
-- **Nächster Schritt:** WEB-PLAN.1.
+- **Nächster Schritt:** keiner bis zur Wiederaufnahme; dann WEB-PLAN.1.
 
 ### DOC-01: Auslieferbares Benutzerhandbuch
 
@@ -2158,3 +2171,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 09.10.2026 | UX-10.2 | Glocke `StaffNotificationBell` im Kopf (Desktop und mobile Leiste) mit Zusammenfassung offener Aufgaben/neuer Hinweise, letzten Einträgen (als gelesen markiert beim Öffnen) und „Alle im Eingang“; Dashboard zeigt Aufgaben und neue Hinweise; Zähler an „Portal“ (Navigation, auch mobiler Drawer) und am Reiter „Anträge“ aus `by_category.requests`; Zähler nach Entscheidung aktualisiert. | Bestanden: Frontend 582/582 (Glocke, Dashboard, Navigation neu/angepasst), Typecheck, ESLint. Nicht ausgeführt: Browser. | Dieser Commit: `feat(UX-10.2): show a notification bell, inbox items on the dashboard and request counts` | UX-10.7 |
 | 09.10.2026 | PLAN-CLEANUP | Nutzerauftrag: offene Punkte zusammenfassen, Datei aufräumen. Abschnitt 0 ersetzt: chronologische Checkpoint-Absätze entfernt (Inhalte stehen in Abschnitt 6 und im Journal), neu „Stand je Bereich“, „Offene Punkte“ nach Bereich mit Art (Bau/Abnahme/Entscheidung) und Arbeitsrahmen. Befund: OPS-04/05-Detailblock nennt Debian 13 als offen, OPS-01.9b hat es abgenommen. | Bestanden: Abgleich der offenen Teilschritt-IDs mit `git log`. Nicht ausgeführt: Anwendungstests (nur Dokumentation). | Dieser Commit: `docs(PLAN): summarize open roadmap items` | Nutzerentscheidung über Reihenfolge |
 | 09.10.2026 | UX-11.1 | E-Mail-Vorlageneditor als Arbeitsfläche analog zum Trainingsplaner: eigene Routen außerhalb des Einstellungslayouts mit `meta.workspace`, neuer `WorkspaceHeader` mit gemeinsamem Umschalter „Navigation ausblenden“, Editor mit Code über volle Höhe (HTML/Nur Text), Vorschau/Variablen im Seitenbereich, Speicherzustand, Strg/Cmd + S, Rückfrage beim Verlassen; Layoutvorlagen mit Monaco und gekennzeichneter vereinfachter Vorschau; Listen als Zeilen mit `StatusBadge`, Reiter in der URL; Tokens statt PrimeVue-Altvariablen. Verhaltensänderung: Speichern bleibt im Editor statt zur Liste zurückzukehren. | Bestanden: Frontend 588/588 (6 neu), Typecheck, ESLint. Nicht ausgeführt: Browser (Login des Demo-Admins braucht MFA-Code). | Dieser Commit: `feat(UX-11.1): open e-mail templates in a full-width workspace` | UX-11.2 |
+| 09.10.2026 | PLAN-DECISIONS | Nutzerentscheidungen zu offenen Fragen aufgenommen (Abschnitt 0.3): Q3, Q4, Integration nach `main` am Ende, WEB-PLAN zurückgestellt, Design per Subagent, CSP durchsetzen (neues Paket SEC-13), Backend-Format, Handbuch-Website. Umsetzungsplan in drei Wellen. | Nur Dokumentation. | Dieser Commit: `docs(PLAN): record decisions and the wave plan` | Welle 1 |
