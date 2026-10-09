@@ -18,3 +18,7 @@ session_changed = Signal()
 # Sent after commit for every recorded state change (NOTIF-01.5): ``registration_id``, ``session_id``,
 # ``member_id``, ``from_state``, ``to_state``, ``actor_id`` and ``via`` (a source or "system").
 registration_changed = Signal()
+
+# Sent after commit when a place became free but nobody moves up automatically (manual waiting list or
+# assignment mode, E5): ``session_id``, ``slot_label`` ("" without position) and ``waiting`` (count).
+place_freed = Signal()

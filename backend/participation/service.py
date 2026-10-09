@@ -24,8 +24,8 @@ from django.utils import timezone
 from members.models import Member
 from training.models import TrainingSession
 
-from . import states
-from .eligibility import NEUTRAL_AUDIENCE_NOTICE, evaluate_members
+from . import slots, states
+from .eligibility import NEUTRAL_AUDIENCE_NOTICE, Result, evaluate_members
 from .models import Mode, ParticipationDefaults, Registration, RegistrationEvent, SessionParticipation, WaitlistMode
 
 MAX_ABSENCE_DAYS = 400
@@ -213,11 +213,13 @@ def plan_change(
     eligibility=None,
     accept_waitlist=True,
     defaults=None,
+    full=None,
 ):
     """Decide what ``target`` does for one person, or raise ``ParticipationError``. Writes nothing.
 
     ``seated`` is the number of other people holding a place (registered or assigned);
     ``eligibility`` is the ``Result`` of the person (``None``: no rule applies or not checked yet).
+    ``full`` overrides the capacity decision (positions decide per position, PART-04.2).
     """
     if session.status != TrainingSession.Status.PUBLISHED:
         text = "Der Dienst wurde abgesagt." if session.status == "cancelled" else "Der Dienst ist nicht meldefähig."
@@ -230,10 +232,17 @@ def plan_change(
 
     mode = participation.mode
     current = registration.state if registration else None
-    full = (
-        mode == Mode.OPT_IN and participation.max_participants is not None and seated >= participation.max_participants
-    )
+    if full is None:
+        full = (
+            mode == Mode.OPT_IN
+            and participation.max_participants is not None
+            and seated >= participation.max_participants
+        )
     outcome = states.next_state(mode, current, target, full=full)
+    if staff and current == states.WAITLISTED and target == states.REGISTERED and not full:
+        # Staff take a waiting person onto a free place (manual waiting list, E5); people
+        # asking again from the portal keep their waiting place.
+        outcome = states.Outcome(state=states.REGISTERED)
     if not outcome.ok:
         raise ParticipationError(outcome.code, MESSAGES[outcome.code])
     if outcome.noop:
@@ -295,6 +304,48 @@ def _record(registration, from_state, to_state, actor, via, now):
     transaction.on_commit(lambda: registration_changed.send(sender=Registration, **payload))
 
 
+def _slot_choice(session, participation, positions, member_id, target, slot_id):
+    """Position handling for a request with positions (PART-04.2).
+
+    Returns ``(eligibility, full, decision)``: the ``Result`` to check, the capacity decision for
+    ``plan_change`` and the ``slots.Decision`` (``None`` unless a place is asked for in opt-in).
+    """
+    by_id = {slot.pk: slot for slot in positions}
+    if slot_id is not None and slot_id not in by_id:
+        raise ParticipationError("invalid", "Unbekannte Position.", status=400)
+    fit = slots.fits(participation, positions, [member_id], session.date).get(member_id, slots.Fit())
+    if slot_id is not None:
+        chosen = by_id[slot_id]
+        reasons = fit.reasons_for(chosen)
+        if fit.general_ok:
+            reasons = [f"Position ‚{chosen.label}‘: {reason}" for reason in reasons]
+        result = Result(not reasons, reasons)
+    elif fit.general_ok and (slots.suitable_ids(positions, fit) or participation.extra_places):
+        result = Result(True)
+    elif not fit.general_ok:
+        result = fit.general
+    else:
+        result = Result(False, [f"Position ‚{slot.label}‘: {'; '.join(fit.reasons_for(slot))}" for slot in positions])
+    if target != states.REGISTERED or participation.mode != Mode.OPT_IN or not result.ok:
+        return result, None, None
+    seated_rows = Registration.objects.filter(session=session, state__in=SEATED).exclude(member_id=member_id)
+    held = slots.held_by_slot(seated_rows.only("slot_id"))
+    scarce = None
+    if slot_id is None and slots.needs_scarcity(positions, fit, held):
+        scarce = _scarcity(session, participation, positions)
+    decision = slots.decide(participation, positions, fit, slot_id, held, scarce=scarce)
+    return result, decision.waitlist, decision
+
+
+def _scarcity(session, participation, positions):
+    """Number of target people suiting each position (one evaluation of the target group)."""
+    from .views import target_members
+
+    members = target_members(session)
+    ids = [m.pk for m in members] if members is not None else []
+    return slots.scarcity(positions, slots.fits(participation, positions, ids, session.date))
+
+
 def set_registration(
     session_id,
     member_id,
@@ -308,8 +359,12 @@ def set_registration(
     accept_waitlist=True,
     now=None,
     via=None,
+    slot=None,
 ):
-    """Apply ``target`` for one person atomically. Returns ``(registration or None, changed, plan)``."""
+    """Apply ``target`` for one person atomically. Returns ``(registration or None, changed, plan)``.
+
+    ``slot`` is the position asked for (opt-in) or wished (assignment, Q3); ``None`` = any suitable one.
+    """
     now = now or timezone.now()
     reason_category, reason_note = reason_category or "", (reason_note or "").strip()
     _validate_reason(reason_category, reason_note)
@@ -324,7 +379,14 @@ def set_registration(
             )
         if not is_target_member(session, member_id):
             raise ParticipationError("not_target", "Die Person gehört nicht zur Zielgruppe des Dienstes.")
-        results = eligibility_for(session, participation, [member_id])
+        positions = slots.slots_for(participation)
+        if slot is None and registration is not None and registration.state == Registration.State.WAITLISTED:
+            slot = registration.preferred_slot_id  # moving up keeps the position asked for
+        decision = full = None
+        if positions and participation.mode != Mode.OPT_OUT and target in (states.REGISTERED, states.APPLIED):
+            eligibility, full, decision = _slot_choice(session, participation, positions, member_id, target, slot)
+        else:
+            eligibility = eligibility_for(session, participation, [member_id]).get(member_id)
         plan = plan_change(
             session,
             participation,
@@ -333,8 +395,9 @@ def set_registration(
             staff=staff,
             now=now,
             seated=seated_count(session, member_id),
-            eligibility=results.get(member_id),
+            eligibility=eligibility,
             accept_waitlist=accept_waitlist,
+            full=full,
         )
         cancelling = plan.state == states.CANCELLED
         if plan.noop:
@@ -357,8 +420,18 @@ def set_registration(
             participation.revision = 1
             participation.save()
         previous = registration.state if registration else None
+        previous_slot = registration.slot_id if registration else None
+        seated_slot = None
+        if plan.state in SEATED:
+            seated_slot = decision.slot_id if decision is not None else previous_slot
+        if target in (states.REGISTERED, states.APPLIED):
+            preferred = slot if positions else None
+        else:
+            preferred = registration.preferred_slot_id if registration else None
         values = {
             "state": plan.state,
+            "slot_id": seated_slot,
+            "preferred_slot_id": preferred,
             "reason_category": reason_category if cancelling else "",
             "reason_note": reason_note if cancelling else "",
             "late": plan.late,
@@ -377,22 +450,59 @@ def set_registration(
             registration.version += 1
             registration.save()
         _record(registration, previous, plan.state, actor, via or source, now)
-        if previous in SEATED and plan.state not in SEATED:
-            promote_waitlist(session, participation, now=now)
+        freed = previous in SEATED and plan.state not in SEATED
+        if freed and not promote_waitlist(session, participation, now=now):
+            announce_free_place(session, participation, previous_slot)
         return registration, True, plan
+
+
+def announce_free_place(session, participation, slot_id):
+    """Manual waiting list or assignment mode: tell the responsible staff a place is free (E5)."""
+    if participation.mode == Mode.OPT_OUT:
+        return
+    if participation.mode == Mode.OPT_IN and participation.waitlist_mode == WaitlistMode.AUTO:
+        return
+    waiting_state = (
+        Registration.State.APPLIED if participation.mode == Mode.ASSIGNMENT else Registration.State.WAITLISTED
+    )
+    waiting = Registration.objects.filter(session=session, state=waiting_state).count()
+    if not waiting:
+        return
+    label = ""
+    if slot_id is not None:
+        label = next((slot.label for slot in slots.slots_for(participation) if slot.pk == slot_id), "")
+    from .signals import place_freed
+
+    session_id = session.pk
+    transaction.on_commit(
+        lambda: place_freed.send(sender=Registration, session_id=session_id, slot_label=label, waiting=waiting)
+    )
+
+
+def _promote(registration, slot_id, now):
+    registration.state, registration.state_changed_at = Registration.State.REGISTERED, now
+    registration.slot_id = slot_id
+    registration.version += 1
+    registration.save(update_fields=["state", "slot", "state_changed_at", "version", "updated_at"])
+    _record(registration, Registration.State.WAITLISTED, Registration.State.REGISTERED, None, "system", now)
 
 
 def promote_waitlist(session, participation, *, now=None):
     """Fill free places from the waitlist, earliest first, skipping people who no longer qualify.
 
     Only for opt-in services with ``waitlist_mode=auto`` (E5); the caller holds the session lock.
-    Returns the promoted registrations.
+    With positions the first waiting person who suits a free position moves up: a person waiting
+    for a specific position only into that one, "beliebig" into any suitable position or a place
+    without position. Returns the promoted registrations.
     """
     now = now or timezone.now()
     if participation.mode != Mode.OPT_IN or participation.waitlist_mode != WaitlistMode.AUTO:
         return []
     if participation.max_participants is None or now >= session_start(session):
         return []
+    positions = slots.slots_for(participation)
+    if positions:
+        return _promote_with_positions(session, participation, positions, now)
     free = participation.max_participants - seated_count(session)
     if free <= 0:
         return []
@@ -409,12 +519,38 @@ def promote_waitlist(session, participation, *, now=None):
         result = results.get(registration.member_id)
         if result is not None and not result.ok:
             continue
-        registration.state, registration.state_changed_at = Registration.State.REGISTERED, now
-        registration.version += 1
-        registration.save(update_fields=["state", "state_changed_at", "version", "updated_at"])
-        _record(registration, Registration.State.WAITLISTED, Registration.State.REGISTERED, None, "system", now)
+        _promote(registration, None, now)
         promoted.append(registration)
         free -= 1
+    return promoted
+
+
+def _promote_with_positions(session, participation, positions, now):
+    held = slots.held_by_slot(Registration.objects.filter(session=session, state__in=SEATED).only("slot_id"))
+    if sum(held.values()) >= slots.capacity(participation, positions):
+        return []
+    waiting = list(
+        Registration.objects.select_for_update()
+        .filter(session=session, state=Registration.State.WAITLISTED)
+        .order_by("state_changed_at", "pk")
+    )
+    fits = slots.fits(participation, positions, [r.member_id for r in waiting], session.date)
+    by_id = {slot.pk: slot for slot in positions}
+    promoted = []
+    for registration in waiting:
+        fit = fits.get(registration.member_id, slots.Fit())
+        slot = by_id.get(registration.preferred_slot_id)
+        if slot is not None:
+            if not fit.suits(slot) or held.get(slot.pk, 0) >= slot.max_count:
+                continue
+            decision = slots.Decision(slot_id=slot.pk)
+        else:
+            decision = slots.decide(participation, positions, fit, None, held)
+            if decision.waitlist:
+                continue
+        _promote(registration, decision.slot_id, now)
+        held[decision.slot_id] = held.get(decision.slot_id, 0) + 1
+        promoted.append(registration)
     return promoted
 
 
@@ -427,6 +563,9 @@ def waitlist_position(registration):
         Q(state_changed_at__lt=registration.state_changed_at)
         | Q(state_changed_at=registration.state_changed_at, pk__lt=registration.pk)
     )
+    if registration.preferred_slot_id is not None:
+        # Waiting for one position competes with those waiting for it and with "beliebig".
+        earlier = earlier.filter(Q(preferred_slot_id=registration.preferred_slot_id) | Q(preferred_slot__isnull=True))
     return earlier.count() + 1
 
 

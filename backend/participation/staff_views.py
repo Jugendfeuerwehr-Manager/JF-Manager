@@ -463,6 +463,8 @@ class RegistrationInput(serializers.Serializer):
     reason_note = serializers.CharField(allow_blank=True, required=False, default="", max_length=200)
     version = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
     accept_waitlist = serializers.BooleanField(required=False, default=True)
+    # Position asked for (Anmeldung) or wished (Zuteilung, Q3); null = any suitable position.
+    slot = serializers.IntegerField(min_value=1, required=False, allow_null=True, default=None)
 
 
 class MemberRegistrationView(StaffView):
@@ -485,6 +487,7 @@ class MemberRegistrationView(StaffView):
                 reason_note=values["reason_note"],
                 version=values["version"],
                 accept_waitlist=values["accept_waitlist"],
+                slot=values["slot"],
             )
         except ParticipationError as error:
             return error_response(error)

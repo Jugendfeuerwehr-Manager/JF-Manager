@@ -7,7 +7,7 @@ from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase
 
 from departments.models import Department
-from participation.models import Registration
+from participation.models import Registration, Slot
 from participation.service import set_registration
 
 from .helpers import berlin, configure, make_member, make_session
@@ -40,6 +40,37 @@ class RegistrationConcurrencyTests(TransactionTestCase):
         self.assertEqual(results.count("waitlisted"), 57)
         self.assertEqual(Registration.objects.filter(session=session, state="registered").count(), 3)
         self.assertEqual(Registration.objects.filter(session=session).count(), 60)
+
+    def test_sixty_parallel_registrations_on_three_positions(self):
+        """PART-04.2: "beliebig" and chosen positions in parallel never overbook a position."""
+        dept = Department.objects.create(name="A", code="a")
+        session = make_session(dept)
+        participation = configure(session, mode="opt_in", max_participants=3)
+        lead = Slot.objects.create(participation=participation, label="Wachführung", min_count=1, max_count=1)
+        crew = Slot.objects.create(participation=participation, label="Trupp", min_count=2, max_count=2, position=1)
+        members = [make_member(dept, f"M{i}") for i in range(60)]
+        now = berlin(2030, 3, 7, 12)
+        barrier = Barrier(len(members))
+
+        def register(item):
+            index, member = item
+            close_old_connections()
+            try:
+                barrier.wait(timeout=20)
+                slot = (None, lead.pk, crew.pk)[index % 3]
+                return set_registration(
+                    session.pk, member.pk, "registered", actor=None, source="staff", now=now, slot=slot
+                )[0].state
+            finally:
+                connections.close_all()  # threads end here; do not keep 60 connections for the next test
+
+        with ThreadPoolExecutor(max_workers=len(members)) as executor:
+            results = list(executor.map(register, enumerate(members)))
+        self.assertEqual(results.count("registered"), 3)
+        seated = Registration.objects.filter(session=session, state="registered")
+        self.assertEqual(seated.filter(slot=lead).count(), 1)
+        self.assertEqual(seated.filter(slot=crew).count(), 2)
+        self.assertEqual(Registration.objects.filter(session=session, state="waitlisted").count(), 57)
 
     def test_parallel_cancellations_promote_each_waiting_person_once(self):
         dept = Department.objects.create(name="A", code="a")

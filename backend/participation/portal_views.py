@@ -218,6 +218,7 @@ class SessionRegistrationView(PortalView):
                 reason_note=values["reason_note"],
                 version=values["version"],
                 accept_waitlist=values["accept_waitlist"],
+                slot=values["slot"],
             )
         except ParticipationError as error:
             body = error.payload()
