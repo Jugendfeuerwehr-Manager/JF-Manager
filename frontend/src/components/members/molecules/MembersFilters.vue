@@ -186,4 +186,15 @@ function onFilterChange() {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 480px) {
+  /* card padding 0.75rem -> 0.5rem, field gap 0.55rem -> 0.5rem */
+  .filter-card :deep(.p-card-body) {
+    padding: var(--jf-space-1);
+  }
+
+  .filter-grid {
+    gap: var(--jf-space-1);
+  }
+}
 </style>

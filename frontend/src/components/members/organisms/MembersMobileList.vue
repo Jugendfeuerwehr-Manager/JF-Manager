@@ -112,4 +112,34 @@ function contactFor(member: Member) {
 .member-row__call:hover {
   background: var(--jf-color-selected);
 }
+
+@media (max-width: 480px) {
+  /* gap between cards: 1.5rem/0.75rem -> 0.25rem */
+  :deep(.mobile-list-grid) {
+    gap: var(--jf-space-0-5);
+  }
+
+  .member-row {
+    gap: 0;
+    padding-right: var(--jf-space-0-5);
+  }
+
+  /* row height 64px -> 56px, padding 8/12px -> 4/8px */
+  .member-row__main {
+    min-height: 3.5rem;
+    padding: var(--jf-space-0-5) var(--jf-space-1);
+  }
+
+  .member-row :deep(.member-identity) {
+    gap: var(--jf-space-1);
+  }
+
+  .member-row :deep(.member-identity__text) {
+    line-height: 1.2;
+  }
+
+  .member-row :deep(.member-identity__meta) {
+    gap: var(--jf-space-0-5);
+  }
+}
 </style>
