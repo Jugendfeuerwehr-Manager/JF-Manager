@@ -39,7 +39,8 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 
 | Punkt | Art | Inhalt | Voraussetzung |
 | --- | --- | --- | --- |
-| UX-10.7 | Abnahme | Browser: Glocke, Dashboard, Zähler „Portal“/„Anträge“, Abteilungswechsler, Kalender 1280/1440 px hell/dunkel, Mitglieder 360 px, Kontakt-Links; PostgreSQL-Lauf. Lokal vorher `migrate` (`notifications.0004`). | — |
+| Abteilungswahl | Entscheidung | Organisationsweite Konten mit Lieblingsabteilung fallen nach Neuladen auf diese zurück, auch wenn zuvor „Alle Abteilungen“ gewählt war (`initializeActiveDepartment`, laut Kommentar gewollt). Beibehalten oder letzte Wahl merken? | — |
+| UX-10 Rest | Bau (klein) | Anruf-Knöpfe im Mitglied-Detail auf `ContactLink`-Normalisierung (`tel:` ohne Leerzeichen); Ansage „Portal , 1 offener Antrag“ (Leerzeichen durch `inline-flex`); Glocke markiert erst beim Anklicken als gelesen, Journal UX-10.2 nennt „beim Öffnen“. | — |
 | PART-04 | Bau | Plätze, Positionen, Mindestbesetzung, Warteliste mit Nachrücken, Zuteilungsboard, Besetzungsvorlagen (PART-04.0–04.6, Konzept 6.2). | Q3 entschieden 09.10.2026: Wunschposition optional. |
 | PORTAL-04 | Bau | Verwaltendenkonto 1:1 an Mitglied: Bestätigung beim Login, „Meine Dienste/Daten“, Eigenänderungsprotokoll, Vier-Augen-Sperre für eigene Qualifikationen, Doppelungen zusammenführen (PORTAL-04.0–04.5). | Q4 entschieden 09.10.2026: auch Elterndatensatz („Meine Kinder“). |
 | PART-03 (Rest) | Bau (klein) | Hinweis „erfüllt durch …“ in der Vorschau des Regel-Konfigurators. | — |
@@ -52,7 +53,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | --- | --- | --- | --- |
 | UX-09 | Abnahme | Kalender und Bibliothek auf großen Bildschirmen umgesetzt (UX-09.1–09.4); Nutzerabnahme auf echtem großen Monitor (1920/2560 px) und Tablet. | — |
 | UX-11.2 | Abnahme | Browser: E-Mail-Vorlagen- und Layout-Editor bei 1280/1440 px mit und ohne Navigation, hell/dunkel, 390 px; Speichern mit Nachbestätigung (MFA). | — |
-| DES-01.11 | Bau | Feste Farben und jugendfeuerwehrspezifische Texte in übrigen Modulen ersetzen (Ratsche aus 01.11c senken), Einstellungskarten vereinheitlichen. | — |
+| DES-01.11 | Bau | Feste Farben und jugendfeuerwehrspezifische Texte in übrigen Modulen ersetzen (Ratsche aus 01.11c senken), Einstellungskarten vereinheitlichen; `SegmentedControl` (40 px) und Rücksprunglink in `WorkspaceHeader` auf 44 px. | — |
 | DES-01.12 | Abnahme | Gesamtabnahme 360/390/768/1440 px, dunkel, Tastatur, 200 % Zoom, mehrere Farbschemata. | DES-01.11 |
 | UX-01, UX-04.2/04.3, UX-06 | Abnahme | Dashboard-Kennzahlen, Anwesenheitsauswertung, Qualifikationsablauf im Browser. | — |
 | UX-02.2b, UX-02.3 | Bau | Eltern-/Gruppenansichten nach Konsistenzvertrag; gespeicherte Filter/Spalten je Benutzer. | — |
@@ -363,7 +364,7 @@ Die vorhandenen Demoansichten zeigen viel gleichgewichtige weiße Fläche, wenig
 | UX-07 | E-Mail | Empfängerprüfung, sichere Vorschau, Hintergrundversand, Teilergebnisse und Wiederholung nur fehlgeschlagener Zustellungen. Unterschiedliche personalisierte Nachrichten nicht allein wegen derselben Empfängeradresse zusammenlegen. |
 | UX-08 | Sync/Profil | Änderungsvorschau, Konflikte und Laufhistorie; Sitzungen, MFA und gerätebezogene Push-Einstellungen. |
 | UX-09 | Übungsplanung auf großen Bildschirmen | Kalenderansicht nutzt große Bildschirme nicht (skaliert nicht mit); Bibliothek ist zu klein. Umsetzung durch die Design-Sitzung (/design) nach Abschluss der Basispunkte. |
-| UX-10 | umgesetzt, Abnahme offen | Claude (Portal-Sitzung, per Subagenten) | UX-10.0–10.6 integriert; offen UX-10.7 (Browser, PostgreSQL). |
+| UX-10 | Rückmeldungen Portal, Eingang und Darstellung | Benachrichtigungsglocke, Eingang für Superuser, Zähler an „Portal“/„Anträge“, Abteilungswechsler, Kontakt-Links, kompakte mobile Mitgliederliste, Kalender auf Notebooks. |
 | UX-11 | E-Mail-Vorlagen | Inhalts- und Layoutvorlagen in einer Arbeitsfläche wie der Trainingsplaner: eigene Route, Navigation ausblendbar, Code-Editor über volle Höhe, Live-Vorschau und Variablen im Seitenbereich, DES-01-Tokens. |
 
 #### Gemeinsame Bedienregeln und Schnittstellen
@@ -658,7 +659,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | UX-07 | geplant | Claude (Design-Session) | Teilschritte UX-07.1/2 festgelegt. |
 | UX-08 | geplant | Claude (Design-Session) | Teilschritte UX-08.1/2 festgelegt. |
 | UX-09 | umgesetzt, Nutzerabnahme offen | Claude (Subagent, Übernahme Planungssitzung) | UX-09.1–09.4: Kalender und Bibliothek auf großen Bildschirmen, Planerkopf mobil in einer Zeile; Nutzerabnahme auf großem Monitor und Tablet offen. |
-| UX-10 | in Arbeit | Claude (Portal-Sitzung, per Subagenten) | UX-10.0 Plan; als Nächstes UX-10.1–10.6 parallel. |
+| UX-10 | abgeschlossen | Claude (Portal-Sitzung; UX-10.7 Subagent, Übernahme Planungssitzung) | UX-10.7: Browserabnahme als Admin und Leitung, PostgreSQL 17 1304/1304; vier Korrekturen (Zähleransage, Eingangskarte, Touchflächen, mobiler Abteilungswechsler). |
 | UX-11 | umgesetzt, Abnahme offen | Claude (E-Mail-Vorlagen-Sitzung) | UX-11.1 Editor als Arbeitsfläche mit ausblendbarer Navigation; offen UX-11.2 (Browser). |
 | OPS-01 | abgeschlossen | Claude (OPS-Session; 01.3c/01.9b/01.9c Merge-/DEV-Sitzung) | Compose, Debian 13 nativ und Proxmox VE 9 LXC abgenommen; offen nur Caddy/ACME mit öffentlicher Domain. |
 | OPS-02 | abgeschlossen | Claude (OPS-Session) | Assistent inkl. Wiederaufnahme; Antwortdatei auf Debian 13 und im Proxmox-LXC bestanden. |
@@ -1680,7 +1681,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### UX-10: Rückmeldungen Portal, Eingang und Darstellung
 
-- **Status:** umgesetzt (UX-10.0–10.6), Abnahme UX-10.7 offen.
+- **Status:** abgeschlossen (UX-10.0–10.7).
 - **Verantwortlicher Agent:** Claude (Portal-Sitzung), Teilschritte per Subagenten in eigenen Worktrees; Übernahme und Prüfung im gemeinsamen Checkout.
 - **Auslöser:** Nutzerhinweise 09.10.2026 (Admin sieht weder Aufgaben noch Hinweise im Dashboard, keine Benachrichtigungsübersicht im Kopf, kein Zähler an „Portal“, Anträge nicht auffindbar, Abteilungswechsler leer, Kalender auf Notebooks unpassend, Telefon/E-Mail nicht klickbar, mobile Mitgliederliste mit zu viel Abstand).
 - **Befund vor Beginn:** `notifications.inbox.staff_with_permission` adressiert Superuser bewusst nicht; das Admin-Konto der Demodaten erhält daher keine Eingangseinträge (Zähler 0 bei zwei offenen Anträgen). `GET /portal/reviews/` liefert dem Admin beide offenen Anträge (200); der Reiter „Anträge“ ist sichtbar, aber ohne Zähler. PrimeVue `Select` wertet `null` („Alle Abteilungen“) als leer und zeigt den Platzhalter.
@@ -1698,7 +1699,8 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Letzter dauerhafter Checkpoint:** UX-10.2 (dieser Commit); UX-10.1 davor; UX-10.4b `ed8831e`; UX-10.6 `f052072`; UX-10.5 `39b6cfb`; UX-10.4 `15e8c0e`; UX-10.3 `6559ab4`; UX-10.0 `77731b1`.
 - **Ausgeführte Prüfungen mit Ergebnis:** Befund per Django-Shell im lokalen Bestand: `reviewable(admin)` 2, `GET /portal/reviews/` 200 mit 2 Einträgen, `GET /notifications/inbox/counts/` `total: 0`. UX-10.3 (Subagent in Worktree, auf `77731b1` übernommen): Frontend `type-check`, `lint`, `test:unit` 116 Dateien/570 Tests bestanden (zusammen mit UX-10.4/10.5); neuer Test `DepartmentSwitcher.spec.ts` 4/4. Nicht ausgeführt: Browser. UX-10.4: neuer Test `ContactLink.spec.ts` 4/4, Frontend gesamt 570/570 (s. o.). Nicht ausgeführt: Browser. UX-10.5: nur CSS in `@media (max-width: 480px)`, Frontend 570/570. Nicht ausgeführt: Browser 360 px. UX-10.6 auf integriertem Stand (UX-10.3–10.5): Frontend 118 Dateien/576 Tests, Typecheck, ESLint bestanden. Nicht ausgeführt: Browser 1024/1280/1366/1440/1920 px, dunkel. UX-10.4b: Frontend 116 Dateien/570 Tests (Stand UX-10.3–10.5), Typecheck, ESLint bestanden. Nicht ausgeführt: Browser. UX-10.1/10.2 auf integriertem Stand: CI-Modulsatz Backend (SQLite) 1304/1304 (12 übersprungen), `makemigrations --check`, Ruff; Frontend 119 Dateien/582 Tests, Typecheck, ESLint bestanden. Nicht ausgeführt: PostgreSQL, Browser.
 - **Offene Fehler / Risiken:** Superuser erhalten künftig alle Teameinträge; E-Mail-Flut vermeiden (Zustellung nur nach Einstellung). Parallele Sitzungen im gemeinsamen Checkout.
-- **Nächster konkreter Schritt:** UX-10.7: Browserabnahme (Admin: Glocke, Dashboard, Zähler „Portal“/„Anträge“, Abteilungswechsler; Kalender 1280/1440 px hell/dunkel; Mitglieder 360 px; Kontakt-Links) und PostgreSQL-Lauf. Lokaler Bestand braucht `migrate` für `notifications.0004`.
+- **UX-10.7 (Abnahme):** Korrekturen 10.7a–d (Zähleransage, Eingangskarte, Touchflächen mobile Mitgliederliste, mobiler Abteilungswechsler); Browser, PostgreSQL 17 1304/1304 und SQLite bestanden (Details im Journal). Nicht ausgeführt: echte Geräte, Screenreader.
+- **Nächster konkreter Schritt:** keiner im Paket; Folgepunkte (Abteilungswahl, Anruf-Knöpfe, `SegmentedControl` 44 px) in Abschnitt 0.2.
 
 ### UX-11: E-Mail-Vorlageneditor als Arbeitsfläche
 
@@ -2356,3 +2358,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 09.10.2026 | UX-10.7a | Befund aus der Abnahme (Subagent, übernommen): Zähler wurden doppelt angesagt („Portal Portal, 1 offener Antrag“, Reiter nur „Anträge 1“, Eingang-Badge ebenso). Sichtbare Zahl jetzt `aria-hidden`, dahinter versteckter Satz („, 1 offener Antrag“); `SegmentedControl` mit optionaler Eigenschaft `countLabel`. | Bestanden (Subagent-Worktree): `ModuleNavigation.spec.ts` angepasst, `SegmentedControl.spec.ts` neu, Frontend gesamt. | Dieser Commit: `fix(UX-10.7a): …` | UX-10.7b |
 | 09.10.2026 | UX-10.7b | Befund: Eingangskarte im Dashboard bei 1440 px (Karte ~300 px) brach den Titel Wort für Wort um, Text lief unter „Öffnen“. Zeilen nutzen jetzt die volle Kartenbreite, Knopf rutscht bei Platzmangel unter den Text. | Bestanden (Subagent-Worktree): Browser 1440, 1280 hell/dunkel, 1024, 390 hell/dunkel ohne Überlappung. | Dieser Commit: `fix(UX-10.7b): …` | UX-10.7c |
 | 09.10.2026 | UX-10.7c | Befund: mobile Mitgliederliste bei 360 px mit Touch: Suchfeld 38 px (Überschreibung 2,35 rem in `MembersFilters` hebelte die globale Touch-Regel aus), Paginierung 40 px. Suchfeld nutzt `--jf-touch-target`, globale `pointer: coarse`-Regel in `styles.css` gilt auch für die Paginierung. | Bestanden (Subagent-Worktree): Browser 360 px mit Touch-Emulation, 0 Bedienelemente unter 44 px (vorher 7). | Dieser Commit: `fix(UX-10.7c): …` | UX-10.7d |
+| 09.10.2026 | UX-10.7 / UX-10.7d | Befund 10.7d: Abteilungswechsler wurde im mobilen Menü ~420 px breit (Menü 280 px), schnitt den Namen ab und schob den Farbschema-Knopf aus dem Bild; jetzt schrumpfbar mit „…“. Paketabnahme UX-10 per Headless-Chrome als `admin` und Leitungskonto ohne Superuser-Status: Glocke 1440/390 px, Dashboard mit Eingangskarte, Zähler „Portal“/„Anträge“ zugänglich angesagt, Aktualisierung auf 0 nach Entscheidung, „Alle Abteilungen“, Kalender 1280/1440 hell/dunkel, Mitglieder 360 px, Kontakt-Links in Mitglied-Detail, Elternliste, Portal „Meine Daten“ und Antragsprüfung. Übernahme per Cherry-Pick. | Bestanden (Subagent-Worktree): Browser wie beschrieben; PostgreSQL 17 CI-Modulsatz 1304/1304 (Stand `cc37557`, Korrekturen nur Frontend); SQLite 1304 (12 übersprungen) mit `REDIS_URL=none`; `makemigrations --check`; Frontend Typecheck, ESLint, 590/590. Mit gemeinsamem Redis aus `backend/.env` schlagen 2 Rate-Limit-Tests fehl (geteilter Cachezustand, kein Codefehler; lokal wie CI `REDIS_URL=none` setzen). Nicht ausgeführt: echte Geräte, Screenreader. | Dieser Commit: `fix(UX-10.7d): …` | Folgepunkte in 0.2 |

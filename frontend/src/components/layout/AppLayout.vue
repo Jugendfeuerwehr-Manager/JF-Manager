@@ -115,6 +115,7 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); inbox.st
 .drawer-brand { display: flex; align-items: center; gap: var(--jf-space-1); font-weight: var(--jf-weight-bold); font-size: var(--jf-text-lg); }
 .brand-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--jf-radius-md); background: var(--jf-color-primary); color: var(--jf-color-on-primary); }
 .drawer-context { display: flex; align-items: center; justify-content: space-between; gap: var(--jf-space-1); }
+.drawer-context > .department-switcher { flex: 1 1 auto; min-width: 0; }
 @media (max-width: 1023px) { .layout-main { margin-left: 0; padding-top: var(--mobile-bar-height); padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); } .layout-content { padding: var(--jf-space-2); } .layout-content--full-width { padding: 0; } }
 @media (max-width: 480px) { .layout-content { padding: var(--jf-space-1-5); } .layout-content--full-width { padding: 0; } }
 @media print { .desktop-sidebar, .mobile-toolbar, .mobile-bottom-nav, .skip-link { display: none !important; } .layout-main { margin: 0; padding: 0; } .layout-content { max-width: none; padding: 0; } }
