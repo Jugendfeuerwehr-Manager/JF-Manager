@@ -1,5 +1,5 @@
 import ToastService from 'primevue/toastservice'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SwimlaneEditor from '../SwimlaneEditor.vue'
@@ -40,6 +40,54 @@ beforeEach(() => {
     description: '', location: '', notes: '', department: 1, groups: [], recurrence_rule: null,
     blocks: [block(1), block(2)],
   } })
+})
+
+const headerStubs = {
+  WorkspaceHeader: { props: ['title', 'eyebrow'], template: '<header class="ws-stub"><h1>{{ title }}</h1><p class="eyebrow">{{ eyebrow }}</p><slot name="meta" /><slot name="status" /><div class="actions"><slot name="actions" /></div></header>' },
+  Button: { props: ['label', 'ariaLabel', 'disabled'], emits: ['click'], template: '<button type="button" :aria-label="ariaLabel" :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>' },
+  Menu: { props: ['model'], template: '<ul class="menu-stub"><li v-for="item in model" :key="item.key" :data-disabled="item.disabled">{{ item.label }}</li></ul>' },
+}
+
+function mountAt(width: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  return shallowMount(SwimlaneEditor, { props: { sessionId: 1 }, global: {
+    directives: { tooltip: () => {} }, stubs: { RouterLink: true, ...headerStubs }, plugins: [ToastService],
+  } })
+}
+
+describe('planner header', () => {
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+    localStorage.clear()
+  })
+
+  it('shows one main action, the save state and a menu on phones', async () => {
+    const wrapper = mountAt(390)
+    await flushPromises()
+    const buttons = wrapper.findAll('.actions > button')
+    expect(buttons.map((b) => b.attributes('aria-label') ?? b.text())).toEqual(['Weitere Aktionen', 'Speichern'])
+    expect(wrapper.get('[role="status"]').text()).toBe('Gespeichert')
+    const menu = wrapper.findAll('.menu-stub li').map((li) => li.text())
+    expect(menu).toEqual(expect.arrayContaining(['Rückgängig', 'Wiederholen', 'Bibliothek', 'Baustein', 'Rotation', 'Planaktion', 'Teilnahme', 'Handout', 'Einstellungen der Übung', 'Auf anderes Datum kopieren', 'Absagen']))
+    expect(wrapper.get('h1').text()).toBe('Testplan')
+
+    useTrainingPlannerStore().stageMove(1, { start_offset_minutes: 30 })
+    await flushPromises()
+    expect(wrapper.get('[role="status"]').text()).toBe('Ungespeichert')
+    expect(wrapper.findAll('.menu-stub li').find((li) => li.text().startsWith('Auf anderes Datum'))!.text()).toBe('Auf anderes Datum kopieren (zuerst speichern)')
+    wrapper.unmount()
+  })
+
+  it('shows planning tools as buttons on wide screens and keeps cancelling in the menu', async () => {
+    const wrapper = mountAt(1700)
+    await flushPromises()
+    const labels = wrapper.findAll('.actions > button').map((b) => b.attributes('aria-label') ?? b.text())
+    expect(labels).toEqual(expect.arrayContaining(['Rückgängig', 'Bibliothek schließen', 'Baustein', 'Rotation', 'Planaktion', 'Teilnahme', 'Speichern']))
+    expect(labels).not.toContain('Absagen')
+    expect(wrapper.findAll('.menu-stub li').map((li) => li.text())).toContain('Absagen')
+    expect(wrapper.get('[role="status"]').text()).toBe('Alles gespeichert')
+    wrapper.unmount()
+  })
 })
 
 describe('planner library panel', () => {
