@@ -29,6 +29,7 @@ Nginx verwendet in beiden Wegen dieselbe Konfiguration aus `frontend/nginx.conf`
 | `/etc/jf-manager/secrets.env` | Datenbankpasswort (nur Infrastruktur, wird bei Restore neu gesetzt) | root, 0600 |
 | `/etc/jf-manager/compose.env` | Von `jfctl` erzeugte Interpolationswerte für Compose | root, 0600 |
 | `/etc/jf-manager/trusted-proxies.conf` | Adressen, deren `X-Forwarded-Proto` Nginx vertraut | root, 0644 |
+| `/etc/jf-manager/csp-mode.conf` | CSP-Modus für Nginx (`enforce`/`report-only`), erzeugt aus `CSP_REPORT_ONLY` in `app.env` (siehe [production-security.md](production-security.md)) | root, 0644 |
 | `/etc/jf-manager/backup.pass` | Restic-Passwort. **Zusätzlich getrennt vom Backup aufbewahren.** | root, 0600 |
 | `/opt/jf-manager/releases/<version>/` | Entpacktes Releasepaket (`ops/`, nativ zusätzlich `backend/`, `frontend/`, `venv/`) | root |
 | `/opt/jf-manager/current` | Verweis auf die aktive Version | root |
