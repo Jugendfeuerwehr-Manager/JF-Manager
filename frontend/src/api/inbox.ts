@@ -34,7 +34,13 @@ export interface InboxFilters {
 }
 
 export interface InboxPage { count: number, results: InboxEntry[] }
-export interface InboxCounts { open_tasks: number, unread_notices: number, total: number }
+export interface InboxCounts {
+  open_tasks: number
+  unread_notices: number
+  total: number
+  /** Open tasks plus unread notices per category (UX-10.1); missing on older servers. */
+  by_category?: Partial<Record<InboxCategory, number>>
+}
 
 /** Only set filters become query parameters. */
 export function inboxParams(filters: InboxFilters): Record<string, string | number> {

@@ -21,13 +21,15 @@ import EndingTab from './EndingTab.vue'
 import InvitationsTab from './InvitationsTab.vue'
 import ReleasesTab from './ReleasesTab.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useInboxStore } from '@/stores/inbox'
 
 const auth = useAuthStore()
+const inbox = useInboxStore()
 // Releases and requests need their own rights; the server answers 403 otherwise (PORTAL-02.3, PORTAL-03).
 const tabs = computed(() => [
   { value: 'zugaenge', label: 'Zugänge' },
   { value: 'einladungen', label: 'Einladungen' },
-  ...(auth.hasPerm('portal.review_changerequest') ? [{ value: 'antraege', label: 'Anträge' }] : []),
+  ...(auth.hasPerm('portal.review_changerequest') ? [{ value: 'antraege', label: 'Anträge', count: inbox.counts.by_category?.requests || null }] : []),
   ...(auth.hasPerm('portal.view_portalpolicy') || auth.hasPerm('portal.change_portalpolicy')
     ? [{ value: 'freigaben', label: 'Freigaben' }]
     : []),

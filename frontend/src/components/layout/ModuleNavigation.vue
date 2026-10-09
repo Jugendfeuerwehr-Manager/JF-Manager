@@ -6,6 +6,7 @@
       <router-link v-for="item in section.items" :key="item.to" :to="item.to" class="nav-link" :class="{ active: isActive(item.to) }" :aria-current="isActive(item.to) ? 'page' : undefined" @click="$emit('navigate')">
         <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
         <span v-if="item.to === '/eingang' && inbox.counts.total > 0" class="nav-badge" :aria-label="`Eingang, ${inbox.counts.total} offen`">{{ inbox.counts.total }}</span>
+        <span v-if="item.to === '/portal-verwaltung' && requestCount > 0" class="nav-badge" :aria-label="`Portal, ${requestCount} ${requestCount === 1 ? 'offener Antrag' : 'offene Anträge'}`">{{ requestCount }}</span>
       </router-link>
     </section>
     <p v-if="!visibleSections.length" class="nav-empty">Kein passendes Modul gefunden.</p>
@@ -24,6 +25,7 @@ const route = useRoute()
 const auth = useAuthStore()
 const inbox = useInboxStore()
 const search = ref('')
+const requestCount = computed(() => inbox.counts.by_category?.requests ?? 0)
 const settingsRights = ['all', 'general', 'email', 'member', 'service', 'order', 'ldap', 'oidc'].map(category => `settings_manager.view_${category}_settings`)
 interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean }
 const sections: { label: string; items: NavItem[] }[] = [

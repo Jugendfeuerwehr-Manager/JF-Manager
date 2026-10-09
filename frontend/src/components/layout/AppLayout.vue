@@ -8,6 +8,7 @@
         <DepartmentSwitcher compact />
         <router-link v-if="!departmentsStore.departments.length" to="/" class="mobile-title">{{ websiteTitle }}</router-link>
       </div>
+      <StaffNotificationBell />
       <Button icon="pi pi-user" text rounded aria-label="Benutzermenü öffnen" aria-haspopup="menu" @click="toggleUserMenu" />
     </header>
 
@@ -48,6 +49,7 @@ import { useAppSettings } from '@/composables/useAppSettings'
 import { useTheme } from '@/composables/useTheme'
 import AppTopbar from './AppTopbar.vue'
 import ModuleNavigation from './ModuleNavigation.vue'
+import StaffNotificationBell from '@/components/notifications/StaffNotificationBell.vue'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import Menu from 'primevue/menu'

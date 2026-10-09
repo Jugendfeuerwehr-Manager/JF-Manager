@@ -8,11 +8,18 @@ export const COUNTS_POLL_MS = 60_000
 export const useInboxStore = defineStore('inbox', () => {
   const entries = ref<InboxEntry[]>([])
   const total = ref(0)
-  const counts = ref<InboxCounts>({ open_tasks: 0, unread_notices: 0, total: 0 })
+  const counts = ref<InboxCounts>({ open_tasks: 0, unread_notices: 0, total: 0, by_category: {} })
   const filters = ref<InboxFilters>({ type: '', category: '', department: null, unread: false, done: false })
   const loading = ref(false)
   const error = ref<string | null>(null)
   const selected = ref<number[]>([])
+  /** Latest entries for the header bell; separate from the inbox list so filters there stay untouched. */
+  const latest = ref<InboxEntry[]>([])
+  const latestLoading = ref(false)
+  const latestError = ref<string | null>(null)
+  /** Dashboard section: up to three open tasks and three unread notices. */
+  const dashboardTasks = ref<InboxEntry[]>([])
+  const dashboardNotices = ref<InboxEntry[]>([])
   const hasMore = computed(() => entries.value.length < total.value)
   let timer: ReturnType<typeof setInterval> | null = null
   let listRequest = 0
@@ -36,10 +43,33 @@ export const useInboxStore = defineStore('inbox', () => {
 
   async function fetchCounts() {
     try {
-      counts.value = (await inboxApi.counts()).data
+      const { data } = await inboxApi.counts()
+      counts.value = { ...data, by_category: data.by_category ?? {} }
     } catch {
       // The badge keeps its last value when the network is down.
     }
+  }
+
+  async function fetchLatest(limit = 5) {
+    latestLoading.value = true
+    latestError.value = null
+    try {
+      latest.value = (await inboxApi.list({})).data.results.slice(0, limit)
+    } catch (err) {
+      latestError.value = getApiErrorMessage(err, 'Die Benachrichtigungen konnten nicht geladen werden.')
+    } finally {
+      latestLoading.value = false
+    }
+  }
+
+  /** Dashboard lists; a failure hides the section instead of showing an error. */
+  async function fetchDashboard() {
+    const [tasks, notices] = await Promise.allSettled([
+      inboxApi.list({ type: 'task' }),
+      inboxApi.list({ type: 'notice', unread: true }),
+    ])
+    dashboardTasks.value = tasks.status === 'fulfilled' ? tasks.value.data.results.slice(0, 3) : []
+    dashboardNotices.value = notices.status === 'fulfilled' ? notices.value.data.results.slice(0, 3) : []
   }
 
   function setFilters(patch: Partial<InboxFilters>) {
@@ -50,6 +80,8 @@ export const useInboxStore = defineStore('inbox', () => {
   function replace(entry: InboxEntry) {
     const index = entries.value.findIndex(e => e.id === entry.id)
     if (index >= 0) entries.value[index] = entry
+    latest.value = latest.value.map(e => e.id === entry.id ? entry : e)
+    dashboardNotices.value = dashboardNotices.value.filter(e => e.id !== entry.id || !entry.read)
   }
 
   async function markRead(id: number) {
@@ -98,5 +130,5 @@ export const useInboxStore = defineStore('inbox', () => {
     document.removeEventListener('visibilitychange', onVisibility)
   }
 
-  return { entries, total, counts, filters, loading, error, selected, hasMore, fetchEntries, fetchCounts, setFilters, markRead, markReadBulk, markDone, toggleSelected, startPolling, stopPolling }
+  return { entries, total, counts, filters, loading, error, selected, hasMore, latest, latestLoading, latestError, dashboardTasks, dashboardNotices, fetchEntries, fetchCounts, fetchLatest, fetchDashboard, setFilters, markRead, markReadBulk, markDone, toggleSelected, startPolling, stopPolling }
 })

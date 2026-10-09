@@ -18,6 +18,7 @@ const route = vi.hoisted(() => ({ path: '/members', meta: {} as Record<string, u
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn() }) }))
 
 const stubs = {
+  StaffNotificationBell: { template: '<button class="bell-stub" />' },
   AppTopbar: { template: '<div class="topbar-stub" />' },
   ModuleNavigation: { template: '<nav class="module-nav-stub" />' },
   DepartmentSwitcher: { props: { compact: Boolean }, template: '<div class="dept-stub" :data-compact="compact" />' },
@@ -48,6 +49,7 @@ describe('App layout shell', () => {
     expect(toolbar.find('button[aria-label="Alle Module öffnen"]').exists()).toBe(true)
     expect(wrapper.find('.mobile-bottom-nav a[href="/members"]').attributes('aria-current')).toBe('page')
     expect(wrapper.find('.desktop-sidebar').exists()).toBe(false)
+    expect(toolbar.find('.bell-stub').exists()).toBe(true)
   })
 
   it('keeps a permanent navigation on desktop', () => {

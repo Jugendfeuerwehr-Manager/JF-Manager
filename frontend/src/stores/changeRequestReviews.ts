@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { changeRequestsApi } from '@/api/changeRequests'
+import { useInboxStore } from '@/stores/inbox'
 import type { ChangeRequestErrorBody, DecidePayload, Review } from '@/types/changeRequests'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -67,6 +68,7 @@ export const useChangeRequestReviewsStore = defineStore('changeRequestReviews', 
       decided.value = [data, ...decided.value.filter(r => r.id !== data.id)]
       selectedId.value = open.value[0]?.id ?? null
       notice.value = `Entscheidung für ${data.person_name} gespeichert.`
+      void useInboxStore().fetchCounts()
       return true
     } catch (err) {
       const response = (err as { response?: { status?: number, data?: ChangeRequestErrorBody } }).response
