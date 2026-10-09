@@ -42,7 +42,7 @@
         </ul>
       </section>
 
-      <section v-if="inboxTasks.length || inboxNotices.length" class="dashboard-card" aria-labelledby="inbox-title">
+      <section v-if="inboxTasks.length || inboxNotices.length" class="dashboard-card dashboard-card--inbox" aria-labelledby="inbox-title">
         <header class="dashboard-card__header">
           <h2 id="inbox-title">Eingang</h2>
           <span v-if="inbox.counts.open_tasks" class="inbox-count">{{ inbox.counts.open_tasks }} {{ inbox.counts.open_tasks === 1 ? 'offene Aufgabe' : 'offene Aufgaben' }}</span>
@@ -475,6 +475,12 @@ onMounted(() => { void inbox.fetchDashboard(); void loadStats() })
 .inbox-count { font-size: var(--jf-text-sm); font-weight: var(--jf-weight-semibold); color: var(--jf-color-text-muted); }
 .inbox-subtitle { margin: 0; padding: var(--jf-space-1) 0 0; font-size: var(--jf-text-sm); font-weight: var(--jf-weight-bold); color: var(--jf-color-text-muted); }
 .task-list { margin: 0; padding: 0; list-style: none; }
+/* The inbox card keeps its own padding: rows use the full card width and the action
+   moves below the text when the narrow column (about 320 px) leaves too little room. */
+.dashboard-card--inbox .task { flex-wrap: wrap; padding-inline: 0; }
+.dashboard-card--inbox .task__text { flex: 1 1 10rem; }
+.dashboard-card--inbox .task__action { margin-left: auto; }
+.task__title { overflow-wrap: anywhere; }
 .task {
   display: flex;
   align-items: center;
