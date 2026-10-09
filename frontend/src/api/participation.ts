@@ -150,6 +150,47 @@ export interface RulePreviewResult extends RuleValidation {
   substituted?: Array<{ member_id: number, name: string, notes: string[] }>
 }
 
+// ── Assignment board (PART-04.4) ──────────────────────────────────────────
+/** Draft target: a position id or "extra" (place without position). */
+export type DraftTarget = number | 'extra'
+
+export interface BoardApplicant {
+  member_id: number
+  name: string
+  lastname: string
+  state: 'applied' | 'assigned' | 'not_selected'
+  version: number
+  applied_at: string
+  preferred_slot: number | null
+  general_ok: boolean
+  general_reasons: string[]
+  fits: number[]
+  reasons: Record<string, string[]>
+  notes: string[]
+  qualifications: string[]
+  recent_assignments: number
+  draft: DraftTarget | null
+  published: DraftTarget | null
+  conflict: boolean
+}
+
+export interface BoardSlot { id: number, label: string, min: number, max: number, drafted: number }
+
+export interface AssignmentBoard {
+  session: number
+  mode: ParticipationMode
+  revision: number
+  published_at: string | null
+  keep_open: boolean
+  dirty: boolean
+  slots: BoardSlot[]
+  extra_places: number | null
+  extra_drafted: number
+  staffing: Staffing | null
+  applicants: BoardApplicant[]
+  draft: Record<string, DraftTarget>
+}
+
 export const participationApi = {
   config(sessionId: number) {
     return apiClient.get<ParticipationConfig>(`/participation/sessions/${sessionId}/config/`)
@@ -163,6 +204,15 @@ export const participationApi = {
   setRegistration(sessionId: number, memberId: number, body: RegistrationInput) {
     return apiClient.put<RegistrationRow & { changed: boolean }>(
       `/participation/sessions/${sessionId}/registrations/${memberId}/`, body)
+  },
+  assignment(sessionId: number) {
+    return apiClient.get<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/`)
+  },
+  saveAssignment(sessionId: number, body: { revision: number, draft: Record<string, DraftTarget> }) {
+    return apiClient.put<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/`, body)
+  },
+  publishAssignment(sessionId: number, body: { revision: number, keep_open: boolean }) {
+    return apiClient.post<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/publish/`, body)
   },
   validate(rule: Rule) {
     return apiClient.post<RuleValidation>('/participation/eligibility/validate/', { rule })

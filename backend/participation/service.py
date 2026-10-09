@@ -349,6 +349,11 @@ def _scarcity(session, participation, positions):
     return slots.scarcity(positions, slots.fits(participation, positions, ids, session.date))
 
 
+def record_event(registration, from_state, to_state, actor, via, now):
+    """Public name for writing a state change event (and its signal) from other modules."""
+    _record(registration, from_state, to_state, actor, via, now)
+
+
 def set_registration(
     session_id,
     member_id,

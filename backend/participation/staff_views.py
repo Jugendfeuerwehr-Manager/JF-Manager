@@ -16,7 +16,7 @@ from portal.permissions import StaffAccountRequired
 from training.api.permissions import can_manage_training_department
 from training.models import TrainingSession
 
-from . import changes, service, slots, states
+from . import assignment, changes, service, slots, states
 from .eligibility import neutral_audience_notice
 from .models import Mode, Registration, Slot, WaitlistMode
 from .rules import Names, summarize, validate_rule
@@ -502,3 +502,50 @@ class MemberRegistrationView(StaffView):
         )
         body["changed"] = changed
         return Response(body, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------- assignment board (PART-04.4)
+
+
+class AssignmentInput(serializers.Serializer):
+    revision = serializers.IntegerField(min_value=0)
+    draft = serializers.DictField(child=serializers.JSONField(), required=False, default=dict)
+
+
+class PublishInput(serializers.Serializer):
+    revision = serializers.IntegerField(min_value=0)
+    keep_open = serializers.BooleanField(required=False, default=False)
+
+
+class AssignmentView(StaffView):
+    def get(self, request, session_id):
+        session = self.session_for(request, session_id, write=False)
+        participation, _ = service.participation_for(session)
+        return Response(assignment.board(session, participation))
+
+    def put(self, request, session_id):
+        session = self.session_for(request, session_id, write=True)
+        data = AssignmentInput(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            body = assignment.save_draft(session.pk, data.validated_data["draft"], data.validated_data["revision"])
+        except ParticipationError as error:
+            return error_response(error)
+        return Response(body)
+
+
+class AssignmentPublishView(StaffView):
+    def post(self, request, session_id):
+        session = self.session_for(request, session_id, write=True)
+        data = PublishInput(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            body = assignment.publish(
+                session.pk,
+                data.validated_data["revision"],
+                actor=request.user,
+                keep_open=data.validated_data["keep_open"],
+            )
+        except ParticipationError as error:
+            return error_response(error)
+        return Response(body)

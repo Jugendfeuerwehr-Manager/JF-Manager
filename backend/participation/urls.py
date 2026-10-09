@@ -1,6 +1,12 @@
 from django.urls import path
 
-from .staff_views import MemberRegistrationView, SessionConfigView, SessionRegistrationsView
+from .staff_views import (
+    AssignmentPublishView,
+    AssignmentView,
+    MemberRegistrationView,
+    SessionConfigView,
+    SessionRegistrationsView,
+)
 from .views import EligibilityPreviewView, EligibilityValidateView
 
 urlpatterns = [
@@ -16,5 +22,11 @@ urlpatterns = [
         "sessions/<int:session_id>/registrations/<int:member_id>/",
         MemberRegistrationView.as_view(),
         name="participation-member-registration",
+    ),
+    path("sessions/<int:session_id>/assignment/", AssignmentView.as_view(), name="participation-assignment"),
+    path(
+        "sessions/<int:session_id>/assignment/publish/",
+        AssignmentPublishView.as_view(),
+        name="participation-assignment-publish",
     ),
 ]

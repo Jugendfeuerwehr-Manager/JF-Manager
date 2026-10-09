@@ -85,6 +85,11 @@ class SessionParticipation(models.Model):
     # Rule language v1 (participation.rules); {} means no requirement.
     eligibility = models.JSONField(default=dict, blank=True)
     revision = models.PositiveBigIntegerField(default=1)
+    # Assignment mode (PART-04.4): draft {"entries": {member_id: slot_id | "extra"}} until published.
+    assignment_draft = models.JSONField(default=dict, blank=True)
+    assignment_published_at = models.DateTimeField(null=True, blank=True)
+    # "Bewerbungen offen lassen": unassigned applicants stay applied instead of not selected.
+    assignment_keep_open = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
