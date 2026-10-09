@@ -223,8 +223,25 @@
 
       <!-- Library picker sidebar -->
       <Transition name="slide-panel">
-        <div v-if="showLibraryPicker" class="library-panel">
-          <LibraryBlockPicker @pick="addFromLibrary" @close="showLibraryPicker = false" />
+        <div v-if="canManage && showLibraryPicker" class="library-panel" :style="{ '--library-width': `${libraryWidth}px` }">
+          <!-- UX-09: drag, arrow keys or double-click (default) change the width; remembered per user -->
+          <div
+            class="library-resizer"
+            role="separator"
+            tabindex="0"
+            aria-orientation="vertical"
+            aria-controls="planner-library"
+            aria-label="Breite der Bibliothek"
+            :aria-valuenow="libraryWidth"
+            :aria-valuemin="libraryMinWidth"
+            :aria-valuemax="libraryMaxWidth"
+            :aria-valuetext="`${libraryWidth} Pixel breit`"
+            v-tooltip.left="'Breite ändern: ziehen oder Pfeiltasten, Doppelklick setzt zurück'"
+            @pointerdown="startLibraryResize"
+            @keydown="onLibraryResizeKey"
+            @dblclick="resetLibraryWidth"
+          ></div>
+          <LibraryBlockPicker id="planner-library" @pick="addFromLibrary" @close="showLibraryPicker = false" />
         </div>
       </Transition>
     </div>
@@ -291,6 +308,8 @@ import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus, TrainingDebrief } from '@/types/training'
 import interact from 'interactjs'
 import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
+import { usePlannerLibraryPanel } from '@/composables/usePlannerLibraryPanel'
+import { useAuthStore } from '@/stores/auth'
 
 interface Props {
   sessionId: number
@@ -310,7 +329,21 @@ const sessionDuration = computed(() => {
 
 // ── Refs ───────────────────────────────────────────────────────────────────
 const plannerScroll = ref<HTMLElement | null>(null)
-const showLibraryPicker = ref(false)
+const auth = useAuthStore()
+const {
+  width: libraryWidth,
+  open: libraryOpen,
+  setOpen: setLibraryOpen,
+  reset: resetLibraryWidth,
+  onSeparatorKey: onLibraryResizeKey,
+  startDrag: startLibraryResize,
+  minWidth: libraryMinWidth,
+  maxWidth: libraryMaxWidth,
+} = usePlannerLibraryPanel(computed(() => auth.user?.id))
+const showLibraryPicker = computed({
+  get: () => libraryOpen.value,
+  set: (value: boolean) => setLibraryOpen(value),
+})
 const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
@@ -891,6 +924,7 @@ function setupInteract() {
 
 /* ── Planner container ────────────────────────────────────────────────── */
 .planner-container {
+  position: relative;
   flex: 1;
   display: flex;
   min-height: 0;
@@ -1069,17 +1103,85 @@ function setupInteract() {
 }
 
 /* ── Library panel ────────────────────────────────────────────────────── */
+/* Width set by the user (UX-09), never more than half of the planner. */
 .library-panel {
-  width: 320px;
+  position: relative;
+  width: var(--library-width, 320px);
+  max-width: 50%;
   flex-shrink: 0;
-  overflow: hidden;
   border-left: 1px solid var(--jf-color-border);
   background: var(--jf-color-card);
+}
+.library-panel > :deep(.library-picker) { overflow: hidden; }
+
+.library-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  z-index: 12;
+  width: 16px;
+  cursor: col-resize;
+  touch-action: none;
+}
+/* Visible line plus a grip in the middle */
+.library-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: transparent;
+  transition: background var(--jf-duration);
+}
+.library-resizer::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 8px;
+  height: var(--jf-touch-target);
+  transform: translateY(-50%);
+  border: 1px solid var(--jf-color-border);
+  border-radius: 999px;
+  background: var(--jf-color-card);
+}
+.library-resizer:hover::after,
+.library-resizer:focus-visible::after { background: var(--jf-color-primary); }
+.library-resizer:hover::before,
+.library-resizer:focus-visible::before { border-color: var(--jf-color-primary); }
+.library-resizer:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; border-radius: var(--jf-radius-sm); }
+/* Touch: a 44 px wide target around the grip */
+@media (pointer: coarse) {
+  .library-resizer { left: -22px; width: 44px; }
+  .library-resizer::after { left: 21px; }
+  .library-resizer::before { left: 18px; }
+}
+
+/* Below the desktop layout the library slides over the plan instead of narrowing it. */
+@media (max-width: 1023px) {
+  .library-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(100%, 360px);
+    max-width: none;
+    box-shadow: var(--jf-shadow-lg);
+  }
+  .library-resizer { display: none; }
 }
 
 /* ── Slide transition ─────────────────────────────────────────────────── */
 .slide-panel-enter-active,
-.slide-panel-leave-active { transition: width 0.2s ease; overflow: hidden; }
+.slide-panel-leave-active { transition: width var(--jf-duration) ease; overflow: hidden; }
 .slide-panel-enter-from,
 .slide-panel-leave-to { width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .slide-panel-enter-active,
+  .slide-panel-leave-active,
+  .library-resizer::after { transition: none; }
+}
 </style>

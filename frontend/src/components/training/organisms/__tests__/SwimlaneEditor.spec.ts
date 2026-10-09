@@ -16,7 +16,8 @@ vi.mock('vue-router', () => ({
   onBeforeRouteLeave: (handler: () => boolean) => { mocks.leave = handler },
   onBeforeRouteUpdate: (handler: () => boolean) => { mocks.update = handler },
 }))
-vi.mock('interactjs', () => ({ default: () => ({
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 1 } }) }))
+vi.mock('interactjs',() => ({ default: () => ({
   draggable: (config: unknown) => { mocks.draggable(config); return { resizable: mocks.resizable } },
   unset: mocks.unset,
 }) }))
@@ -39,6 +40,25 @@ beforeEach(() => {
     description: '', location: '', notes: '', department: 1, groups: [], recurrence_rule: null,
     blocks: [block(1), block(2)],
   } })
+})
+
+describe('planner library panel', () => {
+  it('reopens with the remembered width and resizes from the keyboard', async () => {
+    localStorage.setItem('jf-planner-library:1', JSON.stringify({ width: 500, open: true }))
+    const wrapper = mount()
+    await flushPromises()
+    const panel = wrapper.get('.library-panel')
+    expect(panel.attributes('style')).toContain('--library-width: 500px')
+    const separator = panel.get('[role="separator"]')
+    expect(separator.attributes('aria-label')).toBe('Breite der Bibliothek')
+    expect(separator.attributes('tabindex')).toBe('0')
+    expect(separator.attributes('aria-controls')).toBe('planner-library')
+    await separator.trigger('keydown', { key: 'ArrowLeft' })
+    expect(separator.attributes('aria-valuenow')).toBe('516')
+    expect(JSON.parse(localStorage.getItem('jf-planner-library:1')!)).toEqual({ width: 516, open: true })
+    wrapper.unmount()
+    localStorage.clear()
+  })
 })
 
 describe('planner navigation and gestures', () => {
