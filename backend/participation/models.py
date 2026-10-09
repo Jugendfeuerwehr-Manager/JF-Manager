@@ -1,6 +1,7 @@
 """Participation in planned services (PART-01.1, concept 4.5 and 5.1).
 
-Slots, positions and staffing templates belong to PART-04 and are not modelled yet.
+Positions (``Slot``), minimum staffing and the waiting list per position belong to PART-04
+(concept 4.7).
 """
 
 from django.conf import settings
@@ -75,8 +76,11 @@ class SessionParticipation(models.Model):
     registration_opens_at = models.DateTimeField(null=True, blank=True)
     registration_closes_at = models.DateTimeField(null=True, blank=True)
     cancellation_closes_at = models.DateTimeField(null=True, blank=True)
+    # With positions this is derived: sum of the position maxima plus ``extra_places`` (concept 4.7).
     max_participants = models.PositiveIntegerField(null=True, blank=True)
     min_participants = models.PositiveIntegerField(null=True, blank=True)
+    # "Weitere Teilnehmende ohne Position" (e.g. guests); only meaningful with positions.
+    extra_places = models.PositiveIntegerField(null=True, blank=True, verbose_name="Weitere Plätze ohne Position")
     waitlist_mode = models.CharField(max_length=8, choices=WaitlistMode.choices, default=WaitlistMode.AUTO)
     # Rule language v1 (participation.rules); {} means no requirement.
     eligibility = models.JSONField(default=dict, blank=True)
@@ -89,6 +93,32 @@ class SessionParticipation(models.Model):
 
     def __str__(self):
         return f"Teilnahme {self.session_id}"
+
+
+class Slot(models.Model):
+    """A named position of a service with minimum (staffing) and maximum (places) and its own rule."""
+
+    participation = models.ForeignKey(
+        SessionParticipation, on_delete=models.CASCADE, related_name="slots", verbose_name="Teilnahme"
+    )
+    label = models.CharField(max_length=80, verbose_name="Bezeichnung")
+    min_count = models.PositiveSmallIntegerField(default=0, verbose_name="Mindestens")
+    max_count = models.PositiveSmallIntegerField(default=1, verbose_name="Plätze")
+    # Rule language v1 (participation.rules), in addition to the general requirements; {} = none.
+    rule = models.JSONField(default=dict, blank=True)
+    position = models.PositiveSmallIntegerField(default=0, verbose_name="Reihenfolge")
+
+    class Meta:
+        verbose_name = "Position"
+        verbose_name_plural = "Positionen"
+        ordering = ["position", "pk"]
+        constraints = [
+            models.CheckConstraint(condition=Q(min_count__lte=models.F("max_count")), name="slot_min_lte_max"),
+            models.CheckConstraint(condition=Q(max_count__gte=1), name="slot_max_positive"),
+        ]
+
+    def __str__(self):
+        return self.label
 
 
 class Registration(models.Model):
@@ -117,6 +147,10 @@ class Registration(models.Model):
     session = models.ForeignKey("training.TrainingSession", on_delete=models.CASCADE, related_name="registrations")
     member = models.ForeignKey("members.Member", on_delete=models.CASCADE, related_name="registrations")
     state = models.CharField(max_length=12, choices=State.choices)
+    # Position held while registered/assigned (NULL: no positions or a place without position).
+    slot = models.ForeignKey(Slot, null=True, blank=True, on_delete=models.SET_NULL, related_name="registrations")
+    # Position asked for (Anmeldung) or wished (Zuteilung, Q3); NULL = any suitable position.
+    preferred_slot = models.ForeignKey(Slot, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     reason_category = models.CharField(max_length=12, choices=Reason.choices, blank=True, default="")
     # Short free text, visible to responsible staff only, deleted 90 days after the service (D4).
     reason_note = models.CharField(max_length=200, blank=True, default="")

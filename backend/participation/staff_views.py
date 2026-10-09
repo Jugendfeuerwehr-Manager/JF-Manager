@@ -16,9 +16,9 @@ from portal.permissions import StaffAccountRequired
 from training.api.permissions import can_manage_training_department
 from training.models import TrainingSession
 
-from . import changes, service, states
+from . import changes, service, slots, states
 from .eligibility import neutral_audience_notice
-from .models import Mode, Registration, WaitlistMode
+from .models import Mode, Registration, Slot, WaitlistMode
 from .rules import Names, summarize, validate_rule
 from .service import ParticipationError
 from .views import MAX_TARGET, target_members
@@ -70,6 +70,35 @@ class StaffView(APIView):
 
 # ---------------------------------------------------------------- configuration
 
+MAX_SLOTS = 30
+
+
+def no_markup(value):
+    if HTML_TAG.search(value):
+        raise serializers.ValidationError("Nur Klartext, keine HTML-Auszeichnung.")
+    return value
+
+
+class SlotInput(serializers.Serializer):
+    id = serializers.IntegerField(required=False, allow_null=True)
+    label = serializers.CharField(max_length=80, trim_whitespace=True, validators=[no_markup])
+    min = serializers.IntegerField(min_value=0, max_value=500)
+    max = serializers.IntegerField(min_value=1, max_value=500)
+    rule = serializers.JSONField(required=False, allow_null=True)
+
+    def validate_rule(self, value):
+        if not value:
+            return {}
+        errors = validate_rule(value)
+        if errors:
+            raise serializers.ValidationError(errors)
+        return value
+
+    def validate(self, attrs):
+        if attrs["min"] > attrs["max"]:
+            raise serializers.ValidationError({"min": "Mindestens darf nicht größer als die Zahl der Plätze sein."})
+        return attrs
+
 
 class ConfigSerializer(serializers.Serializer):
     mode = serializers.ChoiceField(choices=Mode.choices, required=False)
@@ -82,7 +111,20 @@ class ConfigSerializer(serializers.Serializer):
     min_participants = serializers.IntegerField(min_value=0, max_value=10000, allow_null=True, required=False)
     waitlist_mode = serializers.ChoiceField(choices=WaitlistMode.choices, required=False)
     eligibility = serializers.JSONField(required=False, allow_null=True)
+    extra_places = serializers.IntegerField(min_value=0, max_value=500, allow_null=True, required=False)
+    slots = SlotInput(many=True, required=False)
     revision = serializers.IntegerField(min_value=0)
+
+    def validate_slots(self, value):
+        if len(value) > MAX_SLOTS:
+            raise serializers.ValidationError(f"Höchstens {MAX_SLOTS} Positionen.")
+        seen = set()
+        for item in value:
+            key = item["label"].casefold()
+            if key in seen:
+                raise serializers.ValidationError(f"Die Position „{item['label']}“ ist doppelt.")
+            seen.add(key)
+        return value
 
     def validate_public_note(self, value):
         if HTML_TAG.search(value):
@@ -105,14 +147,28 @@ class ConfigSerializer(serializers.Serializer):
             return attrs[name] if name in attrs else getattr(current, name)
 
         mode = pick("mode")
-        if mode == Mode.OPT_OUT and pick("max_participants") is not None:
+        if mode == Mode.OPT_OUT and attrs.get("slots"):
+            raise serializers.ValidationError(
+                {
+                    "slots": "Im Modus „Abmeldung“ gibt es keine Positionen (Positionen setzen Anmeldung oder Zuteilung voraus)."
+                }
+            )
+        with_slots = bool(attrs["slots"]) if "slots" in attrs else current.pk is not None and current.slots.exists()
+        if with_slots:
+            # The maximum is derived from the positions (concept 4.7); a sent value is ignored.
+            attrs.pop("max_participants", None)
+        if "max_participants" in attrs:
+            sent_max = attrs["max_participants"]
+        else:
+            sent_max = None if with_slots else current.max_participants
+        if mode == Mode.OPT_OUT and sent_max is not None:
             raise serializers.ValidationError(
                 {
                     "max_participants": "Im Modus „Abmeldung“ gibt es keine Höchstzahl (Wartelisten setzen Anmeldung voraus)."
                 }
             )
         low, high = pick("min_participants"), pick("max_participants")
-        if low is not None and high is not None and low > high:
+        if not with_slots and low is not None and high is not None and low > high:
             raise serializers.ValidationError(
                 {"min_participants": "Die Mindestzahl darf die Höchstzahl nicht überschreiten."}
             )
@@ -139,14 +195,37 @@ CONFIG_FIELDS = (
     "min_participants",
     "waitlist_mode",
     "eligibility",
+    "extra_places",
 )
+
+
+def slot_payload(slot, held):
+    return {
+        "id": slot.pk,
+        "label": slot.label,
+        "min": slot.min_count,
+        "max": slot.max_count,
+        "rule": slot.rule or {},
+        "rule_summary": summarize(slot.rule, Names.for_rule(slot.rule)) if slot.rule else None,
+        "position": slot.position,
+        "seated": held.get(slot.pk, 0),
+    }
+
+
+def seated_held(session):
+    return slots.held_by_slot(Registration.objects.filter(session=session, state__in=service.SEATED).only("slot_id"))
 
 
 def config_payload(session, participation):
     due = service.deadlines(session, participation)
     rule = participation.eligibility
+    positions = slots.slots_for(participation)
+    held = seated_held(session) if participation.pk else {}
     body = {name: getattr(participation, name) for name in CONFIG_FIELDS}
     body.update(
+        slots=[slot_payload(slot, held) for slot in positions],
+        capacity=slots.capacity(participation, positions),
+        staffing=slots.staffing(participation, positions, held, seated=sum(held.values())),
         revision=participation.revision,
         session=session.pk,
         effective={
@@ -182,6 +261,7 @@ class SessionConfigView(StaffView):
             serializer.is_valid(raise_exception=True)
             data = dict(serializer.validated_data)
             revision = data.pop("revision")
+            slot_items = data.pop("slots", None)
             if revision != participation.revision:
                 error = ParticipationError(
                     "stale",
@@ -197,11 +277,64 @@ class SessionConfigView(StaffView):
                 setattr(participation, name, value)
             if participation.mode == Mode.OPT_OUT:
                 participation.max_participants = None
+                participation.extra_places = None
+                slot_items = []
             participation.revision += 1
             participation.save()
+            if slot_items is not None:
+                sync_slots(session, participation, slot_items, force=participation.mode == Mode.OPT_OUT)
+            positions = slots.slots_for(participation)
+            if positions:
+                participation.max_participants = slots.capacity(participation, positions)
+                participation.save(update_fields=["max_participants", "updated_at"])
+            elif participation.extra_places is not None:
+                participation.extra_places = None
+                participation.save(update_fields=["extra_places", "updated_at"])
             changes.apply_mode_change(session, previous_mode, participation)
             service.promote_waitlist(session, participation)
         return Response(config_payload(session, participation))
+
+
+def sync_slots(session, participation, items, *, force=False):
+    """Replace the positions with ``items`` (kept by id, new ones created, missing ones removed).
+
+    A position may not lose places that are taken: removing it or lowering its maximum below the
+    number of people holding it is refused with a field error (``force`` skips this for opt-out,
+    where positions do not exist, D5).
+    """
+    existing = {slot.pk: slot for slot in participation.slots.all()}
+    held = seated_held(session)
+    errors = {}
+    keep = set()
+    for index, item in enumerate(items):
+        slot = existing.get(item.get("id")) if item.get("id") else None
+        if item.get("id") and slot is None:
+            errors[f"slots[{index}].id"] = "Unbekannte Position."
+            continue
+        if slot is not None:
+            keep.add(slot.pk)
+            if not force and held.get(slot.pk, 0) > item["max"]:
+                errors[f"slots[{index}].max"] = (
+                    f"„{slot.label}“ ist bereits mit {held[slot.pk]} Personen besetzt; erst umbesetzen oder abmelden."
+                )
+    for pk, slot in existing.items():
+        if pk not in keep and held.get(pk, 0) and not force:
+            errors["slots"] = f"„{slot.label}“ ist noch besetzt und kann nicht entfernt werden."
+    if errors:
+        raise serializers.ValidationError(errors)
+    Slot.objects.filter(participation=participation).exclude(pk__in=keep).delete()
+    for index, item in enumerate(items):
+        values = {
+            "label": item["label"],
+            "min_count": item["min"],
+            "max_count": item["max"],
+            "rule": item.get("rule") or {},
+            "position": index,
+        }
+        if item.get("id"):
+            Slot.objects.filter(pk=item["id"]).update(**values)
+        else:
+            Slot.objects.create(participation=participation, **values)
 
 
 # ---------------------------------------------------------------- registrations
@@ -229,6 +362,8 @@ def registration_payload(member, registration, mode, result, *, notes, position,
             "conflict": registration.conflict,
             "conflict_reasons": registration.conflict_reasons,
             "state_changed_at": registration.state_changed_at,
+            "slot": registration.slot_id,
+            "preferred_slot": registration.preferred_slot_id,
         }
     return body
 
@@ -294,6 +429,8 @@ class SessionRegistrationsView(StaffView):
         participation, _ = service.participation_for(session)
         rows, truncated = build_rows(session, participation, request.user)
         due = service.deadlines(session, participation)
+        positions = slots.slots_for(participation)
+        held = seated_held(session) if participation.pk else {}
         return Response(
             {
                 "session": {
@@ -311,6 +448,9 @@ class SessionRegistrationsView(StaffView):
                     "cancellation_closes_at": due.cancellation_closes_at,
                 },
                 "counts": counts_for(participation.mode, participation, rows),
+                "slots": [slot_payload(slot, held) for slot in positions],
+                "extra_places": participation.extra_places if positions else None,
+                "staffing": slots.staffing(participation, positions, held, seated=sum(held.values())),
                 "truncated": truncated,
                 "members": rows,
             }
