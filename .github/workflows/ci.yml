@@ -24,7 +24,7 @@ jobs:
     services:
       postgres:
         # Same major version as both production paths (OPS-05).
-        image: postgres:17-alpine
+        image: mirror.gcr.io/library/postgres:17-alpine
         env:
           POSTGRES_DB: test_jf_manager
           POSTGRES_USER: test_user
