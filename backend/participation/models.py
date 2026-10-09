@@ -90,6 +90,10 @@ class SessionParticipation(models.Model):
     assignment_published_at = models.DateTimeField(null=True, blank=True)
     # "Bewerbungen offen lassen": unassigned applicants stay applied instead of not selected.
     assignment_keep_open = models.BooleanField(default=False)
+    # Staffing template the configuration was copied from (PART-04.5); later template changes do not apply.
+    template_source = models.ForeignKey(
+        "participation.StaffingTemplate", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -200,3 +204,54 @@ class RegistrationEvent(models.Model):
         if self.pk:
             raise ValueError("RegistrationEvent is append-only.")
         super().save(*args, **kwargs)
+
+
+class StaffingTemplate(models.Model):
+    """Reusable staffing (PART-04.5): mode, requirements, positions, numbers and waiting list.
+
+    ``department`` NULL is an organisation-wide template. Applying copies ``body`` into a service;
+    later changes of the template never reach services that used it (concept 4.7).
+    """
+
+    name = models.CharField(max_length=120, verbose_name="Name")
+    description = models.CharField(max_length=1000, blank=True, default="", verbose_name="Beschreibung")
+    department = models.ForeignKey(
+        "departments.Department",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="staffing_templates",
+        verbose_name="Abteilung",
+    )
+    # {mode, eligibility, max_participants, min_participants, extra_places, waitlist_mode, slots: [...]}
+    body = models.JSONField(default=dict, blank=True)
+    version = models.PositiveIntegerField(default=1)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Besetzungsvorlage"
+        verbose_name_plural = "Besetzungsvorlagen"
+        ordering = ["name", "pk"]
+
+    def __str__(self):
+        return self.name
+
+
+class TemplateParticipation(models.Model):
+    """Participation configuration carried by an exercise template (TRAIN-03), as an independent copy."""
+
+    template = models.OneToOneField("training.TrainingTemplate", on_delete=models.CASCADE, related_name="participation")
+    body = models.JSONField(default=dict, blank=True)
+    staffing_template = models.ForeignKey(
+        StaffingTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Teilnahme der Übungsvorlage"
+        verbose_name_plural = "Teilnahme der Übungsvorlagen"

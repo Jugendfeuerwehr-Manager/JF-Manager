@@ -190,6 +190,9 @@ def session_to_template(session, user, created, title=""):
     template.groups.set(session.groups.all())
     for block in session.blocks.all():
         copy_block(block, user, created, model=TrainingTemplateBlock, template=template)
+    from participation.templates import session_to_template_participation
+
+    session_to_template_participation(session, template)
     return template
 
 
@@ -205,4 +208,7 @@ def template_to_session(template, target_date, user, created, title=""):
     session.groups.set(template.groups.filter(department_id=department_id))
     for block in template.blocks.all():
         copy_block(block, user, created, department_id=department_id, session=session)
+    from participation.templates import template_participation_to_session
+
+    template_participation_to_session(template, session)
     return session

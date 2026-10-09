@@ -44,6 +44,16 @@ class SeedDemoTests(TestCase):
 
         return timezone.localdate()
 
+    def test_positions_waiting_list_and_assignment(self):
+        from participation.models import Registration, StaffingTemplate
+
+        self.assertTrue(StaffingTemplate.objects.filter(name="Brandsicherheitswache").exists())
+        wache = Registration.objects.filter(session__title="Brandsicherheitswache Stadtfest")
+        self.assertGreater(wache.filter(state="registered", slot__isnull=False).count(), 0)
+        lager = Registration.objects.filter(session__title="Aufbau Zeltlager")
+        self.assertEqual(lager.filter(state="assigned").count(), 4)
+        self.assertEqual(lager.filter(state="applied").count(), 4)
+
     def test_accounts_use_the_given_password_and_privileged_ones_have_an_authenticator(self):
         users = get_user_model().objects.filter(email__endswith="@demo.example.invalid")
         self.assertEqual(users.count(), 12)

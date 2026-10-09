@@ -78,6 +78,8 @@ export interface ParticipationConfig {
   slots: SlotConfig[]
   capacity: number | null
   staffing: Staffing | null
+  template_source?: { id: number, name: string } | null
+  department?: number | null
 }
 
 export type ConfigUpdate = Partial<Pick<ParticipationConfig,
@@ -189,6 +191,77 @@ export interface AssignmentBoard {
   staffing: Staffing | null
   applicants: BoardApplicant[]
   draft: Record<string, DraftTarget>
+}
+
+// ── Staffing templates (PART-04.5) ────────────────────────────────────────
+export interface StaffingTemplateBody {
+  mode?: ParticipationMode
+  eligibility?: Rule | Record<string, never>
+  max_participants?: number | null
+  min_participants?: number | null
+  extra_places?: number | null
+  waitlist_mode?: WaitlistMode
+  slots?: Array<{ label: string, min: number, max: number, rule: Rule | Record<string, never> }>
+}
+
+export interface StaffingTemplate {
+  id: number
+  name: string
+  description: string
+  department: number | null
+  department_name: string | null
+  scope: 'department' | 'organization'
+  version: number
+  archived: boolean
+  archived_at: string | null
+  updated_at: string
+  mode: ParticipationMode | null
+  slots: Array<{ label: string, min: number, max: number }>
+  summary: string | null
+  body?: StaffingTemplateBody
+}
+
+export interface StaffingTemplateInput {
+  name: string
+  description?: string
+  department: number | null
+  session?: number | null
+  body?: StaffingTemplateBody | null
+  version?: number
+}
+
+export interface TrainingTemplateStaffing {
+  staffing_template: number | null
+  name: string | null
+  mode: ParticipationMode | null
+  slots: Array<{ label: string, min: number, max: number }>
+}
+
+export const staffingTemplatesApi = {
+  list(params: { department?: number | null, archived?: boolean } = {}) {
+    const query: Record<string, string | number> = {}
+    if (params.department) query.department = params.department
+    if (params.archived) query.archived = '1'
+    return apiClient.get<{ results: StaffingTemplate[], can_manage_organization: boolean }>('/participation/templates/', { params: query })
+  },
+  create(body: StaffingTemplateInput) {
+    return apiClient.post<StaffingTemplate>('/participation/templates/', body)
+  },
+  update(id: number, body: StaffingTemplateInput) {
+    return apiClient.put<StaffingTemplate>(`/participation/templates/${id}/`, body)
+  },
+  archive(id: number, archived: boolean) {
+    return apiClient.post<StaffingTemplate>(`/participation/templates/${id}/${archived ? 'archive' : 'unarchive'}/`)
+  },
+  apply(sessionId: number, template: number, revision: number) {
+    return apiClient.post<ParticipationConfig & { warnings: string[] }>(`/participation/sessions/${sessionId}/apply-template/`, { template, revision })
+  },
+  trainingTemplate(id: number) {
+    return apiClient.get<TrainingTemplateStaffing>(`/participation/training-templates/${id}/`)
+  },
+  setTrainingTemplate(id: number, staffingTemplate: number | null) {
+    return apiClient.put<TrainingTemplateStaffing>(`/participation/training-templates/${id}/`, { staffing_template: staffingTemplate })
+  },
 }
 
 export const participationApi = {

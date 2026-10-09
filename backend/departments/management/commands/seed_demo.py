@@ -172,6 +172,7 @@ class Command(BaseCommand):
         self.seed_inventory()
         self.seed_orders()
         self.seed_training()
+        self.seed_staffing()
         self.seed_services()
         self.seed_communication()
 
@@ -825,6 +826,93 @@ class Command(BaseCommand):
             service.events = "Keine besonderen Vorkommnisse."
             service.save(update_fields=["events"])
             self.attendance(service, code, Attendance, StaffAttendance)
+
+    def seed_staffing(self):
+        """PART-04: positions, waiting list, an assignment and the staffing template "Brandsicherheitswache"."""
+        from participation import assignment, service
+        from participation.models import StaffingTemplate
+        from participation.templates import apply_to_session
+        from qualifications.models import QualificationType
+        from training.models import TrainingSession
+
+        planner = self.accounts["ausbilder"]
+        spange = QualificationType.objects.get(name="Leistungsspange")
+        flame = QualificationType.objects.get(name="Jugendflamme Stufe 2")
+
+        def has(qtype):
+            return {"v": 1, "match": "all", "rules": [{"kind": "qualification", "op": "has_any", "values": [qtype.pk]}]}
+
+        guard = StaffingTemplate.objects.create(
+            name="Brandsicherheitswache",
+            description="Wachführung und zwei Truppleute, automatisches Nachrücken.",
+            department=self.departments["mitte"],
+            created_by=planner,
+            body={
+                "mode": "opt_in",
+                "eligibility": {"v": 1, "match": "all", "rules": [{"kind": "age", "op": "min", "min": 14}]},
+                "waitlist_mode": "auto",
+                "extra_places": 1,
+                "slots": [
+                    {"label": "Wachführung", "min": 1, "max": 1, "rule": has(spange)},
+                    {"label": "Truppmann/-frau", "min": 2, "max": 2, "rule": has(flame)},
+                ],
+            },
+        )
+        StaffingTemplate.objects.create(
+            name="Zeltlager-Helfende",
+            description="Zuteilung durch die Leitung, Bewerbungen mit Wunschposition.",
+            department=None,
+            created_by=planner,
+            body={
+                "mode": "assignment",
+                "eligibility": {},
+                "waitlist_mode": "manual",
+                "slots": [
+                    {"label": "Küche", "min": 1, "max": 2, "rule": {}},
+                    {"label": "Aufbau", "min": 2, "max": 3, "rule": {}},
+                ],
+            },
+        )
+
+        def planned(title, days):
+            plan = TrainingSession.objects.create(
+                title=title,
+                date=self.today + timedelta(days=days),
+                start_time=time(17, 0),
+                end_time=time(22, 0),
+                location="Festplatz Musterstadt",
+                department=self.departments["mitte"],
+                created_by=planner,
+                status=TrainingSession.Status.PUBLISHED,
+            )
+            plan.groups.set(self.groups["mitte"])
+            return plan
+
+        members = self.members["mitte"]
+        wache = planned("Brandsicherheitswache Stadtfest", 12)
+        apply_to_session(wache, guard.body, template=guard)
+        for member in members:
+            try:
+                service.set_registration(wache.pk, member.pk, "registered", actor=planner, source="staff")
+            except service.ParticipationError:
+                continue  # people who do not fit any position stay without registration
+
+        lager = planned("Aufbau Zeltlager", 20)
+        participation = apply_to_session(lager, StaffingTemplate.objects.get(name="Zeltlager-Helfende").body)[0]
+        slots = list(participation.slots.all())
+        for index, member in enumerate(members[:8]):
+            service.set_registration(
+                lager.pk,
+                member.pk,
+                "applied",
+                actor=planner,
+                source="staff",
+                slot=slots[index % 2].pk if index % 3 else None,
+            )
+        participation.refresh_from_db()
+        draft = {str(m.pk): slots[i % 2].pk for i, m in enumerate(members[:4])}
+        board = assignment.save_draft(lager.pk, draft, participation.revision)
+        assignment.publish(lager.pk, board["revision"], actor=planner, keep_open=True)
 
     def attendance(self, service, code, attendance_model, staff_model):
         for member in self.members[code]:

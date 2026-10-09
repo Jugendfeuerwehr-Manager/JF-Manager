@@ -7,6 +7,14 @@ from .staff_views import (
     SessionConfigView,
     SessionRegistrationsView,
 )
+from .template_views import (
+    ApplyTemplateView,
+    TemplateArchiveView,
+    TemplateDetailView,
+    TemplateListView,
+    TemplateUnarchiveView,
+    TrainingTemplateParticipationView,
+)
 from .views import EligibilityPreviewView, EligibilityValidateView
 
 urlpatterns = [
@@ -28,5 +36,15 @@ urlpatterns = [
         "sessions/<int:session_id>/assignment/publish/",
         AssignmentPublishView.as_view(),
         name="participation-assignment-publish",
+    ),
+    path("sessions/<int:session_id>/apply-template/", ApplyTemplateView.as_view(), name="participation-apply-template"),
+    path("templates/", TemplateListView.as_view(), name="participation-templates"),
+    path("templates/<int:pk>/", TemplateDetailView.as_view(), name="participation-template"),
+    path("templates/<int:pk>/archive/", TemplateArchiveView.as_view(), name="participation-template-archive"),
+    path("templates/<int:pk>/unarchive/", TemplateUnarchiveView.as_view(), name="participation-template-unarchive"),
+    path(
+        "training-templates/<int:pk>/",
+        TrainingTemplateParticipationView.as_view(),
+        name="participation-training-template",
     ),
 ]

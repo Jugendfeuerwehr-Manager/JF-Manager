@@ -17,6 +17,7 @@
 
       <div class="part-settings__layout">
         <div class="part-settings__main">
+          <StaffingTemplatePanel :session-id="sessionId" :department="store.config?.department ?? null" :readonly="readonly" />
           <fieldset class="part-card" :disabled="readonly">
             <legend class="part-card__title">Teilnahmemodus</legend>
             <div class="part-modes">
@@ -140,6 +141,7 @@ import Button from 'primevue/button'
 import RuleBuilder from './RuleBuilder.vue'
 import RulePreview from './RulePreview.vue'
 import SlotEditor from './SlotEditor.vue'
+import StaffingTemplatePanel from './StaffingTemplatePanel.vue'
 import { STALE_MESSAGE, draftCapacity, useParticipationStore } from '@/stores/participation'
 import { useRuleOptions } from '@/composables/useRuleOptions'
 import type { ParticipationMode } from '@/api/participation'

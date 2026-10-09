@@ -225,9 +225,15 @@ def config_payload(session, participation):
     body.update(
         slots=[slot_payload(slot, held) for slot in positions],
         capacity=slots.capacity(participation, positions),
+        template_source=(
+            {"id": participation.template_source_id, "name": participation.template_source.name}
+            if participation.template_source_id
+            else None
+        ),
         staffing=slots.staffing(participation, positions, held, seated=sum(held.values())),
         revision=participation.revision,
         session=session.pk,
+        department=session.department_id,
         effective={
             "start": due.start,
             "registration_opens_at": due.opens_at,

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
-  participationApi,
+  participationApi, staffingTemplatesApi,
   type ParticipationConfig, type ParticipationMode, type ReasonCategory, type RegistrationOverview,
   type RegistrationTarget, type Rule, type RuleErrors, type RulePreviewResult, type WaitlistMode,
 } from '@/api/participation'
@@ -195,6 +195,34 @@ export const useParticipationStore = defineStore('participation', () => {
     return { ...current, slots, eligibility: rule.rules.length ? rule : {}, revision }
   }
 
+  /** Copy a staffing template into this service (PART-04.5); the server answers with the new configuration. */
+  async function applyTemplate(templateId: number): Promise<ActionResult & { warnings?: string[] }> {
+    if (!config.value || sessionId.value === null) return { ok: false }
+    saving.value = true
+    error.value = null
+    notice.value = null
+    try {
+      const response = await staffingTemplatesApi.apply(sessionId.value, templateId, config.value.revision)
+      const { warnings, ...next } = response.data
+      adopt(next)
+      notice.value = `Vorlage „${next.template_source?.name ?? ''}“ übernommen.`
+      void refreshRegistrationsQuietly()
+      return { ok: true, warnings }
+    } catch (err) {
+      const response = bodyOf(err)
+      if (response?.status === 409) {
+        conflict.value = response.data?.current ?? null
+        error.value = STALE_MESSAGE
+        return { ok: false, code: 'stale', message: STALE_MESSAGE }
+      }
+      error.value = getApiErrorMessage(err, 'Die Vorlage konnte nicht übernommen werden.')
+      const reasons = (response?.data as { reasons?: string[] } | undefined)?.reasons
+      return { ok: false, code: response?.data?.code, message: [error.value, ...(reasons ?? [])].join(' ') }
+    } finally {
+      saving.value = false
+    }
+  }
+
   function addSlot(label = '') {
     if (!draft.value) return
     draft.value.slots.push(newSlotDraft(label))
@@ -352,7 +380,7 @@ export const useParticipationStore = defineStore('participation', () => {
     sessionId, config, draft, loading, saving, error, fieldErrors, conflict, notice, dirty,
     registrations, registrationsLoading, registrationsError, busyMember,
     ruleErrors, preview, previewLoading, previewError,
-    loadConfig, setMode, discard, saveConfig, addSlot, removeSlot, moveSlot, useServerVersion, keepDraftOnServerVersion,
+    loadConfig, setMode, discard, saveConfig, applyTemplate, addSlot, removeSlot, moveSlot, useServerVersion, keepDraftOnServerVersion,
     schedulePreview, runPreview, cancelPreview, loadRegistrations, setRegistration, reset,
   }
 })
