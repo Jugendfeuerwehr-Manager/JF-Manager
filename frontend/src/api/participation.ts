@@ -22,6 +22,36 @@ export interface Rule { v: 1, match: RuleMatch, rules: Array<RuleCondition | Rul
 
 export type RuleErrors = Record<string, string>
 
+// ── Positions (PART-04) ───────────────────────────────────────────────────
+export interface SlotConfig {
+  id: number
+  label: string
+  min: number
+  max: number
+  rule: Rule | Record<string, never>
+  rule_summary: string | null
+  position: number
+  seated: number
+}
+
+export interface SlotInput {
+  id?: number | null
+  label: string
+  min: number
+  max: number
+  rule: Rule | Record<string, never>
+}
+
+export interface StaffingRow { id: number, label: string, min: number, max: number, seated: number, free: number, missing: number }
+export interface Staffing {
+  met: boolean
+  required: number
+  fulfilled: number
+  missing: Array<{ label: string, count: number }>
+  text: string
+  slots: StaffingRow[]
+}
+
 export interface ParticipationConfig {
   session: number
   revision: number
@@ -44,12 +74,16 @@ export interface ParticipationConfig {
   defaults: { mode: ParticipationMode, registration_offset_h: number, cancellation_offset_h: number, waitlist_mode: WaitlistMode }
   eligibility_summary: string | null
   audience_notice: string | null
+  extra_places: number | null
+  slots: SlotConfig[]
+  capacity: number | null
+  staffing: Staffing | null
 }
 
 export type ConfigUpdate = Partial<Pick<ParticipationConfig,
   'mode' | 'portal_visible' | 'public_note' | 'registration_opens_at' | 'registration_closes_at'
   | 'cancellation_closes_at' | 'max_participants' | 'min_participants' | 'waitlist_mode'>>
-  & { eligibility?: Rule | Record<string, never> | null, revision: number }
+  & { eligibility?: Rule | Record<string, never> | null, revision: number, extra_places?: number | null, slots?: SlotInput[] }
 
 export interface RegistrationDetail {
   version: number
@@ -60,6 +94,8 @@ export interface RegistrationDetail {
   conflict: boolean
   conflict_reasons: string[]
   state_changed_at: string
+  slot: number | null
+  preferred_slot: number | null
 }
 
 export interface RegistrationRow {
@@ -89,6 +125,9 @@ export interface RegistrationOverview {
   revision: number
   deadlines: { registration_opens_at: string | null, registration_closes_at: string, cancellation_closes_at: string }
   counts: RegistrationCounts
+  slots: SlotConfig[]
+  extra_places: number | null
+  staffing: Staffing | null
   truncated: boolean
   members: RegistrationRow[]
 }
@@ -99,6 +138,7 @@ export interface RegistrationInput {
   reason_note?: string
   version?: number | null
   accept_waitlist?: boolean
+  slot?: number | null
 }
 
 export interface RuleValidation { summary: string, errors: RuleErrors, audience_notice: string | null }

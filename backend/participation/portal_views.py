@@ -20,9 +20,9 @@ from portal.people import portal_children, portal_self
 from portal.permissions import PortalAccountRequired
 from training.models import TrainingSession
 
-from . import service, states
+from . import service, slots, states
 from .eligibility import neutral_audience_notice
-from .models import Mode, Registration, SessionParticipation
+from .models import Mode, Registration, SessionParticipation, Slot
 from .service import ParticipationError
 from .staff_views import RegistrationInput, error_response
 from .throttles import PortalWriteThrottle
@@ -72,6 +72,10 @@ def _rule_key(participation):
     return json.dumps(participation.eligibility, sort_keys=True)
 
 
+def _label(positions, slot_id):
+    return next((slot.label for slot in positions if slot.pk == slot_id), None)
+
+
 def build_items(member, sessions, *, now=None):
     """One portal entry per session for one person; a constant number of queries per session group."""
     now = now or timezone.now()
@@ -84,6 +88,17 @@ def build_items(member, sessions, *, now=None):
         .annotate(n=Count("pk"))
         .values_list("session_id", "n")
     )
+    positions_by = {}
+    for slot in Slot.objects.filter(participation__session_id__in=ids):
+        positions_by.setdefault(slot.participation_id, []).append(slot)
+    held_by = {}
+    for session_id, slot_id, count in (
+        Registration.objects.filter(session_id__in=ids, state__in=service.SEATED)
+        .values_list("session_id", "slot_id")
+        .annotate(n=Count("pk"))
+        .values_list("session_id", "slot_id", "n")
+    ):
+        held_by.setdefault(session_id, {})[slot_id] = count
     defaults, results, items = {}, {}, []
     for session in sessions:
         participation = participations.get(session.pk) or service.participation_for(session)[0]
@@ -99,6 +114,18 @@ def build_items(member, sessions, *, now=None):
             if key not in results:
                 results[key] = service.eligibility_for(session, participation, [member.pk]).get(member.pk)
             result = results[key]
+        positions = sorted(positions_by.get(participation.pk, []), key=lambda s: (s.position, s.pk))
+        if participation.mode == Mode.OPT_OUT:
+            positions = []
+        fit = full = None
+        if positions:
+            fit = slots.fits(participation, positions, [member.pk], session.date).get(member.pk, slots.Fit())
+            result = service.position_result(participation, positions, fit)
+            held = dict(held_by.get(session.pk, {}))
+            if registration and registration.state in service.SEATED:
+                held[registration.slot_id] = held.get(registration.slot_id, 1) - 1
+            if participation.mode == Mode.OPT_IN:
+                full = slots.decide(participation, positions, fit, None, held).waitlist
         taken = seated.get(session.pk, 0)
         limited = participation.mode != Mode.OPT_OUT and participation.max_participants is not None
         register_target = states.APPLIED if participation.mode == Mode.ASSIGNMENT else states.REGISTERED
@@ -115,6 +142,7 @@ def build_items(member, sessions, *, now=None):
                     seated=taken - (1 if registration and registration.state in service.SEATED else 0),
                     eligibility=result,
                     defaults=dept_defaults,
+                    full=full if name == "register" else None,
                 )
                 # Without a row an opt-out person is already expected: nothing to confirm.
                 expected = participation.mode == Mode.OPT_OUT and registration is None and name == "register"
@@ -153,6 +181,20 @@ def build_items(member, sessions, *, now=None):
                     "reasons": service.neutral_reasons(result.reasons) if result is not None and not result.ok else [],
                     "audience_notice": neutral_audience_notice(rule) if rule else None,
                 },
+                # PART-04.3: positions with free places only, never names (D6)
+                "positions": [
+                    {
+                        "id": slot.pk,
+                        "label": slot.label,
+                        "max": slot.max_count,
+                        "free": max(slot.max_count - held_by.get(session.pk, {}).get(slot.pk, 0), 0),
+                        "suits": fit.suits(slot),
+                    }
+                    for slot in positions
+                ],
+                "slot_label": _label(positions, registration.slot_id) if registration else None,
+                "preferred_slot": registration.preferred_slot_id if registration and positions else None,
+                "preferred_label": _label(positions, registration.preferred_slot_id) if registration else None,
                 "may_register": flags["register"][0],
                 "may_cancel": flags["cancel"][0],
                 "register_blocked": flags["register"][1],

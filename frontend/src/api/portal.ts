@@ -56,6 +56,8 @@ export type PortalMode = 'opt_out' | 'opt_in' | 'assignment'
 export type PortalReason = 'krankheit' | 'schule_beruf' | 'urlaub' | 'familie' | 'sonstiges'
 export type PortalTarget = 'registered' | 'cancelled' | 'applied' | 'withdrawn'
 
+export interface PortalPosition { id: number, label: string, max: number, free: number, suits: boolean }
+
 export interface PortalBlocked { code: string, detail: string, reasons: string[] }
 
 export interface PortalSessionItem {
@@ -80,6 +82,11 @@ export interface PortalSessionItem {
   free_places: number | null
   /** Optional: only when the server reports the capacity. */
   max_participants?: number | null
+  /** PART-04: positions with free places, no names (D6). */
+  positions?: PortalPosition[]
+  slot_label?: string | null
+  preferred_slot?: number | null
+  preferred_label?: string | null
   eligibility: { ok: boolean, reasons: string[], audience_notice: string | null }
   may_register: boolean
   may_cancel: boolean
@@ -93,6 +100,7 @@ export interface PortalRegistrationPayload {
   reason_note?: string
   version?: number
   accept_waitlist?: boolean
+  slot?: number | null
 }
 
 export interface PortalAbsencePayload {

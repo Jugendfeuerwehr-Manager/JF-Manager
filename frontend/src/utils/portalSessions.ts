@@ -112,7 +112,10 @@ export function describeSession(item: PortalSessionItem, person: PortalPerson | 
         : found.blocked.detail
     }
   }
-  if (item.state === 'waitlisted' && item.waitlist_position) view.hint = `Warteliste, Platz ${item.waitlist_position}`
+  if (item.state === 'waitlisted' && item.waitlist_position) {
+    view.hint = `Warteliste, Platz ${item.waitlist_position}${item.preferred_label ? ` (${item.preferred_label})` : ''}`
+  } else if ((item.state === 'registered' || item.state === 'assigned') && item.slot_label) view.hint = `${item.state === 'assigned' ? 'Zugeteilt' : 'Angemeldet'} als ${item.slot_label}`
+  else if (item.state === 'applied' && item.positions?.length) view.hint = `Wunsch: ${item.preferred_label ?? 'beliebige passende Position'}`
   else if (item.state === 'cancelled' && item.reason_category) view.hint = `Grund: ${reasonLabel(item.reason_category)}`
   else if (item.state === 'no_response' && item.limited && item.free_places === 0 && view.enabled) view.hint = MAX_FREE_HINT
   return view
@@ -166,6 +169,17 @@ export function placesText(item: PortalSessionItem): { text: string, ratio: numb
   return { text: item.free_places === 1 ? 'Noch 1 Platz frei' : `Noch ${item.free_places} Plätze frei`, ratio: null }
 }
 
+/** "Wachführung: 1 von 1 frei" per position (free places only, D6); assignment shows the places. */
+export function positionLines(item: PortalSessionItem): Array<{ id: number, label: string, text: string, full: boolean }> {
+  if (!item.positions?.length || item.mode === 'opt_out') return []
+  return item.positions.map(p => ({
+    id: p.id,
+    label: p.label,
+    text: item.mode === 'assignment' ? `${p.max} ${p.max === 1 ? 'Platz' : 'Plätze'}` : p.free === 0 ? 'voll' : `${p.free} von ${p.max} frei`,
+    full: item.mode !== 'assignment' && p.free === 0,
+  }))
+}
+
 /** Last day for the next action: registration deadline while it is open, else the cancellation deadline. */
 export function deadlineText(item: PortalSessionItem): string | null {
   const open = item.state === 'no_response' || item.state === 'cancelled' && item.mode !== 'opt_out'
@@ -187,7 +201,7 @@ export function statusBanner(item: PortalSessionItem, person: PortalPerson | nul
     case 'registered': return { text: is(item.mode === 'opt_out' ? 'eingeplant' : 'angemeldet'), tone: 'success', icon: 'pi pi-check' }
     case 'waitlisted': return { text: item.waitlist_position ? `Warteliste, Platz ${item.waitlist_position}` : 'Auf der Warteliste', tone: 'info', icon: 'pi pi-clock' }
     case 'applied': return { text: name ? `${name} hat sich beworben` : 'Du hast dich beworben', tone: 'info', icon: 'pi pi-send' }
-    case 'assigned': return { text: is('zugeteilt'), tone: 'success', icon: 'pi pi-check-circle' }
+    case 'assigned': return { text: item.slot_label ? `${is('zugeteilt')} als ${item.slot_label}` : is('zugeteilt'), tone: 'success', icon: 'pi pi-check-circle' }
     case 'not_selected': return { text: name ? `${name} wurde nicht berücksichtigt` : 'Du wurdest nicht berücksichtigt', tone: 'neutral', icon: 'pi pi-minus-circle' }
     case 'cancelled': return { text: is('abgemeldet'), tone: 'warning', icon: 'pi pi-times' }
     default: return { text: 'Noch keine Rückmeldung', tone: 'neutral', icon: 'pi pi-circle' }

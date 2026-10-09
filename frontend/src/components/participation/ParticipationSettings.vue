@@ -29,7 +29,7 @@
               </label>
             </div>
             <p v-if="store.draft.mode === 'assignment'" class="part-hint">
-              <i class="pi pi-info-circle" aria-hidden="true"></i>Positionen und die Zuteilung durch Verantwortliche folgen in einem weiteren Schritt.
+              <i class="pi pi-info-circle" aria-hidden="true"></i>Bewerbungen werden im Reiter „Zuteilung“ Positionen zugeteilt und dann veröffentlicht.
             </p>
           </fieldset>
 
@@ -64,12 +64,13 @@
             <div class="part-grid">
               <div class="part-field">
                 <label for="part-max">Höchstzahl</label>
-                <input id="part-max" type="number" min="1" class="part-input" :disabled="optOut" :aria-describedby="optOut ? 'part-capacity-note' : undefined" :value="store.draft.max_participants ?? ''" placeholder="unbegrenzt" @input="setNumber('max_participants', $event)">
+                <input id="part-max" type="number" min="1" class="part-input" :disabled="optOut || withSlots" :aria-describedby="optOut ? 'part-capacity-note' : withSlots ? 'part-max-derived' : undefined" :value="withSlots ? capacity ?? '' : store.draft.max_participants ?? ''" placeholder="unbegrenzt" @input="setNumber('max_participants', $event)">
+                <span v-if="withSlots" id="part-max-derived" class="part-hint"><i class="pi pi-lock" aria-hidden="true"></i>Aus den Positionen abgeleitet</span>
                 <span v-if="store.fieldErrors.max_participants" class="part-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ store.fieldErrors.max_participants }}</span>
               </div>
               <div class="part-field">
                 <label for="part-min">Mindestzahl</label>
-                <input id="part-min" type="number" min="0" class="part-input" :disabled="optOut" :aria-describedby="optOut ? 'part-capacity-note' : undefined" :value="store.draft.min_participants ?? ''" placeholder="keine" @input="setNumber('min_participants', $event)">
+                <input id="part-min" type="number" min="0" class="part-input" :disabled="optOut || withSlots" :aria-describedby="optOut ? 'part-capacity-note' : undefined" :value="store.draft.min_participants ?? ''" placeholder="keine" @input="setNumber('min_participants', $event)">
                 <span v-if="store.fieldErrors.min_participants" class="part-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ store.fieldErrors.min_participants }}</span>
               </div>
               <div class="part-field">
@@ -81,6 +82,13 @@
               </div>
             </div>
           </fieldset>
+
+          <SlotEditor
+            :readonly="readonly"
+            :disabled="optOut"
+            :options="ruleOptions.options.value"
+            :options-loading="ruleOptions.loading.value"
+          />
 
           <section class="part-card" aria-labelledby="part-who-title">
             <h3 id="part-who-title" class="part-card__title">Wer darf teilnehmen?</h3>
@@ -105,7 +113,6 @@
             <label class="part-check"><input v-model="store.draft.portal_visible" type="checkbox">Im Portal für Eltern und Mitglieder sichtbar</label>
           </fieldset>
 
-          <p class="part-hint"><i class="pi pi-info-circle" aria-hidden="true"></i>Positionen, Mindestbesetzung und Vorlagen folgen.</p>
         </div>
 
         <aside class="part-settings__aside">
@@ -132,7 +139,8 @@ import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import Button from 'primevue/button'
 import RuleBuilder from './RuleBuilder.vue'
 import RulePreview from './RulePreview.vue'
-import { STALE_MESSAGE, useParticipationStore } from '@/stores/participation'
+import SlotEditor from './SlotEditor.vue'
+import { STALE_MESSAGE, draftCapacity, useParticipationStore } from '@/stores/participation'
 import { useRuleOptions } from '@/composables/useRuleOptions'
 import type { ParticipationMode } from '@/api/participation'
 
@@ -153,6 +161,8 @@ const DEADLINES: Array<{ key: DeadlineKey, label: string, fallback: string }> = 
 ]
 
 const optOut = computed(() => store.draft?.mode === 'opt_out')
+const withSlots = computed(() => (store.draft?.slots.length ?? 0) > 0)
+const capacity = computed(() => (store.draft ? draftCapacity(store.draft) : null))
 const summary = computed(() => store.preview?.summary ?? store.config?.eligibility_summary ?? null)
 
 /** `datetime-local` works with local wall-clock time without zone. */

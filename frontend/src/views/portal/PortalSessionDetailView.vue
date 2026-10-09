@@ -4,21 +4,23 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import PortalCancelSheet from '@/components/portal/PortalCancelSheet.vue'
+import PortalPositionSheet from '@/components/portal/PortalPositionSheet.vue'
 import PortalEmptyCard from '@/components/portal/PortalEmptyCard.vue'
 import { usePortalSessionActions } from '@/composables/usePortalSessionActions'
 import { usePortalStore } from '@/stores/portal'
-import { describeSession, formatDay, formatDeadline, formatTimeRange, placesText, statusBanner } from '@/utils/portalSessions'
+import { describeSession, formatDay, formatDeadline, formatTimeRange, placesText, positionLines, statusBanner } from '@/utils/portalSessions'
 
 const props = defineProps<{ id: number }>()
 
 const portal = usePortalStore()
-const { sheetItem, sheetError, run, submitCancel, closeSheet } = usePortalSessionActions()
+const { sheetItem, sheetError, run, submitCancel, closeSheet, positionItem, positionError, submitPosition, closePosition } = usePortalSessionActions()
 
 const item = computed(() => portal.sessions.find(s => s.id === props.id) ?? null)
 const person = computed(() => portal.selectedPerson)
 const view = computed(() => (item.value ? describeSession(item.value, person.value) : null))
 const banner = computed(() => (item.value ? statusBanner(item.value, person.value) : null))
 const places = computed(() => (item.value ? placesText(item.value) : null))
+const positions = computed(() => (item.value ? positionLines(item.value) : []))
 const busy = computed(() => portal.pendingSessionIds.includes(props.id))
 const error = computed(() => (portal.actionError?.sessionId === props.id ? portal.actionError : null))
 
@@ -72,6 +74,13 @@ watch(() => portal.selectedPersonId, ensureLoaded)
         <div v-if="places.ratio !== null" class="meter" aria-hidden="true"><div :style="{ width: `${Math.round(places.ratio * 100)}%` }"></div></div>
       </div>
 
+      <section v-if="positions.length" class="positions" aria-labelledby="detail-positions">
+        <h2 id="detail-positions">Positionen</h2>
+        <ul>
+          <li v-for="p in positions" :key="p.id"><span>{{ p.label }}</span><span class="muted"><i v-if="p.full" class="pi pi-ban" aria-hidden="true"></i> {{ p.text }}</span></li>
+        </ul>
+      </section>
+
       <dl class="deadlines">
         <div v-if="item.deadlines.registration_closes_at && item.mode !== 'opt_out'"><dt>Anmeldeschluss</dt><dd>{{ formatDeadline(item.deadlines.registration_closes_at) }}</dd></div>
         <div v-if="item.deadlines.cancellation_closes_at"><dt>Abmeldeschluss</dt><dd>{{ formatDeadline(item.deadlines.cancellation_closes_at) }}</dd></div>
@@ -93,6 +102,10 @@ watch(() => portal.selectedPersonId, ensureLoaded)
       </div>
     </section>
 
+    <PortalPositionSheet
+      v-if="positionItem" :item="positionItem" :person="person" :busy="portal.pendingSessionIds.includes(positionItem.id)"
+      :error="positionError" @close="closePosition" @submit="submitPosition"
+    />
     <PortalCancelSheet
       v-if="sheetItem" :item="sheetItem" :person="person" :busy="portal.pendingSessionIds.includes(sheetItem.id)"
       :error="sheetError" @close="closeSheet" @submit="submitCancel"
@@ -134,6 +147,9 @@ p.muted { margin: 0; }
 dt { color: var(--p-text-muted-color); }
 dd { margin: 0; font-weight: 600; }
 .action { min-height: 48px; border-radius: 12px; }
+.positions h2 { margin: 0 0 6px; font-size: 14px; font-weight: 650; }
+.positions ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.positions li { display: flex; justify-content: space-between; gap: 8px; }
 .error { margin: 0; font-size: 13px; color: var(--p-red-600); }
 .app-dark .error { color: var(--p-red-300); }
 .note { border-top: 1px solid var(--p-content-border-color); padding-top: 12px; display: flex; flex-direction: column; gap: 4px; }

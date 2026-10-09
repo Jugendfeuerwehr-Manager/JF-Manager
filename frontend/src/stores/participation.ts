@@ -21,6 +21,16 @@ export interface ConfigDraft {
   min_participants: number | null
   waitlist_mode: WaitlistMode
   eligibility: Rule
+  extra_places: number | null
+  slots: SlotDraft[]
+}
+
+/** A position while editing; `key` keeps list rendering stable for new rows without id. */
+export interface SlotDraft { key: string, id: number | null, label: string, min: number, max: number, rule: Rule }
+
+let slotKeys = 0
+export function newSlotDraft(label = ''): SlotDraft {
+  return { key: `new-${++slotKeys}`, id: null, label, min: 0, max: 1, rule: emptyRule() }
 }
 
 export interface ActionResult { ok: boolean, code?: string, message?: string }
@@ -41,7 +51,22 @@ export function draftFrom(config: ParticipationConfig): ConfigDraft {
     min_participants: config.min_participants,
     waitlist_mode: config.waitlist_mode,
     eligibility: rule && 'rules' in rule ? clone(rule) : emptyRule(),
+    extra_places: config.extra_places ?? null,
+    slots: (config.slots ?? []).map(slot => ({
+      key: `slot-${slot.id}`,
+      id: slot.id,
+      label: slot.label,
+      min: slot.min,
+      max: slot.max,
+      rule: slot.rule && 'rules' in slot.rule ? clone(slot.rule as Rule) : emptyRule(),
+    })),
   }
+}
+
+/** Places derived from the positions (concept 4.7) or the plain maximum. */
+export function draftCapacity(draft: ConfigDraft): number | null {
+  if (!draft.slots.length) return draft.max_participants
+  return draft.slots.reduce((sum, slot) => sum + (Number(slot.max) || 0), 0) + (draft.extra_places ?? 0)
 }
 
 interface ErrorBody { code?: string, detail?: string, current?: ParticipationConfig, errors?: RuleErrors }
@@ -52,7 +77,18 @@ function fieldErrorsOf(data: Record<string, unknown> | undefined): { fields: Rec
   const fields: Record<string, string> = {}
   let rule: RuleErrors = {}
   for (const [key, value] of Object.entries(data ?? {})) {
-    if (key === 'eligibility' && value && typeof value === 'object' && !Array.isArray(value)) {
+    if (key === 'slots' && Array.isArray(value) && value.some(item => item && typeof item === 'object')) {
+      value.forEach((item, index) => {
+        if (!item || typeof item !== 'object') return
+        for (const [field, message] of Object.entries(item as Record<string, unknown>)) {
+          if (field === 'rule' && message && typeof message === 'object' && !Array.isArray(message)) {
+            for (const [path, text] of Object.entries(message as Record<string, string>)) fields[`slots[${index}].rule.${path}`] = String(text)
+          } else {
+            fields[`slots[${index}].${field}`] = Array.isArray(message) ? String(message[0]) : String(message)
+          }
+        }
+      })
+    } else if (key === 'eligibility' && value && typeof value === 'object' && !Array.isArray(value)) {
       rule = value as RuleErrors
     } else if (Array.isArray(value) && typeof value[0] === 'string') {
       fields[key] = value[0]
@@ -136,9 +172,11 @@ export const useParticipationStore = defineStore('participation', () => {
     if (!draft.value) return
     draft.value.mode = mode
     if (mode === 'opt_out') {
-      // D5: places and waiting list only exist where people sign up.
+      // D5: places, positions and waiting list only exist where people sign up.
       draft.value.max_participants = null
       draft.value.min_participants = null
+      draft.value.slots = []
+      draft.value.extra_places = null
     }
   }
 
@@ -150,7 +188,28 @@ export const useParticipationStore = defineStore('participation', () => {
 
   function payload(current: ConfigDraft, revision: number) {
     const rule = current.eligibility
-    return { ...current, eligibility: rule.rules.length ? rule : {}, revision }
+    const slots = current.slots.map(slot => ({
+      id: slot.id, label: slot.label.trim(), min: Number(slot.min) || 0, max: Number(slot.max) || 0,
+      rule: slot.rule.rules.length ? slot.rule : {},
+    }))
+    return { ...current, slots, eligibility: rule.rules.length ? rule : {}, revision }
+  }
+
+  function addSlot(label = '') {
+    if (!draft.value) return
+    draft.value.slots.push(newSlotDraft(label))
+  }
+
+  function removeSlot(index: number) {
+    draft.value?.slots.splice(index, 1)
+  }
+
+  function moveSlot(index: number, delta: -1 | 1) {
+    const list = draft.value?.slots
+    const target = index + delta
+    if (!list || target < 0 || target >= list.length) return
+    const [item] = list.splice(index, 1)
+    list.splice(target, 0, item!)
   }
 
   async function saveConfig(): Promise<ActionResult> {
@@ -293,7 +352,7 @@ export const useParticipationStore = defineStore('participation', () => {
     sessionId, config, draft, loading, saving, error, fieldErrors, conflict, notice, dirty,
     registrations, registrationsLoading, registrationsError, busyMember,
     ruleErrors, preview, previewLoading, previewError,
-    loadConfig, setMode, discard, saveConfig, useServerVersion, keepDraftOnServerVersion,
+    loadConfig, setMode, discard, saveConfig, addSlot, removeSlot, moveSlot, useServerVersion, keepDraftOnServerVersion,
     schedulePreview, runPreview, cancelPreview, loadRegistrations, setRegistration, reset,
   }
 })

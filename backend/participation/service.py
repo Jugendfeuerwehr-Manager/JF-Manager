@@ -310,22 +310,10 @@ def _slot_choice(session, participation, positions, member_id, target, slot_id):
     Returns ``(eligibility, full, decision)``: the ``Result`` to check, the capacity decision for
     ``plan_change`` and the ``slots.Decision`` (``None`` unless a place is asked for in opt-in).
     """
-    by_id = {slot.pk: slot for slot in positions}
-    if slot_id is not None and slot_id not in by_id:
+    if slot_id is not None and slot_id not in {slot.pk for slot in positions}:
         raise ParticipationError("invalid", "Unbekannte Position.", status=400)
     fit = slots.fits(participation, positions, [member_id], session.date).get(member_id, slots.Fit())
-    if slot_id is not None:
-        chosen = by_id[slot_id]
-        reasons = fit.reasons_for(chosen)
-        if fit.general_ok:
-            reasons = [f"Position ‚{chosen.label}‘: {reason}" for reason in reasons]
-        result = Result(not reasons, reasons)
-    elif fit.general_ok and (slots.suitable_ids(positions, fit) or participation.extra_places):
-        result = Result(True)
-    elif not fit.general_ok:
-        result = fit.general
-    else:
-        result = Result(False, [f"Position ‚{slot.label}‘: {'; '.join(fit.reasons_for(slot))}" for slot in positions])
+    result = position_result(participation, positions, fit, slot_id)
     if target != states.REGISTERED or participation.mode != Mode.OPT_IN or not result.ok:
         return result, None, None
     seated_rows = Registration.objects.filter(session=session, state__in=SEATED).exclude(member_id=member_id)
@@ -335,6 +323,21 @@ def _slot_choice(session, participation, positions, member_id, target, slot_id):
         scarce = _scarcity(session, participation, positions)
     decision = slots.decide(participation, positions, fit, slot_id, held, scarce=scarce)
     return result, decision.waitlist, decision
+
+
+def position_result(participation, positions, fit, slot_id=None):
+    """Eligibility with positions: the chosen position, or any suitable position or extra place."""
+    if slot_id is not None:
+        chosen = next(slot for slot in positions if slot.pk == slot_id)
+        reasons = fit.reasons_for(chosen)
+        if fit.general_ok:
+            reasons = [f"Position ‚{chosen.label}‘: {reason}" for reason in reasons]
+        return Result(not reasons, reasons)
+    if fit.general_ok and (slots.suitable_ids(positions, fit) or participation.extra_places):
+        return Result(True)
+    if not fit.general_ok:
+        return fit.general
+    return Result(False, [f"Position ‚{slot.label}‘: {'; '.join(fit.reasons_for(slot))}" for slot in positions])
 
 
 def _scarcity(session, participation, positions):

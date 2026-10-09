@@ -36,6 +36,23 @@ async function mountPanel(over = {}) {
 describe('ParticipationSettings', () => {
   beforeEach(() => { setActivePinia(createPinia()); vi.resetAllMocks() })
 
+  it('edits positions: derived and locked maximum, staffing text, buttons with names', async () => {
+    const slot = { id: 4, label: 'Wachführung', min: 1, max: 1, rule: {}, rule_summary: null, position: 0, seated: 0 }
+    const staffing = { met: false, required: 1, fulfilled: 0, missing: [{ label: 'Wachführung', count: 1 }], text: 'Mindestbesetzung: 0 von 1 erfüllt – es fehlt 1× Wachführung', slots: [{ id: 4, label: 'Wachführung', min: 1, max: 1, seated: 0, free: 1, missing: 1 }] }
+    const wrapper = await mountPanel({ slots: [slot], extra_places: 1, max_participants: 2, staffing })
+    expect(wrapper.text()).toContain('Positionen und Mindestbesetzung')
+    expect(wrapper.text()).toContain('es fehlt 1× Wachführung')
+    const max = wrapper.get('#part-max')
+    expect(max.attributes('disabled')).toBeDefined()
+    expect((max.element as HTMLInputElement).value).toBe('2')
+    expect(wrapper.find('button[aria-label="Wachführung entfernen"]').exists()).toBe(true)
+    await wrapper.findAll('button').find(b => b.text().includes('Position hinzufügen'))!.trigger('click')
+    await wrapper.get('#slot-1-label').setValue('Trupp')
+    await wrapper.get('#slot-1-max').setValue('3')
+    expect((wrapper.get('#part-max').element as HTMLInputElement).value).toBe('5')
+    expect(wrapper.text()).toContain('Plätze gesamt: 5')
+  })
+
   it('enables capacity fields in opt_in and disables them with an explanation in opt_out', async () => {
     const wrapper = await mountPanel()
     const max = () => wrapper.find<HTMLInputElement>('#part-max')
@@ -51,7 +68,7 @@ describe('ParticipationSettings', () => {
 
     await wrapper.find('input[type="radio"][value="assignment"]').setValue()
     expect(max().element.disabled).toBe(false)
-    expect(wrapper.text()).toContain('Positionen und die Zuteilung')
+    expect(wrapper.text()).toContain('im Reiter „Zuteilung“')
   })
 
   it('shows the live preview count and enables saving only with changes', async () => {

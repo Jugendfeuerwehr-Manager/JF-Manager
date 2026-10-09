@@ -4,13 +4,14 @@ import Button from 'primevue/button'
 import PortalStatusChip from './PortalStatusChip.vue'
 import type { PortalPerson, PortalSessionItem } from '@/api/portal'
 import type { PortalActionError } from '@/stores/portal'
-import { deadlineText, describeSession, placesText, sessionMeta, type SessionAction } from '@/utils/portalSessions'
+import { deadlineText, describeSession, placesText, positionLines, sessionMeta, type SessionAction } from '@/utils/portalSessions'
 
 const props = defineProps<{ item: PortalSessionItem, person: PortalPerson | null, busy?: boolean, error?: PortalActionError | null }>()
 const emit = defineEmits<{ action: [action: SessionAction] }>()
 
 const view = computed(() => describeSession(props.item, props.person))
 const places = computed(() => placesText(props.item))
+const positions = computed(() => positionLines(props.item))
 const deadline = computed(() => (view.value.action && view.value.enabled ? deadlineText(props.item) : null))
 const unavailable = computed(() => view.value.chip === 'unavailable')
 const blockedId = computed(() => `blocked-${props.item.id}`)
@@ -33,6 +34,9 @@ const blockedId = computed(() => `blocked-${props.item.id}`)
       <div v-if="places.ratio !== null" class="bar" aria-hidden="true"><div :style="{ width: `${Math.round(places.ratio * 100)}%` }"></div></div>
     </div>
     <p v-else-if="deadline" class="hint">{{ deadline }}</p>
+    <ul v-if="positions.length" class="positions" aria-label="Positionen">
+      <li v-for="p in positions" :key="p.id" :class="{ full: p.full }"><span>{{ p.label }}</span><span class="muted"><i v-if="p.full" class="pi pi-ban" aria-hidden="true"></i> {{ p.text }}</span></li>
+    </ul>
 
     <template v-if="unavailable">
       <p class="hint strong">Voraussetzung nicht erfüllt:</p>
@@ -78,6 +82,8 @@ const blockedId = computed(() => `blocked-${props.item.id}`)
 .bar { height: 6px; background: var(--p-content-border-color); border-radius: 3px; overflow: hidden; }
 .bar div { height: 6px; background: var(--p-primary-color); }
 .action { min-height: 44px; border-radius: 10px; }
+.positions { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.positions li { display: flex; justify-content: space-between; gap: 8px; }
 .error { margin: 0; font-size: 13px; color: var(--p-red-600); }
 .app-dark .error { color: var(--p-red-300); }
 </style>

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { PREVIEW_DELAY_MS, useParticipationStore } from '../participation'
+import { PREVIEW_DELAY_MS, draftCapacity, useParticipationStore } from '../participation'
 import { participationApi, type ParticipationConfig, type Rule } from '@/api/participation'
 
 vi.mock('@/api/participation', () => ({
@@ -17,10 +17,47 @@ const config = (over: Partial<ParticipationConfig> = {}): ParticipationConfig =>
   max_participants: 10, min_participants: null, waitlist_mode: 'auto', eligibility: {},
   effective: { start: '2030-01-01T18:00:00Z', registration_opens_at: null, registration_closes_at: '2029-12-30T18:00:00Z', cancellation_closes_at: '2030-01-01T16:00:00Z' },
   defaults: { mode: 'opt_out', registration_offset_h: 48, cancellation_offset_h: 2, waitlist_mode: 'auto' },
-  eligibility_summary: null, audience_notice: null, ...over,
+  eligibility_summary: null, audience_notice: null, extra_places: null, slots: [], capacity: 10, staffing: null, ...over,
 })
 const rule = (age: number): Rule => ({ v: 1, match: 'all', rules: [{ kind: 'age', op: 'min', min: age }] })
 const previewBody = (eligible = 1) => ({ data: { summary: 's', total: 2, eligible, excluded: [], errors: {}, audience_notice: null } }) as never
+
+describe('participation store: positions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.resetAllMocks()
+  })
+
+  it('edits positions, derives the places and sends them in order', async () => {
+    const slot = { id: 4, label: 'Wachführung', min: 1, max: 1, rule: {}, rule_summary: null, position: 0, seated: 0 }
+    api.config.mockResolvedValue({ data: config({ slots: [slot], extra_places: 2, max_participants: 3 }) } as never)
+    const store = useParticipationStore()
+    await store.loadConfig(7)
+    expect(store.draft?.slots.map(s => s.label)).toEqual(['Wachführung'])
+    store.addSlot('Trupp')
+    store.draft!.slots[1]!.max = 2
+    store.moveSlot(1, -1)
+    expect(draftCapacity(store.draft!)).toBe(5)
+    api.saveConfig.mockResolvedValue({ data: config() } as never)
+    await store.saveConfig()
+    const body = api.saveConfig.mock.calls[0]![1] as { slots: Array<{ id: number | null, label: string, max: number, rule: unknown }> }
+    expect(body.slots.map(s => [s.id, s.label, s.max])).toEqual([[null, 'Trupp', 2], [4, 'Wachführung', 1]])
+    expect(body.slots[0]!.rule).toEqual({})
+  })
+
+  it('maps position errors to fields and opt-out drops positions', async () => {
+    api.config.mockResolvedValue({ data: config() } as never)
+    const store = useParticipationStore()
+    await store.loadConfig(7)
+    store.addSlot('A')
+    api.saveConfig.mockRejectedValue(apiError(400, { slots: [{ label: ['doppelt'] }, { rule: { 'rules[0].max': 'zu klein' } }] }))
+    await store.saveConfig()
+    expect(store.fieldErrors['slots[0].label']).toBe('doppelt')
+    expect(store.fieldErrors['slots[1].rule.rules[0].max']).toBe('zu klein')
+    store.setMode('opt_out')
+    expect(store.draft?.slots).toEqual([])
+  })
+})
 
 describe('participation store', () => {
   beforeEach(() => {
