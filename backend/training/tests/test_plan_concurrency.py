@@ -4,7 +4,7 @@ from threading import Barrier
 from unittest import skipUnless
 
 from django.contrib.auth import get_user_model
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase
 from rest_framework.test import APIClient
 
@@ -34,7 +34,8 @@ class PlanConcurrencyTests(TransactionTestCase):
                 barrier.wait(timeout=10)
                 return operation(client)
             finally:
-                close_old_connections()
+                # Healthy persistent connections must also close before the thread exits.
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=len(operations)) as executor:
             return list(executor.map(run, operations))

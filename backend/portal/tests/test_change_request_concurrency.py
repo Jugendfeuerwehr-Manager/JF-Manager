@@ -5,7 +5,7 @@ from threading import Barrier
 from unittest import skipUnless
 
 from django.contrib.auth import get_user_model
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase
 
 from members.models import Member
@@ -26,7 +26,8 @@ def parallel(count, work):
         except cr.ChangeRequestError as error:
             return error.code
         finally:
-            close_old_connections()
+            # Healthy persistent connections must also close before the thread exits.
+            connections.close_all()
 
     with ThreadPoolExecutor(max_workers=count) as executor:
         return list(executor.map(run, range(count)))
