@@ -23,6 +23,7 @@ JF_APP_ENV="$JF_ETC/app.env"
 JF_SECRETS_ENV="$JF_ETC/secrets.env"
 JF_COMPOSE_ENV="$JF_ETC/compose.env"
 JF_TRUSTED_PROXIES="$JF_ETC/trusted-proxies.conf"
+JF_CSP_MODE="$JF_ETC/csp-mode.conf"
 
 JF_ASSUME_YES=${JF_ASSUME_YES:-0}
 JF_NONINTERACTIVE=${JF_NONINTERACTIVE:-0}

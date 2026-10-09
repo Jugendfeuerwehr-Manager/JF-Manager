@@ -45,6 +45,7 @@ RUN apk upgrade --no-cache && \
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY trusted-proxies.conf /etc/nginx/trusted-proxies.conf
+COPY csp-mode.conf /etc/nginx/csp-mode.conf
 COPY conf.d/ /etc/nginx/conf.d/
 COPY snippets/ /etc/nginx/snippets/
 

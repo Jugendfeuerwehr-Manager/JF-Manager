@@ -123,6 +123,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "jf_manager_backend.csp.ContentSecurityPolicyMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -240,6 +241,32 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
+
+# Content-Security-Policy for every Django response (SEC-13). Enforced by
+# default; CSP_REPORT_ONLY=true only reports violations, for troubleshooting.
+# Nginx sends the same policy for the SPA (frontend/nginx.conf, compared by
+# api_tests.test_csp_policy). PrimeVue and Monaco inject <style> elements and
+# sanitized rich text keeps style attributes, hence 'unsafe-inline' for styles
+# only. blob: covers PDF/image previews of private files and Redoc's worker.
+CSP_REPORT_ONLY = _env_flag("CSP_REPORT_ONLY", False)
+CSP_DIRECTIVES = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'"],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "blob:"],
+    "font-src": ["'self'", "data:"],
+    "connect-src": ["'self'"],
+    "worker-src": ["'self'", "blob:"],
+    "frame-src": ["'self'", "blob:"],
+    "manifest-src": ["'self'"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'"],
+    "frame-ancestors": ["'none'"],
+    "report-uri": ["/api/v1/security/csp-report/"],
+}
+PERMISSIONS_POLICY = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+
 SILENCED_SYSTEM_CHECKS = [
     "security.W005",  # HSTS includeSubDomains, see above
     "security.W021",  # HSTS preload, see above

@@ -23,6 +23,7 @@ print(json.dumps({
     "session_secure": settings.SESSION_COOKIE_SECURE,
     "frame": settings.X_FRAME_OPTIONS,
     "referrer": settings.SECURE_REFERRER_POLICY,
+    "csp_report_only": settings.CSP_REPORT_ONLY,
 }))
 """
 
@@ -36,7 +37,7 @@ class ProductionSettingsTests(SimpleTestCase):
         env = {
             key: value
             for key, value in os.environ.items()
-            if not key.startswith(("SECURE_", "TRUST_PROXY", "DJANGO_", "DEBUG"))
+            if not key.startswith(("SECURE_", "TRUST_PROXY", "DJANGO_", "DEBUG", "CSP_"))
         }
         env.update(
             {
@@ -79,6 +80,12 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertEqual(values["proxy_header"], ["HTTP_X_FORWARDED_PROTO", "https"])
         self.assertEqual(values["frame"], "DENY")
         self.assertEqual(values["referrer"], "same-origin")
+        self.assertFalse(values["csp_report_only"])
+
+    def test_csp_report_only_is_an_explicit_switch(self):
+        # SEC-13: enforced unless CSP_REPORT_ONLY is set, in production and development.
+        self.assertTrue(self.probe(CSP_REPORT_ONLY="true")["csp_report_only"])
+        self.assertFalse(self.probe(DEBUG="True")["csp_report_only"])
 
     def test_proxy_trust_can_be_disabled(self):
         self.assertIsNone(self.probe(TRUST_PROXY_SSL_HEADER="false")["proxy_header"])

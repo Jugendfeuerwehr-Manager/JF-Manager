@@ -11,7 +11,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
-    SpectacularSwaggerView,
+    SpectacularSwaggerSplitView,
 )
 
 from jf_manager_backend.dashboard_api import DashboardSummaryView
@@ -112,7 +112,7 @@ api_patterns = [
     path("api/v1/app/branding/", PublicBrandingView.as_view(), name="public-branding"),
     # API Documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/docs/", SpectacularSwaggerSplitView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 

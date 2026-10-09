@@ -89,6 +89,7 @@ _render_nginx() {
         -e "s#/var/log/nginx/access.log#$JF_LOG_DIR/nginx-access.log#" \
         -e "s#include /etc/nginx/conf.d/\*.conf;#include $dst/conf.d/*.conf;#" \
         -e "s#/etc/nginx/trusted-proxies.conf#$JF_TRUSTED_PROXIES#" \
+        -e "s#/etc/nginx/csp-mode.conf#$JF_CSP_MODE#" \
         "$src/nginx.conf" >"$dst/nginx.conf"
     sed -e 's#server backend:8000;#server 127.0.0.1:8000;#' \
         -e "s#listen 8080;#listen $bind;#" \
@@ -103,7 +104,8 @@ _render_nginx() {
     # Fail loudly when the shared configuration changed shape.
     grep -q 'server 127.0.0.1:8000;' "$dst/conf.d/default.conf" &&
         grep -q "listen $bind;" "$dst/conf.d/default.conf" &&
-        grep -q 'pid /run/jf-manager-nginx.pid;' "$dst/nginx.conf" ||
+        grep -q 'pid /run/jf-manager-nginx.pid;' "$dst/nginx.conf" &&
+        grep -qF "include $JF_CSP_MODE;" "$dst/nginx.conf" ||
         die "$EX_ERROR" "Nginx-Konfiguration ließ sich nicht für den nativen Betrieb anpassen."
     if have nginx; then nginx -t -q -c "$dst/nginx.conf" || die "$EX_ERROR" "nginx -t meldet Fehler."; fi
 }
@@ -124,6 +126,7 @@ ad_render() {
     chmod 750 "$JF_DATA_DIR/uploads"; chmod 755 "$JF_DATA_DIR" "$JF_DATA_DIR/static"
     _native_env
     render_trusted_proxies native
+    render_csp_mode
     _render_nginx
     _render_caddy
     for unit in "$JF_OPT"/current/ops/native/systemd/*; do
