@@ -1,41 +1,85 @@
 # JF-Manager: Gesamtplanung für Sicherheit, Rollen, Übungsplanung, Bedienung und Betrieb
 
-Stand: 03.10.2026 · Verbindliche Planungs- und Übergabegrundlage für die Umsetzung
+Stand: 09.10.2026 · Verbindliche Planungs- und Übergabegrundlage für die Umsetzung
 
 ## 0. Wiederaufnahme: zuerst lesen
 
-Dieses Dokument ersetzt die bisherigen Planentwürfe im Gespräch vollständig. Es ist zugleich Spezifikation, Aufgabenübersicht und laufendes Arbeitsjournal. Jede umsetzende Person und jeder Agent muss es vor Arbeitsbeginn lesen und während der Arbeit aktualisieren.
+Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjournal. Jede umsetzende Person und jeder Agent liest es vor Arbeitsbeginn und aktualisiert es während der Arbeit. Die frühere chronologische Checkpoint-Sammlung dieses Abschnitts wurde am 09.10.2026 durch die folgende Übersicht ersetzt; die Einzelschritte stehen unverändert im Paketstatus (Abschnitt 6) und im Journal (Abschnitt 7).
 
-| Feld | Aktueller Stand |
+**Stand 09.10.2026:** Gemeinsamer Branch `feat/security-roles-training-operations` (von `main` bei `a04fc88`, rund 380 Commits voraus, nicht nach `main` zusammengeführt). Parallele Sitzungen arbeiten im selben Checkout; nur eigene Dateien und Hunks stagen.
+
+### 0.1 Stand je Bereich
+
+| Bereich | Pakete | Stand |
+| --- | --- | --- |
+| Sicherheit, Rollen, Konfiguration | SEC-01 bis SEC-12, ROLE-01/02, CFG-01/02 | Umgesetzt und abgenommen. Offen sind nur Nutzer-/Betreiberabnahmen und bewusst dokumentierte Grenzen (0.2). |
+| Übungsplanung | TRAIN-01 bis TRAIN-04 | Abgeschlossen. Offen: Darstellung auf großen Bildschirmen (UX-09). |
+| Portal und Teilnahme | PORTAL-01 bis 03, PART-01 bis 03, NOTIF-01 | Abgenommen (PostgreSQL 17, Browser). Offen: PART-04, PORTAL-04, Rückmeldungen UX-10. |
+| Design und Modulabläufe | DES-01, UX-01 bis UX-10 | DES-01 bis 01.10b, 01.11a–c, 01.13a umgesetzt; UX-01/04/06 umgesetzt mit offener Nutzerabnahme; UX-02/05 teilweise; UX-03/07/08 nicht begonnen; UX-10.1–10.6 umgesetzt, Abnahme offen. |
+| Betrieb | OPS-01 bis OPS-05, DEV-01 | OPS-01/02, DEV-01 abgeschlossen (Debian 13 nativ, Proxmox-LXC). OPS-03 bis 05 „in Prüfung“ wegen GitHub-Lauf und öffentlicher Domain. |
+| Dokumentation, Website | DOC-01, WEB-PLAN | Handbuch für den Verwaltungsumfang ausgeliefert, Pages nicht veröffentlicht. WEB-PLAN.0 aufgenommen, WEB-PLAN.1 nicht begonnen (Fortführung klären). |
+
+### 0.2 Offene Punkte
+
+Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht abgenommen sind. Kennzeichnung: **Bau** = Implementierung offen, **Abnahme** = umgesetzt, Prüfung offen, **Entscheidung** = Nutzerentscheidung nötig.
+
+**Portal und Teilnahme**
+
+| Punkt | Art | Inhalt | Voraussetzung |
+| --- | --- | --- | --- |
+| UX-10.7 | Abnahme | Browser: Glocke, Dashboard, Zähler „Portal“/„Anträge“, Abteilungswechsler, Kalender 1280/1440 px hell/dunkel, Mitglieder 360 px, Kontakt-Links; PostgreSQL-Lauf. Lokal vorher `migrate` (`notifications.0004`). | — |
+| PART-04 | Bau | Plätze, Positionen, Mindestbesetzung, Warteliste mit Nachrücken, Zuteilungsboard, Besetzungsvorlagen (PART-04.0–04.6, Konzept 6.2). | Q3 klären (Wunschposition im Modus „Zuteilung“; Vorschlag: ja, optional). |
+| PORTAL-04 | Bau | Verwaltendenkonto 1:1 an Mitglied: Bestätigung beim Login, „Meine Dienste/Daten“, Eigenänderungsprotokoll, Vier-Augen-Sperre für eigene Qualifikationen, Doppelungen zusammenführen (PORTAL-04.0–04.5). | Q4 klären (auch an Elterndatensatz binden; Vorschlag: ja). |
+| PART-03 (Rest) | Bau (klein) | Hinweis „erfüllt durch …“ in der Vorschau des Regel-Konfigurators. | — |
+| PORTAL-01, NOTIF-01 | Abnahme | Echte Zustellung über SMTP und Web-Push (bisher Datei-Mailversand). | Produktivnahe Umgebung |
+| DOC-01 (Portal) | Bau | Handbuch um Portal, Teilnahme, Eingang und Anträge ergänzen. | Fachabnahme Portal |
+
+**Übungsplanung und Design**
+
+| Punkt | Art | Inhalt | Voraussetzung |
+| --- | --- | --- | --- |
+| UX-09 | Bau | Kalender skaliert nicht auf großen Bildschirmen, Bibliothek zu klein. UX-10.6 deckt nur Notebookbreiten ab. Laut Nutzervorgabe über die Design-Sitzung. | Basispunkte |
+| DES-01 Befund | Bau (klein) | Planerkopf bricht bei 390 px in vier Aktionszeilen um. | — |
+| DES-01.11 | Bau | Feste Farben und jugendfeuerwehrspezifische Texte in übrigen Modulen ersetzen (Ratsche aus 01.11c senken), Einstellungskarten vereinheitlichen. | — |
+| DES-01.12 | Abnahme | Gesamtabnahme 360/390/768/1440 px, dunkel, Tastatur, 200 % Zoom, mehrere Farbschemata. | DES-01.11 |
+| UX-01, UX-04.2/04.3, UX-06 | Abnahme | Dashboard-Kennzahlen, Anwesenheitsauswertung, Qualifikationsablauf im Browser. | — |
+| UX-02.2b, UX-02.3 | Bau | Eltern-/Gruppenansichten nach Konsistenzvertrag; gespeicherte Filter/Spalten je Benutzer. | — |
+| UX-03.1/03.2 | Bau | Listen: Übersicht und Sammelaktionen; Versionskennung und Konflikt beim Abhaken. | — |
+| UX-04.1 | Bau | Dienstbuch: offene Personen und Speicherzustand über alle Einstiege. | — |
+| UX-05.1 | Bau | Inventar: verfügbar/ausgegeben/bestellt, geführte Ausgabe/Rücknahme mit Teilmengen, Statusverlauf. | — |
+| UX-07.1/07.2 | Bau | E-Mail: Empfängerprüfung und Vorschau; Versand im Hintergrund mit Wiederholung fehlgeschlagener Zustellungen. | — |
+| UX-08.1/08.2 | Bau | Sync-Vorschau mit Konflikten und Laufhistorie; Profil mit Sitzungen, MFA und Push je Gerät. | — |
+| Aufräumen | Bau (klein) | Ungenutzte Endpunkte `services/statistics` und `services/staff_statistics` entfernen. | — |
+
+**Sicherheit**
+
+| Punkt | Art | Inhalt | Voraussetzung |
+| --- | --- | --- | --- |
+| SEC-11, SEC-12 | Abnahme | Passkey als zweiter Faktor und als alleinige Anmeldung mit echtem Gerät unter HTTPS. | HTTPS-Instanz |
+| CFG-02 | Abnahme | Browserprüfung der anpassbaren Anmeldeseiten-Texte. | — |
+| SEC-10 Grenzen | Entscheidung/Bau | CSP von „Report-Only“ auf Durchsetzung umstellen (dafür Monaco-Editor lokal statt von jsDelivr laden); Lauf hinter echtem TLS-Proxy; rund 180 OpenAPI-Warnungen. | Beobachtung im Betrieb |
+
+**Betrieb und Integration**
+
+| Punkt | Art | Inhalt | Voraussetzung |
+| --- | --- | --- | --- |
+| Integration nach `main` | Entscheidung | Pull Request des gemeinsamen Branches; löst den ersten GitHub-CI-Lauf aus (OPS-03, SEC-10, SEC-12 PostgreSQL in CI). | Zuschnitt und Zeitpunkt festlegen |
+| OPS-01 | Abnahme | Caddy/ACME mit öffentlicher Domain. | Domain |
+| OPS-04, OPS-05 | Abgleich | Status „in Prüfung“; Detailblock nennt Debian 13 als offen, obwohl OPS-01.9b Debian 13 abgenommen hat. Prüfen und Status schließen. | — |
+| Backend-Format | Bau | `ruff format --check` meldet 58 vorbestehende Dateien. | — |
+| DOC-01 Pages | Entscheidung | Handbuch-Website ist vorbereitet, aber nicht veröffentlicht. | — |
+| WEB-PLAN | Entscheidung | Marketing-Konzept: nach WEB-PLAN.0 keine Arbeit; fortführen oder streichen. | — |
+
+### 0.3 Arbeitsrahmen
+
+| Feld | Wert |
 | --- | --- |
-| Marketing-Checkpoint | 08.10.2026: WEB-PLAN.0 aufgenommen. Nutzerauftrag: bebildertes Marketing-Konzept mit Desktop-/Mobilmockups und Vorschlag für eine wartbare Projektwebsite; Vereinsansprache über Jugendfeuerwehren hinaus. Nur Planung, keine Website-Veröffentlichung. |
-| Dokumentations-Checkpoint | 08.10.2026: DOC-01.4: rollenbasiertes Handbuch/README ausgeliefert, zwölf aktuelle Demoabbildungen; statische Website und ZIP geprüft. Pages vorbereitet, nicht veröffentlicht. Portal/Teilnahme nach deren Fachabnahme ergänzen. Globale Backend-Formatprüfung: 58 vorbestehende Dateien mit Befund. |
-| Letzter Checkpoint | 06.10.2026: SEC-02.9 abgenommen; SEC-Bereich (SEC-01 bis SEC-10) abgeschlossen. Davor: ROLE-02.4 Zuweisungs-/Herkunftsoberfläche. |
-| TRAIN-Checkpoint | 07.10.2026: TRAIN-04 abgeschlossen (TRAIN-04.5 Paketabnahme); TRAIN-01 bis TRAIN-04 abgeschlossen. TRAIN-04.4 (`0d376df`) Handout mit Stationskarten, Materialliste, Version und Stand. TRAIN-04.3 (`d997e1c`) Nachbereitung (tatsächliche Zeit, Reflexion, Verbesserungen, optional Abschluss) umgesetzt. TRAIN-04.1 (`55f2fee`) Dienstbucheintrag öffnet „Dienst bearbeiten“, „Durchführen“ in Heute-Karte, Planer und mobiler Planansicht. TRAIN-04.2 Durchführungsansicht umgesetzt (`f5c9270`). TRAIN-02 abgeschlossen (`bee924d`). TRAIN-04.0 Vertrag für Durchführung/Nachbereitung festgelegt. TRAIN-02.3b: Rotation mit Bibliotheksbausteinen und verknüpften Stationen (je Altersgruppe lösbar). TRAIN-02.2b behoben: Prüfbereich im Planer standardmäßig eingeklappt, Konflikte mit anderen Übungen je Person/Ort und Übung zusammengefasst. 06.10.2026: TRAIN-02.3 abgeschlossen: Rotationsassistent mit vollständiger Vorschau, freien Runden, unbesetzten Stationen, Wechselzeiten und Pause; Übernahme als ein Entwurfsschritt, Rahmenüberschreitung blockiert. 116 Trainings-/Store-Frontendtests, Typecheck, ESLint bestanden. TRAIN-02.2 `41bfeaa`, 02.1 `2da0073`; TRAIN-03 abgeschlossen (`cbf4262`), TRAIN-01 `a07d9bb`. |
-| SEC-11-Checkpoint | 07.10.2026: SEC-11.9 Browserabnahme in Chrome mit virtuellem Authenticator bestanden; integriert in `feat/security-roles-training-operations`. Offen nur Nutzerabnahme mit echtem Gerät unter HTTPS. |
-| CFG-02-Checkpoint | 07.10.2026: CFG-02 abgeschlossen: Texte der Anmeldeseite unter Einstellungen → Anmeldeseite anpassbar (Branch `claude/passkey-primary-factor-lggpq4`). 57/57 gezielte Backend-, 327/327 Frontendtests bestanden. Offen: Browserprüfung. |
-| SEC-12-Checkpoint | 07.10.2026: SEC-12 abgeschlossen: Anmeldung allein mit Passkey für lokale Konten (Branch `claude/passkey-primary-factor-lggpq4`, Integration per Pull Request). 905/905 Backend (SQLite), 324/324 Frontend bestanden. Offen: Nutzerabnahme mit echtem Gerät unter HTTPS, PostgreSQL-Lauf in CI. |
-| OPS-Checkpoint | 08.10.2026: OPS-05.5 detaillierte Portainer-Migrationsanleitung abgeschlossen (Codeabgleich, Shellsyntax und lokale Links bestanden; keine Produktivmigration). Davor 08.10.2026: OPS-01 bis OPS-05 auf echten Zielplattformen abgenommen: Debian 13 nativ (OPS-01.9b), Proxmox VE 9.2.10 LXC (OPS-01.9c, Befund OPS-01.3c behoben). Offen: erster GitHub-Lauf über den PR nach `main`, Caddy/ACME mit öffentlicher Domain. |
-| UX-Checkpoint | 07.10.2026: UX-04.3 Ansicht „Anwesenheitsauswertung“ (`/servicebook/report`) abgeschlossen; Statistik-Panel der Dienstliste und Team-Auswertung der Anwesenheitsseite entfernt. Nutzerabnahme im Browser offen. Davor UX-04.2b Trend je Person aus früherer/späterer Hälfte der eigenen Einträge (je ≥ 4) statt Kalenderhälften. Davor UX-05.3 Hauptmenüeintrag „Bestellungen“ entfernt (Zugang über Inventar-Tab, Dashboard und `/orders`). Davor UX-04.2 abgeschlossen: Anwesenheitsauswertung `GET /servicebook/attendance-report/` für Mitglieder und Team je Zeitraum (Quote, Stunden, Monatsverlauf, Trend, Warnungen) nur über Dienste mit Anwesenheitsrecht; 905/905 Backendtests. Als Nächstes UX-04.3 Auswertungsansicht. Davor UX-05.2 Variantenaktualisierung und Größengenerator (`c7019e1`). |
-| Portal-/Teilnahme-Checkpoint | 08.10.2026: PART-02 und PORTAL-03 abgenommen (PostgreSQL 17 1293/1293, Frontend 562/562, Browser Dienstbuch mobil/Desktop und Änderungsantrag Ende-zu-Ende). Offen: PART-04 (Positionen/Zuteilung), PORTAL-04 (Verwaltende als Mitglied), UX-09 (Design-Sitzung). Davor `PORTAL-03.3b` Prüfansicht „Anträge“ im Bereich Portal; davor `PORTAL-03.2b` Antragsformular im Portal; davor `PORTAL-03.4` Benachrichtigungen und Quick Actions für Änderungsanträge; davor `PORTAL-03.3a` Prüfung von Änderungsanträgen (Backend); davor `PORTAL-03.2a` Portal-API für Änderungsanträge; `PORTAL-03.1` Antragsmodelle (`ChangeRequest`/`ChangeLog`, Validierung, ein offener Antrag je Ziel); `PART-02.1`–`02.4` Dienstbuch mit Meldungen, mobiler Liste, Anwesenheit mit Meldestatus und Übernahme „entschuldigt“; Abnahme 02.5 offen. Davor: PART-01, PART-03 und NOTIF-01 abgenommen (PostgreSQL 17 1247/1247, Browser Ende-zu-Ende: Mail mit Quick-Action-Link → Login → Bestätigung → abgemeldet, Portal-Glocke, Eingang der Leitung). Offen: PART-02 (Dienstbuch), PART-04 (Positionen/Zuteilung), PORTAL-03 (Anträge), PORTAL-04 (Verwaltende als Mitglied), UX-09 (Design-Sitzung). Davor: PORTAL-01 abgenommen (`PORTAL-01.7`: PostgreSQL 17, Routen-/Datenleck-Prüfung, Browser 360/390/720(200 %)/1440 hell und dunkel). PORTAL-02 Backend in Arbeit, PART-03.7 per Subagent. Davor `PORTAL-01.4` Lebenszyklus (Sperren/Entsperren/Beenden mit Sitzungswiderruf, Elternzugriff endet mit 18 inkl. Verlängerung, täglicher Wartungslauf) und Verwaltungs-API für den neuen Bereich „Portal“ (Nutzerentscheidung) umgesetzt; parallel `PART-03.1`–`03.3` und Frontend 01.6 in Arbeit. Davor `PORTAL-01.3` Einladung umgesetzt (API für Betreuende, öffentliche Seite `/passwort-festlegen`, Recht `portal.invite_portal_account` in Leitungsvorlagen v4); lokaler Demobestand auf Nutzerwunsch neu angelegt. Davor `PORTAL-01.5` vorgezogen (Nutzerauftrag): Portal-Oberfläche `/portal` (Übersicht mit Personen, Platzhalter Termine/Daten, Profil mit Passwort/MFA/Geräten/Farbschema), Router-Weiche, `account_kind` in Sitzung/Profil, `GET /portal/me/`; Q2 vom Nutzer bestätigt. Davor `PORTAL-01.2b` Demodaten mit Elternzugang `eltern@demo.example.invalid` (zwei Kinder in Mitte und Kinderfeuerwehr) und Mitgliedszugang `mitglied@demo.example.invalid`; lokaler Bestand erst nach Reset. Davor `PORTAL-01.2` globaler Ausschluss von Portalkonten (Middleware + DRF-Default, Rollensperre, Routen-Audit-Test) umgesetzt; 953/953 Backendtests. Davor `PORTAL-01.1` `account_kind` mit Datenbankregel und `portal.AccountLink`. Davor `PORTAL-01.0` Detailblock (Teilschritte 01.1, 01.2, 01.2b Demodaten mit Eltern-/Mitgliedszugang, 01.3–01.7). Als Nächstes `PORTAL-01.6` (Portalzugang-Karte und Sammeleinladung) oder `PORTAL-01.4` (Lebenszyklus). Davor 07.10.2026 (2. Runde): PORTAL-04 (Verwaltendenkonto 1:1 an Mitglied) ergänzt; PART-02 mobil zuerst; NOTIF-01 um Eingang, anpassbare E-Mail-Vorlagen (bestehendes `EmailTemplate`-System) und Quick-Action-Links erweitert; Entscheidungen E12–E15. Davor: Neue Pakete PORTAL-01–03, PART-01–04, NOTIF-01 geplant (Nutzerauftrag Eltern-/Mitgliederportal, Teilnahmevoraussetzungen, Positionen, Warteliste, Zuteilung). Konzept, Entscheidungen E1–E11 und Teilschritte in `docs/planning/portal-participation-concept.md`; Mockups im Design-Artifact (Link im PR). Keine Implementierung. Start mit PORTAL-01.0–01.2 (globaler Ausschluss von Portalkonten als Blocker). |
-| DEV-Checkpoint | 07.10.2026: DEV-01 abgeschlossen (DEV-01.0–01.4). Lokaler Bestand frisch mit Demodaten; Start prüft Schlüssel vorab. Nutzer muss laufende VS-Code-Debugsitzung neu starten. |
-| Listenexport-Checkpoint | 06.10.2026: SEC-08.4/5 Listenexporte korrigiert, geprüft und auf gemeinsamem Branch integriert. |
-| Aktuelles Paket | ROLE-01/02 (Codex), Nutzerauftrag 06.10.2026: alle ROLE-Punkte vollständig umsetzen. ROLE-Bearbeiter; parallele TRAIN-Sitzung bearbeitet ausschließlich eigene Dateien/Hunks. |
-| Benutzerformular-Checkpoint | 06.10.2026: ROLE-02.5 abgeschlossen; Theme im Verwaltungsformular ausgelassen, Standard `system` bei Anlage und bestehende persönliche Einstellung bei Bearbeitung erhalten. 3/3 Regressionen, Typecheck und ESLint bestanden. |
-| Rechteauswahl-Checkpoint | 06.10.2026: ROLE-02.6 abgeschlossen. Fachbereiche mit Sammelauswahl, verständliche Aktionen und erklärte Leitungszuweisung; Technik nur erweitert. 288/288 Frontendtests, Typecheck, ESLint, Build und isolierte Browserprüfung bestanden. |
-| CFG-Checkpoint | 07.10.2026: CFG-01.1–7 samt Nutzerkorrektur CFG-01.2b abgeschlossen und separat committed. Abnahme vom 06.10.: 874 PostgreSQL-Backendtests, 300 Frontendtests, Typecheck, ESLint, Ruff, Build, frische Installation (16 Standardrollen) und Browser bestanden. Zusätzliche 26/26 CFG-Backendregressionen auf integriertem Stand am 07.10. bestanden. Eigene Testdienste beendet. |
-| ROLE-Checkpoint | 06.10.2026: ROLE-01/02 vollständig abgenommen (ROLE-01.7b). Alle 16 Standardrollen automatisch bei Installation und im aktuellen Dev-Datenbestand vorhanden; einfache Neuerstellung/Vorlagenkopien und geprüfte Zuweisung. 834 PostgreSQL-Backendtests, 279 Frontendtests, Typecheck, ESLint, Ruff, Build und Installationsprüfung bestanden. |
-| Umsetzungsstatus | EXEC-01, SEC-01 bis SEC-10 und ROLE-01/02 abgeschlossen. Vorbestehende Änderungen bleiben Ausgangsstand und zählen nicht als erledigte Roadmap-Pakete. |
-| Branch bei Dateianlage | `main` |
-| Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations` |
-| Branch bereits angelegt? | Ja, von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
-| Letzter Roadmap-Commit | `SEC-02.9` (dieser Commit). |
-| Ausgangsstand | 102 vorbestehende Dateien in `b20e36f` gesichert. Lokale Redis-Datei `dump.rdb` blieb unversioniert. Vorheriger Status: `/tmp/jf-manager-pre-roadmap-status.txt` (lokale Momentaufnahme). |
-| Nächster konkreter Schritt | TRAIN: alle TRAIN-Pakete abgeschlossen; offene Nutzerrückmeldungen aufnehmen. Parallel ROLE/UX: jeweiligen Checkpoint beachten. |
-| Laufende Prozesse dieses Planungsschritts | Keine. Bereits vorhandene lokale Dienste gehören nicht zu diesem Planungsschritt. |
-| Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. |
+| Gemeinsamer Umsetzungsbranch | `feat/security-roles-training-operations`, angelegt von `main` bei `a04fc88`; Ausgangsstand in `b20e36f`. |
+| Maßgebliche Regeln | Abschnitt 5, insbesondere „Ein Branch, ein Commit je Teilschritt“ und „Persistenter Fortschritt“. Gesamtabschluss nach 5.6. |
+| Fachkonzept Portal/Teilnahme | `docs/planning/portal-participation-concept.md` (Entscheidungen E1–E18, offene Fragen Q1–Q5). |
+| Laufende Prozesse | Keine durch diesen Planungsschritt. |
 
-**Vor jeder Fortsetzung:** Wiederaufnahmeübersicht, Paketstatus und letzte Journaleinträge lesen, anschließend tatsächlichen Git-Diff, Dateien und Testergebnisse abgleichen. Ein Dokumenteintrag allein ist kein Nachweis, dass Code vorhanden oder geprüft ist.
+**Vor jeder Fortsetzung:** Übersicht, Paketstatus und letzte Journaleinträge lesen, anschließend tatsächlichen Git-Diff, Dateien und Testergebnisse abgleichen. Ein Dokumenteintrag allein ist kein Nachweis, dass Code vorhanden oder geprüft ist. Wer einen offenen Punkt aus 0.2 abschließt, aktualisiert die Zeile im selben Commit.
 
 ## 1. Ziel, verbindliche Entscheidungen und Ausgangslage
 
@@ -2093,3 +2137,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 09.10.2026 | UX-10.4b | `ContactLink` im Portal: Meine Daten (Kontakt, Elternteil, weitere Eltern), Profil, Portalverwaltung (Zugänge, Zugangsdetail, Einladungen) und Antragsprüfung (bei Antrag/aktuell/beantragt für Telefon, Mobil, E-Mail). Korrektur bei Übernahme: Kontaktzeilen per Feldart statt per deutscher Beschriftung erkannt. | Bestanden: Frontend 570/570, Typecheck, ESLint. Nicht ausgeführt: Browser. | Dieser Commit: `fix(UX-10.4b): make contact data in the portal clickable` | UX-10.1/10.2, UX-10.7 |
 | 09.10.2026 | UX-10.1 | Eingang: aktive Staff-Superuser sind Empfänger aller Teameinträge (`staff_with_permission`); Datenmigration `notifications.0004` trägt sie für offene Teamaufgaben und Teamhinweise der letzten 30 Tage nach. E-Mail/Push: reine Administrationskonten (Superuser ohne Abteilungsrolle/Gruppe) ohne gespeicherte Einstellung erhalten keine Mails/Pushes, außer bei ausdrücklicher Zuständigkeit (Dienstleitung: kurzfristige Abmeldung, Voraussetzungskonflikt, Tageszusammenfassung); Einstellungsseite zeigt diese Voreinstellung. `counts/` liefert zusätzlich `by_category`. Korrekturen bei Übernahme: Subagent hatte auch Superusern mit echter Rolle die Mail-Voreinstellung entzogen; vorbestehender Test `test_short_notice_cancellation_alerts_responsibles` war tageszeitabhängig („morgen 18:00“ liegt vor 18 Uhr außerhalb des 24-h-Fensters) und legt den Dienst jetzt 20 h in die Zukunft. | Bestanden: Backend 1304/1304 (SQLite, CI-Modulsatz), 10 neue Tests, `makemigrations --check`, Ruff. Nicht ausgeführt: PostgreSQL. | Dieser Commit: `feat(UX-10.1): address superusers in the team inbox and count by category` | UX-10.2 |
 | 09.10.2026 | UX-10.2 | Glocke `StaffNotificationBell` im Kopf (Desktop und mobile Leiste) mit Zusammenfassung offener Aufgaben/neuer Hinweise, letzten Einträgen (als gelesen markiert beim Öffnen) und „Alle im Eingang“; Dashboard zeigt Aufgaben und neue Hinweise; Zähler an „Portal“ (Navigation, auch mobiler Drawer) und am Reiter „Anträge“ aus `by_category.requests`; Zähler nach Entscheidung aktualisiert. | Bestanden: Frontend 582/582 (Glocke, Dashboard, Navigation neu/angepasst), Typecheck, ESLint. Nicht ausgeführt: Browser. | Dieser Commit: `feat(UX-10.2): show a notification bell, inbox items on the dashboard and request counts` | UX-10.7 |
+| 09.10.2026 | PLAN-CLEANUP | Nutzerauftrag: offene Punkte zusammenfassen, Datei aufräumen. Abschnitt 0 ersetzt: chronologische Checkpoint-Absätze entfernt (Inhalte stehen in Abschnitt 6 und im Journal), neu „Stand je Bereich“, „Offene Punkte“ nach Bereich mit Art (Bau/Abnahme/Entscheidung) und Arbeitsrahmen. Befund: OPS-04/05-Detailblock nennt Debian 13 als offen, OPS-01.9b hat es abgenommen. | Bestanden: Abgleich der offenen Teilschritt-IDs mit `git log`. Nicht ausgeführt: Anwendungstests (nur Dokumentation). | Dieser Commit: `docs(PLAN): summarize open roadmap items` | Nutzerentscheidung über Reihenfolge |
