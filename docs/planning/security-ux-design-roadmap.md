@@ -6,7 +6,7 @@ Stand: 09.10.2026 · Verbindliche Planungs- und Übergabegrundlage für die Umse
 
 Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjournal. Jede umsetzende Person und jeder Agent liest es vor Arbeitsbeginn und aktualisiert es während der Arbeit. Die frühere chronologische Checkpoint-Sammlung dieses Abschnitts wurde am 09.10.2026 durch die folgende Übersicht ersetzt; die Einzelschritte stehen unverändert im Paketstatus (Abschnitt 6) und im Journal (Abschnitt 7).
 
-**Stand 09.10.2026:** Gemeinsamer Branch `feat/security-roles-training-operations` (von `main` bei `a04fc88`, rund 380 Commits voraus, nicht nach `main` zusammengeführt). Parallele Sitzungen arbeiten im selben Checkout; nur eigene Dateien und Hunks stagen.
+**Stand 09.10.2026:** Gemeinsamer Branch `feat/security-roles-training-operations` (von `main` bei `a04fc88`). Ein früherer Stand bis `b6ab5b0` wurde bereits über PR #15 als `e763857` nach `main` integriert. Nutzerauftrag: den aktuellen committeten Stand bis `52145ee` samt Integrationscheckpoint jetzt lokal per Squash nach `main` übernehmen (INTEGRATION-01). Offene Pakete bleiben offen; fremde Worktrees werden nicht übernommen. Parallele Sitzungen arbeiten im selben Checkout; nur eigene Dateien und Hunks stagen.
 
 ### 0.1 Stand je Bereich
 
@@ -64,7 +64,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 
 | Punkt | Art | Inhalt | Voraussetzung |
 | --- | --- | --- | --- |
-| Integration nach `main` | Bau | Ein Pull Request des gemeinsamen Branches ganz am Ende, nach allen Paketen (Entscheidung 09.10.2026); löst den ersten GitHub-CI-Lauf aus (OPS-03, SEC-10, SEC-12 PostgreSQL in CI). | Wellen 1–3 |
+| Integration nach `main` | lokal integriert | Neuer Nutzerauftrag 09.10.2026: aktueller committeter Stand jetzt lokal per Squash (INTEGRATION-01), vor Abschluss der übrigen Pakete. PR #15 ist bereits integriert; Remote-CI-Ergebnisse wurden hier nicht geprüft. | Kein Push beauftragt |
 | OPS-01 | Abnahme | Caddy/ACME mit öffentlicher Domain. | Domain |
 | OPS-04 | Abnahme | Restore und Update nur in Compose geprüft; nativ (Debian 13) und im Proxmox-LXC nicht ausgeführt (OPS-01.9b/9c prüften Installation und `backup verify`). | Testsystem, z. B. Proxmox-Host des Nutzers |
 | OPS-03, OPS-05 | Abnahme | Erster GitHub-Lauf (Image-Build, Releasepaket, CI-Jobs). | Integration nach `main` |
@@ -74,7 +74,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 
 ### 0.3 Entscheidungen und Umsetzungsplan (09.10.2026)
 
-Entscheidungen des Nutzers: Q3 Wunschposition optional; Q4 Verwaltendenkonto auch an Elterndatensatz; ein PR nach `main` erst ganz am Ende; WEB-PLAN zurückgestellt; UX-09 und Design-Punkte per Subagent dieser Sitzung; CSP jetzt durchsetzen; Backend-Format als eigener Commit; Handbuch-Website mit dem Merge veröffentlichen, vorher Portal, mehr Screenshots und Drag-and-drop-Visualisierungen.
+Entscheidungen des Nutzers: Q3 Wunschposition optional; Q4 Verwaltendenkonto auch an Elterndatensatz; ursprünglich ein PR nach `main` erst ganz am Ende (ersetzt durch den späteren Auftrag zur aktuellen lokalen Squash-Integration); WEB-PLAN zurückgestellt; UX-09 und Design-Punkte per Subagent dieser Sitzung; CSP jetzt durchsetzen; Backend-Format als eigener Commit; Handbuch-Website mit dem Merge veröffentlichen, vorher Portal, mehr Screenshots und Drag-and-drop-Visualisierungen.
 
 Umsetzung per Subagents in eigenen Worktrees auf Basis des aktuellen Branchstands; Übernahme per Cherry-Pick in den gemeinsamen Branch, Roadmap-Pflege bei der Übernahme. Breite Querschnittsänderungen (DES-01.11, Formatierung) erst nach den Fachpaketen, um Konflikte zu vermeiden.
 
@@ -1658,6 +1658,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Offene Fehler / Risiken:** Höhenfüllung (`:has(.cal-grid)`) und `meta.wide` betreffen nur den Kalender; Einträge je Tag aus festen rem-Höhen berechnet. Rücksprunglink in `WorkspaceHeader` kleiner als 44 px (vorbestehend, gemeinsame Komponente, für DES-01.11 vormerken). Verhaltensänderung: einige Planeraktionen auf schmaleren Breiten nur im Menü, „Absagen“ immer im Menü, Rückgängig/Wiederholen als Symbolknöpfe.
 - **Nächster konkreter Schritt:** Nutzerabnahme auf echtem großen Monitor (1920/2560 px) und Tablet.
 
+### INTEGRATION-01: Squash-Integration des aktuellen Arbeitsstands
+
+- **Status:** abgeschlossen mit lokalem Squash-Commit auf `main`; Nutzerauftrag vom 09.10.2026 ersetzt die bisherige Vorgabe, erst nach allen Paketen zu integrieren. Der Feature-Commit hält den unmittelbar davor geprüften Integrationscheckpoint fest.
+- **Abhängigkeiten:** sauberer versionierter Checkout; aktuelles `origin/main`; fremde Worktrees und unversionierte Dateien bleiben erhalten.
+- **Ziel und Abnahme:** Aktuellen committeten Stand von `feat/security-roles-training-operations` mit einem Squash-Commit auf lokalem `main` integrieren; bereits über PR #15 integrierten Stand erhalten; offene Pakete weiterhin offen ausweisen.
+- **Stabile Teilschritte:** `INTEGRATION-01.1`: Remote- und Arbeitsstand abgleichen, Pflichtprüfungen ausführen, Integrationscheckpoint im Feature-Branch committen. `INTEGRATION-01.2`: lokales `main` auf `origin/main` vorziehen, Squash integrieren, Commit und Ergebnisbaum prüfen.
+- **Befund:** `origin/main` bei `e763857` hat denselben Dateibaum wie Feature-Commit `b6ab5b0` (PR #15). Der neue Umfang bis `52145ee` umfasst 80 weitere Commits. `.claude/` enthält fremde Worktrees und wird nicht gestagt.
+- **Prüfungen:** bestanden: Frontend-Typecheck, ESLint, 607/607 Frontendtests; Backend-Ruff-Lint, Migrationsprüfung, 1304 Backendtests auf SQLite mit 12 übersprungen (isolierte vorhandene Testeinstellungen, schneller Test-Passworthasher, lokaler Cache). Fehlgeschlagen: Backend-Formatprüfung (57 vorbestehende Dateien). Erste Prüfläufe scheiterten an falscher Node-Architektur bzw. gesperrtem Redis-Zugriff; korrigierte Läufe bestanden. Langsamen Backendlauf nach 54 Tests zugunsten des vollständigen isolierten Laufs beendet. Nicht ausgeführt: PostgreSQL, Browser, GitHub-CI.
+- **Offene Risiken:** bekannte Backend-Formatabweichungen; offene Fachpakete und Abnahmen aus Abschnitt 0.2. Kein Push, keine Veröffentlichung und keine GitHub-CI-Abnahme Bestandteil dieses lokalen Merge-Auftrags.
+- **Nächster Schritt:** Offene Fachpakete und Abnahmen gemäß Abschnitt 0.2 weiterführen; Remote-Veröffentlichung separat beauftragen.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -2192,3 +2203,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 09.10.2026 | UX-09.2 | Planer-Bibliothek (Subagent, übernommen): Breite per Ziehen und Tastatur über beschrifteten Separator (280–720 px, höchstens halbe Planfläche, Enter/Doppelklick zurücksetzen), Breite und Sichtbarkeit je Benutzer in localStorage (try/catch, nur Layoutwerte); Standardbreite wächst mit dem Bildschirm, ab 1600 px standardmäßig offen; breite Bibliothek mit Beschreibung, Tags, Nutzung, Filtern nebeneinander und zwei Spalten; unter 1024 px über dem Plan; Drag-and-drop und Tastatureinfügen unverändert. | Bestanden (Subagent-Worktree): Frontend 601/601 (7 neu), Typecheck, ESLint; Browser 1920 px: Ziehen, Tastatur, Merken über Neuladen, Drag-and-drop in eine Spur. | Dieser Commit: `feat(UX-09.2): make the planner library resizable and more informative` | UX-09.3 |
 | 09.10.2026 | UX-09.3 | Planerkopf auf `WorkspaceHeader` (Subagent, übernommen): eine Hauptaktion „Speichern“, sekundäre Aktionen nach gemessener Kopfbreite (`headerActions.ts`, 560/880/1400 px), Rest im Menü „Weitere Aktionen“ mit Begründung gesperrter Einträge; Absagen, Serie, Kopieren, Vorlage, Einstellungen immer im Menü; bei 390 px Status, Menü und Speichern in einer Zeile. Behebt DES-01-Befund „vier Aktionszeilen“. | Bestanden (Subagent-Worktree): Frontend 607/607 (6 neu), Typecheck, ESLint; Browser 390–2560 px hell/dunkel je eine Aktionszeile (390 px Kopf 182 statt 391 px). | Dieser Commit: `fix(UX-09.3): keep the planner header to one action row on phones` | UX-09.4 |
 | 09.10.2026 | UX-09.4 | Browserabnahme 390/1280/1366/1440/1920/2560 px hell und dunkel, Tastaturweg zum Menü, Navigation ausgeblendet bei 1440 px; Befund 36-px-Knöpfe im Kopf behoben (44 px auf Touch und unter 1024 px, Schließen der Bibliothek immer). Übernahme per Cherry-Pick in den gemeinsamen Branch. | Bestanden (Subagent-Worktree): Frontend 607/607, Typecheck, ESLint, Produktionsbuild, Ratsche DES-01.11c; nach Übernahme: siehe Prüflauf im gemeinsamen Checkout. Nicht ausgeführt: echtes Touchgerät, 200 % Zoom, Backend (keine Änderung). | Dieser Commit: `fix(UX-09.4): give planner header and library buttons 44 px touch targets` | Nutzerabnahme UX-09 auf großem Monitor und Tablet |
+| 09.10.2026 | INTEGRATION-01.1 / INTEGRATION-01.2 | Nutzerauftrag: aktuellen committeten Arbeitsstand jetzt lokal nach `main` squashen. Remote abgeglichen: PR #15 (`e763857`) entspricht exakt `b6ab5b0`; 80 nachfolgende Feature-Commits bis `52145ee` plus dieser Integrationscheckpoint werden in einem Squash-Commit übernommen. Fremde Worktrees und `.claude/` bleiben erhalten. Offene Pakete bleiben offen. | Bestanden: Typecheck, ESLint, Frontend 607/607, Backend SQLite 1304 (12 übersprungen), Ruff-Lint, Migrationsprüfung. Fehlgeschlagen: bekannte Formatabweichungen (57 Dateien). Nicht ausgeführt: PostgreSQL, Browser, GitHub-CI. Integrationsbaum wird vor Commit mit dem Feature-Stand verglichen. | Feature-Checkpoint: `docs(INTEGRATION-01): record local squash integration`; lokaler Squash-Commit auf `main`. | Offene Pakete nach 0.2; kein Push beauftragt. |
