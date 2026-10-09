@@ -3,7 +3,7 @@ from datetime import timedelta
 from threading import Barrier
 from unittest import skipUnless
 
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase
 
 from departments.models import Department
@@ -31,7 +31,8 @@ class RegistrationConcurrencyTests(TransactionTestCase):
                     0
                 ].state
             finally:
-                close_old_connections()
+                # Healthy persistent connections must also close before the thread exits.
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=len(members)) as executor:
             results = list(executor.map(register, members))
@@ -64,7 +65,8 @@ class RegistrationConcurrencyTests(TransactionTestCase):
                     session.pk, member.pk, "cancelled", actor=None, source="staff", now=berlin(2030, 3, 7, 12)
                 )
             finally:
-                close_old_connections()
+                # Healthy persistent connections must also close before the thread exits.
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             list(executor.map(cancel, members[:2]))
