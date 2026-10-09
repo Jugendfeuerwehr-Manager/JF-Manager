@@ -103,12 +103,19 @@ class EligibilityPreviewView(RuleView):
             for m in members
             if not results[m.pk].ok
         ]
+        # E18: eligible people who meet a requirement through a higher qualification ("erfüllt durch …")
+        substituted = [
+            {"member_id": m.pk, "name": f"{m.name} {m.lastname}".strip(), "notes": results[m.pk].notes}
+            for m in members
+            if results[m.pk].ok and results[m.pk].notes
+        ]
         return Response(
             {
                 "summary": summarize(rule, Names.for_rule(rule)),
                 "total": len(members),
                 "eligible": len(members) - len(excluded),
                 "excluded": excluded,
+                "substituted": substituted,
                 "errors": {},
                 "audience_notice": neutral_audience_notice(rule),
             }

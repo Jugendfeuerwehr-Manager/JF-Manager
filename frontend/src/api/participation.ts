@@ -106,6 +106,8 @@ export interface RulePreviewResult extends RuleValidation {
   total: number
   eligible: number
   excluded: Array<{ member_id: number, name: string, reasons: string[] }>
+  /** Eligible people who meet a requirement through a higher qualification (E18). */
+  substituted?: Array<{ member_id: number, name: string, notes: string[] }>
 }
 
 export const participationApi = {

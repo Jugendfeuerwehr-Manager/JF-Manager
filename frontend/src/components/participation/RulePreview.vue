@@ -30,6 +30,15 @@
           </li>
         </ul>
       </details>
+      <details v-if="preview.substituted?.length" class="rule-preview__excluded">
+        <summary>Erfüllt durch höhere Qualifikation ({{ preview.substituted.length }})</summary>
+        <ul>
+          <li v-for="person in preview.substituted" :key="person.member_id">
+            <span class="rule-preview__name">{{ person.name }}</span>
+            <span class="rule-preview__muted">{{ person.notes.join('; ') }}</span>
+          </li>
+        </ul>
+      </details>
     </template>
     <p v-else-if="loading && !hasErrors" class="rule-preview__muted" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Vorschau wird berechnet …</p>
   </section>
