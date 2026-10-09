@@ -15,7 +15,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 | Sicherheit, Rollen, Konfiguration | SEC-01 bis SEC-12, ROLE-01/02, CFG-01/02 | Umgesetzt und abgenommen. Offen sind nur Nutzer-/Betreiberabnahmen und bewusst dokumentierte Grenzen (0.2). |
 | Übungsplanung | TRAIN-01 bis TRAIN-04 | Abgeschlossen. Offen: Darstellung auf großen Bildschirmen (UX-09). |
 | Portal und Teilnahme | PORTAL-01 bis 03, PART-01 bis 03, NOTIF-01 | Abgenommen (PostgreSQL 17, Browser). Offen: PART-04, PORTAL-04, Rückmeldungen UX-10. |
-| Design und Modulabläufe | DES-01, UX-01 bis UX-10 | DES-01 bis 01.10b, 01.11a–c, 01.13a umgesetzt; UX-01/04/06 umgesetzt mit offener Nutzerabnahme; UX-02/05 teilweise; UX-03/07/08 nicht begonnen; UX-10.1–10.6 umgesetzt, Abnahme offen. |
+| Design und Modulabläufe | DES-01, UX-01 bis UX-11 | DES-01 bis 01.10b, 01.11a–c, 01.13a umgesetzt; UX-01/04/06 umgesetzt mit offener Nutzerabnahme; UX-02/05 teilweise; UX-03/07/08 nicht begonnen; UX-10.1–10.6 umgesetzt, Abnahme offen. UX-11.1 E-Mail-Vorlageneditor als Arbeitsfläche umgesetzt, Browserabnahme offen. |
 | Betrieb | OPS-01 bis OPS-05, DEV-01 | OPS-01/02, DEV-01 abgeschlossen (Debian 13 nativ, Proxmox-LXC). OPS-03 bis 05 „in Prüfung“ wegen GitHub-Lauf und öffentlicher Domain. |
 | Dokumentation, Website | DOC-01, WEB-PLAN | Handbuch für den Verwaltungsumfang ausgeliefert, Pages nicht veröffentlicht. WEB-PLAN.0 aufgenommen, WEB-PLAN.1 nicht begonnen (Fortführung klären). |
 
@@ -39,6 +39,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | Punkt | Art | Inhalt | Voraussetzung |
 | --- | --- | --- | --- |
 | UX-09 | Bau | Kalender skaliert nicht auf großen Bildschirmen, Bibliothek zu klein. UX-10.6 deckt nur Notebookbreiten ab. Laut Nutzervorgabe über die Design-Sitzung. | Basispunkte |
+| UX-11.2 | Abnahme | Browser: E-Mail-Vorlagen- und Layout-Editor bei 1280/1440 px mit und ohne Navigation, hell/dunkel, 390 px; Speichern mit Nachbestätigung (MFA). | — |
 | DES-01 Befund | Bau (klein) | Planerkopf bricht bei 390 px in vier Aktionszeilen um. | — |
 | DES-01.11 | Bau | Feste Farben und jugendfeuerwehrspezifische Texte in übrigen Modulen ersetzen (Ratsche aus 01.11c senken), Einstellungskarten vereinheitlichen. | — |
 | DES-01.12 | Abnahme | Gesamtabnahme 360/390/768/1440 px, dunkel, Tastatur, 200 % Zoom, mehrere Farbschemata. | DES-01.11 |
@@ -338,6 +339,7 @@ Die vorhandenen Demoansichten zeigen viel gleichgewichtige weiße Fläche, wenig
 | UX-08 | Sync/Profil | Änderungsvorschau, Konflikte und Laufhistorie; Sitzungen, MFA und gerätebezogene Push-Einstellungen. |
 | UX-09 | Übungsplanung auf großen Bildschirmen | Kalenderansicht nutzt große Bildschirme nicht (skaliert nicht mit); Bibliothek ist zu klein. Umsetzung durch die Design-Sitzung (/design) nach Abschluss der Basispunkte. |
 | UX-10 | umgesetzt, Abnahme offen | Claude (Portal-Sitzung, per Subagenten) | UX-10.0–10.6 integriert; offen UX-10.7 (Browser, PostgreSQL). |
+| UX-11 | E-Mail-Vorlagen | Inhalts- und Layoutvorlagen in einer Arbeitsfläche wie der Trainingsplaner: eigene Route, Navigation ausblendbar, Code-Editor über volle Höhe, Live-Vorschau und Variablen im Seitenbereich, DES-01-Tokens. |
 
 #### Gemeinsame Bedienregeln und Schnittstellen
 
@@ -630,6 +632,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | UX-08 | geplant | Claude (Design-Session) | Teilschritte UX-08.1/2 festgelegt. |
 | UX-09 | geplant (nach Basispunkten) | Design-Sitzung | Nutzerhinweis 08.10.2026: Kalender skaliert nicht auf großen Bildschirmen; Bibliothek zu klein. Erst nach Abschluss der Basispunkte über /design. |
 | UX-10 | in Arbeit | Claude (Portal-Sitzung, per Subagenten) | UX-10.0 Plan; als Nächstes UX-10.1–10.6 parallel. |
+| UX-11 | umgesetzt, Abnahme offen | Claude (E-Mail-Vorlagen-Sitzung) | UX-11.1 Editor als Arbeitsfläche mit ausblendbarer Navigation; offen UX-11.2 (Browser). |
 | OPS-01 | abgeschlossen | Claude (OPS-Session; 01.3c/01.9b/01.9c Merge-/DEV-Sitzung) | Compose, Debian 13 nativ und Proxmox VE 9 LXC abgenommen; offen nur Caddy/ACME mit öffentlicher Domain. |
 | OPS-02 | abgeschlossen | Claude (OPS-Session) | Assistent inkl. Wiederaufnahme; Antwortdatei auf Debian 13 und im Proxmox-LXC bestanden. |
 | OPS-03 | in Prüfung | Claude (OPS-Session; 03.3b/03.4 Merge-/DEV-Sitzung) | 03.1–03.4 umgesetzt (03.4 Webstatus 07.10.2026); offen: erster GitHub-Lauf. |
@@ -1611,6 +1614,22 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Offene Fehler / Risiken:** Superuser erhalten künftig alle Teameinträge; E-Mail-Flut vermeiden (Zustellung nur nach Einstellung). Parallele Sitzungen im gemeinsamen Checkout.
 - **Nächster konkreter Schritt:** UX-10.7: Browserabnahme (Admin: Glocke, Dashboard, Zähler „Portal“/„Anträge“, Abteilungswechsler; Kalender 1280/1440 px hell/dunkel; Mitglieder 360 px; Kontakt-Links) und PostgreSQL-Lauf. Lokaler Bestand braucht `migrate` für `notifications.0004`.
 
+### UX-11: E-Mail-Vorlageneditor als Arbeitsfläche
+
+- **Status:** umgesetzt (UX-11.1), Abnahme UX-11.2 offen.
+- **Verantwortlich:** Claude (E-Mail-Vorlagen-Sitzung).
+- **Auftrag (Nutzerhinweis 09.10.2026):** Der E-Mail-Vorlageneditor passt nicht zum übrigen Design; analog zum Trainingsplaner soll ein Vollbildmodus mehr Platz schaffen.
+- **Befund:** Editor lag innerhalb der Einstellungen (App-Navigation, Einstellungsnavigation und zweispaltiges Raster mit 420-px-Seitenleiste), Monaco fest 500 px hoch, Vorschau/Variablen als gestapelte Karten; PrimeVue-Altvariablen und feste Farben statt DES-01-Tokens. Layoutvorlagen nur als Textfeld.
+- **Abhängigkeiten:** DES-01-Tokens, `useWorkspaceNavigation` (Planer), `SegmentedControl`, `StateView`, `StatusBadge`; Backend unverändert.
+- **Ziel und Abnahme:** Inhalts- und Layoutvorlagen öffnen als eigene Arbeitsfläche (`meta.workspace`, volle Breite) mit Kopf wie im Planer (Rücksprung, Titel, Status, Speicherzustand, Umschalter „Navigation ausblenden“, gemeinsam mit dem Planer gespeichert). Code-Editor füllt die Höhe, HTML/Nur-Text umschaltbar, Monaco folgt dem Farbschema; Vorschau und Variablen im Seitenbereich; Strg/Cmd + S speichert; Verlassen mit ungespeicherten Änderungen fragt nach; Speichern bleibt im Editor, neue Vorlage wechselt auf ihre Adresse. Listen als Zeilen mit Status nicht nur über Farbe, Löschen/Zurücksetzen mit Bestätigung. Unter 1024 px untereinander, Seite scrollt.
+- **Teilschritte mit stabilen IDs:**
+  - `UX-11.1`: Routen `settings/email-templates/new`, `settings/email-templates/:id`, `settings/email-layouts/:layoutType` (Recht wie Einstellungen), `WorkspaceHeader`, `EmailTemplateEditor`, `EmailLayoutEditor` (vereinfachte clientseitige Vorschau, ausdrücklich gekennzeichnet), Listen und Reiter in der URL (`?tab=layouts`), Tests.
+  - `UX-11.2`: Browserabnahme.
+- **Letzter dauerhafter Checkpoint:** UX-11.1 (dieser Commit).
+- **Ausgeführte Prüfungen mit Ergebnis:** Bestanden: Frontend 588/588 (6 neue Tests: Laden, Speichern im Editor, Rückfrage beim Verlassen, HTML/Text, Anlage aus Standardinhalt, Navigationsumschalter), Typecheck, ESLint. Nicht ausgeführt: Browser (Demo-Admin hat MFA; Code-Ermittlung aus der Datenbank wurde in der Sitzung nicht freigegeben).
+- **Offene Fehler / Risiken:** Layoutvorschau ersetzt nur `content`/`site_name` und blendet Template-Tags aus; der Server bleibt maßgeblich. Vorschau mit echter Bestellung lädt weiterhin direkt in der Komponente (Altbestand).
+- **Nächster konkreter Schritt:** UX-11.2: Browserabnahme mit Admin (Liste, Editor mit/ohne Navigation 1280/1440 px, hell/dunkel, 390 px, Speichern mit Nachbestätigung, Layout-Editor).
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -2138,3 +2157,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 09.10.2026 | UX-10.1 | Eingang: aktive Staff-Superuser sind Empfänger aller Teameinträge (`staff_with_permission`); Datenmigration `notifications.0004` trägt sie für offene Teamaufgaben und Teamhinweise der letzten 30 Tage nach. E-Mail/Push: reine Administrationskonten (Superuser ohne Abteilungsrolle/Gruppe) ohne gespeicherte Einstellung erhalten keine Mails/Pushes, außer bei ausdrücklicher Zuständigkeit (Dienstleitung: kurzfristige Abmeldung, Voraussetzungskonflikt, Tageszusammenfassung); Einstellungsseite zeigt diese Voreinstellung. `counts/` liefert zusätzlich `by_category`. Korrekturen bei Übernahme: Subagent hatte auch Superusern mit echter Rolle die Mail-Voreinstellung entzogen; vorbestehender Test `test_short_notice_cancellation_alerts_responsibles` war tageszeitabhängig („morgen 18:00“ liegt vor 18 Uhr außerhalb des 24-h-Fensters) und legt den Dienst jetzt 20 h in die Zukunft. | Bestanden: Backend 1304/1304 (SQLite, CI-Modulsatz), 10 neue Tests, `makemigrations --check`, Ruff. Nicht ausgeführt: PostgreSQL. | Dieser Commit: `feat(UX-10.1): address superusers in the team inbox and count by category` | UX-10.2 |
 | 09.10.2026 | UX-10.2 | Glocke `StaffNotificationBell` im Kopf (Desktop und mobile Leiste) mit Zusammenfassung offener Aufgaben/neuer Hinweise, letzten Einträgen (als gelesen markiert beim Öffnen) und „Alle im Eingang“; Dashboard zeigt Aufgaben und neue Hinweise; Zähler an „Portal“ (Navigation, auch mobiler Drawer) und am Reiter „Anträge“ aus `by_category.requests`; Zähler nach Entscheidung aktualisiert. | Bestanden: Frontend 582/582 (Glocke, Dashboard, Navigation neu/angepasst), Typecheck, ESLint. Nicht ausgeführt: Browser. | Dieser Commit: `feat(UX-10.2): show a notification bell, inbox items on the dashboard and request counts` | UX-10.7 |
 | 09.10.2026 | PLAN-CLEANUP | Nutzerauftrag: offene Punkte zusammenfassen, Datei aufräumen. Abschnitt 0 ersetzt: chronologische Checkpoint-Absätze entfernt (Inhalte stehen in Abschnitt 6 und im Journal), neu „Stand je Bereich“, „Offene Punkte“ nach Bereich mit Art (Bau/Abnahme/Entscheidung) und Arbeitsrahmen. Befund: OPS-04/05-Detailblock nennt Debian 13 als offen, OPS-01.9b hat es abgenommen. | Bestanden: Abgleich der offenen Teilschritt-IDs mit `git log`. Nicht ausgeführt: Anwendungstests (nur Dokumentation). | Dieser Commit: `docs(PLAN): summarize open roadmap items` | Nutzerentscheidung über Reihenfolge |
+| 09.10.2026 | UX-11.1 | E-Mail-Vorlageneditor als Arbeitsfläche analog zum Trainingsplaner: eigene Routen außerhalb des Einstellungslayouts mit `meta.workspace`, neuer `WorkspaceHeader` mit gemeinsamem Umschalter „Navigation ausblenden“, Editor mit Code über volle Höhe (HTML/Nur Text), Vorschau/Variablen im Seitenbereich, Speicherzustand, Strg/Cmd + S, Rückfrage beim Verlassen; Layoutvorlagen mit Monaco und gekennzeichneter vereinfachter Vorschau; Listen als Zeilen mit `StatusBadge`, Reiter in der URL; Tokens statt PrimeVue-Altvariablen. Verhaltensänderung: Speichern bleibt im Editor statt zur Liste zurückzukehren. | Bestanden: Frontend 588/588 (6 neu), Typecheck, ESLint. Nicht ausgeführt: Browser (Login des Demo-Admins braucht MFA-Code). | Dieser Commit: `feat(UX-11.1): open e-mail templates in a full-width workspace` | UX-11.2 |

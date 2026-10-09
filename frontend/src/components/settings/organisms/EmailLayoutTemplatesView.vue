@@ -1,188 +1,88 @@
 <template>
   <div class="email-layout-templates">
-    <!-- Loading state -->
-    <div v-if="loading" class="loading-state">
-      <ProgressSpinner />
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="error" class="error-state">
-      <Message severity="error">{{ error }}</Message>
-    </div>
-
-    <!-- Editor view -->
-    <div v-else-if="editingLayout" class="editor-view">
-      <div class="editor-header">
-        <div class="editor-header__left">
-          <Button
-            icon="pi pi-arrow-left"
-            text
-            label="Zurück"
-            @click="handleBack"
-          />
-          <h3>{{ editingLayout.label }}</h3>
-          <Tag v-if="editingLayout.is_custom" value="Angepasst" severity="warn" />
-          <Tag v-else value="Standard" severity="secondary" />
-        </div>
-        <div class="editor-header__actions">
-          <Button
-            v-if="editingLayout.is_custom"
-            label="Zurücksetzen"
-            icon="pi pi-refresh"
-            severity="secondary"
-            outlined
-            :loading="saving"
-            @click="handleReset"
-          />
-          <Button
-            label="Speichern"
-            icon="pi pi-save"
-            :loading="saving"
-            :disabled="!hasChanges"
-            @click="handleSave"
-          />
-        </div>
-      </div>
-
-      <div class="editor-body">
-        <Card>
-          <template #title>HTML-Layout bearbeiten</template>
-          <template #subtitle>
-            Verwende <code v-pre>{{ content }}</code> als Platzhalter für den E-Mail-Inhalt und
-            <code v-pre>{{ site_name }}</code> für den Anwendungsnamen.
-          </template>
-          <template #content>
-            <Textarea
-              v-model="editHtml"
-              rows="30"
-              class="html-editor"
-              :auto-resize="false"
-            />
-          </template>
-        </Card>
-      </div>
-    </div>
-
-    <!-- List view -->
-    <div v-else class="list-view">
-      <div class="layout-cards">
-        <Card v-for="tpl in templates" :key="tpl.layout_type" class="layout-card">
-          <template #header>
-            <div class="layout-card__header">
-              <span class="layout-card__icon">
-                <i :class="layoutIcon(tpl.layout_type)" />
-              </span>
-            </div>
-          </template>
-          <template #title>{{ tpl.label }}</template>
-          <template #subtitle>
-            <Tag v-if="tpl.is_custom" value="Angepasst" severity="warn" />
-            <Tag v-else value="Standard (Datei)" severity="secondary" />
-          </template>
-          <template #content>
-            <p v-if="tpl.updated_at" class="layout-card__date">
-              Zuletzt geändert: {{ formatDate(tpl.updated_at) }}
-            </p>
-          </template>
-          <template #footer>
-            <div class="layout-card__actions">
-              <Button
-                label="Bearbeiten"
-                icon="pi pi-pencil"
-                size="small"
-                @click="handleEdit(tpl)"
-              />
-              <Button
-                v-if="tpl.is_custom"
-                label="Zurücksetzen"
-                icon="pi pi-refresh"
-                size="small"
-                severity="secondary"
-                outlined
-                :loading="saving"
-                @click="handleResetFromList(tpl.layout_type)"
-              />
-            </div>
-          </template>
-        </Card>
-      </div>
-    </div>
+    <p class="email-layout-templates__intro">Layouts rahmen den Inhalt eigener Vorlagen ein, zum Beispiel mit Kopfzeile und Fußzeile.</p>
+    <StateView v-if="loading && !templates.length" kind="loading" />
+    <StateView v-else-if="loadState" :kind="loadState" @retry="load" />
+    <ul v-else class="layout-list">
+      <li v-for="tpl in templates" :key="tpl.layout_type" class="layout-row">
+        <button type="button" class="layout-row__main" :aria-label="`${tpl.label} bearbeiten`" @click="handleEdit(tpl.layout_type)">
+          <span class="layout-row__icon" aria-hidden="true"><i :class="layoutIcon(tpl.layout_type)"></i></span>
+          <span class="layout-row__text">
+            <span class="layout-row__title">{{ tpl.label }}</span>
+            <span class="layout-row__meta">{{ tpl.updated_at ? `geändert ${formatDate(tpl.updated_at)}` : 'Standardvorlage aus der Installation' }}</span>
+          </span>
+          <StatusBadge v-if="tpl.is_custom" label="Angepasst" severity="info" icon="pi pi-pencil" />
+          <StatusBadge v-else label="Standard" severity="neutral" icon="pi pi-file" />
+          <i class="pi pi-chevron-right layout-row__chevron" aria-hidden="true"></i>
+        </button>
+        <Button
+          v-if="tpl.is_custom"
+          icon="pi pi-refresh"
+          text
+          severity="secondary"
+          class="layout-row__reset"
+          :aria-label="`${tpl.label} auf Standard zurücksetzen`"
+          v-tooltip.top="'Auf Standard zurücksetzen'"
+          :disabled="saving"
+          @click="confirmReset(tpl.layout_type, tpl.label)"
+        />
+      </li>
+    </ul>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { useEmailLayoutTemplatesStore } from '@/stores/email-layout-templates'
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import Message from 'primevue/message'
-import ProgressSpinner from 'primevue/progressspinner'
-import Tag from 'primevue/tag'
-import Textarea from 'primevue/textarea'
 import { format } from 'date-fns'
-import type { EmailLayoutTemplate } from '@/types/email-layout-templates'
+import Button from 'primevue/button'
+import { useEmailLayoutTemplatesStore } from '@/stores/email-layout-templates'
+import StateView, { stateForError, type StateKind } from '@/components/common/StateView.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import { classifyApiError } from '@/utils/apiError'
 
 const store = useEmailLayoutTemplatesStore()
+const router = useRouter()
+const confirm = useConfirm()
 const toast = useToast()
 
-const editingLayout = ref<EmailLayoutTemplate | null>(null)
-const editHtml = ref('')
-
+const loadState = ref<StateKind | null>(null)
 const templates = computed(() => store.templates)
 const loading = computed(() => store.loading)
 const saving = computed(() => store.saving)
-const error = computed(() => store.error)
 
-const hasChanges = computed(() => {
-  if (!editingLayout.value) return false
-  return editHtml.value !== editingLayout.value.html_content
-})
-
-onMounted(() => store.fetchTemplates())
-
-function handleEdit(tpl: EmailLayoutTemplate) {
-  editingLayout.value = { ...tpl }
-  editHtml.value = tpl.html_content
-}
-
-function handleBack() {
-  editingLayout.value = null
-  editHtml.value = ''
-}
-
-async function handleSave() {
-  if (!editingLayout.value) return
+async function load() {
+  loadState.value = null
   try {
-    await store.updateTemplate(editingLayout.value.layout_type, { html_content: editHtml.value })
-    // Refresh the in-memory copy so hasChanges stays accurate
-    const updated = templates.value.find((t) => t.layout_type === editingLayout.value!.layout_type)
-    if (updated) editingLayout.value = { ...updated }
-    toast.add({ severity: 'success', summary: 'Gespeichert', detail: 'Layout-Vorlage wurde gespeichert.', life: 3000 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht gespeichert werden.', life: 5000 })
+    await store.fetchTemplates()
+  } catch (err) {
+    loadState.value = stateForError(classifyApiError(err))
   }
 }
 
-async function handleReset() {
-  if (!editingLayout.value) return
-  try {
-    const result = await store.resetTemplate(editingLayout.value.layout_type)
-    editingLayout.value = { ...result }
-    editHtml.value = result.html_content
-    toast.add({ severity: 'success', summary: 'Zurückgesetzt', detail: 'Standardvorlage wiederhergestellt.', life: 3000 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht zurückgesetzt werden.', life: 5000 })
-  }
+function handleEdit(layoutType: string) {
+  void router.push({ name: 'email-layout-edit', params: { layoutType } })
 }
 
-async function handleResetFromList(layoutType: string) {
-  try {
-    await store.resetTemplate(layoutType)
-    toast.add({ severity: 'success', summary: 'Zurückgesetzt', detail: 'Standardvorlage wiederhergestellt.', life: 3000 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht zurückgesetzt werden.', life: 5000 })
-  }
+function confirmReset(layoutType: string, label: string) {
+  confirm.require({
+    message: `Das angepasste Layout „${label}“ wird verworfen und die Standardvorlage wiederhergestellt.`,
+    header: 'Layout zurücksetzen?',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Zurücksetzen',
+    rejectLabel: 'Abbrechen',
+    acceptProps: { severity: 'danger' },
+    accept: async () => {
+      try {
+        await store.resetTemplate(layoutType)
+        toast.add({ severity: 'success', summary: 'Zurückgesetzt', detail: 'Standardvorlage wiederhergestellt.', life: 3000 })
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Layout konnte nicht zurückgesetzt werden.', life: 5000 })
+      }
+    },
+  })
 }
 
 function layoutIcon(layoutType: string): string {
@@ -195,74 +95,75 @@ function layoutIcon(layoutType: string): string {
 }
 
 function formatDate(dateString: string): string {
-  return format(new Date(dateString), 'dd.MM.yyyy HH:mm')
+  return format(new Date(dateString), 'dd.MM.yyyy')
 }
+
+onMounted(() => {
+  void load()
+})
 </script>
 
 <style scoped>
-.loading-state,
-.error-state {
+.email-layout-templates {
   display: flex;
-  justify-content: center;
-  padding: 3rem;
+  flex-direction: column;
+  gap: var(--jf-space-2);
+  padding-top: var(--jf-space-2);
 }
 
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
+.email-layout-templates__intro { margin: 0; font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
 
-.editor-header__left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.editor-header__left h3 {
+.layout-list {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  background: var(--jf-color-card);
+  overflow: hidden;
 }
 
-.editor-header__actions {
+.layout-row { display: flex; align-items: center; gap: var(--jf-space-0-5); padding-right: var(--jf-space-1); }
+.layout-row + .layout-row { border-top: 1px solid var(--jf-color-border); }
+
+.layout-row__main {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+  min-height: 64px;
+  padding: var(--jf-space-1) var(--jf-space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.html-editor {
-  width: 100%;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  resize: vertical;
-}
+.layout-row__main:hover { background: var(--surface-hover); }
+.layout-row__main:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; }
 
-.layout-cards {
+.layout-row__icon {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-selected);
+  color: var(--jf-color-selected-text);
 }
 
-.layout-card__header {
-  display: flex;
-  justify-content: center;
-  padding: 1.5rem 0 0.5rem;
-  font-size: 2rem;
-  color: var(--p-primary-color);
-}
+.layout-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.layout-row__title { font-weight: var(--jf-weight-semibold); }
+.layout-row__meta { font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
+.layout-row__chevron { color: var(--jf-color-text-muted); font-size: 0.75rem; }
+.layout-row__reset { flex-shrink: 0; min-width: var(--jf-touch-target); min-height: var(--jf-touch-target); }
 
-.layout-card__date {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--p-text-muted-color);
-}
-
-.layout-card__actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+@media (max-width: 480px) {
+  .layout-row__main { padding: var(--jf-space-1) var(--jf-space-1-5); gap: var(--jf-space-1); }
+  .layout-row__icon, .layout-row__chevron { display: none; }
 }
 </style>

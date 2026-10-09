@@ -1,46 +1,31 @@
 <template>
-  <Card class="preview-card">
-    <template #title>
-      <div class="flex align-items-center gap-2">
-        <i class="pi pi-eye"></i>
-        <span>Live-Vorschau</span>
-        <ProgressSpinner v-if="loading" style="width: 20px; height: 20px" />
+  <div class="template-preview" :aria-busy="loading || undefined">
+    <p class="template-preview__status" role="status">
+      <template v-if="loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>Vorschau wird aktualisiert …</template>
+      <template v-else-if="previewData"><i class="pi pi-check" aria-hidden="true"></i>Mit Beispieldaten berechnet</template>
+    </p>
+    <template v-if="previewData">
+      <div class="template-preview__subject">
+        <span class="template-preview__label">Betreff</span>
+        <p>{{ previewData.subject || '(leer)' }}</p>
       </div>
+      <Message v-if="previewData.errors && previewData.errors.length" severity="warn" :closable="false">
+        <ul class="template-preview__errors">
+          <li v-for="(err, idx) in previewData.errors" :key="idx">{{ err }}</li>
+        </ul>
+      </Message>
+      <PhoneMockup :subject="previewData.subject" :htmlContent="htmlContent" />
     </template>
-    <template #content>
-      <div v-if="previewData" class="preview-content">
-        <div class="preview-section">
-          <strong>Betreff:</strong>
-          <p>{{ previewData.subject || '(leer)' }}</p>
-        </div>
-        <Divider />
-        <div class="preview-section">
-          <strong>HTML-Vorschau:</strong>
-          <PhoneMockup
-            :subject="previewData.subject"
-            :htmlContent="htmlContent"
-          />
-        </div>
-        <Message v-if="previewData.errors && previewData.errors.length" severity="warn" class="mt-2">
-          <ul class="m-0 pl-3">
-            <li v-for="(err, idx) in previewData.errors" :key="idx">{{ err }}</li>
-          </ul>
-        </Message>
-      </div>
-      <div v-else class="empty-state">
-        <i class="pi pi-eye-slash" style="font-size: 2rem; color: var(--p-text-muted-color)"></i>
-        <p class="text-sm">Vorschau wird beim Tippen aktualisiert</p>
-      </div>
-    </template>
-  </Card>
+    <div v-else-if="!loading" class="template-preview__empty">
+      <i class="pi pi-eye-slash" aria-hidden="true"></i>
+      <p>Die Vorschau erscheint, sobald Betreff und Inhalt ausgefüllt sind.</p>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Card from 'primevue/card'
-import Divider from 'primevue/divider'
 import Message from 'primevue/message'
-import ProgressSpinner from 'primevue/progressspinner'
 import PhoneMockup from '../atoms/PhoneMockup.vue'
 import type { TemplatePreviewResponse } from '@/types/email-templates'
 
@@ -60,44 +45,61 @@ const htmlContent = computed(() => {
 </script>
 
 <style scoped>
-.preview-card {
-  height: 100%;
-}
-
-.preview-content {
+.template-preview {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--jf-space-1-5);
 }
 
-.preview-section {
+.template-preview__status {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.preview-section strong {
-  color: var(--p-text-muted-color);
-  font-size: 0.875rem;
-}
-
-.preview-section p {
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  min-height: 1.25rem;
   margin: 0;
-  font-weight: 500;
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text-muted);
 }
 
-.empty-state {
+.template-preview__subject {
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+}
+
+.template-preview__label {
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jf-color-text-muted);
+}
+
+.template-preview__subject p {
+  margin: 2px 0 0;
+  font-weight: var(--jf-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.template-preview__errors {
+  margin: 0;
+  padding-left: var(--jf-space-2);
+}
+
+.template-preview__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
+  gap: var(--jf-space-1);
+  padding: var(--jf-space-5) var(--jf-space-2);
+  border: 1px dashed var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
   text-align: center;
-  color: var(--p-text-muted-color);
+  color: var(--jf-color-text-muted);
 }
 
-.empty-state p {
-  margin-top: 1rem;
-  margin-bottom: 0;
-}
+.template-preview__empty i { font-size: 1.5rem; }
+.template-preview__empty p { margin: 0; font-size: var(--jf-text-sm); }
 </style>

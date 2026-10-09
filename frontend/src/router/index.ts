@@ -288,6 +288,28 @@ const router = createRouter({
           name: 'specialtask-detail',
           component: () => import('@/views/qualifications/SpecialTaskDetailView.vue')
         },
+        // E-mail template editors: workspaces outside the settings layout, so they can use the full width.
+        {
+          path: 'settings/email-templates/new',
+          name: 'email-template-new',
+          component: () => import('@/views/EmailTemplateEditorView.vue'),
+          meta: { requiresSettings: true, fullWidth: true, workspace: true },
+          props: { templateId: null }
+        },
+        {
+          path: 'settings/email-templates/:id(\\d+)',
+          name: 'email-template-edit',
+          component: () => import('@/views/EmailTemplateEditorView.vue'),
+          meta: { requiresSettings: true, fullWidth: true, workspace: true },
+          props: (route) => ({ templateId: Number(route.params.id) })
+        },
+        {
+          path: 'settings/email-layouts/:layoutType(general|important|events)',
+          name: 'email-layout-edit',
+          component: () => import('@/views/EmailLayoutEditorView.vue'),
+          meta: { requiresSettings: true, fullWidth: true, workspace: true },
+          props: true
+        },
         {
           path: 'settings',
           component: () => import('@/views/SettingsView.vue'),
