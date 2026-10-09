@@ -293,6 +293,7 @@ Die vorhandenen Demoansichten zeigen viel gleichgewichtige weiße Fläche, wenig
 | UX-07 | E-Mail | Empfängerprüfung, sichere Vorschau, Hintergrundversand, Teilergebnisse und Wiederholung nur fehlgeschlagener Zustellungen. Unterschiedliche personalisierte Nachrichten nicht allein wegen derselben Empfängeradresse zusammenlegen. |
 | UX-08 | Sync/Profil | Änderungsvorschau, Konflikte und Laufhistorie; Sitzungen, MFA und gerätebezogene Push-Einstellungen. |
 | UX-09 | Übungsplanung auf großen Bildschirmen | Kalenderansicht nutzt große Bildschirme nicht (skaliert nicht mit); Bibliothek ist zu klein. Umsetzung durch die Design-Sitzung (/design) nach Abschluss der Basispunkte. |
+| UX-10 | Rückmeldungen Portal, Eingang und Darstellung | Nutzerhinweise 09.10.2026: Eingang auch für Administration (Superuser), Benachrichtigungsübersicht im Kopf, neue Hinweise und Aufgaben im Dashboard, Zähler an „Portal“/„Anträge“, Abteilungswechsler nie leer, Telefon/E-Mail als Links, kompaktere mobile Mitgliederliste, Kalender der Übungsplanung auf Notebooks. |
 
 #### Gemeinsame Bedienregeln und Schnittstellen
 
@@ -584,6 +585,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | UX-07 | geplant | Claude (Design-Session) | Teilschritte UX-07.1/2 festgelegt. |
 | UX-08 | geplant | Claude (Design-Session) | Teilschritte UX-08.1/2 festgelegt. |
 | UX-09 | geplant (nach Basispunkten) | Design-Sitzung | Nutzerhinweis 08.10.2026: Kalender skaliert nicht auf großen Bildschirmen; Bibliothek zu klein. Erst nach Abschluss der Basispunkte über /design. |
+| UX-10 | in Arbeit | Claude (Portal-Sitzung, per Subagenten) | UX-10.0 Plan; als Nächstes UX-10.1–10.6 parallel. |
 | OPS-01 | abgeschlossen | Claude (OPS-Session; 01.3c/01.9b/01.9c Merge-/DEV-Sitzung) | Compose, Debian 13 nativ und Proxmox VE 9 LXC abgenommen; offen nur Caddy/ACME mit öffentlicher Domain. |
 | OPS-02 | abgeschlossen | Claude (OPS-Session) | Assistent inkl. Wiederaufnahme; Antwortdatei auf Debian 13 und im Proxmox-LXC bestanden. |
 | OPS-03 | in Prüfung | Claude (OPS-Session; 03.3b/03.4 Merge-/DEV-Sitzung) | 03.1–03.4 umgesetzt (03.4 Webstatus 07.10.2026); offen: erster GitHub-Lauf. |
@@ -1543,6 +1545,28 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Laufende Prozesse und sichere Fortsetzung:** keine.
 - **Nächster konkreter Schritt:** `PART-03.6` Paketabnahme; Hinweise `notes` („erfüllt durch …“) in der Vorschau anzeigen; Aufgabe „Besetzung“ aus `eligibility_conflict` mit NOTIF-01.5.
 
+### UX-10: Rückmeldungen Portal, Eingang und Darstellung
+
+- **Status:** in Arbeit.
+- **Verantwortlicher Agent:** Claude (Portal-Sitzung), Teilschritte per Subagenten in eigenen Worktrees; Übernahme und Prüfung im gemeinsamen Checkout.
+- **Auslöser:** Nutzerhinweise 09.10.2026 (Admin sieht weder Aufgaben noch Hinweise im Dashboard, keine Benachrichtigungsübersicht im Kopf, kein Zähler an „Portal“, Anträge nicht auffindbar, Abteilungswechsler leer, Kalender auf Notebooks unpassend, Telefon/E-Mail nicht klickbar, mobile Mitgliederliste mit zu viel Abstand).
+- **Befund vor Beginn:** `notifications.inbox.staff_with_permission` adressiert Superuser bewusst nicht; das Admin-Konto der Demodaten erhält daher keine Eingangseinträge (Zähler 0 bei zwei offenen Anträgen). `GET /portal/reviews/` liefert dem Admin beide offenen Anträge (200); der Reiter „Anträge“ ist sichtbar, aber ohne Zähler. PrimeVue `Select` wertet `null` („Alle Abteilungen“) als leer und zeigt den Platzhalter.
+- **Abhängigkeiten:** NOTIF-01, PORTAL-03, DES-01-Tokens; UX-10.6 greift einen Teil von UX-09 (Notebookbreiten) vorweg, UX-09 bleibt für große Bildschirme und Bibliothek offen.
+- **Abnahme:** Superuser erhalten Teameinträge im Eingang (auch für bereits offene Aufgaben), E-Mail/Push für Superuser nur nach eigener Einstellung; Kopf zeigt für Staff eine Glocke mit Zusammenfassung (offene Aufgaben, ungelesene Hinweise, neueste Einträge, Link „Eingang“); Dashboard zeigt offene Aufgaben und neue Hinweise; Navigation „Portal“ und Reiter „Anträge“ zeigen die Zahl offener Anträge (Status nicht nur über Farbe, zugängliche Beschriftung); Abteilungswechsler zeigt bei Organisationsrechten ohne Auswahl „Alle Abteilungen“; Telefonnummern und E-Mail-Adressen in Personenansichten sind `tel:`/`mailto:`-Links; mobile Mitgliederliste ohne unnötige Abstände bei ≥ 44-px-Flächen; Kalender der Übungsplanung bei 1280–1440 px ohne Überlauf und nach DES-01-Tokens. Rechte- und Abteilungstests für geänderte Endpunkte.
+- **Teilschritte mit stabilen IDs:**
+  - `UX-10.0`: Plan und Befund (dieser Commit).
+  - `UX-10.1`: Backend: Superuser als Empfänger von Teameinträgen, Nachtrag offener Aufgaben/ungelesener Hinweise, Zähler je Kategorie im Zählerendpunkt.
+  - `UX-10.2`: Frontend: Benachrichtigungsglocke im Kopf, Dashboard mit Aufgaben und neuen Hinweisen, Zähler an „Portal“ und „Anträge“.
+  - `UX-10.3`: Abteilungswechsler nie leer.
+  - `UX-10.4`: Telefon und E-Mail als Links.
+  - `UX-10.5`: Mobile Mitgliederliste kompakter.
+  - `UX-10.6`: Kalender der Übungsplanung auf Notebooks.
+  - `UX-10.7`: Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** UX-10.0 (dieser Commit).
+- **Ausgeführte Prüfungen mit Ergebnis:** Befund per Django-Shell im lokalen Bestand: `reviewable(admin)` 2, `GET /portal/reviews/` 200 mit 2 Einträgen, `GET /notifications/inbox/counts/` `total: 0`.
+- **Offene Fehler / Risiken:** Superuser erhalten künftig alle Teameinträge; E-Mail-Flut vermeiden (Zustellung nur nach Einstellung). Parallele Sitzungen im gemeinsamen Checkout.
+- **Nächster konkreter Schritt:** UX-10.1/10.2, UX-10.3–10.5 und UX-10.6 parallel per Subagent.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -2061,3 +2085,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 08.10.2026 | PORTAL-03.2b | Antragsformular und Hinweise im Portal (Subagent, geprüft). Korrektur bei Übernahme: Schaltflächen im Prüfhinweis wirkten deaktiviert und brachen um (jetzt umrandet, ganze Wörter). Abweichung vom Mockup: Hinweis steht je Person bzw. im eigenen Kontaktblock statt einmal oben. | Bestanden: Vitest Portal 76/76 (mit 03.3b), `vue-tsc --build`, ESLint; Browser (Chrome, Scratch-Instanz, frische Demodaten) 390 px: Demoantrag sichtbar, Bearbeiten mit Ort `<b>Neustadt</b>` → gespeichert als „Neustadt“, neuer Antrag für eigenes Telefon, Ergebnis „teilweise übernommen“ mit Nachricht und Glocke „Änderungsantrag … teilweise übernommen“; keine API-Fehler. Nicht ausgeführt: echtes Mobilgerät. | Dieser Commit: `feat(PORTAL-03.2b): let parents and members request changes to their data in the portal` | PORTAL-03.3b |
 | 08.10.2026 | PORTAL-03.3b | Prüfansicht „Anträge“ (Subagent, geprüft). Korrekturen bei Übernahme: Reiter nur mit Prüfrecht sichtbar; Direktlink `antrag=<id>` aus Eingang/Mail ausgewertet (Test ergänzt); Schalter „Übernehmen/Ablehnen“ brachen mitten im Wort um. | Bestanden: Vitest Portal/Verwaltung 76/76, `vue-tsc --build`, ESLint; Browser 1440 px: Demoantrag mit Ort und Mobil, Mobil übernommen, Ort abgelehnt mit Nachricht → „Entscheidung … gespeichert“, Aufgabe im Eingang erledigt; 360 px dunkel ohne horizontales Scrollen. Nicht ausgeführt: Screenreader. | Dieser Commit: `feat(PORTAL-03.3b): review change requests in the portal administration` | PORTAL-03.5 |
 | 08.10.2026 | PART-02.5 / PORTAL-03.5 | Gemeinsame Paketabnahme. PostgreSQL 17 (eigener Container, frische Testdatenbank): voller CI-Modullauf. Frontend: `type-check`, `lint`, `test:unit`. Browser (Chrome, Scratch-Instanz mit frischen Demodaten): Dienstbuch mobil (Liste, Meldungen mit Gast, Anwesenheit mit Meldestatus, Übernahme „entschuldigt“), Desktop 1440, 720 px, dunkel; Portal 390 px Demoantrag bearbeiten, neuer Antrag, Prüfung 1440 px mit teilweiser Übernahme und Nachricht, Eingangsaufgabe erledigt, Ergebnis und Glocke beim Elternkonto, Prüfansicht 360 px dunkel. Subagenten-Worktrees nach Übernahme entfernt. | Bestanden: PostgreSQL 1293/1293 (Löschen der Testdatenbank danach meldet lokal offene Thread-Verbindungen, wie bisher); Frontend type-check, lint, 562/562; Browser ohne API-Fehler. Nicht ausgeführt: echter SMTP- und Push-Versand, echtes Mobilgerät, Screenreader, bats. | Dieser Commit: `test(PART-02.5): accept servicebook registrations and change requests` | PART-04, PORTAL-04 |
+| 09.10.2026 | UX-10.0 | Nutzerhinweise zu Portal, Eingang und Darstellung als Paket UX-10 aufgenommen; Befund: Superuser erhalten keine Eingangseinträge, Anträge-API liefert dem Admin alle offenen Anträge, `Select` zeigt bei `null` den Platzhalter. | Befund per Django-Shell (lokaler Bestand). Sonst nur Dokumentation. | Dieser Commit: `docs(UX-10.0): plan portal, inbox and layout feedback` | UX-10.1–10.6 |
