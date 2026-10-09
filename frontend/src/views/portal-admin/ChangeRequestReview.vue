@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import Button from 'primevue/button'
+import ContactLink from '@/components/common/ContactLink.vue'
 import type { ChangeDecision, Review } from '@/types/changeRequests'
 import { requestDateTime } from '@/utils/changeRequestFields'
 
@@ -45,6 +46,12 @@ function submit() {
 
 const decisionText = (d?: ChangeDecision) => (d === 'apply' ? 'Übernommen' : d === 'reject' ? 'Abgelehnt' : '–')
 const submitLabel = computed(() => (undecided.value ? `Entscheidung speichern (${undecided.value} offen)` : 'Entscheidung speichern'))
+
+const contactFieldKind = (field: string): 'phone' | 'email' | null => {
+  if (field === 'phone' || field === 'mobile') return 'phone'
+  if (field === 'email' || field === 'email2') return 'email'
+  return null
+}
 </script>
 
 <template>
@@ -63,12 +70,19 @@ const submitLabel = computed(() => (undecided.value ? `Entscheidung speichern ($
       </li>
       <li v-for="f in review.fields" :key="f.field" class="row" :class="{ conflict: f.conflict && !readonly, flagged: errorFields?.includes(f.field) }" :data-field="f.field">
         <span class="label">{{ f.label }}</span>
-        <span class="cell" data-label="Bei Antrag">{{ f.old || '–' }}</span>
+        <span class="cell" data-label="Bei Antrag">
+          <ContactLink v-if="contactFieldKind(f.field) && f.old" :kind="contactFieldKind(f.field)!" :value="f.old" />
+          <span v-else>{{ f.old || '–' }}</span>
+        </span>
         <span class="cell" data-label="Aktuell">
-          {{ f.current || '–' }}
+          <ContactLink v-if="contactFieldKind(f.field) && f.current" :kind="contactFieldKind(f.field)!" :value="f.current" />
+          <span v-else>{{ f.current || '–' }}</span>
           <span v-if="f.conflict && !readonly" class="warn"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Seit Antrag geändert</span>
         </span>
-        <span class="cell new" data-label="Beantragt">{{ f.new || '–' }}</span>
+        <span class="cell new" data-label="Beantragt">
+          <ContactLink v-if="contactFieldKind(f.field) && f.new" :kind="contactFieldKind(f.field)!" :value="f.new" />
+          <span v-else>{{ f.new || '–' }}</span>
+        </span>
         <span class="cell decide" data-label="Entscheidung">
           <span v-if="readonly" class="done"><i :class="f.decision === 'apply' ? 'pi pi-check' : 'pi pi-times'" aria-hidden="true"></i> {{ decisionText(f.decision) }}</span>
           <template v-else>

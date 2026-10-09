@@ -7,7 +7,7 @@
       <li v-for="inv in store.invitations" :key="inv.id" class="row">
         <div class="row__main">
           <strong>{{ inv.person_name }}</strong>
-          <span class="meta">{{ inv.email }}</span>
+          <span class="meta"><ContactLink kind="email" :value="inv.email" /></span>
           <span class="meta">Erstellt {{ formatDate(inv.created_at, true) }} von {{ inv.created_by_name }} · gültig bis {{ formatDate(inv.expires_at) }}</span>
         </div>
         <StatusBadge :label="invitationStateMeta[inv.state].label" :severity="invitationStateMeta[inv.state].severity" :icon="invitationStateMeta[inv.state].icon" />
@@ -25,6 +25,7 @@ import { onMounted } from 'vue'
 import Button from 'primevue/button'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import ContactLink from '@/components/common/ContactLink.vue'
 import { usePortalAdminStore } from '@/stores/portalAdmin'
 import { formatDate, invitationStateMeta } from './accessState'
 import { useAccessActions } from './useAccessActions'

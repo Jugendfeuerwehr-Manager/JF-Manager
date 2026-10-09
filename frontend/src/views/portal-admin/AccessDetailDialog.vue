@@ -5,7 +5,7 @@
     <div v-else-if="store.detail" class="detail">
       <p class="detail__head">
         <StatusBadge :label="accessStateMeta[store.detail.state].label" :severity="accessStateMeta[store.detail.state].severity" :icon="accessStateMeta[store.detail.state].icon" />
-        <span v-if="store.detail.email">{{ store.detail.email }}</span>
+        <ContactLink v-if="store.detail.email" kind="email" :value="store.detail.email" />
         <span v-else class="muted"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> keine E-Mail hinterlegt</span>
       </p>
 
@@ -59,6 +59,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import ContactLink from '@/components/common/ContactLink.vue'
 import { usePortalAdminStore } from '@/stores/portalAdmin'
 import { accessStateMeta, formatDate, invitationStateMeta } from './accessState'
 

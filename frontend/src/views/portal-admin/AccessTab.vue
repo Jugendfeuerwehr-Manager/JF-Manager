@@ -29,7 +29,7 @@
         <span v-else class="row__check"></span>
         <div class="row__main">
           <button type="button" class="row__name" @click="openDetail(record)">{{ record.name }}</button>
-          <span v-if="record.email" class="row__mail">{{ record.email }}</span>
+          <span v-if="record.email" class="row__mail"><ContactLink kind="email" :value="record.email" /></span>
           <span v-else class="row__mail warn"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> keine E-Mail</span>
           <span v-if="record.children.length" class="row__children">Kinder: {{ record.children.join(', ') }}</span>
         </div>
@@ -62,6 +62,7 @@ import Paginator from 'primevue/paginator'
 import SegmentedControl from '@/components/common/SegmentedControl.vue'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import ContactLink from '@/components/common/ContactLink.vue'
 import type { AccessKind, AccessRecord, AccessState } from '@/api/portalAdmin'
 import { usePortalAdminStore } from '@/stores/portalAdmin'
 import AccessDetailDialog from './AccessDetailDialog.vue'

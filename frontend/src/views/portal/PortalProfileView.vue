@@ -8,6 +8,7 @@ import NotificationPreferences from '@/components/notifications/NotificationPref
 import PortalPushCard from '@/components/portal/PortalPushCard.vue'
 import MfaSettings from '@/components/MfaSettings.vue'
 import SessionDevices from '@/components/security/SessionDevices.vue'
+import ContactLink from '@/components/common/ContactLink.vue'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
@@ -46,7 +47,7 @@ async function changePassword() {
       <h2 id="acc">Zugang</h2>
       <dl>
         <dt>Name</dt><dd>{{ auth.userFullName || '–' }}</dd>
-        <dt>E-Mail</dt><dd>{{ auth.user?.email || auth.user?.username || '–' }}</dd>
+        <dt>E-Mail</dt><dd><ContactLink v-if="auth.user?.email" kind="email" :value="auth.user.email" /><span v-else>{{ auth.user?.username || '–' }}</span></dd>
       </dl>
     </section>
 

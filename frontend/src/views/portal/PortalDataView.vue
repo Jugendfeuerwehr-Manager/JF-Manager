@@ -6,6 +6,7 @@ import PortalChangeRequestBanner from '@/components/portal/PortalChangeRequestBa
 import PortalChangeRequestResult from '@/components/portal/PortalChangeRequestResult.vue'
 import PortalChangeRequestSheet from '@/components/portal/PortalChangeRequestSheet.vue'
 import PortalNotice from '@/components/portal/PortalNotice.vue'
+import ContactLink from '@/components/common/ContactLink.vue'
 import { useChangeRequestsStore } from '@/stores/changeRequests'
 import { usePortalStore } from '@/stores/portal'
 import type { ChangeTarget } from '@/types/changeRequests'
@@ -53,28 +54,31 @@ function monthYear(iso?: string | null) {
 const address = (c: { street: string, zip_code: string, city: string }) =>
   [c.street, [c.zip_code, c.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
-const contactRows = computed(() => {
+/** Rows with a contact kind render as tel:/mailto: links. */
+interface DataRow { label: string, value: string, kind?: 'phone' | 'email' }
+
+const contactRows = computed<DataRow[]>(() => {
   const c = data.value?.contact
   if (!c) return []
   return [
     { label: 'Name', value: `${c.first_name} ${c.last_name}`.trim() },
     ...(data.value?.birthday ? [{ label: 'Geburtstag', value: day(data.value.birthday) }] : []),
     { label: 'Adresse', value: address(c) },
-    { label: 'Telefon', value: c.phone },
-    { label: 'Mobil', value: c.mobile },
-    { label: 'E-Mail', value: c.email },
+    { label: 'Telefon', value: c.phone, kind: 'phone' as const },
+    { label: 'Mobil', value: c.mobile, kind: 'phone' as const },
+    { label: 'E-Mail', value: c.email, kind: 'email' as const },
   ].map(row => ({ ...row, value: row.value || '–' }))
 })
-const parentRows = computed(() => {
+const parentRows = computed<DataRow[]>(() => {
   const p = parent.value
   if (!p) return []
   return [
     { label: 'Name', value: `${p.first_name} ${p.last_name}`.trim() },
     { label: 'Adresse', value: address(p) },
-    { label: 'Telefon', value: p.phone },
-    { label: 'Mobil', value: p.mobile },
-    { label: 'E-Mail', value: p.email },
-    { label: 'Zweite E-Mail', value: p.email2 },
+    { label: 'Telefon', value: p.phone, kind: 'phone' as const },
+    { label: 'Mobil', value: p.mobile, kind: 'phone' as const },
+    { label: 'E-Mail', value: p.email, kind: 'email' as const },
+    { label: 'Zweite E-Mail', value: p.email2, kind: 'email' as const },
   ].map(row => ({ ...row, value: row.value || '–' }))
 })
 const groupText = computed(() => {
@@ -96,7 +100,7 @@ const period = (start?: string | null, end?: string | null) =>
         <span class="muted small">Elternteil</span>
       </div>
       <dl>
-        <div v-for="row in parentRows" :key="row.label"><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
+        <div v-for="row in parentRows" :key="row.label"><dt>{{ row.label }}</dt><dd><ContactLink v-if="row.kind" :kind="row.kind" :value="row.value === '–' ? '' : row.value" /><span v-else>{{ row.value }}</span></dd></div>
       </dl>
       <PortalChangeRequestBanner v-if="requests.openFor(parentTarget)" :request="requests.openFor(parentTarget)!" :busy="requests.busy" :error="requests.actionError" @edit="openForm(parentTarget)" @withdraw="withdraw(requests.openFor(parentTarget)!.id)" />
       <PortalChangeRequestResult v-else-if="requests.decidedFor(parentTarget)" :request="requests.decidedFor(parentTarget)!" />
@@ -125,7 +129,7 @@ const period = (start?: string | null, end?: string | null) =>
           <span class="muted small">Stand heute</span>
         </div>
         <dl>
-          <div v-for="row in contactRows" :key="row.label"><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
+          <div v-for="row in contactRows" :key="row.label"><dt>{{ row.label }}</dt><dd><ContactLink v-if="row.kind" :kind="row.kind" :value="row.value === '–' ? '' : row.value" /><span v-else>{{ row.value }}</span></dd></div>
         </dl>
         <Button :label="requests.openFor(memberTarget) ? 'Änderung beantragen (Antrag offen)' : 'Änderung beantragen'" severity="secondary" outlined :disabled="!!requests.openFor(memberTarget)" class="request" @click="openForm(memberTarget)" />
         <p class="muted small">Änderungen werden erst nach Freigabe durch die Jugendleitung übernommen.</p>
@@ -201,7 +205,12 @@ const period = (start?: string | null, end?: string | null) =>
         <ul v-else class="list">
           <li v-for="(o, i) in data.other_parents" :key="i">
             <span class="item-title">{{ o.name }}</span>
-            <span class="muted">{{ [o.phone, o.mobile].filter(Boolean).join(' · ') || '–' }}</span>
+            <span v-if="o.phone || o.mobile" class="muted">
+              <ContactLink v-if="o.phone" kind="phone" :value="o.phone" />
+              <template v-if="o.phone && o.mobile"> · </template>
+              <ContactLink v-if="o.mobile" kind="phone" :value="o.mobile" />
+            </span>
+            <span v-else class="muted">–</span>
           </li>
         </ul>
       </section>
