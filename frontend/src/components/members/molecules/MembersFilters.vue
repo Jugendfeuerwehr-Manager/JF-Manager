@@ -167,7 +167,8 @@ function onFilterChange() {
   .filter-search-field :deep(.p-inputtext),
   .filter-control :deep(.p-inputtext),
   .filter-control :deep(.p-dropdown) {
-    min-height: 2.35rem;
+    /* Same touch target as the other controls (DES-01: at least 44 px). */
+    min-height: var(--jf-touch-target);
   }
 
   .filter-search-field :deep(.p-iconfield .p-inputtext) {
