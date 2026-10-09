@@ -1,25 +1,25 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <h1>Ausbildungsplanung</h1>
-      <p class="text-color-secondary">Trainingsübungen planen und verwalten</p>
-    </div>
+  <div class="training-calendar-view">
+    <OverviewHeader title="Ausbildungsplanung" subtitle="Trainingsübungen planen und verwalten" />
     <TrainingCalendar />
   </div>
 </template>
 
 <script setup lang="ts">
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TrainingCalendar from '@/components/training/organisms/TrainingCalendar.vue'
 </script>
 
 <style scoped>
-.page-container { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
-.page-header { margin-bottom: 1.5rem; }
-.page-header h1 { margin: 0 0 0.25rem; }
+/* The app layout already pads and caps the content width; the calendar uses all of it. */
+.training-calendar-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 
-@media (max-width: 640px) {
-  .page-container { padding: 0.75rem; }
-  .page-header { margin-bottom: 0.75rem; }
-  .page-header h1 { font-size: 1.25rem; }
+.training-calendar-view :deep(.overview-header) {
+  margin-bottom: var(--jf-space-2);
+  padding-bottom: 0;
 }
 </style>
