@@ -197,6 +197,10 @@
             </dl>
           </section>
 
+          <section v-if="canLinkAccounts" class="detail-card aside-card">
+            <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
+          </section>
+
           <section class="detail-card aside-card" aria-labelledby="notes-heading">
             <div class="aside-card__title">
               <i class="pi pi-shield" aria-hidden="true"></i>
@@ -256,6 +260,7 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
+import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'
 import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
@@ -274,6 +279,8 @@ const route = useRoute()
 const confirm = useConfirm()
 const toast = useToast()
 const authStore = useAuthStore()
+// Account management links the member to the person's own staff account (PORTAL-04).
+const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuser'))
 
 const member = ref<Member | null>(null)
 const parents = ref<Parent[]>([])

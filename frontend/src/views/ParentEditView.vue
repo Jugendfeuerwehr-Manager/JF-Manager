@@ -12,6 +12,11 @@
     </div>
 
     <ParentPortalAccessCard v-if="isEditMode" :parent-id="Number(route.params.id)" />
+    <Card v-if="isEditMode && canLinkAccounts" class="account-link">
+      <template #content>
+        <AccountLinkCard kind="parent" :record-id="Number(route.params.id)" :record-name="`${formData.name} ${formData.lastname}`.trim()" />
+      </template>
+    </Card>
 
     <Card v-if="!loading || formData">
       <template #content>
@@ -183,6 +188,8 @@ import { useParentsStore } from '@/stores/parents'
 import { useMembersStore } from '@/stores/members'
 import Card from 'primevue/card'
 import ParentPortalAccessCard from '@/views/portal-admin/ParentPortalAccessCard.vue'
+import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
+import { useAuthStore } from '@/stores/auth'
 import Panel from 'primevue/panel'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -200,6 +207,8 @@ const membersStore = useMembersStore()
 const loading = ref(false)
 const saving = ref(false)
 const isEditMode = computed(() => !!route.params.id)
+// Account management links staff accounts to parent records (PORTAL-04, Q4).
+const canLinkAccounts = computed(() => useAuthStore().hasPerm('users.change_customuser'))
 
 const formData = reactive({
   name: '',
@@ -332,6 +341,10 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+
+.account-link {
+  margin-bottom: 1.5rem;
+}
 
 .panel {
   margin-bottom: 1.5rem;
