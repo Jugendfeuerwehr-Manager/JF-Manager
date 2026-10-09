@@ -259,6 +259,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { useInventoryStore } from '@/stores/inventory'
+import { getApiErrorMessage } from '@/utils/apiError'
 import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import StockBadge from '../atoms/StockBadge.vue'
 import type { BatchLoanResponse } from '@/types/inventory'
@@ -527,11 +528,11 @@ async function submit() {
       lines.value = [createLine()]
       selectedMember.value = currentMember
     }
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: 'Ausgabe fehlgeschlagen. Bitte versuchen Sie es erneut.',
+      detail: getApiErrorMessage(err, 'Ausgabe fehlgeschlagen. Bitte versuchen Sie es erneut.'),
       life: 5000
     })
   } finally {

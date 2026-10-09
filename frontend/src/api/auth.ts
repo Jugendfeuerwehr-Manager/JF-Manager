@@ -36,6 +36,7 @@ export interface SessionStatus {
   idle_timeout_seconds?: number
   /** Short session profile for accounts with mandatory MFA. */
   privileged_session?: boolean
+  account_kind?: 'staff' | 'portal'
 }
 
 export interface Passkey {

@@ -27,6 +27,14 @@ class QualificationType(models.Model):
         help_text="Standarddauer in Monaten (nur wenn 'Läuft ab' aktiviert ist)",
     )
     description = models.TextField(blank=True, verbose_name="Beschreibung")
+    includes = models.ManyToManyField(
+        "self",
+        symmetrical=False,
+        blank=True,
+        related_name="included_by",
+        verbose_name="Schließt ein",
+        help_text="Wer diese Qualifikation hat, erfüllt auch die hier gewählten (z. B. Truppführer schließt Truppmann ein)",
+    )
 
     def __str__(self):
         return self.name

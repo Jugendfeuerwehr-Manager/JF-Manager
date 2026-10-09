@@ -7,6 +7,8 @@ const { auth, sessionTimeout } = vi.hoisted(() => ({
   auth: { canAccessModule: vi.fn(() => true), logout: vi.fn() },
   sessionTimeout: vi.fn(),
 }))
+const { inbox } = vi.hoisted(() => ({ inbox: { counts: { total: 0 }, startPolling: vi.fn(), stopPolling: vi.fn() } }))
+vi.mock('@/stores/inbox', () => ({ useInboxStore: () => inbox }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => ({ activeDepartmentId: 1, departments: [{ id: 1 }] }) }))
 vi.mock('@/composables/useAppSettings', () => ({ useAppSettings: () => ({ websiteTitle: 'JF-Manager' }) }))
@@ -16,6 +18,7 @@ const route = vi.hoisted(() => ({ path: '/members', meta: {} as Record<string, u
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn() }) }))
 
 const stubs = {
+  StaffNotificationBell: { template: '<button class="bell-stub" />' },
   AppTopbar: { template: '<div class="topbar-stub" />' },
   ModuleNavigation: { template: '<nav class="module-nav-stub" />' },
   DepartmentSwitcher: { props: { compact: Boolean }, template: '<div class="dept-stub" :data-compact="compact" />' },
@@ -46,6 +49,7 @@ describe('App layout shell', () => {
     expect(toolbar.find('button[aria-label="Alle Module öffnen"]').exists()).toBe(true)
     expect(wrapper.find('.mobile-bottom-nav a[href="/members"]').attributes('aria-current')).toBe('page')
     expect(wrapper.find('.desktop-sidebar').exists()).toBe(false)
+    expect(toolbar.find('.bell-stub').exists()).toBe(true)
   })
 
   it('keeps a permanent navigation on desktop', () => {
@@ -72,5 +76,14 @@ describe('App layout shell', () => {
     expect(wrapper.find('.desktop-sidebar').exists()).toBe(false)
     expect(wrapper.get('.layout-wrapper').classes()).toContain('layout-wrapper--nav-hidden')
     expect(wrapper.get('.layout-content').classes()).toContain('layout-content--full-width')
+  })
+
+  it('lifts the content width cap only for wide routes', () => {
+    expect(renderAt(1920).get('.layout-content').classes()).not.toContain('layout-content--wide')
+    route.path = '/training'
+    route.meta = { wide: true }
+    const classes = renderAt(1920).get('.layout-content').classes()
+    expect(classes).toContain('layout-content--wide')
+    expect(classes).not.toContain('layout-content--full-width')
   })
 })

@@ -18,6 +18,18 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/passwort-festlegen',
+      name: 'portal-invitation-accept',
+      component: () => import('@/views/portal/InvitationAcceptView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/a/:token',
+      name: 'quick-action',
+      component: () => import('@/views/ActionLandingView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/PasswordResetRequestView.vue'),
@@ -102,6 +114,17 @@ const router = createRouter({
           name: 'parent-edit',
           component: () => import('@/views/ParentEditView.vue')
         },
+        {
+          path: 'portal-verwaltung',
+          name: 'portal-admin',
+          component: () => import('@/views/portal-admin/PortalAdminView.vue'),
+          meta: { requiresPerm: 'portal.invite_portal_account' }
+        },
+        {
+          path: 'eingang',
+          name: 'inbox',
+          component: () => import('@/views/InboxView.vue')
+        },
         // Emails
         {
           path: 'emails/compose',
@@ -133,6 +156,11 @@ const router = createRouter({
           path: 'servicebook/:id/edit',
           name: 'service-edit',
           component: () => import('@/views/ServiceFormView.vue')
+        },
+        {
+          path: 'servicebook/:id(\\d+)',
+          name: 'service-detail',
+          component: () => import('@/views/ServiceAttendanceView.vue')
         },
         {
           path: 'servicebook/:id/attendance',
@@ -260,6 +288,28 @@ const router = createRouter({
           name: 'specialtask-detail',
           component: () => import('@/views/qualifications/SpecialTaskDetailView.vue')
         },
+        // E-mail template editors: workspaces outside the settings layout, so they can use the full width.
+        {
+          path: 'settings/email-templates/new',
+          name: 'email-template-new',
+          component: () => import('@/views/EmailTemplateEditorView.vue'),
+          meta: { requiresSettings: true, fullWidth: true, workspace: true },
+          props: { templateId: null }
+        },
+        {
+          path: 'settings/email-templates/:id(\\d+)',
+          name: 'email-template-edit',
+          component: () => import('@/views/EmailTemplateEditorView.vue'),
+          meta: { requiresSettings: true, fullWidth: true, workspace: true },
+          props: (route) => ({ templateId: Number(route.params.id) })
+        },
+        {
+          path: 'settings/email-layouts/:layoutType(general|important|events)',
+          name: 'email-layout-edit',
+          component: () => import('@/views/EmailLayoutEditorView.vue'),
+          meta: { requiresSettings: true, fullWidth: true, workspace: true },
+          props: true
+        },
         {
           path: 'settings',
           component: () => import('@/views/SettingsView.vue'),
@@ -362,7 +412,9 @@ const router = createRouter({
         {
           path: 'training',
           name: 'training',
-          component: () => import('@/views/training/TrainingCalendarView.vue')
+          component: () => import('@/views/training/TrainingCalendarView.vue'),
+          // UX-09: the month view uses the full width of large screens.
+          meta: { wide: true }
         },
         {
           path: 'training/library',
@@ -392,6 +444,19 @@ const router = createRouter({
       meta: { requiresAuth: true },
       props: (route) => ({ sessionId: Number(route.params.id) })
     },
+    // Portal for parents and members; separate shell, no staff modules
+    {
+      path: '/portal',
+      component: () => import('@/views/portal/PortalLayout.vue'),
+      meta: { requiresAuth: true, portal: true },
+      children: [
+        { path: '', name: 'portal-home', component: () => import('@/views/portal/PortalHomeView.vue') },
+        { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalSessionsView.vue') },
+        { path: 'termine/:id(\\d+)', name: 'portal-session', component: () => import('@/views/portal/PortalSessionDetailView.vue'), props: route => ({ id: Number(route.params.id) }) },
+        { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalDataView.vue') },
+        { path: 'profil', name: 'portal-profile', component: () => import('@/views/portal/PortalProfileView.vue') }
+      ]
+    },
     // Mobile training planner — full-screen, no shell chrome
     {
       path: '/training/sessions/:id/mobile',
@@ -412,6 +477,11 @@ router.beforeEach(async (to, from, next) => {
   if (requiresAuth && !authStore.isAuthenticated) {
     next(to.fullPath === '/' ? '/login' : { path: '/login', query: { next: to.fullPath } })
   } else if (to.path === '/login' && authStore.isAuthenticated) {
+    next(authStore.isPortalAccount ? '/portal' : '/')
+  } else if (authStore.isAuthenticated && authStore.isPortalAccount && requiresAuth && !to.matched.some(r => r.meta.portal)) {
+    // Portal accounts never see staff routes.
+    next('/portal')
+  } else if (authStore.isAuthenticated && !authStore.isPortalAccount && to.matched.some(r => r.meta.portal)) {
     next('/')
   } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
     // Accounts with mandatory MFA can only reach the setup until it is done.
@@ -433,7 +503,7 @@ router.beforeEach(async (to, from, next) => {
   } else {
     // Load settings if authenticated and not already loaded. Accounts that must
     // still set up MFA get 403 for everything except the setup itself.
-    if (authStore.isAuthenticated && !authStore.mfaSetupRequired && !settingsStore.general) {
+    if (authStore.isAuthenticated && !authStore.mfaSetupRequired && !authStore.isPortalAccount && !settingsStore.general) {
       try {
         await settingsStore.fetchPermissions()
         if (settingsStore.canViewCategory('general')) {

@@ -36,6 +36,8 @@ class PushSubscriptionView(APIView):
                 "subscribed": bool(subscription),
                 "services": subscription.services if subscription else True,
                 "orders": subscription.orders if subscription else True,
+                "requests": subscription.requests if subscription else True,
+                "participation": subscription.participation if subscription else True,
             }
         )
 
@@ -45,6 +47,7 @@ class PushSubscriptionView(APIView):
         serializer = SubscriptionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        portal = request.user.is_portal_account
         try:
             with transaction.atomic():
                 subscription = PushSubscription.objects.select_for_update().filter(endpoint=data["endpoint"]).first()
@@ -58,8 +61,11 @@ class PushSubscriptionView(APIView):
                         "user": request.user,
                         "p256dh": data["keys"]["p256dh"],
                         "auth": data["keys"]["auth"],
-                        "services": data["services"],
-                        "orders": data["orders"],
+                        # Portal accounts only receive participation news (NOTIF-01.5).
+                        "services": data["services"] and not portal,
+                        "orders": data["orders"] and not portal,
+                        "requests": data["requests"] and not portal,
+                        "participation": data["participation"],
                     },
                 )
         except IntegrityError:

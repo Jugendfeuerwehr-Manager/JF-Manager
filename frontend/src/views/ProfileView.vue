@@ -29,7 +29,8 @@
               </div>
               <div class="info-item">
                 <label>E-Mail</label>
-                <span>{{ user.email || 'Nicht angegeben' }}</span>
+                <ContactLink v-if="user.email" kind="email" :value="user.email" />
+                <span v-else>Nicht angegeben</span>
               </div>
               <div class="info-item">
                 <label>Anmeldemethode</label>
@@ -75,6 +76,9 @@
           <Divider />
 
           <DeviceSettings />
+          <Divider />
+
+          <NotificationPreferences />
           <Divider />
 
           <!-- Email Signature -->
@@ -164,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
@@ -179,6 +184,7 @@ import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
 import { userApi } from '@/api/user'
 import DeviceSettings from '@/components/DeviceSettings.vue'
+import NotificationPreferences from '@/components/notifications/NotificationPreferences.vue'
 import MfaSettings from '@/components/MfaSettings.vue'
 import SessionDevices from '@/components/security/SessionDevices.vue'
 import { useRoute } from 'vue-router'

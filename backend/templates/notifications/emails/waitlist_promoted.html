@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>{{ person.first_name }} ist für <strong>{{ session.title }}</strong> am {{ session.date }}, {{ session.time }} von der Warteliste nachgerückt und jetzt angemeldet.{% if session.place %} Ort: {{ session.place }}.{% endif %}</p>
+{% if session.public_note %}<p>Hinweis: {{ session.public_note }}</p>{% endif %}
+<p>Falls {{ person.first_name }} doch nicht kann, melde bitte bis {{ deadlines.cancellation }} ab, damit die nächste Person nachrücken kann.</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

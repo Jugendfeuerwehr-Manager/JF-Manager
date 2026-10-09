@@ -13,6 +13,8 @@ const enabled = ref(false)
 const subscribed = ref(false)
 const services = ref(true)
 const orders = ref(true)
+const requests = ref(true)
+const participation = ref(true)
 const loading = ref(true)
 const busy = ref(false)
 const feedback = ref('')
@@ -44,7 +46,7 @@ async function save() {
     const decoded = atob(publicKey.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - publicKey.length % 4) % 4))
     const key = Uint8Array.from(decoded, (character) => character.charCodeAt(0))
     subscription ??= await worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
-    await api.post('/push/subscription/', { ...subscription.toJSON(), services: services.value, orders: orders.value })
+    await api.post('/push/subscription/', { ...subscription.toJSON(), services: services.value, orders: orders.value, requests: requests.value, participation: participation.value })
     localStorage.setItem('pushOwner', String(auth.user?.id))
     subscribed.value = true
     feedback.value = 'Push-Mitteilungen sind auf diesem Gerät aktiviert.'
@@ -78,6 +80,8 @@ onMounted(async () => {
       subscribed.value = status.subscribed
       services.value = status.services
       orders.value = status.orders
+      requests.value = status.requests ?? true
+      participation.value = status.participation ?? true
     }
   } catch {
     failed.value = true
@@ -99,6 +103,8 @@ onMounted(async () => {
     <div v-else-if="!loading" class="push-controls">
       <label><Checkbox v-model="services" binary :disabled="busy" /> Dienste</label>
       <label><Checkbox v-model="orders" binary :disabled="busy" /> Bestellungen</label>
+      <label><Checkbox v-model="requests" binary :disabled="busy" /> Anträge</label>
+      <label><Checkbox v-model="participation" binary :disabled="busy" /> Teilnahme</label>
       <div class="actions">
         <Button :label="subscribed ? 'Auswahl speichern' : 'Mitteilungen aktivieren'" icon="pi pi-bell" :loading="busy" @click="save" />
         <Button v-if="subscribed" label="Test senden" severity="secondary" :disabled="busy" @click="test" />

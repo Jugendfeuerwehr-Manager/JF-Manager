@@ -8,18 +8,20 @@
         <DepartmentSwitcher compact />
         <router-link v-if="!departmentsStore.departments.length" to="/" class="mobile-title">{{ websiteTitle }}</router-link>
       </div>
+      <StaffNotificationBell />
       <Button icon="pi pi-user" text rounded aria-label="Benutzermenü öffnen" aria-haspopup="menu" @click="toggleUserMenu" />
     </header>
 
     <aside v-if="!isMobile && !workspaceNavHidden" class="desktop-sidebar"><ModuleNavigation /></aside>
     <main id="main-content" tabindex="-1" class="layout-main">
-      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') || route.meta.fullWidth }">
+      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') || route.meta.fullWidth, 'layout-content--wide': route.meta.wide }">
         <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" />
       </div>
     </main>
 
     <nav v-if="isMobile" class="mobile-bottom-nav" aria-label="Schnellzugriff">
       <router-link to="/" :aria-current="route.path === '/' ? 'page' : undefined"><i class="pi pi-home" aria-hidden="true"></i><span>Übersicht</span></router-link>
+      <router-link to="/eingang" class="bottom-inbox" :aria-current="route.path.startsWith('/eingang') ? 'page' : undefined" :aria-label="inbox.counts.total ? `Eingang, ${inbox.counts.total} offen` : 'Eingang'"><i class="pi pi-inbox" aria-hidden="true"></i><span>Eingang</span><b v-if="inbox.counts.total > 0" class="bottom-badge" aria-hidden="true">{{ inbox.counts.total }}</b></router-link>
       <router-link v-if="authStore.canAccessModule('view_member')" to="/members" :aria-current="route.path.startsWith('/members') ? 'page' : undefined"><i class="pi pi-users" aria-hidden="true"></i><span>Mitglieder</span></router-link>
       <router-link v-if="authStore.canAccessModule('view_service')" to="/servicebook" :aria-current="route.path.startsWith('/servicebook') ? 'page' : undefined"><i class="pi pi-book" aria-hidden="true"></i><span>Dienstbuch</span></router-link>
       <button type="button" aria-controls="module-drawer" :aria-expanded="navigationVisible" @click="navigationVisible = true"><i class="pi pi-th-large" aria-hidden="true"></i><span>Alle Module</span></button>
@@ -42,10 +44,12 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
+import { useInboxStore } from '@/stores/inbox'
 import { useAppSettings } from '@/composables/useAppSettings'
 import { useTheme } from '@/composables/useTheme'
 import AppTopbar from './AppTopbar.vue'
 import ModuleNavigation from './ModuleNavigation.vue'
+import StaffNotificationBell from '@/components/notifications/StaffNotificationBell.vue'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import Menu from 'primevue/menu'
@@ -57,6 +61,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()
+const inbox = useInboxStore()
 useSessionTimeout()
 const { navHidden } = useWorkspaceNavigation()
 /** Only workspace routes honour the hidden navigation, so it never goes missing elsewhere. */
@@ -81,8 +86,8 @@ function toggleUserMenu(event: Event) { userMenu.value.toggle(event) }
 function handleLogout() { navigationVisible.value = false; void authStore.logout() }
 function handleResize() { isMobile.value = window.innerWidth < 1024; if (!isMobile.value) navigationVisible.value = false }
 watch(() => route.path, () => { navigationVisible.value = false })
-onMounted(() => { window.addEventListener('resize', handleResize) })
-onUnmounted(() => { window.removeEventListener('resize', handleResize) })
+onMounted(() => { window.addEventListener('resize', handleResize); inbox.startPolling() })
+onUnmounted(() => { window.removeEventListener('resize', handleResize); inbox.stopPolling() })
 </script>
 <style scoped>
 .layout-wrapper { --topbar-height: 64px; --sidebar-width: 248px; --mobile-bar-height: 56px; min-height: 100dvh; background: var(--jf-color-ground); }
@@ -94,12 +99,16 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize) })
 .layout-wrapper--nav-hidden { --sidebar-width: 0px; }
 .layout-content { padding: var(--jf-space-3) var(--jf-space-4); max-width: 1600px; margin: 0 auto; }
 .layout-content--full-width { max-width: none; padding: 0; }
+/* Wide pages (e.g. the training calendar) keep the padding but use large screens fully. */
+.layout-content--wide { max-width: none; }
 .mobile-toolbar { position: fixed; inset: 0 0 auto; height: var(--mobile-bar-height); z-index: 1000; background: var(--jf-color-card); border-bottom: 1px solid var(--jf-color-border); display: flex; align-items: center; padding: 0 var(--jf-space-0-5); gap: var(--jf-space-0-5); }
 .mobile-context { flex: 1; min-width: 0; display: flex; justify-content: center; }
 .mobile-context :deep(.department-switcher) { min-width: 0; max-width: 100%; }
 .mobile-title { font-weight: var(--jf-weight-bold); font-size: var(--jf-text-md); color: var(--jf-color-text); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mobile-bottom-nav { position: fixed; inset: auto 0 0; z-index: 1000; display: flex; justify-content: space-around; background: var(--jf-color-card); border-top: 1px solid var(--jf-color-border); padding: var(--jf-space-0-5) var(--jf-space-0-5) calc(var(--jf-space-0-5) + env(safe-area-inset-bottom, 0px)); }
 .mobile-bottom-nav a, .mobile-bottom-nav button { display: flex; flex: 1; align-items: center; justify-content: center; flex-direction: column; gap: var(--jf-space-0-5); min-height: 52px; border-radius: var(--jf-radius-md); color: var(--jf-color-text-muted); text-decoration: none; font: inherit; font-size: var(--jf-text-xs); font-weight: var(--jf-weight-medium); border: 0; background: transparent; cursor: pointer; }
+.mobile-bottom-nav .bottom-inbox { position: relative; }
+.bottom-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: var(--jf-color-primary); color: var(--jf-color-on-primary); font-size: var(--jf-text-xs); font-weight: var(--jf-weight-bold); }
 .mobile-bottom-nav i { font-size: 1.25rem; }
 .mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav [aria-expanded="true"] { color: var(--jf-color-primary); font-weight: var(--jf-weight-bold); }
 .mobile-bottom-nav [aria-current="page"] i { background: var(--jf-color-selected); border-radius: 999px; padding: 2px var(--jf-space-2); }

@@ -38,7 +38,6 @@
   "/src/components/training/molecules/AssetPanel.vue": 1,
   "/src/components/training/molecules/LibraryBlockCard.vue": 1,
   "/src/components/training/molecules/MobileBlockDetailSheet.vue": 6,
-  "/src/components/training/organisms/TrainingCalendar.vue": 6,
   "/src/components/training/organisms/TrainingHandout.vue": 33,
   "/src/views/EmailComposeView.vue": 6,
   "/src/views/EmailHistoryView.vue": 1,

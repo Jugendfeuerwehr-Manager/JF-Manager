@@ -359,4 +359,20 @@ const genderStats = computed(() => {
   max-height: 0;
   opacity: 0;
 }
+
+@media (max-width: 480px) {
+  /* header padding 0.85rem/1.25rem -> 0.25rem/0.75rem, still >= 44px high */
+  .stats-panel__header {
+    min-height: var(--jf-touch-target);
+    padding: var(--jf-space-0-5) var(--jf-space-1-5);
+  }
+
+  .stats-panel__content {
+    padding: var(--jf-space-1-5);
+  }
+
+  .stats-grid {
+    gap: var(--jf-space-1-5);
+  }
+}
 </style>

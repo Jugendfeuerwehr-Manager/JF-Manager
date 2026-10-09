@@ -12,6 +12,7 @@
         <div class="topbar-end">
           <!-- Department switcher -->
           <DepartmentSwitcher />
+          <StaffNotificationBell />
           <!-- Dark/Light/System mode toggle -->
           <div class="theme-toggle" role="group" aria-label="Theme wählen">
             <Button
@@ -79,6 +80,7 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Toolbar from 'primevue/toolbar'
 import type { MenuItem } from 'primevue/menuitem'
+import StaffNotificationBell from '@/components/notifications/StaffNotificationBell.vue'
 import DepartmentSwitcher from '@/components/departments/atoms/DepartmentSwitcher.vue'
 
 const router = useRouter()

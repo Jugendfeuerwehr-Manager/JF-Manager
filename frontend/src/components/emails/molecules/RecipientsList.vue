@@ -25,7 +25,9 @@
           :loading="loading"
         >
           <Column field="name" header="Name" sortable />
-          <Column field="email" header="E-Mail" sortable />
+          <Column field="email" header="E-Mail" sortable>
+            <template #body="{ data }"><ContactLink kind="email" :value="data.email" /></template>
+          </Column>
           <Column field="source" header="Quelle" sortable>
             <template #body="{ data }">
               <Tag
@@ -41,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { ref } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'

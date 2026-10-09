@@ -22,6 +22,8 @@ class SubscriptionSerializer(serializers.Serializer):
     keys = serializers.DictField(child=serializers.CharField(max_length=200))
     services = serializers.BooleanField(default=True)
     orders = serializers.BooleanField(default=True)
+    requests = serializers.BooleanField(default=True)
+    participation = serializers.BooleanField(default=True)
 
     def validate_keys(self, value):
         for name, length in (("p256dh", 65), ("auth", 16)):

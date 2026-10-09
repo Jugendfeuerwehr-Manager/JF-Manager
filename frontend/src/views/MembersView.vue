@@ -276,5 +276,22 @@ const handleExportExcel = async (columns: string[]) => {
   text-decoration: none;
   box-shadow: var(--jf-shadow-lg);
 }
+
+@media (max-width: 480px) {
+  /* gap between header, filters, stats and list: 1rem -> 0.5rem */
+  .members-view {
+    gap: var(--jf-space-1);
+  }
+
+  /* header: padding-bottom 1.5rem -> 0.25rem, gaps 1.5rem -> 0.5rem */
+  .members-view :deep(.overview-header) {
+    gap: var(--jf-space-1);
+    padding: 0;
+  }
+
+  .members-view :deep(.overview-header__subtitle) {
+    font-size: var(--jf-text-sm);
+  }
+}
 </style>
 

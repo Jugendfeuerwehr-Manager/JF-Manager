@@ -73,6 +73,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "department_roles",
             "has_org_wide_access",
             "favorite_department",
+            "account_kind",
         ]
         read_only_fields = [
             "id",
@@ -88,7 +89,21 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "department_roles",
             "has_org_wide_access",
             "auth_source",
+            "account_kind",
         ]
+
+    # Portal accounts (PORTAL-01.5) only choose their theme; contact data lives on the
+    # parent/member record and changes through reviewed change requests (E2, PORTAL-03).
+    PORTAL_WRITABLE_FIELDS = frozenset({"theme_mode"})
+
+    def validate(self, attrs):
+        if self.instance is not None and self.instance.is_portal_account:
+            blocked = sorted(set(attrs) - self.PORTAL_WRITABLE_FIELDS)
+            if blocked:
+                raise serializers.ValidationError(
+                    {field: "Mit einem Portalzugang nicht änderbar." for field in blocked}
+                )
+        return super().validate(attrs)
 
     def validate_email(self, value):
         if self.instance and self.instance.auth_source != "local" and value != self.instance.email:

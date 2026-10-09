@@ -27,7 +27,7 @@
             <i class="pi pi-envelope"></i>
             E-Mail
           </span>
-          <span class="mobile-entity-card__value">{{ parent.email || '-' }}</span>
+          <span class="mobile-entity-card__value"><ContactLink kind="email" :value="parent.email" /></span>
         </div>
 
         <div class="mobile-entity-card__row">
@@ -35,7 +35,7 @@
             <i class="pi pi-phone"></i>
             Telefon
           </span>
-          <span class="mobile-entity-card__value">{{ parent.phone || '-' }}</span>
+          <span class="mobile-entity-card__value"><ContactLink kind="phone" :value="parent.phone" /></span>
         </div>
 
         <div class="mobile-entity-card__row">
@@ -43,7 +43,7 @@
             <i class="pi pi-mobile"></i>
             Mobil
           </span>
-          <span class="mobile-entity-card__value">{{ parent.mobile || '-' }}</span>
+          <span class="mobile-entity-card__value"><ContactLink kind="phone" :value="parent.mobile" /></span>
         </div>
 
         <div v-if="parentAddress" class="mobile-entity-card__row">
@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { computed } from 'vue'
 import type { Parent } from '@/types/api'
 import Card from 'primevue/card'

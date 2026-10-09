@@ -1,25 +1,35 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <h1>Ausbildungsplanung</h1>
-      <p class="text-color-secondary">Trainingsübungen planen und verwalten</p>
-    </div>
+  <div class="training-calendar-view">
+    <OverviewHeader title="Ausbildungsplanung" subtitle="Trainingsübungen planen und verwalten" />
     <TrainingCalendar />
   </div>
 </template>
 
 <script setup lang="ts">
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import TrainingCalendar from '@/components/training/organisms/TrainingCalendar.vue'
 </script>
 
 <style scoped>
-.page-container { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
-.page-header { margin-bottom: 1.5rem; }
-.page-header h1 { margin: 0 0 0.25rem; }
+/*
+ * The route is marked wide (no 1600 px cap, UX-09); the calendar uses the full width
+ * and on desktops the remaining screen height below the top bar.
+ */
+.training-calendar-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 
-@media (max-width: 640px) {
-  .page-container { padding: 0.75rem; }
-  .page-header { margin-bottom: 0.75rem; }
-  .page-header h1 { font-size: 1.25rem; }
+@media (min-width: 1024px) {
+  /* A definite height lets the month rows share the screen; the list keeps growing. */
+  .training-calendar-view:has(.cal-grid) {
+    height: calc(100dvh - var(--topbar-height, 64px) - 2 * var(--jf-space-3));
+  }
+}
+
+.training-calendar-view :deep(.overview-header) {
+  margin-bottom: var(--jf-space-2);
+  padding-bottom: 0;
 }
 </style>

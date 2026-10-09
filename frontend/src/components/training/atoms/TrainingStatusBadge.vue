@@ -1,14 +1,12 @@
 <template>
-  <StatusBadge :label="states[status].label" :severity="states[status].severity" />
+  <StatusBadge :label="meta.label" :severity="meta.severity" :icon="meta.icon" />
 </template>
 <script setup lang="ts">
-import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'
+import { computed } from 'vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import type { TrainingStatus } from '@/types/training'
-withDefaults(defineProps<{ status?: TrainingStatus }>(), { status: 'draft' })
-const states: Record<TrainingStatus, { label: string; severity: StatusSeverity }> = {
-  draft: { label: 'Entwurf', severity: 'neutral' },
-  published: { label: 'Veröffentlicht', severity: 'info' },
-  completed: { label: 'Abgeschlossen', severity: 'success' },
-  cancelled: { label: 'Abgesagt', severity: 'danger' },
-}
+import { trainingStatusMeta } from '../utils/trainingStatus'
+
+const props = withDefaults(defineProps<{ status?: TrainingStatus }>(), { status: 'draft' })
+const meta = computed(() => trainingStatusMeta(props.status))
 </script>

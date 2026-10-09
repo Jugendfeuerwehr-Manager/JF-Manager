@@ -157,6 +157,26 @@ describe('Auth Store', () => {
       expect(store.mfaSetupRequired).toBe(true)
     })
 
+    it('isPortalAccount follows the user, falling back to the session', () => {
+      const store = useAuthStore()
+      expect(store.isPortalAccount).toBe(false)
+      store.session = { authenticated: true, account_kind: 'portal' }
+      expect(store.isPortalAccount).toBe(true)
+      store.user = createMockUser({ account_kind: 'staff' })
+      expect(store.isPortalAccount).toBe(false)
+      store.user = createMockUser({ account_kind: 'portal' })
+      expect(store.isPortalAccount).toBe(true)
+    })
+
+    it('fetchUser skips departments for portal accounts', async () => {
+      const store = useAuthStore()
+      vi.mocked(userApi.me).mockResolvedValue(createMockAxiosResponse(createMockUser({ account_kind: 'portal' })))
+      await store.fetchUser()
+      expect(store.user?.account_kind).toBe('portal')
+      expect(mockFetchDepartments).not.toHaveBeenCalled()
+      expect(mockInitializeActiveDepartment).not.toHaveBeenCalled()
+    })
+
     it('userFullName returns user full name', () => {
       const store = useAuthStore()
       store.user = createMockUser({ full_name: 'Test User' })

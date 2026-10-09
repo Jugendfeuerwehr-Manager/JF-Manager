@@ -10,11 +10,10 @@ export const userApi = {
   },
 
   /**
-   * Update current user profile
+   * Update current user profile (also the only profile route open to portal accounts)
    */
   async updateProfile(data: Partial<UserInfo>) {
-    const user = await this.me()
-    return apiClient.patch<UserInfo>(`/users/${user.data.id}/`, data)
+    return apiClient.patch<UserInfo>('/users/me/', data)
   }
 }
 

@@ -1,38 +1,29 @@
 <template>
-  <div>
-    <Message v-if="variables?.warning" severity="warn" :closable="false" class="mb-3">
+  <div class="template-variables">
+    <Message v-if="variables?.warning" severity="warn" :closable="false">
       {{ variables.warning }}
     </Message>
-    
-    <div v-if="variables && variables.variables.length > 0" class="variables-list">
-      <div
-        v-for="variable in variables.variables"
-        :key="variable.name"
-        class="variable-item"
-      >
-        <code class="variable-name">{{ formatVariableName(variable.name) }}</code>
-        <div class="variable-details">
-          <span class="variable-type">{{ variable.type }}</span>
-          <span class="variable-description">{{ variable.description }}</span>
-        </div>
-        <div v-if="variable.properties" class="variable-properties">
-          <small>Eigenschaften:</small>
+
+    <ul v-if="variables && variables.variables.length > 0" class="template-variables__list">
+      <li v-for="variable in variables.variables" :key="variable.name" class="template-variables__item">
+        <code class="template-variables__name">{{ formatVariableName(variable.name) }}</code>
+        <p class="template-variables__description">
+          <span class="template-variables__type">{{ variable.type }}</span>
+          {{ variable.description }}
+        </p>
+        <details v-if="variable.properties" class="template-variables__properties">
+          <summary>{{ variable.properties.length }} Eigenschaften</summary>
           <ul>
             <li v-for="prop in variable.properties" :key="prop">
               <code>{{ formatVariableProperty(variable.name, prop) }}</code>
             </li>
           </ul>
-        </div>
-      </div>
-    </div>
-    
-    <div v-else-if="!variables" class="empty-state">
-      <p class="text-sm">Wählen Sie einen Vorlagentyp aus</p>
-    </div>
-    
-    <div v-else class="empty-state">
-      <p class="text-sm">Keine Variablen für diesen Vorlagentyp definiert</p>
-    </div>
+        </details>
+      </li>
+    </ul>
+
+    <p v-else-if="!variables" class="template-variables__empty">Wählen Sie einen Vorlagentyp aus.</p>
+    <p v-else class="template-variables__empty">Für diesen Vorlagentyp sind keine Variablen definiert.</p>
   </div>
 </template>
 
@@ -56,87 +47,86 @@ function formatVariableProperty(name: string, prop: string): string {
 </script>
 
 <style scoped>
-.variables-list {
+.template-variables {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--jf-space-1-5);
 }
 
-.variable-item {
-  padding: 0.75rem;
-  background-color: var(--p-surface-50);
-  border-radius: var(--p-content-border-radius);
-}
-
-.variable-name {
-  display: block;
-  padding: 0.25rem 0.5rem;
-  background-color: var(--p-surface-100);
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.85rem;
-  margin-bottom: 0.5rem;
-  color: var(--p-primary-color);
-  font-weight: 600;
-  word-break: break-all;
-}
-
-.variable-details {
+.template-variables__list {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.variable-type {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--p-text-muted-color);
-}
-
-.variable-description {
-  font-size: 0.85rem;
-}
-
-.variable-properties {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--p-content-border-color);
-}
-
-.variable-properties small {
-  font-weight: 600;
-  color: var(--p-text-muted-color);
-}
-
-.variable-properties ul {
-  list-style: none;
-  padding: 0;
-  margin: 0.5rem 0 0 0;
-}
-
-.variable-properties li {
-  margin-bottom: 0.25rem;
-}
-
-.variable-properties code {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.25rem;
-  background-color: var(--p-surface-100);
-  border-radius: 2px;
-  word-break: break-all;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  text-align: center;
-  color: var(--p-text-muted-color);
-}
-
-.empty-state p {
+  gap: var(--jf-space-1);
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.template-variables__item {
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-card);
+}
+
+code {
+  font-family: var(--jf-font-mono);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.template-variables__name {
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-primary);
+}
+
+.template-variables__description {
+  margin: var(--jf-space-0-5) 0 0;
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text);
+}
+
+.template-variables__type {
+  margin-right: var(--jf-space-0-5);
+  padding: 0 6px;
+  border-radius: var(--jf-radius-sm);
+  background: var(--jf-color-ground);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text-muted);
+}
+
+.template-variables__properties {
+  margin-top: var(--jf-space-1);
+  font-size: var(--jf-text-sm);
+}
+
+.template-variables__properties summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--jf-color-text-muted);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.template-variables__properties ul {
+  margin: var(--jf-space-0-5) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.template-variables__properties code { font-size: var(--jf-text-xs); }
+
+.template-variables__empty {
+  margin: 0;
+  padding: var(--jf-space-3) var(--jf-space-2);
+  text-align: center;
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
 }
 </style>

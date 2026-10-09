@@ -1,0 +1,4 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>{{ link.linked_by }} hat dein Konto mit dem Mitgliedsdatensatz <strong>{{ link.member_name }}</strong> verknüpft. Die Verknüpfung wirkt erst, wenn du sie nach der Anmeldung bestätigst.</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

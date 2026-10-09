@@ -11,6 +11,9 @@ export interface QualificationType {
   expires: boolean
   validity_period: number | null
   description: string
+  /** E18: ids of the types a holder of this type also satisfies */
+  includes?: number[]
+  includes_detail?: { id: number; name: string }[]
 }
 
 export interface Qualification {
@@ -128,6 +131,7 @@ export interface QualificationTypeCreate {
   expires: boolean
   validity_period?: number | null
   description?: string
+  includes?: number[]
 }
 
 export interface QualificationTypeUpdate {
@@ -135,6 +139,7 @@ export interface QualificationTypeUpdate {
   expires?: boolean
   validity_period?: number | null
   description?: string
+  includes?: number[]
 }
 
 export interface SpecialTaskTypeCreate {

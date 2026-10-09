@@ -154,7 +154,12 @@ def reset(confirm):
     manage("migrate", "--verbosity", "0")
     password = secrets.token_urlsafe(12)
     manage("seed_demo", "--password", password)
-    LOGIN_FILE.write_text(f"Benutzer: admin (und weitere, siehe oben)\nPasswort: {password}\n", encoding="utf-8")
+    LOGIN_FILE.write_text(
+        "Benutzer: admin (und weitere, siehe oben)\n"
+        "Portal: eltern@demo.example.invalid, mitglied@demo.example.invalid\n"
+        f"Passwort: {password}\n",
+        encoding="utf-8",
+    )
     os.chmod(LOGIN_FILE, 0o600)
     print(f"Zugang gespeichert in backend/{LOGIN_FILE.name} (nur lokal, nicht versioniert).")
     return check()

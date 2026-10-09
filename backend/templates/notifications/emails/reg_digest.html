@@ -1,0 +1,5 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>heute gab es {{ counts.total }} Meldung{{ counts.total|pluralize:"en" }} zu deinen Diensten:</p>
+<ul>{% for s in sessions %}<li><strong>{{ s.title }}</strong> ({{ s.date }}): {% for key, value in s.counts.items %}{{ value }} {{ key }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>{% endfor %}</ul>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

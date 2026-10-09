@@ -1,0 +1,272 @@
+"""PORTAL-03.1: change request model, validation and one open request per target."""
+
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
+from django.test import TestCase
+
+from members.models import Member, Parent
+from portal import change_requests as cr
+from portal.models import ChangeRequest
+
+User = get_user_model()
+
+
+class ValidationTests(TestCase):
+    def test_html_and_control_characters_are_removed(self):
+        cleaned = cr.validate("member", {"city": "<b>Bonn</b>\u0000​  Nord\n", "street": "<script>x</script>Weg 1"})
+        self.assertEqual(cleaned["city"], "Bonn Nord")
+        self.assertEqual(cleaned["street"], "xWeg 1")
+
+    def test_formula_prefixes_stay_plain_text(self):
+        self.assertEqual(cr.validate("member", {"city": "=HYPERLINK(1)"})["city"], "=HYPERLINK(1)")
+
+    def test_formats_and_lengths(self):
+        cases = {
+            "email": "keine-mail",
+            "phone": "0228 abc",
+            "zip_code": "1",
+            "city": "x" * 201,
+            "name": "  ",
+        }
+        with self.assertRaises(cr.ChangeRequestError) as caught:
+            cr.validate("member", cases)
+        self.assertEqual(set(caught.exception.fields), set(cases))
+
+    def test_valid_values_pass(self):
+        values = {"email": "a@example.invalid", "phone": "+49 228/123-4", "zip_code": "53111", "mobile": ""}
+        self.assertEqual(cr.validate("member", values), values)
+
+    def test_only_name_and_contact_fields(self):
+        with self.assertRaises(cr.ChangeRequestError) as caught:
+            cr.validate("member", {"birthday": "2000-01-01", "email2": "a@example.invalid"})
+        self.assertEqual(set(caught.exception.fields), {"birthday", "email2"})
+        self.assertEqual(cr.validate("parent", {"email2": "b@example.invalid"}), {"email2": "b@example.invalid"})
+
+    def test_non_text_values_are_rejected(self):
+        with self.assertRaises(cr.ChangeRequestError):
+            cr.validate("member", {"city": ["Bonn"]})
+
+
+class SubmitTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = Member.objects.create(name="Mia", lastname="Becker", city="Bonn", email="mia@example.invalid")
+        cls.parent = Parent.objects.create(name="Sandra", lastname="Becker", email="s@example.invalid")
+        cls.user = User.objects.create_user("sandra", password="x", account_kind="portal")
+
+    def test_submit_stores_old_and_new_and_changes_nothing(self):
+        request, created = cr.submit(self.member, {"city": "Köln", "email": "mia@example.invalid"}, self.user)
+        self.assertTrue(created)
+        self.assertEqual(request.fields, [{"field": "city", "old": "Bonn", "new": "Köln"}])
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.city, "Bonn")  # E2: nothing before approval
+
+    def test_resubmit_updates_the_open_request(self):
+        first, _ = cr.submit(self.member, {"city": "Köln"}, self.user)
+        second, created = cr.submit(self.member, {"city": "Bonn", "phone": "0228 1"}, self.user)
+        self.assertFalse(created)
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(second.version, 2)
+        self.assertEqual([e["field"] for e in second.fields], ["phone"])
+        self.assertEqual(ChangeRequest.objects.count(), 1)
+
+    def test_unchanged_values_are_refused(self):
+        with self.assertRaises(cr.ChangeRequestError) as caught:
+            cr.submit(self.member, {"city": " Bonn "}, self.user)
+        self.assertEqual(caught.exception.code, "unchanged")
+
+    def test_withdraw_then_a_new_request_is_possible(self):
+        first, _ = cr.submit(self.parent, {"email2": "zwei@example.invalid"}, self.user)
+        cr.withdraw(first)
+        with self.assertRaises(cr.ChangeRequestError):
+            cr.withdraw(first)
+        second, created = cr.submit(self.parent, {"email2": "zwei@example.invalid"}, self.user)
+        self.assertTrue(created)
+        self.assertNotEqual(first.pk, second.pk)
+        self.assertEqual(cr.open_request(self.parent), second)
+
+    def test_database_allows_one_open_request_and_one_target(self):
+        ChangeRequest.objects.create(target_member=self.member, fields=[])
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ChangeRequest.objects.create(target_member=self.member, fields=[])
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ChangeRequest.objects.create(target_member=self.member, target_parent=self.parent, fields=[])
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ChangeRequest.objects.create(fields=[])
+        ChangeRequest.objects.create(target_member=self.member, fields=[], status="applied")
+
+    def test_payload_marks_conflicts_against_the_current_value(self):
+        request, _ = cr.submit(self.member, {"city": "Köln", "phone": "1"}, self.user)
+        Member.objects.filter(pk=self.member.pk).update(city="Siegburg")
+        rows = {r["field"]: r for r in cr.payload(request, with_current=True)["fields"]}
+        self.assertTrue(rows["city"]["conflict"])
+        self.assertEqual(rows["city"]["current"], "Siegburg")
+        self.assertFalse(rows["phone"]["conflict"])
+        self.assertEqual(rows["city"]["label"], "Ort")
+
+
+class PortalApiTests(TestCase):
+    """PORTAL-03.2: a portal account requests changes only for people it may act for."""
+
+    url = "/api/v1/portal/change-requests/"
+
+    @classmethod
+    def setUpTestData(cls):
+        from portal.models import AccountLink
+
+        cls.parent = Parent.objects.create(name="Sandra", lastname="Becker", email="s@example.invalid")
+        cls.child = Member.objects.create(name="Mia", lastname="Becker", city="Bonn")
+        cls.parent.children.add(cls.child)
+        cls.stranger = Member.objects.create(name="Fremd", lastname="Kind")
+        cls.user = User.objects.create_user("sandra", password="x", account_kind="portal")
+        AccountLink.objects.create(user=cls.user, parent=cls.parent, status="confirmed")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def post(self, target, fields):
+        return self.client.post(self.url, {"target": target, "fields": fields}, content_type="application/json")
+
+    def test_submit_for_child_then_update(self):
+        first = self.post({"kind": "member", "id": self.child.pk}, {"city": "Köln"})
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(first.json()["fields"], [{"field": "city", "label": "Ort", "old": "Bonn", "new": "Köln"}])
+        second = self.post({"kind": "member", "id": self.child.pk}, {"city": "Siegburg"})
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["version"], 2)
+        listed = self.client.get(self.url).json()["results"]
+        self.assertEqual([(r["kind"], r["status"]) for r in listed], [("member", "open")])
+        self.assertNotIn("current", listed[0]["fields"][0])  # reviewers only
+
+    def test_own_parent_record_with_second_email(self):
+        response = self.post({"kind": "parent"}, {"email2": "zwei@example.invalid"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["kind"], "parent")
+
+    def test_foreign_people_look_missing(self):
+        self.assertEqual(self.post({"kind": "member", "id": self.stranger.pk}, {"city": "X"}).status_code, 404)
+        self.assertEqual(self.post({"kind": "member", "id": 999999}, {"city": "X"}).status_code, 404)
+        self.assertEqual(self.post("parent", {"city": "X"}).status_code, 404)
+
+    def test_errors_per_field(self):
+        response = self.post({"kind": "member", "id": self.child.pk}, {"email": "kaputt", "birthday": "2000-01-01"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(set(response.json()["fields"]), {"birthday"})  # unknown fields are refused first
+        response = self.post({"kind": "member", "id": self.child.pk}, {"email": "kaputt"})
+        self.assertEqual(set(response.json()["fields"]), {"email"})
+
+    def test_withdraw_only_own_requests(self):
+        mine = self.post({"kind": "member", "id": self.child.pk}, {"city": "Köln"}).json()
+        foreign = ChangeRequest.objects.create(target_member=self.stranger, fields=[])
+        self.assertEqual(self.client.post(f"{self.url}{foreign.pk}/withdraw/").status_code, 404)
+        response = self.client.post(f"{self.url}{mine['id']}/withdraw/")
+        self.assertEqual(response.json()["status"], "withdrawn")
+        self.assertEqual(self.client.post(f"{self.url}{mine['id']}/withdraw/").status_code, 409)
+
+    def test_staff_accounts_cannot_use_the_portal_endpoint(self):
+        staff = User.objects.create_user("leitung", password="x")
+        self.client.force_login(staff)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
+
+class ReviewTests(TestCase):
+    """PORTAL-03.3: field-wise decision, conflicts, atomic apply with log, four-eyes, department scope."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth.models import Group, Permission
+
+        from departments.models import Department, UserDepartmentRole
+        from portal.models import AccountLink
+
+        cls.mitte = Department.objects.create(name="Mitte")
+        cls.nord = Department.objects.create(name="Nord")
+        reviewers = Group.objects.create(name="Prüfung")
+        reviewers.permissions.add(Permission.objects.get(codename="review_changerequest"))
+        cls.reviewer = User.objects.create_user("pruefer", password="x")
+        UserDepartmentRole.objects.create(user=cls.reviewer, department=cls.mitte).groups.add(reviewers)
+        cls.other_reviewer = User.objects.create_user("nord", password="x")
+        UserDepartmentRole.objects.create(user=cls.other_reviewer, department=cls.nord).groups.add(reviewers)
+        cls.plain = User.objects.create_user("ohne", password="x")
+        UserDepartmentRole.objects.create(user=cls.plain, department=cls.mitte)
+        cls.child = Member.objects.create(name="Mia", lastname="Becker", city="Bonn", phone="1")
+        cls.child.departments.add(cls.mitte)
+        cls.parent = Parent.objects.create(name="Sandra", lastname="Becker")
+        cls.parent.children.add(cls.child)
+        cls.portal_user = User.objects.create_user("sandra", password="x", account_kind="portal")
+        AccountLink.objects.create(user=cls.portal_user, parent=cls.parent, status="confirmed")
+
+    def setUp(self):
+        self.request, _ = cr.submit(self.child, {"city": "Köln", "phone": "2"}, self.portal_user)
+        self.client.force_login(self.reviewer)
+
+    def decide(self, decisions, **extra):
+        body = {"decisions": decisions, "version": self.request.version, **extra}
+        return self.client.post(
+            f"/api/v1/portal/reviews/{self.request.pk}/decide/", body, content_type="application/json"
+        )
+
+    def test_scope_follows_the_departments_of_the_person(self):
+        listed = self.client.get("/api/v1/portal/reviews/").json()["results"]
+        self.assertEqual([r["id"] for r in listed], [self.request.pk])
+        self.assertIn("current", listed[0]["fields"][0])
+        parent_request, _ = cr.submit(self.parent, {"city": "Köln"}, self.portal_user)
+        self.assertIn(
+            parent_request.pk, [r["id"] for r in self.client.get("/api/v1/portal/reviews/").json()["results"]]
+        )
+        for user in (self.other_reviewer, self.plain):
+            self.client.force_login(user)
+            self.assertEqual(self.client.get("/api/v1/portal/reviews/").json()["results"], [])
+            self.assertEqual(self.decide({"city": "apply", "phone": "apply"}).status_code, 404)
+
+    def test_partial_apply_writes_values_and_log(self):
+        from portal.models import ChangeLog
+
+        response = self.decide({"city": "apply", "phone": "reject"}, note="<b>Telefon</b> bitte prüfen")
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["status"], "partial")
+        self.assertEqual(response.json()["decision_note"], "Telefon bitte prüfen")
+        self.child.refresh_from_db()
+        self.assertEqual((self.child.city, self.child.phone), ("Köln", "1"))
+        log = ChangeLog.objects.get()
+        self.assertEqual((log.field, log.old, log.new, log.applied_by), ("city", "Bonn", "Köln", self.reviewer))
+        self.assertEqual(self.decide({"city": "apply", "phone": "apply"}).status_code, 409)  # already decided
+
+    def test_every_field_needs_a_decision(self):
+        self.assertEqual(self.decide({"city": "apply"}).status_code, 400)
+        self.assertEqual(self.decide({"city": "apply", "phone": "maybe"}).status_code, 400)
+        self.assertEqual(ChangeRequest.objects.get().status, "open")
+
+    def test_conflicts_need_explicit_confirmation(self):
+        Member.objects.filter(pk=self.child.pk).update(city="Siegburg")
+        response = self.decide({"city": "apply", "phone": "apply"})
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(set(response.json()["fields"]), {"city"})
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.phone, "1")  # nothing applied: all or nothing
+        response = self.decide({"city": "apply", "phone": "apply"}, confirm_conflicts=["city"])
+        self.assertEqual(response.json()["status"], "applied")
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.city, "Köln")
+        self.assertEqual(response.json()["fields"][0]["decision"], "apply")
+
+    def test_outdated_version_is_refused(self):
+        cr.submit(self.child, {"city": "Bonn-Nord"}, self.portal_user)  # version 2
+        self.assertEqual(self.decide({"city": "apply", "phone": "apply"}).json()["code"], "outdated")
+
+    def test_reject_all(self):
+        self.assertEqual(self.decide({"city": "reject", "phone": "reject"}).json()["status"], "rejected")
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.city, "Bonn")
+
+    def test_four_eyes(self):
+        from portal.models import AccountLink
+
+        AccountLink.objects.create(user=self.reviewer, member=self.child, status="confirmed")
+        response = self.decide({"city": "apply", "phone": "apply"})
+        self.assertEqual((response.status_code, response.json()["code"]), (403, "own_request"))
+        self.assertTrue(self.client.get("/api/v1/portal/reviews/").json()["results"][0]["own"])
+
+    def test_portal_accounts_have_no_review_access(self):
+        self.client.force_login(self.portal_user)
+        self.assertEqual(self.client.get("/api/v1/portal/reviews/").status_code, 403)

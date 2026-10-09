@@ -1,0 +1,7 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>{{ org.name }} lädt dich zum Portal ein.
+{% if invite.kind == "parent" %}Dort kannst du{% if invite.children %} {{ invite.children|join:" und " }}{% else %} deine Kinder{% endif %} künftig zu Diensten an- und abmelden und eure gespeicherten Angaben einsehen.{% else %}Dort kannst du dich künftig zu Diensten an- und abmelden und deine gespeicherten Angaben einsehen.{% endif %}</p>
+<p>Lege über diesen Link dein Passwort fest. Der Link gilt bis {{ invite.expires_at }} und funktioniert nur einmal.</p>
+<p><a href="{{ links.open }}" style="display: inline-block; padding: 10px 16px; border-radius: 8px; background: {{ org.color|default:'#B91C1C' }}; color: #FFFFFF; text-decoration: none; font-weight: 600;">Passwort festlegen</a></p>
+<p style="color: #5B6478; font-size: 13px;">Falls der Link nicht funktioniert, kopiere diese Adresse in deinen Browser:<br>{{ links.open }}</p>
+<p style="color: #5B6478; font-size: 13px;">Du hast diese Einladung nicht erwartet? Dann kannst du diese E-Mail ignorieren; ohne Passwort entsteht kein Zugang.</p>

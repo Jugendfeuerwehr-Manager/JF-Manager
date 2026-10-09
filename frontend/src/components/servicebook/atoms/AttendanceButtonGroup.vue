@@ -5,13 +5,15 @@
       :key="state.value"
       type="button"
       class="attendance-option"
-      :class="[`attendance-option--${state.value}`, { 'attendance-option--active': isActive(state.value) }]"
+      :class="[`attendance-option--${state.value}`, { 'attendance-option--active': isActive(state.value), 'attendance-option--suggest': suggest === state.value && !isActive(state.value) }]"
       :aria-pressed="isActive(state.value)"
+      :title="suggest === state.value && !isActive(state.value) ? 'Vorschlag aus Abmeldung' : undefined"
       :disabled="disabled || loading"
       @click="handleClick(state.value)"
     >
       <i :class="state.icon" aria-hidden="true"></i>
       <span>{{ state.title }}</span>
+      <span v-if="suggest === state.value && !isActive(state.value)" class="attendance-option__hint">Vorschlag</span>
     </button>
   </div>
 </template>
@@ -23,6 +25,8 @@ interface Props {
   currentState: AttendanceState | null
   /** Names the group for screen readers, e.g. "Anwesenheit von Lena Weber". */
   personName?: string
+  /** Dashed hint for a value derived from a cancellation; not saved until tapped. */
+  suggest?: AttendanceState | null
   loading?: boolean
   disabled?: boolean
 }
@@ -33,6 +37,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   personName: '',
+  suggest: null,
   loading: false,
   disabled: false,
 })
@@ -64,8 +69,9 @@ const handleClick = (state: AttendanceState) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: var(--jf-touch-target);
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  min-height: 3rem;
   padding: 0 var(--jf-space-1);
   border: 1px solid var(--p-surface-300);
   border-radius: var(--jf-radius-md);
@@ -77,6 +83,9 @@ const handleClick = (state: AttendanceState) => {
   cursor: pointer;
   transition: background var(--jf-duration), border-color var(--jf-duration);
 }
+
+.attendance-option--suggest { border-style: dashed; border-color: var(--jf-color-primary); }
+.attendance-option__hint { font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
 
 .attendance-option:disabled {
   cursor: progress;

@@ -1,90 +1,70 @@
 <template>
   <div class="swimlane-editor" @keydown="onEditorKeydown">
 
-    <!-- ── Header ──────────────────────────────────────────────────── -->
-    <header class="editor-head">
-      <div class="editor-head__info">
-        <p class="editor-head__eyebrow">
-          <router-link to="/training" class="editor-head__back"><i class="pi pi-arrow-left" aria-hidden="true"></i>Ausbildung</router-link>
-          <span v-if="session?.date"> · {{ formatDate(session.date) }}<template v-if="session.start_time"> · {{ formatTimeRange(session.start_time, session.end_time) }}</template></span>
-        </p>
-        <div v-if="session" class="editor-head__meta"><TrainingStatusBadge :status="session.status" /> · Version {{ session.revision }}
-          <router-link v-if="session.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
-        </div>
-        <h1 class="editor-head__title">{{ session?.title ?? 'Trainingsplanung' }}</h1>
-        <p v-if="session?.location || visibleLanes.length" class="editor-head__meta">
-          {{ [laneSummary, session?.location].filter(Boolean).join(' · ') }}
-        </p>
-      </div>
-      <div class="editor-head__actions">
+    <!-- ── Header (UX-09: shared workspace header, one main action, the rest by width) ── -->
+    <WorkspaceHeader
+      ref="headerRef"
+      class="planner-head"
+      :class="`planner-head--${tier}`"
+      :title="session?.title ?? 'Trainingsplanung'"
+      back-to="/training"
+      back-label="Ausbildung"
+      :eyebrow="eyebrow"
+    >
+      <template v-if="session" #meta>
+        <TrainingStatusBadge :status="session.status" />
+        <span>Version {{ session.revision }}</span>
+        <router-link v-if="session.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
+        <span v-if="session.location || laneSummary">{{ [laneSummary, session.location].filter(Boolean).join(' · ') }}</span>
+      </template>
+      <template #status>
         <span class="save-hint" :class="{ 'save-hint--dirty': isDirty, 'save-hint--error': saveFailed }" role="status">
           <template v-if="plannerStore.loading">Plan lädt …</template>
           <template v-else-if="plannerStore.saving">Speichert …</template>
           <template v-else-if="saveFailed || plannerStore.error"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Nicht gespeichert</template>
-          <template v-else-if="isDirty"><i class="pi pi-pencil" aria-hidden="true"></i>{{ pendingLabel }}</template>
-          <template v-else><i class="pi pi-check" aria-hidden="true"></i>Alles gespeichert</template>
+          <template v-else-if="isDirty"><i class="pi pi-pencil" aria-hidden="true"></i>{{ compactHeader ? 'Ungespeichert' : pendingLabel }}</template>
+          <template v-else><i class="pi pi-check" aria-hidden="true"></i>{{ compactHeader ? 'Gespeichert' : 'Alles gespeichert' }}</template>
         </span>
+      </template>
+      <template #actions>
         <Button
-          :icon="navHidden ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"
+          v-for="action in headerActions.inline"
+          :key="action.key"
+          :icon="action.icon"
+          :label="action.iconOnly ? undefined : action.label"
+          :aria-label="action.iconOnly ? action.label : undefined"
+          :aria-expanded="action.expanded"
+          :aria-pressed="action.pressed"
+          severity="secondary"
+          :text="action.text"
+          :outlined="action.outlined"
+          :disabled="action.disabled"
+          v-tooltip.bottom="action.hint ?? (action.iconOnly ? action.label : undefined)"
+          @click="action.command()"
+        />
+        <Button
+          v-if="headerActions.menu.length"
+          icon="pi pi-ellipsis-v"
           severity="secondary"
           text
-          :aria-label="navHidden ? 'Navigation einblenden' : 'Navigation ausblenden, mehr Platz zum Planen'"
-          :aria-pressed="navHidden"
-          v-tooltip.bottom="navHidden ? 'Navigation einblenden' : 'Mehr Platz: Navigation ausblenden'"
-          @click="toggleNav"
+          aria-label="Weitere Aktionen"
+          aria-haspopup="menu"
+          aria-controls="planner-more-actions"
+          v-tooltip.bottom="'Weitere Aktionen'"
+          :disabled="plannerStore.loading"
+          @click="moreMenu?.toggle($event)"
         />
+        <Menu id="planner-more-actions" ref="moreMenu" :model="moreItems" popup />
         <Button
-          v-if="session && (session.status === 'published' || session.status === 'completed') && blocks.length"
-          icon="pi pi-play"
-          label="Durchführen"
-          severity="secondary"
-          v-tooltip.bottom="isDirty ? 'Zeigt den gespeicherten Stand' : 'Ablauf vor Ort auf dem Telefon'"
-          @click="router.push({ name: 'training-run', params: { id: session.id } })"
-        />
-        <Button
-          v-if="canManage && canDebrief"
-          icon="pi pi-comment"
-          label="Nachbereiten"
-          severity="secondary"
-          :disabled="isDirty || plannerStore.saving"
-          v-tooltip.bottom="isDirty ? 'Zuerst speichern' : 'Tatsächliche Zeit, Reflexion und Verbesserungen'"
-          @click="showDebrief = true"
-        />
-        <template v-if="canManage">
-        <Button icon="pi pi-undo" label="Rückgängig" severity="secondary" text :disabled="!plannerStore.canUndo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.undo()" />
-        <Button icon="pi pi-refresh" label="Wiederholen" severity="secondary" text :disabled="!plannerStore.canRedo || showEditDialog || showSessionSettings || showPlanAction || showRotation" @click="plannerStore.redo()" />
-        <Button v-if="session?.status === 'draft' || session?.status === 'cancelled'" label="Veröffentlichen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('published')" />
-        <Button v-if="session?.status === 'published' && session.linked_service_id" label="Abschließen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('completed')" />
-        <Button v-if="session && session.status !== 'cancelled' && session.status !== 'completed'" label="Absagen" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="stageStatus('cancelled')" />
-        <Button icon="pi pi-plus" label="Baustein" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="createBlock" />
-        <Button icon="pi pi-th-large" label="Rotation" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading" @click="showRotation = true" />
-        <Button icon="pi pi-arrows-h" label="Planaktion" severity="secondary" :disabled="plannerStore.saving || plannerStore.loading || blocks.length < 1" @click="showPlanAction = true" />
-        <Button v-if="isSeries" icon="pi pi-sync" label="Serie" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading || isDirty" v-tooltip.bottom="isDirty ? 'Zuerst speichern: Serien verwenden den gespeicherten Stand' : 'Serientermine ergänzen oder diesen Stand auf folgende übertragen'" @click="showSeries = true" />
-        <Button icon="pi pi-ellipsis-v" severity="secondary" text aria-label="Weitere Aktionen" aria-haspopup="menu" v-tooltip.bottom="'Weitere Aktionen'" :disabled="plannerStore.saving || plannerStore.loading" @click="moreMenu?.toggle($event)" />
-        <Menu ref="moreMenu" :model="moreItems" popup />
-        <Button icon="pi pi-cog" severity="secondary" text :disabled="plannerStore.saving || plannerStore.loading" aria-label="Einstellungen der Übung" v-tooltip.bottom="'Einstellungen'" @click="showSessionSettings = true" />
-        </template>
-        <Button icon="pi pi-file-pdf" severity="secondary" text aria-label="Handout öffnen" v-tooltip.bottom="'Handout'" @click="goHandout" />
-        <template v-if="canManage">
-        <Button
-          :icon="showLibraryPicker ? 'pi pi-times' : 'pi pi-book'"
-          :label="showLibraryPicker ? 'Bibliothek schließen' : 'Bibliothek'"
-          severity="secondary"
-          :outlined="!showLibraryPicker"
-          :disabled="plannerStore.saving || plannerStore.loading"
-          :aria-expanded="showLibraryPicker"
-          @click="showLibraryPicker = !showLibraryPicker"
-        />
-        <Button
+          v-if="canManage"
           icon="pi pi-save"
           label="Speichern"
           :loading="plannerStore.saving || saving"
           :disabled="!isDirty || plannerStore.loading || showEditDialog || showSessionSettings || showPlanAction || showRotation"
           @click="saveAll"
         />
-        </template>
-      </div>
-    </header>
+      </template>
+    </WorkspaceHeader>
 
     <div v-if="plannerStore.error" role="alert">
       <p>{{ plannerStore.error }}</p>
@@ -222,8 +202,25 @@
 
       <!-- Library picker sidebar -->
       <Transition name="slide-panel">
-        <div v-if="showLibraryPicker" class="library-panel">
-          <LibraryBlockPicker @pick="addFromLibrary" @close="showLibraryPicker = false" />
+        <div v-if="canManage && showLibraryPicker" class="library-panel" :style="{ '--library-width': `${libraryWidth}px` }">
+          <!-- UX-09: drag, arrow keys or double-click (default) change the width; remembered per user -->
+          <div
+            class="library-resizer"
+            role="separator"
+            tabindex="0"
+            aria-orientation="vertical"
+            aria-controls="planner-library"
+            aria-label="Breite der Bibliothek"
+            :aria-valuenow="libraryWidth"
+            :aria-valuemin="libraryMinWidth"
+            :aria-valuemax="libraryMaxWidth"
+            :aria-valuetext="`${libraryWidth} Pixel breit`"
+            v-tooltip.left="'Breite ändern: ziehen oder Pfeiltasten, Doppelklick setzt zurück'"
+            @pointerdown="startLibraryResize"
+            @keydown="onLibraryResizeKey"
+            @dblclick="resetLibraryWidth"
+          ></div>
+          <LibraryBlockPicker id="planner-library" @pick="addFromLibrary" @close="showLibraryPicker = false" />
         </div>
       </Transition>
     </div>
@@ -233,6 +230,7 @@
     <RotationDialog v-if="canManage" v-model:visible="showRotation" :duration="sessionDuration" />
     <DebriefDialog v-if="canManage && session && showDebrief" v-model:visible="showDebrief" :session="session" @saved="onDebriefSaved" />
     <SessionCopyDialog v-if="canManage" v-model:visible="showCopy" :mode="copyMode" :session="session" @copied="onCopied" @saved="onTemplateSaved" />
+    <ParticipationDialog v-if="session" v-model:visible="showParticipation" :session-id="session.id" :can-manage="canManage" />
     <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" :can-propagate="!!session?.series_uuid" />
 
     <!-- Session settings dialog -->
@@ -280,6 +278,7 @@ import DebriefDialog from '../molecules/DebriefDialog.vue'
 import SessionCopyDialog from '../molecules/SessionCopyDialog.vue'
 import PlanWarningsPanel from '../molecules/PlanWarningsPanel.vue'
 import PublishJustificationDialog from '../molecules/PublishJustificationDialog.vue'
+import ParticipationDialog from '@/components/participation/ParticipationDialog.vue'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
 import { useToast } from 'primevue/usetoast'
@@ -287,7 +286,11 @@ import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus, TrainingDebrief } from '@/types/training'
 import interact from 'interactjs'
-import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
+import WorkspaceHeader from '@/components/common/WorkspaceHeader.vue'
+import { useElementWidth } from '@/composables/useElementWidth'
+import { headerTier, menuLabel, splitHeaderActions, type HeaderAction } from '../utils/headerActions'
+import { usePlannerLibraryPanel } from '@/composables/usePlannerLibraryPanel'
+import { useAuthStore } from '@/stores/auth'
 
 interface Props {
   sessionId: number
@@ -307,13 +310,28 @@ const sessionDuration = computed(() => {
 
 // ── Refs ───────────────────────────────────────────────────────────────────
 const plannerScroll = ref<HTMLElement | null>(null)
-const showLibraryPicker = ref(false)
+const auth = useAuthStore()
+const {
+  width: libraryWidth,
+  open: libraryOpen,
+  setOpen: setLibraryOpen,
+  reset: resetLibraryWidth,
+  onSeparatorKey: onLibraryResizeKey,
+  startDrag: startLibraryResize,
+  minWidth: libraryMinWidth,
+  maxWidth: libraryMaxWidth,
+} = usePlannerLibraryPanel(computed(() => auth.user?.id))
+const showLibraryPicker = computed({
+  get: () => libraryOpen.value,
+  set: (value: boolean) => setLibraryOpen(value),
+})
 const showEditDialog = ref(false)
 const showSessionSettings = ref(false)
 const showPlanAction = ref(false)
 const showSeries = ref(false)
 const showRotation = ref(false)
 const showDebrief = ref(false)
+const showParticipation = ref(false)
 // Follow-up once the exercise has begun (device time); the server checks again.
 const canDebrief = computed(() => {
   const s = plannerStore.session
@@ -331,12 +349,76 @@ const showJustification = ref(false)
 const copyMode = ref<'copy' | 'template'>('copy')
 const moreMenu = ref<InstanceType<typeof Menu> | null>(null)
 const toast = useToast()
-// Copies and templates use the saved state, never unsaved local changes.
-const moreItems = computed<MenuItem[]>(() => [
-  { label: 'Auf anderes Datum kopieren', icon: 'pi pi-copy', disabled: isDirty.value, command: () => openCopy('copy') },
-  { label: 'Als Vorlage speichern', icon: 'pi pi-bookmark', disabled: isDirty.value, command: () => openCopy('template') },
-  ...(isDirty.value ? [{ label: 'Zuerst speichern, um zu kopieren', disabled: true }] : []),
-])
+// ── Header actions (UX-09) ─────────────────────────────────────────────────
+// "Speichern" is the only main action. Secondary actions appear as buttons as the
+// header gets wider; everything else is in the "Weitere Aktionen" menu, so a phone
+// shows status, "Speichern" and the menu in one row.
+const headerRef = ref<{ $el: HTMLElement } | null>(null)
+const headerWidth = useElementWidth(computed(() => headerRef.value?.$el ?? null))
+const tier = computed(() => headerTier(headerWidth.value))
+const compactHeader = computed(() => tier.value === 'sm')
+const eyebrow = computed(() => {
+  const s = session.value
+  if (!s?.date) return undefined
+  return [formatDate(s.date), s.start_time ? formatTimeRange(s.start_time, s.end_time) : ''].filter(Boolean).join(' · ')
+})
+
+const dialogOpen = computed(() => showEditDialog.value || showSessionSettings.value || showPlanAction.value || showRotation.value)
+const busy = computed(() => plannerStore.saving || plannerStore.loading)
+
+const allHeaderActions = computed<HeaderAction[]>(() => {
+  const s = session.value
+  const manage = canManage.value
+  const runnable = !!s && (s.status === 'published' || s.status === 'completed') && blocks.value.length > 0
+  return [
+    { key: 'undo', label: 'Rückgängig', icon: 'pi pi-undo', tier: 'md', iconOnly: true, text: true, visible: manage,
+      disabled: !plannerStore.canUndo || dialogOpen.value, command: () => plannerStore.undo() },
+    { key: 'redo', label: 'Wiederholen', icon: 'pi pi-refresh', tier: 'md', iconOnly: true, text: true, visible: manage,
+      disabled: !plannerStore.canRedo || dialogOpen.value, command: () => plannerStore.redo() },
+    { key: 'library', label: showLibraryPicker.value ? 'Bibliothek schließen' : 'Bibliothek', icon: showLibraryPicker.value ? 'pi pi-times' : 'pi pi-book',
+      tier: 'md', outlined: !showLibraryPicker.value, expanded: showLibraryPicker.value, visible: manage, disabled: busy.value,
+      command: () => { showLibraryPicker.value = !showLibraryPicker.value } },
+    { key: 'block', label: 'Baustein', icon: 'pi pi-plus', tier: 'lg', visible: manage, disabled: busy.value, command: () => { void createBlock() } },
+    { key: 'publish', label: 'Veröffentlichen', icon: 'pi pi-send', tier: 'lg', visible: manage && (s?.status === 'draft' || s?.status === 'cancelled'),
+      disabled: busy.value, command: () => { void stageStatus('published') } },
+    { key: 'complete', label: 'Abschließen', icon: 'pi pi-check-circle', tier: 'lg', visible: manage && s?.status === 'published' && !!s.linked_service_id,
+      disabled: busy.value, command: () => { void stageStatus('completed') } },
+    { key: 'run', label: 'Durchführen', icon: 'pi pi-play', tier: manage ? 'xl' : 'md', visible: runnable,
+      hint: isDirty.value ? 'Zeigt den gespeicherten Stand' : 'Ablauf vor Ort auf dem Telefon',
+      command: () => { if (s) void router.push({ name: 'training-run', params: { id: s.id } }) } },
+    { key: 'debrief', label: 'Nachbereiten', icon: 'pi pi-comment', tier: 'xl', visible: manage && canDebrief.value,
+      disabled: isDirty.value || plannerStore.saving, disabledReason: 'zuerst speichern',
+      hint: isDirty.value ? 'Zuerst speichern' : 'Tatsächliche Zeit, Reflexion und Verbesserungen', command: () => { showDebrief.value = true } },
+    { key: 'rotation', label: 'Rotation', icon: 'pi pi-th-large', tier: 'xl', visible: manage, disabled: busy.value, command: () => { showRotation.value = true } },
+    { key: 'plan-action', label: 'Planaktion', icon: 'pi pi-arrows-h', tier: 'xl', visible: manage, disabled: busy.value || blocks.value.length < 1,
+      command: () => { showPlanAction.value = true } },
+    { key: 'participation', label: 'Teilnahme', icon: 'pi pi-users', tier: manage ? 'xl' : 'lg', text: true, visible: !!s && (manage || s.status !== 'draft'),
+      hint: 'Anmeldemodus, Fristen, Voraussetzungen und Meldungen', command: () => { showParticipation.value = true } },
+    { key: 'handout', label: 'Handout', icon: 'pi pi-file-pdf', tier: manage ? 'menu' : 'lg', text: true, visible: true, command: goHandout },
+    { key: 'series', label: 'Serie', icon: 'pi pi-sync', tier: 'menu', visible: manage && isSeries.value,
+      disabled: busy.value || isDirty.value, disabledReason: 'zuerst speichern',
+      hint: 'Serientermine ergänzen oder diesen Stand auf folgende übertragen', command: () => { showSeries.value = true } },
+    { key: 'settings', label: 'Einstellungen der Übung', icon: 'pi pi-cog', tier: 'menu', visible: manage, disabled: busy.value,
+      command: () => { showSessionSettings.value = true } },
+    // Copies and templates use the saved state, never unsaved local changes.
+    { key: 'copy', label: 'Auf anderes Datum kopieren', icon: 'pi pi-copy', tier: 'menu', visible: manage,
+      disabled: isDirty.value || busy.value, disabledReason: 'zuerst speichern', command: () => openCopy('copy') },
+    { key: 'template', label: 'Als Vorlage speichern', icon: 'pi pi-bookmark', tier: 'menu', visible: manage,
+      disabled: isDirty.value || busy.value, disabledReason: 'zuerst speichern', command: () => openCopy('template') },
+    // Cancelling is never a button next to "Speichern".
+    { key: 'cancel', label: 'Absagen', icon: 'pi pi-ban', tier: 'menu', visible: manage && !!s && s.status !== 'cancelled' && s.status !== 'completed',
+      disabled: busy.value, command: () => { void stageStatus('cancelled') } },
+  ]
+})
+
+const headerActions = computed(() => splitHeaderActions(allHeaderActions.value, headerWidth.value))
+const moreItems = computed<MenuItem[]>(() => headerActions.value.menu.map((action) => ({
+  key: action.key,
+  label: menuLabel(action),
+  icon: action.icon,
+  disabled: action.disabled,
+  command: () => action.command(),
+})))
 function openCopy(mode: 'copy' | 'template') {
   copyMode.value = mode
   showCopy.value = true
@@ -350,7 +432,6 @@ function onTemplateSaved() {
 const editingBlock = ref<PlannerBlock | null>(null)
 const saving = ref(false)
 const saveFailed = ref(false)
-const { navHidden, toggleNav } = useWorkspaceNavigation()
 
 // Drag-to-create state
 const creating = ref<{
@@ -831,46 +912,22 @@ function setupInteract() {
   overflow: hidden;
 }
 
-/* ── Header ───────────────────────────────────────────────────────── */
-.editor-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--jf-space-1-5) var(--jf-space-3);
-  padding: var(--jf-space-1-5) var(--jf-space-3);
-  background: var(--jf-color-card);
-  border-bottom: 1px solid var(--jf-color-border);
-  flex-shrink: 0;
+/* Header (WorkspaceHeader): on phones status, "Speichern" and the menu share one row. */
+.planner-head--sm :deep(.workspace-head__actions) {
+  flex: 1 1 100%;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
-.editor-head__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.editor-head__eyebrow {
-  margin: 0;
-  font-size: var(--jf-text-xs);
-  font-weight: var(--jf-weight-bold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--jf-color-text-muted);
+/* Touch: header buttons at least 44 px (desktop keeps the compact PrimeVue size). */
+@media (pointer: coarse), (max-width: 1023px) {
+  .planner-head :deep(.workspace-head__actions .p-button) { min-height: var(--jf-touch-target); }
+  .planner-head :deep(.workspace-head__actions .p-button-icon-only) { min-width: var(--jf-touch-target); }
 }
-.editor-head__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--jf-space-0-5);
-  color: var(--jf-color-primary);
-  text-decoration: none;
-}
-.editor-head__back i { font-size: 0.7rem; }
-.editor-head__title {
-  margin: 0;
-  font-size: var(--jf-text-xl);
-  line-height: var(--jf-leading-tight);
-  letter-spacing: -0.015em;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.planner-head--sm .save-hint {
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
 }
-.editor-head__meta { margin: 0; font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
-.editor-head__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); }
 .save-hint {
   display: inline-flex;
   align-items: center;
@@ -887,6 +944,7 @@ function setupInteract() {
 
 /* ── Planner container ────────────────────────────────────────────────── */
 .planner-container {
+  position: relative;
   flex: 1;
   display: flex;
   min-height: 0;
@@ -1065,17 +1123,85 @@ function setupInteract() {
 }
 
 /* ── Library panel ────────────────────────────────────────────────────── */
+/* Width set by the user (UX-09), never more than half of the planner. */
 .library-panel {
-  width: 320px;
+  position: relative;
+  width: var(--library-width, 320px);
+  max-width: 50%;
   flex-shrink: 0;
-  overflow: hidden;
   border-left: 1px solid var(--jf-color-border);
   background: var(--jf-color-card);
+}
+.library-panel > :deep(.library-picker) { overflow: hidden; }
+
+.library-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  z-index: 12;
+  width: 16px;
+  cursor: col-resize;
+  touch-action: none;
+}
+/* Visible line plus a grip in the middle */
+.library-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: transparent;
+  transition: background var(--jf-duration);
+}
+.library-resizer::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 8px;
+  height: var(--jf-touch-target);
+  transform: translateY(-50%);
+  border: 1px solid var(--jf-color-border);
+  border-radius: 999px;
+  background: var(--jf-color-card);
+}
+.library-resizer:hover::after,
+.library-resizer:focus-visible::after { background: var(--jf-color-primary); }
+.library-resizer:hover::before,
+.library-resizer:focus-visible::before { border-color: var(--jf-color-primary); }
+.library-resizer:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; border-radius: var(--jf-radius-sm); }
+/* Touch: a 44 px wide target around the grip */
+@media (pointer: coarse) {
+  .library-resizer { left: -22px; width: 44px; }
+  .library-resizer::after { left: 21px; }
+  .library-resizer::before { left: 18px; }
+}
+
+/* Below the desktop layout the library slides over the plan instead of narrowing it. */
+@media (max-width: 1023px) {
+  .library-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(100%, 360px);
+    max-width: none;
+    box-shadow: var(--jf-shadow-lg);
+  }
+  .library-resizer { display: none; }
 }
 
 /* ── Slide transition ─────────────────────────────────────────────────── */
 .slide-panel-enter-active,
-.slide-panel-leave-active { transition: width 0.2s ease; overflow: hidden; }
+.slide-panel-leave-active { transition: width var(--jf-duration) ease; overflow: hidden; }
 .slide-panel-enter-from,
 .slide-panel-leave-to { width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .slide-panel-enter-active,
+  .slide-panel-leave-active,
+  .library-resizer::after { transition: none; }
+}
 </style>

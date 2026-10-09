@@ -395,7 +395,14 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
     @staticmethod
     def get_template_variables(template_type: str) -> dict[str, Any]:
         """Get available variables for a template type"""
-        return EmailTemplateViewSet.TEMPLATE_VARIABLES.get(template_type, {"variables": [], "sample_data": {}})
+        return EmailTemplateViewSet.all_variables().get(template_type, {"variables": [], "sample_data": {}})
+
+    @staticmethod
+    def all_variables() -> dict[str, Any]:
+        # Notification types register their catalogue in notifications.email_catalog (NOTIF-01.3).
+        from notifications.email_catalog import variables_catalog
+
+        return {**EmailTemplateViewSet.TEMPLATE_VARIABLES, **variables_catalog()}
 
     @extend_schema(
         summary="Get template variables",
@@ -421,7 +428,7 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
 
         if template_type:
             # For unknown template types (e.g., legacy templates), return empty variables with warning
-            if template_type not in self.TEMPLATE_VARIABLES:
+            if template_type not in self.all_variables():
                 return Response(
                     {
                         "template_type": template_type,
@@ -430,10 +437,10 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
                         "warning": f'No variable definitions for template type "{template_type}". This may be a legacy template.',
                     }
                 )
-            return Response({"template_type": template_type, **self.TEMPLATE_VARIABLES[template_type]})
+            return Response({"template_type": template_type, **self.all_variables()[template_type]})
 
         # Return all template variables
-        return Response(self.TEMPLATE_VARIABLES)
+        return Response(self.all_variables())
 
     @extend_schema(
         summary="Preview template",
@@ -535,6 +542,21 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
             "ext_auth_pw_info": "users/external_auth_password_info.html",
             "password_reset": "users/password_reset_email.html",
         }
+
+        from notifications.email_catalog import CATALOG
+
+        if template_type in CATALOG:
+            from notifications.emails import default_source
+
+            return Response(
+                {
+                    "template_type": template_type,
+                    "subject_template": CATALOG[template_type]["subject"],
+                    "html_template": default_source(template_type),
+                    "text_template": "",
+                    "layout": CATALOG[template_type]["layout"],
+                }
+            )
 
         if template_type not in template_files:
             return Response(

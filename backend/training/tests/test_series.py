@@ -16,6 +16,7 @@ from PIL import Image
 from rest_framework.test import APIClient
 
 from departments.models import Department, UserDepartmentRole
+from participation.models import Registration, SessionParticipation
 from servicebook.models import Service
 from training.models import TrainingBlock, TrainingMedia, TrainingSession
 from training.series import add_months
@@ -190,6 +191,58 @@ class SeriesGenerationTests(TestCase):
         media.delete()
         with copy.file.open("rb") as stream:
             self.assertTrue(stream.read().startswith(b"\x89PNG"))
+
+    def test_generated_occurrences_get_independent_participation_copies(self):
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        from members.models import Member
+
+        closes = timezone.make_aware(datetime(2099, 1, 29, 12, 0))
+        SessionParticipation.objects.create(
+            session=self.root,
+            mode="opt_in",
+            portal_visible=False,
+            public_note="Mitbringen: Helm",
+            max_participants=8,
+            min_participants=3,
+            waitlist_mode="manual",
+            eligibility={"all": []},
+            registration_closes_at=closes,
+        )
+        member = Member.objects.create(name="Mia", lastname="Test")
+        Registration.objects.create(
+            session=self.root, member=member, state="registered", source="staff", state_changed_at=timezone.now()
+        )
+        self.generate(self.preview()["preview_token"])
+        children = list(self.root.series_children.order_by("date"))
+        self.assertEqual(len(children), 4)
+        for child in children:
+            row = child.participation
+            self.assertEqual(
+                (row.mode, row.portal_visible, row.public_note, row.max_participants, row.min_participants),
+                ("opt_in", False, "Mitbringen: Helm", 8, 3),
+            )
+            self.assertEqual((row.waitlist_mode, row.eligibility), ("manual", {"all": []}))
+            self.assertIsNone(row.registration_opens_at)
+            self.assertIsNone(row.cancellation_closes_at)
+        # Explicit deadlines move with the occurrence (same local wall time), 2099-02-28 is 28 days later.
+        first = children[0]
+        self.assertEqual(
+            timezone.localtime(first.participation.registration_closes_at).replace(tzinfo=None),
+            datetime(2099, 1, 29, 12, 0) + (first.date - self.root.date),
+        )
+        # Registrations are never copied and later edits stay independent.
+        self.assertFalse(Registration.objects.filter(session__in=children).exists())
+        first.participation.max_participants = 2
+        first.participation.save()
+        self.assertEqual(SessionParticipation.objects.get(session=self.root).max_participants, 8)
+        self.assertEqual(SessionParticipation.objects.get(session=children[1]).max_participants, 8)
+
+    def test_root_without_configuration_leaves_children_on_defaults(self):
+        self.generate(self.preview()["preview_token"])
+        self.assertFalse(SessionParticipation.objects.exists())
 
     def test_generation_from_occurrence_uses_series_root(self):
         self.generate(self.preview()["preview_token"])

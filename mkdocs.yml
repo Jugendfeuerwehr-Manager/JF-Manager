@@ -1,0 +1,66 @@
+site_name: JF-Manager · Benutzerhandbuch
+site_description: Benutzerhandbuch für Administration, Jugendleitung und Serverbetrieb
+repo_url: https://github.com/Jugendfeuerwehr-Manager/JF-Manager
+edit_uri: ''
+# scripts/docs/build.py prepares this directory from the canonical Markdown files.
+docs_dir: .docs-build/source
+site_dir: .docs-build/site
+use_directory_urls: false
+strict: true
+theme:
+  name: mkdocs
+  custom_dir: scripts/docs/theme
+  locale: de
+  color_mode: light
+  user_color_mode_toggle: false
+  highlightjs: false
+plugins:
+  - search:
+      lang: de
+markdown_extensions:
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+extra_css:
+  - handbook/styles.css
+nav:
+  - Einstieg: index.md
+  - Grundlegende Konzepte: handbook/concepts.md
+  - Jugendleiter / Bediener:
+      - Überblick: handbook/operators/index.md
+      - Start und mobile Bedienung: handbook/operators/start.md
+      - Mitglieder und Listen: handbook/operators/members.md
+      - Dienstbuch und Anwesenheit: handbook/operators/services.md
+      - Übungsplanung: handbook/operators/training.md
+      - Inventar und Bestellungen: handbook/operators/inventory.md
+      - E-Mail: handbook/operators/communication.md
+      - Fehlerhilfe: handbook/operators/help.md
+  - Administratoren:
+      - Einrichtung und Konten: handbook/administrators/index.md
+      - Rollen und Delegation: handbook/administrators/roles.md
+      - Einstellungen: handbook/administrators/settings.md
+      - Integrationen: handbook/administrators/integrations.md
+  - Server & Operations:
+      - Einstieg: handbook/server/index.md
+      - Regelbetrieb: handbook/server/routine.md
+      - Notfallhilfe: handbook/server/emergency.md
+      - Installation: operations/ops-install.md
+      - Aufbau: operations/ops-overview.md
+      - jfctl-Referenz: operations/ops-jfctl.md
+      - Sicherung und Updates: operations/ops-backup-restore-update.md
+      - Migration und Portainer: operations/ops-migration.md
+      - Releasepakete: operations/ops-release.md
+      - Produktionsvorgaben: operations/production-security.md
+      - Sitzungen und MFA: operations/session-auth.md
+      - Schlüsselrotation: operations/encryption-rotation.md
+  - Handbuchpflege und Auslieferung: handbook/publishing.md
+not_in_nav: |
+  user-guide.md
+  handbook/index.md
+  domains/**
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn

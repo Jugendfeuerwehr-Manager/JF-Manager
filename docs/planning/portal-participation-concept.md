@@ -50,6 +50,8 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | E16 | Mitteilungen zum eigenen Teilnahmestatus | Bei **Zuteilung, Nicht-Berücksichtigung, Platz auf der Warteliste und Nachrücken** erhalten die Betroffenen **E-Mail und Push**, sofern nicht in den eigenen Einstellungen deaktiviert (Nutzerangabe 07.10.2026). |
 | E17 | Abmeldelink | **Jede Teilnahme-E-Mail enthält immer einen Abmeldelink** passend zum Status (Abmelden, Von der Warteliste abmelden, Bewerbung zurückziehen); er funktioniert nach Login mit Bestätigung (E12). Zusätzlich enthält jede E-Mail den Link zu den Benachrichtigungseinstellungen (Nutzerangabe 07.10.2026). |
 | E15 | Status im Eingang | **Team + persönlich.** Aufgaben haben einen teamweiten Status (offen/erledigt mit Name und Zeit); Hinweise einen persönlichen Gelesen-Status. |
+| E18 | Aufbauende Qualifikationen | **Höhere Qualifikationen schließen niedrigere ein** (Nutzerangabe 08.10.2026): Wer „Truppmann“ voraussetzt, lässt auch „Truppführer“ zu. Qualifikationstypen erhalten „schließt ein“ (transitiv, zyklenfrei, in der Qualifikationsverwaltung gepflegt). Umsetzung als PART-03.7 vor PART-04. |
+| E19 | Neue Dienste | **Zielgruppe wird über neu veröffentlichte Dienste informiert** (Nutzerangabe 08.10.2026): Sobald ein geplanter Dienst veröffentlicht wird und im Portal sichtbar ist, erhalten die Konten der Zielgruppe (Elternkonten der Kinder, Mitgliedskonten, gebundene Verwaltendenkonten) einen Portal-Hinweis sowie E-Mail und Push, je Konto abschaltbar. Serien werden als eine Nachricht gebündelt; keine Mitteilung für Dienste mit Beginn in der Vergangenheit; Personen, die die Voraussetzungen nicht erfüllen, erhalten keine Einladung zum Anmelden. |
 
 ### 2.1 Vom Konzept festgelegte Standards (änderbar, aber vorbelegt)
 
@@ -71,9 +73,9 @@ Begriffe: **Dienst** steht für das konfigurierbare Vokabular (Dienst/Training/�
 | ID | Frage | Vorschlag | Betrifft |
 | --- | --- | --- | --- |
 | Q1 | Sollen Eltern Kinder anmelden dürfen, deren Gruppe/Abteilung nicht zum Dienst gehört, wenn der Dienst „für alle der Abteilung“ geöffnet ist? | Ja, Zielgruppe = Gruppen des Dienstes; ohne Gruppen = ganze Abteilung. | PART-01 |
-| Q2 | Darf ein Elternteil die Einladung an ein Mitgliedskonto des eigenen Kindes anstoßen (nicht versenden)? | Nein in Version 1; nur Betreuende laden ein. | PORTAL-01 |
-| Q3 | Sollen Mitglieder im Modus „Zuteilung“ eine Wunschposition angeben dürfen? | Ja, optional; Standard „beliebige passende Position“. | PART-04 |
-| Q4 | Sollen Verwaltendenkonten zusätzlich an einen **Elterndatensatz** gebunden werden können (Verwaltende mit Kindern in der Jugend)? | Ja, gleiche Verknüpfungstabelle und gleiche Bestätigung; im Verwaltungslayout erscheint dann „Meine Kinder“. | PORTAL-04 |
+| Q2 | Darf ein Elternteil die Einladung an ein Mitgliedskonto des eigenen Kindes anstoßen (nicht versenden)? | **Entschieden 08.10.2026:** Nein in Version 1; nur Betreuende laden ein. | PORTAL-01 |
+| Q3 | Sollen Mitglieder im Modus „Zuteilung“ eine Wunschposition angeben dürfen? | **Entschieden 09.10.2026:** Ja, optional; Standard „beliebige passende Position“. | PART-04 |
+| Q4 | Sollen Verwaltendenkonten zusätzlich an einen **Elterndatensatz** gebunden werden können (Verwaltende mit Kindern in der Jugend)? | **Entschieden 09.10.2026:** Ja, gleiche Verknüpfungstabelle und gleiche Bestätigung; im Verwaltungslayout erscheint dann „Meine Kinder“. | PORTAL-04 |
 | Q5 | Gültigkeit von Quick-Action-Links | 14 Tage, bei Teilnahmeaktionen höchstens bis Dienstbeginn, bei Antragsaktionen bis zur Entscheidung. | NOTIF-01 |
 
 ## 3. Ausgangslage im Code (geprüft am 07.10.2026)
@@ -205,6 +207,7 @@ Zusätzlich je Meldung: `conflict` (Voraussetzung am Diensttag nicht mehr erfül
 
 - `kind`: `qualification`, `special_task` (`has_any`, `has_all`, `has_none`), `gender` (`in`), `age` (`min`, `max`, `between`; Alter am Diensttag), `group`, `status`, `department` (`in`).
 - Qualifikation gilt, wenn `date_acquired ≤ Diensttag` und (`date_expires` leer oder `≥ Diensttag`) — für `Qualification.member` und für `Qualification.user` eines verknüpften Kontos (E10).
+- Aufbauende Qualifikationen (E18): Eine Bedingung auf Typ T ist auch durch jeden Typ erfüllt, der T direkt oder über Zwischenstufen einschließt (z. B. Zugführer → Gruppenführer → Truppführer → Truppmann), sofern diese höhere Qualifikation am Diensttag gültig ist. `has_none` schließt entsprechend auch höhere Qualifikationen aus. Begründungen und Vorschau nennen die ersetzende Qualifikation („erfüllt durch ‚Truppführer‘“); die Klartext-Zusammenfassung zeigt „Truppmann (oder höher)“. Die Hierarchie wird beim Auswerten einmal als Abschluss (transitive Hülle) geladen, ohne zusätzliche Abfragen je Person.
 - Fehlende Daten (kein Geburtsdatum, kein Geschlecht) erfüllen die Regel nicht; die Begründung nennt die fehlende Angabe.
 - Auswertung `participation/eligibility.py: evaluate(rule, member, on_date) -> Result(ok, reasons[])`, reine Funktion mit vorab geladenen Qualifikationen (keine N+1-Abfragen; Zielgruppe ≤ einige hundert).
 - Begründungen sind verständliche Sätze: „Qualifikation ‚Maschinist‘ fehlt“, „Gültig nur bis 03.10.2026“, „Nur für Teilnehmende von 10 bis 17 Jahren“. Portal zeigt Begründungen nur für die eigene/zugewiesene Person.
@@ -283,6 +286,7 @@ Regeln: Tab-Leiste oben (Meldungen · Anwesenheit · Betreuende · Vorkommnisse)
 | Nachgerückt | Betroffene (E16) | Portal-Hinweis | sofort (`waitlist_promoted`) | `participation` |
 | Zuteilung veröffentlicht: zugeteilt / nicht berücksichtigt | Betroffene (E16) | Portal-Hinweis | sofort (`assign_published`) | `participation` |
 | Dienst geändert/abgesagt | Gemeldete, Wartende, Erwartete | Portal-Hinweis | sofort (`session_changed`) | `participation` |
+| Neuer Dienst veröffentlicht (E19) | Zielgruppe (Kinder → Elternkonten, Mitgliedskonten, gebundene Verwaltende), nur bei erfüllten Voraussetzungen | Portal-Hinweis | sofort, Serie gebündelt (`session_published`) | `participation` |
 | Voraussetzungskonflikt | Dienstverantwortliche | Aufgabe „Besetzung“ | sofort (`eligibility_conflict`) | `participation` |
 | Einladung | eingeladene Person | — | sofort (`portal_invite`) | — |
 | Einladung angenommen/abgelaufen | Einladende | Hinweis „Konten“ | — | — |
@@ -322,7 +326,7 @@ Basis ist das vorhandene System: `orders.EmailTemplate` (eindeutiger `template_t
 
 Erweiterung:
 
-1. Neue `template_type`-Werte (Feldlänge 20 beachten): `portal_invite`, `account_link`, `cr_submitted`, `cr_decided`, `reg_cancelled`, `reg_digest`, `slot_free_manual`, `staffing_at_risk`, `waitlist_promoted`, `assign_published`, `session_changed`, `eligibility_conflict`, `parent_access_end`. Choices-Migration in `orders`.
+1. Neue `template_type`-Werte (Feldlänge 20 beachten): `portal_invite`, `session_published`, `account_link`, `cr_submitted`, `cr_decided`, `reg_cancelled`, `reg_digest`, `slot_free_manual`, `staffing_at_risk`, `waitlist_promoted`, `assign_published`, `session_changed`, `eligibility_conflict`, `parent_access_end`. Choices-Migration in `orders`.
 2. Standardvorlagen als Dateien unter `backend/templates/notifications/emails/<typ>.html` und `<typ>.txt`, eingetragen in `TemplateRenderer.DEFAULT_TEMPLATES`. Eine Datenbankvorlage desselben Typs überschreibt sie; „Auf Standard zurücksetzen“ löscht die Datenbankvorlage.
 3. Variablenkatalog je Typ mit Beispieldaten in `TEMPLATE_VARIABLES` (empfohlen: Katalog in ein eigenes Modul `notifications/email_catalog.py` verschieben und dort registrieren lassen, damit Portal-/Teilnahme-Apps eigene Typen ohne Änderung der Settings-View ergänzen).
 4. **Kontext nur aus vorbereiteten, flachen Werten** (Zeichenketten, Zahlen, Listen von Dicts), keine Modellinstanzen: Django-Templates dürfen keine Methoden oder Relationen der Modelle erreichen. Alle Werte werden automatisch maskiert; HTML entsteht nur aus Vorlage und Layout, Ergebnis läuft durch `sanitize_rich_html` (SEC-04).
@@ -355,7 +359,7 @@ In vielen Feuerwehren und Vereinen sind Verwaltende selbst Mitglied. Ihr Verwalt
   - Zuteilungsboard: Selbstzuteilung möglich, wird gekennzeichnet und protokolliert.
 - **Eigene Daten (E14):** Stammdaten des eigenen Mitglieds mit vorhandenen Rechten direkt änderbar; Änderungsprotokoll mit Kennzeichen „Eigenänderung“, sichtbar in der Verlaufsansicht des Mitglieds. Qualifikationen und Sonderaufgaben am eigenen Mitglied (und `Qualification.user` des eigenen Kontos) darf das Konto **nicht** anlegen, ändern oder löschen: Server lehnt mit 403 und Begründung ab; Oberfläche zeigt „Nachweise pflegt eine andere Person“. Eigene Änderungsanträge (falls über Portal gestellt) gibt eine andere Person frei.
 - **Lösen:** durch Benutzerverwaltung jederzeit, durch das Konto nur als Antrag im Profil; Lösen beendet Selbstmeldungen nicht rückwirkend, bestehende Meldungen bleiben am Mitglied.
-- **Elterndatensatz (Q4, offen):** gleiche Mechanik für `Parent`, dann „Meine Kinder“ im Verwaltungslayout.
+- **Elterndatensatz (Q4, entschieden 09.10.2026: ja):** gleiche Mechanik für `Parent`, dann „Meine Kinder“ im Verwaltungslayout.
 
 ## 5. Technisches Design
 
@@ -597,7 +601,7 @@ Jeder Teilschritt ist ein eigener Commit nach EXEC-01 (Format `feat(PART-01.3): 
 | PART-01.2 | Fristen- und Meldefähigkeitslogik (nur veröffentlicht + Zukunft; getrennte Fristen; Betreuende nach Frist; Einfrieren ab Beginn) | Grenzwerttests Sommerzeit |
 | PART-01.3 | Betreuenden-API und Konfiguration „Teilnahme“-Tab im Planer (Modus, Fristen, Hinweis) | Browser |
 | PART-01.4 | Portal: Termine je Person, An-/Abmelden, Grund, Zeitraum-Abmeldung | Browser mobil, Netzfehler, Frist abgelaufen |
-| PART-01.5 | Serien und Terminänderungen (Kopie der Konfiguration je Termin, Benachrichtigung bei Verschiebung/Absage) | TRAIN-03-Serientests erweitert |
+| PART-01.5 | Serien und Terminänderungen (Kopie der Konfiguration je Termin, Benachrichtigung bei Verschiebung/Absage); Ereignis „Dienst veröffentlicht“ (E19) für NOTIF-01 | TRAIN-03-Serientests erweitert |
 | PART-01.6 | Paketabnahme | — |
 
 **PART-02: Dienstbuch-Integration**
@@ -621,6 +625,7 @@ Jeder Teilschritt ist ein eigener Commit nach EXEC-01 (Format `feat(PART-01.3): 
 | PART-03.3 | Vorschau-Endpunkt und Integration in Meldelogik (Sperre mit Begründung) | Tests |
 | PART-03.4 | `RuleBuilder`-UI mit Live-Vorschau, Tastatur | Browser, a11y |
 | PART-03.5 | Nachprüfung (Job + Ereignisse), Konfliktkennzeichnung, Aufgaben | Tests Ablauf/Entzug |
+| PART-03.7 | Aufbauende Qualifikationen (E18): `QualificationType.includes` (M2M auf sich selbst, zyklenfrei validiert), Pflege in der Qualifikationsverwaltung, Auswertung/Vorschau/Zusammenfassung berücksichtigen die transitive Hülle; vor PART-04 umsetzen | Tests: Kette über drei Stufen, Zyklus abgelehnt, höhere Qualifikation abgelaufen, `has_none`, Abfragezahl konstant |
 | PART-03.6 | Paketabnahme | — |
 
 **PART-04: Plätze, Positionen, Warteliste, Zuteilung, Vorlagen**
@@ -720,6 +725,7 @@ Die Texte sind Ausgangspunkte für `backend/templates/notifications/emails/`. Al
 | `waitlist_promoted` | events | `{{ person.first_name }} ist nachgerückt: {{ session.title }}` | `person.first_name`, `session.*`, `session.public_note`, `deadlines.cancellation` | Termin ansehen (direkt), Abmelden (bestätigen) |
 | `assign_published` | events | `{% if assignment.result == "assigned" %}Zugeteilt{% else %}Nicht berücksichtigt{% endif %}: {{ session.title }}` | `person.first_name`, `assignment.result` (`assigned`/`not_selected`), `assignment.slot`, `assignment.open_for_backfill`, `session.*` | Termin ansehen (direkt); Abmeldelink nach E17: Abmelden / Bewerbung zurückziehen / Keine weiteren Nachrichten (bestätigen) |
 | `session_changed` | important | `Geändert: {{ session.title }}` bzw. `Abgesagt: …` | `session.*`, `change.kind` (verschoben/abgesagt/geändert), `change.old`, `change.new`, `person.first_name` | Termin ansehen (direkt), Abmelden (bestätigen, nur bei Verschiebung) |
+| `session_published` | events | `Neuer Termin: {{ session.title }} am {{ session.date }}` (Serie: `Neue Termine: {{ series.title }}`) | `person.first_name`, `session.*` bzw. `series.dates`, `deadlines.registration`, `participation.mode` | Termin ansehen (direkt); je nach Modus Anmelden/Bewerben (bestätigen) oder Abmelden (bestätigen) |
 | `eligibility_conflict` | important | `Voraussetzung nicht mehr erfüllt: {{ session.title }}` | `session.*`, `conflicts` (`name`, `reason`) | Meldungen ansehen (direkt) |
 | `parent_access_end` | general | `Elternzugang für {{ person.first_name }} endet am {{ access.ends_at }}` | `person.first_name`, `access.ends_at`, `recipient.kind` | Ansehen (direkt); für Verwaltende: Mitglied einladen (bestätigen) |
 

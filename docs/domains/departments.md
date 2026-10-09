@@ -22,7 +22,7 @@ Typical goals:
 ## Practical Behavior
 
 - Department-aware ViewSets filter list data by the active/allowed department context.
-- Org-wide access is granted by staff/superuser or `departments.can_access_all_departments`.
+- Superusers have unrestricted access. Other accounts need `departments.can_access_all_departments` for organization visibility and the corresponding global domain permission for domain actions; staff alone grants no domain access.
 - Department role assignments connect users, departments, and auth groups.
 
 ## Where Departments Interact With Other Features

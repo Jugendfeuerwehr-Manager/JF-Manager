@@ -36,18 +36,17 @@ defineProps<Props>()
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem 0;
+  padding: var(--jf-space-0-5) 0;
 }
 
+/* The frame keeps phone proportions but shrinks with a narrow side panel. */
 .phone-frame {
-  width: 375px;
-  height: 667px;
+  width: min(375px, 100%);
+  aspect-ratio: 375 / 667;
   background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
   border-radius: 40px;
   padding: 12px;
-  box-shadow: 
-    0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  box-shadow: var(--jf-shadow-md), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   position: relative;
 }
 

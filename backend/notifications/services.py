@@ -13,6 +13,7 @@ from .models import PushDelivery, PushSubscription
 from .validation import validate_endpoint
 
 logger = logging.getLogger(__name__)
+INBOX_PUSH = frozenset({"requests", "participation"})
 
 
 def can_read(user, obj, permission):
@@ -85,7 +86,20 @@ def deliver_pending(limit=100):
         if not subscription:
             continue
         allowed = subscription.user.is_active
-        if delivery.kind != "test":
+        item = None
+        if delivery.kind in INBOX_PUSH:
+            # NOTIF-01.5: the device owner must still be a recipient who may see the entry.
+            from .inbox import may_see
+            from .models import InboxItem
+
+            item = InboxItem.objects.filter(pk=delivery.object_id, recipients__user=subscription.user).first()
+            allowed = (
+                allowed
+                and getattr(subscription, delivery.kind)
+                and item is not None
+                and may_see(subscription.user, item)
+            )
+        elif delivery.kind != "test":
             obj, permission = event_object(delivery.kind, delivery.object_id)
             allowed = (
                 allowed
@@ -98,12 +112,22 @@ def deliver_pending(limit=100):
             continue
         payload = {
             "title": "JF-Manager",
+            # Lock screens show no names (4.9.1).
             "body": {
                 "services": "Ein Dienst wurde angelegt oder geändert. Details findest du im Dienstbuch.",
                 "orders": "Es gibt Neuigkeiten zu einer Bestellung.",
+                "requests": "Es gibt einen neuen Antrag zur Prüfung.",
+                "participation": "Es gibt Neuigkeiten zu einem Termin.",
                 "test": "Push-Mitteilungen sind auf diesem Gerät eingerichtet.",
             }[delivery.kind],
-            "url": {"services": "/servicebook", "orders": "/orders", "test": "/profile"}[delivery.kind],
+            "url": (item.link if item is not None and item.link else None)
+            or {
+                "services": "/servicebook",
+                "orders": "/orders",
+                "requests": "/eingang",
+                "participation": "/portal" if subscription.user.is_portal_account else "/eingang",
+                "test": "/profile",
+            }[delivery.kind],
             "tag": f"jf-{delivery.kind}-{delivery.object_id}",
         }
         try:

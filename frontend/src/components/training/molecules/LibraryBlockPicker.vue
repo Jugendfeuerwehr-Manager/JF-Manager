@@ -56,6 +56,7 @@
           tabindex="0"
           draggable="true"
           :aria-label="`${block.title} einfügen`"
+          :aria-describedby="block.description ? `picker-description-${block.id}` : undefined"
           @dragstart="onDragStart($event, block)"
           @click="emit('pick', block)"
           @keydown.enter.prevent="emit('pick', block)"
@@ -65,6 +66,7 @@
             <span class="picker-item-title">{{ block.title }}</span>
             <BlockDurationBadge v-if="block.default_duration_minutes" :minutes="block.default_duration_minutes" />
           </div>
+          <p v-if="block.description" :id="`picker-description-${block.id}`" class="picker-item-description">{{ block.description }}</p>
           <div class="picker-item-meta">
             <LibraryBlockCategoryBadge
               v-if="block.category !== null"
@@ -73,7 +75,12 @@
             <span class="picker-last-used">
               {{ block.last_used_date ? `Zuletzt ${formatLastUsed(block.last_used_date)}` : 'Noch nicht verwendet' }}
             </span>
+            <span v-if="block.usage_count" class="picker-usage">{{ block.usage_count }} × verwendet</span>
           </div>
+          <ul v-if="block.tags?.length" class="picker-item-tags" aria-label="Tags">
+            <li v-for="tag in block.tags.slice(0, 4)" :key="tag.id">{{ tag.name }}</li>
+            <li v-if="block.tags.length > 4">+{{ block.tags.length - 4 }}</li>
+          </ul>
         </div>
       </li>
       <li v-if="!blocks.length" class="empty-hint">Keine Bausteine gefunden.</li>
@@ -168,6 +175,7 @@ onMounted(async () => {
 
 <style scoped>
 .library-picker {
+  container: library-picker / inline-size;
   display: flex;
   flex-direction: column;
   gap: var(--jf-space-1-5);
@@ -184,6 +192,7 @@ onMounted(async () => {
   align-items: center;
 }
 .picker-header-actions { display: flex; align-items: center; gap: var(--jf-space-0-5); }
+.picker-header-actions :deep(.p-button) { min-width: var(--jf-touch-target); min-height: var(--jf-touch-target); }
 .picker-title {
   margin: 0;
   font-size: var(--jf-text-lg);
@@ -254,7 +263,55 @@ onMounted(async () => {
   color: var(--jf-color-text);
 }
 .picker-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--jf-space-1); }
-.picker-last-used { font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
+.picker-last-used,
+.picker-usage { font-size: var(--jf-text-xs); color: var(--jf-color-text-muted); }
+
+/* UX-09: more about each block; description stays short in the narrow panel */
+.picker-item-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--jf-text-xs);
+  line-height: var(--jf-leading-normal);
+  color: var(--jf-color-text-muted);
+}
+.picker-usage { display: none; }
+.picker-item-tags {
+  display: none;
+  flex-wrap: wrap;
+  gap: var(--jf-space-0-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.picker-item-tags li {
+  padding: 0 var(--jf-space-0-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-sm);
+  font-size: var(--jf-text-xs);
+  color: var(--jf-color-text-muted);
+}
+
+/* Wider panel: filters side by side, two-line descriptions, tags and usage */
+@container library-picker (min-width: 24rem) {
+  .picker-filters { display: grid; grid-template-columns: 1fr 1fr; }
+  .picker-filters > :first-child { grid-column: 1 / -1; }
+  .picker-item { padding: var(--jf-space-1-5); }
+  .picker-item-description { -webkit-line-clamp: 2; line-clamp: 2; }
+  .picker-usage { display: inline; }
+  .picker-item-tags { display: flex; }
+}
+
+/* Very wide panel (large screens): blocks as a two-column grid */
+@container library-picker (min-width: 36rem) {
+  .picker-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+  .picker-item { height: 100%; box-sizing: border-box; }
+  .picker-item-description { -webkit-line-clamp: 3; line-clamp: 3; }
+  .empty-hint { grid-column: 1 / -1; }
+}
 
 .empty-hint {
   padding: var(--jf-space-2);

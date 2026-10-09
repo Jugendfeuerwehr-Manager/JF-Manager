@@ -42,6 +42,37 @@
         </ul>
       </section>
 
+      <section v-if="inboxTasks.length || inboxNotices.length" class="dashboard-card" aria-labelledby="inbox-title">
+        <header class="dashboard-card__header">
+          <h2 id="inbox-title">Eingang</h2>
+          <span v-if="inbox.counts.open_tasks" class="inbox-count">{{ inbox.counts.open_tasks }} {{ inbox.counts.open_tasks === 1 ? 'offene Aufgabe' : 'offene Aufgaben' }}</span>
+          <span v-if="inbox.counts.unread_notices" class="inbox-count">{{ inbox.counts.unread_notices }} {{ inbox.counts.unread_notices === 1 ? 'neuer Hinweis' : 'neue Hinweise' }}</span>
+          <router-link to="/eingang" class="dashboard-link">Zum Eingang<i class="pi pi-arrow-right" aria-hidden="true"></i></router-link>
+        </header>
+        <h3 v-if="inboxTasks.length" class="inbox-subtitle">Offene Aufgaben</h3>
+        <ul v-if="inboxTasks.length" class="task-list" aria-label="Offene Aufgaben">
+          <li v-for="entry in inboxTasks" :key="entry.id" class="task">
+            <span class="task__icon task__icon--warning" aria-hidden="true"><i class="pi pi-bolt"></i></span>
+            <span class="task__text">
+              <span class="task__title">{{ entry.title }}</span>
+              <span class="task__meta">{{ [categoryLabel(entry.category), entry.department].filter(Boolean).join(' · ') }}</span>
+            </span>
+            <router-link :to="entry.link || '/eingang'" class="task__action" :aria-label="`Öffnen: ${entry.title}`">Öffnen</router-link>
+          </li>
+        </ul>
+        <h3 v-if="inboxNotices.length" class="inbox-subtitle">Neue Hinweise</h3>
+        <ul v-if="inboxNotices.length" class="task-list" aria-label="Neue Hinweise">
+          <li v-for="entry in inboxNotices" :key="entry.id" class="task task--notice">
+            <span class="task__icon task__icon--info" aria-hidden="true"><i class="pi pi-bell"></i></span>
+            <span class="task__text">
+              <span class="task__title">{{ entry.title }}</span>
+              <span class="task__meta">Neu · {{ [categoryLabel(entry.category), entry.department].filter(Boolean).join(' · ') }}</span>
+            </span>
+            <router-link :to="entry.link || '/eingang'" class="task__action" :aria-label="`Öffnen: ${entry.title}`" @click="inbox.markRead(entry.id).catch(() => undefined)">Öffnen</router-link>
+          </li>
+        </ul>
+      </section>
+
       <section class="dashboard-card" aria-labelledby="shortcuts-title">
         <header class="dashboard-card__header">
           <h2 id="shortcuts-title">Schnellzugriff</h2>
@@ -105,6 +136,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
 import { useServicebookStore } from '@/stores/servicebook'
 import { dashboardApi, type DashboardSummary } from '@/api/dashboard'
+import { useInboxStore } from '@/stores/inbox'
+import { categoryLabel } from '@/utils/inbox'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -146,6 +179,10 @@ const loading = ref(true)
 const chartScroll = ref<HTMLElement | null>(null)
 const failedSources = ref<StatSource[]>([])
 const summary = ref<DashboardSummary | null>(null)
+/** Up to three open tasks and unread notices; the section stays hidden without any (or on errors). */
+const inbox = useInboxStore()
+const inboxTasks = computed(() => inbox.dashboardTasks)
+const inboxNotices = computed(() => inbox.dashboardNotices)
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -314,7 +351,7 @@ async function loadStats() {
   if (chartScroll.value) chartScroll.value.scrollLeft = chartScroll.value.scrollWidth
 }
 
-onMounted(loadStats)
+onMounted(() => { void inbox.fetchDashboard(); void loadStats() })
 </script>
 
 <style scoped>
@@ -435,6 +472,8 @@ onMounted(loadStats)
 .dashboard-card--flush > .state-view { margin: 0 var(--jf-space-3) var(--jf-space-3); }
 .dashboard-card--full { flex-basis: 100%; }
 
+.inbox-count { font-size: var(--jf-text-sm); font-weight: var(--jf-weight-semibold); color: var(--jf-color-text-muted); }
+.inbox-subtitle { margin: 0; padding: var(--jf-space-1) 0 0; font-size: var(--jf-text-sm); font-weight: var(--jf-weight-bold); color: var(--jf-color-text-muted); }
 .task-list { margin: 0; padding: 0; list-style: none; }
 .task {
   display: flex;
@@ -488,6 +527,7 @@ onMounted(loadStats)
 
 .dashboard-card__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--jf-space-2);

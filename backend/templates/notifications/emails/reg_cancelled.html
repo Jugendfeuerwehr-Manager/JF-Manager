@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>für <strong>{{ session.title }}</strong> am {{ session.date }}, {{ session.time }} {% if cancellations|length == 1 %}gibt es eine kurzfristige Abmeldung{% else %}gibt es {{ cancellations|length }} kurzfristige Abmeldungen{% endif %}:</p>
+<ul>{% for c in cancellations %}<li>{{ c.name }} – {{ c.reason_category }} ({{ c.at }})</li>{% endfor %}</ul>
+<p>Stand jetzt: {{ counts.expected }} erwartet, {{ counts.cancelled }} abgemeldet.{% if staffing.missing %} Es fehlt: {% for m in staffing.missing %}{{ m.count }}× {{ m.label }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

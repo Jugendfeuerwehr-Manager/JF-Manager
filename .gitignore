@@ -174,3 +174,7 @@ fabric.properties
 backend/dump.rdb
 backend/dump.rdb
 /dump.rdb
+
+# Generated documentation sources, static website and delivery ZIP
+/.docs-build/
+/.venv-docs/
