@@ -32,7 +32,8 @@ WORKDIR /app
 COPY Pipfile Pipfile.lock requirements-server.txt ./
 
 # Install pinned application servers, then the locked application dependencies
-RUN pip install --no-cache-dir --require-hashes -r requirements-server.txt && \
+RUN python -m pip install --no-cache-dir --upgrade pip==26.2.0 && \
+    pip install --no-cache-dir --require-hashes -r requirements-server.txt && \
     pip install --no-cache-dir pipenv==2026.5.2 && \
     pipenv install --deploy --system && \
     pip uninstall -y pipenv
@@ -67,6 +68,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsasl2-2 \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade the base-image installer before copying packages so its old metadata is removed.
+RUN python -m pip install --no-cache-dir --upgrade pip==26.2.0
 
 # Copy Python packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
