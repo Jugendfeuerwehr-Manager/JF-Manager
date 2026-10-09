@@ -192,6 +192,7 @@ onMounted(async () => {
   align-items: center;
 }
 .picker-header-actions { display: flex; align-items: center; gap: var(--jf-space-0-5); }
+.picker-header-actions :deep(.p-button) { min-width: var(--jf-touch-target); min-height: var(--jf-touch-target); }
 .picker-title {
   margin: 0;
   font-size: var(--jf-text-lg);

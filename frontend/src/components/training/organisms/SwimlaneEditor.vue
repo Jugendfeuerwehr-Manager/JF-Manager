@@ -918,6 +918,11 @@ function setupInteract() {
   flex-wrap: nowrap;
   min-width: 0;
 }
+/* Touch: header buttons at least 44 px (desktop keeps the compact PrimeVue size). */
+@media (pointer: coarse), (max-width: 1023px) {
+  .planner-head :deep(.workspace-head__actions .p-button) { min-height: var(--jf-touch-target); }
+  .planner-head :deep(.workspace-head__actions .p-button-icon-only) { min-width: var(--jf-touch-target); }
+}
 .planner-head--sm .save-hint {
   flex: 1 1 auto;
   min-width: 0;
