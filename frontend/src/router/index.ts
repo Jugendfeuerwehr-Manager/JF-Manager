@@ -412,7 +412,9 @@ const router = createRouter({
         {
           path: 'training',
           name: 'training',
-          component: () => import('@/views/training/TrainingCalendarView.vue')
+          component: () => import('@/views/training/TrainingCalendarView.vue'),
+          // UX-09: the month view uses the full width of large screens.
+          meta: { wide: true }
         },
         {
           path: 'training/library',

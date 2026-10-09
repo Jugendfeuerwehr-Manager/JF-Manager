@@ -89,7 +89,7 @@ describe('TrainingCalendar', () => {
     const chips = wrapper.findAll('button.session-pill')
     expect(chips).toHaveLength(2)
     expect(chips[0]!.find('.session-pill__time').text()).toBe('18:00')
-    expect(chips[0]!.attributes('aria-label')).toBe('18:00 · Knotenkunde · Veröffentlicht · JF')
+    expect(chips[0]!.attributes('aria-label')).toBe('18:00 · Knotenkunde · Veröffentlicht · JF · Gerätehaus')
     expect(chips[0]!.attributes('title')).toBe(chips[0]!.attributes('aria-label'))
     expect(chips[1]!.classes()).toContain('session-pill--cancelled')
     expect(chips[1]!.attributes('aria-label')).toContain('Abgesagt')
@@ -98,6 +98,16 @@ describe('TrainingCalendar', () => {
     await chips[0]!.trigger('click')
     expect(push).toHaveBeenCalledWith('/training/sessions/1/plan')
     expect(wrapper.find('.dialog-stub').exists()).toBe(false)
+  })
+
+  it('keeps three entries per day plus "+N weitere" when the cell height is not fixed', async () => {
+    trainingStore.sessions = [1, 2, 3, 4, 5].map((id) => session({ id, title: `Übung ${id}`, date: '2026-10-21' }))
+    const wrapper = mountCalendar()
+    await flushPromises()
+    const cell = wrapper.findAll('.cal-cell').find((c) => c.find('.session-pill').exists())!
+    expect(cell.findAll('.session-pill')).toHaveLength(3)
+    expect(cell.get('.more-pill').text()).toBe('+2 weitere')
+    expect(cell.get('.more-pill').attributes('aria-label')).toContain('2 weitere Übungen')
   })
 
   it('offers one primary action and switches to the list through the segmented control', async () => {

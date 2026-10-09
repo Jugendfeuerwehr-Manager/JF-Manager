@@ -77,4 +77,13 @@ describe('App layout shell', () => {
     expect(wrapper.get('.layout-wrapper').classes()).toContain('layout-wrapper--nav-hidden')
     expect(wrapper.get('.layout-content').classes()).toContain('layout-content--full-width')
   })
+
+  it('lifts the content width cap only for wide routes', () => {
+    expect(renderAt(1920).get('.layout-content').classes()).not.toContain('layout-content--wide')
+    route.path = '/training'
+    route.meta = { wide: true }
+    const classes = renderAt(1920).get('.layout-content').classes()
+    expect(classes).toContain('layout-content--wide')
+    expect(classes).not.toContain('layout-content--full-width')
+  })
 })

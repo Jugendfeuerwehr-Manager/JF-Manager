@@ -62,7 +62,14 @@
     </div>
 
     <!-- Calendar grid -->
-    <div v-if="!showListView && !loading" class="cal-grid" :aria-label="`Übungen im ${monthLabel}`" role="group">
+    <div
+      v-if="!showListView && !loading"
+      ref="gridEl"
+      class="cal-grid"
+      :style="{ '--cal-weeks': String(calendarCells.length / 7) }"
+      :aria-label="`Übungen im ${monthLabel}`"
+      role="group"
+    >
       <!-- Weekday headers -->
       <div
         v-for="(d, index) in weekDays"
@@ -83,6 +90,7 @@
           'today': cell.isToday,
           'is-weekend': cell.isWeekend,
           'has-sessions': cell.sessions.length > 0,
+          'is-dense': isDense(cell),
         }"
         @click="cell.inMonth && openDayDetail(cell)"
       >
@@ -97,7 +105,7 @@
         <span v-else class="cell-day" aria-hidden="true">{{ cell.day }}</span>
         <div class="cell-sessions">
           <button
-            v-for="session in cell.sessions.slice(0, 3)"
+            v-for="session in cell.sessions.slice(0, shownCount(cell))"
             :key="session.occurrence_key"
             type="button"
             class="session-pill"
@@ -111,15 +119,16 @@
             <span v-if="session.start_time" class="session-pill__time">{{ formatTime(session.start_time) }}</span>
             <span class="session-pill__title">{{ session.title }}</span>
             <i v-if="session.is_recurring" class="pi pi-sync session-pill__recurring" aria-hidden="true" />
+            <span v-if="session.location" class="session-pill__place">{{ session.location }}</span>
           </button>
           <button
-            v-if="cell.sessions.length > 3"
+            v-if="cell.sessions.length > shownCount(cell)"
             type="button"
             class="more-pill"
-            :aria-label="`${cell.sessions.length - 3} weitere Übungen am ${dayLabel(cell)}`"
+            :aria-label="`${cell.sessions.length - shownCount(cell)} weitere Übungen am ${dayLabel(cell)}`"
             @click.stop="openDayDetail(cell)"
           >
-            +{{ cell.sessions.length - 3 }} weitere
+            +{{ cell.sessions.length - shownCount(cell) }} weitere
           </button>
         </div>
       </div>
@@ -182,7 +191,7 @@
 
 <script setup lang="ts">
 import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
@@ -201,6 +210,7 @@ import {
   type TrainingCalendarSession,
 } from '../utils/recurrence'
 import { trainingStatusMeta } from '../utils/trainingStatus'
+import { DEFAULT_SESSIONS_PER_CELL, sessionCapacity, visibleSessionCount } from '../utils/calendarLayout'
 
 const router = useRouter()
 const confirm = useConfirm()
@@ -385,6 +395,7 @@ function sessionLabel(session: TrainingCalendarSession): string {
     trainingStatusMeta(session.status).label,
     session.is_recurring ? 'Terminserie' : '',
     departmentMeta(session.id).label ?? '',
+    session.location ?? '',
   ].filter(Boolean).join(' · ')
 }
 
@@ -532,6 +543,72 @@ function departmentChipStyle(sessionId: number): Record<string, string> {
 
 watch([currentYear, currentMonth], loadSessions)
 onMounted(loadSessions)
+
+// UX-09: on desktops the month fills the screen height; each day then lists as many
+// exercises as fit before "+N weitere". Large cells show detailed entries (two-line
+// title, location); a day with more entries than fit that way switches to one-line
+// entries. Without a fixed cell height (phones, tests) the previous three entries remain.
+const gridEl = ref<HTMLElement | null>(null)
+const capacity = ref<{ detailed: number; compact: number } | null>(null)
+let resizeObserver: ResizeObserver | null = null
+let measureFrame = 0
+
+function isDense(cell: CalendarCell): boolean {
+  return !!capacity.value && cell.sessions.length > capacity.value.detailed
+}
+
+function shownCount(cell: CalendarCell): number {
+  if (!capacity.value) return DEFAULT_SESSIONS_PER_CELL
+  return visibleSessionCount(cell.sessions.length, isDense(cell) ? capacity.value.compact : capacity.value.detailed)
+}
+
+function cssLengthPx(element: HTMLElement, property: string, fallbackRem: number): number {
+  const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  const value = parseFloat(getComputedStyle(element).getPropertyValue(property))
+  return (Number.isFinite(value) ? value : fallbackRem) * remPx
+}
+
+function measureCells() {
+  const grid = gridEl.value
+  // The stylesheet marks the fill-height layout; elsewhere rows grow with their content.
+  if (!grid || getComputedStyle(grid).getPropertyValue('--cal-fill').trim() !== '1') {
+    capacity.value = null
+    return
+  }
+  // The smallest cell decides: a busy week may have grown beyond its share.
+  let available = Infinity
+  let gap = 2
+  for (const cell of grid.querySelectorAll<HTMLElement>('.cal-cell')) {
+    const list = cell.querySelector<HTMLElement>('.cell-sessions')
+    if (!list) continue
+    gap = parseFloat(getComputedStyle(list).rowGap) || gap
+    available = Math.min(available, cell.getBoundingClientRect().bottom - list.getBoundingClientRect().top - parseFloat(getComputedStyle(cell).paddingBottom))
+  }
+  if (!Number.isFinite(available)) return
+  // Entry heights are fixed in the stylesheet (rem), so the count never depends on titles.
+  // Never fewer than before UX-09: the week grows instead.
+  capacity.value = {
+    detailed: sessionCapacity(available, cssLengthPx(grid, '--cal-entry-detailed', 1.75), gap),
+    compact: Math.max(DEFAULT_SESSIONS_PER_CELL + 1, sessionCapacity(available, cssLengthPx(grid, '--cal-entry-compact', 1.75), gap)),
+  }
+}
+
+function scheduleMeasure() {
+  cancelAnimationFrame(measureFrame)
+  measureFrame = requestAnimationFrame(measureCells)
+}
+
+watch(gridEl, (grid, previous) => {
+  if (typeof ResizeObserver === 'undefined') return
+  resizeObserver ??= new ResizeObserver(scheduleMeasure)
+  if (previous) resizeObserver.unobserve(previous)
+  if (grid) resizeObserver.observe(grid)
+}, { flush: 'post' })
+watch(calendarCells, () => { void nextTick(scheduleMeasure) })
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  cancelAnimationFrame(measureFrame)
+})
 </script>
 
 <style scoped>
@@ -753,6 +830,9 @@ button.cell-day:hover {
   color: var(--jf-color-text-muted);
 }
 
+/* Shown only in large cells (UX-09); the full text is always in the label. */
+.session-pill__place { display: none; }
+
 /* Status: symbol plus shape, never colour alone */
 .session-pill--draft {
   border-style: dashed;
@@ -818,6 +898,81 @@ button.cell-day:hover {
   .cal-cell { padding: var(--jf-space-1); }
   .session-pill { font-size: var(--jf-text-sm); min-height: 1.75rem; }
   .cal-weekday { padding: var(--jf-space-1) var(--jf-space-1-5); }
+}
+
+/*
+ * UX-09: desktops fill the remaining screen height; the weeks share it equally
+ * (minimum row height as on notebooks, so short screens scroll as before).
+ * --cal-fill tells the script that cells have a fixed height to fill with entries;
+ * --cal-entry-* are the largest entry heights it plans with.
+ */
+@media (min-width: 1024px) {
+  .training-calendar { flex: 1 1 auto; min-height: 0; }
+  .cal-grid {
+    --cal-fill: 1;
+    --cal-entry-compact: 1.5rem;
+    --cal-entry-detailed: var(--cal-entry-compact);
+    flex: 1 1 0;
+    /* Weekday row plus the minimum week rows; below that the page scrolls. */
+    min-height: calc(2.5rem + var(--cal-weeks, 6) * var(--cal-cell-min-height));
+    grid-template-rows: auto;
+    /* A busy week may still grow (at least three entries per day, as on notebooks before). */
+    grid-auto-rows: minmax(auto, 1fr);
+  }
+  .session-pill { flex: none; max-height: var(--cal-entry-detailed); overflow: hidden; }
+  .is-dense .session-pill { max-height: var(--cal-entry-compact); }
+}
+
+@media (min-width: 1024px) and (pointer: coarse) {
+  .cal-grid { --cal-entry-compact: 2rem; }
+}
+
+@container training-calendar (min-width: 75rem) {
+  .cal-grid { --cal-entry-compact: 1.75rem; }
+}
+
+/* Large screens (about 1600 px of calendar and more): roomier cells, titles over two lines */
+@container training-calendar (min-width: 100rem) {
+  .cal-grid { --cal-entry-detailed: 4rem; }
+  .cal-cell { padding: var(--jf-space-1) var(--jf-space-1-5); gap: var(--jf-space-1); }
+  .cell-sessions { gap: var(--jf-space-0-5); }
+  .cell-day { min-width: 2rem; height: 2rem; font-size: var(--jf-text-md); }
+  .cal-weekday { padding: var(--jf-space-1-5); font-size: var(--jf-text-sm); }
+  .session-pill {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 2px;
+    padding-top: var(--jf-space-0-5);
+    padding-bottom: var(--jf-space-0-5);
+  }
+  .session-pill__status,
+  .session-pill__time,
+  .session-pill__recurring { line-height: var(--jf-leading-tight); }
+  .session-pill__title {
+    text-align: left;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  /* Location as a second line under time and title */
+  .session-pill__place {
+    display: block;
+    flex: 1 0 100%;
+    min-width: 0;
+    padding-left: calc(0.7rem + var(--jf-space-0-5));
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--jf-color-text-muted);
+    font-size: var(--jf-text-xs);
+  }
+  /* Busy days: one line per exercise so more of them fit */
+  .is-dense .session-pill { flex-wrap: nowrap; align-items: center; }
+  .is-dense .session-pill__title { display: block; white-space: nowrap; text-overflow: ellipsis; }
+  .is-dense .session-pill__place { display: none; }
 }
 
 /* Narrow containers (small notebooks with sidebar): drop the time first */

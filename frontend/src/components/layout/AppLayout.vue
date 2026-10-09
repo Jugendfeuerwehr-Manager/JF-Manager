@@ -14,7 +14,7 @@
 
     <aside v-if="!isMobile && !workspaceNavHidden" class="desktop-sidebar"><ModuleNavigation /></aside>
     <main id="main-content" tabindex="-1" class="layout-main">
-      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') || route.meta.fullWidth }">
+      <div class="layout-content" :class="{ 'layout-content--full-width': route.path.startsWith('/settings') || route.meta.fullWidth, 'layout-content--wide': route.meta.wide }">
         <router-view :key="departmentsStore.activeDepartmentId ?? 'all'" />
       </div>
     </main>
@@ -99,6 +99,8 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); inbox.st
 .layout-wrapper--nav-hidden { --sidebar-width: 0px; }
 .layout-content { padding: var(--jf-space-3) var(--jf-space-4); max-width: 1600px; margin: 0 auto; }
 .layout-content--full-width { max-width: none; padding: 0; }
+/* Wide pages (e.g. the training calendar) keep the padding but use large screens fully. */
+.layout-content--wide { max-width: none; }
 .mobile-toolbar { position: fixed; inset: 0 0 auto; height: var(--mobile-bar-height); z-index: 1000; background: var(--jf-color-card); border-bottom: 1px solid var(--jf-color-border); display: flex; align-items: center; padding: 0 var(--jf-space-0-5); gap: var(--jf-space-0-5); }
 .mobile-context { flex: 1; min-width: 0; display: flex; justify-content: center; }
 .mobile-context :deep(.department-switcher) { min-width: 0; max-width: 100%; }
