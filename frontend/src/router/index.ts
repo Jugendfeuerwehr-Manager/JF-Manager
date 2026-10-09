@@ -30,6 +30,13 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      // Login step for a pending staff account link (PORTAL-04.2, E13)
+      path: '/konto-bestaetigen',
+      name: 'account-link-confirm',
+      component: () => import('@/views/AccountLinkConfirmView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/PasswordResetRequestView.vue'),
@@ -486,6 +493,12 @@ router.beforeEach(async (to, from, next) => {
   } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
     // Accounts with mandatory MFA can only reach the setup until it is done.
     next({ path: '/profile', query: { mfa: 'setup' } })
+  } else if (
+    authStore.accountLinkPending && !authStore.isPortalAccount && !authStore.accountLinkDeferred &&
+    !authStore.mfaSetupRequired && requiresAuth && to.name !== 'account-link-confirm'
+  ) {
+    // A pending link waits for the account's decision before anything else (E13).
+    next({ name: 'account-link-confirm', query: to.fullPath === '/' ? {} : { next: to.fullPath } })
   } else if (to.meta.requiresSettings && authStore.isAuthenticated) {
     try {
       await settingsStore.fetchPermissions()

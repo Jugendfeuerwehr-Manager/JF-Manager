@@ -97,5 +97,53 @@ export const useAccountLinksStore = defineStore('accountLinks', () => {
     }
   }
 
-  return { record, link, loading, error, suggestions, searchResults, searching, busy, load, loadSuggestions, search, clearSearch, linkAccount, unlink }
+  // ---------------------------------------------------------------- own account (login step, E13)
+  const pending = ref<AccountLink | null>(null)
+  const pendingLoading = ref(false)
+  const pendingError = ref<ApiErrorKind | null>(null)
+  const deciding = ref(false)
+  const decideError = ref<string | null>(null)
+
+  async function loadPending() {
+    pendingLoading.value = true
+    pendingError.value = null
+    try {
+      pending.value = (await accountLinksApi.pendingForMe()).data.link
+    } catch (err) {
+      pending.value = null
+      pendingError.value = classifyApiError(err)
+    } finally {
+      pendingLoading.value = false
+    }
+  }
+
+  /** Confirms or rejects the own pending link; the server answers the final state. */
+  async function decide(accept: boolean): Promise<boolean> {
+    if (!pending.value || deciding.value) return false
+    deciding.value = true
+    decideError.value = null
+    try {
+      const id = pending.value.id
+      pending.value = (await (accept ? accountLinksApi.confirm(id) : accountLinksApi.reject(id))).data
+      return true
+    } catch (err) {
+      decideError.value = getApiErrorMessage(err, 'Die Entscheidung konnte nicht gespeichert werden.')
+      return false
+    } finally {
+      deciding.value = false
+    }
+  }
+
+  async function requestRelease(): Promise<AccountLinkResult> {
+    try {
+      await accountLinksApi.requestRelease()
+      return { ok: true }
+    } catch (err) {
+      return failure(err, 'Die Anfrage konnte nicht gesendet werden.')
+    }
+  }
+
+  return {
+    pending, pendingLoading, pendingError, deciding, decideError, loadPending, decide, requestRelease,
+    record, link, loading, error, suggestions, searchResults, searching, busy, load, loadSuggestions, search, clearSearch, linkAccount, unlink }
 })

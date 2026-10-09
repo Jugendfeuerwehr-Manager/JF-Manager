@@ -80,6 +80,11 @@ def session_status(request):
     if authenticated:
         # The frontend routes portal accounts (parents, members) to their own area.
         data["account_kind"] = user.account_kind
+        if not user.is_portal_account:
+            # PORTAL-04: a pending link stops at the confirmation step; a confirmed one opens "Mein Bereich".
+            from portal.people import staff_link_status
+
+            data.update(staff_link_status(user))
     return data
 
 

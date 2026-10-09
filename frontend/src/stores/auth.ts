@@ -12,6 +12,10 @@ import { useDepartmentsStore } from '@/stores/departments'
 
 // Credentials from the former JWT login; removed on every start.
 const LEGACY_STORAGE_KEYS = ['accessToken', 'refreshToken']
+const DEFER_KEY = 'jf.accountLinkDeferred'
+function readDeferred() {
+  try { return sessionStorage.getItem(DEFER_KEY) === '1' } catch { return false }
+}
 // Only the most recently initialised store reacts to session problems (HMR, tests).
 let unsubscribeSessionProblems: (() => void) | null = null
 
@@ -30,6 +34,11 @@ export const useAuthStore = defineStore('auth', () => {
   const mfaSetupRequired = computed(() => !!session.value?.authenticated && !!session.value.mfa_setup_required)
   const isPortalAccount = computed(() => (user.value?.account_kind ?? session.value?.account_kind) === 'portal')
   const userFullName = computed(() => user.value?.full_name || '')
+  // PORTAL-04: the login step waits for a decision; "Später" defers it for this browser session.
+  const accountLinkDeferred = ref(readDeferred())
+  const accountLinkPending = computed(() => !!session.value?.authenticated && !!session.value.account_link_pending)
+  const linkedPerson = computed(() => session.value?.linked_person ?? { member: false, children: false })
+  const hasOwnArea = computed(() => linkedPerson.value.member || linkedPerson.value.children)
 
   // Global rights remain global; department rights follow the selected area.
   // Organisation visibility never turns a scoped right into a global right.
@@ -200,7 +209,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function deferAccountLink() {
+    accountLinkDeferred.value = true
+    try { sessionStorage.setItem(DEFER_KEY, '1') } catch { /* private mode: defer for this page only */ }
+  }
+
   function clearLocalState() {
+    accountLinkDeferred.value = false
+    try { sessionStorage.removeItem(DEFER_KEY) } catch { /* ignore */ }
     session.value = null
     user.value = null
     useDepartmentsStore().clearDepartments()
@@ -273,6 +289,10 @@ export const useAuthStore = defineStore('auth', () => {
     mfaSetupRequired,
     userFullName,
     isPortalAccount,
+    accountLinkPending,
+    accountLinkDeferred,
+    linkedPerson,
+    hasOwnArea,
     permissions,
     isOrgWide,
     isStaff,
@@ -288,6 +308,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshSession,
     fetchUser,
     updateProfile,
+    deferAccountLink,
     logout,
     handleSessionExpired,
     initialize,
