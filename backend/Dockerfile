@@ -76,6 +76,9 @@ RUN python -m pip install --no-cache-dir --upgrade pip==26.2.0
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+# Package installation is complete; do not ship pip and its vendored build dependencies.
+RUN python -m pip uninstall -y pip
+
 # Create non-root user and group
 RUN groupadd -g 2000 django_group && \
     useradd -m -u 1000 -g django_group django && \
