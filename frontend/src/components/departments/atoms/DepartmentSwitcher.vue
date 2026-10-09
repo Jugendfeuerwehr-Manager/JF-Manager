@@ -14,7 +14,7 @@
 
     <Select
       v-else
-      v-model="selectedDeptId"
+      v-model="selectValue"
       :options="options"
       option-label="label"
       option-value="value"
@@ -23,7 +23,7 @@
       @change="onSelect"
     >
       <template #value="{ value }">
-        <div v-if="value === null" class="dept-option">
+        <div v-if="value === ALL_VALUE || value === null" class="dept-option">
           <i class="pi pi-globe dept-icon" />
           <span>Alle Abteilungen</span>
         </div>
@@ -35,8 +35,8 @@
       </template>
       <template #option="{ option }">
         <div class="dept-option">
-          <span v-if="option.value !== null" class="dept-color-dot" :style="{ backgroundColor: option.color || '#64748B' }" />
-          <i :class="['dept-icon', option.value === null ? 'pi pi-globe' : 'pi pi-building']" />
+          <span v-if="option.value !== ALL_VALUE" class="dept-color-dot" :style="{ backgroundColor: option.color || '#64748B' }" />
+          <i :class="['dept-icon', option.value === ALL_VALUE ? 'pi pi-globe' : 'pi pi-building']" />
           <span>{{ option.label }}</span>
         </div>
       </template>
@@ -71,6 +71,18 @@ const compactMenu = ref()
 // Mirror the store value locally so Select has a reactive v-model
 const selectedDeptId = ref<number | null>(departmentsStore.activeDepartmentId)
 
+/**
+ * PrimeVue treats null as "empty" and would show the placeholder. The Select
+ * therefore uses a sentinel for "Alle Abteilungen"; the store keeps null.
+ */
+const ALL_VALUE = -1
+const selectValue = computed<number>({
+  get: () => selectedDeptId.value ?? ALL_VALUE,
+  set: (v) => {
+    selectedDeptId.value = v === ALL_VALUE || v === null || v === undefined ? null : v
+  },
+})
+
 // Keep local ref in sync when store changes externally
 watch(
   () => departmentsStore.activeDepartmentId,
@@ -87,7 +99,7 @@ const showSwitcher = computed(
 
 interface Option {
   label: string
-  value: number | null
+  value: number
   color?: string
 }
 
@@ -98,19 +110,19 @@ const options = computed<Option[]>(() => {
     color: d.color,
   }))
   if (isOrgWide.value) {
-    return [{ label: 'Alle Abteilungen', value: null }, ...depts]
+    return [{ label: 'Alle Abteilungen', value: ALL_VALUE }, ...depts]
   }
   return depts
 })
 
 function labelFor(id: number | null): string {
-  if (id === null) return 'Alle Abteilungen'
+  if (id === null || id === ALL_VALUE) return 'Alle Abteilungen'
   const dept = departmentsStore.departments.find((d) => d.id === id)
   return dept ? `${dept.name} (${dept.code})` : ''
 }
 
 function colorFor(id: number | null): string {
-  if (id === null) return '#64748B'
+  if (id === null || id === ALL_VALUE) return '#64748B'
   return departmentsStore.departments.find((d) => d.id === id)?.color || '#64748B'
 }
 
@@ -128,9 +140,9 @@ function onSelect() {
 const compactMenuItems = computed<MenuItem[]>(() =>
   options.value.map((option) => ({
     label: option.label,
-    icon: option.value === null ? 'pi pi-globe' : 'pi pi-building',
+    icon: option.value === ALL_VALUE ? 'pi pi-globe' : 'pi pi-building',
     command: () => {
-      selectedDeptId.value = option.value
+      selectValue.value = option.value
       onSelect()
     },
   })),
