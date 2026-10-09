@@ -347,8 +347,14 @@ def _staff_cancellation(registration, session, member, participation, stamp):
             "counts": {"expected": seated, "cancelled": cancelled},
             "staffing": {"missing": []},
         }
-        queue_email("reg_cancelled", user, context, event_key=f"reg_cancelled:{registration.pk}:{stamp}:{user.pk}")
-        queue_push(user, item, "participation")
+        queue_email(
+            "reg_cancelled",
+            user,
+            context,
+            event_key=f"reg_cancelled:{registration.pk}:{stamp}:{user.pk}",
+            explicit=True,
+        )
+        queue_push(user, item, "participation", explicit=True)
 
 
 @receiver(eligibility_conflict)
@@ -391,6 +397,10 @@ def on_eligibility_conflict(sender, session, registration_ids, **kwargs):
             "conflicts": conflicts,
         }
         queue_email(
-            "eligibility_conflict", user, context, event_key=f"eligibility_conflict:{session.pk}:{key}:{user.pk}"
+            "eligibility_conflict",
+            user,
+            context,
+            event_key=f"eligibility_conflict:{session.pk}:{key}:{user.pk}",
+            explicit=True,
         )
-        queue_push(user, item, "participation")
+        queue_push(user, item, "participation", explicit=True)

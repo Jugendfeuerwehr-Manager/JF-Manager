@@ -77,7 +77,21 @@ class InboxCountsView(APIView):
         rows = _visible(request.user)
         open_tasks = sum(1 for e in rows if e.item.item_type == "task" and e.item.task_state == "open")
         unread = sum(1 for e in rows if e.item.item_type == "notice" and e.read_at is None)
-        return Response({"open_tasks": open_tasks, "unread_notices": unread, "total": open_tasks + unread})
+        by_category = {value: 0 for value in InboxItem.Category.values}
+        for e in rows:
+            item = e.item
+            if (item.item_type == "task" and item.task_state == "open") or (
+                item.item_type == "notice" and e.read_at is None
+            ):
+                by_category[item.category] = by_category.get(item.category, 0) + 1
+        return Response(
+            {
+                "open_tasks": open_tasks,
+                "unread_notices": unread,
+                "total": open_tasks + unread,
+                "by_category": by_category,
+            }
+        )
 
 
 def _own_entry(user, item_id):

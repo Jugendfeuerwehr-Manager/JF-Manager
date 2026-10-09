@@ -103,7 +103,10 @@ class ProducerTests(TestCase):
         self.assertLessEqual({"waitlist_placed", "waitlist_promoted"}, kinds)
 
     def test_short_notice_cancellation_alerts_responsibles(self):
-        session = self.publish(day=timezone.localdate() + timedelta(days=1), start=time(18))
+        # Inside the 24 h window whatever the time of day (a fixed "tomorrow 18:00" only failed before 18:00).
+        start = (timezone.localtime() + timedelta(hours=20)).replace(second=0, microsecond=0)
+        end = time(23, 59) if start.hour == 23 else start.replace(hour=start.hour + 1).time()
+        session = self.publish(day=start.date(), start=start.time(), end=end)
         with self.captureOnCommitCallbacks(execute=True):
             service.set_registration(
                 session.pk,

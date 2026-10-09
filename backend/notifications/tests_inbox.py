@@ -132,8 +132,10 @@ class InboxApiTests(InboxTestBase):
             permission=PERM,
         )
         anna = self.client_for(self.anna)
+        counts = anna.get("/api/v1/notifications/inbox/counts/").json()
         self.assertEqual(
-            anna.get("/api/v1/notifications/inbox/counts/").json(), {"open_tasks": 1, "unread_notices": 1, "total": 2}
+            {k: counts[k] for k in ("open_tasks", "unread_notices", "total")},
+            {"open_tasks": 1, "unread_notices": 1, "total": 2},
         )
         titles = [r["title"] for r in anna.get("/api/v1/notifications/inbox/").json()["results"]]
         self.assertEqual(sorted(titles), ["Abmeldung Mitte", "Platz frei"])

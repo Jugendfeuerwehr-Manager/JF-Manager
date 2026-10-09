@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .dispatch import kinds_for
+from .dispatch import default_channel, kinds_for
 from .models import NotificationPreference
 
 
@@ -17,12 +17,13 @@ class PreferenceSerializer(serializers.Serializer):
 
 def _rows(user):
     saved = {p.kind: p for p in NotificationPreference.objects.filter(user=user)}
+    default = default_channel(user, explicit=False)
     return [
         {
             "kind": kind,
             "label": label,
-            "email": saved[kind].email if kind in saved else True,
-            "push": saved[kind].push if kind in saved else True,
+            "email": saved[kind].email if kind in saved else default,
+            "push": saved[kind].push if kind in saved else default,
         }
         for kind, label in kinds_for(user).items()
     ]

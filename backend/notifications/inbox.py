@@ -24,8 +24,10 @@ def staff_with_permission(permission, department_id):
     """Active staff accounts holding ``permission`` in ``department_id`` (D9).
 
     Either a department role grants it there, or the global right plus an
-    assignment to the department (or organisation-wide scope). Superusers are
-    not addressed implicitly; they would receive every team entry.
+    assignment to the department (or organisation-wide scope). Active staff
+    superusers always see every team entry (``may_see``), so they are addressed
+    as well (UX-10.1); e-mail and push stay off for them unless they opt in
+    (``dispatch.wants``).
     """
     app_label, codename = permission.split(".", 1)
     grants = {
@@ -42,15 +44,18 @@ def staff_with_permission(permission, department_id):
         groups__permissions__content_type__app_label="departments",
     )
     staff = User.objects.filter(is_active=True, account_kind=User.AccountKind.STAFF)
+    superusers = set(staff.filter(is_superuser=True).values_list("pk", flat=True))
     if department_id is None:
-        return staff.filter(global_right & org_wide).distinct()
+        ids = set(staff.filter(global_right & org_wide).values_list("pk", flat=True))
+        return User.objects.filter(pk__in=ids | superusers)
     role = Q(
         department_roles__department_id=department_id,
         department_roles__groups__permissions__content_type__app_label=app_label,
         department_roles__groups__permissions__codename=codename,
     )
     assigned = Q(department_roles__department_id=department_id)
-    ids = set(staff.filter(role).values_list("pk", flat=True))
+    ids = set(superusers)
+    ids |= set(staff.filter(role).values_list("pk", flat=True))
     ids |= set(staff.filter(global_right).filter(assigned | org_wide).values_list("pk", flat=True))
     return User.objects.filter(pk__in=ids)
 

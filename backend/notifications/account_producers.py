@@ -160,6 +160,6 @@ def registration_digest(now=None):
             "sessions": rows,
             "counts": {"total": sum(sum(r["counts"].values()) for r in rows)},
         }
-        if queue_email("reg_digest", user, context, event_key=f"reg_digest:{user_id}:{day:%Y%m%d}"):
+        if queue_email("reg_digest", user, context, event_key=f"reg_digest:{user_id}:{day:%Y%m%d}", explicit=True):
             queued += 1
     return queued

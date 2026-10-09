@@ -4,7 +4,7 @@ Producers create inbox entries (``notifications.inbox.notify``) and call
 ``queue_email``/``queue_push`` here. E-mails go through a durable outbox
 (``EmailDelivery``), idempotent per event key, rendered at send time with the
 current template and sent by the notification worker (``send_push --loop``).
-E-mail and push are on by default (E8, E16, E19) and can be switched off per
+E-mail and push are on by default (E8, E16, E19; off for superusers, UX-10.1) and can be switched off per
 account and kind; the inbox cannot.
 """
 
@@ -49,9 +49,24 @@ def kinds_for(user):
     return PORTAL_KINDS if user.is_portal_account else STAFF_KINDS
 
 
-def wants(user, kind, channel):
+def default_channel(user, explicit=True):
+    """Default without a saved preference: on, except for implicitly addressed staff superusers (UX-10.1).
+
+    Superusers see every team entry in the inbox; mail and push for entries they
+    only receive because they are superuser would flood them, so for accounts
+    without any role those stay opt-in per kind in the profile. ``explicit`` marks recipients chosen by
+    responsibility (e.g. session lead), who keep the default.
+    """
+    if explicit or not user.is_superuser or user.is_portal_account:
+        return True
+    # A superuser who also holds a real role (department role or group) keeps the
+    # normal default; only pure administration accounts stay quiet.
+    return user.department_roles.exists() or user.groups.exists()
+
+
+def wants(user, kind, channel, explicit=True):
     pref = NotificationPreference.objects.filter(user=user, kind=kind).first()
-    return getattr(pref, channel) if pref else True
+    return getattr(pref, channel) if pref else default_channel(user, explicit)
 
 
 def _frontend(path):
@@ -82,9 +97,9 @@ def common_context(user, *, open_url, withdraw_url="", withdraw_label="", action
     }
 
 
-def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelta(0)):
+def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelta(0), explicit=False):
     """Queue one mail and return it; the same event key never yields a second mail (then None)."""
-    if not user.is_active or not user.email or not wants(user, kind, "email"):
+    if not user.is_active or not user.email or not wants(user, kind, "email", explicit):
         return None
     ensure_flat(context)
     delivery, created = EmailDelivery.objects.get_or_create(
@@ -100,11 +115,11 @@ def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelt
     return delivery if created else None  # None: already queued for this event
 
 
-def queue_push(user, item, category):
+def queue_push(user, item, category, explicit=False):
     """Push for an inbox entry; the lock screen shows no names (4.9.1)."""
     from settings_manager.push_configuration import effective_push
 
-    if item is None or not effective_push()["enabled"] or not wants(user, item.kind, "push"):
+    if item is None or not effective_push()["enabled"] or not wants(user, item.kind, "push", explicit):
         return
     for subscription in PushSubscription.objects.filter(user=user, **{category: True}):
         PushDelivery.objects.get_or_create(subscription=subscription, kind=category, object_id=item.pk)
