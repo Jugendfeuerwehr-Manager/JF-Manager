@@ -28,7 +28,9 @@
           <Column field="code" header="Kürzel" :style="{ width: '8rem' }" />
           <Column field="name" header="Name" />
           <Column field="address" header="Adresse" />
-          <Column field="phone" header="Telefon" />
+          <Column field="phone" header="Telefon">
+            <template #body="{ data }"><ContactLink kind="phone" :value="data.phone" /></template>
+          </Column>
           <Column header="Status" :style="{ width: '8rem' }">
             <template #body="{ data }">
               <Tag :value="data.is_active ? 'Aktiv' : 'Inaktiv'" :severity="data.is_active ? 'success' : 'secondary'" />
@@ -91,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'

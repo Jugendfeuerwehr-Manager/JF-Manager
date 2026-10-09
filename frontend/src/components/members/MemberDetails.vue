@@ -66,21 +66,21 @@
       <div class="col-12 md:col-6">
         <div class="mb-3">
           <label class="block text-sm font-semibold mb-1">E-Mail</label>
-          <p class="m-0">{{ member.email || '-' }}</p>
+          <p class="m-0"><ContactLink kind="email" :value="member.email" /></p>
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="mb-3">
           <label class="block text-sm font-semibold mb-1">Telefon</label>
-          <p class="m-0">{{ member.phone || '-' }}</p>
+          <p class="m-0"><ContactLink kind="phone" :value="member.phone" /></p>
         </div>
       </div>
 
       <div class="col-12 md:col-6">
         <div class="mb-3">
           <label class="block text-sm font-semibold mb-1">Mobil</label>
-          <p class="m-0">{{ member.mobile || '-' }}</p>
+          <p class="m-0"><ContactLink kind="phone" :value="member.mobile" /></p>
         </div>
       </div>
 
@@ -132,6 +132,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { computed } from 'vue'
 import type { Member } from '@/types/api'
 import Avatar from '@/components/common/PrivateAvatar.vue'

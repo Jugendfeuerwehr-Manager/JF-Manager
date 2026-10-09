@@ -40,13 +40,13 @@
         <div v-if="member.email" class="flex align-items-center gap-2">
           <i class="pi pi-envelope" style="color: var(--text-color-secondary)"></i>
           <span class="text-color-secondary">E-Mail:</span>
-          <span class="text-sm">{{ member.email }}</span>
+          <ContactLink class="text-sm" kind="email" :value="member.email" />
         </div>
 
         <div v-if="member.mobile" class="flex align-items-center gap-2">
           <i class="pi pi-phone" style="color: var(--text-color-secondary)"></i>
           <span class="text-color-secondary">Mobil:</span>
-          <span>{{ member.mobile }}</span>
+          <ContactLink kind="phone" :value="member.mobile" />
         </div>
 
         <div v-if="member.city" class="flex align-items-center gap-2">
@@ -89,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { computed } from 'vue'
 import Card from 'primevue/card'
 import Avatar from '@/components/common/PrivateAvatar.vue'

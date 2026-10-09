@@ -182,11 +182,11 @@
               <dt>Anschrift</dt>
               <dd>{{ address || '–' }}</dd>
               <dt>E-Mail</dt>
-              <dd><a v-if="member.email" :href="`mailto:${member.email}`">{{ member.email }}</a><template v-else>–</template></dd>
+              <dd><ContactLink kind="email" :value="member.email" /></dd>
               <dt>Telefon</dt>
-              <dd><a v-if="member.phone" :href="`tel:${member.phone}`">{{ member.phone }}</a><template v-else>–</template></dd>
+              <dd><ContactLink kind="phone" :value="member.phone" /></dd>
               <dt>Mobil</dt>
-              <dd><a v-if="member.mobile" :href="`tel:${member.mobile}`">{{ member.mobile }}</a><template v-else>–</template></dd>
+              <dd><ContactLink kind="phone" :value="member.mobile" /></dd>
               <dt>Ausweis-Nr.</dt>
               <dd>{{ member.identityCardNumber || '–' }}</dd>
               <dt>Schwimmen</dt>
@@ -233,6 +233,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'

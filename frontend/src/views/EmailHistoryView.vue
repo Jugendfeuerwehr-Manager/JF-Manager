@@ -243,7 +243,9 @@
             class="recipients-table"
           >
             <Column field="recipient_name" header="Name" />
-            <Column field="email_address" header="E-Mail" />
+            <Column field="email_address" header="E-Mail">
+              <template #body="{ data }"><ContactLink kind="email" :value="data.email_address" /></template>
+            </Column>
             <Column header="Status">
               <template #body="{ data }">
                 <Tag
@@ -272,6 +274,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import SafeHtml from '@/components/common/SafeHtml.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'

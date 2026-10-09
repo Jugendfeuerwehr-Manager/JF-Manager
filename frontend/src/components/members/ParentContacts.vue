@@ -38,28 +38,25 @@
               <div class="info-row">
                 <span class="info-label">E-Mail:</span>
                 <span class="info-value">
-                  <a v-if="parent.email" :href="`mailto:${parent.email}`">{{ parent.email }}</a>
-                  <span v-else class="text-muted">-</span>
+                  <ContactLink kind="email" :value="parent.email" />
                 </span>
               </div>
               <div v-if="parent.email2" class="info-row">
                 <span class="info-label">E-Mail 2:</span>
                 <span class="info-value">
-                  <a :href="`mailto:${parent.email2}`">{{ parent.email2 }}</a>
+                  <ContactLink kind="email" :value="parent.email2" />
                 </span>
               </div>
               <div class="info-row">
                 <span class="info-label">Telefon:</span>
                 <span class="info-value">
-                  <a v-if="parent.phone" :href="`tel:${parent.phone}`">{{ parent.phone }}</a>
-                  <span v-else class="text-muted">-</span>
+                  <ContactLink kind="phone" :value="parent.phone" />
                 </span>
               </div>
               <div class="info-row">
                 <span class="info-label">Mobil:</span>
                 <span class="info-value">
-                  <a v-if="parent.mobile" :href="`tel:${parent.mobile}`">{{ parent.mobile }}</a>
-                  <span v-else class="text-muted">-</span>
+                  <ContactLink kind="phone" :value="parent.mobile" />
                 </span>
               </div>
               <div class="info-row">
@@ -149,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed } from 'vue'
 import type { Parent, Member } from '@/types/api'
 import Button from 'primevue/button'

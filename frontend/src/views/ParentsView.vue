@@ -61,9 +61,15 @@
         >
           <Column field="name" header="Vorname" sortable />
           <Column field="lastname" header="Nachname" sortable />
-          <Column field="email" header="E-Mail" />
-          <Column field="phone" header="Telefon" />
-          <Column field="mobile" header="Mobil" />
+          <Column field="email" header="E-Mail">
+            <template #body="{ data }"><ContactLink kind="email" :value="data.email" /></template>
+          </Column>
+          <Column field="phone" header="Telefon">
+            <template #body="{ data }"><ContactLink kind="phone" :value="data.phone" /></template>
+          </Column>
+          <Column field="mobile" header="Mobil">
+            <template #body="{ data }"><ContactLink kind="phone" :value="data.mobile" /></template>
+          </Column>
           <Column header="" style="width: 50px">
             <template #body="{ data }">
               <Tag
@@ -128,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'

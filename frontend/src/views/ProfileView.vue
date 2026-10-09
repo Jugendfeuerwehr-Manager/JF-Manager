@@ -29,7 +29,8 @@
               </div>
               <div class="info-item">
                 <label>E-Mail</label>
-                <span>{{ user.email || 'Nicht angegeben' }}</span>
+                <ContactLink v-if="user.email" kind="email" :value="user.email" />
+                <span v-else>Nicht angegeben</span>
               </div>
               <div class="info-item">
                 <label>Anmeldemethode</label>
@@ -167,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
