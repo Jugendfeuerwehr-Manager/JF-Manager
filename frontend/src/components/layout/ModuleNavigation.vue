@@ -5,8 +5,13 @@
       <h2>{{ section.label }}</h2>
       <router-link v-for="item in section.items" :key="item.to" :to="item.to" class="nav-link" :class="{ active: isActive(item.to) }" :aria-current="isActive(item.to) ? 'page' : undefined" @click="$emit('navigate')">
         <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
-        <span v-if="item.to === '/eingang' && inbox.counts.total > 0" class="nav-badge" :aria-label="`Eingang, ${inbox.counts.total} offen`">{{ inbox.counts.total }}</span>
-        <span v-if="item.to === '/portal-verwaltung' && requestCount > 0" class="nav-badge" :aria-label="`Portal, ${requestCount} ${requestCount === 1 ? 'offener Antrag' : 'offene Anträge'}`">{{ requestCount }}</span>
+        <!-- The number is shown visually; screen readers hear the sentence after the link label ("Portal, 1 offener Antrag"). -->
+        <template v-if="item.to === '/eingang' && inbox.counts.total > 0">
+          <span class="nav-badge" aria-hidden="true">{{ inbox.counts.total }}</span><span class="sr-only">, {{ inbox.counts.total }} offen</span>
+        </template>
+        <template v-if="item.to === '/portal-verwaltung' && requestCount > 0">
+          <span class="nav-badge" aria-hidden="true">{{ requestCount }}</span><span class="sr-only">, {{ requestCount }} {{ requestCount === 1 ? 'offener Antrag' : 'offene Anträge' }}</span>
+        </template>
       </router-link>
     </section>
     <p v-if="!visibleSections.length" class="nav-empty">Kein passendes Modul gefunden.</p>
@@ -82,5 +87,6 @@ h2 { margin: 0 var(--jf-space-1-5) var(--jf-space-1); color: var(--jf-color-text
 .nav-link.active i { color: var(--jf-color-primary); }
 .nav-link:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; }
 .nav-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--jf-color-primary); color: var(--jf-color-on-primary); font-size: var(--jf-text-xs); font-weight: var(--jf-weight-bold); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .nav-empty { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); padding: var(--jf-space-1); }
 </style>

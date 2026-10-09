@@ -47,17 +47,20 @@ describe('Module navigation', () => {
   it('shows the inbox counter only when something is open', async () => {
     expect(render().find('.nav-badge').exists()).toBe(false)
     inbox.counts.total = 4
-    const badge = render().get('.nav-badge')
-    expect(badge.text()).toBe('4')
-    expect(badge.attributes('aria-label')).toBe('Eingang, 4 offen')
+    const link = render().get('a[href="/eingang"]')
+    expect(link.get('.nav-badge').text()).toBe('4')
+    expect(link.get('.nav-badge').attributes('aria-hidden')).toBe('true')
+    // The link is announced as "Eingang, 4 offen" (label plus hidden sentence, no repeated name).
+    expect(link.get('.sr-only').text()).toBe(', 4 offen')
   })
   it('shows open change requests at Portal with an accessible label', () => {
     expect(render().find('a[href="/portal-verwaltung"] .nav-badge').exists()).toBe(false)
     inbox.counts.by_category = { requests: 2 }
-    const badge = render().get('a[href="/portal-verwaltung"] .nav-badge')
-    expect(badge.text()).toBe('2')
-    expect(badge.attributes('aria-label')).toBe('Portal, 2 offene Anträge')
+    const link = render().get('a[href="/portal-verwaltung"]')
+    expect(link.get('.nav-badge').text()).toBe('2')
+    expect(link.get('.nav-badge').attributes('aria-hidden')).toBe('true')
+    expect(link.get('.sr-only').text()).toBe(', 2 offene Anträge')
     inbox.counts.by_category = { requests: 1 }
-    expect(render().get('a[href="/portal-verwaltung"] .nav-badge').attributes('aria-label')).toBe('Portal, 1 offener Antrag')
+    expect(render().get('a[href="/portal-verwaltung"] .sr-only').text()).toBe(', 1 offener Antrag')
   })
 })
