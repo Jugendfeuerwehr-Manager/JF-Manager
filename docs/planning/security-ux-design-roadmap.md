@@ -67,7 +67,8 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | --- | --- | --- | --- |
 | Integration nach `main` | Bau | Ein Pull Request des gemeinsamen Branches ganz am Ende, nach allen Paketen (Entscheidung 09.10.2026); löst den ersten GitHub-CI-Lauf aus (OPS-03, SEC-10, SEC-12 PostgreSQL in CI). | Wellen 1–3 |
 | OPS-01 | Abnahme | Caddy/ACME mit öffentlicher Domain. | Domain |
-| OPS-04, OPS-05 | Abgleich | Status „in Prüfung“; Detailblock nennt Debian 13 als offen, obwohl OPS-01.9b Debian 13 abgenommen hat. Prüfen und Status schließen. | — |
+| OPS-04 | Abnahme | Restore und Update nur in Compose geprüft; nativ (Debian 13) und im Proxmox-LXC nicht ausgeführt (OPS-01.9b/9c prüften Installation und `backup verify`). | Testsystem, z. B. Proxmox-Host des Nutzers |
+| OPS-03, OPS-05 | Abnahme | Erster GitHub-Lauf (Image-Build, Releasepaket, CI-Jobs). | Integration nach `main` |
 | Backend-Format | Bau | `ruff format --check` meldet 58 vorbestehende Dateien; eigener Formatierungscommit, wenn keine parallele Arbeit läuft. | Welle 3 |
 | DOC-01 Pages | Bau | Handbuch-Website zusammen mit dem Merge nach `main` veröffentlichen (Entscheidung 09.10.2026). | Integration nach `main` |
 | WEB-PLAN | zurückgestellt | Marketing-Konzept: nicht in dieser Runde (Entscheidung 09.10.2026). | — |
@@ -80,7 +81,7 @@ Umsetzung per Subagents in eigenen Worktrees auf Basis des aktuellen Branchstand
 
 | Welle | Inhalt |
 | --- | --- |
-| 1 | UX-10.7 Abnahme; PART-04 samt PART-03-Rest; PORTAL-04; SEC-13 CSP; UX-09 samt Planerkopf; OPS-04/05-Statusabgleich. |
+| 1 | UX-10.7 Abnahme; PART-04 samt PART-03-Rest; PORTAL-04; SEC-13 CSP; UX-09 samt Planerkopf. |
 | 2 | UX-02.2b/02.3, UX-03, UX-04.1, UX-05.1, UX-07, UX-08, Aufräumen Statistik-Endpunkte. |
 | 3 | DES-01.11 und DES-01.12; Abnahmen UX-01/04/06, CFG-02; DOC-01 Portal, Screenshots, Drag-and-drop-Visualisierungen; Backend-Format; PR nach `main` mit Pages. |
 
@@ -2172,3 +2173,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 09.10.2026 | PLAN-CLEANUP | Nutzerauftrag: offene Punkte zusammenfassen, Datei aufräumen. Abschnitt 0 ersetzt: chronologische Checkpoint-Absätze entfernt (Inhalte stehen in Abschnitt 6 und im Journal), neu „Stand je Bereich“, „Offene Punkte“ nach Bereich mit Art (Bau/Abnahme/Entscheidung) und Arbeitsrahmen. Befund: OPS-04/05-Detailblock nennt Debian 13 als offen, OPS-01.9b hat es abgenommen. | Bestanden: Abgleich der offenen Teilschritt-IDs mit `git log`. Nicht ausgeführt: Anwendungstests (nur Dokumentation). | Dieser Commit: `docs(PLAN): summarize open roadmap items` | Nutzerentscheidung über Reihenfolge |
 | 09.10.2026 | UX-11.1 | E-Mail-Vorlageneditor als Arbeitsfläche analog zum Trainingsplaner: eigene Routen außerhalb des Einstellungslayouts mit `meta.workspace`, neuer `WorkspaceHeader` mit gemeinsamem Umschalter „Navigation ausblenden“, Editor mit Code über volle Höhe (HTML/Nur Text), Vorschau/Variablen im Seitenbereich, Speicherzustand, Strg/Cmd + S, Rückfrage beim Verlassen; Layoutvorlagen mit Monaco und gekennzeichneter vereinfachter Vorschau; Listen als Zeilen mit `StatusBadge`, Reiter in der URL; Tokens statt PrimeVue-Altvariablen. Verhaltensänderung: Speichern bleibt im Editor statt zur Liste zurückzukehren. | Bestanden: Frontend 588/588 (6 neu), Typecheck, ESLint. Nicht ausgeführt: Browser (Login des Demo-Admins braucht MFA-Code). | Dieser Commit: `feat(UX-11.1): open e-mail templates in a full-width workspace` | UX-11.2 |
 | 09.10.2026 | PLAN-DECISIONS | Nutzerentscheidungen zu offenen Fragen aufgenommen (Abschnitt 0.3): Q3, Q4, Integration nach `main` am Ende, WEB-PLAN zurückgestellt, Design per Subagent, CSP durchsetzen (neues Paket SEC-13), Backend-Format, Handbuch-Website. Umsetzungsplan in drei Wellen. | Nur Dokumentation. | Dieser Commit: `docs(PLAN): record decisions and the wave plan` | Welle 1 |
+| 09.10.2026 | PLAN-OPS | Abgleich OPS-04/05: Annahme aus PLAN-CLEANUP war falsch. OPS-01.9b/9c prüften Installation und `backup verify` auf Debian 13 bzw. Proxmox-LXC, Restore und Update dort nicht; OPS-04 bleibt zu Recht offen. Offene Punkte entsprechend korrigiert. | Bestanden: Abgleich mit Journal OPS-01.9b/9c, OPS-04.1–04.3. Nicht ausgeführt: Anwendungstests (nur Dokumentation). | Dieser Commit: `docs(PLAN): correct the open OPS items` | Restore/Update auf Testsystem |
