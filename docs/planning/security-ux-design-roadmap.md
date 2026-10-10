@@ -14,7 +14,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Release OPS-05.6b.2–b.3 (10.10.2026):** Tag v3.0.2 auf e2240697bdaffa81adc8b107e4d22bb8518bc5aa veröffentlicht; Lauf 38026781337 vollständig bestanden. Enthält expliziten RAM-Override, Timer-Steuerung für älteres systemd und persistierte Compose-Projekttrennung. Paket/Image-Digests auf NAS geprüft, Produktionsmigration und technische Abnahme abgeschlossen. Neue Tags nicht verschieben.
 
-**Aktueller Fixauftrag (10.10.2026):** FIX-03.1–3 umgesetzt; lokale Pflichtprüfungen bestanden auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
+**Aktueller Fixauftrag (10.10.2026):** FIX-03.1–3 umgesetzt; lokale Pflicht- und Browserprüfungen bestanden auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
 
 ### 0.1 Stand je Bereich
 
@@ -681,7 +681,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Dateien/Commit:** dieser Planungscommit; anschließend Dienstbuchansichten und Benutzerrollen-Komponente/Store/Tests.
 - **Umgesetzt/Prüfungen:** FIX-03.1–3 umgesetzt. Bestanden: Typecheck, Frontend-Lint und 10/10 Benutzerrollen-/Formular-/MFA-Tests. Gesamtprüfungen laufen. Backend-Lint/Format nach separater Bereinigung bestanden; 617 Frontendtests und 1309 Backendtests bestanden (12 PostgreSQL-only übersprungen), Build bestanden. Bestanden: 2/2 mobile Ansichtsregressionen, 5/5 Lösch-/Formular-Frontendtests und 5/5 API-Löschrechte-Tests. Nicht ausgeführt: Gesamtpflichtlauf.
 - **Risiken:** Backend-Formatabweichungen bereinigt; zwölf PostgreSQL-only Tests lokal übersprungen, Tag-CI prüft PostgreSQL 17. Keine Tags verschieben. Kein Produktionsdeployment beauftragt.
-- **Prozesse/Fortsetzung:** isolierte Demo 8016/Frontend 5176 für Browserabnahme; nach Abnahme stoppen. Nächster Schritt FIX-03.5 Merge/main-Push und Tag v3.0.3.
+- **Prozesse/Fortsetzung:** eigene Demo-/Frontendprozesse beendet. Nächster Schritt FIX-03.5 Merge/main-Push und neuer Tag v3.0.3; Tag-CI und Paket prüfen.
 
 ### WEB-PLAN: Marketing-Konzept und wartbare Projektwebsite
 
@@ -2287,3 +2287,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | FIX-03.4 | 57 vorbestehende Backend-Formatabweichungen separat mit Ruff bereinigt, darunter zwei bestehende Markdowndateien mit Pythonbeispielen. AST aller 55 Pythondateien identisch zum Commitstand. | Bestanden: Ruff-Lint und Format (724 Dateien), AST-Vergleich, erneut 1309 Backendtests (12 PostgreSQL-only übersprungen), 617 Frontendtests, Frontend-Typecheck/Lint/Build und git diff --check. Nicht ausgeführt: Browser-/Remote-Release-Abnahme. | Dieser Commit: `style(FIX-03.4): resolve existing backend format failures` | Browserprüfung und Integration/Tag v3.0.3. |
 
 | 10.10.2026 | FIX-03.3a / Browserabnahme | Nach Speichern Vorlagenauswahl zurücksetzen, neue Rollen-/Löschschaltflächen mindestens 44 px. Browser mit fiktiver isolierter Demo: 390 px Vergangenheit, Löschbestätigung abbrechen und Abteilungsrolle speichern; 1440 px Rollendarstellung; kein horizontales Überlaufen oder pageerror. | Bestanden: erneute 617 Frontendtests, Typecheck/Lint/Build, vorher 1309 Backendtests/Ruff-Lint/Format. Erster Browserlauf bestanden; Wiederholung nach UI-Feinschliff im Prüfskript wegen Platzhalterauswahl fehlgeschlagen, Prüfskript korrigiert, vollständiger Browsernachlauf bestanden. | Dieser Commit: `fix(FIX-03.3a): reset saved role choice and size touch actions` | Browsernachlauf und Integration/Release v3.0.3. |
+
+| 10.10.2026 | FIX-03.5 Releasecheckpoint | Alle Implementierungsteilschritte separat auf Roadmap-Branch committet; Nutzer autorisiert Merge/main-Push und neuen Tag. Lokale Demo-/Frontendprozesse beendet, fremdes .claude/ unangetastet. | Bestanden: 617 Frontendtests, Typecheck/Lint/Build, 1309 Backendtests (12 PostgreSQL-only übersprungen), Ruff-Lint/Format, Browser 390/1440 px und git diff --check. Nicht ausgeführt: neue Tag-Pipeline/Paketprüfung. | Dieser Commit: `docs(FIX-03.5): record acceptance before v3.0.3` | Nach main mergen und v3.0.3 veröffentlichen; bestehenden Tag nicht verschieben. |
