@@ -20,12 +20,7 @@
 
     <div class="member-info">
       <span class="member-name">{{ member.full_name }}</span>
-      <Tag
-        v-if="member.status"
-        :value="member.status.name"
-        class="status-tag"
-        :style="statusTagStyle"
-      />
+      <MemberStatusBadge v-if="member.status" :status="member.status" class="status-tag" />
     </div>
 
     <!-- Touch / mobile fallback: move-to-group button -->
@@ -33,8 +28,10 @@
       icon="pi pi-arrows-h"
       text
       rounded
-      size="small"
+      severity="secondary"
       class="move-btn"
+      :aria-label="`${member.full_name}: Gruppe wechseln`"
+      aria-haspopup="true"
       v-tooltip.top="'Gruppe wechseln'"
       @click.stop="toggleMoveMenu"
     />
@@ -47,7 +44,7 @@ import { computed, ref } from 'vue'
 import Avatar from '@/components/common/PrivateAvatar.vue'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
-import Tag from 'primevue/tag'
+import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
 import type { MenuItem } from 'primevue/menuitem'
 import type { Member, Group } from '@/types/members'
 
@@ -71,17 +68,6 @@ const initials = computed(() => {
   const first = props.member.name?.[0] ?? ''
   const last = props.member.lastname?.[0] ?? ''
   return `${first}${last}`.toUpperCase() || '?'
-})
-
-const statusTagStyle = computed(() => {
-  if (!props.member.status?.color) return {}
-  const color = props.member.status.color
-  return {
-    background: `${color}22`,
-    color,
-    border: `1px solid ${color}55`,
-    fontSize: '0.7rem',
-  }
 })
 
 const moveMenuItems = computed<MenuItem[]>(() => {
@@ -173,19 +159,18 @@ function toggleMoveMenu(event: MouseEvent) {
 
 .status-tag {
   align-self: flex-start;
-  font-size: 0.65rem !important;
-  padding: 0.1rem 0.4rem !important;
-  height: auto !important;
-  line-height: 1.4 !important;
 }
 
 .move-btn {
   flex-shrink: 0;
+  width: var(--jf-touch-target);
+  height: var(--jf-touch-target);
   opacity: 0;
   transition: opacity 0.15s;
 }
 
-.member-group-card:hover .move-btn {
+.member-group-card:hover .move-btn,
+.member-group-card:focus-within .move-btn {
   opacity: 1;
 }
 

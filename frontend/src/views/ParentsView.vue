@@ -1,111 +1,112 @@
 <template>
   <div class="parents-view">
-    <OverviewHeader
-      title="Eltern"
-      subtitle="Verwaltung der Elternkontakte"
-    >
+    <OverviewHeader title="Eltern" :subtitle="subtitle">
       <template #actions>
         <Button
-          :label="isMobile ? '' : 'E-Mail an alle'"
+          label="E-Mail an diese Seite"
           icon="pi pi-envelope"
-          @click="emailAllParents"
-          :disabled="!parentsStore.emailAllParentsLink"
           severity="secondary"
           outlined
-          class="mr-2"
+          :disabled="!parentsStore.emailAllParentsLink"
+          @click="emailAllParents"
         />
-        <Button
-          :label="isMobile ? '' : 'Hinzufügen'"
-          icon="pi pi-plus"
-          @click="navigateToCreate"
-          severity="primary"
-        />
+        <Button v-if="!isMobile" label="Elternteil anlegen" icon="pi pi-plus" @click="navigateToCreate" />
       </template>
     </OverviewHeader>
 
-    <!-- Filters -->
     <Card class="filters-card">
       <template #content>
-        <IconField icon-position="left">
+        <IconField>
           <InputIcon class="pi pi-search" />
           <InputText
             v-model="searchQuery"
-            placeholder="Name, E-Mail oder Telefon..."
-            @input="handleSearch"
+            placeholder="Name oder E-Mail suchen …"
+            aria-label="Eltern suchen"
             class="w-full"
+            @input="handleSearch"
           />
         </IconField>
       </template>
     </Card>
 
-    <!-- Loading State (only when there is no cached data yet) -->
-    <div v-if="parentsStore.loading && parentsStore.parents.length === 0" class="loading-container">
-      <ProgressSpinner />
-    </div>
+    <StateView v-if="loadState === 'loading'" kind="loading" title="Eltern werden geladen …" />
+    <StateView
+      v-else-if="loadState"
+      :kind="loadState"
+      :title="loadState === 'forbidden' ? 'Keine Berechtigung für Eltern' : 'Eltern konnten nicht geladen werden'"
+      :retry="loadState !== 'forbidden'"
+      @retry="fetchParents"
+    />
 
-    <!-- Desktop: DataTable -->
-    <Card v-else-if="!isMobile" class="desktop-table-card">
+    <Card v-else-if="!isMobile" class="table-card">
       <template #content>
         <DataTable
           :value="parentsStore.parents"
           :loading="parentsStore.loading"
+          lazy
           paginator
           :rows="currentRows"
           :first="tableFirst"
           :total-records="parentsStore.pagination.count"
           :rows-per-page-options="[10, 20, 50]"
-          lazy
+          paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          current-page-report-template="{first} bis {last} von {totalRecords}"
+          :sort-field="sortField"
+          :sort-order="sortOrder"
+          class="clickable-rows"
           @page="onPage"
-          striped-rows
-          class="parents-table"
+          @sort="onSort"
+          @row-click="(event) => navigateToEdit(event.data)"
         >
-          <Column field="name" header="Vorname" sortable />
-          <Column field="lastname" header="Nachname" sortable />
-          <Column field="email" header="E-Mail">
-            <template #body="{ data }"><ContactLink kind="email" :value="data.email" /></template>
-          </Column>
-          <Column field="phone" header="Telefon">
-            <template #body="{ data }"><ContactLink kind="phone" :value="data.phone" /></template>
-          </Column>
-          <Column field="mobile" header="Mobil">
-            <template #body="{ data }"><ContactLink kind="phone" :value="data.mobile" /></template>
-          </Column>
-          <Column header="" style="width: 50px">
+          <Column field="lastname" header="Name" sortable>
             <template #body="{ data }">
-              <Tag
-                v-if="data.children && data.children.length === 0"
-                value="Kein Kind"
-                severity="warn"
-                v-tooltip.top="'Kein Mitglied mit diesem Elternteil verknüpft'"
-              />
+              <span class="parent-name">{{ data.full_name || `${data.name} ${data.lastname}` }}</span>
             </template>
           </Column>
-          <Column header="Aktionen" style="width: 120px">
+          <Column header="E-Mail">
+            <template #body="{ data }"><ContactLink kind="email" :value="data.email" /></template>
+          </Column>
+          <Column header="Telefon">
+            <template #body="{ data }"><ContactLink kind="phone" :value="data.phone" /></template>
+          </Column>
+          <Column header="Mobil">
+            <template #body="{ data }"><ContactLink kind="phone" :value="data.mobile" /></template>
+          </Column>
+          <Column header="Verknüpft">
+            <template #body="{ data }"><ParentLinkBadge :parent="data" /></template>
+          </Column>
+          <Column :style="{ width: '7rem' }">
+            <template #header><span class="sr-only">Aktionen</span></template>
             <template #body="{ data }">
               <div class="table-actions">
                 <Button
                   icon="pi pi-pencil"
-                  rounded
                   text
-                  @click="navigateToEdit(data)"
-                  :title="'Bearbeiten'"
+                  rounded
+                  severity="secondary"
+                  :aria-label="`${data.full_name} bearbeiten`"
+                  v-tooltip.top="'Bearbeiten'"
+                  @click.stop="navigateToEdit(data)"
                 />
                 <Button
                   icon="pi pi-trash"
-                  rounded
                   text
+                  rounded
                   severity="danger"
-                  @click="confirmDelete(data)"
-                  :title="'Löschen'"
+                  :aria-label="`${data.full_name} löschen`"
+                  v-tooltip.top="'Löschen'"
+                  @click.stop="confirmDelete(data)"
                 />
               </div>
             </template>
           </Column>
+          <template #empty>
+            <StateView kind="empty" title="Keine Eltern gefunden" :message="emptyMessage" />
+          </template>
         </DataTable>
       </template>
     </Card>
 
-    <!-- Mobile: Responsive List -->
     <ResponsiveList
       v-else
       :items="parentsStore.parents"
@@ -118,157 +119,261 @@
       @page="onPage"
     >
       <template #item="{ item }">
-        <ParentCard
-          :parent="item"
-          @edit="navigateToEdit"
-          @delete="confirmDelete"
-        />
+        <ParentCard :parent="item as Parent" @edit="navigateToEdit" @delete="confirmDelete" />
       </template>
       <template #empty>
-        <StateView kind="empty" title="Keine Eltern gefunden" message="Passe Suche oder Filter an oder lege einen neuen Eintrag an." />
+        <StateView kind="empty" title="Keine Eltern gefunden" :message="emptyMessage" />
       </template>
     </ResponsiveList>
 
-    <!-- Delete Confirmation -->
+    <router-link v-if="isMobile" to="/parents/create" class="create-fab">
+      <i class="pi pi-plus" aria-hidden="true"></i>Anlegen
+    </router-link>
   </div>
 </template>
 
 <script setup lang="ts">
-import ContactLink from '@/components/common/ContactLink.vue'
-import StateView from '@/components/common/StateView.vue'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { useParentsStore } from '@/stores/parents'
-import type { Parent } from '@/api/members'
-import { useQueryTableState } from '@/composables/useQueryTableState'
-import Card from 'primevue/card'
 import Button from 'primevue/button'
-import DataTable from 'primevue/datatable'
+import Card from 'primevue/card'
 import Column from 'primevue/column'
-import InputText from 'primevue/inputtext'
+import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import ProgressSpinner from 'primevue/progressspinner'
-import Tag from 'primevue/tag'
+import InputText from 'primevue/inputtext'
+import ContactLink from '@/components/common/ContactLink.vue'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
-import ParentCard from '@/components/parents/ParentCard.vue'
+import StateView, { stateForError, type StateKind } from '@/components/common/StateView.vue'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
+import ParentCard from '@/components/parents/ParentCard.vue'
+import ParentLinkBadge from '@/components/parents/ParentLinkBadge.vue'
+import { useMobile } from '@/composables/useMobile'
+import { useQueryTableState } from '@/composables/useQueryTableState'
+import { useDepartmentsStore } from '@/stores/departments'
+import { useParentsStore } from '@/stores/parents'
+import type { Parent } from '@/types/parents'
+import { classifyApiError, getApiErrorMessage } from '@/utils/apiError'
+
+const URL_DEFAULTS = { page: 1, rows: 20, sortField: 'lastname', sortOrder: 1 }
+const SORT_FIELDS = ['lastname', 'name']
 
 const router = useRouter()
 const parentsStore = useParentsStore()
+const departmentsStore = useDepartmentsStore()
 const confirm = useConfirm()
 const toast = useToast()
+const { isMobile } = useMobile()
 const { getInt, getString, syncToUrl } = useQueryTableState()
 
-const isMobile = ref(window.innerWidth < 768)
 const searchQuery = ref(getString('search'))
-const currentPage = ref(getInt('page', 1))
+const currentPage = ref(Math.max(1, getInt('page', 1)))
 const currentRows = ref(getInt('rows', 20))
+const sortField = ref(SORT_FIELDS.includes(getString('sortField')) ? getString('sortField') : 'lastname')
+const sortOrder = ref<1 | -1>(getInt('sortOrder', 1) === -1 ? -1 : 1)
 const tableFirst = computed(() => (currentPage.value - 1) * currentRows.value)
+/** null once data is shown; otherwise the state the list area displays. */
+const loadState = ref<StateKind | null>(parentsStore.parents.length ? null : 'loading')
 
-const URL_DEFAULTS = { page: 1, rows: 20 }
-
-onMounted(() => {
-  fetchParents()
-  window.addEventListener('resize', handleResize)
+const subtitle = computed(() => {
+  const count = parentsStore.pagination.count
+  const department = departmentsStore.activeDepartment
+  const scope = department ? ` in ${department.code}` : ''
+  if (loadState.value === 'loading') return 'Eltern werden geladen …'
+  return `${count} ${count === 1 ? 'Kontakt' : 'Kontakte'}${scope}`
 })
 
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
+const emptyMessage = computed(() =>
+  searchQuery.value ? 'Passe die Suche an oder lege einen neuen Eintrag an.' : 'Lege den ersten Elternkontakt an.',
+)
 
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 768
+function persist() {
+  syncToUrl(
+    {
+      search: searchQuery.value,
+      page: currentPage.value,
+      rows: currentRows.value,
+      sortField: sortField.value,
+      sortOrder: sortOrder.value,
+    },
+    URL_DEFAULTS,
+  )
 }
 
-const fetchParents = async () => {
+async function fetchParents() {
+  if (!parentsStore.parents.length) loadState.value = 'loading'
   try {
     await parentsStore.fetchParents({
-      offset: (currentPage.value - 1) * currentRows.value,
+      offset: tableFirst.value,
       limit: currentRows.value,
-      search: searchQuery.value || undefined
+      search: searchQuery.value || undefined,
+      ordering: sortOrder.value === -1 ? `-${sortField.value}` : sortField.value,
     })
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: 'Fehler',
-      detail: 'Eltern konnten nicht geladen werden',
-      life: 3000
-    })
+    loadState.value = null
+  } catch (error) {
+    loadState.value = stateForError(classifyApiError(error))
   }
 }
 
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
-const handleSearch = () => {
+function handleSearch() {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     currentPage.value = 1
-    syncToUrl({ search: searchQuery.value, page: currentPage.value, rows: currentRows.value }, URL_DEFAULTS)
+    persist()
     fetchParents()
-  }, 500)
+  }, 400)
 }
 
-const onPage = (event: { page: number; rows: number }) => {
+function onPage(event: { page: number; rows: number }) {
   currentPage.value = event.page + 1
   currentRows.value = event.rows
-  syncToUrl({ search: searchQuery.value, page: currentPage.value, rows: currentRows.value }, URL_DEFAULTS)
+  persist()
   fetchParents()
 }
 
-const navigateToCreate = () => {
+function onSort(event: DataTableSortEvent) {
+  const field = typeof event.sortField === 'string' && SORT_FIELDS.includes(event.sortField) ? event.sortField : 'lastname'
+  sortField.value = field
+  sortOrder.value = event.sortOrder === -1 ? -1 : 1
+  currentPage.value = 1
+  persist()
+  fetchParents()
+}
+
+function navigateToCreate() {
   router.push('/parents/create')
 }
 
-const navigateToEdit = (parent: Parent) => {
+function navigateToEdit(parent: Parent) {
   router.push(`/parents/${parent.id}/edit`)
 }
 
-const emailAllParents = () => {
+function emailAllParents() {
   const mailtoLink = parentsStore.emailAllParentsLink
-  if (mailtoLink) {
-    window.location.href = mailtoLink
-  } else {
-    toast.add({
-      severity: 'warn',
-      summary: 'Keine E-Mail-Adressen',
-      detail: 'Es wurden keine E-Mail-Adressen gefunden',
-      life: 3000
-    })
-  }
+  if (mailtoLink) window.location.href = mailtoLink
 }
 
-const confirmDelete = (parent: Parent) => {
+function confirmDelete(parent: Parent) {
   confirm.require({
-    message: `Möchten Sie ${parent.name} ${parent.lastname} wirklich löschen?`,
-    header: 'Löschen bestätigen',
+    message: `Möchtest du ${parent.full_name || `${parent.name} ${parent.lastname}`} wirklich löschen? Verknüpfungen zu Mitgliedern gehen dabei verloren.`,
+    header: 'Elternteil löschen',
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Ja, löschen',
+    acceptLabel: 'Löschen',
     rejectLabel: 'Abbrechen',
-    accept: () => deleteParent(parent.id)
+    acceptClass: 'p-button-danger',
+    accept: () => deleteParent(parent.id),
   })
 }
 
-const deleteParent = async (id: number) => {
+async function deleteParent(id: number) {
   try {
     await parentsStore.deleteParent(id)
-    toast.add({
-      severity: 'success',
-      summary: 'Erfolg',
-      detail: 'Elternteil wurde gelöscht',
-      life: 3000
-    })
+    toast.add({ severity: 'success', summary: 'Gelöscht', detail: 'Elternteil wurde gelöscht', life: 3000 })
     fetchParents()
-  } catch {
+  } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Fehler',
-      detail: 'Elternteil konnte nicht gelöscht werden',
-      life: 3000
+      summary: 'Nicht gelöscht',
+      detail: getApiErrorMessage(error, 'Elternteil konnte nicht gelöscht werden'),
+      life: 5000,
     })
   }
 }
+
+onMounted(fetchParents)
 </script>
 
+<style scoped>
+.parents-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-2);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: var(--jf-space-6);
+}
 
+.parents-view :deep(.overview-header) {
+  margin-bottom: 0;
+}
+
+.filters-card :deep(.p-card-body) {
+  padding: var(--jf-space-2);
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.table-card :deep(.p-card-body) {
+  padding: 0;
+}
+
+.table-card :deep(.p-datatable-tbody > tr > td) {
+  padding-block: var(--jf-space-1-5);
+}
+
+.parent-name {
+  font-weight: var(--jf-weight-semibold);
+}
+
+.table-actions {
+  display: flex;
+  gap: var(--jf-space-0-5);
+  justify-content: flex-end;
+}
+
+.clickable-rows :deep(tbody tr) {
+  cursor: pointer;
+}
+
+.clickable-rows :deep(tbody tr:hover) {
+  background-color: var(--surface-hover);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.create-fab {
+  position: fixed;
+  right: var(--jf-space-2);
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  z-index: 950;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: 56px;
+  padding: 0 var(--jf-space-3);
+  border-radius: 16px;
+  background: var(--jf-color-primary);
+  color: var(--jf-color-on-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+  box-shadow: var(--jf-shadow-lg);
+}
+
+@media (max-width: 767px) {
+  .parents-view {
+    gap: var(--jf-space-1);
+  }
+
+  .parents-view :deep(.overview-header) {
+    flex-wrap: wrap;
+    gap: var(--jf-space-1);
+    padding: 0;
+  }
+
+  .filters-card :deep(.p-card-body) {
+    padding: var(--jf-space-1-5);
+  }
+}
+</style>

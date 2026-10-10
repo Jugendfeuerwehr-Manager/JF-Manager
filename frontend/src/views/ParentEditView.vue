@@ -1,216 +1,206 @@
 <template>
-  <div class="parent-edit-view">
-    <div class="header">
-      <Button 
-        icon="pi pi-arrow-left" 
-        text 
-        rounded 
-        @click="router.push('/parents')"
-        aria-label="Zurück"
-      />
-      <h1>{{ isEditMode ? 'Elternteil bearbeiten' : 'Neuer Elternteil' }}</h1>
-    </div>
+  <div class="parent-edit">
+    <StateView v-if="loadState === 'loading'" kind="loading" title="Elternteil wird geladen …" />
+    <StateView
+      v-else-if="loadState"
+      :kind="loadState"
+      :title="loadState === 'forbidden' ? 'Keine Berechtigung für diesen Kontakt' : 'Elternteil konnte nicht geladen werden'"
+      :retry="loadState !== 'forbidden'"
+      @retry="load"
+    >
+      <router-link to="/parents" class="text-link">Zur Elternliste</router-link>
+    </StateView>
 
-    <ParentPortalAccessCard v-if="isEditMode" :parent-id="Number(route.params.id)" />
-    <Card v-if="isEditMode && canLinkAccounts" class="account-link">
-      <template #content>
-        <AccountLinkCard kind="parent" :record-id="Number(route.params.id)" :record-name="`${formData.name} ${formData.lastname}`.trim()" />
-      </template>
-    </Card>
+    <template v-else>
+      <nav aria-label="Brotkrumen" class="breadcrumb">
+        <router-link to="/parents">Eltern</router-link>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+        <span aria-current="page">{{ isEditMode ? `${savedName} bearbeiten` : 'Neu' }}</span>
+      </nav>
 
-    <Card v-if="!loading || formData">
-      <template #content>
-        <form @submit.prevent="handleSubmit" class="parent-form">
-          <!-- Basic Information -->
-          <Panel header="Persönliche Daten" :toggleable="true" class="panel">
-            <div class="form-grid">
-              <div class="field">
-                <label for="name">Vorname *</label>
-                <InputText 
-                  id="name" 
-                  v-model="formData.name" 
-                  :invalid="!!errors.name"
-                  required
-                />
-                <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
-              </div>
+      <header class="edit-head">
+        <h1>{{ isEditMode ? 'Elternteil bearbeiten' : 'Elternteil anlegen' }}</h1>
+        <StatusBadge v-if="isDirty" severity="warning" icon="pi pi-pencil" label="Ungespeicherte Änderungen" />
+      </header>
 
-              <div class="field">
-                <label for="lastname">Nachname *</label>
-                <InputText 
-                  id="lastname" 
-                  v-model="formData.lastname" 
-                  :invalid="!!errors.lastname"
-                  required
-                />
-                <small v-if="errors.lastname" class="p-error">{{ errors.lastname }}</small>
-              </div>
+      <ParentPortalAccessCard v-if="isEditMode" :parent-id="parentId" />
+
+      <section v-if="isEditMode && canLinkAccounts" class="form-card account-link">
+        <AccountLinkCard kind="parent" :record-id="parentId" :record-name="`${formData.name} ${formData.lastname}`.trim()" />
+      </section>
+
+      <form id="parent-form" class="edit-form" novalidate @submit.prevent="handleSubmit">
+        <section class="form-card" aria-labelledby="parent-name-title">
+          <h2 id="parent-name-title">Name</h2>
+          <div class="form-grid">
+            <div v-for="field in nameFields" :key="field.id" class="field">
+              <label :for="field.id">{{ field.label }}</label>
+              <InputText
+                :id="field.id"
+                v-model="formData[field.id]"
+                :invalid="!!errors[field.id]"
+                :aria-invalid="!!errors[field.id] || undefined"
+                :aria-describedby="errors[field.id] ? `${field.id}-error` : undefined"
+                :autocomplete="field.autocomplete"
+              />
+              <p v-if="errors[field.id]" :id="`${field.id}-error`" class="field__error">
+                <i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors[field.id] }}
+              </p>
             </div>
-          </Panel>
-
-          <!-- Contact Information -->
-          <Panel header="Kontaktdaten" :toggleable="true" class="panel mt-3">
-            <div class="form-grid">
-              <div class="field">
-                <label for="email">E-Mail *</label>
-                <InputText 
-                  id="email" 
-                  v-model="formData.email" 
-                  type="email"
-                  :invalid="!!errors.email"
-                  required
-                />
-                <small v-if="errors.email" class="p-error">{{ errors.email }}</small>
-              </div>
-
-              <div class="field">
-                <label for="email2">E-Mail 2</label>
-                <InputText 
-                  id="email2" 
-                  v-model="formData.email2" 
-                  type="email"
-                />
-              </div>
-
-              <div class="field">
-                <label for="phone">Telefon</label>
-                <InputText 
-                  id="phone" 
-                  v-model="formData.phone" 
-                />
-              </div>
-
-              <div class="field">
-                <label for="mobile">Mobiltelefon</label>
-                <InputText 
-                  id="mobile" 
-                  v-model="formData.mobile" 
-                />
-              </div>
-            </div>
-          </Panel>
-
-          <!-- Address Information -->
-          <Panel header="Adresse" :toggleable="true" class="panel mt-3">
-            <div class="form-grid">
-              <div class="field col-12">
-                <label for="street">Straße</label>
-                <InputText 
-                  id="street" 
-                  v-model="formData.street" 
-                />
-              </div>
-
-              <div class="field">
-                <label for="zip_code">PLZ</label>
-                <InputText 
-                  id="zip_code" 
-                  v-model="formData.zip_code" 
-                />
-              </div>
-
-              <div class="field">
-                <label for="city">Stadt</label>
-                <InputText 
-                  id="city" 
-                  v-model="formData.city" 
-                />
-              </div>
-            </div>
-          </Panel>
-
-          <!-- Children Selection -->
-          <Panel header="Kinder" :toggleable="true" class="panel mt-3">
-            <div class="form-grid">
-              <div class="field col-12">
-                <label for="children">Zugeordnete Mitglieder</label>
-                <MultiSelect 
-                  id="children" 
-                  v-model="formData.children" 
-                  :options="memberOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Mitglieder auswählen"
-                  :loading="membersStore.loading"
-                  filter
-                  :maxSelectedLabels="3"
-                />
-              </div>
-            </div>
-          </Panel>
-
-          <!-- Notes -->
-          <Panel header="Notizen" :toggleable="true" class="panel mt-3">
-            <div class="form-grid">
-              <div class="field col-12">
-                <label for="notes">Notizen</label>
-                <Textarea 
-                  id="notes" 
-                  v-model="formData.notes" 
-                  rows="4"
-                  autoResize
-                />
-              </div>
-            </div>
-          </Panel>
-
-          <!-- Action Buttons -->
-          <div class="form-actions">
-            <Button 
-              label="Abbrechen" 
-              icon="pi pi-times" 
-              severity="secondary"
-              @click="router.push('/parents')"
-              :disabled="saving"
-            />
-            <Button 
-              label="Speichern" 
-              icon="pi pi-check" 
-              type="submit"
-              :loading="saving"
-            />
           </div>
-        </form>
-      </template>
-    </Card>
+        </section>
 
-    <div v-else class="loading-container">
-      <ProgressSpinner />
-    </div>
+        <section class="form-card" aria-labelledby="parent-contact-title">
+          <h2 id="parent-contact-title">Kontakt</h2>
+          <div class="form-grid">
+            <div v-for="field in contactFields" :key="field.id" class="field">
+              <label :for="field.id">{{ field.label }}<span v-if="field.optional" class="field__optional"> (optional)</span></label>
+              <InputText
+                :id="field.id"
+                v-model="formData[field.id]"
+                :type="field.type"
+                :inputmode="field.inputmode"
+                :invalid="!!errors[field.id]"
+                :aria-invalid="!!errors[field.id] || undefined"
+                :aria-describedby="errors[field.id] ? `${field.id}-error` : undefined"
+              />
+              <p v-if="errors[field.id]" :id="`${field.id}-error`" class="field__error">
+                <i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors[field.id] }}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-card" aria-labelledby="parent-address-title">
+          <h2 id="parent-address-title">Adresse</h2>
+          <div class="form-grid">
+            <div v-for="field in addressFields" :key="field.id" class="field" :class="{ 'field--wide': field.wide }">
+              <label :for="field.id">{{ field.label }}<span class="field__optional"> (optional)</span></label>
+              <InputText
+                :id="field.id"
+                v-model="formData[field.id]"
+                :invalid="!!errors[field.id]"
+                :aria-invalid="!!errors[field.id] || undefined"
+                :aria-describedby="errors[field.id] ? `${field.id}-error` : undefined"
+              />
+              <p v-if="errors[field.id]" :id="`${field.id}-error`" class="field__error">
+                <i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors[field.id] }}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-card" aria-labelledby="parent-children-title">
+          <h2 id="parent-children-title">Verknüpfte Mitglieder</h2>
+          <div class="field field--wide">
+            <label for="children">Mitglieder</label>
+            <MultiSelect
+              v-model="formData.children"
+              input-id="children"
+              :options="parentsStore.childOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="Mitglieder auswählen"
+              :loading="parentsStore.childOptionsLoading"
+              filter
+              display="chip"
+              :max-selected-labels="3"
+              :invalid="!!errors.children"
+              :aria-describedby="errors.children ? 'children-error' : undefined"
+            />
+            <p v-if="errors.children" id="children-error" class="field__error">
+              <i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.children }}
+            </p>
+          </div>
+        </section>
+
+        <section class="form-card" aria-labelledby="parent-notes-title">
+          <h2 id="parent-notes-title">Notizen</h2>
+          <div class="field field--wide">
+            <label for="notes">Notizen<span class="field__optional"> (optional)</span></label>
+            <Textarea id="notes" v-model="formData.notes" rows="4" auto-resize />
+          </div>
+        </section>
+      </form>
+
+      <div class="action-bar">
+        <p class="action-bar__status" :class="{ 'action-bar__status--error': errorCount }" role="status">
+          <template v-if="errorCount">
+            <i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errorCount === 1 ? '1 Feld braucht' : `${errorCount} Felder brauchen` }} deine Aufmerksamkeit
+          </template>
+          <template v-else-if="submitError">
+            <i class="pi pi-exclamation-circle" aria-hidden="true"></i>Nicht gespeichert: {{ submitError }}
+          </template>
+          <template v-else-if="isDirty">
+            <i class="pi pi-pencil" aria-hidden="true"></i>Ungespeicherte Änderungen
+          </template>
+          <template v-else-if="isEditMode">
+            <i class="pi pi-check" aria-hidden="true"></i>Keine Änderungen
+          </template>
+        </p>
+        <div class="action-bar__buttons">
+          <Button label="Abbrechen" severity="secondary" text type="button" :disabled="saving" @click="router.push('/parents')" />
+          <Button
+            :label="isEditMode ? 'Änderungen speichern' : 'Elternteil anlegen'"
+            icon="pi pi-check"
+            type="submit"
+            form="parent-form"
+            :loading="saving"
+          />
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import MultiSelect from 'primevue/multiselect'
+import Textarea from 'primevue/textarea'
+import StateView, { stateForError, type StateKind } from '@/components/common/StateView.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useParentsStore } from '@/stores/parents'
-import { useMembersStore } from '@/stores/members'
-import Card from 'primevue/card'
+import type { ParentCreate } from '@/types/parents'
+import { classifyApiError, getApiErrorMessage } from '@/utils/apiError'
 import ParentPortalAccessCard from '@/views/portal-admin/ParentPortalAccessCard.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
 import { useAuthStore } from '@/stores/auth'
-import Panel from 'primevue/panel'
-import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
-import MultiSelect from 'primevue/multiselect'
-import ProgressSpinner from 'primevue/progressspinner'
-import { getApiErrorMessage } from '@/utils/apiError'
+
+type TextField = 'name' | 'lastname' | 'email' | 'email2' | 'phone' | 'mobile' | 'street' | 'zip_code' | 'city'
+type ErrorField = TextField | 'children' | 'notes'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const parentsStore = useParentsStore()
-const membersStore = useMembersStore()
 
-const loading = ref(false)
-const saving = ref(false)
+const parentId = computed(() => Number(route.params.id))
 const isEditMode = computed(() => !!route.params.id)
 // Account management links staff accounts to parent records (PORTAL-04, Q4).
 const canLinkAccounts = computed(() => useAuthStore().hasPerm('users.change_customuser'))
 
-const formData = reactive({
+const nameFields: { id: TextField; label: string; autocomplete: string }[] = [
+  { id: 'name', label: 'Vorname', autocomplete: 'off' },
+  { id: 'lastname', label: 'Nachname', autocomplete: 'off' },
+]
+const contactFields: { id: TextField; label: string; type: string; inputmode?: 'email' | 'tel'; optional?: boolean }[] = [
+  { id: 'email', label: 'E-Mail', type: 'email', inputmode: 'email' },
+  { id: 'email2', label: 'Weitere E-Mail', type: 'email', inputmode: 'email', optional: true },
+  { id: 'phone', label: 'Telefon', type: 'tel', inputmode: 'tel', optional: true },
+  { id: 'mobile', label: 'Mobil', type: 'tel', inputmode: 'tel', optional: true },
+]
+const addressFields: { id: TextField; label: string; wide?: boolean }[] = [
+  { id: 'street', label: 'Straße', wide: true },
+  { id: 'zip_code', label: 'PLZ' },
+  { id: 'city', label: 'Ort' },
+]
+const FIELD_ORDER: ErrorField[] = ['name', 'lastname', 'email', 'email2', 'phone', 'mobile', 'street', 'zip_code', 'city', 'children', 'notes']
+
+const formData = reactive<Required<ParentCreate>>({
   name: '',
   lastname: '',
   email: '',
@@ -221,223 +211,314 @@ const formData = reactive({
   zip_code: '',
   city: '',
   notes: '',
-  children: [] as number[]
+  children: [],
 })
+const errors = reactive<Partial<Record<ErrorField, string>>>({})
+const loadState = ref<StateKind | null>(isEditMode.value ? 'loading' : null)
+const saving = ref(false)
+const submitError = ref('')
+const savedSnapshot = ref('')
+const savedName = ref('')
+/** Set after a successful save so the leave guard lets the navigation through. */
+let leavingAfterSave = false
 
-const errors = reactive({
-  name: '',
-  lastname: '',
-  email: ''
-})
+const snapshot = () => JSON.stringify(formData)
+const isDirty = computed(() => savedSnapshot.value !== '' && snapshot() !== savedSnapshot.value)
+const errorCount = computed(() => Object.values(errors).filter(Boolean).length)
 
-const memberOptions = computed(() => membersStore.memberOptions)
+function clearErrors() {
+  for (const key of Object.keys(errors) as ErrorField[]) delete errors[key]
+}
 
-onMounted(async () => {
-  // Load members for selection
-  await membersStore.fetchMembers({ limit: 1000 })
-
-  // If editing, load parent data
-  if (isEditMode.value) {
-    loading.value = true
-    try {
-      const parent = await parentsStore.fetchParentById(Number(route.params.id))
-      Object.assign(formData, {
-        name: parent.name,
-        lastname: parent.lastname,
-        email: parent.email,
-        email2: parent.email2,
-        phone: parent.phone,
-        mobile: parent.mobile,
-        street: parent.street,
-        zip_code: parent.zip_code,
-        city: parent.city,
-        notes: parent.notes,
-        children: parent.children || []
-      })
-    } catch {
-      toast.add({
-        severity: 'error',
-        summary: 'Fehler',
-        detail: 'Elternteil konnte nicht geladen werden',
-        life: 3000
-      })
-      router.push('/parents')
-    } finally {
-      loading.value = false
-    }
+async function load() {
+  parentsStore.fetchChildOptions().catch(() => {
+    errors.children = 'Mitglieder konnten nicht geladen werden.'
+  })
+  if (!isEditMode.value) {
+    savedSnapshot.value = snapshot()
+    return
   }
-})
+  loadState.value = 'loading'
+  try {
+    const parent = await parentsStore.fetchParentById(parentId.value)
+    Object.assign(formData, {
+      name: parent.name ?? '',
+      lastname: parent.lastname ?? '',
+      email: parent.email ?? '',
+      email2: parent.email2 ?? '',
+      phone: parent.phone ?? '',
+      mobile: parent.mobile ?? '',
+      street: parent.street ?? '',
+      zip_code: parent.zip_code ?? '',
+      city: parent.city ?? '',
+      notes: parent.notes ?? '',
+      children: [...(parent.children ?? [])],
+    })
+    savedName.value = parent.full_name || `${parent.name} ${parent.lastname}`.trim()
+    savedSnapshot.value = snapshot()
+    loadState.value = null
+  } catch (error) {
+    loadState.value = stateForError(classifyApiError(error))
+  }
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validateForm(): boolean {
-  let isValid = true
-  errors.name = ''
-  errors.lastname = ''
-  errors.email = ''
+  clearErrors()
+  if (!formData.name.trim()) errors.name = 'Vorname ist erforderlich'
+  if (!formData.lastname.trim()) errors.lastname = 'Nachname ist erforderlich'
+  if (!formData.email.trim()) errors.email = 'E-Mail ist erforderlich'
+  else if (!EMAIL_PATTERN.test(formData.email.trim())) errors.email = 'Bitte eine gültige E-Mail-Adresse eingeben'
+  if (formData.email2.trim() && !EMAIL_PATTERN.test(formData.email2.trim())) errors.email2 = 'Bitte eine gültige E-Mail-Adresse eingeben'
+  return errorCount.value === 0
+}
 
-  if (!formData.name.trim()) {
-    errors.name = 'Vorname ist erforderlich'
-    isValid = false
+function focusFirstError() {
+  const first = FIELD_ORDER.find((field) => errors[field])
+  if (!first) return
+  const input = document.getElementById(first)
+  input?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+  input?.focus({ preventScroll: true })
+}
+
+/** Puts server-side field errors next to the field instead of a toast. */
+function applyServerErrors(error: unknown): boolean {
+  const data = (error as { response?: { status?: number; data?: Record<string, unknown> } }).response?.data
+  if (!data || typeof data !== 'object') return false
+  let applied = false
+  for (const field of FIELD_ORDER) {
+    const value = data[field]
+    const message = Array.isArray(value) ? value[0] : value
+    if (typeof message === 'string') {
+      errors[field] = message
+      applied = true
+    }
   }
-
-  if (!formData.lastname.trim()) {
-    errors.lastname = 'Nachname ist erforderlich'
-    isValid = false
-  }
-
-  if (!formData.email.trim()) {
-    errors.email = 'E-Mail ist erforderlich'
-    isValid = false
-  }
-
-  return isValid
+  return applied
 }
 
 async function handleSubmit() {
+  submitError.value = ''
   if (!validateForm()) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Validierung fehlgeschlagen',
-      detail: 'Bitte füllen Sie alle erforderlichen Felder aus',
-      life: 3000
-    })
+    await nextTick()
+    focusFirstError()
     return
   }
 
   saving.value = true
-
   try {
-    const dataToSend = { ...formData }
-
+    const payload: ParentCreate = { ...formData, children: [...formData.children] }
     if (isEditMode.value) {
-      await parentsStore.updateParent(Number(route.params.id), dataToSend)
-      toast.add({
-        severity: 'success',
-        summary: 'Erfolg',
-        detail: 'Elternteil wurde aktualisiert',
-        life: 3000
-      })
+      await parentsStore.updateParent(parentId.value, payload)
+      toast.add({ severity: 'success', summary: 'Gespeichert', detail: 'Elternteil wurde aktualisiert', life: 3000 })
     } else {
-      await parentsStore.createParent(dataToSend)
-      toast.add({
-        severity: 'success',
-        summary: 'Erfolg',
-        detail: 'Elternteil wurde erstellt',
-        life: 3000
-      })
+      await parentsStore.createParent(payload)
+      toast.add({ severity: 'success', summary: 'Angelegt', detail: 'Elternteil wurde angelegt', life: 3000 })
     }
-
+    savedSnapshot.value = snapshot()
+    leavingAfterSave = true
     router.push('/parents')
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Fehler',
-      detail: getApiErrorMessage(error, 'Ein Fehler ist aufgetreten'),
-      life: 3000
-    })
+    if (applyServerErrors(error)) {
+      await nextTick()
+      focusFirstError()
+    } else {
+      submitError.value = getApiErrorMessage(error, 'Unbekannter Fehler')
+    }
   } finally {
     saving.value = false
   }
 }
+
+function onBeforeUnload(event: BeforeUnloadEvent) {
+  if (!isDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onBeforeRouteLeave(() => leavingAfterSave || !isDirty.value || window.confirm('Ungespeicherte Änderungen verwerfen und die Seite verlassen?'))
+
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload)
+  load()
+})
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 </script>
 
 <style scoped>
-
-.account-link {
-  margin-bottom: 1.5rem;
-}
-
-.panel {
-  margin-bottom: 1.5rem;
-}
-
-.parent-edit-view {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-}
-
-.parent-form {
+.parent-edit {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--jf-space-3);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1);
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
+}
+
+.breadcrumb a,
+.text-link {
+  color: var(--jf-color-primary);
+  font-weight: var(--jf-weight-semibold);
+  text-decoration: none;
+}
+
+.breadcrumb i {
+  font-size: 0.75rem;
+}
+
+.edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+}
+
+.edit-head h1 {
+  margin: 0;
+  font-size: var(--jf-text-2xl);
+  line-height: var(--jf-leading-tight);
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-2);
+}
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-2);
+  padding: var(--jf-space-3);
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  box-shadow: var(--jf-shadow-sm);
+}
+
+.form-card h2 {
+  margin: 0;
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-semibold);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  padding: 1rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--jf-space-2) 20px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 6px;
+  min-width: 0;
 }
 
-.field.col-12 {
+.field--wide {
   grid-column: 1 / -1;
 }
 
 .field label {
-  font-weight: 500;
-  color: var(--text-color);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-text);
 }
 
-.p-error {
-  color: var(--red-500);
-  font-size: 0.875rem;
+.field__optional {
+  font-weight: 400;
+  color: var(--jf-color-text-muted);
 }
 
-.form-actions {
+.field :deep(.p-inputtext),
+.field :deep(.p-multiselect),
+.field :deep(.p-textarea) {
+  width: 100%;
+  min-height: var(--jf-touch-target);
+}
+
+.field__error {
   display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--surface-border);
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 400px;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-semibold);
+  color: var(--p-red-700);
 }
 
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
+.app-dark .field__error {
+  color: var(--p-red-300);
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-1-5);
+  padding: var(--jf-space-1-5) var(--jf-space-2);
+  background: var(--jf-color-card);
+  border-top: 1px solid var(--jf-color-border);
+}
+
+.action-bar__status {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  margin: 0;
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
+}
+
+.action-bar__status--error {
+  color: var(--p-red-700);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.app-dark .action-bar__status--error {
+  color: var(--p-red-300);
+}
+
+.action-bar__buttons {
+  display: flex;
+  gap: var(--jf-space-1);
+  margin-left: auto;
+}
+
+.action-bar__buttons :deep(.p-button) {
+  min-height: var(--jf-touch-target);
+}
+
+@media (max-width: 1023px) {
+  .action-bar {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
-  
-  .form-actions {
-    flex-direction: column-reverse;
+}
+
+@media (max-width: 767px) {
+  .form-card {
+    padding: var(--jf-space-2);
   }
-  
-  .form-actions button {
+
+  .action-bar__buttons {
     width: 100%;
+  }
+
+  .action-bar__buttons :deep(.p-button) {
+    flex: 1;
   }
 }
 </style>

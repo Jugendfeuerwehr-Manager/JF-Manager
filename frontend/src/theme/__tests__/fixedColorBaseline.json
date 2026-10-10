@@ -22,7 +22,6 @@
   "/src/components/orders/molecules/OrderCard.vue": 1,
   "/src/components/orders/molecules/OrderWorkflowQuickActions.vue": 4,
   "/src/components/orders/organisms/OrdersList.vue": 3,
-  "/src/components/parents/ParentCard.vue": 5,
   "/src/components/qualifications/organisms/AttachmentsSection.vue": 1,
   "/src/components/qualifications/organisms/SpecialTasksMobileList.vue": 1,
   "/src/components/qualifications/organisms/SpecialTasksTable.vue": 1,

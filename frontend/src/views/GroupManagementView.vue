@@ -1,41 +1,33 @@
 <template>
   <div class="group-mgmt">
-    <!-- Page header -->
-    <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">
-          <i class="pi pi-sitemap title-icon"></i>
-          Gruppenmanagement
-        </h1>
-        <Tag
-          :value="`${totalMemberCount} Mitglieder`"
-          severity="secondary"
-          class="total-tag"
-        />
-      </div>
+    <OverviewHeader title="Gruppen" :subtitle="subtitle">
+      <template #actions>
+        <Button label="Gruppe anlegen" icon="pi pi-plus" :disabled="loadState !== null" @click="openCreateDialog" />
+      </template>
+    </OverviewHeader>
 
-      <div class="header-right">
-        <IconField>
-          <InputIcon class="pi pi-search" />
-          <InputText
-            v-model="searchQuery"
-            placeholder="Mitglieder suchen…"
-            class="search-input"
-          />
-        </IconField>
-        <Button
-          label="Neue Gruppe"
-          icon="pi pi-plus"
-          @click="openCreateDialog"
+    <div class="board-toolbar">
+      <IconField class="board-search">
+        <InputIcon class="pi pi-search" />
+        <InputText
+          v-model="searchQuery"
+          placeholder="Mitglieder suchen …"
+          aria-label="Mitglieder in Gruppen suchen"
+          class="w-full"
+          @input="onSearchInput"
         />
-      </div>
+      </IconField>
+      <p class="board-hint">Mitglieder per Ziehen oder über „Gruppe wechseln“ zuordnen.</p>
     </div>
 
-    <!-- Loading -->
-    <div v-if="store.loading" class="loading-state">
-      <ProgressSpinner style="width: 48px; height: 48px" />
-      <span>Lade Daten…</span>
-    </div>
+    <StateView v-if="loadState === 'loading'" kind="loading" title="Gruppen werden geladen …" />
+    <StateView
+      v-else-if="loadState"
+      :kind="loadState"
+      :title="loadState === 'forbidden' ? 'Keine Berechtigung für Gruppen' : 'Gruppen konnten nicht geladen werden'"
+      :retry="loadState !== 'forbidden'"
+      @retry="load"
+    />
 
     <!-- Board -->
     <div
@@ -53,15 +45,11 @@
       >
         <div class="column-header">
           <div class="column-title-row">
-            <span class="column-name">
-              <i class="pi pi-user-minus column-icon"></i>
+            <h2 class="column-name">
+              <i class="pi pi-user-minus column-icon" aria-hidden="true"></i>
               Ohne Gruppe
-            </span>
-            <Tag
-              :value="String(filteredUnassigned.length)"
-              severity="secondary"
-              rounded
-            />
+            </h2>
+            <span class="column-count" :aria-label="memberCountLabel(filteredUnassigned.length)">{{ filteredUnassigned.length }}</span>
           </div>
         </div>
 
@@ -106,25 +94,28 @@
           <div class="column-title-row">
             <!-- View mode -->
             <template v-if="renamingId !== group.id">
-              <span class="column-name">
-                <i class="pi pi-tag column-icon"></i>
+              <h2 class="column-name">
+                <i class="pi pi-tag column-icon" aria-hidden="true"></i>
                 {{ group.name }}
-              </span>
-              <Tag
-                :value="String(filteredGroupMembers(group.id).length)"
-                rounded
-              />
+              </h2>
+              <span class="column-count" :aria-label="memberCountLabel(filteredGroupMembers(group.id).length)">{{ filteredGroupMembers(group.id).length }}</span>
             </template>
 
             <!-- Rename mode -->
-            <InputText
-              v-else
-              v-model="renamingName"
-              class="rename-input"
-              @keyup.enter="saveRename(group)"
-              @keyup.escape="cancelRename"
-              @blur="saveRename(group)"
-            />
+            <div v-else class="rename-field">
+              <InputText
+                v-model="renamingName"
+                class="rename-input"
+                :aria-label="`Neuer Name für ${group.name}`"
+                :invalid="!!renameError"
+                :aria-invalid="!!renameError || undefined"
+                :aria-describedby="renameError ? `rename-error-${group.id}` : undefined"
+                autofocus
+                @keyup.enter="saveRename(group)"
+                @keyup.escape="cancelRename"
+              />
+              <p v-if="renameError" :id="`rename-error-${group.id}`" class="field-error">{{ renameError }}</p>
+            </div>
           </div>
 
           <!-- Actions: view mode -->
@@ -133,7 +124,8 @@
               icon="pi pi-pencil"
               text
               rounded
-              size="small"
+              severity="secondary"
+              :aria-label="`Gruppe ${group.name} umbenennen`"
               v-tooltip.top="'Umbenennen'"
               @click="startRename(group)"
             />
@@ -141,8 +133,8 @@
               icon="pi pi-trash"
               text
               rounded
-              size="small"
               severity="danger"
+              :aria-label="`Gruppe ${group.name} löschen`"
               v-tooltip.top="'Gruppe löschen'"
               @click="confirmDeleteGroup(group)"
             />
@@ -154,8 +146,7 @@
               icon="pi pi-check"
               text
               rounded
-              size="small"
-              severity="success"
+              :aria-label="`Namen für ${group.name} speichern`"
               v-tooltip.top="'Speichern'"
               :loading="store.saving"
               @click="saveRename(group)"
@@ -164,7 +155,8 @@
               icon="pi pi-times"
               text
               rounded
-              size="small"
+              severity="secondary"
+              aria-label="Umbenennen abbrechen"
               v-tooltip.top="'Abbrechen'"
               @click="cancelRename"
             />
@@ -200,34 +192,38 @@
       </div>
 
       <!-- Add-group tile -->
-      <div class="add-group-tile" @click="openCreateDialog">
-        <i class="pi pi-plus-circle add-icon"></i>
-        <span>Neue Gruppe</span>
-      </div>
+      <button type="button" class="add-group-tile" @click="openCreateDialog">
+        <i class="pi pi-plus-circle add-icon" aria-hidden="true"></i>
+        <span>Gruppe anlegen</span>
+      </button>
     </div>
 
     <!-- Create group dialog -->
     <Dialog
       v-model:visible="showCreateDialog"
-      header="Neue Gruppe erstellen"
+      header="Gruppe anlegen"
       modal
       :style="{ width: 'min(420px, 92vw)' }"
     >
       <div class="dialog-field">
-        <label for="new-group-name" class="field-label">Gruppenname</label>
+        <label for="new-group-name" class="field-label">Name der Gruppe</label>
         <InputText
           id="new-group-name"
           v-model="newGroupName"
-          placeholder="z.B. Gruppe Alpha"
+          placeholder="z. B. Gruppe 1"
           class="w-full"
           autofocus
+          :invalid="!!createError"
+          :aria-invalid="!!createError || undefined"
+          :aria-describedby="createError ? 'new-group-error' : undefined"
           @keyup.enter="createGroup"
         />
+        <p v-if="createError" id="new-group-error" class="field-error">{{ createError }}</p>
       </div>
       <template #footer>
-        <Button label="Abbrechen" text @click="showCreateDialog = false" />
+        <Button label="Abbrechen" text severity="secondary" @click="showCreateDialog = false" />
         <Button
-          label="Erstellen"
+          label="Gruppe anlegen"
           icon="pi pi-check"
           :disabled="!newGroupName.trim()"
           :loading="store.saving"
@@ -248,11 +244,13 @@ import Dialog from 'primevue/dialog'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
-import ProgressSpinner from 'primevue/progressspinner'
-import Tag from 'primevue/tag'
+import StateView, { stateForError, type StateKind } from '@/components/common/StateView.vue'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import MemberGroupCard from '@/components/members/atoms/MemberGroupCard.vue'
+import { useQueryTableState } from '@/composables/useQueryTableState'
 import { useGroupsStore } from '@/stores/groups'
 import type { Group, Member } from '@/types/members'
+import { classifyApiError, getApiErrorMessage } from '@/utils/apiError'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const UNASSIGNED_KEY = '__unassigned__'
@@ -263,7 +261,16 @@ const confirm = useConfirm()
 const toast = useToast()
 
 // ─── Search ───────────────────────────────────────────────────────────────────
-const searchQuery = ref('')
+const { getString, syncToUrl } = useQueryTableState()
+const searchQuery = ref(getString('search'))
+let searchTimeout: ReturnType<typeof setTimeout> | undefined
+
+function onSearchInput() {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => syncToUrl({ search: searchQuery.value.trim() }), 300)
+}
+
+const memberCountLabel = (count: number) => (count === 1 ? '1 Mitglied' : `${count} Mitglieder`)
 
 const matchesSearch = (member: Member) => {
   if (!searchQuery.value) return true
@@ -277,6 +284,11 @@ const matchesSearch = (member: Member) => {
 
 // ─── Derived lists ────────────────────────────────────────────────────────────
 const totalMemberCount = computed(() => store.members.length)
+const subtitle = computed(() => {
+  if (loadState.value === 'loading') return 'Gruppen werden geladen …'
+  const groups = store.groups.length
+  return `${memberCountLabel(totalMemberCount.value)} · ${groups === 1 ? '1 Gruppe' : `${groups} Gruppen`}`
+})
 
 const groupExistsInBoard = (groupId: number | null | undefined) => {
   if (!groupId) return false
@@ -339,8 +351,8 @@ async function moveMember(member: Member, targetGroupId: number | null) {
   } catch {
     toast.add({
       severity: 'error',
-      summary: 'Fehler',
-      detail: 'Zuweisung konnte nicht gespeichert werden.',
+      summary: 'Nicht verschoben',
+      detail: `${member.full_name} bleibt in der bisherigen Gruppe.`,
       life: 4000,
     })
   }
@@ -349,48 +361,62 @@ async function moveMember(member: Member, targetGroupId: number | null) {
 // ─── Create group ─────────────────────────────────────────────────────────────
 const showCreateDialog = ref(false)
 const newGroupName = ref('')
+const createError = ref('')
 
 function openCreateDialog() {
   newGroupName.value = ''
+  createError.value = ''
   showCreateDialog.value = true
 }
 
 async function createGroup() {
-  if (!newGroupName.value.trim()) return
+  const name = newGroupName.value.trim()
+  if (!name) {
+    createError.value = 'Bitte einen Namen eingeben.'
+    return
+  }
+  createError.value = ''
   try {
-    await store.createGroup(newGroupName.value.trim())
+    await store.createGroup(name)
     showCreateDialog.value = false
-    toast.add({ severity: 'success', summary: 'Erstellt', detail: newGroupName.value.trim(), life: 2500 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Gruppe konnte nicht erstellt werden.', life: 4000 })
+    toast.add({ severity: 'success', summary: 'Angelegt', detail: `Gruppe „${name}“ angelegt.`, life: 2500 })
+  } catch (error) {
+    createError.value = getApiErrorMessage(error, 'Gruppe konnte nicht angelegt werden.')
   }
 }
 
 // ─── Rename group ─────────────────────────────────────────────────────────────
 const renamingId = ref<number | null>(null)
 const renamingName = ref('')
+const renameError = ref('')
 
 function startRename(group: Group) {
   renamingId.value = group.id
   renamingName.value = group.name
+  renameError.value = ''
 }
 
 function cancelRename() {
   renamingId.value = null
+  renameError.value = ''
 }
 
 async function saveRename(group: Group) {
   if (renamingId.value !== group.id) return
   const trimmed = renamingName.value.trim()
-  if (!trimmed || trimmed === group.name) {
+  if (!trimmed) {
+    renameError.value = 'Bitte einen Namen eingeben.'
+    return
+  }
+  if (trimmed === group.name) {
     cancelRename()
     return
   }
   try {
     await store.updateGroup(group.id, trimmed)
     cancelRename()
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Name konnte nicht gespeichert werden.', life: 4000 })
+  } catch (error) {
+    renameError.value = getApiErrorMessage(error, 'Name konnte nicht gespeichert werden.')
   }
 }
 
@@ -417,15 +443,25 @@ async function deleteGroup(group: Group) {
   try {
     await store.deleteGroup(group.id)
     toast.add({ severity: 'success', summary: 'Gelöscht', detail: `Gruppe „${group.name}" entfernt.`, life: 2500 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Gruppe konnte nicht gelöscht werden.', life: 4000 })
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Nicht gelöscht', detail: getApiErrorMessage(error, 'Gruppe konnte nicht gelöscht werden.'), life: 5000 })
   }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-onMounted(async () => {
-  await Promise.all([store.fetchGroups(), store.fetchAllMembers()])
-})
+const loadState = ref<StateKind | null>('loading')
+
+async function load() {
+  loadState.value = 'loading'
+  try {
+    await Promise.all([store.fetchGroups(), store.fetchAllMembers()])
+    loadState.value = null
+  } catch (error) {
+    loadState.value = stateForError(classifyApiError(error))
+  }
+}
+
+onMounted(load)
 </script>
 
 <style scoped>
@@ -437,58 +473,32 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* ─── Header ─────────────────────────────────────────────────────────────── */
-.page-header {
+/* ─── Toolbar ────────────────────────────────────────────────────────────── */
+.group-mgmt :deep(.overview-header) {
+  margin-bottom: 0;
+  padding-inline: var(--jf-space-3);
+}
+
+.board-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem 1rem;
-  flex-shrink: 0;
   flex-wrap: wrap;
-}
-
-.header-left {
-  display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--jf-space-1) var(--jf-space-2);
+  padding: 0 var(--jf-space-3) var(--jf-space-2);
 }
 
-.page-title {
+.board-search {
+  flex: 0 1 320px;
+}
+
+.board-hint {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--p-text-color);
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
 }
 
-.title-icon {
-  color: var(--p-primary-500);
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.search-input {
-  width: 220px;
-}
-
-/* ─── Loading ────────────────────────────────────────────────────────────── */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  flex: 1;
-  color: var(--p-text-muted-color);
-  padding: 4rem;
+.group-mgmt > .state-view {
+  margin: 0 var(--jf-space-3);
 }
 
 /* ─── Board ──────────────────────────────────────────────────────────────── */
@@ -554,6 +564,7 @@ onMounted(async () => {
 }
 
 .column-name {
+  margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--p-text-color);
@@ -570,17 +581,51 @@ onMounted(async () => {
   color: var(--p-text-muted-color);
 }
 
-.rename-input {
+.column-count {
+  min-width: 1.75rem;
+  padding: 0 var(--jf-space-1);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--jf-color-text);
+  font-size: var(--jf-text-xs);
+  font-weight: var(--jf-weight-semibold);
+  line-height: 1.5rem;
+  text-align: center;
+}
+
+.rename-field {
+  display: flex;
   flex: 1;
-  font-size: 0.875rem;
-  height: 1.85rem;
-  padding: 0.2rem 0.5rem;
+  flex-direction: column;
+  gap: var(--jf-space-0-5);
+  min-width: 0;
+}
+
+.rename-input {
+  width: 100%;
+  min-height: var(--jf-touch-target);
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: var(--jf-weight-semibold);
+  color: var(--p-red-700);
+}
+
+.app-dark .field-error {
+  color: var(--p-red-300);
 }
 
 .column-actions {
   display: flex;
   gap: 0.1rem;
   flex-shrink: 0;
+}
+
+.column-actions :deep(.p-button) {
+  width: var(--jf-touch-target);
+  height: var(--jf-touch-target);
 }
 
 /* ─── Column body ────────────────────────────────────────────────────────── */
@@ -637,6 +682,8 @@ onMounted(async () => {
 
 /* ─── Add-group tile ─────────────────────────────────────────────────────── */
 .add-group-tile {
+  font: inherit;
+  background: transparent;
   flex: 0 0 200px;
   min-height: 120px;
   display: flex;
@@ -653,6 +700,11 @@ onMounted(async () => {
   scroll-snap-align: start;
   align-self: flex-start;
   padding: 1rem;
+}
+
+.add-group-tile:focus-visible {
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
 }
 
 .add-group-tile:hover {
@@ -681,18 +733,22 @@ onMounted(async () => {
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1rem;
+  .group-mgmt :deep(.overview-header) {
+    flex-wrap: wrap;
+    gap: var(--jf-space-1);
+    padding: 0 var(--jf-space-2);
   }
 
-  .header-right {
-    width: 100%;
+  .board-toolbar {
+    padding: 0 var(--jf-space-2) var(--jf-space-1-5);
   }
 
-  .search-input {
-    width: 100%;
+  .board-search {
+    flex: 1 1 100%;
+  }
+
+  .group-mgmt > .state-view {
+    margin: 0 var(--jf-space-2);
   }
 
   .group-board {
