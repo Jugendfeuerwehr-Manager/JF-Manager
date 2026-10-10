@@ -48,7 +48,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: T] }>()
   align-items: center;
   justify-content: center;
   gap: var(--jf-space-1);
-  min-height: 40px;
+  min-height: var(--jf-touch-target);
   padding: 0 var(--jf-space-1-5);
   border: 0;
   border-radius: var(--jf-radius-sm);
