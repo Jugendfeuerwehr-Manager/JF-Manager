@@ -4,14 +4,11 @@
     <section v-for="section in visibleSections" :key="section.label" class="nav-section">
       <h2>{{ section.label }}</h2>
       <router-link v-for="item in section.items" :key="item.to" :to="item.to" class="nav-link" :class="{ active: isActive(item.to) }" :aria-current="isActive(item.to) ? 'page' : undefined" @click="$emit('navigate')">
-        <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
-        <!-- The number is shown visually; screen readers hear the sentence after the link label ("Portal, 1 offener Antrag"). -->
-        <template v-if="item.to === '/eingang' && inbox.counts.total > 0">
-          <span class="nav-badge" aria-hidden="true">{{ inbox.counts.total }}</span><span class="sr-only">, {{ inbox.counts.total }} offen</span>
-        </template>
-        <template v-if="item.to === '/portal-verwaltung' && requestCount > 0">
-          <span class="nav-badge" aria-hidden="true">{{ requestCount }}</span><span class="sr-only">, {{ requestCount }} {{ requestCount === 1 ? 'offener Antrag' : 'offene Anträge' }}</span>
-        </template>
+        <!-- The number is shown visually; screen readers hear the sentence inside the label, so the
+             name reads "Portal, 1 offener Antrag" without a gap before the comma. -->
+        <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}<span v-if="countSentence(item.to)" class="sr-only">{{ countSentence(item.to) }}</span></span>
+        <span v-if="item.to === '/eingang' && inbox.counts.total > 0" class="nav-badge" aria-hidden="true">{{ inbox.counts.total }}</span>
+        <span v-if="item.to === '/portal-verwaltung' && requestCount > 0" class="nav-badge" aria-hidden="true">{{ requestCount }}</span>
       </router-link>
     </section>
     <p v-if="!visibleSections.length" class="nav-empty">Kein passendes Modul gefunden.</p>
@@ -75,6 +72,14 @@ const visibleSections = computed(() => sections.map(section => ({ ...section, it
   item.label.toLocaleLowerCase('de').includes(search.value.trim().toLocaleLowerCase('de'))
 ) })).filter(section => section.items.length))
 function isActive(target: string) { return route.path === target || (target !== '/' && route.path.startsWith(`${target}/`)) }
+
+function countSentence(to: string): string {
+  if (to === '/eingang' && inbox.counts.total > 0) return `, ${inbox.counts.total} offen`
+  if (to === '/portal-verwaltung' && requestCount.value > 0) {
+    return `, ${requestCount.value} ${requestCount.value === 1 ? 'offener Antrag' : 'offene Anträge'}`
+  }
+  return ''
+}
 </script>
 <style scoped>
 .module-navigation { padding: var(--jf-space-2) var(--jf-space-1-5); }
