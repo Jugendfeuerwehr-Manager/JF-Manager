@@ -74,9 +74,17 @@
 
               <div v-if="recipientCount !== null" class="compose-row">
                 <span class="compose-row-label"></span>
-                <div class="recipient-count">
-                  <i class="pi pi-users"></i>
-                  <span>{{ recipientCount }} {{ recipientCount === 1 ? 'Empfänger wird' : 'Empfänger werden' }} benachrichtigt</span>
+                <div class="recipient-summary" role="status">
+                  <StatusBadge
+                    :severity="recipientCount > 0 ? 'info' : 'warning'"
+                    icon="pi pi-users"
+                    :label="`${recipientCount} ${recipientCount === 1 ? 'Empfänger wird' : 'Empfänger werden'} benachrichtigt`"
+                  />
+                  <StatusBadge
+                    v-if="excludedCount > 0"
+                    severity="warning"
+                    :label="`${excludedCount} ohne gültige Adresse`"
+                  />
                 </div>
               </div>
 
@@ -192,20 +200,10 @@
             <!-- Actions -->
             <div class="sidebar-actions">
               <Button
-                v-if="previewMember"
-                label="Vorschau"
-                icon="pi pi-eye"
-                @click="showPreview"
-                outlined
-                class="w-full"
-                :loading="emailsStore.loading"
-              />
-              <Button
-                label="E-Mail senden"
+                label="Prüfen und senden"
                 icon="pi pi-send"
-                @click="sendEmail"
+                @click="openReview"
                 :disabled="!canSend"
-                :loading="emailsStore.loading"
                 severity="primary"
                 class="w-full"
               />
@@ -224,34 +222,26 @@
       </template>
     </Card>
 
-    <!-- Preview Dialog -->
-    <Dialog
-      v-model:visible="showPreviewDialog"
-      header="E-Mail-Vorschau"
-      :modal="true"
-      :style="{ width: isMobile ? '95vw' : '50vw' }"
-    >
-      <div v-if="previewData" class="preview-content">
-        <div class="preview-info">
-          <p><strong>Empfänger:</strong> {{ previewData.member_name }}</p>
-          <p><strong>Anzahl Empfänger für dieses Mitglied:</strong> {{ previewData.recipient_count }}</p>
-        </div>
-        <Divider />
-        <div class="preview-subject">
-          <strong>Betreff:</strong> {{ form.subject }}
-        </div>
-        <Divider />
-        <SafeEmailPreview class="preview-body" :html="previewData.rendered_html" />
-      </div>
-      <template #footer>
-        <Button label="Schließen" @click="showPreviewDialog = false" />
-      </template>
-    </Dialog>
+    <EmailSendReview
+      v-model:visible="showReview"
+      :check="emailsStore.recipientCheck"
+      :loading="emailsStore.checkingRecipients"
+      :error="emailsStore.recipientCheckError"
+      :subject="form.subject"
+      :preview-html="previewHtml"
+      :preview-member-id="previewMemberId"
+      :preview-loading="previewLoading"
+      :preview-error="previewError"
+      :sending="sending"
+      @update:preview-member-id="selectPreviewMember"
+      @retry="runReviewCheck"
+      @retry-preview="loadPreview"
+      @send="sendEmail"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import SafeEmailPreview from '@/components/common/SafeEmailPreview.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
@@ -267,14 +257,16 @@ import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import AutoComplete from 'primevue/autocomplete'
 import Checkbox from 'primevue/checkbox'
-import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
 import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
+import EmailSendReview from '@/components/emails/organisms/EmailSendReview.vue'
 import RecipientsList from '@/components/emails/molecules/RecipientsList.vue'
-import type { EmailPreviewResponse, EmailTemplateVariable } from '@/types/emails'
+import type { EmailRecipientCheckRequest, EmailTemplateVariable } from '@/types/emails'
 import type { Member } from '@/types/members'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const toast = useToast()
@@ -285,13 +277,7 @@ const membersStore = useMembersStore()
 const groupsStore = useGroupsStore()
 const departmentsStore = useDepartmentsStore()
 
-const isMobile = ref(window.innerWidth < 768)
-const showPreviewDialog = ref(false)
-const previewData = ref<EmailPreviewResponse | null>(null)
-const recipientCount = ref<number | null>(null)
 const templateVariables = ref<EmailTemplateVariable[]>([])
-const recipients = ref<Array<{ name: string; email: string; source: string }>>([])
-const loadingRecipients = ref(false)
 const includeSignature = ref(true)
 const userSignature = computed(() => authStore.user?.email_signature || '')
 const attachments = ref<File[]>([])
@@ -299,6 +285,15 @@ const isDragging = ref(false)
 const attachmentSectionRef = ref<HTMLElement | null>(null)
 const attachmentFlash = ref(false)
 const layout = ref('none')
+
+// Review before sending (UX-07.1)
+const showReview = ref(false)
+const previewMemberId = ref<number | null>(null)
+const previewHtml = ref<string | null>(null)
+const previewLoading = ref(false)
+const previewError = ref<string | null>(null)
+const sending = ref(false)
+let previewSequence = 0
 
 const layoutOptions = [
   { value: 'none', label: 'Kein Layout' },
@@ -314,6 +309,18 @@ const form = ref({
   recipient_group: null as number | null,
   recipient_members: [] as number[]
 })
+
+// Recipient numbers in the sidebar come from the same check the review uses.
+const recipientCount = computed(() => emailsStore.recipientCheck?.count ?? null)
+const excludedCount = computed(() => emailsStore.recipientCheck?.excluded.length ?? 0)
+const recipients = computed(() =>
+  (emailsStore.recipientCheck?.recipients ?? []).map((r) => ({
+    name: r.name,
+    email: r.email,
+    source: r.relation === 'parent' ? 'Eltern' : 'Mitglied',
+  })),
+)
+const loadingRecipients = computed(() => emailsStore.checkingRecipients)
 
 // German attachment hint detection
 const ATTACHMENT_HINT_REGEX =
@@ -391,13 +398,6 @@ const canSend = computed(() => {
   return true
 })
 
-const previewMember = computed(() => {
-  if (form.value.recipient_type === 'multiple' && form.value.recipient_members.length > 0) {
-    return selectedMemberObjects.value[0] || null
-  }
-  return membersStore.members[0] || null
-})
-
 onMounted(async () => {
   // Load members, groups, and template variables
   await Promise.all([
@@ -405,7 +405,7 @@ onMounted(async () => {
     groupsStore.fetchGroups(),
     emailsStore.fetchTemplateVariables(),
   ])
-  
+
   templateVariables.value = emailsStore.templateVariables
 
   // Pre-populate recipients from navigation state (e.g. from Lists feature)
@@ -417,16 +417,10 @@ onMounted(async () => {
     selectedMemberObjects.value = preselected
     form.value.recipient_members = preselected.map((m) => m.id)
   }
-  
+
   // Initial recipient count
   updateRecipientCount()
-  
-  window.addEventListener('resize', handleResize)
 })
-
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 768
-}
 
 const onRecipientTypeChange = () => {
   form.value.recipient_group = null
@@ -435,172 +429,141 @@ const onRecipientTypeChange = () => {
   updateRecipientCount()
 }
 
+/** Signature is appended in the browser, exactly as it will be sent. */
+function composedBody() {
+  let body = form.value.body_html
+  if (includeSignature.value && userSignature.value) {
+    body += '<br><br>---<br>' + userSignature.value
+  }
+  return body
+}
+
+function selection(withBody: boolean): EmailRecipientCheckRequest | null {
+  const request: EmailRecipientCheckRequest = { recipient_type: form.value.recipient_type }
+  if (form.value.recipient_type === 'group') {
+    if (!form.value.recipient_group) return null
+    request.recipient_group = form.value.recipient_group
+  }
+  if (form.value.recipient_type === 'multiple') {
+    if (form.value.recipient_members.length === 0) return null
+    request.recipient_members = form.value.recipient_members
+  }
+  if (withBody) request.body_html = composedBody()
+  return request
+}
+
 const updateRecipientCount = async () => {
-  if (!form.value.recipient_type) {
-    recipientCount.value = null
-    recipients.value = []
+  const request = selection(false)
+  if (!request) {
+    emailsStore.clearRecipientCheck()
     return
   }
-
   try {
-    loadingRecipients.value = true
-    if (form.value.recipient_type === 'multiple') {
-      if (form.value.recipient_members.length === 0) {
-        recipientCount.value = 0
-        recipients.value = []
-        return
-      }
-
-      const response = await emailsStore.getRecipientCount({
-        recipient_type: 'multiple',
-        recipient_members: form.value.recipient_members
-      })
-      recipients.value = (response.recipients || []).map(r => ({ name: r.name, email: r.email, source: 'Mitglied' }))
-      recipientCount.value = response.count
-      return
-    }
-    
-    const params: { recipient_type: 'all' | 'group'; recipient_group?: number } = {
-      recipient_type: form.value.recipient_type as 'all' | 'group'
-    }
-    
-    if (form.value.recipient_type === 'group' && form.value.recipient_group) {
-      params.recipient_group = form.value.recipient_group
-    }
-    
-    const response = await emailsStore.getRecipientCount(params)
-    recipientCount.value = response.count
-    recipients.value = (response.recipients || []).map(r => ({ name: r.name, email: r.email, source: 'Mitglied' }))
+    await emailsStore.checkRecipients(request)
   } catch {
-    recipientCount.value = null
-    recipients.value = []
-  } finally {
-    loadingRecipients.value = false
+    // The store keeps the error; the sidebar simply shows no count.
   }
 }
 
-const showPreview = async () => {
-  if (!previewMember.value) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Warnung',
-      detail: 'Kein Mitglied für Vorschau gefunden',
-      life: 3000
-    })
+async function loadPreview() {
+  const memberId = previewMemberId.value
+  if (memberId === null) {
+    previewHtml.value = null
     return
   }
-
+  const sequence = ++previewSequence
+  previewLoading.value = true
+  previewError.value = null
   try {
-    // Prepare email body with signature if enabled
-    let emailBody = form.value.body_html
-    if (includeSignature.value && userSignature.value) {
-      emailBody += '<br><br>---<br>' + userSignature.value
-    }
-
     const response = await emailsStore.previewEmail({
       subject: form.value.subject,
-      body_html: emailBody,
-      member_id: previewMember.value.id,
+      body_html: composedBody(),
+      member_id: memberId,
       layout: layout.value
     })
-    
-    previewData.value = response
-    showPreviewDialog.value = true
+    if (sequence === previewSequence) previewHtml.value = response.rendered_html
+  } catch (err) {
+    if (sequence === previewSequence) {
+      previewHtml.value = null
+      previewError.value = getApiErrorMessage(err, 'Die Vorschau konnte nicht erstellt werden.')
+    }
+  } finally {
+    if (sequence === previewSequence) previewLoading.value = false
+  }
+}
+
+function selectPreviewMember(memberId: number) {
+  previewMemberId.value = memberId
+  loadPreview()
+}
+
+async function runReviewCheck() {
+  const request = selection(true)
+  if (!request) return
+  previewHtml.value = null
+  previewError.value = null
+  try {
+    const check = await emailsStore.checkRecipients(request)
+    previewMemberId.value = check.recipients[0]?.member_id ?? null
+    await loadPreview()
+  } catch {
+    // Shown in the review dialog via the store error.
+  }
+}
+
+async function openReview() {
+  if (!canSend.value) return
+  showReview.value = true
+  await runReviewCheck()
+}
+
+const sendEmail = async () => {
+  if (sending.value) return
+  sending.value = true
+  try {
+    const base = {
+      subject: form.value.subject,
+      body_html: composedBody(),
+      layout: layout.value,
+      attachments: attachments.value.length > 0 ? attachments.value : undefined
+    }
+    // For multiple members, send one grouped email so history shows a single entry
+    const result = form.value.recipient_type === 'multiple'
+      ? await emailsStore.sendEmail({ ...base, recipient_type: 'multiple', recipient_members: form.value.recipient_members })
+      : await emailsStore.sendEmail({
+        ...base,
+        recipient_type: form.value.recipient_type,
+        recipient_group: form.value.recipient_group || undefined,
+      })
+
+    toast.add({
+      severity: 'success',
+      summary: 'Erfolg',
+      detail: `E-Mail wurde an ${result.result.successful} Empfänger gesendet`,
+      life: 5000
+    })
+    if (result.result.failed > 0) {
+      toast.add({
+        severity: 'warn',
+        summary: 'Teilweise fehlgeschlagen',
+        detail: `${result.result.failed} E-Mail(s) konnten nicht zugestellt werden`,
+        life: 5000
+      })
+    }
+
+    showReview.value = false
+    clearForm()
+    router.push('/emails/history')
   } catch {
     toast.add({
       severity: 'error',
       summary: 'Fehler',
-      detail: 'Vorschau konnte nicht geladen werden',
-      life: 3000
+      detail: emailsStore.error || 'E-Mail konnte nicht gesendet werden',
+      life: 5000
     })
+  } finally {
+    sending.value = false
   }
-}
-
-const sendEmail = async () => {
-  confirm.require({
-    message: `Möchten Sie die E-Mail wirklich an ${recipientCount.value} Empfänger senden?`,
-    header: 'E-Mail senden bestätigen',
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Ja, senden',
-    rejectLabel: 'Abbrechen',
-    accept: async () => {
-      try {
-        // Prepare email body with signature if enabled
-        let emailBody = form.value.body_html
-        if (includeSignature.value && userSignature.value) {
-          emailBody += '<br><br>---<br>' + userSignature.value
-        }
-
-        // For multiple members, send one grouped email so history shows a single entry
-        if (form.value.recipient_type === 'multiple') {
-          const result = await emailsStore.sendEmail({
-            subject: form.value.subject,
-            body_html: emailBody,
-            layout: layout.value,
-            recipient_type: 'multiple',
-            recipient_members: form.value.recipient_members,
-            attachments: attachments.value.length > 0 ? attachments.value : undefined
-          })
-
-          toast.add({
-            severity: 'success',
-            summary: 'Erfolg',
-            detail: `E-Mail wurde an ${result.result.successful} Empfänger gesendet`,
-            life: 5000
-          })
-
-          if (result.result.failed > 0) {
-            toast.add({
-              severity: 'warn',
-              summary: 'Teilweise fehlgeschlagen',
-              detail: `${result.result.failed} E-Mail(s) konnten nicht zugestellt werden`,
-              life: 5000
-            })
-          }
-        } else {
-          // Standard behavior for all or group
-          const result = await emailsStore.sendEmail({
-            subject: form.value.subject,
-            body_html: emailBody,
-            layout: layout.value,
-            recipient_type: form.value.recipient_type,
-            recipient_group: form.value.recipient_group || undefined,
-            attachments: attachments.value.length > 0 ? attachments.value : undefined
-          })
-
-          toast.add({
-            severity: 'success',
-            summary: 'Erfolg',
-            detail: `E-Mail wurde an ${result.result.successful} Empfänger gesendet`,
-            life: 5000
-          })
-
-          if (result.result.failed > 0) {
-            toast.add({
-              severity: 'warn',
-              summary: 'Teilweise fehlgeschlagen',
-              detail: `${result.result.failed} E-Mail(s) konnten nicht zugestellt werden`,
-              life: 5000
-            })
-          }
-        }
-
-        resetForm()
-        
-        // Navigate to history to see the result
-        setTimeout(() => {
-          router.push('/emails/history')
-        }, 1000)
-      } catch {
-        toast.add({
-          severity: 'error',
-          summary: 'Fehler',
-          detail: emailsStore.error || 'E-Mail konnte nicht gesendet werden',
-          life: 5000
-        })
-      }
-    }
-  })
 }
 
 const handleFileSelect = (event: FileUploadSelectEvent) => {
@@ -634,7 +597,7 @@ const getFileIcon = (file: File): string => {
   return 'pi pi-file'
 }
 
-const resetForm = () => {
+function clearForm() {
   form.value = {
     subject: '',
     body_html: '',
@@ -644,10 +607,27 @@ const resetForm = () => {
   }
   layout.value = 'none'
   selectedMemberObjects.value = []
-  recipientCount.value = null
-  recipients.value = []
   attachments.value = []
+  previewMemberId.value = null
+  previewHtml.value = null
   updateRecipientCount()
+}
+
+/** Discarding a draft is destructive and therefore confirmed. */
+const resetForm = () => {
+  if (!form.value.subject && !form.value.body_html && attachments.value.length === 0) {
+    clearForm()
+    return
+  }
+  confirm.require({
+    message: 'Betreff, Text und Anhänge dieser E-Mail werden verworfen.',
+    header: 'Entwurf verwerfen?',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Verwerfen',
+    rejectLabel: 'Weiter bearbeiten',
+    acceptClass: 'p-button-danger',
+    accept: clearForm,
+  })
 }
 
 const navigateToHistory = () => {
@@ -656,7 +636,6 @@ const navigateToHistory = () => {
 
 watch(() => form.value.recipient_type, updateRecipientCount)
 </script>
-
 <style scoped>
 .email-compose-view {
   padding: 1rem;
@@ -742,18 +721,18 @@ watch(() => form.value.recipient_type, updateRecipientCount)
   margin: 0 !important;
 }
 
-/* Recipient count chip */
-.recipient-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.625rem;
-  background: var(--primary-50);
-  border-radius: 1rem;
-  color: var(--primary-600);
-  font-size: 0.78rem;
-  font-weight: 600;
-  margin: 0.25rem 0;
+/* Recipient summary (UX-07.1) */
+.recipient-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jf-space-1);
+  margin: var(--jf-space-0-5) 0;
+}
+
+.app-dark .attachment-hint-warning,
+.app-dark .attachment-drop-zone.drop-zone-hint {
+  background: color-mix(in srgb, var(--p-amber-400), transparent 84%);
+  color: var(--p-amber-300);
 }
 
 /* AutoComplete recipient chip field */
@@ -852,7 +831,7 @@ watch(() => form.value.recipient_type, updateRecipientCount)
   min-width: 1.4rem;
   height: 1.4rem;
   background: var(--primary-color);
-  color: white;
+  color: var(--jf-color-on-primary);
   border-radius: 1rem;
   font-size: 0.72rem;
   font-weight: 700;
@@ -865,15 +844,15 @@ watch(() => form.value.recipient_type, updateRecipientCount)
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.75rem;
-  background: #fffbeb;
-  border-bottom: 1px solid #fde68a;
-  color: #92400e;
+  background: var(--p-amber-50);
+  border-bottom: 1px solid var(--p-amber-200);
+  color: var(--p-amber-800);
   font-size: 0.78rem;
   font-weight: 500;
 }
 
 .attachment-hint-warning .pi {
-  color: #f59e0b;
+  color: var(--p-amber-500);
   flex-shrink: 0;
 }
 
@@ -899,7 +878,7 @@ watch(() => form.value.recipient_type, updateRecipientCount)
 }
 
 .attachment-drop-zone.drop-zone-hint {
-  background: #fffbeb;
+  background: var(--p-amber-50);
 }
 
 .attachment-drop-zone .pi-cloud-upload {
@@ -983,7 +962,7 @@ watch(() => form.value.recipient_type, updateRecipientCount)
 
 .attachment-shake {
   animation: attachment-shake 0.5s ease;
-  border-color: #f59e0b !important;
+  border-color: var(--p-amber-500) !important;
 }
 
 /* Mobile: single column */
@@ -999,38 +978,6 @@ watch(() => form.value.recipient_type, updateRecipientCount)
   .compose-row {
     grid-template-columns: 58px 1fr;
   }
-}
-
-/* Preview dialog */
-.preview-content {
-  padding: 1rem 0;
-}
-
-.preview-info p {
-  margin: 0.5rem 0;
-}
-
-.preview-subject {
-  font-size: 1.1rem;
-  margin: 1rem 0;
-}
-
-.preview-body {
-  padding: 1rem;
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
-  background: var(--surface-card);
-  min-height: 200px;
-}
-
-.preview-body :deep(p) {
-  margin: 0.5rem 0;
-}
-
-.preview-body :deep(h1),
-.preview-body :deep(h2),
-.preview-body :deep(h3) {
-  margin: 1rem 0 0.5rem 0;
 }
 
 /* Compose template dialogs */

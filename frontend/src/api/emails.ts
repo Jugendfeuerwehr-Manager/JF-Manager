@@ -13,6 +13,8 @@ import type {
   EmailSendResponse,
   EmailRecipientCountRequest,
   EmailRecipientCountResponse,
+  EmailRecipientCheckRequest,
+  EmailRecipientCheckResponse,
   EmailListParams,
   PaginatedResponse
 } from '@/types/emails'
@@ -92,5 +94,14 @@ export const emailsApi = {
     const activeDeptId = localStorage.getItem('activeDepartmentId')
     const deptParams = activeDeptId ? { department: activeDeptId } : undefined
     return apiClient.post<EmailRecipientCountResponse>('/emails/recipient_count/', data, { params: deptParams })
+  },
+
+  /**
+   * Recipient check before sending: deliveries, exclusions with reasons, merged duplicates
+   */
+  checkRecipients(data: EmailRecipientCheckRequest) {
+    const activeDeptId = localStorage.getItem('activeDepartmentId')
+    const deptParams = activeDeptId ? { department: activeDeptId } : undefined
+    return apiClient.post<EmailRecipientCheckResponse>('/emails/recipient_check/', data, { params: deptParams })
   }
 }
