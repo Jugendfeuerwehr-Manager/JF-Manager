@@ -14,10 +14,38 @@
       </template>
     </OverviewHeader>
 
-    <ServiceMobileList v-if="isMobile" :department="departmentsStore.activeDepartmentId" />
+    <div class="list-controls">
+      <SegmentedControl
+        class="scope-switch"
+        label="Zeitraum"
+        :model-value="scope"
+        :options="[{ value: 'upcoming', label: 'Kommend' }, { value: 'past', label: 'Vergangen' }]"
+        @update:model-value="setScope"
+      />
+      <Button
+        v-if="!isMobile || scope === 'past'"
+        :label="activeFilterCount ? `Filter (${activeFilterCount})` : 'Filter'"
+        icon="pi pi-filter"
+        severity="secondary"
+        outlined
+        aria-controls="service-filters"
+        :aria-expanded="filtersOpen"
+        @click="filtersOpen = !filtersOpen"
+      />
+    </div>
 
-    <template v-else>
-    <section v-if="todayServices.length" class="today" aria-labelledby="today-title">
+    <section v-if="filtersOpen && (!isMobile || scope === 'past')" id="service-filters" class="filters-card" aria-label="Filter">
+      <ServiceFilters
+        :filters="filters"
+        @update:filters="filters = $event"
+        @apply="applyFilters"
+      />
+    </section>
+
+    <ServiceMobileList v-if="isMobile && scope === 'upcoming'" :department="departmentsStore.activeDepartmentId" />
+
+    <template v-if="!isMobile || scope === 'past'">
+    <section v-if="!isMobile && todayServices.length" class="today" aria-labelledby="today-title">
       <h2 id="today-title" class="visually-hidden">Heute</h2>
       <article v-for="service in todayServices" :key="service.id" class="today-card">
         <div class="today-card__top">
@@ -48,33 +76,6 @@
           </router-link>
         </div>
       </article>
-    </section>
-
-    <div class="list-controls">
-      <SegmentedControl
-        class="scope-switch"
-        label="Zeitraum"
-        :model-value="scope"
-        :options="[{ value: 'upcoming', label: 'Kommend' }, { value: 'past', label: 'Vergangen' }]"
-        @update:model-value="setScope"
-      />
-      <Button
-        :label="activeFilterCount ? `Filter (${activeFilterCount})` : 'Filter'"
-        icon="pi pi-filter"
-        severity="secondary"
-        outlined
-        aria-controls="service-filters"
-        :aria-expanded="filtersOpen"
-        @click="filtersOpen = !filtersOpen"
-      />
-    </div>
-
-    <section v-if="filtersOpen" id="service-filters" class="filters-card" aria-label="Filter">
-      <ServiceFilters
-        :filters="filters"
-        @update:filters="filters = $event"
-        @apply="applyFilters"
-      />
     </section>
 
     <ServicesList
@@ -146,8 +147,8 @@ const activeFilterCount = computed(() => [
 ].filter(Boolean).length)
 
 async function loadDesktop() {
-  if (isMobile.value) return
-  await Promise.all([loadServices(), loadToday()])
+  if (isMobile.value && scope.value === 'upcoming') return
+  await Promise.all([loadServices(), ...(!isMobile.value ? [loadToday()] : [])])
 }
 
 onMounted(async () => {
@@ -157,7 +158,8 @@ onMounted(async () => {
 
 // Refetch services when returning to this view
 onActivated(loadDesktop)
-watch(isMobile, (mobile) => { if (!mobile) void loadDesktop() })
+watch(isMobile, () => { void loadDesktop() })
+watch(() => departmentsStore.activeDepartmentId, () => { currentPage.value = 1; void loadDesktop() })
 
 /** Today's services get their own card with the direct way to take attendance. */
 async function loadToday() {
@@ -204,7 +206,7 @@ async function setScope(next: 'upcoming' | 'past') {
   scope.value = next
   currentPage.value = 1
   syncToUrl(urlState(), SERVICES_URL_DEFAULTS)
-  await loadServices()
+  await loadDesktop()
 }
 
 const loadServices = async () => {
