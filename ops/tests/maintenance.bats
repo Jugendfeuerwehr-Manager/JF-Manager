@@ -7,7 +7,7 @@ setup() {
     jf_minimal_install compose
     export JFCTL_SYSTEMD_DIR="$BATS_TEST_TMPDIR/systemd" JFCTL_ASSUME_SYSTEMD=1 JFCTL_SBIN=/usr/local/sbin/jfctl
     mkdir -p "$JFCTL_SYSTEMD_DIR"
-    jf_stub systemctl 'echo "systemctl $*" >>"$BATS_TEST_TMPDIR/calls"'
+    jf_stub systemctl '[[ "$*" != *--now* ]] || exit 1; echo "systemctl $*" >>"$BATS_TEST_TMPDIR/calls"'
     jf_stub docker 'echo "docker $*" >>"$BATS_TEST_TMPDIR/calls"'
 }
 
@@ -53,8 +53,11 @@ setup() {
     [ "$status" -eq 0 ]
     [ -f "$JFCTL_SYSTEMD_DIR/jf-manager-backup.timer" ]
     grep -q "OnCalendar=\*-\*-\* 02:30:00" "$JFCTL_SYSTEMD_DIR/jf-manager-backup.timer"
-    grep -q "enable --now jf-manager-maint-sessions.timer" "$BATS_TEST_TMPDIR/calls"
-    grep -q "disable --now jf-manager-maint-order-reminders.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "enable jf-manager-maint-sessions.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "stop jf-manager-maint-order-reminders.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "disable jf-manager-maint-order-reminders.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "start jf-manager-maint-sessions.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "start jf-manager-backup.timer" "$BATS_TEST_TMPDIR/calls"
     for t in "$JFCTL_SYSTEMD_DIR"/*.timer; do
         grep -E '^OnCalendar=' "$t" | cut -d= -f2- | while read -r cal; do
             systemd-analyze calendar "$cal" >/dev/null
@@ -65,7 +68,8 @@ setup() {
 @test "enable switches an optional task on" {
     run "$OPS_DIR/jfctl" maintenance enable order-reminders
     [ "$status" -eq 0 ]
-    grep -q "enable --now jf-manager-maint-order-reminders.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "enable jf-manager-maint-order-reminders.timer" "$BATS_TEST_TMPDIR/calls"
+    grep -q "start jf-manager-maint-order-reminders.timer" "$BATS_TEST_TMPDIR/calls"
     run "$OPS_DIR/jfctl" maintenance list
     grep -q "order-reminders *ja" <<<"$output"
 }
