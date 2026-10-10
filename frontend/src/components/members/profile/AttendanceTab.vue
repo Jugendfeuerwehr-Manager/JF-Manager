@@ -43,7 +43,7 @@
             <div class="item-topline">
               <span class="date-label">{{ formatDate(record.service_date) }}</span>
               <span class="day-label">{{ getDayName(record.service_date) }}</span>
-              <span class="state-label">{{ record.state_display }}</span>
+              <span class="state-label">{{ attendanceLabel(record) }}</span>
             </div>
             <div class="topic" :title="record.service_topic || 'Kein Thema'">
               {{ record.service_topic || 'Kein Thema' }}
@@ -72,6 +72,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { servicebookApi } from '@/api/servicebook'
 import type { Attendance, AttendanceSummary, MemberAttendanceParams } from '@/types/servicebook'
+import { AttendanceStateLabels, type AttendanceState } from '@/types/servicebook'
+
+const attendanceLabel = (record: Attendance) => AttendanceStateLabels[record.state as AttendanceState] ?? record.state_display
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'

@@ -102,7 +102,7 @@
           <ul class="attendance-legend" aria-label="Legende">
             <li><span class="legend-swatch legend-swatch--present"></span>A · Anwesend</li>
             <li><span class="legend-swatch legend-swatch--excused"></span>E · Entschuldigt</li>
-            <li><span class="legend-swatch legend-swatch--absent"></span>F · Fehlend</li>
+            <li><span class="legend-swatch legend-swatch--absent"></span>F · Fehlt</li>
           </ul>
           <div ref="chartScroll" class="attendance-scroll">
             <div class="attendance-grid">

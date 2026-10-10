@@ -81,7 +81,7 @@
                         <li v-for="record in recentAttendance" :key="record.id" :class="`attendance-mark attendance-mark--${record.state ?? 'none'}`" :title="`${formatDate(record.service_date)}: ${record.state_display}`">
                           <span class="attendance-mark__box"><i :class="attendanceIcon(record.state)" aria-hidden="true"></i></span>
                           <span class="attendance-mark__day">{{ formatDay(record.service_date) }}</span>
-                          <span class="visually-hidden">{{ record.state_display }}</span>
+                          <span class="visually-hidden">{{ attendanceLabel(record) }}</span>
                         </li>
                       </ol>
                       <p class="muted">{{ attendanceSummaryText }}</p>
@@ -256,6 +256,9 @@ import type { Member, Parent } from '@/types/api'
 import type { Event } from '@/types/events'
 import type { Qualification } from '@/types/qualifications'
 import type { Attendance, AttendanceSummary } from '@/types/servicebook'
+import { AttendanceStateLabels, type AttendanceState } from '@/types/servicebook'
+
+const attendanceLabel = (record: Attendance) => AttendanceStateLabels[record.state as AttendanceState] ?? record.state_display
 import type { MemberDeletionStrategy } from '@/types/inventory'
 import Button from 'primevue/button'
 import Tabs from 'primevue/tabs'

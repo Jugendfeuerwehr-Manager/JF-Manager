@@ -14,16 +14,17 @@
 export enum AttendanceState {
   PRESENT = 'A', // Anwesend
   EXCUSED = 'E', // Entschuldigt
-  ABSENT = 'F', // Fehlend
+  ABSENT = 'F', // Fehlt
 }
 
 /**
- * Human-readable labels for attendance states
+ * Human-readable labels for attendance states: the single source for every
+ * attendance view (UX-04.1).
  */
 export const AttendanceStateLabels: Record<AttendanceState, string> = {
   [AttendanceState.PRESENT]: 'Anwesend',
   [AttendanceState.EXCUSED]: 'Entschuldigt',
-  [AttendanceState.ABSENT]: 'Fehlend',
+  [AttendanceState.ABSENT]: 'Fehlt',
 }
 
 /**
