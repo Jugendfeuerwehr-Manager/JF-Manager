@@ -131,3 +131,28 @@ setup() { jf_source_libs; }
     [ "$status" -eq 0 ]
     grep -q "run --rm --no-deps -T -e DJANGO_COLLECTSTATIC=off backend python manage.py reset_mfa --user chef" "$BATS_TEST_TMPDIR/calls"
 }
+
+@test "custom compose project is persisted and used by later commands" {
+    jf_minimal_install compose
+    conf_load
+    JF_COMPOSE_PROJECT=jf-manager-v3
+    conf_save
+    unset JF_COMPOSE_PROJECT
+    conf_load
+    [ "$JF_COMPOSE_PROJECT" = jf-manager-v3 ]
+    jf_stub docker 'printf "%s\n" "$*" >>"$BATS_TEST_TMPDIR/calls"'
+    run "$OPS_DIR/jfctl" stop
+    [ "$status" -eq 0 ]
+    grep -q '^compose -p jf-manager-v3 ' "$BATS_TEST_TMPDIR/calls"
+    ! grep -q '^compose -p jf-manager ' "$BATS_TEST_TMPDIR/calls"
+}
+
+@test "invalid compose project is refused before configuration is saved" {
+    . "$OPS_DIR/lib/basic.sh"
+    jf_minimal_install compose
+    conf_load
+    JF_COMPOSE_PROJECT='../old stack'
+    run config_validate
+    [ "$status" -eq 1 ]
+    [[ $output == *"JF_COMPOSE_PROJECT"* ]]
+}

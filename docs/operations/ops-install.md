@@ -33,7 +33,7 @@ Der Assistent fragt zuerst alle Angaben ab und ändert noch nichts:
 | Backup-Ziel, Backup-Passwort | `/var/backups/jf-manager/restic`, wird erzeugt | Passwort verdeckt; mindestens 12 Zeichen |
 | Erstes Administrationskonto | `admin`, Passwort wird erzeugt | nur bei `install` |
 
-Mit `--expert` zusätzlich: Instanzname, Datenverzeichnis, Backup-Zeitplan und -Aufbewahrung, Prüfung des Herkunftsnachweises.
+Mit `--expert` zusätzlich: Instanzname, Datenverzeichnis, Backup-Zeitplan und -Aufbewahrung, Prüfung des Herkunftsnachweises; im Compose-Modus auch Subnetz und Projektname (`JF_COMPOSE_PROJECT`, Standard `jf-manager`). Für eine Migration auf demselben Host einen anderen Projektnamen als der Altstack wählen, z. B. `jf-manager-v3`; er wird für alle späteren Verwaltungsbefehle gespeichert.
 
 Bei Hosts mit weniger nutzbarem RAM lässt sich ausschließlich die RAM-Mindestgrenze ausdrücklich übergehen:
 

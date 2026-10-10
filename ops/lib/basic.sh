@@ -163,6 +163,10 @@ cmd_config() {
 }
 
 config_validate() {
+    if [ "$JF_MODE" = compose ]; then
+        [[ ${JF_COMPOSE_PROJECT:-jf-manager} =~ ^[a-z0-9][a-z0-9_-]*$ ]] ||
+            { err "JF_COMPOSE_PROJECT muss aus Kleinbuchstaben, Zahlen, Bindestrichen oder Unterstrichen bestehen und mit einem Buchstaben oder einer Zahl beginnen"; return 1; }
+    fi
     case "$JF_TLS" in caddy|proxy) ;; *) err "JF_TLS muss caddy oder proxy sein"; return 1 ;; esac
     if [ "$JF_TLS" = caddy ]; then
         [[ $JF_DOMAIN =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$ ]] ||
