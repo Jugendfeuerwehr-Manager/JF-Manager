@@ -80,6 +80,9 @@ class MemberListEntry(models.Model):
     checked_at = models.DateTimeField(null=True, blank=True, verbose_name="Abgehakt am")
     notes = models.CharField(max_length=500, blank=True, default="", verbose_name="Notiz")
     added_at = models.DateTimeField(auto_now_add=True)
+    # Raised on every change of check state or note; clients send the version
+    # they saw, so a stale write is answered with the current state (UX-03.2).
+    version = models.PositiveIntegerField(default=1, verbose_name="Version")
 
     class Meta:
         verbose_name = "Listeneintrag"
@@ -93,7 +96,8 @@ class MemberListEntry(models.Model):
     def toggle_check(self):
         self.checked = not self.checked
         self.checked_at = timezone.now() if self.checked else None
-        self.save(update_fields=["checked", "checked_at"])
+        self.version += 1
+        self.save(update_fields=["checked", "checked_at", "version"])
 
 
 class MemberListLegacyTarget(models.Model):

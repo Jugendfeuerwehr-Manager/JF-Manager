@@ -1,5 +1,15 @@
 import apiClient from './index'
-import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate, CreateFromEventTypeParams } from '@/types/lists'
+import type {
+  BulkAddResult,
+  BulkCheckPreview,
+  BulkCheckResult,
+  CreateFromEventTypeParams,
+  MemberList,
+  MemberListCreate,
+  MemberListDetail,
+  MemberListEntryState,
+  MemberListUpdate,
+} from '@/types/lists'
 import type { PaginatedResponse } from '@/types/api'
 import type { Attachment } from '@/types/qualifications'
 
@@ -38,40 +48,35 @@ export const memberListsApi = {
     )
   },
 
-  bulkAdd(listId: number, memberIds: number[]) {
-    return apiClient.post<{ added: number; member_count: number }>(
-      `/member-lists/${listId}/bulk_add/`,
-      { member_ids: memberIds },
-    )
+  /** With `dryRun` nothing is written; the answer names who would be added. */
+  bulkAdd(listId: number, memberIds: number[], dryRun = false) {
+    return apiClient.post<BulkAddResult>(`/member-lists/${listId}/bulk_add/`, { member_ids: memberIds, dry_run: dryRun })
   },
 
-  toggleCheck(listId: number, memberId: number) {
-    return apiClient.post<{ checked: boolean; checked_at: string | null }>(
-      `/member-lists/${listId}/toggle_check/`,
-      { member_id: memberId },
-    )
+  /** Sets one entry; `expectedVersion` makes a stale write fail with 409 and the current state. */
+  setCheck(listId: number, memberId: number, checked: boolean, expectedVersion?: number) {
+    return apiClient.post<MemberListEntryState>(`/member-lists/${listId}/set_check/`, {
+      member_id: memberId,
+      checked,
+      ...(expectedVersion ? { expected_version: expectedVersion } : {}),
+    })
   },
 
-  setCheck(listId: number, memberId: number, checked: boolean) {
-    return apiClient.post<{ checked: boolean; checked_at: string | null }>(
-      `/member-lists/${listId}/set_check/`,
-      { member_id: memberId, checked },
-    )
+  previewBulkCheck(listId: number, checked: boolean) {
+    return apiClient.post<BulkCheckPreview>(`/member-lists/${listId}/${checked ? 'check_all' : 'uncheck_all'}/`, { dry_run: true })
   },
 
-  checkAll(listId: number) {
-    return apiClient.post<{ checked_count: number }>(`/member-lists/${listId}/check_all/`)
+  /** Applies a previewed bulk change to exactly the previewed members. */
+  applyBulkCheck(listId: number, checked: boolean, memberIds: number[]) {
+    return apiClient.post<BulkCheckResult>(`/member-lists/${listId}/${checked ? 'check_all' : 'uncheck_all'}/`, { member_ids: memberIds })
   },
 
-  uncheckAll(listId: number) {
-    return apiClient.post<{ checked_count: number }>(`/member-lists/${listId}/uncheck_all/`)
-  },
-
-  updateEntryNotes(listId: number, memberId: number, notes: string) {
-    return apiClient.patch<{ notes: string }>(
-      `/member-lists/${listId}/update_entry_notes/`,
-      { member_id: memberId, notes },
-    )
+  updateEntryNotes(listId: number, memberId: number, notes: string, expectedVersion?: number) {
+    return apiClient.patch<MemberListEntryState>(`/member-lists/${listId}/update_entry_notes/`, {
+      member_id: memberId,
+      notes,
+      ...(expectedVersion ? { expected_version: expectedVersion } : {}),
+    })
   },
 
   attachments: {

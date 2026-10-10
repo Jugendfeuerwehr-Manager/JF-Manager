@@ -10,7 +10,6 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
@@ -28,7 +27,15 @@ from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from jf_manager_backend.renderers import PassthroughRenderer
 from jf_manager_backend.safe_exports import write_safe_cell
 from members.api.serializers.list_serializers import (
+    BulkAddInputSerializer,
+    BulkAddResultSerializer,
+    BulkCheckInputSerializer,
+    BulkCheckResultSerializer,
     CreateFromEventTypeInputSerializer,
+    EntryCheckInputSerializer,
+    EntryConflictSerializer,
+    EntryNotesInputSerializer,
+    EntryStateSerializer,
     LegacyListPendingSerializer,
     LegacyListResolutionResultSerializer,
     MemberListCreateUpdateSerializer,
@@ -42,6 +49,15 @@ from members.api.viewsets.member_viewsets import MEMBER_EXPORT_COLUMNS, MEMBER_E
 from members.api_serializers import AttachmentSerializer
 from members.models import Attachment, Event, EventType, Member, MemberList, MemberListEntry
 from members.services.legacy_list_resolution import pending_resolution_data, resolve_legacy_list
+from members.services.member_list_entries import (
+    EntryNotFound,
+    EntryVersionConflict,
+    bulk_check_candidates,
+    bulk_set_check,
+    entry_state,
+    set_entry_check,
+    set_entry_notes,
+)
 from users.step_up import StepUpForExports
 
 LIST_EXTRA_COLUMNS = {
@@ -288,21 +304,39 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
         deleted, _ = MemberListEntry.objects.filter(member_list=member_list, member_id=member_id).delete()
         return Response({"removed": bool(deleted), "member_count": member_list.member_count})
 
+    @extend_schema(request=BulkAddInputSerializer, responses=BulkAddResultSerializer)
     @action(detail=True, methods=["post"])
     def bulk_add(self, request, pk=None):
-        """POST /api/v1/member-lists/{id}/bulk_add/ — add multiple members at once."""
+        """POST /api/v1/member-lists/{id}/bulk_add/ — add multiple members at once.
+
+        With ``dry_run`` nothing is written; the answer names who would be added.
+        """
         member_list = self.get_object()
         self._require_list_write(member_list)
-        member_ids = request.data.get("member_ids", [])
-        if not isinstance(member_ids, list):
+        if not isinstance(request.data.get("member_ids", []), list):
             return Response({"error": "member_ids muss eine Liste sein."}, status=status.HTTP_400_BAD_REQUEST)
-        member_ids = set(serializers.ListField(child=serializers.IntegerField(min_value=1)).run_validation(member_ids))
+        data = BulkAddInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        member_ids = set(data.validated_data["member_ids"])
         members = Member.objects.filter(pk__in=member_ids)
         if not member_list.organization_wide:
             members = members.filter(departments=member_list.department)
-        members = list(members.distinct())
+        members = list(members.distinct().order_by("lastname", "name"))
         if {member.pk for member in members} != member_ids:
             raise serializers.ValidationError({"member_ids": "Alle Mitglieder müssen zur Listenabteilung gehören."})
+
+        existing = set(member_list.entries.filter(member_id__in=member_ids).values_list("member_id", flat=True))
+        new_members = [member for member in members if member.pk not in existing]
+        if data.validated_data["dry_run"]:
+            return Response(
+                {
+                    "dry_run": True,
+                    "added": len(new_members),
+                    "already_in_list": len(existing),
+                    "members": [{"member_id": m.pk, "name": m.get_full_name()} for m in new_members],
+                    "member_count": member_list.member_count,
+                }
+            )
 
         with transaction.atomic():
             added = 0
@@ -310,69 +344,154 @@ class MemberListViewSet(ExportAuditMixin, viewsets.ModelViewSet):
                 _, created = MemberListEntry.objects.get_or_create(member_list=member_list, member=member)
                 added += int(created)
 
-        return Response({"added": added, "member_count": member_list.member_count})
+        return Response(
+            {
+                "dry_run": False,
+                "added": added,
+                "already_in_list": len(members) - added,
+                "members": [],
+                "member_count": member_list.member_count,
+            }
+        )
 
     # ── Check/uncheck ──────────────────────────────────────────────────────
 
+    @staticmethod
+    def _conflict(exc):
+        return Response(
+            {
+                "detail": "Der Eintrag wurde inzwischen von jemand anderem geändert. Der aktuelle Stand wird angezeigt.",
+                "code": "conflict",
+                "current": entry_state(exc.entry),
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    @staticmethod
+    def _entry_not_found():
+        return Response({"error": "Mitglied nicht in dieser Liste."}, status=status.HTTP_404_NOT_FOUND)
+
+    @extend_schema(
+        request=EntryCheckInputSerializer,
+        responses={200: EntryStateSerializer, 409: EntryConflictSerializer},
+    )
     @action(detail=True, methods=["post"])
     def toggle_check(self, request, pk=None):
         """POST /api/v1/member-lists/{id}/toggle_check/ — toggle checked state for one member."""
         member_list = self.get_object()
         self._require_list_write(member_list)
-        member_id = request.data.get("member_id")
+        data = EntryCheckInputSerializer(data=request.data, context={"require_checked": False})
+        data.is_valid(raise_exception=True)
         try:
-            entry = MemberListEntry.objects.get(member_list=member_list, member_id=member_id)
-        except MemberListEntry.DoesNotExist:
-            return Response({"error": "Mitglied nicht in dieser Liste."}, status=status.HTTP_404_NOT_FOUND)
-        entry.toggle_check()
-        return Response({"checked": entry.checked, "checked_at": entry.checked_at})
+            entry = set_entry_check(
+                member_list, data.validated_data["member_id"], None, data.validated_data.get("expected_version")
+            )
+        except EntryNotFound:
+            return self._entry_not_found()
+        except EntryVersionConflict as exc:
+            return self._conflict(exc)
+        return Response(entry_state(entry))
 
+    @extend_schema(
+        request=EntryCheckInputSerializer,
+        responses={200: EntryStateSerializer, 409: EntryConflictSerializer},
+    )
     @action(detail=True, methods=["post"])
     def set_check(self, request, pk=None):
-        """POST /api/v1/member-lists/{id}/set_check/ — set checked state for one member explicitly."""
+        """POST /api/v1/member-lists/{id}/set_check/ — set checked state for one member explicitly.
+
+        ``expected_version`` (optional) is the version the client saw; a newer
+        version on the server answers 409 with the current state.
+        """
         member_list = self.get_object()
         self._require_list_write(member_list)
-        member_id = request.data.get("member_id")
-        checked = request.data.get("checked")
-        if checked is None:
+        if request.data.get("checked") is None:
             return Response({"error": "checked erforderlich."}, status=status.HTTP_400_BAD_REQUEST)
+        data = EntryCheckInputSerializer(data=request.data, context={"require_checked": True})
+        data.is_valid(raise_exception=True)
         try:
-            entry = MemberListEntry.objects.get(member_list=member_list, member_id=member_id)
-        except MemberListEntry.DoesNotExist:
-            return Response({"error": "Mitglied nicht in dieser Liste."}, status=status.HTTP_404_NOT_FOUND)
-        entry.checked = bool(checked)
-        entry.checked_at = timezone.now() if entry.checked else None
-        entry.save(update_fields=["checked", "checked_at"])
-        return Response({"checked": entry.checked, "checked_at": entry.checked_at})
+            entry = set_entry_check(
+                member_list,
+                data.validated_data["member_id"],
+                data.validated_data["checked"],
+                data.validated_data.get("expected_version"),
+            )
+        except EntryNotFound:
+            return self._entry_not_found()
+        except EntryVersionConflict as exc:
+            return self._conflict(exc)
+        return Response(entry_state(entry))
 
+    def _bulk_check(self, request, checked):
+        member_list = self.get_object()
+        self._require_list_write(member_list)
+        data = BulkCheckInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        member_ids = data.validated_data.get("member_ids")
+        if data.validated_data["dry_run"]:
+            candidates = bulk_check_candidates(member_list, checked, member_ids).select_related("member")
+            candidates = candidates.order_by("member__lastname", "member__name")
+            return Response(
+                {
+                    "dry_run": True,
+                    "count": len(candidates),
+                    "entries": [
+                        {"member_id": entry.member_id, "name": entry.member.get_full_name(), "version": entry.version}
+                        for entry in candidates
+                    ],
+                }
+            )
+        if member_ids is None:
+            raise serializers.ValidationError(
+                {"member_ids": "Sammelaktionen brauchen die Auswahl aus der Vorschau (dry_run)."}
+            )
+        changed = bulk_set_check(member_list, checked, member_ids)
+        entries = member_list.entries.order_by("pk")
+        return Response(
+            {
+                "dry_run": False,
+                "changed": changed,
+                "skipped": len(set(member_ids)) - changed,
+                "checked_count": entries.filter(checked=True).count(),
+                "entries": [entry_state(entry) for entry in entries],
+            }
+        )
+
+    @extend_schema(request=BulkCheckInputSerializer, responses=BulkCheckResultSerializer)
     @action(detail=True, methods=["post"])
     def check_all(self, request, pk=None):
-        """POST /api/v1/member-lists/{id}/check_all/ — mark all members as checked."""
-        member_list = self.get_object()
-        self._require_list_write(member_list)
-        now = timezone.now()
-        member_list.entries.update(checked=True, checked_at=now)
-        return Response({"checked_count": member_list.member_count})
+        """POST /api/v1/member-lists/{id}/check_all/ — preview (``dry_run``) or check the previewed members."""
+        return self._bulk_check(request, True)
 
+    @extend_schema(request=BulkCheckInputSerializer, responses=BulkCheckResultSerializer)
     @action(detail=True, methods=["post"])
     def uncheck_all(self, request, pk=None):
-        """POST /api/v1/member-lists/{id}/uncheck_all/ — reset all check states."""
-        member_list = self.get_object()
-        self._require_list_write(member_list)
-        member_list.entries.update(checked=False, checked_at=None)
-        return Response({"checked_count": 0})
+        """POST /api/v1/member-lists/{id}/uncheck_all/ — preview (``dry_run``) or reset the previewed members."""
+        return self._bulk_check(request, False)
 
+    @extend_schema(
+        request=EntryNotesInputSerializer,
+        responses={200: EntryStateSerializer, 409: EntryConflictSerializer},
+    )
     @action(detail=True, methods=["patch"])
     def update_entry_notes(self, request, pk=None):
         """PATCH /api/v1/member-lists/{id}/update_entry_notes/ — set notes on a list entry."""
         member_list = self.get_object()
         self._require_list_write(member_list)
-        member_id = request.data.get("member_id")
-        notes = request.data.get("notes", "")
-        updated = MemberListEntry.objects.filter(member_list=member_list, member_id=member_id).update(notes=notes)
-        if not updated:
+        data = EntryNotesInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            entry = set_entry_notes(
+                member_list,
+                data.validated_data["member_id"],
+                data.validated_data["notes"],
+                data.validated_data.get("expected_version"),
+            )
+        except EntryNotFound:
             return Response({"error": "Eintrag nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
-        return Response({"notes": notes})
+        except EntryVersionConflict as exc:
+            return self._conflict(exc)
+        return Response(entry_state(entry))
 
     @extend_schema(request=CreateFromEventTypeInputSerializer, responses={201: MemberListSerializer})
     @action(detail=False, methods=["post"], url_path="create_from_event_type")

@@ -11,6 +11,47 @@ export interface MemberListEntry {
   checked_at: string | null
   notes: string
   added_at: string
+  /** Rises with every change; sent back as `expected_version` to detect conflicts (UX-03.2). */
+  version: number
+}
+
+/** Server state of one entry, returned after a write and inside a 409 conflict. */
+export interface MemberListEntryState {
+  id: number
+  member_id: number
+  checked: boolean
+  checked_at: string | null
+  notes: string
+  version: number
+}
+
+export interface MemberListEntryConflict {
+  detail: string
+  code: 'conflict'
+  current: MemberListEntryState
+}
+
+/** Preview of a bulk check/uncheck: exactly these entries would change. */
+export interface BulkCheckPreview {
+  dry_run: true
+  count: number
+  entries: Array<{ member_id: number; name: string; version: number }>
+}
+
+export interface BulkCheckResult {
+  dry_run: false
+  changed: number
+  skipped: number
+  checked_count: number
+  entries: MemberListEntryState[]
+}
+
+export interface BulkAddResult {
+  dry_run: boolean
+  added: number
+  already_in_list: number
+  members: Array<{ member_id: number; name: string }>
+  member_count: number
 }
 
 export interface MemberList {
