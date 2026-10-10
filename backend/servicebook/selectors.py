@@ -45,8 +45,7 @@ def get_top_lists_by_state(state, max_entries=7, services=None):
     if services is not None:
         attendances = attendances.filter(service__in=services)
     return (
-        attendances
-        .values("person__name", "person__lastname")
+        attendances.values("person__name", "person__lastname")
         .annotate(num_services=Count("person"))
         .order_by("-num_services")[:max_entries]
     )

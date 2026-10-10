@@ -31,7 +31,12 @@ class ExternalSyncApiTests(APITestCase):
             *Permission.objects.filter(
                 content_type__app_label="external_sync",
                 codename__in=[
-                    "view_syncjob", "add_syncjob", "change_syncjob", "view_syncrun", "run_syncjob", "test_syncjob"
+                    "view_syncjob",
+                    "add_syncjob",
+                    "change_syncjob",
+                    "view_syncrun",
+                    "run_syncjob",
+                    "test_syncjob",
                 ],
             ),
         )

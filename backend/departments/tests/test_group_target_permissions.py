@@ -60,9 +60,7 @@ class GroupTargetPermissionTests(APITestCase):
         self.assertFalse(Group.objects.filter(name="Unowned group").exists())
 
     def test_scoped_writer_cannot_explicitly_create_global_group(self):
-        response = self.client.post(
-            "/api/v1/groups/", {"name": "Global group", "department": None}, format="json"
-        )
+        response = self.client.post("/api/v1/groups/", {"name": "Global group", "department": None}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Group.objects.filter(name="Global group").exists())
@@ -73,9 +71,7 @@ class GroupTargetPermissionTests(APITestCase):
             Permission.objects.get(content_type__app_label="members", codename="add_group"),
         )
 
-        response = self.client.post(
-            "/api/v1/groups/", {"name": "Global group", "department": None}, format="json"
-        )
+        response = self.client.post("/api/v1/groups/", {"name": "Global group", "department": None}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Group.objects.filter(name="Global group", department__isnull=True).exists())

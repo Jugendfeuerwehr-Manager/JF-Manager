@@ -16,7 +16,9 @@ from .models import PushDelivery, PushSubscription
 from .services import deliver_pending, enqueue_event
 
 
-@override_settings(WEB_PUSH_PUBLIC_KEY="public", WEB_PUSH_PRIVATE_KEY="private", WEB_PUSH_SUBJECT="mailto:test@example.org")
+@override_settings(
+    WEB_PUSH_PUBLIC_KEY="public", WEB_PUSH_PRIVATE_KEY="private", WEB_PUSH_SUBJECT="mailto:test@example.org"
+)
 class PushTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -25,9 +27,14 @@ class PushTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.user)
         self.endpoint = "https://fcm.googleapis.com/fcm/send/example"
+
         def encode(value):
             return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
-        self.payload = {"endpoint": self.endpoint, "keys": {"p256dh": encode(b"\x04" + b"a" * 64), "auth": encode(b"b" * 16)}}
+
+        self.payload = {
+            "endpoint": self.endpoint,
+            "keys": {"p256dh": encode(b"\x04" + b"a" * 64), "auth": encode(b"b" * 16)},
+        }
 
     def subscribe(self):
         response = self.client.post("/api/v1/push/subscription/", self.payload, format="json")
@@ -47,9 +54,17 @@ class PushTests(TestCase):
         self.assertFalse(self.client.get("/api/v1/push/subscription/", {"endpoint": self.endpoint}).data["subscribed"])
 
     def test_rejects_ssrf_and_bad_keys(self):
-        for endpoint in ("http://fcm.googleapis.com/a", "https://127.0.0.1/a", "https://fcm.googleapis.com.attacker.test/a", "https://fcm.googleapis.com:8443/a", "https://user@fcm.googleapis.com/a"):
+        for endpoint in (
+            "http://fcm.googleapis.com/a",
+            "https://127.0.0.1/a",
+            "https://fcm.googleapis.com.attacker.test/a",
+            "https://fcm.googleapis.com:8443/a",
+            "https://user@fcm.googleapis.com/a",
+        ):
             self.payload["endpoint"] = endpoint
-            self.assertEqual(self.client.post("/api/v1/push/subscription/", self.payload, format="json").status_code, 400)
+            self.assertEqual(
+                self.client.post("/api/v1/push/subscription/", self.payload, format="json").status_code, 400
+            )
         self.payload["endpoint"] = self.endpoint
         self.payload["keys"]["auth"] = "invalid"
         self.assertEqual(self.client.post("/api/v1/push/subscription/", self.payload, format="json").status_code, 400)
@@ -60,7 +75,9 @@ class PushTests(TestCase):
         group = Group.objects.create(name="Leitung")
         group.permissions.add(Permission.objects.get(codename="view_service", content_type__app_label="servicebook"))
         role.groups.add(group)
-        service = Service.objects.create(start=timezone.now(), end=timezone.now()+timedelta(hours=2), department=department)
+        service = Service.objects.create(
+            start=timezone.now(), end=timezone.now() + timedelta(hours=2), department=department
+        )
         return service, role
 
     def test_department_permissions_and_preferences(self):
@@ -101,6 +118,7 @@ class PushTests(TestCase):
     def test_expired_provider_subscription_removed(self, send):
         from pywebpush import WebPushException
         from requests import Response
+
         response = Response()
         response.status_code = 410
         send.side_effect = WebPushException("expired", response=response)
@@ -112,6 +130,7 @@ class PushTests(TestCase):
     @patch("pywebpush.webpush")
     def test_transient_failure_retries_later(self, send):
         from pywebpush import WebPushException
+
         send.side_effect = WebPushException("temporary")
         subscription = self.subscribe()
         PushDelivery.objects.create(subscription=subscription, kind="test", object_id=self.user.pk)

@@ -131,15 +131,15 @@ class MyNewAPITests(BaseAPITestCase):
     def setUp(self):
         super().setUp()
         # Grant necessary permissions
-        self.grant_permissions(self.authorized_user, 'modelname', ['view', 'add'])
+        self.grant_permissions(self.authorized_user, "modelname", ["view", "add"])
         self.authenticate_user(self.authorized_user)
-    
+
     def test_my_endpoint(self):
         """Test description"""
-        response = self.client.get('/api/v1/myendpoint/')
-        
+        response = self.client.get("/api/v1/myendpoint/")
+
         self.assertEqual(response.status_code, 200)
-        self.assertIn('expected_field', response.data)
+        self.assertIn("expected_field", response.data)
 ```
 
 ### 2. Test Permissions
@@ -149,13 +149,14 @@ Always test both allowed and denied scenarios:
 ```python
 def test_without_permission_denied(self):
     self.authenticate_user(self.regular_user)  # No permissions
-    response = self.client.get('/api/v1/protected/')
+    response = self.client.get("/api/v1/protected/")
     self.assertEqual(response.status_code, 403)
 
+
 def test_with_permission_allowed(self):
-    self.grant_permissions(self.authorized_user, 'model', ['view'])
+    self.grant_permissions(self.authorized_user, "model", ["view"])
     self.authenticate_user(self.authorized_user)
-    response = self.client.get('/api/v1/protected/')
+    response = self.client.get("/api/v1/protected/")
     self.assertEqual(response.status_code, 200)
 ```
 
@@ -163,11 +164,11 @@ def test_with_permission_allowed(self):
 
 ```python
 def test_create_with_invalid_data(self):
-    invalid_data = {'field': 'invalid_value'}
-    response = self.client.post('/api/v1/resource/', invalid_data)
-    
+    invalid_data = {"field": "invalid_value"}
+    response = self.client.post("/api/v1/resource/", invalid_data)
+
     self.assertEqual(response.status_code, 400)
-    self.assertIn('field', response.data)
+    self.assertIn("field", response.data)
 ```
 
 ## Best Practices
@@ -176,12 +177,11 @@ def test_create_with_invalid_data(self):
 
 ```python
 # Good
-def test_user_cannot_delete_without_delete_permission(self):
-    ...
+def test_user_cannot_delete_without_delete_permission(self): ...
+
 
 # Bad
-def test_delete(self):
-    ...
+def test_delete(self): ...
 ```
 
 ### 2. Test Edge Cases
@@ -190,6 +190,7 @@ def test_delete(self):
 def test_pagination_last_page(self):
     """Test that last page works correctly"""
     ...
+
 
 def test_search_with_special_characters(self):
     """Test search handles special characters"""
@@ -212,12 +213,12 @@ self.assertEqual(response.status_code, 200)
 self.assertIn(response.status_code, [200, 201])
 
 # Check response data
-self.assertIn('key', response.data)
-self.assertEqual(response.data['key'], 'value')
-self.assertIsNotNone(response.data.get('key'))
+self.assertIn("key", response.data)
+self.assertEqual(response.data["key"], "value")
+self.assertIsNotNone(response.data.get("key"))
 
 # Check counts
-self.assertGreaterEqual(len(response.data['results']), 1)
+self.assertGreaterEqual(len(response.data["results"]), 1)
 ```
 
 ## Continuous Integration
@@ -259,7 +260,7 @@ jobs:
 Make sure you're granting the correct permissions:
 
 ```python
-self.grant_permissions(self.authorized_user, 'item', ['view', 'add', 'change', 'delete'])
+self.grant_permissions(self.authorized_user, "item", ["view", "add", "change", "delete"])
 ```
 
 The model name should be lowercase singular (e.g., `'item'`, not `'Item'` or `'items'`).
@@ -270,7 +271,7 @@ Make sure you're authenticating the user before making requests:
 
 ```python
 self.authenticate_user(self.authorized_user)
-response = self.client.get('/api/v1/endpoint/')
+response = self.client.get("/api/v1/endpoint/")
 ```
 
 ### Tests Create Database Conflicts

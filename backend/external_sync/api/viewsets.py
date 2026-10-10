@@ -71,8 +71,10 @@ class SyncJobActionPermissions(DepartmentRoleModelPermissions):
     def has_object_permission(self, request, view, obj):
         if obj.department_id is None:
             required = self._required_permissions(request, view)
-            return view._user_is_org_wide(request.user) and required is not None and all(
-                request.user.has_perm(permission) for permission in required
+            return (
+                view._user_is_org_wide(request.user)
+                and required is not None
+                and all(request.user.has_perm(permission) for permission in required)
             )
         return super().has_object_permission(request, view, obj)
 

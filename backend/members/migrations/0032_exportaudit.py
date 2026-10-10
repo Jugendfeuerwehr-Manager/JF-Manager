@@ -4,26 +4,25 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0031_alter_member_options'),
+        ("members", "0031_alter_member_options"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ExportAudit',
+            name="ExportAudit",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('actor_id', models.PositiveBigIntegerField(null=True)),
-                ('action', models.CharField(default='export_excel', max_length=40)),
-                ('object_type', models.CharField(max_length=60)),
-                ('object_id', models.PositiveBigIntegerField(null=True)),
-                ('department_ids', models.JSONField(default=list)),
-                ('status_code', models.PositiveSmallIntegerField()),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("actor_id", models.PositiveBigIntegerField(null=True)),
+                ("action", models.CharField(default="export_excel", max_length=40)),
+                ("object_type", models.CharField(max_length=60)),
+                ("object_id", models.PositiveBigIntegerField(null=True)),
+                ("department_ids", models.JSONField(default=list)),
+                ("status_code", models.PositiveSmallIntegerField()),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
     ]

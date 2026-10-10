@@ -35,7 +35,12 @@ class AttachmentSecurityTests(APITestCase):
 
     def test_foreign_attachment_is_inaccessible_for_all_actions(self):
         url = f"/api/v1/attachments/{self.foreign_attachment.pk}/"
-        for response in (self.client.get(url), self.client.get(url + "download/"), self.client.patch(url, {"name": "Changed"}), self.client.delete(url)):
+        for response in (
+            self.client.get(url),
+            self.client.get(url + "download/"),
+            self.client.patch(url, {"name": "Changed"}),
+            self.client.delete(url),
+        ):
             self.assertEqual(response.status_code, 404)
         self.assertTrue(Attachment.objects.filter(pk=self.foreign_attachment.pk).exists())
 
@@ -68,15 +73,21 @@ class AttachmentSecurityTests(APITestCase):
     def test_parent_cannot_be_linked_to_foreign_child(self):
         self.group.permissions.add(Permission.objects.get(codename="add_parent"))
         foreign = Member.objects.exclude(pk=self.member.pk).get()
-        response = self.client.post("/api/v1/parents/", {"name": "New", "lastname": "Parent", "children": [foreign.pk]}, format="json")
+        response = self.client.post(
+            "/api/v1/parents/", {"name": "New", "lastname": "Parent", "children": [foreign.pk]}, format="json"
+        )
         self.assertEqual(response.status_code, 400)
 
     def test_member_upload_resolves_owner_on_server(self):
         self.group.permissions.add(Permission.objects.get(codename="change_member"))
-        response = self.client.post(f"/api/v1/members/{self.member.pk}/attachments/", {
-            "name": "Document", "object_id": self.foreign_attachment.object_id,
-            "content_type": self.foreign_attachment.content_type_id,
-        })
+        response = self.client.post(
+            f"/api/v1/members/{self.member.pk}/attachments/",
+            {
+                "name": "Document",
+                "object_id": self.foreign_attachment.object_id,
+                "content_type": self.foreign_attachment.content_type_id,
+            },
+        )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Attachment.objects.get(pk=response.data["id"]).content_object, self.member)
 

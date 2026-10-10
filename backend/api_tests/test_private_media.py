@@ -28,19 +28,31 @@ class PrivateMediaTests(APITestCase):
         settings.enable()
         self.addCleanup(settings.disable)
         self.user = get_user_model().objects.create_user(username="media-reader")
-        self.user.user_permissions.add(*Permission.objects.filter(codename__in=["view_member", "view_trainingsession", "view_trainingblock"]))
+        self.user.user_permissions.add(
+            *Permission.objects.filter(codename__in=["view_member", "view_trainingsession", "view_trainingblock"])
+        )
         self.department = Department.objects.create(name="A", code="media-a")
         self.foreign = Department.objects.create(name="B", code="media-b")
         UserDepartmentRole.objects.create(user=self.user, department=self.department)
         self.member = Member.objects.create(name="Synthetic", lastname="Image", avatar=image_file())
         self.member.departments.add(self.department)
-        session = TrainingSession.objects.create(title="Private training", status="published", date=date(2030, 1, 1), start_time=time(18), end_time=time(20), department=self.department)
+        session = TrainingSession.objects.create(
+            title="Private training",
+            status="published",
+            date=date(2030, 1, 1),
+            start_time=time(18),
+            end_time=time(20),
+            department=self.department,
+        )
         self.block = TrainingBlock.objects.create(session=session, title="Image", duration_minutes=10)
         self.media = TrainingMedia.objects.create(content_object=self.block, file=image_file())
         self.client.force_authenticate(self.user)
 
     def test_member_and_training_files_recheck_department_and_deny_anonymous(self):
-        urls = [f"/api/v1/private-media/member-avatar/{self.member.pk}/", f"/api/v1/private-media/training/{self.media.pk}/"]
+        urls = [
+            f"/api/v1/private-media/member-avatar/{self.member.pk}/",
+            f"/api/v1/private-media/training/{self.media.pk}/",
+        ]
         for url in urls:
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
@@ -73,8 +85,12 @@ class PrivateMediaTests(APITestCase):
 
     def test_email_attachment_is_scoped_to_its_sender(self):
         self.user.user_permissions.add(Permission.objects.get(codename="can_send_member_emails"))
-        message = EmailMessage.objects.create(sender=self.user, subject="Synthetic", department=self.department, body_html="", recipient_type="all")
-        attachment = EmailAttachment.objects.create(email_message=message, file=SimpleUploadedFile("test.txt", b"test"), original_filename="test.txt")
+        message = EmailMessage.objects.create(
+            sender=self.user, subject="Synthetic", department=self.department, body_html="", recipient_type="all"
+        )
+        attachment = EmailAttachment.objects.create(
+            email_message=message, file=SimpleUploadedFile("test.txt", b"test"), original_filename="test.txt"
+        )
         url = f"/api/v1/private-media/email-attachment/{attachment.pk}/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -90,7 +106,9 @@ class PrivateMediaTests(APITestCase):
         self.assertEqual(self.client.post(url, {"name": "Bad", "file": bad}).status_code, 400)
         self.assertEqual(Attachment.objects.count(), 0)
         for index in range(20):
-            Attachment.objects.create(content_object=self.member, name=str(index), file=SimpleUploadedFile(f"{index}.txt", b"test"))
+            Attachment.objects.create(
+                content_object=self.member, name=str(index), file=SimpleUploadedFile(f"{index}.txt", b"test")
+            )
         response = self.client.post(url, {"name": "Overflow", "file": SimpleUploadedFile("limit.txt", b"test")})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(Attachment.objects.count(), 20)

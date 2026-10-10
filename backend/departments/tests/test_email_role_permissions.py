@@ -27,7 +27,9 @@ class EmailRolePermissionTests(APITestCase):
 
         cls.sender = get_user_model().objects.create_user(username="email-sender", password="test-only-password")
         send_group = AuthGroup.objects.create(name="Email sender A")
-        send_group.permissions.add(Permission.objects.get(content_type__app_label="members", codename="can_send_member_emails"))
+        send_group.permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="can_send_member_emails")
+        )
         UserDepartmentRole.objects.create(user=cls.sender, department=cls.department_a).groups.add(send_group)
         UserDepartmentRole.objects.create(user=cls.sender, department=cls.department_b)
 

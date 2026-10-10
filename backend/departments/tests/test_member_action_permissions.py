@@ -24,7 +24,9 @@ class MemberDeletionActionPermissionTests(APITestCase):
 
         cls.deleter = get_user_model().objects.create_user(username="member-deleter", password="test-only-password")
         delete_group = AuthGroup.objects.create(name="Member deleter A")
-        delete_group.permissions.add(Permission.objects.get(content_type__app_label="members", codename="delete_member"))
+        delete_group.permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="delete_member")
+        )
         UserDepartmentRole.objects.create(user=cls.deleter, department=cls.department).groups.add(delete_group)
 
     def test_add_only_role_cannot_delete_member_with_strategy(self):

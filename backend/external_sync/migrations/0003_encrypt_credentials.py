@@ -18,5 +18,9 @@ class Migration(migrations.Migration):
     dependencies = [("external_sync", "0002_syncbinding_department_object_type")]
     operations = [
         migrations.RunPython(encrypt_existing),
-        migrations.AlterField(model_name="syncjob", name="credentials", field=EncryptedJSONField(default=dict, blank=True, verbose_name="Zugangsdaten")),
+        migrations.AlterField(
+            model_name="syncjob",
+            name="credentials",
+            field=EncryptedJSONField(default=dict, blank=True, verbose_name="Zugangsdaten"),
+        ),
     ]

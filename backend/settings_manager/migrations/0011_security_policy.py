@@ -4,23 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('settings_manager', '0010_encrypt_smtp_preference'),
+        ("settings_manager", "0010_encrypt_smtp_preference"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SecurityPolicy',
+            name="SecurityPolicy",
             fields=[
-                ('id', models.PositiveSmallIntegerField(default=1, editable=False, primary_key=True, serialize=False)),
-                ('session_idle_timeout_seconds', models.PositiveIntegerField(default=2592000)),
-                ('session_max_age_seconds', models.PositiveIntegerField(default=7776000)),
-                ('privileged_session_idle_timeout_seconds', models.PositiveIntegerField(default=28800)),
-                ('privileged_session_max_age_seconds', models.PositiveIntegerField(default=28800)),
+                ("id", models.PositiveSmallIntegerField(default=1, editable=False, primary_key=True, serialize=False)),
+                ("session_idle_timeout_seconds", models.PositiveIntegerField(default=2592000)),
+                ("session_max_age_seconds", models.PositiveIntegerField(default=7776000)),
+                ("privileged_session_idle_timeout_seconds", models.PositiveIntegerField(default=28800)),
+                ("privileged_session_max_age_seconds", models.PositiveIntegerField(default=28800)),
             ],
             options={
-                'constraints': [models.CheckConstraint(condition=models.Q(('id', 1)), name='security_policy_singleton')],
+                "constraints": [
+                    models.CheckConstraint(condition=models.Q(("id", 1)), name="security_policy_singleton")
+                ],
             },
         ),
     ]

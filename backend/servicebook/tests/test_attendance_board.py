@@ -142,13 +142,15 @@ class AttendanceBoardTests(TestCase):
         other_role = UserDepartmentRole.objects.create(user=self.staff, department=self.other)
         own_group = Group.objects.create(name="Dienstleitung Nord")
         other_group = Group.objects.create(name="Dienstansicht Süd")
-        own_group.permissions.add(*Permission.objects.filter(
-            content_type__app_label="servicebook",
-            codename__in=["view_service", "view_attendance", "change_attendance"],
-        ))
-        other_group.permissions.add(Permission.objects.get(
-            content_type__app_label="servicebook", codename="view_service"
-        ))
+        own_group.permissions.add(
+            *Permission.objects.filter(
+                content_type__app_label="servicebook",
+                codename__in=["view_service", "view_attendance", "change_attendance"],
+            )
+        )
+        other_group.permissions.add(
+            Permission.objects.get(content_type__app_label="servicebook", codename="view_service")
+        )
         own_role.groups.add(own_group)
         other_role.groups.add(other_group)
         foreign_service = Service.objects.create(start=self.service.start, end=self.service.end, department=self.other)
@@ -157,13 +159,17 @@ class AttendanceBoardTests(TestCase):
 
         self.assertEqual(self.client.get(self.url).status_code, 200)
         self.assertEqual(self.change(self.other_member).status_code, 200)
-        self.assertEqual(self.client.get(
-            f"/api/v1/servicebook/services/{foreign_service.pk}/attendance_board/"
-        ).status_code, 403)
-        self.assertEqual(self.client.patch(
-            f"/api/v1/servicebook/services/{foreign_service.pk}/attendance_board/",
-            {"kind": "staff", "person_id": self.staff.pk, "state": "A", "expected_state": None}, format="json"
-        ).status_code, 403)
+        self.assertEqual(
+            self.client.get(f"/api/v1/servicebook/services/{foreign_service.pk}/attendance_board/").status_code, 403
+        )
+        self.assertEqual(
+            self.client.patch(
+                f"/api/v1/servicebook/services/{foreign_service.pk}/attendance_board/",
+                {"kind": "staff", "person_id": self.staff.pk, "state": "A", "expected_state": None},
+                format="json",
+            ).status_code,
+            403,
+        )
         response = self.client.get("/api/v1/servicebook/services/staff_statistics/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["results"], [])
@@ -171,9 +177,9 @@ class AttendanceBoardTests(TestCase):
 
     def test_service_statistics_and_chart_do_not_leak_other_department(self):
         own_group = Group.objects.create(name="Nord Sicht")
-        own_group.permissions.add(Permission.objects.get(
-            content_type__app_label="servicebook", codename="view_service"
-        ))
+        own_group.permissions.add(
+            Permission.objects.get(content_type__app_label="servicebook", codename="view_service")
+        )
         self.staff.department_roles.get(department=self.department).groups.add(own_group)
         foreign_service = Service.objects.create(start=self.service.start, end=self.service.end, department=self.other)
         Attendance.objects.create(person=self.member, service=foreign_service, state="A")

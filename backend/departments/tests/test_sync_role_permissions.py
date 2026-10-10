@@ -26,10 +26,12 @@ class SyncRolePermissionTests(APITestCase):
         )
         UserDepartmentRole.objects.create(user=cls.staff, department=cls.department_a).groups.add(read_group)
         UserDepartmentRole.objects.create(user=cls.staff, department=cls.department_b)
-        cls.job_a = SyncJob.objects.create(name="Job A", provider=SyncJob.Provider.HI_ORG,
-                                           scope=SyncJob.Scope.DEPARTMENT, department=cls.department_a)
-        cls.job_b = SyncJob.objects.create(name="Job B", provider=SyncJob.Provider.HI_ORG,
-                                           scope=SyncJob.Scope.DEPARTMENT, department=cls.department_b)
+        cls.job_a = SyncJob.objects.create(
+            name="Job A", provider=SyncJob.Provider.HI_ORG, scope=SyncJob.Scope.DEPARTMENT, department=cls.department_a
+        )
+        cls.job_b = SyncJob.objects.create(
+            name="Job B", provider=SyncJob.Provider.HI_ORG, scope=SyncJob.Scope.DEPARTMENT, department=cls.department_b
+        )
         cls.run_a = SyncRun.objects.create(job=cls.job_a)
         cls.run_b = SyncRun.objects.create(job=cls.job_b)
 

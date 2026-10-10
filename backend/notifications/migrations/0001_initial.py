@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,32 +15,37 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='PushSubscription',
+            name="PushSubscription",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('endpoint', models.URLField(max_length=2048, unique=True)),
-                ('p256dh', models.CharField(max_length=200)),
-                ('auth', models.CharField(max_length=100)),
-                ('services', models.BooleanField(default=True)),
-                ('orders', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("endpoint", models.URLField(max_length=2048, unique=True)),
+                ("p256dh", models.CharField(max_length=200)),
+                ("auth", models.CharField(max_length=100)),
+                ("services", models.BooleanField(default=True)),
+                ("orders", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("user", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
         ),
         migrations.CreateModel(
-            name='PushDelivery',
+            name="PushDelivery",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('kind', models.CharField(max_length=16)),
-                ('object_id', models.PositiveBigIntegerField()),
-                ('attempts', models.PositiveSmallIntegerField(default=0)),
-                ('available_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('subscription', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='notifications.pushsubscription')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("kind", models.CharField(max_length=16)),
+                ("object_id", models.PositiveBigIntegerField()),
+                ("attempts", models.PositiveSmallIntegerField(default=0)),
+                ("available_at", models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "subscription",
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="notifications.pushsubscription"),
+                ),
             ],
         ),
         migrations.AddConstraint(
-            model_name='pushdelivery',
-            constraint=models.UniqueConstraint(fields=('subscription', 'kind', 'object_id'), name='unique_device_push_event'),
+            model_name="pushdelivery",
+            constraint=models.UniqueConstraint(
+                fields=("subscription", "kind", "object_id"), name="unique_device_push_event"
+            ),
         ),
     ]

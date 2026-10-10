@@ -6,27 +6,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0014_stock_stock_unique_item_location_and_more'),
+        ("inventory", "0014_stock_stock_unique_item_location_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='StockBookingRequest',
+            name="StockBookingRequest",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('key', models.CharField(max_length=128)),
-                ('request_fingerprint', models.CharField(max_length=64)),
-                ('response_status', models.PositiveSmallIntegerField(null=True)),
-                ('response_data', models.JSONField(null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("key", models.CharField(max_length=128)),
+                ("request_fingerprint", models.CharField(max_length=64)),
+                ("response_status", models.PositiveSmallIntegerField(null=True)),
+                ("response_data", models.JSONField(null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("user", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
             ],
         ),
         migrations.AddConstraint(
-            model_name='stockbookingrequest',
-            constraint=models.UniqueConstraint(fields=('user', 'key'), name='stock_booking_request_user_key'),
+            model_name="stockbookingrequest",
+            constraint=models.UniqueConstraint(fields=("user", "key"), name="stock_booking_request_user_key"),
         ),
     ]

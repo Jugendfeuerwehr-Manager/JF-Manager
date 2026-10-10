@@ -14,7 +14,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Release OPS-05.6b.2–b.3 (10.10.2026):** Tag v3.0.2 auf e2240697bdaffa81adc8b107e4d22bb8518bc5aa veröffentlicht; Lauf 38026781337 vollständig bestanden. Enthält expliziten RAM-Override, Timer-Steuerung für älteres systemd und persistierte Compose-Projekttrennung. Paket/Image-Digests auf NAS geprüft, Produktionsmigration und technische Abnahme abgeschlossen. Neue Tags nicht verschieben.
 
-**Aktueller Fixauftrag (10.10.2026):** FIX-03.1–3 umgesetzt; Pflichtprüfungen laufen auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
+**Aktueller Fixauftrag (10.10.2026):** FIX-03.1–3 umgesetzt; lokale Pflichtprüfungen bestanden auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
 
 ### 0.1 Stand je Bereich
 
@@ -76,7 +76,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | OPS-01 | Abnahme | Caddy/ACME mit öffentlicher Domain. | Domain |
 | OPS-04 | Abnahme | Restore und Update nur in Compose geprüft; nativ (Debian 13) und im Proxmox-LXC nicht ausgeführt (OPS-01.9b/9c prüften Installation und `backup verify`). | Testsystem, z. B. Proxmox-Host des Nutzers |
 | OPS-03, OPS-05 | Abnahme | GitHub-CI/Release v3.0.2 und echte NAS-Migration abgenommen; interaktive Betreiber-Anmeldung und Folgekorrekturen Worker-Healthcheck/Bind-Export offen. | Betreiberabnahme |
-| Backend-Format | Bau | `ruff format --check` meldet 58 vorbestehende Dateien; eigener Formatierungscommit, wenn keine parallele Arbeit läuft. | Welle 3 |
+| Backend-Format | abgeschlossen | FIX-03.4: 57 tatsächlich vorbestehende Dateien separat formatiert; Python-AST unverändert, Ruff-Lint/Format und 1309 Tests bestanden. | — |
 | DOC-01 Pages | Bau | Handbuch-Website zusammen mit dem Merge nach `main` veröffentlichen (Entscheidung 09.10.2026). | Integration nach `main` |
 | WEB-PLAN | zurückgestellt | Marketing-Konzept: nicht in dieser Runde (Entscheidung 09.10.2026). | — |
 
@@ -679,7 +679,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Stabile Teilschritte:** FIX-03.1 mobile Zeitraumwahl; FIX-03.2 Dienstlöschung mit UI-/Rechte-Regressionen; FIX-03.3 Abteilungsakkordeons und Vorlagenzuweisung beim Benutzer; FIX-03.4 Pflichtprüfungen und gesonderte Formatbereinigung falls erforderlich; FIX-03.5 Integration/main-Push/Tag v3.0.3 und Release-Abnahme.
 - **Checkpoint/Branch:** FIX-03.1–3 implementiert und gezielt geprüft, `feat/security-roles-training-operations`; Codegleichheit zu main per Git-Diff geprüft.
 - **Dateien/Commit:** dieser Planungscommit; anschließend Dienstbuchansichten und Benutzerrollen-Komponente/Store/Tests.
-- **Umgesetzt/Prüfungen:** FIX-03.1–3 umgesetzt. Bestanden: Typecheck, Frontend-Lint und 10/10 Benutzerrollen-/Formular-/MFA-Tests. Gesamtprüfungen laufen. Backend-Lint bestanden, Formatcheck fehlgeschlagen (57 vorbestehende Dateien). Bestanden: 2/2 mobile Ansichtsregressionen, 5/5 Lösch-/Formular-Frontendtests und 5/5 API-Löschrechte-Tests. Nicht ausgeführt: Gesamtpflichtlauf.
+- **Umgesetzt/Prüfungen:** FIX-03.1–3 umgesetzt. Bestanden: Typecheck, Frontend-Lint und 10/10 Benutzerrollen-/Formular-/MFA-Tests. Gesamtprüfungen laufen. Backend-Lint/Format nach separater Bereinigung bestanden; 617 Frontendtests und 1309 Backendtests bestanden (12 PostgreSQL-only übersprungen), Build bestanden. Bestanden: 2/2 mobile Ansichtsregressionen, 5/5 Lösch-/Formular-Frontendtests und 5/5 API-Löschrechte-Tests. Nicht ausgeführt: Gesamtpflichtlauf.
 - **Risiken:** 57 bekannte Backend-Formatabweichungen; keine Tags verschieben. Kein Produktionsdeployment beauftragt.
 - **Prozesse/Fortsetzung:** keine eigenen Dienste; nächster Schritt FIX-03.1 implementieren und gezielt prüfen.
 
@@ -2283,3 +2283,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | FIX-03.2a | Löschkomponente akzeptiert optionales Abteilungsfeld entsprechend bestehendem ServiceDetail-Vertrag; fehlende Abteilung gewährt keine Abteilungsrechte. | Fehlgeschlagen: erster Typecheck wegen optionalem department. Nicht ausgeführt: Nachlauf (Gesamtpflichtlauf folgt). | Dieser Commit: `fix(FIX-03.2a): match optional service department type` | FIX-03.3 und Gesamtprüfung. |
 
 | 10.10.2026 | FIX-03.3 | Benutzerverwaltung integriert Abteilungsakkordeons, Vorlagenauswahl, lokale Entfernung, Quellen und Wirkungsvorschau über Pinia-Store; Auswahl bleibt nach Konflikt, späte Vorschau eines vorherigen Benutzers wird verworfen. Profil speichert keine veralteten Gruppen zurück. | Bestanden: 10/10 Rollen-/Formular-/MFA-Tests, Typecheck, Frontend-Lint, Ruff-Lint. Fehlgeschlagen: Formatcheck (57 vorbestehende Dateien). Nicht ausgeführt: abgeschlossener Gesamtpflichtlauf/Release. | Dieser Commit: `feat(FIX-03.3): assign department role templates in user administration` | Gesamtprüfungen und gesonderte Backend-Formatbereinigung. |
+
+| 10.10.2026 | FIX-03.4 | 57 vorbestehende Backend-Formatabweichungen separat mit Ruff bereinigt, darunter zwei bestehende Markdowndateien mit Pythonbeispielen. AST aller 55 Pythondateien identisch zum Commitstand. | Bestanden: Ruff-Lint und Format (724 Dateien), AST-Vergleich, erneut 1309 Backendtests (12 PostgreSQL-only übersprungen), 617 Frontendtests, Frontend-Typecheck/Lint/Build und git diff --check. Nicht ausgeführt: Browser-/Remote-Release-Abnahme. | Dieser Commit: `style(FIX-03.4): resolve existing backend format failures` | Browserprüfung und Integration/Tag v3.0.3. |

@@ -139,9 +139,11 @@ class ItemSerializer(serializers.ModelSerializer):
             )
 
         rented_by = attrs.get("rented_by", getattr(self.instance, "rented_by", None))
-        if rented_by is not None and department_id is not None and not rented_by.departments.filter(
-            pk=department_id
-        ).exists():
+        if (
+            rented_by is not None
+            and department_id is not None
+            and not rented_by.departments.filter(pk=department_id).exists()
+        ):
             raise serializers.ValidationError({"rented_by": "Das Mitglied gehört nicht zur Artikelabteilung."})
 
         return attrs
@@ -326,7 +328,9 @@ class TransactionSerializer(serializers.ModelSerializer):
                     if location is None:
                         continue
                     if not is_location_allowed_for_item_department(location, item_department_id):
-                        raise serializers.ValidationError({field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."})
+                        raise serializers.ValidationError(
+                            {field_name: "Quelle/Ziel muss zur Artikel-Abteilung gehören."}
+                        )
 
         return attrs
 

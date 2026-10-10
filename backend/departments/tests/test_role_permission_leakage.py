@@ -73,7 +73,9 @@ class StaffAndScopePermissionTests(APITestCase):
         cls.department_b = Department.objects.create(name="B", code="staff-b")
         cls.group_a = Group.objects.create(name="A group", department=cls.department_a)
         cls.group_b = Group.objects.create(name="B group", department=cls.department_b)
-        cls.staff = get_user_model().objects.create_user(username="staff-only", password="test-only-password", is_staff=True)
+        cls.staff = get_user_model().objects.create_user(
+            username="staff-only", password="test-only-password", is_staff=True
+        )
         cls.org_scope = get_user_model().objects.create_user(username="org-scope", password="test-only-password")
         cls.org_scope.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
 

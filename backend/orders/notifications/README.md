@@ -141,9 +141,7 @@ success = OrderNotificationService.send_order_created_notification(order, reques
 transitions = OrderWorkflowService.get_available_transitions(current_status)
 
 # Send status update notification
-OrderNotificationService.send_status_update_notification(
-    order_item, old_status, new_status, updated_by, request
-)
+OrderNotificationService.send_status_update_notification(order_item, old_status, new_status, updated_by, request)
 ```
 
 ### Advanced Usage
@@ -155,14 +153,10 @@ from orders.notifications import NotificationLogger, TemplateRenderer
 stats = NotificationLogger.get_notification_stats(days=30)
 
 # Render custom email template
-subject, html, plain = TemplateRenderer.render_email_content(
-    'order_created', context
-)
+subject, html, plain = TemplateRenderer.render_email_content("order_created", context)
 
 # Validate bulk status transition
-validation = OrderWorkflowService.validate_bulk_transition(
-    order_items, target_status
-)
+validation = OrderWorkflowService.validate_bulk_transition(order_items, target_status)
 ```
 
 ## Configuration
@@ -173,17 +167,17 @@ The notification system respects the following Django settings:
 
 ```python
 # Email settings
-DEFAULT_FROM_EMAIL = 'noreply@jf-manager.example.com'
+DEFAULT_FROM_EMAIL = "noreply@jf-manager.example.com"
 
 # Default domain for URL generation (development)
-DEFAULT_DOMAIN = 'localhost:8000'
-DEFAULT_PROTOCOL = 'http'
+DEFAULT_DOMAIN = "localhost:8000"
+DEFAULT_PROTOCOL = "http"
 
 # Cache settings for template caching
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
     }
 }
 ```
@@ -194,7 +188,7 @@ Users can control which notifications they receive through notification preferen
 
 ```python
 class NotificationPreferences(models.Model):
-    user = models.OneToOneField(User, related_name='notification_preferences')
+    user = models.OneToOneField(User, related_name="notification_preferences")
     email_new_orders = models.BooleanField(default=True)
     email_status_updates = models.BooleanField(default=True)
     email_bulk_updates = models.BooleanField(default=True)

@@ -8,9 +8,17 @@ from rest_framework import serializers
 def validate_endpoint(value):
     try:
         url = urlsplit(value)
-        allowed = any(url.hostname == host or url.hostname.endswith("." + host)
-                      for host in settings.WEB_PUSH_ALLOWED_HOSTS)
-        if url.scheme != "https" or not allowed or url.port not in (None, 443) or url.username or url.password or url.fragment:
+        allowed = any(
+            url.hostname == host or url.hostname.endswith("." + host) for host in settings.WEB_PUSH_ALLOWED_HOSTS
+        )
+        if (
+            url.scheme != "https"
+            or not allowed
+            or url.port not in (None, 443)
+            or url.username
+            or url.password
+            or url.fragment
+        ):
             raise ValueError
     except (ValueError, AttributeError) as exc:
         raise serializers.ValidationError("Kein unterstützter HTTPS-Push-Dienst.") from exc

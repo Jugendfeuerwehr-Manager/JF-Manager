@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('members', '0030_memberlist_legacy_resolution'),
+        ("members", "0030_memberlist_legacy_resolution"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='member',
-            options={'permissions': [('export_member', 'Kann Mitglieder exportieren')]},
+            name="member",
+            options={"permissions": [("export_member", "Kann Mitglieder exportieren")]},
         ),
     ]
