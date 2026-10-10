@@ -234,6 +234,50 @@ def build_plan(source, target, areas, create_name=None):
     )
 
 
+def invariant_hashes(selected, inbox_ids, new_code):
+    """Hash raw PostgreSQL rows, including legacy tables, without disclosing data.
+
+    Only intentional ownership fields and changed member membership rows are
+    excluded. Comparing inside the transaction makes an integrity failure roll
+    back before web access is released. Raw SQL also keeps encrypted values raw.
+    """
+    if connection.vendor != "postgresql":
+        return None
+    omitted = {}
+    for label in selected:
+        if label != "members.Member":
+            omitted[model(label)._meta.db_table] = ["department_id"]
+    if "members.MemberList" in selected:
+        omitted[model("members.MemberList")._meta.db_table].append("organization_wide")
+    if "training.TrainingSession" in selected:
+        omitted[model("training.TrainingSession")._meta.db_table].append("revision")
+    if inbox_ids:
+        omitted[model("notifications.InboxItem")._meta.db_table] = ["department_id"]
+    member_table = model("members.Member").departments.through._meta.db_table
+    department_table = model("departments.Department")._meta.db_table
+    result = {}
+    with connection.cursor() as cursor:
+        tables = sorted(connection.introspection.table_names(cursor))
+        for table in tables:
+            query = "SELECT (to_jsonb(t) - %s::text[])::text FROM " + connection.ops.quote_name(table) + " AS t"
+            params = [omitted.get(table, [])]
+            if table == member_table:
+                query += " WHERE NOT (member_id = ANY(%s))"
+                params.append(sorted(selected.get("members.Member", set())))
+            elif table == department_table and new_code:
+                query += " WHERE code <> %s"
+                params.append(new_code)
+            cursor.execute(query + " ORDER BY 1", params)
+            digest, count = hashlib.sha256(), 0
+            while rows := cursor.fetchmany(1000):
+                for row in rows:
+                    digest.update(row[0].encode())
+                    digest.update(b"\n")
+                    count += 1
+            result[table] = (count, digest.hexdigest())
+    return result
+
+
 def run_transfer(source, target, areas, create_name=None, apply=False, expect=None):
     with transaction.atomic():
         if apply and connection.vendor == "postgresql":
@@ -254,6 +298,8 @@ def run_transfer(source, target, areas, create_name=None, apply=False, expect=No
             raise CommandError("Abhängigkeiten verhindern Umzug: " + "; ".join(plan["conflicts"][:20]))
         if not expect or expect != plan["fingerprint"]:
             raise CommandError("Vorschau fehlt oder ist veraltet; neue Vorschau erstellen.")
+        new_code = dst.code if dst and not dst.pk else None
+        invariant_before = invariant_hashes(selected, inbox_ids, new_code)
         if dst and not dst.pk:
             dst.save()
         dst_id = dst.pk if dst else None
@@ -277,6 +323,10 @@ def run_transfer(source, target, areas, create_name=None, apply=False, expect=No
         # Only rescope tasks tied to an explicitly moved object. Recipient lists
         # are preserved; the inbox rechecks department rights on every read.
         model("notifications.InboxItem").objects.filter(pk__in=inbox_ids).update(department_id=dst_id)
+        invariant_after = invariant_hashes(selected, inbox_ids, new_code)
+        if invariant_before != invariant_after:
+            raise CommandError("Datenvergleich fehlgeschlagen; gesamter Umzug zurückgerollt.")
+        plan["verified_tables"] = len(invariant_after) if invariant_after is not None else None
         plan["applied"] = True
         return plan
 

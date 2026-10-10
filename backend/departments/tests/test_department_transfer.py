@@ -170,3 +170,13 @@ class DepartmentTransferTests(TestCase):
         self.apply()
         item.refresh_from_db()
         self.assertEqual(item.department.code, "jugendfeuerwehr")
+
+    def test_failed_integrity_check_rolls_back_everything(self):
+        digest = self.preview()["fingerprint"]
+        with (
+            patch.object(engine, "invariant_hashes", side_effect=[{"demo": "before"}, {"demo": "after"}]),
+            self.assertRaisesMessage(CommandError, "Datenvergleich"),
+        ):
+            engine.run_transfer(**self.args, apply=True, expect=digest)
+        self.assertFalse(Department.objects.filter(code="jugendfeuerwehr").exists())
+        self.assertFalse(self.member.departments.exists())

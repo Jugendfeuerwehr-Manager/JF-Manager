@@ -117,7 +117,7 @@ Nach Prüfung dieselben Argumente um `--apply --confirm INSTANZNAME` ergänzen (
 Auch `--yes` ersetzt diese Bestätigung nicht. jfctl sperrt andere Betriebsvorgänge, hält Webzugriffe/Worker an,
 erstellt eine vollständige verschlüsselte Vorabsicherung und liest sie zur Verifikation wieder aus.
 Erst danach prüft der Umzug die Vorschau erneut unter Datenbanksperren und verändert alle ausgewählten Zuordnungen
-in einer Transaktion. Bei Änderung seit der Vorschau oder Fehler wird vollständig abgebrochen/zurückgerollt;
+in einer Transaktion. Auf PostgreSQL vergleicht der Befehl vor dem Commit zusätzlich Rohdatenprüfsummen aller Tabellen (einschließlich Altbestand); ausschließlich die vorgesehenen Zuordnungsfelder werden ausgenommen. Ein abweichender Datenvergleich rollt den Umzug zurück. Bei Änderung seit der Vorschau oder Fehler wird vollständig abgebrochen/zurückgerollt;
 die Anwendung wird wieder gestartet. IDs und Uploaddateien werden nicht verändert. Zugehörige Eingangseinträge
 folgen ihrem verschobenen Objekt, ohne neue Benachrichtigungen zu versenden.
 
