@@ -50,9 +50,11 @@ from training.api.viewsets import (
     TrainingTemplateViewSet,
 )
 from users.api.viewsets.admin_viewsets import AdminUserViewSet, AuthGroupViewSet, PermissionViewSet
+from users.api.viewsets.list_preferences import ListPreferenceViewSet
 from users.api_views import UserViewSet
 
 api = routers.DefaultRouter()
+api.register(r"list-preferences", ListPreferenceViewSet, basename="list-preferences")
 api.register(r"users", UserViewSet)
 api.register(r"admin/users", AdminUserViewSet, basename="admin-users")
 api.register(r"admin/groups", AuthGroupViewSet, basename="admin-groups")
