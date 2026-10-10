@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from departments.models import Department, UserDepartmentRole
-from inventory.models import Item, StorageLocation
+from inventory.models import Item, ItemVariant, StorageLocation
 from inventory.opening_stock import book_opening_stock
 from members.models import Group as MemberGroup
 from members.models import Member, Parent
@@ -124,6 +124,33 @@ class PersonViewTests(TestCase):
         self.assertEqual([p["name"] for p in data["other_parents"]], ["Paul Beispiel"])
         self.assertEqual(set(data["qualifications"][0]), {"type", "acquired", "expires", "valid"})
         self.assertNotIn(MARKER, str(data))
+
+    def test_variant_equipment_can_be_viewed_and_contact_change_requested(self):
+        PortalPolicy.objects.create(department=None, visibility={"equipment": {"parents": "visible"}})
+        variant = ItemVariant.objects.create(
+            parent_item=Item.objects.create(name="Hose"), variant_attributes={"Größe": "164"}
+        )
+        book_opening_stock(self.child.personal_storage_location, 2, item_variant=variant)
+        response = self.get(self.child)
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            response.json()["equipment"],
+            [
+                {"item": "Helm", "variant": "", "quantity": 1},
+                {"item": "Hose", "variant": "Hose (Größe: 164)", "quantity": 2},
+            ],
+        )
+        self.assertNotIn(MARKER, str(response.json()))
+        response = self.client.post(
+            "/api/v1/portal/change-requests/",
+            {"target": {"kind": "member", "id": self.child.pk}, "fields": {"street": "Beispielweg 5"}},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["status"], "open")
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.street, "Lindenweg 4")
+        self.assertEqual(self.get(self.stranger).status_code, 404)
 
     def test_foreign_and_adult_children_are_404(self):
         self.assertEqual(self.get(self.stranger).status_code, 404)
