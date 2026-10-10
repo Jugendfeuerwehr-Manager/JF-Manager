@@ -11,7 +11,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useServicebookStore } from '@/stores/servicebook'
 import { getApiErrorMessage } from '@/utils/apiError'
 
-const props = defineProps<{ service: { id: number; topic?: string | null; department: number | null }; disabled?: boolean }>()
+const props = defineProps<{ service: { id: number; topic?: string | null; department?: number | null }; disabled?: boolean }>()
 const auth = useAuthStore()
 const store = useServicebookStore()
 const router = useRouter()
