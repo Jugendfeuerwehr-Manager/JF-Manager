@@ -234,6 +234,51 @@ export interface BatchLoanCreate {
   order_missing?: boolean
 }
 
+export interface ItemAvailability {
+  item: number
+  item_variant: number | null
+  available: number
+  issued: number
+  /** null without the right to read orders */
+  ordered: number | null
+}
+
+export interface ItemAvailabilityResponse {
+  can_view_orders: boolean
+  results: ItemAvailability[]
+}
+
+export interface ItemLookupResult {
+  item: number
+  item_variant: number | null
+  label: string
+  is_variant_parent: boolean
+}
+
+export interface ItemLookupResponse {
+  code: string
+  results: ItemLookupResult[]
+}
+
+export interface BatchReturnLine {
+  item?: number | null
+  item_variant?: number | null
+  quantity: number
+  target: number
+}
+
+/** Take back several articles or part quantities from one member in one booking (UX-05.1). */
+export interface BatchReturnCreate {
+  member: number
+  items: BatchReturnLine[]
+  note?: string
+}
+
+export interface BatchReturnResponse {
+  transactions: Transaction[]
+  returned_quantity: number
+}
+
 export interface BatchLoanResponse {
   transactions: Transaction[]
   order: import('@/types/orders').Order | null

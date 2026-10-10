@@ -62,6 +62,8 @@ export interface OrderItemStatusHistory {
 
 export interface OrderItem {
   id: number
+  /** Status changes, newest first; only from the detail-with-history endpoint (UX-05.1). */
+  history?: OrderItemStatusHistory[]
   order: number
   item: number
   item_details: {

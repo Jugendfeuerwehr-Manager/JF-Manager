@@ -33,47 +33,33 @@
         </Dropdown>
       </div>
 
-      <!-- Step 2: Select loaned article -->
-      <div v-if="selectedMember" class="field">
-        <label>Welcher Artikel wird zurückgegeben? *</label>
-        <Dropdown
-          v-model="selectedLoan"
-          :options="memberLoanedItems"
-          option-label="label"
-          option-value="value"
-          placeholder="Artikel auswählen..."
-          class="w-full"
-        >
-          <template #option="{ option }">
-            <div class="loan-option">
-              <div class="article-info">
-                <span class="article-name">{{ option.label }}</span>
-                <Tag v-if="option.category" :value="option.category" severity="secondary" size="small" />
-              </div>
-              <Tag :value="`${option.quantity} Stück`" severity="secondary" size="small" />
-            </div>
-          </template>
-        </Dropdown>
-      </div>
-
-      <!-- Step 3: Return quantity -->
-      <div v-if="selectedLoan" class="field">
-        <label>Menge zurückgeben *</label>
-        <div class="quantity-row">
-          <InputNumber
-            v-model="quantity"
-            :min="1"
-            :max="maxQuantity"
-            show-buttons
-            button-layout="horizontal"
-            :input-style="{ width: '60px', textAlign: 'center' }"
-          />
-          <span class="available-text">von {{ maxQuantity }} ausgeliehen</span>
+      <!-- Step 2: Part quantities per issued article (UX-05.1) -->
+      <fieldset v-if="selectedMember" class="field return-lines">
+        <legend>Was wird zurückgegeben? *</legend>
+        <p v-if="!memberLoanedItems.length" class="available-text">An dieses Mitglied ist nichts ausgegeben.</p>
+        <div v-for="line in memberLoanedItems" :key="line.key" class="return-line">
+          <div class="article-info">
+            <span :id="`return-label-${line.key}`" class="article-name">{{ line.label }}</span>
+            <span class="available-text">{{ line.quantity }} ausgegeben</span>
+          </div>
+          <div class="quantity-row">
+            <InputNumber
+              v-model="quantities[line.key]"
+              :min="0"
+              :max="line.quantity"
+              show-buttons
+              button-layout="horizontal"
+              :input-style="{ width: '60px', textAlign: 'center' }"
+              :aria-labelledby="`return-label-${line.key}`"
+            />
+            <Button label="Alles" size="small" text :aria-label="`${line.label}: alles zurückgeben`" @click="quantities[line.key] = line.quantity" />
+          </div>
         </div>
-      </div>
+        <p v-if="memberLoanedItems.length" class="available-text" role="status">{{ summary }}</p>
+      </fieldset>
 
       <!-- Step 4: Return destination -->
-      <div v-if="selectedLoan" class="field">
+      <div v-if="returnLines.length" class="field">
         <label>Wohin zurückgeben? *</label>
         <Dropdown
           v-model="targetLocation"
@@ -94,7 +80,7 @@
       </div>
 
       <!-- Optional Note -->
-      <div v-if="selectedLoan" class="field">
+      <div v-if="returnLines.length" class="field">
         <label>Notiz (optional)</label>
         <InputText v-model="note" placeholder="z.B. Zustand, Beschädigung..." class="w-full" />
       </div>
@@ -123,6 +109,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useInventoryStore } from '@/stores/inventory'
 import { useToast } from 'primevue/usetoast'
+import { getApiErrorMessage } from '@/utils/apiError'
 
 interface Props {
   modelValue: boolean
@@ -143,8 +130,6 @@ const toast = useToast()
 
 const loading = ref(false)
 const selectedMember = ref<number | null>(props.preselectedMember || null)
-const selectedLoan = ref<string | null>(null)
-const quantity = ref(1)
 const targetLocation = ref<number | null>(null)
 const note = ref('')
 
@@ -164,28 +149,33 @@ const membersWithLoans = computed(() => {
 })
 
 // Items loaned by selected member
+const memberLoan = computed(() => inventoryStore.memberLoans.find((l) => l.location_id === selectedMember.value) ?? null)
+
 const memberLoanedItems = computed(() => {
-  if (!selectedMember.value) return []
-
-  const memberLoan = inventoryStore.memberLoans.find((l) => l.location_id === selectedMember.value)
-  if (!memberLoan) return []
-
-  return memberLoan.items.map((item) => ({
-    value: item.variant_id ? `variant:${item.variant_id}:${item.stock_id}` : `item:${item.item_id}:${item.stock_id}`,
+  if (!memberLoan.value) return []
+  return memberLoan.value.items.map((item) => ({
+    key: item.variant_id ? `variant:${item.variant_id}` : `item:${item.item_id}`,
+    itemId: item.variant_id ? null : item.item_id,
+    variantId: item.variant_id,
     label: item.variant_display || item.item_name || 'Unbekannter Artikel',
-    category: item.category_name,
     quantity: item.quantity,
-    stockId: item.stock_id
   }))
 })
 
-const selectedLoanInfo = computed(() => {
-  if (!selectedLoan.value) return null
-  return memberLoanedItems.value.find((l) => l.value === selectedLoan.value)
-})
+// Quantity to take back per article; 0 keeps it with the member.
+const quantities = ref<Record<string, number>>({})
 
-const maxQuantity = computed(() => {
-  return selectedLoanInfo.value?.quantity || 0
+const returnLines = computed(() =>
+  memberLoanedItems.value
+    .map((line) => ({ line, quantity: quantities.value[line.key] ?? 0 }))
+    .filter(({ line, quantity }) => quantity > 0 && quantity <= line.quantity),
+)
+
+const summary = computed(() => {
+  const pieces = returnLines.value.reduce((sum, { quantity }) => sum + quantity, 0)
+  if (!pieces) return 'Noch nichts ausgewählt.'
+  const articles = returnLines.value.length
+  return `${pieces} Stück aus ${articles} ${articles === 1 ? 'Artikel' : 'Artikeln'} werden zurückgenommen.`
 })
 
 // Storage locations for return destination
@@ -196,15 +186,7 @@ const storageLocationOptions = computed(() => {
   }))
 })
 
-const isValid = computed(() => {
-  return (
-    selectedMember.value &&
-    selectedLoan.value &&
-    quantity.value > 0 &&
-    quantity.value <= maxQuantity.value &&
-    targetLocation.value
-  )
-})
+const isValid = computed(() => Boolean(selectedMember.value && memberLoan.value && returnLines.value.length && targetLocation.value))
 
 // Reset when dialog opens
 watch(
@@ -212,23 +194,16 @@ watch(
   (newVal) => {
     if (newVal) {
       selectedMember.value = props.preselectedMember || null
-      selectedLoan.value = null
-      quantity.value = 1
+      quantities.value = {}
       targetLocation.value = inventoryStore.storageLocations[0]?.id || null
       note.value = ''
     }
   }
 )
 
-// Reset loan selection when member changes
+// Start with nothing selected for another member
 watch(selectedMember, () => {
-  selectedLoan.value = null
-  quantity.value = 1
-})
-
-// Set quantity to max when loan is selected
-watch(selectedLoan, () => {
-  quantity.value = maxQuantity.value || 1
+  quantities.value = {}
 })
 
 function closeDialog() {
@@ -236,35 +211,33 @@ function closeDialog() {
 }
 
 async function submit() {
-  if (!isValid.value || !selectedLoan.value || !selectedMember.value || !targetLocation.value) return
+  if (!isValid.value || !targetLocation.value) return
 
+  if (!memberLoan.value) return
   loading.value = true
   try {
-    const parts = selectedLoan.value.split(':')
-    const type = parts[0] || 'item'
-    const id = parseInt(parts[1] || '0')
-
-    await inventoryStore.createTransaction({
-      transaction_type: 'RETURN',
-      item: type === 'item' ? id : null,
-      item_variant: type === 'variant' ? id : null,
-      source: selectedMember.value,
-      target: targetLocation.value,
-      quantity: quantity.value,
-      note: note.value
+    const result = await inventoryStore.batchReturn({
+      member: memberLoan.value.member_id,
+      items: returnLines.value.map(({ line, quantity }) => ({
+        item: line.itemId,
+        item_variant: line.variantId,
+        quantity,
+        target: targetLocation.value as number,
+      })),
+      note: note.value,
     })
 
     toast.add({
       severity: 'success',
-      summary: 'Zurückgegeben',
-      detail: `${quantity.value}x ${selectedLoanInfo.value?.label} erfolgreich zurückgegeben.`,
+      summary: 'Zurückgenommen',
+      detail: `${result.returned_quantity} Stück von ${memberLoan.value.member_name} zurückgenommen.`,
       life: 3000
     })
 
     emit('success')
     closeDialog()
   } catch (err: unknown) {
-    const errorMessage = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Ein Fehler ist aufgetreten'
+    const errorMessage = getApiErrorMessage(err, 'Die Rücknahme wurde nicht gebucht.')
     toast.add({
       severity: 'error',
       summary: 'Fehler',
@@ -331,6 +304,30 @@ async function submit() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.return-lines {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-2);
+}
+
+.return-lines legend {
+  font-weight: 600;
+  margin-bottom: var(--jf-space-1);
+}
+
+.return-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jf-space-2);
+  padding: var(--jf-space-2) 0;
+  border-bottom: 1px solid var(--jf-color-border);
 }
 
 .quantity-row {

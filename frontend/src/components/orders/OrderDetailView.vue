@@ -153,6 +153,23 @@
           </DataTable>
         </template>
       </Card>
+
+      <Card v-if="itemsWithHistory.length" class="mt-3">
+        <template #title><h2 class="history-title">Statusverlauf</h2></template>
+        <template #content>
+          <section v-for="item in itemsWithHistory" :key="item.id" class="history-item" :aria-label="`Statusverlauf ${item.item_name}`">
+            <h3 class="history-item__name">{{ item.item_name }}<span v-if="item.size"> · {{ item.size }}</span></h3>
+            <ol class="history-list">
+              <li v-for="entry in item.history" :key="entry.id">
+                <time :datetime="entry.changed_at">{{ formatHistoryDate(entry.changed_at) }}</time>
+                <span>{{ entry.old_status_name || 'Neu' }} → <strong>{{ entry.new_status_name }}</strong></span>
+                <span v-if="entry.changed_by_display" class="history-meta">{{ entry.changed_by_display }}</span>
+                <span v-if="entry.notes" class="history-meta">„{{ entry.notes }}“</span>
+              </li>
+            </ol>
+          </section>
+        </template>
+      </Card>
     </div>
 
     <!-- Status Update Dialog -->
@@ -263,6 +280,12 @@ const selectedItem = ref<OrderItem | null>(null)
 const quickStatusId = ref<number | null>(null)
 
 // Send summary dialog
+const itemsWithHistory = computed(() => (order.value?.items ?? []).filter((item) => item.history?.length))
+
+function formatHistoryDate(value: string) {
+  return new Date(value).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 const totalQuantity = computed(() => {
   return order.value?.items?.reduce((sum: number, item: OrderItem) => sum + item.quantity, 0) || 0
 })
@@ -457,5 +480,36 @@ onMounted(() => {
   padding: 1rem;
   max-width: 1200px;
   margin: 0 auto;
+}
+.history-title {
+  font-size: var(--jf-text-lg, 1.125rem);
+  margin: 0;
+}
+
+.history-item + .history-item {
+  margin-top: var(--jf-space-3);
+}
+
+.history-item__name {
+  font-size: var(--jf-text-base, 1rem);
+  margin: 0 0 var(--jf-space-1);
+}
+
+.history-list {
+  margin: 0;
+  padding-left: var(--jf-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+}
+
+.history-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jf-space-2);
+}
+
+.history-meta {
+  color: var(--jf-color-text-muted);
 }
 </style>

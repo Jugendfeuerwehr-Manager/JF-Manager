@@ -35,6 +35,11 @@
           <label>Artikel *</label>
           <Button label="Artikel hinzufügen" icon="pi pi-plus" text size="small" @click="addLine" />
         </div>
+        <form class="code-lookup" @submit.prevent="findByCode">
+          <InputText id="loan-code" v-model="code" aria-label="Code eingeben" placeholder="Code statt Scan: Größe, Nummer, Barcode …" class="code-input" />
+          <Button type="submit" label="Suchen" icon="pi pi-search" severity="secondary" outlined :loading="codeSearching" :disabled="!code.trim()" />
+        </form>
+        <p v-if="codeMessage" class="code-message" role="status">{{ codeMessage }}</p>
         <div v-for="(line, index) in lines" :key="line.id" class="loan-line">
           <Dropdown
             v-model="line.itemId"
@@ -57,6 +62,7 @@
           />
           <InputNumber v-model="line.quantity" :min="1" :max="getAvailable(line)" show-buttons class="quantity-input" />
           <Tag :value="`${getAvailable(line)} verfügbar`" :severity="getAvailable(line) > 0 ? 'success' : 'danger'" />
+          <span v-if="availabilityText(line)" class="availability-text">{{ availabilityText(line) }}</span>
           <Button
             icon="pi pi-trash"
             severity="danger"
@@ -103,6 +109,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useInventoryStore } from '@/stores/inventory'
+import type { ItemAvailability } from '@/types/inventory'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { useRoleMemberOptions } from '@/composables/useRoleMemberOptions'
 import { useToast } from 'primevue/usetoast'
@@ -159,6 +166,57 @@ const itemOptions = computed(() => {
     category: item.category_name || undefined
   }))
 })
+
+// Issued and ordered quantities from the server (UX-05.1); "available" stays the local stock sum.
+const availability = ref<ItemAvailability[]>([])
+const lineItemIds = computed(() => [...new Set(lines.value.map((line) => line.itemId).filter((id): id is number => !!id))])
+watch(lineItemIds, async (ids) => {
+  if (!ids.length) { availability.value = []; return }
+  try {
+    availability.value = (await inventoryStore.fetchAvailability(ids)).results
+  } catch {
+    availability.value = []
+  }
+}, { immediate: true })
+
+function availabilityText(line: LoanLine) {
+  if (!line.itemId) return ''
+  const row = availability.value.find((a) => a.item === line.itemId && a.item_variant === (line.variantId ?? null))
+  if (!row) return ''
+  return row.ordered === null ? `${row.issued} ausgegeben` : `${row.issued} ausgegeben · ${row.ordered} bestellt`
+}
+
+// Manual alternative to scanning: a typed code selects the article and size.
+const code = ref('')
+const codeSearching = ref(false)
+const codeMessage = ref('')
+
+async function findByCode() {
+  const value = code.value.trim()
+  if (!value) return
+  codeSearching.value = true
+  codeMessage.value = ''
+  try {
+    const results = await inventoryStore.lookupCode(value)
+    if (results.length !== 1) {
+      codeMessage.value = results.length ? `${results.length} Treffer – bitte genauer eingeben.` : `Kein Artikel zum Code „${value}“ gefunden.`
+      return
+    }
+    const hit = results[0]!
+    const empty = lines.value.find((line) => !line.itemId)
+    const line = empty ?? createLine()
+    if (!empty) lines.value.push(line)
+    line.itemId = hit.item
+    line.variantId = hit.item_variant
+    line.quantity = 1
+    codeMessage.value = `${hit.label} hinzugefügt.`
+    code.value = ''
+  } catch (error) {
+    codeMessage.value = getApiErrorMessage(error, 'Die Suche ist fehlgeschlagen.')
+  } finally {
+    codeSearching.value = false
+  }
+}
 
 function createLine(itemId: number | undefined = undefined): LoanLine {
   return { id: nextLineId++, itemId: itemId || null, variantId: null, quantity: 1 }
@@ -411,5 +469,21 @@ async function submit() {
 
 .placeholder {
   color: var(--text-color-secondary);
+}
+.code-lookup {
+  display: flex;
+  gap: var(--jf-space-2);
+  margin-bottom: var(--jf-space-2);
+}
+
+.code-input {
+  flex: 1;
+  min-height: var(--jf-touch-target);
+}
+
+.code-message,
+.availability-text {
+  color: var(--jf-color-text-muted);
+  font-size: var(--jf-text-sm);
 }
 </style>

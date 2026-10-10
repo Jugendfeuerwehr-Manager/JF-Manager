@@ -37,6 +37,9 @@ import type {
   Transaction,
   TransactionCreate,
   BatchLoanCreate,
+  BatchReturnCreate,
+  ItemAvailabilityResponse,
+  ItemLookupResult,
   TransactionListParams,
   MemberLoan
 } from '@/types/inventory'
@@ -610,6 +613,33 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
+  /** Available, issued and ordered quantities for the given articles (UX-05.1). */
+  async function fetchAvailability(itemIds: number[]): Promise<ItemAvailabilityResponse> {
+    return (await itemsApi.availability(itemIds)).data
+  }
+
+  /** Find articles or sizes by a typed code instead of scanning. */
+  async function lookupCode(code: string): Promise<ItemLookupResult[]> {
+    return (await itemsApi.lookup(code)).data.results
+  }
+
+  async function batchReturn(data: BatchReturnCreate) {
+    transactionsLoading.value = true
+    error.value = null
+    try {
+      const response = await transactionsApi.batchReturn(data)
+      transactions.value = [...response.data.transactions, ...transactions.value]
+      transactionsPagination.value.count += response.data.transactions.length
+      await fetchStocks({ limit: 1000 })
+      return response.data
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Failed to take back items'
+      throw err
+    } finally {
+      transactionsLoading.value = false
+    }
+  }
+
   async function deleteTransaction(id: number) {
     transactionsLoading.value = true
     error.value = null
@@ -724,6 +754,9 @@ export const useInventoryStore = defineStore('inventory', () => {
     fetchTransactions,
     createTransaction,
     batchLoan,
+    batchReturn,
+    fetchAvailability,
+    lookupCode,
     deleteTransaction,
 
     // Utility
