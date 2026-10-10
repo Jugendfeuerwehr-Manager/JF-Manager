@@ -197,6 +197,10 @@
             </dl>
           </section>
 
+          <section class="detail-card aside-card">
+            <ChangeLogCard kind="member" :record-id="memberId" />
+          </section>
+
           <section v-if="canLinkAccounts" class="detail-card aside-card">
             <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
           </section>
@@ -261,6 +265,7 @@ import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
+import ChangeLogCard from '@/components/members/organisms/ChangeLogCard.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'
 import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'

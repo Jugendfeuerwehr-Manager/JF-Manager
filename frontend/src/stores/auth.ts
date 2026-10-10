@@ -38,6 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
   const accountLinkDeferred = ref(readDeferred())
   const accountLinkPending = computed(() => !!session.value?.authenticated && !!session.value.account_link_pending)
   const linkedPerson = computed(() => session.value?.linked_person ?? { member: false, children: false })
+  const ownMemberIds = computed(() => session.value?.own_member_ids ?? [])
   const hasOwnArea = computed(() => linkedPerson.value.member || linkedPerson.value.children)
 
   // Global rights remain global; department rights follow the selected area.
@@ -293,6 +294,7 @@ export const useAuthStore = defineStore('auth', () => {
     accountLinkDeferred,
     linkedPerson,
     hasOwnArea,
+    ownMemberIds,
     permissions,
     isOrgWide,
     isStaff,

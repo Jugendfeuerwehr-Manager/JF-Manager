@@ -41,6 +41,8 @@ export interface SessionStatus {
   account_link_pending?: boolean
   /** Confirmed link: own member record and/or minor children of the own parent record. */
   linked_person?: { member: boolean, children: boolean }
+  /** Own member record and own children: evidence is kept by another person (four-eyes). */
+  own_member_ids?: number[]
 }
 
 export interface Passkey {

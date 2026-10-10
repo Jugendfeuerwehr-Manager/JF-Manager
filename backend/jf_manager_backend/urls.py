@@ -63,6 +63,7 @@ api_patterns = [
     path("api/v1/portal/sessions/", include("participation.portal_urls")),
     path("api/v1/portal/absences/", include("participation.portal_absence_urls")),
     path("api/v1/portal/", include("portal.urls")),
+    path("api/v1/my/", include("portal.self_urls")),
     path("api/v1/participation/", include("participation.urls")),
     path("api/v1/dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
     path("api/v1/", include(api.urls)),

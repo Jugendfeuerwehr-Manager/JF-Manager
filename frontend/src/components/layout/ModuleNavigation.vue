@@ -32,8 +32,14 @@ const inbox = useInboxStore()
 const search = ref('')
 const requestCount = computed(() => inbox.counts.by_category?.requests ?? 0)
 const settingsRights = ['all', 'general', 'email', 'member', 'service', 'order', 'ldap', 'oidc'].map(category => `settings_manager.view_${category}_settings`)
-interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean }
+interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean; own?: 'member' | 'children' }
 const sections: { label: string; items: NavItem[] }[] = [
+  // PORTAL-04: only for accounts with a confirmed link to their own records.
+  { label: 'Mein Bereich', items: [
+    { label: 'Meine Dienste', icon: 'pi pi-calendar-plus', to: '/ich/dienste', own: 'member' },
+    { label: 'Meine Daten', icon: 'pi pi-id-card', to: '/ich/daten', own: 'member' },
+    { label: 'Meine Kinder', icon: 'pi pi-users', to: '/ich/kinder', own: 'children' },
+  ] },
   { label: 'Überblick', items: [{ label: 'Dashboard', icon: 'pi pi-home', to: '/' }, { label: 'Eingang', icon: 'pi pi-inbox', to: '/eingang' }] },
   { label: 'Mitglieder', items: [
     { label: 'Mitglieder', icon: 'pi pi-users', to: '/members', permission: 'view_member' },
@@ -64,6 +70,7 @@ const sections: { label: string; items: NavItem[] }[] = [
 ]
 const vocabularyLabel = (item: NavItem) => ({ '/members': configuration.member_label, '/servicebook': configuration.service_label, '/training': configuration.training_label }[item.to] || item.label)
 const visibleSections = computed(() => sections.map(section => ({ ...section, items: section.items.map(item => ({ ...item, label: vocabularyLabel(item) })).filter(item =>
+  (!item.own || auth.linkedPerson?.[item.own]) &&
   (!item.permission || (item.to === '/settings' ? settingsRights.some(permission => auth.hasPerm(permission)) : auth.hasPerm(item.permission))) &&
   item.label.toLocaleLowerCase('de').includes(search.value.trim().toLocaleLowerCase('de'))
 ) })).filter(section => section.items.length))

@@ -18,6 +18,10 @@ export interface PortalMe {
   account: { first_name: string, last_name: string, email: string }
   people: PortalPerson[]
   parent?: PortalParentContact | null
+  /** Own area of linked staff accounts only (`/my/`). */
+  link?: { id: number, member_id: number | null, parent_id: number | null }
+  can_edit?: { member: boolean, parent: boolean }
+  evidence_notice?: string
 }
 
 export interface PortalPersonData {
@@ -35,6 +39,8 @@ export interface PortalPersonData {
   special_tasks?: { task: string, start: string | null, end: string | null }[]
   equipment?: { item: string, variant: string, quantity: number }[]
   other_parents?: { name: string, phone: string, mobile: string }[]
+  /** Own record of a linked staff account: qualifications kept at the account (E10). */
+  account_qualifications?: { type: string, acquired: string | null, expires: string | null, valid: boolean }[]
 }
 
 export interface InvitationInfo {
@@ -141,7 +147,16 @@ export interface PortalNotice {
   read: boolean
 }
 
+/**
+ * Linked staff accounts use the same person, session and absence calls under
+ * `/my/` (PORTAL-04.3); portal accounts keep `/portal/`.
+ */
+let personBase: '/portal' | '/my' = '/portal'
+
 export const portalApi = {
+  useBase(base: '/portal' | '/my') {
+    personBase = base
+  },
   notifications() {
     return apiClient.get<{ results: PortalNotice[], unread: number }>('/portal/notifications/')
   },
@@ -149,16 +164,16 @@ export const portalApi = {
     return apiClient.post(`/portal/notifications/${id}/read/`)
   },
   sessions(person: number, params?: { from?: string, to?: string }) {
-    return apiClient.get<{ person: number, sessions: PortalSessionItem[] }>('/portal/sessions/', { params: { person, ...params } })
+    return apiClient.get<{ person: number, sessions: PortalSessionItem[] }>(`${personBase}/sessions/`, { params: { person, ...params } })
   },
   setRegistration(sessionId: number, memberId: number, data: PortalRegistrationPayload) {
-    return apiClient.put<PortalSessionItem>(`/portal/sessions/${sessionId}/registrations/${memberId}/`, data)
+    return apiClient.put<PortalSessionItem>(`${personBase}/sessions/${sessionId}/registrations/${memberId}/`, data)
   },
   previewAbsence(data: PortalAbsencePayload) {
-    return apiClient.post<{ person: number, sessions: PortalAbsencePreviewRow[], will_cancel: number, skipped: number }>('/portal/absences/preview/', data)
+    return apiClient.post<{ person: number, sessions: PortalAbsencePreviewRow[], will_cancel: number, skipped: number }>(`${personBase}/absences/preview/`, data)
   },
   createAbsence(data: PortalAbsencePayload) {
-    return apiClient.post<PortalAbsenceResult>('/portal/absences/', data)
+    return apiClient.post<PortalAbsenceResult>(`${personBase}/absences/`, data)
   },
   invitationInfo(token: string) {
     return apiClient.get<InvitationInfo>('/portal/invitations/accept/', { params: { token } })
@@ -167,9 +182,9 @@ export const portalApi = {
     return apiClient.post<{ username: string }>('/portal/invitations/accept/', data)
   },
   person(id: number) {
-    return apiClient.get<PortalPersonData>(`/portal/people/${id}/`)
+    return apiClient.get<PortalPersonData>(`${personBase}/people/${id}/`)
   },
   me() {
-    return apiClient.get<PortalMe>('/portal/me/')
+    return apiClient.get<PortalMe>(personBase === '/my' ? '/my/' : '/portal/me/')
   },
 }

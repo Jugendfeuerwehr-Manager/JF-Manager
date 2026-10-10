@@ -154,6 +154,19 @@ export const usePortalStore = defineStore('portal', () => {
 
   function resetAbsence() { absencePreview.value = null; absenceError.value = null }
 
+  /** Own area of a linked staff account: same views and calls, served from `/my/`. */
+  const ownArea = ref(false)
+  function useOwnArea() {
+    if (ownArea.value) return
+    ownArea.value = true
+    portalApi.useBase('/my')
+    me.value = null
+    selectedPersonId.value = null
+    sessions.value = []
+    sessionsPersonId.value = null
+    sessionsLoaded.value = false
+  }
+
   async function fetchMe() {
     loading.value = true
     error.value = null
@@ -262,6 +275,7 @@ export const usePortalStore = defineStore('portal', () => {
     notices, unreadNotices, loadNotices, markNoticeRead,
     sessions, sessionsPersonId, sessionsLoaded, sessionsLoading, sessionsError, pendingSessionIds, actionError, loadSessions, setRegistration,
     absencePreview, absenceBusy, absenceError, previewAbsence, createAbsence, resetAbsence,
+    ownArea, useOwnArea,
     me, loading, error, fetchMe, personData, personLoading, personError, loadPerson, selectedPersonId, selectedPerson, selectPerson,
     invitation, invitationLoading, invitationError, loadInvitation,
     accepting, accepted, acceptError, acceptFieldErrors, acceptInvitation,

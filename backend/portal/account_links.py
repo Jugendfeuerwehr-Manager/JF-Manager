@@ -407,6 +407,5 @@ def search_accounts(text, limit=20):
         .values_list("user_id", flat=True)
     )
     return [
-        {"id": a.pk, "username": a.username, "name": _name(a), "reason": "", "linked": a.pk in linked}
-        for a in accounts
+        {"id": a.pk, "username": a.username, "name": _name(a), "reason": "", "linked": a.pk in linked} for a in accounts
     ]

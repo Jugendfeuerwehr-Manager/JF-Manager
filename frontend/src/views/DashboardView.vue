@@ -42,6 +42,8 @@
         </ul>
       </section>
 
+      <OwnAreaEntry v-if="authStore.hasOwnArea" class="dashboard-card" />
+
       <section v-if="inboxTasks.length || inboxNotices.length" class="dashboard-card dashboard-card--inbox" aria-labelledby="inbox-title">
         <header class="dashboard-card__header">
           <h2 id="inbox-title">Eingang</h2>
@@ -141,6 +143,7 @@ import { categoryLabel } from '@/utils/inbox'
 import OverviewHeader from '@/components/layout/OverviewHeader.vue'
 import StateView from '@/components/common/StateView.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import OwnAreaEntry from '@/components/own/OwnAreaEntry.vue'
 
 type StatSource = 'summary' | 'service'
 

@@ -216,7 +216,7 @@ def reviewable(user):
 
 
 def own_request(change_request, user):
-    """Four-eyes: nobody decides a request they filed or one about their own linked record."""
+    """Four-eyes: nobody decides a request they filed or one about their own linked record or own child."""
     from .models import AccountLink
 
     if change_request.requested_by_id == user.pk:
@@ -226,7 +226,12 @@ def own_request(change_request, user):
         if change_request.target_parent_id
         else {"member_id": change_request.target_member_id}
     )
-    return AccountLink.objects.filter(user=user, **lookup).exists()
+    if AccountLink.objects.filter(user=user, **lookup).exists():
+        return True
+    # PORTAL-04 (Q4): the own children of a linked staff account count as own records.
+    from .self_records import own_member_ids
+
+    return bool(change_request.target_member_id) and change_request.target_member_id in own_member_ids(user)
 
 
 def decide(change_request, user, decisions, *, version, note="", confirm_conflicts=()):

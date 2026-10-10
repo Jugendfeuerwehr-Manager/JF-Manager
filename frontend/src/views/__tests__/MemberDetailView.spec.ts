@@ -39,7 +39,7 @@ function render() {
       stubs: {
         RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
         QualificationsManager: true, SpecialTasksManager: true, EventsManager: true,
-        AttendanceTab: true, MemberEquipmentTab: true, AttachmentsManager: true, MemberDeletionDialog: true, AccountLinkCard: true,
+        AttendanceTab: true, MemberEquipmentTab: true, AttachmentsManager: true, MemberDeletionDialog: true, AccountLinkCard: true, ChangeLogCard: true,
       },
     },
   })

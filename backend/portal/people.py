@@ -58,7 +58,11 @@ def staff_link_status(user):
     """Session flags of a staff account: pending link (login step) and linked people (own area)."""
     link = AccountLink.objects.filter(user=user).only("status", "member_id", "parent_id").first()
     confirmed = link is not None and link.status == AccountLink.Status.CONFIRMED
+    from .self_records import own_member_ids
+
     return {
+        # Records whose evidence another person keeps (four-eyes, pending links included).
+        "own_member_ids": sorted(own_member_ids(user)),
         "account_link_pending": link is not None and link.status == AccountLink.Status.PENDING,
         "linked_person": {
             "member": confirmed and link.member_id is not None,
