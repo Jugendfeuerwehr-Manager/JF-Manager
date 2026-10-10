@@ -159,7 +159,7 @@ Für einen LXC ohne SSH kann das Verzeichnis geschützt als Archiv zum Proxmox-H
 **Ort: Zielhost, bei Proxmox im Debian-Container.** Dort Release wie in Schritt 3 bereitstellen. Auf demselben Host das bestehende Releaseverzeichnis verwenden:
 
 ```sh
-sudo "./jf-manager-$VERSION/ops/jfctl" install --version "$VERSION" --release-dir .
+sudo "./jf-manager-$VERSION/ops/jfctl" install --expert --version "$VERSION" --release-dir .
 ```
 
 Im Assistenten:
@@ -170,6 +170,7 @@ Im Assistenten:
 | Exportverzeichnis | `/root/jf-legacy-export` |
 | Betriebsmodus | `compose` auf dem Docker-Ziel, `native` auf Debian 13/LXC |
 | Version | Gewählte feste Releaseversion |
+| Compose-Projektname (Expertenmodus) | Auf demselben Host anderer Name als der Altstack, z. B. `jf-manager-v3`, damit alte Container für Rückkehr erhalten bleiben |
 | Domain | Bisherige Domain, ohne `https://` und ohne Pfad |
 | Zeitzone | `Europe/Berlin` oder bisherige Zeitzone |
 | HTTPS | `proxy`, wenn der vorhandene Reverse Proxy bleiben soll; sonst `caddy` |

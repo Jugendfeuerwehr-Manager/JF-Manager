@@ -96,7 +96,10 @@ install_collect() {
         ask JF_BACKUP_KEEP_WEEKLY "Aufbewahrung wöchentlich" "$JF_BACKUP_KEEP_WEEKLY"
         ask JF_BACKUP_KEEP_MONTHLY "Aufbewahrung monatlich" "$JF_BACKUP_KEEP_MONTHLY"
         ask JF_VERIFY_ATTESTATION "Herkunftsnachweis prüfen (auto, required, off)" "$JF_VERIFY_ATTESTATION"
-        [ "$JF_MODE" = compose ] && ask JF_EDGE_SUBNET "Docker-Subnetz für Caddy/Nginx" "$JF_EDGE_SUBNET"
+        if [ "$JF_MODE" = compose ]; then
+            ask JF_EDGE_SUBNET "Docker-Subnetz für Caddy/Nginx" "$JF_EDGE_SUBNET"
+            ask JF_COMPOSE_PROJECT "Docker-Compose-Projektname (bei Übernahme anderer Name als Altstack)" "$JF_COMPOSE_PROJECT"
+        fi
     fi
     ask JF_BACKUP_REPO "Backup-Ziel (Restic-Repository: Pfad, sftp:…, s3:…)" "$JF_BACKUP_REPO"
     if [ "$JF_ACTION" = restore ]; then
