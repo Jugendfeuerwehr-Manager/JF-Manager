@@ -103,6 +103,18 @@ export function getSpondOperationMode(config?: Record<string, unknown>): SpondOp
   return config?.sync_groups === false ? 'members_only' : 'groups_to_groups'
 }
 
+export interface SyncPreview {
+  job: number
+  counts: {
+    imported_members: number
+    imported_groups: number
+    updated_members: number
+    updated_groups: number
+    flagged_for_review: number
+    deleted_objects: number
+  }
+}
+
 export interface GarbageCollectionPreview {
   job: number
   pending_count: number

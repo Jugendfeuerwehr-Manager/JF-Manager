@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { externalSyncApi } from '@/api/externalSync'
 import type {
   GarbageCollectionPreview,
+  SyncPreview,
   GarbageCollectionResult,
   SpondTopLevelGroup,
   SyncJob,
@@ -128,6 +129,26 @@ export const useExternalSyncStore = defineStore('externalSync', () => {
     }
   }
 
+  const changePreview = ref<SyncPreview | null>(null)
+
+  async function previewRun(id: number) {
+    actionJobId.value = id
+    error.value = null
+    try {
+      changePreview.value = (await externalSyncApi.preview(id)).data
+      return changePreview.value
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Vorschau konnte nicht erstellt werden')
+      throw err
+    } finally {
+      actionJobId.value = null
+    }
+  }
+
+  function clearChangePreview() {
+    changePreview.value = null
+  }
+
   async function fetchGarbageCollectionPreview(id: number) {
     actionJobId.value = id
     error.value = null
@@ -173,6 +194,9 @@ export const useExternalSyncStore = defineStore('externalSync', () => {
     error,
     fetchJobs,
     fetchRuns,
+    changePreview,
+    previewRun,
+    clearChangePreview,
     fetchSpondTopLevelGroups,
     clearSpondTopLevelGroups,
     createJob,

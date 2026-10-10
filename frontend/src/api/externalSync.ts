@@ -1,6 +1,7 @@
 import apiClient from './index'
 import type {
   GarbageCollectionPreview,
+  SyncPreview,
   GarbageCollectionResult,
   SpondGroupsLookupRequest,
   SpondTopLevelGroupResponse,
@@ -34,6 +35,11 @@ export const externalSyncApi = {
 
   runNow(id: number) {
     return apiClient.post<SyncRun>(`/sync-jobs/${id}/run_now/`, {})
+  },
+
+  /** Counts of a run that is rolled back: what a sync would change (UX-08.1). */
+  preview(id: number) {
+    return apiClient.post<SyncPreview>(`/sync-jobs/${id}/preview/`, {})
   },
 
   getGarbageCollectionPreview(id: number) {

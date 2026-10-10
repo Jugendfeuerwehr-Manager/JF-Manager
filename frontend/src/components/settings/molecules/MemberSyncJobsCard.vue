@@ -197,6 +197,13 @@
                 :disabled="!canEdit || syncStore.actionJobId === job.id"
               />
               <Button
+                label="Vorschau"
+                icon="pi pi-eye"
+                text
+                @click="handleChangePreview(job.id)"
+                :disabled="!canEdit || syncStore.actionJobId === job.id"
+              />
+              <Button
                 label="Jetzt synchronisieren"
                 icon="pi pi-play"
                 text
@@ -222,6 +229,30 @@
           </div>
         </div>
       </div>
+
+      <section v-if="syncStore.changePreview" class="preview-box" aria-labelledby="sync-change-preview-title">
+        <div class="flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+          <h4 id="sync-change-preview-title" class="m-0">Änderungsvorschau</h4>
+          <div class="flex gap-2">
+            <Button label="Verwerfen" severity="secondary" text @click="syncStore.clearChangePreview()" />
+            <Button
+              label="Jetzt synchronisieren"
+              icon="pi pi-play"
+              @click="handleRun(syncStore.changePreview.job)"
+              :disabled="!canEdit || syncStore.actionJobId === syncStore.changePreview.job"
+            />
+          </div>
+        </div>
+        <p class="m-0 mb-2">Ein Lauf würde Folgendes ändern; gespeichert wurde nichts.</p>
+        <ul class="preview-list">
+          <li>{{ syncStore.changePreview.counts.imported_members }} neue Mitglieder, {{ syncStore.changePreview.counts.imported_groups }} neue Gruppen</li>
+          <li>{{ syncStore.changePreview.counts.updated_members }} Mitglieder und {{ syncStore.changePreview.counts.updated_groups }} Gruppen aktualisiert</li>
+          <li>
+            <strong>{{ syncStore.changePreview.counts.flagged_for_review }} Konflikte</strong> zur Prüfung markiert (in der Quelle nicht mehr vorhanden)
+          </li>
+          <li>{{ syncStore.changePreview.counts.deleted_objects }} Objekte gelöscht</li>
+        </ul>
+      </section>
 
       <div v-if="syncStore.garbageCollectionPreview" class="preview-box">
         <div class="flex justify-content-between align-items-center mb-2">
@@ -487,8 +518,17 @@ async function handleTest(jobId: number) {
   }
 }
 
+async function handleChangePreview(jobId: number) {
+  try {
+    await syncStore.previewRun(jobId)
+  } catch (err) {
+    toast.add({ severity: 'warn', summary: 'Vorschau', detail: getApiErrorMessage(err, 'Vorschau fehlgeschlagen'), life: 5000 })
+  }
+}
+
 async function handleRun(jobId: number) {
   try {
+    syncStore.clearChangePreview()
     await syncStore.runNow(jobId)
     toast.add({ severity: 'success', summary: 'Synchronisation', detail: 'Synchronisation abgeschlossen', life: 3000 })
   } catch (err) {
