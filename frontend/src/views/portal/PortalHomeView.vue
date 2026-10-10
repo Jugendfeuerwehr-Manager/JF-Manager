@@ -31,7 +31,7 @@ onMounted(() => { void portal.fetchMe() })
     </Message>
 
     <p v-else-if="!people.length" class="empty">
-      Noch keine Person mit diesem Zugang verknüpft. Bitte wende dich an die Jugendfeuerwehr.
+      Noch keine Person mit diesem Zugang verknüpft. Bitte wende dich an die Leitung.
     </p>
 
     <template v-else>

@@ -451,7 +451,7 @@ onMounted(async () => {
 }
 
 .user-list-item.active {
-  background: var(--p-primary-50, #eff6ff);
+  background: var(--jf-color-selected);
   border-left: 3px solid var(--p-primary-color);
 }
 
@@ -526,12 +526,12 @@ onMounted(async () => {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--p-primary-100, #dbeafe), var(--p-primary-200, #bfdbfe));
+  background: linear-gradient(135deg, var(--p-primary-100), var(--p-primary-200));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2.5rem;
-  color: var(--p-primary-500, #3b82f6);
+  color: var(--p-primary-500);
   margin: 0 auto;
 }
 

@@ -156,7 +156,7 @@ watch(visible, (val) => {
 }
 
 .strategy-card {
-  border: 2px solid var(--p-surface-border, #e2e8f0);
+  border: 2px solid var(--jf-color-border);
   border-radius: 8px;
   padding: 1rem;
   cursor: pointer;
@@ -164,19 +164,19 @@ watch(visible, (val) => {
 }
 
 .strategy-card:hover {
-  border-color: var(--p-primary-color, #6366f1);
-  background-color: var(--p-primary-50, #eef2ff);
+  border-color: var(--jf-color-primary);
+  background-color: var(--jf-color-selected);
 }
 
 .strategy-card.selected {
-  border-color: var(--p-primary-color, #6366f1);
-  background-color: var(--p-primary-50, #eef2ff);
+  border-color: var(--jf-color-primary);
+  background-color: var(--jf-color-selected);
 }
 
 .strategy-card--danger:hover,
 .strategy-card--danger.selected {
-  border-color: var(--p-red-500, #ef4444);
-  background-color: var(--p-red-50, #fef2f2);
+  border-color: var(--p-red-500);
+  background-color: var(--p-red-50);
 }
 
 .strategy-header {
@@ -196,7 +196,7 @@ watch(visible, (val) => {
 
 .strategy-description {
   margin: 0 0 0.5rem 1.75rem;
-  color: var(--p-text-muted-color, #6b7280);
+  color: var(--jf-color-text-muted);
   font-size: 0.875rem;
 }
 
@@ -209,15 +209,15 @@ watch(visible, (val) => {
 }
 
 .strategy-note--warn {
-  color: var(--p-orange-700, #c2410c);
+  color: var(--p-orange-700);
 }
 
 .strategy-note--success {
-  color: var(--p-green-700, #15803d);
+  color: var(--p-green-700);
 }
 
 .strategy-note--danger {
-  color: var(--p-red-700, #b91c1c);
+  color: var(--p-red-700);
 }
 
 .mb-3 {
