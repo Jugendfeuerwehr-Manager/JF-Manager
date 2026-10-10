@@ -18,6 +18,8 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Synology-Update OPS-05.7 (10.10.2026):** Nutzer autorisiert Aktualisierung der bestehenden NAS-Instanz auf das vollständig geprüfte v3.0.3. SSH/sudo und laufender Stand v3.0.2 bestätigt; Update ausschließlich über jfctl mit eigener pre-update-Sicherung und automatischem Rückkehrpfad. Vorprüfung bestanden: doctor Exit 0, 468 GB frei, Sicherung vollständig verifiziert, geschützte Nachweise für 226 Tabellen/12 Uploads. jfctl-Update mit Exit 0 auf v3.0.3 abgeschlossen, pre-update-Snapshot a0f58de3; technische Abnahme läuft.
 
+**Abteilungsverschiebung OPS-06 (10.10.2026):** Neuer Nutzerauftrag: auswählbare atomare Verschiebung globaler/abteilungsbezogener Fachdaten in jfctl, Demoabnahme und danach gesicherte Durchführung auf bestehendem Server. Inventar/Bestellungen bleiben beim konkreten Jugendfeuerwehr-Umzug global. Ausgangsstand 68dd5b1, Branch geprüft, keine eigenen offenen Änderungen; fremdes `.claude/` erhalten. Serverzugriff in Sandbox zunächst verweigert, Freigabeprüfung folgt.
+
 ### 0.1 Stand je Bereich
 
 | Bereich | Pakete | Stand |
@@ -622,6 +624,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
+| OPS-06 | in Arbeit | Codex | OPS-06.0 Plan/Codeabgleich; nächster Schritt OPS-06.1 atomarer Umzugsbefehl. |
 | FIX-03 | abgeschlossen | Codex | FIX-03.1–5: Dienstbuch-/Benutzerrollen-Fixes, Pflicht-/Browserprüfungen und Release v3.0.3 vollständig abgenommen. |
 | WEB-PLAN | zurückgestellt (09.10.2026) | Codex (Marketing-Konzept) | WEB-PLAN.0: Auftrag, Abnahme und Dateiverantwortung aufgenommen; WEB-PLAN.1 Konzept und Mockups. |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
@@ -673,6 +676,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | PART-04 | geplant | — | Positionen, Mindestbesetzung, Warteliste, Zuteilungsboard, Besetzungsvorlagen. |
 | NOTIF-01 | abgenommen | Claude (Portal-Sitzung) | NOTIF-01.6: PostgreSQL 17, echter Mailweg mit Quick Action im Browser; offen: echter SMTP-/Push-Versand als Nutzerabnahme. |
 | PORTAL-04 | geplant | — | Verwaltendenkonto 1:1 an Mitglied mit Login-Bestätigung, Eigenänderungsprotokoll, Vier-Augen für eigene Qualifikationen. |
+
+### OPS-06: Auswählbare Abteilungsverschiebung in jfctl
+
+- **Status/Verantwortung:** in Arbeit / Codex.
+- **Abhängigkeiten:** bestehendes Abteilungsmodell, Mitglieder-M2M, Dienst-/Trainingsverknüpfung, OPS-04 Sicherung/Wartung, bestehender NAS-Zugang.
+- **Ziel/Abnahme:** Vorschau ohne Schreibzugriff, explizite Auswahl von Fachbereichen, global oder bestehende Abteilung als Quelle/Ziel; optional nur Jugendfeuerwehr anlegen. IDs, Historie, Anwesenheiten, Elternbezüge, Qualifikationen, Dateien und Teilnahme bleiben erhalten. Inventar/Bestellungen separat auswählbar, standardmäßig ausgeschlossen. Abhängigkeiten/Konflikte vor Änderung melden; atomare Datenänderung, geprüfte Vorabsicherung und Schreibstopp über jfctl; wiederholter Aufruf ohne Doppelungen. Rollen, Benutzerrechte und globale Konfiguration nicht automatisch ändern.
+- **Stabile Teilschritte:** OPS-06.0 Plan/Ausgangsstand; OPS-06.1 Backend-Vorschau/Validierung/atomarer Umzug und Regressionen; OPS-06.2 jfctl-Wartungs-/Sicherungsintegration, Menü/Dokumentation/Betriebstests; OPS-06.3 Pflichtprüfungen und fiktive Demoabnahme; OPS-06.4 gesicherte NAS-Durchführung und Daten-/Zugriffsabnahme.
+- **Checkpoint/Branch:** OPS-06.0, Ausgangscommit 68dd5b1 auf feat/security-roles-training-operations; fremdes .claude/ erhalten. OPS-05.7c bleibt fremder offener Folgepunkt, nicht als eigenes Ergebnis ausgeben.
+- **Dateiverantwortung:** neuer departments-Managementbefehl und Service/Tests, ops/jfctl und zugehörige lib/menu/Tests, bestehende ops-jfctl-Dokumentation, eigene Roadmapeinträge.
+- **Prüfungen:** Bestanden: Git-/Modell-/CLI-/Roadmapabgleich. Nicht ausgeführt: neue Regressionen/Pflichtprüfungen/Demo/Produktivumzug. Serverzugriff zunächst sandboxabgewiesen.
+- **Risiken/Fortsetzung:** gemischte Abteilungsbezüge und historische globale Daten; keine Datensätze löschen/duplizieren, keine historischen Rechte umschreiben. Produktion erst nach lokalen Prüfungen und verifizierter Sicherung, bei Konflikten vor Schreibzugriff abbrechen. Keine Geheimnisse/Personen im Journal. Nächster Schritt OPS-06.1.
 
 ### OPS-05.7: Synology auf Fixrelease v3.0.3 aktualisieren
 
@@ -2314,3 +2328,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | OPS-05.7a Abnahme | Synology auf 3.0.2 bestätigt, doctor erfolgreich; tatsächliche Timer und Releasepfad geprüft. Bestehende Sicherung vollständig ausgelesen/verifiziert; geschützte Nachweise für 226 Tabellen, 12 Uploadhashes und Konfigurationshashes auf NAS angelegt. | Bestanden: SSH/sudo/doctor, Compose 2.39.4, 468 GB Speicher/538 MiB RAM verfügbar, Timer und Sicherung. Nicht ausgeführt: Update. Bekannter Worker-HTTP-Healthcheck unverändert. | Dieser Commit: `docs(OPS-05.7a): record Synology update preflight` | jfctl-Update mit automatischer pre-update-Sicherung und Rückkehr starten. |
 
 | 10.10.2026 | OPS-05.7b Update | jfctl update --version 3.0.3 mit Exit 0 abgeschlossen; geprüfte Releaseartefakte/Images, vollständige pre-update-Sicherung a0f58de3, Releasewechsel ohne neue Migrationen, interne Backend-/Datenbank-/Workerprüfung und Oberfläche freigegeben. | Bestanden: alle sechs Update-Stufen, Sicherung erstellt, keine Rollenvorlagenänderung. Nicht ausgeführt: abschließender Bestands-/Hash-/HTTPS-/Sicherungsverifikationslauf. Herkunftsnachweis lokal mangels gh CLI übersprungen; Release-CI-Attestierung und geprüfte SHA256 bestanden. | Dieser Commit: `docs(OPS-05.7b): record successful Synology v3.0.3 update` | OPS-05.7c technische Nachabnahme und Home-Anleitung aktualisieren. |
+
+| 10.10.2026 | OPS-06.0 | Nutzerauftrag und Abnahme/Teilschritte für auswählbaren jfctl-Abteilungsumzug festgelegt, Ist-Code und Git abgeglichen; Inventar beim konkreten Umzug global. | Bestanden: Ausgangsabgleich. Nicht ausgeführt: neue Tests/Demo/Umzug. SSH zunächst sandboxabgewiesen. | Dieser Commit: `docs(OPS-06.0): plan selectable department data transfer` | Backend-Vorschau/atomaren Umzug implementieren. |
