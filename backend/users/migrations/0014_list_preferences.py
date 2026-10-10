@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("departments", "0006_preserve_assignment_sources"),
+        ("departments", "0001_initial"),
         ("users", "0013_account_kind"),
     ]
 
