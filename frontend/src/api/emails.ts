@@ -3,6 +3,7 @@
  */
 
 import apiClient from './index'
+import { withIdempotencyKey } from './idempotency'
 import type {
   EmailMessage,
   EmailMessageDetail,
@@ -57,13 +58,18 @@ export const emailsApi = {
       attachments.forEach((file) => {
         formData.append('attachments', file)
       })
-      return apiClient.post<EmailSendResponse>('/emails/send/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        params: deptParams
-      })
+      // The key covers the form fields; a retried request with the same content is sent once (UX-07.2).
+      return withIdempotencyKey('post', '/emails/send/', fields, (headers) =>
+        apiClient.post<EmailSendResponse>('/emails/send/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data', ...headers },
+          params: deptParams
+        })
+      )
     }
 
-    return apiClient.post<EmailSendResponse>('/emails/send/', fields, { params: deptParams })
+    return withIdempotencyKey('post', '/emails/send/', fields, (headers) =>
+      apiClient.post<EmailSendResponse>('/emails/send/', fields, { headers, params: deptParams })
+    )
   },
 
   /**

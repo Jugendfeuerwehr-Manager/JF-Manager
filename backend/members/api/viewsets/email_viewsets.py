@@ -2,6 +2,7 @@
 API viewsets for email messaging system.
 """
 
+from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -132,6 +133,15 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         - subject, body_html, body_text, recipient_type, recipient_group, recipient_member
         - attachments: one or more files (field name: "attachments")
         """
+        key = request.headers.get("Idempotency-Key", "").strip()
+        if len(key) > 128:
+            return Response({"error": "Idempotenzschlüssel ist zu lang."}, status=status.HTTP_400_BAD_REQUEST)
+        if key:
+            # A repeated request (double click, network retry) never sends a second time (UX-07.2).
+            existing = EmailMessage.objects.filter(sender=request.user, idempotency_key=key).first()
+            if existing is not None:
+                return self._send_response(existing, None, replayed=True)
+
         create_serializer = EmailMessageCreateSerializer(data=request.data, context={"request": request})
         create_serializer.is_valid(raise_exception=True)
         self._validate_targets(create_serializer.validated_data, self._get_accessible_member_queryset())
@@ -144,7 +154,22 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         except ValidationError as exc:
             return Response({"error": str(exc.detail["file"])}, status=status.HTTP_400_BAD_REQUEST)
         # Validate the entire batch before creating the message or storing any file.
-        email_message = create_serializer.save()
+        extra = {"idempotency_key": key}
+        if create_serializer.validated_data.get("department") is None:
+            # The client sends the active department as query parameter; store it so department
+            # senders find the message in their history and can resend failed deliveries.
+            requested = self._resolve_requested_department(request.user)
+            allowed = self._sending_department_ids()
+            if requested is None and allowed is not None and len(allowed) == 1:
+                requested = allowed[0]
+            if requested is not None:
+                extra["department_id"] = requested
+        try:
+            with transaction.atomic():
+                email_message = create_serializer.save(**extra)
+        except IntegrityError:
+            existing = EmailMessage.objects.get(sender=request.user, idempotency_key=key)
+            return self._send_response(existing, None, replayed=True)
         for f, content_type in zip(files, content_types, strict=True):
             EmailAttachment.objects.create(
                 email_message=email_message,
@@ -162,13 +187,8 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             if recipient_count == 0:
                 return Response({"error": "Keine Empfänger gefunden"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Send emails
-            result = MemberEmailService.send_email_message(email_message)
-
-            # Return detailed response
-            detail_serializer = EmailMessageDetailSerializer(email_message)
-
-            return Response({"email": detail_serializer.data, "result": result}, status=status.HTTP_201_CREATED)
+            result = MemberEmailService.dispatch(email_message)
+            return self._send_response(email_message, result)
 
         except Exception as e:
             email_message.status = "failed"
@@ -193,12 +213,26 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         failed_recipients = email_message.recipients.filter(status="failed")
         failed_recipients.update(status="pending", error_message="")
 
-        # Send again
-        result = MemberEmailService.send_email_message(email_message)
+        # Send again (only the reset recipients); in the background when a worker is configured
+        result = MemberEmailService.dispatch(email_message)
+        return self._send_response(email_message, result, created=False)
 
-        detail_serializer = EmailMessageDetailSerializer(email_message)
-
-        return Response({"email": detail_serializer.data, "result": result})
+    def _send_response(self, email_message, result, *, replayed=False, created=True):
+        """201 after an immediate send, 202 while queued; a replay answers 200 with the stored message."""
+        email_message.refresh_from_db()
+        payload = {
+            "email": EmailMessageDetailSerializer(email_message).data,
+            "result": result,
+            "queued": result is None and not replayed,
+        }
+        if replayed:
+            payload["replayed"] = True
+            code = status.HTTP_200_OK
+        elif result is None:
+            code = status.HTTP_202_ACCEPTED
+        else:
+            code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(payload, status=code)
 
     @action(detail=False, methods=["post"])
     def preview(self, request):

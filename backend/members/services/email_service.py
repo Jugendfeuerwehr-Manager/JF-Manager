@@ -395,7 +395,21 @@ class MemberEmailService:
         return total_recipients
 
     @staticmethod
-    @transaction.atomic
+    def dispatch(email_message: EmailMessage) -> dict[str, int] | None:
+        """Send in the background worker when one is configured, otherwise right away.
+
+        Returns the result for an immediate send and None when the message was queued.
+        """
+        if getattr(settings, "RQ_QUEUES", None):
+            from members.tasks import send_email_message_job
+
+            email_message.status = "sending"
+            email_message.save(update_fields=["status"])
+            send_email_message_job.delay(email_message.pk)
+            return None
+        return MemberEmailService.send_email_message(email_message)
+
+    @staticmethod
     def send_email_message(email_message: EmailMessage) -> dict[str, int]:
         """
         Send an email message to all its recipients.
@@ -412,9 +426,13 @@ class MemberEmailService:
         # Pre-load attachments
         attachments = list(email_message.attachments.all())
 
-        pending_recipients = email_message.recipients.filter(status="pending")
+        pending_ids = list(email_message.recipients.filter(status="pending").values_list("pk", flat=True))
 
-        for recipient in pending_recipients:
+        for recipient_id in pending_ids:
+            # Claim the recipient first: a parallel run (double click, retried job) skips it (UX-07.2).
+            if not EmailRecipient.objects.filter(pk=recipient_id, status="pending").update(status="sending"):
+                continue
+            recipient = EmailRecipient.objects.get(pk=recipient_id)
             try:
                 # Create email
                 email = EmailMultiAlternatives(
@@ -458,7 +476,9 @@ class MemberEmailService:
 
                 failed += 1
 
-        # Update email message status
+        # Totals over all recipients, so a resend reports the whole message.
+        successful = email_message.recipients.filter(status="sent").count()
+        failed = email_message.recipients.filter(status="failed").count()
         email_message.successful_sends = successful
         email_message.failed_sends = failed
         email_message.sent_at = timezone.now()

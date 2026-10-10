@@ -105,6 +105,8 @@ class EmailMessage(models.Model):
 
     # Error tracking
     error_message = models.TextField(blank=True, verbose_name="Fehlermeldung")
+    # Client key of the send request: a repeated request returns this message instead of sending twice (UX-07.2).
+    idempotency_key = models.CharField(max_length=128, blank=True, default="", verbose_name="Idempotenzschlüssel")
 
     class Meta:
         verbose_name = "E-Mail-Nachricht"
@@ -117,6 +119,13 @@ class EmailMessage(models.Model):
             models.Index(fields=["-created_at"]),
             models.Index(fields=["sender", "-created_at"]),
             models.Index(fields=["status"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["sender", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="unique_email_message_idempotency_key",
+            ),
         ]
 
     def __str__(self):
@@ -131,6 +140,7 @@ class EmailRecipient(models.Model):
 
     STATUS_CHOICES = [
         ("pending", "Ausstehend"),
+        ("sending", "Wird gesendet"),
         ("sent", "Gesendet"),
         ("failed", "Fehlgeschlagen"),
     ]

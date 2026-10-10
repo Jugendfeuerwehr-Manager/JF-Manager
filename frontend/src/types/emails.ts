@@ -84,10 +84,14 @@ export interface EmailPreviewResponse {
 
 export interface EmailSendResponse {
   email: EmailMessageDetail
+  /** Totals after an immediate send; null while the background worker sends (UX-07.2). */
   result: {
     successful: number
     failed: number
-  }
+  } | null
+  queued?: boolean
+  /** The same request was already accepted; nothing was sent again. */
+  replayed?: boolean
 }
 
 export interface EmailRecipientCountRequest {

@@ -405,7 +405,13 @@ const resendEmail = async (email: EmailMessage) => {
     accept: async () => {
       try {
         const result = await emailsStore.resendEmail(email.id)
-        
+
+        if (!result.result) {
+          toast.add({ severity: 'success', summary: 'Erneuter Versand gestartet', detail: 'Die fehlgeschlagenen Empfänger werden im Hintergrund erneut angeschrieben.', life: 5000 })
+          fetchEmails()
+          return
+        }
+
         toast.add({
           severity: 'success',
           summary: 'Erfolg',

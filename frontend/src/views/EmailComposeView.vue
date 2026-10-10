@@ -536,19 +536,25 @@ const sendEmail = async () => {
         recipient_group: form.value.recipient_group || undefined,
       })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Erfolg',
-      detail: `E-Mail wurde an ${result.result.successful} Empfänger gesendet`,
-      life: 5000
-    })
-    if (result.result.failed > 0) {
+    if (result.replayed) {
+      toast.add({ severity: 'info', summary: 'Bereits versendet', detail: 'Diese E-Mail wurde schon angenommen und nicht erneut verschickt.', life: 5000 })
+    } else if (!result.result) {
+      toast.add({ severity: 'success', summary: 'Versand gestartet', detail: 'Die E-Mail wird im Hintergrund versendet. Den Stand je Empfänger zeigt der Verlauf.', life: 5000 })
+    } else {
       toast.add({
-        severity: 'warn',
-        summary: 'Teilweise fehlgeschlagen',
-        detail: `${result.result.failed} E-Mail(s) konnten nicht zugestellt werden`,
+        severity: 'success',
+        summary: 'Erfolg',
+        detail: `E-Mail wurde an ${result.result.successful} Empfänger gesendet`,
         life: 5000
       })
+      if (result.result.failed > 0) {
+        toast.add({
+          severity: 'warn',
+          summary: 'Teilweise fehlgeschlagen',
+          detail: `${result.result.failed} E-Mail(s) konnten nicht zugestellt werden`,
+          life: 5000
+        })
+      }
     }
 
     showReview.value = false
