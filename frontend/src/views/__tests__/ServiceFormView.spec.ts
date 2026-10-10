@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ServiceFormView from '../ServiceFormView.vue'
 
-const { store, route, replace } = vi.hoisted(() => ({
+const { store, route, replace, registrations } = vi.hoisted(() => ({
+  registrations: {
+    registrations: { people: [{ member_id: 5, state: 'cancelled' }] } as unknown,
+    reset: vi.fn(),
+    fetchRegistrations: vi.fn(),
+  },
   store: {
     currentService: { id: 11, start: '2026-10-06T18:00:00+02:00', end: '2026-10-06T20:00:00+02:00', topic: 'Stationsausbildung', place: 'Gerätehaus' },
     fetchService: vi.fn(),
@@ -16,6 +21,7 @@ vi.mock('@/components/servicebook/molecules/DeleteServiceButton.vue', () => ({ d
 vi.mock('@/stores/servicebook', () => ({ useServicebookStore: () => store }))
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
+vi.mock('@/stores/serviceRegistrations', () => ({ useServiceRegistrationsStore: () => registrations }))
 
 function render() {
   return mount(ServiceFormView, {
@@ -24,7 +30,8 @@ function render() {
         RouterLink: { props: ['to'], template: '<a><slot /></a>' },
         ServiceForm: { props: ['submitLabel'], template: '<div class="form-stub">{{ submitLabel }}</div>' },
         DeleteServiceButton: true,
-        AttendanceManager: { template: '<div class="attendance-stub" />' },
+        AttendanceManager: { name: 'AttendanceManager', props: ['serviceId', 'registrations'], template: '<div class="attendance-stub" />' },
+        ExcusedTakeoverSheet: true,
       },
     },
   })
@@ -64,5 +71,14 @@ describe('ServiceFormView', () => {
     expect(creating.find('[role="tablist"]').exists()).toBe(false)
     expect(creating.get('h1').text()).toBe('Neuer Dienst')
     expect(creating.get('.form-stub').text()).toBe('Dienst anlegen')
+  })
+
+  it('loads registrations so the attendance tab shows who cancelled', async () => {
+    route.query = { tab: 'attendance' }
+    const wrapper = render()
+    await flushPromises()
+    expect(registrations.fetchRegistrations).toHaveBeenCalledWith(11, true)
+    const manager = wrapper.findComponent({ name: 'AttendanceManager' })
+    expect(manager.props('registrations')).toEqual(registrations.registrations)
   })
 })
