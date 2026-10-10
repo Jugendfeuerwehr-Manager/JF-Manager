@@ -74,10 +74,10 @@ def _equipment(member):
     location = getattr(member, "personal_storage_location", None)
     if location is None:
         return []
-    stocks = location.stock_set.filter(quantity__gt=0).select_related("item", "item_variant")
+    stocks = location.stock_set.filter(quantity__gt=0).select_related("item", "item_variant__parent_item")
     return [
         {
-            "item": s.item.name if s.item_id else (s.item_variant.item.name if s.item_variant_id else ""),
+            "item": s.item.name if s.item_id else (s.item_variant.parent_item.name if s.item_variant_id else ""),
             "variant": str(s.item_variant) if s.item_variant_id else "",
             "quantity": s.quantity,
         }
