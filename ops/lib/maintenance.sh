@@ -86,13 +86,16 @@ WantedBy=timers.target
 EOF
     done
     systemctl daemon-reload
-    systemctl enable --now jf-manager-backup.timer >/dev/null 2>&1
+    systemctl enable jf-manager-backup.timer >/dev/null 2>&1
+    systemctl start jf-manager-backup.timer >/dev/null 2>&1
     for entry in "${MAINT_TASKS[@]}"; do
         name=${entry%%|*}
         if _maint_enabled "$name"; then
-            systemctl enable --now "jf-manager-maint-$name.timer" >/dev/null 2>&1
+            systemctl enable "jf-manager-maint-$name.timer" >/dev/null 2>&1
+            systemctl start "jf-manager-maint-$name.timer" >/dev/null 2>&1
         else
-            systemctl disable --now "jf-manager-maint-$name.timer" >/dev/null 2>&1 || true
+            systemctl stop "jf-manager-maint-$name.timer" >/dev/null 2>&1 || true
+            systemctl disable "jf-manager-maint-$name.timer" >/dev/null 2>&1 || true
         fi
     done
     ok "Wartungs- und Backup-Timer eingerichtet"
