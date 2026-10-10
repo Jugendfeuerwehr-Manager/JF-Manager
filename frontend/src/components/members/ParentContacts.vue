@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { telHref } from '@/utils/contactHref'
 import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed } from 'vue'
 import type { Parent, Member } from '@/types/api'
@@ -188,7 +189,7 @@ const openWhatsApp = (phone: string) => {
 }
 
 const openPhone = (phone: string) => {
-  window.location.href = `tel:${phone}`
+  window.location.href = telHref(phone)
   showContactDialog.value = false
 }
 

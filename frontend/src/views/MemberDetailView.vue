@@ -42,7 +42,7 @@
           <Button label="Bearbeiten" icon="pi pi-pencil" @click="navigateToEdit" />
         </div>
         <div v-if="primaryContact || primaryEmail" class="profile-head__quick">
-          <a v-if="primaryContact" :href="`tel:${primaryContact.phone}`" class="quick-action quick-action--primary">
+          <a v-if="primaryContact" :href="telHref(primaryContact.phone)" class="quick-action quick-action--primary">
             <i class="pi pi-phone" aria-hidden="true"></i>{{ primaryContact.parent.name }} anrufen
           </a>
           <a v-if="primaryEmail" :href="`mailto:${primaryEmail}`" class="quick-action">
@@ -161,7 +161,7 @@
                 </span>
                 <a
                   v-if="reachableNumber(parent)"
-                  :href="`tel:${reachableNumber(parent)}`"
+                  :href="telHref(reachableNumber(parent))"
                   class="contact__action contact__action--call"
                   :aria-label="`${parent.full_name} anrufen`"
                 ><i class="pi pi-phone" aria-hidden="true"></i><span>Anrufen</span></a>
@@ -242,6 +242,7 @@
 </template>
 
 <script setup lang="ts">
+import { telHref } from '@/utils/contactHref'
 import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'

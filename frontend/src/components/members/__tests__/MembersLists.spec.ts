@@ -28,7 +28,7 @@ describe('MembersMobileList', () => {
   it('opens a member on tap and calls the first reachable parent', async () => {
     const wrapper = mount(MembersMobileList, { props: { members: [member()], loading: false, rows: 20, totalRecords: 1 }, global })
     const call = wrapper.get('a.member-row__call')
-    expect(call.attributes('href')).toBe('tel:0171 1234567')
+    expect(call.attributes('href')).toBe('tel:01711234567')
     expect(call.attributes('aria-label')).toBe('Katrin Weber anrufen (Kontakt von Lena Weber)')
     expect(wrapper.text()).toContain('12 J. · Gruppe B')
     expect(wrapper.text()).toContain('Aktiv')

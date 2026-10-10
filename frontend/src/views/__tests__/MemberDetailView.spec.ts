@@ -68,7 +68,7 @@ describe('MemberDetailView', () => {
     const wrapper = render()
     await flushPromises()
     const call = wrapper.get('a.contact__action--call')
-    expect(call.attributes('href')).toBe('tel:0171 1234567')
+    expect(call.attributes('href')).toBe('tel:01711234567')
     expect(call.attributes('aria-label')).toBe('Katrin Weber anrufen')
     expect(wrapper.get('[aria-label="Telefonnummer für Daniel Weber ergänzen"]').attributes('href')).toBe('/parents/7/edit')
     expect(wrapper.get('.quick-action--primary').text()).toContain('Katrin anrufen')

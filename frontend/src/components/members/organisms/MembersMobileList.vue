@@ -20,7 +20,7 @@
         <a
           v-if="contactFor(member)"
           class="member-row__call"
-          :href="`tel:${contactFor(member)!.number}`"
+          :href="telHref(contactFor(member)!.number)"
           :aria-label="`${contactFor(member)!.name} anrufen (Kontakt von ${member.full_name})`"
         >
           <i class="pi pi-phone" aria-hidden="true"></i>
@@ -34,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { telHref } from '@/utils/contactHref'
 import StateView from '@/components/common/StateView.vue'
 import ResponsiveList from '@/components/common/ResponsiveList.vue'
 import MemberIdentity from '@/components/members/atoms/MemberIdentity.vue'
