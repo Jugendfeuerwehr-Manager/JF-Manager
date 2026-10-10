@@ -16,7 +16,7 @@ vi.mock('@/stores/lists', () => ({ useMemberListsStore: () => listsStore }))
 vi.mock('@/stores/members', () => ({ useMembersStore: () => membersStore }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => authStore }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => departmentsStore }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
+vi.mock('vue-router', () => ({ useRouter: () => ({ push, replace: vi.fn() }), useRoute: () => ({ query: {} }) }))
 vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: vi.fn() }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: addToast }) }))
 
@@ -151,4 +151,19 @@ describe('ListsView department-aware forms', () => {
     expect(wrapper.find('.create-blocked').exists()).toBe(false)
     wrapper.unmount()
   })
+
+  it('shows a retryable error instead of an empty page when loading fails', async () => {
+    listsStore.lists = []
+    listsStore.fetchLists.mockRejectedValueOnce({ response: { status: 500 } }).mockResolvedValueOnce([])
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Listen konnten nicht geladen werden')
+    expect(wrapper.text()).not.toContain('Noch keine Listen')
+    const before = listsStore.fetchLists.mock.calls.length
+    wrapper.findComponent({ name: 'StateView' }).vm.$emit('retry')
+    await flushPromises()
+    expect(listsStore.fetchLists.mock.calls.length).toBe(before + 1)
+    expect(wrapper.text()).toContain('Noch keine Listen')
+  })
 })
+
