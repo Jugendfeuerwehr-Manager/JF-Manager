@@ -16,7 +16,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Fixrelease FIX-03 (10.10.2026):** Mobile Vergangenheit im Dienstbuch, bestätigte Dienstlöschung und abteilungsweise Rollenvorlagen direkt in der Benutzerverwaltung umgesetzt. Separat committet, nach main integriert und `v3.0.3` auf `48d8e51184e0e10d0d727a72d1d528fdec6613ae` veröffentlicht. [Release-Lauf 38032498297](https://github.com/Jugendfeuerwehr-Manager/JF-Manager/actions/runs/38032498297) vollständig bestanden: 1309 PostgreSQL-17-Backendtests ohne Überspringen, Frontendprüfungen, Images, Scans, Paket und Attestierung. Lokale 617 Frontendtests, Ruff-Lint/Format und Browser 390/1440 px bestanden; Paket-/Manifestprüfsummen und Pflichtdateien geprüft. 57 vorbestehende Backend-Formatabweichungen separat bereinigt. Fremdes `.claude/` erhalten. Kein Produktionsdeployment ausgeführt.
 
-**Synology-Update OPS-05.7 (10.10.2026):** Nutzer autorisiert Aktualisierung der bestehenden NAS-Instanz auf das vollständig geprüfte v3.0.3. SSH/sudo und laufender Stand v3.0.2 bestätigt; Update ausschließlich über jfctl mit eigener pre-update-Sicherung und automatischem Rückkehrpfad. Vorprüfung, Update und technische Abnahme offen.
+**Synology-Update OPS-05.7 (10.10.2026):** Nutzer autorisiert Aktualisierung der bestehenden NAS-Instanz auf das vollständig geprüfte v3.0.3. SSH/sudo und laufender Stand v3.0.2 bestätigt; Update ausschließlich über jfctl mit eigener pre-update-Sicherung und automatischem Rückkehrpfad. Vorprüfung bestanden: doctor Exit 0, 468 GB frei, Sicherung vollständig verifiziert, geschützte Nachweise für 226 Tabellen/12 Uploads. Update und technische Abnahme offen.
 
 ### 0.1 Stand je Bereich
 
@@ -680,11 +680,11 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Abhängigkeiten:** FIX-03.5 vollständig abgenommen; OPS-05.6 laufende NAS-Installation und administrativer SSH-Zugang bestätigt.
 - **Ziel/Abnahme:** Bestehende Instanz jf-manager-v3 mit jfctl auf v3.0.3 aktualisieren; pre-update-Sicherung vorhanden und verifiziert, Version/Image-Digests korrekt, Daten/Uploads erhalten, doctor/HTTPS/Sitzungs-API/Timer/Worker geprüft. Alte Container bleiben erhalten gestoppt.
 - **Stabile Teilschritte:** OPS-05.7a Plattform-/Daten-/Sicherungs-Vorprüfung; OPS-05.7b jfctl update --version 3.0.3 mit automatischer Sicherung und Rückkehr bei Fehler; OPS-05.7c technische Abnahme, verifizierte Sicherung und Home-Anleitung aktualisieren.
-- **Checkpoint/Branch:** vor Produktionsänderung auf feat/security-roles-training-operations; main/Feature-Ausgangscode identisch, fremdes .claude/ bleibt erhalten.
+- **Checkpoint/Branch:** OPS-05.7a abgeschlossen, vor Update auf feat/security-roles-training-operations; main/Feature-Ausgangscode identisch, fremdes .claude/ bleibt erhalten.
 - **Dateien/Commit:** Roadmap; geschützte technische Nachweise auf NAS. Keine Geheimnisse oder Personen in Journal.
-- **Prüfungen:** Bestanden: SSH/sudo, Version 3.0.2, sechs aktive Container (Worker mit bekanntem unpassendem HTTP-Healthcheck). Nicht ausgeführt: Vorprüfung/Update/Abnahme.
+- **Prüfungen:** Bestanden: SSH/sudo, Version 3.0.2, doctor Exit 0, Compose 2.39.4, 468 GB frei/538 MiB verfügbar, Backup-/Wartungstimer, vollständige Sicherungsverifikation und Nachweis für 226 Tabellen/12 Uploads. Nicht ausgeführt: Update/Abnahme.
 - **Risiken:** Wartungsfenster während Sicherung/Wechsel; begrenzter NAS-RAM; bekannte Worker-Healthcheck-Anzeige. jfctl übernimmt Rückkehr vor Schreibfreigabe.
-- **Prozesse/Fortsetzung:** keine eigenen Hintergrundaktionen; nächster Schritt OPS-05.7a doctor/Speicher/Timer und Bestandsnachweis, dann Update.
+- **Prozesse/Fortsetzung:** keine eigenen Hintergrundaktionen; nächster Schritt OPS-05.7b jfctl update --version 3.0.3.
 
 ### FIX-03: Dienstbuch und schnelle Benutzerrollen
 
@@ -2310,3 +2310,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | FIX-03.5 Releaseabnahme | v3.0.3 auf 48d8e51184e0e10d0d727a72d1d528fdec6613ae veröffentlicht. Lauf 38032498297 vollständig grün; heruntergeladenes Paket und Manifest geprüft. | Bestanden: alle Tag-Tests inkl. 1309 PostgreSQL-17-Tests ohne Überspringen, Frontend/Lint/Build/Betriebs-/Abhängigkeitsprüfungen, beide Images/Scans, Releasepaket/Attestierung/Veröffentlichung; beide SHA256SUMS-Einträge und Manifest-Tarballhash, Version/Commit/PostgreSQL/Digests, sichere Pfade/Pflichtdateien/eingebettetes Manifest. Nicht ausgeführt: lokale Attestierungsverifikation, Produktionsdeployment. | Dieser Commit: `docs(FIX-03.5): record verified v3.0.3 release` | Abnahmedokumentation nach main pushen; Fixauftrag abgeschlossen, Tag unverändert lassen. |
 
 | 10.10.2026 | OPS-05.7 Start | Nutzer beauftragt Synology-Update auf das gerade veröffentlichte v3.0.3; bestehenden SSH-/sudo-Zugang und jfctl-Stand 3.0.2 geprüft. | Bestanden: Zugang/Status, Release-Abnahme aus FIX-03.5. Nicht ausgeführt: Produktionsupdate. | Dieser Commit: `docs(OPS-05.7): plan authorized Synology update` | Vorprüfung, jfctl-Sicherungs-/Updateweg, technische Abnahme. |
+
+| 10.10.2026 | OPS-05.7a Abnahme | Synology auf 3.0.2 bestätigt, doctor erfolgreich; tatsächliche Timer und Releasepfad geprüft. Bestehende Sicherung vollständig ausgelesen/verifiziert; geschützte Nachweise für 226 Tabellen, 12 Uploadhashes und Konfigurationshashes auf NAS angelegt. | Bestanden: SSH/sudo/doctor, Compose 2.39.4, 468 GB Speicher/538 MiB RAM verfügbar, Timer und Sicherung. Nicht ausgeführt: Update. Bekannter Worker-HTTP-Healthcheck unverändert. | Dieser Commit: `docs(OPS-05.7a): record Synology update preflight` | jfctl-Update mit automatischer pre-update-Sicherung und Rückkehr starten. |
