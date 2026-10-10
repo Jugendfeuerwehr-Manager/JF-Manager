@@ -33,7 +33,9 @@ class QualificationRolePermissionTests(APITestCase):
         cls.task_a = SpecialTask.objects.create(task=task_type, member=cls.member_a, start_date=date(2026, 1, 1))
         cls.task_b = SpecialTask.objects.create(task=task_type, member=cls.member_b, start_date=date(2026, 1, 1))
 
-        cls.reader = get_user_model().objects.create_user(username="qualification-reader", password="test-only-password")
+        cls.reader = get_user_model().objects.create_user(
+            username="qualification-reader", password="test-only-password"
+        )
         role_a = AuthGroup.objects.create(name="Qualification reader A")
         role_a.permissions.add(
             *Permission.objects.filter(

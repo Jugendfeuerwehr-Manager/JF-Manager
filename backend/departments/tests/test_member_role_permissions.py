@@ -31,7 +31,9 @@ class MemberRolePermissionTests(APITestCase):
 
         cls.writer = get_user_model().objects.create_user(username="member-writer", password="test-only-password")
         writer_group = AuthGroup.objects.create(name="Member writer A")
-        writer_group.permissions.add(Permission.objects.get(content_type__app_label="members", codename="change_member"))
+        writer_group.permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="change_member")
+        )
         UserDepartmentRole.objects.create(user=cls.writer, department=cls.department_a).groups.add(writer_group)
         UserDepartmentRole.objects.create(user=cls.writer, department=cls.department_b).groups.add(reader_group)
 

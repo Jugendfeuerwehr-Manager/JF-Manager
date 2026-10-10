@@ -48,14 +48,14 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
         return queryset.filter(Q(member__isnull=True) | Q(member__departments__id__in=allowed_ids)).distinct()
 
     def _assert_member_access(self, member):
-        '''Assert that the current user has access to the given member. Raises PermissionDenied if not.
+        """Assert that the current user has access to the given member. Raises PermissionDenied if not.
 
         Args:
             member: The member instance to check access for.
 
         Raises:
             PermissionDenied: If the current user does not have access to the member.
-        '''
+        """
         user = self.request.user
         member_department_ids = set(member.departments.values_list("id", flat=True))
         if self.request.method != "GET":
@@ -137,9 +137,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
                 target_department_id = member.personal_storage_location.department_id
             except StorageLocation.DoesNotExist:
                 target_department_id = member.departments.values_list("id", flat=True).first()
-            if not can_manage_department(
-                request.user, target_department_id, "inventory.add_storagelocation"
-            ):
+            if not can_manage_department(request.user, target_department_id, "inventory.add_storagelocation"):
                 raise PermissionDenied("Keine Anlegeberechtigung in der Mitgliedsabteilung.")
             location, created = self._get_or_create_personal_storage_location(request, member)
         serializer = self.get_serializer(location)
@@ -175,9 +173,7 @@ class StorageLocationViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSe
         stock_qs = Stock.objects.filter(location=location, quantity__gt=0).select_related(
             "item", "item_variant", "item_variant__parent_item", "location"
         )
-        stock_qs = filter_item_department_queryset_for_user(
-            stock_qs, request.user, "inventory.view_stock"
-        )
+        stock_qs = filter_item_department_queryset_for_user(stock_qs, request.user, "inventory.view_stock")
         total_items = sum(s.quantity for s in stock_qs)
 
         transactions_qs = Transaction.objects.filter(Q(source=location) | Q(target=location)).select_related(

@@ -4,14 +4,22 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('orders', '0015_orderitem_loan_transaction'),
+        ("orders", "0015_orderitem_loan_transaction"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='order',
-            options={'ordering': ['-order_date'], 'permissions': (('can_receive_order', 'Kann Bestell-Wareneingänge buchen'), ('can_manage_orders', 'Kann Bestellungen verwalten'), ('can_change_order_status', 'Kann Bestellstatus ändern')), 'verbose_name': 'Bestellung', 'verbose_name_plural': 'Bestellungen'},
+            name="order",
+            options={
+                "ordering": ["-order_date"],
+                "permissions": (
+                    ("can_receive_order", "Kann Bestell-Wareneingänge buchen"),
+                    ("can_manage_orders", "Kann Bestellungen verwalten"),
+                    ("can_change_order_status", "Kann Bestellstatus ändern"),
+                ),
+                "verbose_name": "Bestellung",
+                "verbose_name_plural": "Bestellungen",
+            },
         ),
     ]

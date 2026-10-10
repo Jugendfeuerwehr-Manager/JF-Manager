@@ -271,7 +271,11 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         dates = DateRange(data=request.query_params)
         dates.is_valid(raise_exception=True)
         services = self.filter_queryset(self.get_queryset())
-        if not request.user.is_superuser and not request.user.has_perm("servicebook.view_attendance") and not request.user.has_perm("servicebook.change_attendance"):
+        if (
+            not request.user.is_superuser
+            and not request.user.has_perm("servicebook.view_attendance")
+            and not request.user.has_perm("servicebook.change_attendance")
+        ):
             from django.db.models import Q
 
             allowed = request.user.department_roles.filter(
@@ -297,7 +301,9 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         from rest_framework.exceptions import PermissionDenied
 
         department = serializer.validated_data.get("department", serializer.instance.department)
-        if not has_department_permission(self.request.user, "servicebook.change_service", department.pk if department else None):
+        if not has_department_permission(
+            self.request.user, "servicebook.change_service", department.pk if department else None
+        ):
             raise PermissionDenied("Keine Berechtigung zum Verschieben in diese Abteilung.")
         service = serializer.save()
         # Clear attendance cache when service is updated

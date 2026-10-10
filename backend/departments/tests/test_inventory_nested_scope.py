@@ -22,9 +22,7 @@ class InventoryNestedScopeTests(APITestCase):
         cls.central_item = Item.objects.create(name="Central jacket", category=cls.category)
         cls.variant_a = ItemVariant.objects.create(parent_item=cls.item_a, variant_attributes={"size": "A"})
         cls.variant_b = ItemVariant.objects.create(parent_item=cls.item_b, variant_attributes={"size": "B"})
-        cls.central_variant = ItemVariant.objects.create(
-            parent_item=cls.central_item, variant_attributes={"size": "C"}
-        )
+        cls.central_variant = ItemVariant.objects.create(parent_item=cls.central_item, variant_attributes={"size": "C"})
         cls.central_location = StorageLocation.objects.create(name="Shared storage")
         cls.stock_a = book_opening_stock(cls.central_location, 1, item=cls.item_a)
         cls.stock_b = book_opening_stock(cls.central_location, 2, item=cls.item_b)
@@ -40,9 +38,7 @@ class InventoryNestedScopeTests(APITestCase):
         cls.viewer = get_user_model().objects.create_user(username="nested-inventory-viewer")
         group_a = Group.objects.create(name="Nested inventory viewer A")
         for codename in ("view_category", "view_item", "view_itemvariant", "view_storagelocation"):
-            group_a.permissions.add(
-                Permission.objects.get(content_type__app_label="inventory", codename=codename)
-            )
+            group_a.permissions.add(Permission.objects.get(content_type__app_label="inventory", codename=codename))
         UserDepartmentRole.objects.create(user=cls.viewer, department=department_a).groups.add(group_a)
         UserDepartmentRole.objects.create(user=cls.viewer, department=department_b)
 
@@ -95,9 +91,7 @@ class InventoryNestedScopeTests(APITestCase):
         )
         self.viewer.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
 
-        own = self.client.patch(
-            f"/api/v1/inventory/variants/{self.variant_a.pk}/", {"sku": "own"}, format="json"
-        )
+        own = self.client.patch(f"/api/v1/inventory/variants/{self.variant_a.pk}/", {"sku": "own"}, format="json")
         central = self.client.patch(
             f"/api/v1/inventory/variants/{self.central_variant.pk}/", {"sku": "central"}, format="json"
         )
@@ -136,9 +130,7 @@ class InventoryNestedScopeTests(APITestCase):
         self.assertEqual(response.data, {"total": 0, "rows": []})
 
     def test_member_equipment_without_stock_or_transaction_right_has_no_details(self):
-        response = self.client.get(
-            f"/api/v1/inventory/locations/member-equipment/{self.member_a.pk}/"
-        )
+        response = self.client.get(f"/api/v1/inventory/locations/member-equipment/{self.member_a.pk}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["equipment"], [])
@@ -152,17 +144,21 @@ class InventoryNestedScopeTests(APITestCase):
                 Permission.objects.get(content_type__app_label="inventory", codename=codename)
             )
         transaction_a = Transaction.objects.create(
-            transaction_type="LOAN", item=self.item_a, source=self.central_location,
-            target=self.member_location, quantity=1
+            transaction_type="LOAN",
+            item=self.item_a,
+            source=self.central_location,
+            target=self.member_location,
+            quantity=1,
         )
         Transaction.objects.create(
-            transaction_type="LOAN", item=self.item_b, source=self.central_location,
-            target=self.member_location, quantity=2
+            transaction_type="LOAN",
+            item=self.item_b,
+            source=self.central_location,
+            target=self.member_location,
+            quantity=2,
         )
 
-        response = self.client.get(
-            f"/api/v1/inventory/locations/member-equipment/{self.member_a.pk}/"
-        )
+        response = self.client.get(f"/api/v1/inventory/locations/member-equipment/{self.member_a.pk}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(

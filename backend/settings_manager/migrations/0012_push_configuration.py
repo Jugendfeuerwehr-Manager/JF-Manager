@@ -5,23 +5,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('settings_manager', '0011_security_policy'),
+        ("settings_manager", "0011_security_policy"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PushConfiguration',
+            name="PushConfiguration",
             fields=[
-                ('id', models.PositiveSmallIntegerField(default=1, editable=False, primary_key=True, serialize=False)),
-                ('enabled', models.BooleanField(default=False)),
-                ('public_key', models.TextField(blank=True, default='')),
-                ('private_key', jf_manager_backend.encrypted_fields.StrictEncryptedCharField(blank=True, default='')),
-                ('subject', models.CharField(blank=True, default='', max_length=500)),
+                ("id", models.PositiveSmallIntegerField(default=1, editable=False, primary_key=True, serialize=False)),
+                ("enabled", models.BooleanField(default=False)),
+                ("public_key", models.TextField(blank=True, default="")),
+                ("private_key", jf_manager_backend.encrypted_fields.StrictEncryptedCharField(blank=True, default="")),
+                ("subject", models.CharField(blank=True, default="", max_length=500)),
             ],
             options={
-                'constraints': [models.CheckConstraint(condition=models.Q(('id', 1)), name='push_configuration_singleton')],
+                "constraints": [
+                    models.CheckConstraint(condition=models.Q(("id", 1)), name="push_configuration_singleton")
+                ],
             },
         ),
     ]

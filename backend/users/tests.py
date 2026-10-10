@@ -13,9 +13,7 @@ class OIDCRedirectURITests(TestCase):
     @patch("users.oidc_views._fetch_discovery_document")
     @patch("users.oidc_views._get_oidc_config")
     @patch("users.oidc_views.requests.post")
-    def test_https_forwarded_proto_is_used_for_login_and_token_exchange(
-        self, post, get_config, fetch_discovery
-    ):
+    def test_https_forwarded_proto_is_used_for_login_and_token_exchange(self, post, get_config, fetch_discovery):
         get_config.return_value = SimpleNamespace(
             enabled=True,
             issuer_url="https://idp.example.com",

@@ -55,7 +55,9 @@ class CategoryViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
         if allowed_ids is None:
             return Category.objects.annotate(item_count=Count("item"))
         visible = Q(item__department_id__in=allowed_ids) | Q(item__department__isnull=True)
-        return Category.objects.annotate(item_count=Count("item", filter=visible if allowed_ids else Q(pk__isnull=True)))
+        return Category.objects.annotate(
+            item_count=Count("item", filter=visible if allowed_ids else Q(pk__isnull=True))
+        )
 
     @action(detail=True, methods=["get"], url_path="items")
     def items(self, request, pk=None):
@@ -63,7 +65,11 @@ class CategoryViewSet(BasePermissionedViewSet, viewsets.ModelViewSet):
         items = Item.objects.filter(category=category).select_related("category")
         allowed_ids = visible_item_department_ids(request.user, "inventory.view_item")
         if allowed_ids is not None:
-            items = items.filter(Q(department_id__in=allowed_ids) | Q(department__isnull=True)) if allowed_ids else items.none()
+            items = (
+                items.filter(Q(department_id__in=allowed_ids) | Q(department__isnull=True))
+                if allowed_ids
+                else items.none()
+            )
         page = self.paginate_queryset(items)
         serializer = ItemSerializer(page or items, many=True, context={"request": request})
         if page is not None:
@@ -166,9 +172,7 @@ class ItemVariantViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, v
     @action(detail=True, methods=["get"], url_path="stock")
     def stock(self, request, pk=None):
         variant = self.get_object()
-        if not can_view_item_department(
-            request.user, variant.parent_item.department_id, "inventory.view_stock"
-        ):
+        if not can_view_item_department(request.user, variant.parent_item.department_id, "inventory.view_stock"):
             raise PermissionDenied("Kein Leserecht für den Variantenbestand.")
         qs = variant.stock_set.select_related("location").all()
         serializer = StockSerializer(qs, many=True)

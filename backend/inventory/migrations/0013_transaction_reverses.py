@@ -5,15 +5,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0012_item_is_standard_item'),
+        ("inventory", "0012_item_is_standard_item"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='transaction',
-            name='reverses',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='reversal', to='inventory.transaction', verbose_name='Korrigiert Buchung'),
+            model_name="transaction",
+            name="reverses",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="reversal",
+                to="inventory.transaction",
+                verbose_name="Korrigiert Buchung",
+            ),
         ),
     ]

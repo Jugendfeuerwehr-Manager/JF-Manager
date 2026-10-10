@@ -5,16 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0012_item_is_standard_item'),
-        ('orders', '0014_ensure_workflow_statuses'),
+        ("inventory", "0012_item_is_standard_item"),
+        ("orders", "0014_ensure_workflow_statuses"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='orderitem',
-            name='loan_transaction',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='delivered_order_item', to='inventory.transaction', verbose_name='Ausleihbuchung'),
+            model_name="orderitem",
+            name="loan_transaction",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="delivered_order_item",
+                to="inventory.transaction",
+                verbose_name="Ausleihbuchung",
+            ),
         ),
     ]

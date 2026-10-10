@@ -14,7 +14,9 @@ class ConfiguredSMTPBackend(EmailBackend):
         tls = preferences["email__email_use_tls"]
         ssl = preferences["email__email_use_ssl"]
         if tls and ssl:
-            raise ImproperlyConfigured("SMTP: STARTTLS und direkte TLS-Verbindung dürfen nicht gleichzeitig aktiv sein.")
+            raise ImproperlyConfigured(
+                "SMTP: STARTTLS und direkte TLS-Verbindung dürfen nicht gleichzeitig aktiv sein."
+            )
         if not host:
             raise ImproperlyConfigured("SMTP ist nicht eingerichtet; E-Mail-Versand gesperrt.")
         self.host = host

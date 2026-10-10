@@ -26,7 +26,9 @@ def validate_upload(upload, *, image_only=False):
             with warnings.catch_warnings():
                 warnings.simplefilter("error", Image.DecompressionBombWarning)
                 with Image.open(upload) as image:
-                    expected = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".gif": "GIF", ".webp": "WEBP"}[extension]
+                    expected = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".gif": "GIF", ".webp": "WEBP"}[
+                        extension
+                    ]
                     if image.format != expected or image.width * image.height > 25_000_000:
                         raise ValueError("Bildformat oder Bildabmessungen ungültig")
                     image.verify()
@@ -44,17 +46,34 @@ def validate_upload(upload, *, image_only=False):
                     raise ValueError("Office-Datei entpackt zu groß")
                 required = "word/document.xml" if extension == ".docx" else "xl/workbook.xml"
                 names = {entry.filename for entry in entries}
-                if required not in names or "[Content_Types].xml" not in names or any("vbaproject" in name.lower() for name in names):
+                if (
+                    required not in names
+                    or "[Content_Types].xml" not in names
+                    or any("vbaproject" in name.lower() for name in names)
+                ):
                     raise ValueError("Office-Format ungültig oder Makros enthalten")
-            return "application/vnd.openxmlformats-officedocument." + ("wordprocessingml.document" if extension == ".docx" else "spreadsheetml.sheet")
+            return "application/vnd.openxmlformats-officedocument." + (
+                "wordprocessingml.document" if extension == ".docx" else "spreadsheetml.sheet"
+            )
         if extension in {".txt", ".csv"}:
             text = upload.read().decode("utf-8-sig")
             if "\x00" in text:
                 raise ValueError("Binärinhalt in Textdatei")
             return "text/plain" if extension == ".txt" else "text/csv"
         raise ValueError("Dateiformat nicht erlaubt oder Inhalt passt nicht zur Endung")
-    except (ValueError, OSError, SyntaxError, zipfile.BadZipFile, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise ValidationError({"file": "Dateiformat nicht erlaubt oder Dateiinhalt ungültig. Erlaubt: Bilder, PDF, Word, Excel, UTF-8-Text/CSV."}) from exc
+    except (
+        ValueError,
+        OSError,
+        SyntaxError,
+        zipfile.BadZipFile,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ) as exc:
+        raise ValidationError(
+            {
+                "file": "Dateiformat nicht erlaubt oder Dateiinhalt ungültig. Erlaubt: Bilder, PDF, Word, Excel, UTF-8-Text/CSV."
+            }
+        ) from exc
     finally:
         upload.seek(0)
 
@@ -84,7 +103,9 @@ def validate_owner_capacity(owner, incoming, *, exclude_attachment=None, exclude
 
     type(owner).objects.select_for_update().get(pk=owner.pk)
     content_type = ContentType.objects.get_for_model(owner)
-    attachments = Attachment.objects.filter(content_type=content_type, object_id=owner.pk).exclude(pk=exclude_attachment)
+    attachments = Attachment.objects.filter(content_type=content_type, object_id=owner.pk).exclude(
+        pk=exclude_attachment
+    )
     media = TrainingMedia.objects.filter(content_type=content_type, object_id=owner.pk).exclude(pk=exclude_media)
     files = [row.file for row in attachments if row.file] + [row.file for row in media if row.file]
     if len(files) + 1 > MAX_OWNER_FILES or sum(file.size for file in files) + incoming.size > MAX_OWNER_BYTES:

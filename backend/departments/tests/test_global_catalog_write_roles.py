@@ -16,9 +16,7 @@ class GlobalCatalogWriteRoleTests(APITestCase):
         cls.staff = get_user_model().objects.create_user(username="catalog-staff", is_staff=True)
         group = Group.objects.create(name="Scoped catalog editor A")
         for codename in ("add_orderstatus", "add_orderableitem"):
-            group.permissions.add(
-                Permission.objects.get(content_type__app_label="orders", codename=codename)
-            )
+            group.permissions.add(Permission.objects.get(content_type__app_label="orders", codename=codename))
         UserDepartmentRole.objects.create(user=cls.staff, department=department).groups.add(group)
 
     def setUp(self):

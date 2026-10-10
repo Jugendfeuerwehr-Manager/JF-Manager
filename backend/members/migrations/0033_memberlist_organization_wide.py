@@ -5,25 +5,39 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('departments', '0004_roletemplate_and_more'),
-        ('members', '0032_exportaudit'),
+        ("departments", "0004_roletemplate_and_more"),
+        ("members", "0032_exportaudit"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='memberlist',
-            name='organization_wide',
-            field=models.BooleanField(default=False, help_text='Liste einer Organisation ohne Abteilungen; nur mit organisationsweitem Recht sichtbar.', verbose_name='Organisationsweit'),
+            model_name="memberlist",
+            name="organization_wide",
+            field=models.BooleanField(
+                default=False,
+                help_text="Liste einer Organisation ohne Abteilungen; nur mit organisationsweitem Recht sichtbar.",
+                verbose_name="Organisationsweit",
+            ),
         ),
         migrations.AlterField(
-            model_name='memberlist',
-            name='department',
-            field=models.ForeignKey(blank=True, help_text='Ohne Abteilung nur für organisationsweite Listen oder ungeklärte Altlisten.', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='member_lists', to='departments.department', verbose_name='Abteilung'),
+            model_name="memberlist",
+            name="department",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Ohne Abteilung nur für organisationsweite Listen oder ungeklärte Altlisten.",
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="member_lists",
+                to="departments.department",
+                verbose_name="Abteilung",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='memberlist',
-            constraint=models.CheckConstraint(condition=models.Q(('organization_wide', False), ('department__isnull', True), _connector='OR'), name='organization_wide_list_without_department'),
+            model_name="memberlist",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("organization_wide", False), ("department__isnull", True), _connector="OR"),
+                name="organization_wide_list_without_department",
+            ),
         ),
     ]

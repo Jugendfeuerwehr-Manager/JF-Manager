@@ -120,7 +120,9 @@ class InventoryTargetRelationTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(ItemVariant.objects.filter(parent_item=self.item_a, variant_attributes={"size": "own"}).exists())
+        self.assertTrue(
+            ItemVariant.objects.filter(parent_item=self.item_a, variant_attributes={"size": "own"}).exists()
+        )
 
     def test_location_can_link_writable_parent(self):
         parent_a = StorageLocation.objects.create(name="A shelf", department=self.department_a)
@@ -143,7 +145,9 @@ class InventoryTargetRelationTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(ItemVariant.objects.filter(parent_item=self.item_a, variant_attributes={"size": "single"}).exists())
+        self.assertTrue(
+            ItemVariant.objects.filter(parent_item=self.item_a, variant_attributes={"size": "single"}).exists()
+        )
 
     def test_global_manager_can_create_central_variant_and_location(self):
         self.client.force_authenticate(user=self.global_manager)

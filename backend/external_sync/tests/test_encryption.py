@@ -17,14 +17,20 @@ from settings_manager.models import LDAPConfig, OIDCConfig
 
 class EncryptionConfigTests(SimpleTestCase):
     def test_missing_or_invalid_primary_is_rejected(self):
-        for environment in ({}, {"FIELD_ENCRYPTION_KEY": "invalid"}, {"FIELD_ENCRYPTION_PREVIOUS_KEYS": Fernet.generate_key().decode()}):
+        for environment in (
+            {},
+            {"FIELD_ENCRYPTION_KEY": "invalid"},
+            {"FIELD_ENCRYPTION_PREVIOUS_KEYS": Fernet.generate_key().decode()},
+        ):
             with self.assertRaises(ImproperlyConfigured):
                 encryption_keys(environment)
 
     def test_explicit_rotation_ring(self):
         first, previous = Fernet.generate_key().decode(), Fernet.generate_key().decode()
-        self.assertEqual(encryption_keys({"FIELD_ENCRYPTION_KEY": first, "FIELD_ENCRYPTION_PREVIOUS_KEYS": previous}), [first, previous])
-
+        self.assertEqual(
+            encryption_keys({"FIELD_ENCRYPTION_KEY": first, "FIELD_ENCRYPTION_PREVIOUS_KEYS": previous}),
+            [first, previous],
+        )
 
     def test_cache_prefix_is_bound_to_the_primary_key(self):
         first, second = Fernet.generate_key().decode(), Fernet.generate_key().decode()
@@ -42,11 +48,16 @@ class StoredEncryptionTests(TestCase):
         return value
 
     def test_sync_roundtrip_ciphertext_and_wrong_key(self):
-        job = SyncJob.objects.create(name="Encryption test", provider="spond", credentials={"password": "synthetic-password"})
+        job = SyncJob.objects.create(
+            name="Encryption test", provider="spond", credentials={"password": "synthetic-password"}
+        )
         raw = self.raw(SyncJob, job.pk, "credentials")
         self.assertNotIn("synthetic-password", raw)
         self.assertEqual(SyncJob.objects.get(pk=job.pk).credentials, {"password": "synthetic-password"})
-        with override_settings(FIELD_ENCRYPTION_KEY=[Fernet.generate_key().decode()]), self.assertRaises(ImproperlyConfigured):
+        with (
+            override_settings(FIELD_ENCRYPTION_KEY=[Fernet.generate_key().decode()]),
+            self.assertRaises(ImproperlyConfigured),
+        ):
             SyncJob.objects.get(pk=job.pk)
 
     def test_rotation_all_fields_and_remove_old_key(self):
@@ -72,7 +83,9 @@ class StoredEncryptionTests(TestCase):
         ldap = LDAPConfig.objects.create(bind_password="synthetic")
         original = self.raw(SyncJob, job.pk, "credentials")
         with connection.cursor() as cursor:
-            cursor.execute('UPDATE settings_manager_ldapconfig SET bind_password = %s WHERE id = %s', ["invalid-token", ldap.pk])
+            cursor.execute(
+                "UPDATE settings_manager_ldapconfig SET bind_password = %s WHERE id = %s", ["invalid-token", ldap.pk]
+            )
         with self.assertRaises(CommandError):
             call_command("rotate_field_encryption", apply=True, stdout=StringIO())
         self.assertEqual(self.raw(SyncJob, job.pk, "credentials"), original)
@@ -80,12 +93,17 @@ class StoredEncryptionTests(TestCase):
             LDAPConfig.objects.get(pk=ldap.pk)
 
     def test_historical_plain_json_migration_and_atomic_failure(self):
-        apps = MigrationExecutor(connection).loader.project_state([("external_sync", "0002_syncbinding_department_object_type")]).apps
+        apps = (
+            MigrationExecutor(connection)
+            .loader.project_state([("external_sync", "0002_syncbinding_department_object_type")])
+            .apps
+        )
         OldJob = apps.get_model("external_sync", "SyncJob")
         old = OldJob.objects.create(name="Legacy", provider="spond", credentials={"password": "synthetic-legacy"})
         bad = OldJob.objects.create(name="Invalid", provider="spond", credentials="not-an-object")
         migrate = importlib.import_module("external_sync.migrations.0003_encrypt_credentials").encrypt_existing
         from types import SimpleNamespace
+
         with self.assertRaises(ValueError), transaction.atomic():
             migrate(apps, SimpleNamespace(connection=connection))
         self.assertIn("synthetic-legacy", self.raw(SyncJob, old.pk, "credentials"))

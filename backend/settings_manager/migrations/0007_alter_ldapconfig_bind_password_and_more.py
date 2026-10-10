@@ -5,20 +5,26 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('settings_manager', '0006_alter_oidcconfig_admin_group_and_more'),
+        ("settings_manager", "0006_alter_oidcconfig_admin_group_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='ldapconfig',
-            name='bind_password',
-            field=jf_manager_backend.encrypted_fields.StrictEncryptedCharField(blank=True, default='', verbose_name='Bind Passwort'),
+            model_name="ldapconfig",
+            name="bind_password",
+            field=jf_manager_backend.encrypted_fields.StrictEncryptedCharField(
+                blank=True, default="", verbose_name="Bind Passwort"
+            ),
         ),
         migrations.AlterField(
-            model_name='oidcconfig',
-            name='client_secret',
-            field=jf_manager_backend.encrypted_fields.StrictEncryptedCharField(blank=True, default='', help_text='Das Client-Secret aus der OIDC-Provider-Konfiguration. Wird verschlüsselt gespeichert.', verbose_name='Client Secret'),
+            model_name="oidcconfig",
+            name="client_secret",
+            field=jf_manager_backend.encrypted_fields.StrictEncryptedCharField(
+                blank=True,
+                default="",
+                help_text="Das Client-Secret aus der OIDC-Provider-Konfiguration. Wird verschlüsselt gespeichert.",
+                verbose_name="Client Secret",
+            ),
         ),
     ]

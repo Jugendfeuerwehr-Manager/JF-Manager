@@ -20,7 +20,9 @@ def decrypt_secret(value):
     try:
         return crypter().decrypt(value.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError, UnicodeError, AttributeError) as exc:
-        raise ImproperlyConfigured("Gespeicherte Zugangsdaten können nicht entschlüsselt werden; Schlüsselring prüfen.") from exc
+        raise ImproperlyConfigured(
+            "Gespeicherte Zugangsdaten können nicht entschlüsselt werden; Schlüsselring prüfen."
+        ) from exc
 
 
 class StrictEncryptedCharField(EncryptedCharField):

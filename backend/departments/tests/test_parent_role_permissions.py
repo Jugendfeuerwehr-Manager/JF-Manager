@@ -31,9 +31,7 @@ class ParentRolePermissionTests(APITestCase):
         cls.reader.user_permissions.add(Permission.objects.get(codename="can_access_all_departments"))
         read_group = AuthGroup.objects.create(name="Parent reader A")
         read_group.permissions.add(
-            *Permission.objects.filter(
-                content_type__app_label="members", codename__in=["view_parent", "view_member"]
-            )
+            *Permission.objects.filter(content_type__app_label="members", codename__in=["view_parent", "view_member"])
         )
         UserDepartmentRole.objects.create(user=cls.reader, department=cls.department_a).groups.add(read_group)
 
@@ -50,7 +48,9 @@ class ParentRolePermissionTests(APITestCase):
         member_read_group.permissions.add(
             Permission.objects.get(content_type__app_label="members", codename="view_member")
         )
-        UserDepartmentRole.objects.create(user=cls.member_only, department=cls.department_a).groups.add(member_read_group)
+        UserDepartmentRole.objects.create(user=cls.member_only, department=cls.department_a).groups.add(
+            member_read_group
+        )
 
     def test_org_scope_with_parent_role_only_in_a_sees_only_a_contacts(self):
         self.client.force_authenticate(user=self.reader)

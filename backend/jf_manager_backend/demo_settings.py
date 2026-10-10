@@ -1,4 +1,5 @@
 """Isolated local demonstration. Start through backend/demo.py only."""
+
 import os
 
 from .settings import *  # noqa: F403

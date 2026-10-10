@@ -29,9 +29,7 @@ class InventoryBatchTargetAtomicityTests(APITestCase):
 
         cls.user = get_user_model().objects.create_user(username="batch-target-writer")
         writer = AuthGroup.objects.create(name="Batch target writer A")
-        writer.permissions.add(
-            Permission.objects.get(content_type__app_label="inventory", codename="add_transaction")
-        )
+        writer.permissions.add(Permission.objects.get(content_type__app_label="inventory", codename="add_transaction"))
         UserDepartmentRole.objects.create(user=cls.user, department=cls.department_a).groups.add(writer)
         UserDepartmentRole.objects.create(user=cls.user, department=cls.department_b)
 

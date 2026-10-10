@@ -41,9 +41,7 @@ class AttachmentRoleScopeTests(APITestCase):
         self.assertEqual(Attachment.objects.count(), 1)
 
     def test_generic_attachment_change_needs_owner_department_edit_right(self):
-        response = self.client.patch(
-            f"/api/v1/attachments/{self.attachment_b.pk}/", {"name": "Changed"}, format="json"
-        )
+        response = self.client.patch(f"/api/v1/attachments/{self.attachment_b.pk}/", {"name": "Changed"}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.attachment_b.refresh_from_db()
@@ -57,9 +55,7 @@ class AttachmentRoleScopeTests(APITestCase):
 
     def test_permitted_department_can_upload_and_change_attachment(self):
         member_a = Member.objects.get(name="A")
-        upload = self.client.post(
-            f"/api/v1/members/{member_a.pk}/attachments/", {"name": "A document"}, format="json"
-        )
+        upload = self.client.post(f"/api/v1/members/{member_a.pk}/attachments/", {"name": "A document"}, format="json")
         self.assertEqual(upload.status_code, status.HTTP_201_CREATED)
 
         changed = self.client.patch(

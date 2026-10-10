@@ -54,7 +54,9 @@ class ExportAndQualificationAttachmentRoleTests(APITestCase):
         self.assertEqual([row[0] for row in list(sheet.values)[1:]], ["A"])
 
     def test_export_does_not_include_parents_without_parent_view_right(self):
-        self.user.user_permissions.add(Permission.objects.get(content_type__app_label="members", codename="view_member"))
+        self.user.user_permissions.add(
+            Permission.objects.get(content_type__app_label="members", codename="view_member")
+        )
         parent = Parent.objects.create(name="Parent", lastname="Example", email="private-parent@example.invalid")
         parent.children.add(self.member)
 

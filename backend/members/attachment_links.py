@@ -36,6 +36,5 @@ def attachment_preview(request, pk, token):
     return private_file_response(attachment.file, filename=attachment.name)
 
 
-
 def deny_direct_attachments(request):
     raise Http404

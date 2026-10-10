@@ -11,6 +11,7 @@ const { admin, toastAdd, confirmRequire } = vi.hoisted(() => ({
   toastAdd: vi.fn(),
   confirmRequire: vi.fn(),
 }))
+vi.mock('@/components/admin/organisms/UserDepartmentRoles.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/stores/admin', () => ({ useAdminStore: () => admin }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { is_superuser: true }, hasPerm: () => true }) }))
 vi.mock('@/stores/users', () => ({ useUsersStore: () => ({ currentUser: { id: 1 }, fetchCurrentUser: vi.fn() }) }))

@@ -4,20 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('training', '0008_training_station_resources'),
+        ("training", "0008_training_station_resources"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='trainingsession',
-            name='publish_justification',
-            field=models.TextField(blank=True, verbose_name='Begründung der Veröffentlichung'),
+            model_name="trainingsession",
+            name="publish_justification",
+            field=models.TextField(blank=True, verbose_name="Begründung der Veröffentlichung"),
         ),
         migrations.AddField(
-            model_name='trainingsession',
-            name='publish_warnings',
-            field=models.JSONField(blank=True, default=list, editable=False, verbose_name='Warnungen bei Veröffentlichung'),
+            model_name="trainingsession",
+            name="publish_warnings",
+            field=models.JSONField(
+                blank=True, default=list, editable=False, verbose_name="Warnungen bei Veröffentlichung"
+            ),
         ),
     ]

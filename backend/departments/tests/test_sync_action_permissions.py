@@ -28,7 +28,9 @@ class SyncActionPermissionTests(APITestCase):
         UserDepartmentRole.objects.create(user=cls.creator, department=cls.department).groups.add(group)
         cls.runner = get_user_model().objects.create_user(username="sync-runner", password="test-only-password")
         run_group = Group.objects.create(name="Sync job runner A")
-        run_group.permissions.add(Permission.objects.get(content_type__app_label="external_sync", codename="run_syncjob"))
+        run_group.permissions.add(
+            Permission.objects.get(content_type__app_label="external_sync", codename="run_syncjob")
+        )
         UserDepartmentRole.objects.create(user=cls.runner, department=cls.department).groups.add(run_group)
         UserDepartmentRole.objects.create(user=cls.runner, department=department_b)
 

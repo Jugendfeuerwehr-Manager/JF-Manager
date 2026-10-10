@@ -193,9 +193,9 @@ class LDAPLoginTests(APITestCase):
                 "/api/v1/auth/session/login/", {"username": "ldap-user", "password": "directory-secret"}, format="json"
             )
             self.assertEqual(
-            response.data,
-            {"authenticated": False, "mfa_required": True, "mfa_methods": {"totp": True, "passkey": False}},
-        )
+                response.data,
+                {"authenticated": False, "mfa_required": True, "mfa_methods": {"totp": True, "passkey": False}},
+            )
             code = mfa.totp_at(SECRET, mfa.current_step())
             self.assertTrue(
                 client.post("/api/v1/auth/session/mfa/", {"code": code}, format="json").data["authenticated"]

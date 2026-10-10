@@ -152,8 +152,7 @@ class DepartmentRoleModelPermissions(BasePermission):
                 return True
             return any(
                 all(
-                    user.has_perm(permission)
-                    or permission in self._department_role_permissions(request, department_id)
+                    user.has_perm(permission) or permission in self._department_role_permissions(request, department_id)
                     for permission in required_perms
                 )
                 for department_id in object_department_ids

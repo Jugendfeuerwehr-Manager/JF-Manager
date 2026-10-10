@@ -133,6 +133,11 @@
         />
       </div>
 
+      <UserDepartmentRoles
+        v-if="selectedUserDetail?.is_active && selectedUserId !== null && !showNew && !detailLoading && (authStore.hasPerm('departments.can_assign_roles') || authStore.hasPerm('departments.can_delegate_roles'))"
+        :user-id="selectedUserId"
+      />
+
       <!-- Second factor (SEC-11.7) -->
       <section
         v-if="authStore.user?.is_superuser && selectedUserId !== null && !showNew && !detailLoading && selectedUserDetail?.mfa"
@@ -211,6 +216,7 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Avatar from 'primevue/avatar'
 import Tag from 'primevue/tag'
+import UserDepartmentRoles from '@/components/admin/organisms/UserDepartmentRoles.vue'
 import UserDetailForm from '@/components/admin/molecules/UserDetailForm.vue'
 import type { AdminUserDetail, AdminUser } from '@/types/admin'
 import { getApiErrorMessage } from '@/utils/apiError'
