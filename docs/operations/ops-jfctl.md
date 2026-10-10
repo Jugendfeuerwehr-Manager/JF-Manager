@@ -8,7 +8,7 @@ Ohne Argument öffnet `sudo jfctl` ein Menü. Jeder Menüpunkt ruft denselben Un
 
 | Befehl | Wirkung |
 | --- | --- |
-| `jfctl install [--answers DATEI] [--expert]` | Assistent für Neuinstallation oder Wiederherstellung auf einem neuen Host ([ops-install.md](ops-install.md)) |
+| `jfctl install [--answers DATEI] [--expert] [--ignore-memory-check]` | Assistent für Neuinstallation oder Wiederherstellung auf einem neuen Host ([ops-install.md](ops-install.md)) |
 | `jfctl status` | Instanz, Modus, Version, Adresse, letzte Sicherung, Update- und Workerzustand, Dienststatus |
 | `jfctl doctor` | Prüft Rechte und Inhalt der Konfiguration, Plattform, Speicher, Erreichbarkeit, `check --deploy`, offene Migrationen, Alter der letzten Sicherung und Timer |
 | `jfctl start \| stop \| restart` | Anwendung starten/stoppen; `start` wartet auf Backend und Nginx |

@@ -128,8 +128,23 @@ _port_in_use() {
     awk -v p=":$hex" '$4 == "0A" && substr($2, length($2) - 4) == p {found = 1} END {exit !found}' "${files[@]}"
 }
 
+# Keep the minimum enabled unless the operator explicitly accepts a smaller host.
+_install_check_memory() { # bytes ignore-memory-check
+    local mem=$1 ignore_memory_check=${2:-0}
+    if [ "$mem" -lt $((1900 * 1024 * 1024)) ]; then
+        if [ "$ignore_memory_check" = 1 ]; then
+            warn "RAM-Mindestgrenze mit --ignore-memory-check übergangen (vorhanden $(human_bytes "$mem")). Betrieb mit wenig RAM kann fehlschlagen."
+        else
+            err "Mindestens 2 GB RAM nötig (vorhanden $(human_bytes "$mem")); gezieltes Übergehen mit --ignore-memory-check möglich"
+            return 1
+        fi
+    else
+        ok "Arbeitsspeicher: $(human_bytes "$mem")"
+    fi
+}
+
 install_preflight() {
-    local failed=0 free mem port
+    local failed=0 free mem port ignore_memory_check=${1:-0}
     step "Vorabprüfung (es wird noch nichts verändert)"
     local tool missing=()
     for tool in jq curl openssl sha256sum flock tar gzip awk; do have "$tool" || missing+=("$tool"); done
@@ -148,8 +163,7 @@ install_preflight() {
         err "Zu wenig Speicher unter $JF_DATA_DIR: $(human_bytes "$free") frei, mindestens 5 GB nötig"; failed=1
     else ok "Freier Speicher: $(human_bytes "${free:-0}")"; fi
     mem=$(awk '/MemTotal/ {print $2 * 1024}' /proc/meminfo 2>/dev/null || echo 0)
-    if [ "$mem" -lt $((1900 * 1024 * 1024)) ]; then err "Mindestens 2 GB RAM nötig (vorhanden $(human_bytes "$mem"))"; failed=1
-    else ok "Arbeitsspeicher: $(human_bytes "$mem")"; fi
+    _install_check_memory "$mem" "$ignore_memory_check" || failed=1
     if ! _step_done start; then
         local ports=()
         if [ "$JF_TLS" = caddy ]; then ports=(80 443 8080); else ports=("${JF_HTTP_BIND##*:}"); fi
@@ -310,11 +324,12 @@ _inst_verify() {
 
 cmd_install() {
     need_root
-    local answers="" expert=0 resume=0
+    local answers="" expert=0 resume=0 ignore_memory_check=0
     while [ $# -gt 0 ]; do
         case $1 in
             --answers) answers=$2; shift 2 ;;
             --expert) expert=1; shift ;;
+            --ignore-memory-check) ignore_memory_check=1; shift ;;
             --mode) JF_MODE=$2; shift 2 ;;
             --version) JF_VERSION=$2; shift 2 ;;
             --release-dir) JF_RELEASE_DIR=$2; shift 2 ;;
@@ -346,7 +361,7 @@ cmd_install() {
         install_collect "$expert"
     fi
     load_adapter
-    install_preflight || die "$EX_PRECHECK" "Vorabprüfung fehlgeschlagen – nichts wurde verändert."
+    install_preflight "$ignore_memory_check" || die "$EX_PRECHECK" "Vorabprüfung fehlgeschlagen – nichts wurde verändert."
     if [ "$resume" = 0 ]; then
         install_summary
         confirm_yes "Mit diesen Angaben installieren?" || die "$EX_ABORTED" "Abgebrochen – nichts wurde verändert."

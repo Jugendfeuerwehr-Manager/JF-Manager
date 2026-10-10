@@ -35,6 +35,14 @@ Der Assistent fragt zuerst alle Angaben ab und ändert noch nichts:
 
 Mit `--expert` zusätzlich: Instanzname, Datenverzeichnis, Backup-Zeitplan und -Aufbewahrung, Prüfung des Herkunftsnachweises.
 
+Bei Hosts mit weniger nutzbarem RAM lässt sich ausschließlich die RAM-Mindestgrenze ausdrücklich übergehen:
+
+```sh
+sudo jfctl install --ignore-memory-check
+```
+
+Der Installer protokolliert eine Warnung; Speicherplatz, Ports, Konfiguration und Releaseprüfung bleiben verpflichtend. Das Flag garantiert keinen stabilen Betrieb mit wenig RAM. Bei Wiederaufnahme einer Installation das Flag erneut angeben. Für Altbestände weiterhin Aktion `import` verwenden, damit Datenbank, Uploads und Schlüssel übernommen werden.
+
 **Vorabprüfung** vor jeder Änderung: Angaben, Betriebssystem und Architektur (nativ: Debian 13), systemd, Docker Compose V2 (Compose), freier Speicher, Arbeitsspeicher, belegte Ports, DNS (Warnung), Passwortlängen, bei `restore` Lesbarkeit des Repositorys mit dem Passwort, Release laden und Prüfsummen prüfen. Erst danach folgen Zusammenfassung und Rückfrage.
 
 **Schritte** (`/etc/jf-manager/install.state`): Pakete, Konfiguration (Geheimnisse werden erzeugt), Release, Laufzeit (Images bzw. Python-Umgebung, Web-Push-Schlüssel), Datenbank, Migration und Rollenvorlagen (bzw. Wiederherstellung), Start, Backup-Repository, Wartungs-Timer, Administrationskonto, erste Sicherung, Abschlussprüfung. Ein abgebrochener Lauf setzt beim nächsten `jfctl install` am ersten offenen Schritt fort; erzeugte Geheimnisse bleiben erhalten.

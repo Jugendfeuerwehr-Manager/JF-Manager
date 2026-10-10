@@ -35,7 +35,8 @@ Aufruf: jfctl [Optionen] <Befehl> [Argumente]
 Ohne Befehl öffnet sich ein Menü.
 
 Befehle:
-  install [--answers DATEI] [--expert]   Installation oder Wiederherstellung (Assistent)
+  install [--answers DATEI] [--expert] [--ignore-memory-check]
+                                         Installation oder Wiederherstellung (Assistent)
   status                                 Version, Dienste, letzte Sicherung
   doctor                                 Prüft Installation, Dienste, Speicher, Schlüssel
   start | stop | restart                 Anwendung starten/stoppen
