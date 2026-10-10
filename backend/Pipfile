@@ -38,6 +38,7 @@ mozilla-django-oidc = "*"
 spond = "==1.2.1"
 pywebpush = "==2.3.0"
 nh3 = "==0.3.7"
+drf-spectacular-sidecar = "*"
 
 [requires]
 python_version = "3.12"

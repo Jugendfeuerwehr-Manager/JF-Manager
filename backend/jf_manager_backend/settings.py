@@ -97,6 +97,7 @@ INSTALLED_APPS = [
     "mptt",
     "rest_framework",
     "drf_spectacular",
+    "drf_spectacular_sidecar",
     "django_filters",
     "import_export",
     "django_cleanup.apps.CleanupConfig",

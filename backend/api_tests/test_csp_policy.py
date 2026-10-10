@@ -62,6 +62,18 @@ class CspHeaderTests(TestCase):
         self.assertNotIn("fonts.googleapis.com", redoc)
         self.assertNotRegex(redoc, r"<script>")
 
+    def test_api_docs_load_their_assets_from_the_own_origin(self):
+        """drf-spectacular-sidecar ships Swagger UI and Redoc, so the enforced CSP lets the docs load."""
+        from django.contrib.staticfiles import finders
+
+        page = self.client.get("/api/docs/").content.decode()
+        self.assertIn("drf_spectacular_sidecar/swagger-ui-dist/swagger-ui-bundle.js", page)
+        self.assertNotIn("cdn.jsdelivr.net", page)
+        self.assertTrue(finders.find("drf_spectacular_sidecar/swagger-ui-dist/swagger-ui-bundle.js"))
+        redoc = self.client.get("/api/redoc/").content.decode()
+        self.assertIn("drf_spectacular_sidecar/redoc/bundles/redoc.standalone.js", redoc)
+        self.assertTrue(finders.find("drf_spectacular_sidecar/redoc/bundles/redoc.standalone.js"))
+
 
 class NginxPolicyTests(SimpleTestCase):
     """The SPA is served by nginx; its policy must match the Django policy."""
