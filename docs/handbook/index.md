@@ -15,6 +15,6 @@ Alle Produktabbildungen im Handbuch stammen aus einer isolierten lokalen Demo mi
 
 ## Umfang und Entwicklungsstand
 
-Beschrieben sind die vorhandenen Verwaltungsfunktionen einschließlich Rollen, Mehrfaktor-Anmeldung, Übungsdurchführung und Anwesenheitsauswertung. Eltern-/Mitgliederportal, Teilnahmevoraussetzungen, Warteliste, Zuteilung und neuer Benachrichtigungseingang befinden sich noch in Entwicklung. Ein Elternkontakt oder Mitgliedsdatensatz allein erteilt keinen Zugang. Diese Erweiterungen werden nach ihrer Abnahme ergänzt.
+Beschrieben sind die vorhandenen Verwaltungsfunktionen einschließlich Rollen, Mehrfaktor-Anmeldung, Übungsdurchführung und Anwesenheitsauswertung. Dazu kommen das Portal für Eltern und Mitglieder, Teilnahmevoraussetzungen, Positionen, Warteliste, Zuteilung und der Eingang für Aufgaben und Hinweise. Ein Elternkontakt oder Mitgliedsdatensatz allein erteilt keinen Zugang; Zugänge entstehen erst über eine Einladung.
 
 Die Dokumentation ist als statische Website und als Markdown lesbar. [Handbuch bauen, prüfen und ausliefern](publishing.md) erklärt den ZIP-Export und GitHub Pages. Über die Suche findest du Begriffe; auf jeder Seite führt das Inhaltsverzeichnis zu den einzelnen Arbeitsschritten. Die Druckfunktion des Browsers druckt den geöffneten Artikel.

@@ -18,7 +18,7 @@ Wähle im Anwesenheitsbereich **Teilnehmende**. Suche nach einem Namen oder akti
 | --- | --- |
 | **Anwesend** | Anwesend |
 | **Entschuldigt** | Entschuldigt |
-| **Fehlt** | Fehlend |
+| **Fehlt** | Fehlt |
 | Keine Auswahl | Noch nicht erfasst |
 
 Ein Antippen speichert die Auswahl sofort. Tippe denselben Status erneut an, um ihn zurückzusetzen. Die Zähler zeigen anwesende, entschuldigte, fehlende und noch offene Personen. **Nicht erfasst** wird nicht automatisch als **fehlend** gewertet.

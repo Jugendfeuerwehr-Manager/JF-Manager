@@ -33,6 +33,7 @@ nav:
       - Mitglieder und Listen: handbook/operators/members.md
       - Dienstbuch und Anwesenheit: handbook/operators/services.md
       - Übungsplanung: handbook/operators/training.md
+      - Teilnahme, Positionen und Zuteilung: handbook/operators/participation.md
       - Inventar und Bestellungen: handbook/operators/inventory.md
       - E-Mail: handbook/operators/communication.md
       - Fehlerhilfe: handbook/operators/help.md
@@ -41,6 +42,9 @@ nav:
       - Rollen und Delegation: handbook/administrators/roles.md
       - Einstellungen: handbook/administrators/settings.md
       - Integrationen: handbook/administrators/integrations.md
+      - Portalzugänge und verknüpfte Konten: handbook/administrators/portal.md
+  - Eltern und Mitglieder:
+      - Portal: handbook/portal.md
   - Server & Operations:
       - Einstieg: handbook/server/index.md
       - Regelbetrieb: handbook/server/routine.md

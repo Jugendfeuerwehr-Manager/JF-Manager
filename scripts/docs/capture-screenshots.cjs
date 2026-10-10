@@ -16,12 +16,19 @@ if (env.DJANGO_SETTINGS_MODULE !== 'jf_manager_backend.demo_settings' ||
 const base = process.env.JF_SCREENSHOT_URL || 'http://127.0.0.1:5174';
 if (!['localhost', '127.0.0.1'].includes(new URL(base).hostname)) throw new Error('Local demo only.');
 const out = path.resolve('docs/handbook/images');
+// The dev server adds a Vue devtools button; it does not belong in handbook images.
+const HIDE_DEVTOOLS = `addEventListener('DOMContentLoaded', () => {
+  const style = document.createElement('style');
+  style.textContent = '[id*="vue-devtools"], [class*="vue-devtools"] { display: none !important; }';
+  document.head.append(style);
+});`;
 const login = JSON.parse(fs.readFileSync(path.join(demoDir, 'login.json'), 'utf8'));
 (async () => {
   const browser = await chromium.launch({headless: true,
     ...(process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {})});
   try {
     const page = await browser.newPage({viewport: {width: 1440, height: 1000}, deviceScaleFactor: 1});
+    await page.addInitScript(HIDE_DEVTOOLS);
     const capture = async (name, route, text) => {
       await page.goto(base + route);
       await page.getByText(text, {exact: false}).first().waitFor().catch(async error => {
@@ -83,11 +90,11 @@ const login = JSON.parse(fs.readFileSync(path.join(demoDir, 'login.json'), 'utf8
     await page.waitForTimeout(300);
     await page.screenshot({path:path.join(out,'mobile.png')});
     fs.writeFileSync(path.join(out, 'provenance.json'), JSON.stringify({
-      captured_on: '2026-10-08', source: 'backend/demo.py + seed_demo (isolated SQLite, fictitious data)',
+      captured_on: new Date().toISOString().slice(0, 10), source: 'backend/demo.py + seed_demo (isolated SQLite, fictitious data)',
       source_commit: execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim(),
       viewports: {desktop: [1440,1000], mobile: [390,844]},
-      accounts: ['admin (synthetic demo superuser)'],
-      scope: 'Existing staff UI; portal changes in progress are not documented.'
+      accounts: ['admin (synthetic demo superuser)', 'eltern@demo.example.invalid (synthetic parent portal account, capture-portal.cjs)'],
+      scope: 'Staff UI, portal, participation and assignment; animated GIFs from capture-portal.cjs.'
     }, null, 2) + '\n');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error.message); process.exitCode = 1;});

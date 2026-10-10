@@ -47,3 +47,11 @@ Das **Handout** (Drucken oder PDF) enthält Version und Stand, den Ablauf, je St
 ### Bibliothek
 
 In der Bibliothek pflegst du wiederverwendbare Inhalte mit Kategorien, Tags und einer Standarddauer. Ein Bibliotheksbaustein wird beim Einfügen in die Übung kopiert; spätere Änderungen in der Bibliothek verändern geplante Übungen nicht.
+
+Im Planer öffnest du die Bibliothek mit **Bibliothek** als Seitenleiste. Ziehe einen Baustein in die Bahn einer Gruppe und an die gewünschte Uhrzeit, oder tippe ihn an, um ihn einzufügen. Die Breite der Leiste lässt sich am Rand ziehen (oder per Pfeiltasten ändern) und wird gemerkt; auf großen Bildschirmen zeigt sie Beschreibung, Tags und Nutzung in zwei Spalten.
+
+![Ein Bibliotheksbaustein wird in eine Gruppenbahn gezogen](../images/planner-drag.gif)
+
+*Animation: Baustein aus der Bibliothek in den Plan ziehen. Danach steht „Ungespeicherter Planentwurf“, bis du speicherst.*
+
+Die Teilnahme an einer Übung (Anmeldung, Positionen, Zuteilung) beschreibt [Teilnahme, Positionen und Zuteilung](participation.md).
