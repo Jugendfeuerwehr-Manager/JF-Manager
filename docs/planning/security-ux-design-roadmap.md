@@ -41,7 +41,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | --- | --- | --- | --- |
 | UX-10 Rest | Bau (klein) | Anruf-Knöpfe im Mitglied-Detail auf `ContactLink`-Normalisierung (`tel:` ohne Leerzeichen); Ansage „Portal , 1 offener Antrag“ (Leerzeichen durch `inline-flex`); Glocke markiert erst beim Anklicken als gelesen, Journal UX-10.2 nennt „beim Öffnen“. | — |
 | PART-04 | Abnahme | Positionen, Warteliste, Zuteilungsboard, Besetzungsvorlagen umgesetzt (PART-04.1–04.6); Browser-/Nutzerabnahme Board (Maus/Tastatur) und Portal 390/1440 px. | — |
-| PORTAL-04 | Bau | Verwaltendenkonto 1:1 an Mitglied: Bestätigung beim Login, „Meine Dienste/Daten“, Eigenänderungsprotokoll, Vier-Augen-Sperre für eigene Qualifikationen, Doppelungen zusammenführen (PORTAL-04.0–04.5). | Q4 entschieden 09.10.2026: auch Elterndatensatz („Meine Kinder“). |
+| PORTAL-04 | Abnahme | Verwaltendenkonto als Mitglied/Elternteil umgesetzt (PORTAL-04.1–04.5); Browser-/Nutzerabnahme Bestätigungsschritt (MFA, Passkey, SSO), „Meine …“-Bereiche, Vier-Augen-Sperre. | — |
 | PORTAL-01, NOTIF-01 | Abnahme | Echte Zustellung über SMTP und Web-Push (bisher Datei-Mailversand). | Produktivnahe Umgebung |
 | DOC-01 (Portal) | Bau | Handbuch um Portal, Teilnahme, Eingang und Anträge ergänzen, mehr aktuelle Screenshots und bewegte Abläufe für Drag-and-drop (Planer, Zuteilungsboard). | Fachabnahme Portal, PART-04 |
 
@@ -676,7 +676,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | PART-03 | abgenommen | Claude (Portal-Sitzung, Subagent) | PART-03.6: PostgreSQL 17, Browser Konfigurator mit Vorschau; Hinweis „erfüllt durch …“ mit PART-03.4b nachgeliefert. |
 | PART-04 | umgesetzt, Browserabnahme offen | Claude (Subagent, Übernahme Planungssitzung) | PART-04.6: CI-Satz SQLite und PostgreSQL 17 (Konkurrenz) bestanden; Browser/Nutzerabnahme offen. |
 | NOTIF-01 | abgenommen | Claude (Portal-Sitzung) | NOTIF-01.6: PostgreSQL 17, echter Mailweg mit Quick Action im Browser; offen: echter SMTP-/Push-Versand als Nutzerabnahme. |
-| PORTAL-04 | geplant | — | Verwaltendenkonto 1:1 an Mitglied mit Login-Bestätigung, Eigenänderungsprotokoll, Vier-Augen für eigene Qualifikationen. |
+| PORTAL-04 | umgesetzt, Browserabnahme offen | Claude (Subagent, Übernahme Planungssitzung) | PORTAL-04.5: CI-Satz SQLite und PostgreSQL 17 bestanden; Browser/Nutzerabnahme offen. |
 
 ### OPS-06: Auswählbare Abteilungsverschiebung in jfctl
 
@@ -1770,6 +1770,19 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 - **Offene Fehler / Risiken:** Board und Portalauswahl nur durch Komponententests belegt. Neue Mails (`assign_published`, „Platz frei“, „Mindestbesetzung gefährdet“) nur über Datei-/Testversand geprüft.
 - **Nächster konkreter Schritt:** Browser-/Nutzerabnahme mit Demodaten („Brandsicherheitswache“): Zuteilung per Maus und Tastatur, Warteliste und Nachrücken im Portal; danach DOC-01 um Positionen/Zuteilung ergänzen.
 
+### PORTAL-04: Verwaltendenkonto als Mitglied und Elternteil
+
+- **Status:** umgesetzt (PORTAL-04.1–04.4); Paketabnahme PORTAL-04.5 automatisiert bestanden, Browser- und Nutzerabnahme offen.
+- **Verantwortlicher Agent:** Claude (Subagent im Worktree `wt/portal-04`, Übernahme und Abnahme durch die Planungssitzung).
+- **Spezifikation:** `docs/planning/portal-participation-concept.md` (Verwaltende als Mitglied, Q4 entschieden 09.10.2026: auch Elterndatensatz, „Meine Kinder“).
+- **Abhängigkeiten:** PORTAL-01 (`AccountLink`, globaler Portalausschluss bleibt unverändert), PORTAL-03 (Änderungsprotokoll), PART-01/02 (Teilnahme, Dienstbuch), SEC-07/11/12 (Login mit MFA, Passkey, SSO), Qualifikationen.
+- **Abnahme:** 1:1-Verknüpfung mit Mitglied und/oder Elternteil, ausstehend bis zur Bestätigung, Konflikte (Doppelbindung, Portalkonto, offene Einladung) abgelehnt; Bestätigungsschritt nach jedem Loginweg; „Meine Dienste/Daten/Kinder“ im Verwaltungslayout; Eigenänderungen protokolliert; eigene Qualifikationen/Sonderaufgaben (auch der Kinder) mit 403 `own_record` gesperrt; Doppelungen sichtbar und manuell zusammenführbar; Dienstbuch zählt eine verknüpfte Person je Dienst einmal.
+- **Teilschritte mit stabilen IDs:** `PORTAL-04.1` Verknüpfung und Verwaltung; `PORTAL-04.2` Bestätigung nach Login; `PORTAL-04.3` eigene Bereiche, Protokoll, Vier-Augen-Sperre; `PORTAL-04.4` Doppelungen und Dienstbuch; `PORTAL-04.5` Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** PORTAL-04.5 (dieser Commit).
+- **Ausgeführte Prüfungen mit Ergebnis:** Auf integriertem Stand bestanden: Ruff check/format, `makemigrations --check`, CI-Modulsatz SQLite 1441 Tests (13 übersprungen, `REDIS_URL=none`); PostgreSQL 17 `portal participation servicebook.tests qualifications members users departments.tests` 810/810; Frontend Typecheck, ESLint, 136 Dateien/661 Tests. Nicht ausgeführt: Browserprüfung des Bestätigungsschritts mit Passwort+MFA, Passkey und SSO sowie „Meine Dienste/Daten/Kinder“ bei 390/1440 px; Prüfberichte des Subagenten liegen nicht vor (Abbruch durch API-Limit).
+- **Offene Fehler / Risiken:** Login-Zwischenschritt nur durch Tests belegt; Routen-Audit des Portalausschlusses besteht weiter (Teil der Suite).
+- **Nächster konkreter Schritt:** Browser-/Nutzerabnahme mit Demokonto `leitung.mitte` (ausstehende Verknüpfung bestätigen, Vier-Augen-Sperre, Doppelung zusammenführen); DOC-01 ergänzen.
+
 ## 7. Fortlaufendes Arbeitsjournal
 
 Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreicher darstellen; Korrekturen als neuen Eintrag dokumentieren. Bei jeder Aktualisierung auch die Wiederaufnahmeübersicht und den betreffenden Paketstatus prüfen.
@@ -2404,3 +2417,4 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | PORTAL-04.2 | Sitzungsstatus meldet ausstehende Verknüpfung und verknüpfte Personen nach Passwort+MFA, Passkey oder SSO; Router hält am Bestätigungsschritt (Name, Geburtsjahr, Abteilung, Gruppe, Kinder) bis Bestätigen, Ablehnen oder Zurückstellen für die Sitzung. | Prüfungen im Subagent-Worktree nicht berichtet (Abbruch durch API-Limit); Prüfung auf integriertem Stand in PORTAL-04.5. | Dieser Commit: `feat(PORTAL-04.2): confirm or reject a pending account link after login` | PORTAL-04.3 |
 | 10.10.2026 | PORTAL-04.3 | „Meine Dienste“, „Meine Daten“, „Meine Kinder“ im Verwaltungslayout (Navigation, Dashboard, mobiles Dienstbuch) über `/api/v1/my/` mit den Teilnahmeregeln des Portals; Änderungen an eigenen Datensätzen als Eigenänderung protokolliert; eigene Qualifikationen/Sonderaufgaben (auch eigener Kinder) mit 403 `own_record` gesperrt (Vier-Augen), auch in der Oberfläche. | Prüfungen im Subagent-Worktree nicht berichtet (Abbruch durch API-Limit); Prüfung auf integriertem Stand in PORTAL-04.5. | Dieser Commit: `feat(PORTAL-04.3): own services, data and children for linked staff accounts` | PORTAL-04.4 |
 | 10.10.2026 | PORTAL-04.4 | Qualifikationsdoppelungen (Konto und Mitglied) anzeigen und manuell zusammenführen (Nachweis bleibt am Mitglied, nie automatisch, nie durch die Person selbst); Dienstbuch: verknüpfte Person je Dienst entweder Teilnehmende oder Betreuende (409 `counted_as_other`, Verschieben auf Wunsch), Auswertung zählt Altdoppelungen einmal; Demodaten: `leitung.mitte` mit ausstehender Mitglieds-/Elternverknüpfung und doppeltem Erste-Hilfe-Kurs. | Prüfungen im Subagent-Worktree nicht berichtet (Abbruch durch API-Limit); Prüfung auf integriertem Stand in PORTAL-04.5. | Dieser Commit: `feat(PORTAL-04.4): merge duplicate qualifications and count a linked person once` | PORTAL-04.5 |
+| 10.10.2026 | PORTAL-04.5 | Paketabnahme auf integriertem Stand durch die Planungssitzung (Subagent zuvor durch API-Limit abgebrochen). Detailblock PORTAL-04 angelegt, Status und offene Punkte aktualisiert. | Bestanden: Ruff check/format, `makemigrations --check`, CI-Modulsatz SQLite 1441 Tests (13 übersprungen, `REDIS_URL=none`); PostgreSQL 17 810/810 (portal, participation, servicebook, qualifications, members, users, departments); Frontend Typecheck, ESLint, 661/661. Nicht ausgeführt: Browser (Bestätigungsschritt, „Meine …“-Bereiche). | Dieser Commit: `test(PORTAL-04.5): accept staff accounts linked to members and parents` | Welle 2 |
