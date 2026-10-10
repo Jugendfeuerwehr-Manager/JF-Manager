@@ -13,7 +13,7 @@ Unter **Inventar** findest du Übersicht, Ausgabe, Ausgegeben, Bestand, Artikel,
 
 Statt zu scannen, kannst du im Ausgabedialog einen **Code** eingeben (Größe, Nummer, Barcode oder Inventarnummer); der passende Artikel und die Größe werden übernommen. Je Zeile siehst du, wie viel verfügbar, bereits ausgegeben und nachbestellt ist.
 
-Bei einer Rückgabe öffne **Artikel zurückgeben**: Wähle das Mitglied, trage je Artikel die zurückgegebene Menge ein (auch Teilmengen, **Alles** übernimmt die ganze Menge) und den Lagerort. Alle Positionen werden in einer Buchung zurückgenommen; ist zu viel angegeben, wird nichts gebucht und der Grund genannt. Bestandsbewegungen wie Eingang, Ausgabe, Umlagerung und Aussonderung werden als Buchungen dokumentiert. Eine Aussonderung benötigt einen Grund und entsprechende Rechte.
+Bei einer Rückgabe öffne **Rücknahme**: Wähle das Mitglied, trage je Artikel die zurückgegebene Menge ein (auch Teilmengen, **Alles** übernimmt die ganze Menge) und den Lagerort. Alle Positionen werden in einer Buchung zurückgenommen; ist zu viel angegeben, wird nichts gebucht und der Grund genannt. Bestandsbewegungen wie Eingang, Ausgabe, Umlagerung und Aussonderung werden als Buchungen dokumentiert. Eine Aussonderung benötigt einen Grund und entsprechende Rechte.
 
 **Artikel** beschreiben eure Ausstattung, **Kategorien** strukturieren sie und **Lagerorte** geben an, wo sie liegt. Prüfe den Tab Verlauf, wenn eine Bestandsänderung nachvollzogen werden soll.
 
