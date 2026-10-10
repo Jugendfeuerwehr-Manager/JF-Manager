@@ -42,6 +42,8 @@ export const servicesApi = {
       person_id: number
       state: AttendanceState | null
       expected_state: AttendanceState | null
+      /** PORTAL-04.4: move a linked person's entry from the other list. */
+      replace_linked?: boolean
     },
   ) {
     return apiClient.patch<{ state: AttendanceState | null }>(

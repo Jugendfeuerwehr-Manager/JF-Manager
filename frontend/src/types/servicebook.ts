@@ -297,6 +297,9 @@ export interface AttendanceBoardPerson {
   id: number
   full_name: string
   state: AttendanceState | null
+  /** Same person as a staff account (member rows) or member record (staff rows), PORTAL-04.4. */
+  linked_staff_id?: number | null
+  linked_member_id?: number | null
 }
 
 export interface AttendanceBoard {

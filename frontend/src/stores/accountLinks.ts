@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { accountLinksApi } from '@/api/accountLinks'
-import type { AccountCandidate, AccountLink, AccountLinkRecordKind, AccountLinkResult } from '@/types/accountLinks'
+import type { AccountCandidate, AccountLink, AccountLinkRecordKind, AccountLinkResult, QualificationDuplicate } from '@/types/accountLinks'
 import { classifyApiError, getApiErrorMessage, type ApiErrorKind } from '@/utils/apiError'
 
 function failure(err: unknown, fallback: string): AccountLinkResult {
@@ -143,7 +143,38 @@ export const useAccountLinksStore = defineStore('accountLinks', () => {
     }
   }
 
+  // ---------------------------------------------------------------- qualification duplicates (PORTAL-04.4)
+  const duplicates = ref<QualificationDuplicate[]>([])
+  const duplicatesMember = ref<number | null>(null)
+  const merging = ref(false)
+
+  /** Silent on 403/404: the panel only appears for people who may merge. */
+  async function loadDuplicates(memberId: number) {
+    duplicatesMember.value = memberId
+    try {
+      const { data } = await accountLinksApi.duplicates(memberId)
+      if (duplicatesMember.value === memberId) duplicates.value = data.results
+    } catch {
+      if (duplicatesMember.value === memberId) duplicates.value = []
+    }
+  }
+
+  async function mergeDuplicates(memberId: number, ids: number[]): Promise<AccountLinkResult> {
+    if (merging.value || !ids.length) return { ok: false, code: 'busy' }
+    merging.value = true
+    try {
+      const { data } = await accountLinksApi.mergeQualifications(memberId, ids)
+      duplicates.value = data.results
+      return { ok: true }
+    } catch (err) {
+      return failure(err, 'Die Qualifikationen konnten nicht zusammengeführt werden.')
+    } finally {
+      merging.value = false
+    }
+  }
+
   return {
+    duplicates, merging, loadDuplicates, mergeDuplicates,
     pending, pendingLoading, pendingError, deciding, decideError, loadPending, decide, requestRelease,
     record, link, loading, error, suggestions, searchResults, searching, busy, load, loadSuggestions, search, clearSearch, linkAccount, unlink }
 })

@@ -5,6 +5,7 @@ from datetime import date
 from django.utils import timezone
 
 from members.models import Member
+from servicebook.linked_people import drop_double_staff_rows
 from servicebook.models import Attendance, StaffAttendance
 from users.people import person_accounts
 
@@ -157,6 +158,8 @@ def attendance_report(services, date_from: date, date_to: date) -> dict:
     staff_rows = list(
         StaffAttendance.objects.filter(service_id__in=service_info).values_list("person_id", "service_id", "state")
     )
+    # A linked person recorded in both lists for one service (older data) counts once, as participant.
+    staff_rows = drop_double_staff_rows(member_rows, staff_rows)
     # Names in display order; inactive accounts keep their history, the system account never appears.
     member_names = {
         member.pk: member.get_full_name()

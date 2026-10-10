@@ -131,6 +131,46 @@ class AccountLinkViewSet(viewsets.GenericViewSet):
         self._require_management()
         return Response({"results": links.search_accounts(request.query_params.get("search", ""))})
 
+    # ------------------------------------------------------------- qualification duplicates (04.4)
+    def _merge_target(self, member_id):
+        from .invitations import departments_with_permission, record_department_ids
+        from .qualification_merge import link_for_member, may_merge
+
+        member = Member.objects.filter(pk=member_id).first() if isinstance(member_id, int) else None
+        if member is None:
+            raise NotFound()
+        if not may_merge(self.request.user, member):
+            # Without any qualification view right in the member's departments it looks missing.
+            visible = departments_with_permission(self.request.user, "qualifications.view_qualification")
+            if visible is not None and not (visible & record_department_ids(member)):
+                raise NotFound()
+            raise PermissionDenied("Keine Berechtigung, Qualifikationen dieses Mitglieds zusammenzuführen.")
+        return member, link_for_member(member)
+
+    @extend_schema(summary="Qualification types recorded at the linked account and the member (?member=)")
+    @action(detail=False, methods=["get"])
+    def duplicates(self, request):
+        from .qualification_merge import duplicates
+
+        value = request.query_params.get("member") or ""
+        _member, link = self._merge_target(int(value) if value.isdigit() else None)
+        return Response({"link": link.pk if link else None, "results": duplicates(link)})
+
+    @extend_schema(summary="Merge account qualifications into the member (evidence stays at the member)")
+    @action(detail=False, methods=["post"], url_path="merge-qualifications")
+    def merge_qualifications(self, request):
+        from .qualification_merge import MergeError, duplicates, merge
+
+        _member, link = self._merge_target(request.data.get("member"))
+        if link is None:
+            return Response({"detail": "Kein bestätigtes Konto verknüpft.", "code": "not_linked"}, status=409)
+        ids = request.data.get("qualifications")
+        try:
+            merged = merge(request.user, link, ids if isinstance(ids, list) else [])
+        except MergeError as error:
+            return _fail(error)
+        return Response({"merged": merged, "results": duplicates(link)})
+
     # ------------------------------------------------------------- the linked account itself
     @extend_schema(summary="Own pending link for the login step (E13)")
     @action(detail=False, methods=["get"], url_path="pending-for-me")

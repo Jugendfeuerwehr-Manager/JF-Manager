@@ -6,7 +6,7 @@ import { accountLinksApi } from '@/api/accountLinks'
 vi.mock('@/api/accountLinks', () => ({
   accountLinksApi: {
     forRecord: vi.fn(), suggestions: vi.fn(), searchAccounts: vi.fn(), link: vi.fn(), unlink: vi.fn(),
-    pendingForMe: vi.fn(), confirm: vi.fn(), reject: vi.fn(), requestRelease: vi.fn(),
+    pendingForMe: vi.fn(), confirm: vi.fn(), reject: vi.fn(), requestRelease: vi.fn(), duplicates: vi.fn(), mergeQualifications: vi.fn(),
   },
 }))
 const api = vi.mocked(accountLinksApi)
@@ -55,6 +55,23 @@ describe('accountLinks store', () => {
     expect((await store.unlink()).ok).toBe(true)
     expect(api.unlink).toHaveBeenCalledWith(5, 'parent')
     expect(store.link).toBeNull()
+  })
+
+  it('loads duplicates silently and merges the chosen ones (PORTAL-04.4)', async () => {
+    const row = { type: 'Erste Hilfe', account: { id: 4, acquired: null, expires: null, attachments: 0 }, member: { id: 5, acquired: null, expires: null, attachments: 0 }, same_date: true }
+    api.duplicates.mockResolvedValue({ data: { link: 1, results: [row] } } as never)
+    const store = useAccountLinksStore()
+    await store.loadDuplicates(7)
+    expect(store.duplicates).toHaveLength(1)
+    api.mergeQualifications.mockResolvedValue({ data: { merged: 1, results: [] } } as never)
+    expect((await store.mergeDuplicates(7, [4])).ok).toBe(true)
+    expect(api.mergeQualifications).toHaveBeenCalledWith(7, [4])
+    expect(store.duplicates).toEqual([])
+    api.duplicates.mockRejectedValue(apiError(403, 'x', 'Nein'))
+    await store.loadDuplicates(8)
+    expect(store.duplicates).toEqual([])
+    api.mergeQualifications.mockRejectedValue(apiError(403, 'own_record', 'Eigene Nachweise'))
+    expect(await store.mergeDuplicates(8, [4])).toEqual({ ok: false, code: 'own_record', message: 'Eigene Nachweise' })
   })
 
   it('keeps only the newest search result', async () => {

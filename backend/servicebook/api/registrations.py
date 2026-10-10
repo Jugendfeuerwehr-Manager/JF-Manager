@@ -12,6 +12,7 @@ from participation.staff_views import can_read_notes, display_state
 from participation.views import MAX_TARGET, target_members
 from servicebook.models import Attendance
 
+from ..linked_people import CountedAsOther
 from .attendance_board import set_attendance
 
 ATTENDING = ("expected", "registered", "assigned")
@@ -130,7 +131,11 @@ def apply_excused(service, *, dry_run, member_ids=None):
     if not dry_run:
         done = []
         for entry in apply:
-            ok, _current = set_attendance(service, Attendance, entry["member_id"], "E", None)
+            try:
+                ok, _current = set_attendance(service, Attendance, entry["member_id"], "E", None)
+            except CountedAsOther:  # recorded as staff for this service (PORTAL-04.4)
+                skipped.append({**entry, "reason": "counted_as_staff"})
+                continue
             if ok:
                 applied += 1
                 done.append(entry)

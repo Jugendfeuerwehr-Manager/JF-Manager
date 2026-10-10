@@ -50,3 +50,11 @@ export interface AccountLinkResult {
   code?: string
   message?: string
 }
+
+/** Same qualification type at the linked account and at the member (PORTAL-04.4). */
+export interface QualificationDuplicate {
+  type: string
+  account: { id: number, acquired: string | null, expires: string | null, attachments: number }
+  member: { id: number, acquired: string | null, expires: string | null, attachments: number }
+  same_date: boolean
+}

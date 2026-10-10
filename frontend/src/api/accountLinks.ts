@@ -1,5 +1,5 @@
 import apiClient from './index'
-import type { AccountCandidate, AccountLink, AccountLinkPayload, AccountLinkRecordKind } from '@/types/accountLinks'
+import type { AccountCandidate, AccountLink, AccountLinkPayload, AccountLinkRecordKind, QualificationDuplicate } from '@/types/accountLinks'
 
 const BASE = '/portal/account-links/'
 
@@ -27,6 +27,12 @@ export const accountLinksApi = {
   },
   reject(id: number) {
     return apiClient.post<AccountLink>(`${BASE}${id}/reject/`)
+  },
+  duplicates(member: number) {
+    return apiClient.get<{ link: number | null, results: QualificationDuplicate[] }>(`${BASE}duplicates/`, { params: { member } })
+  },
+  mergeQualifications(member: number, qualifications: number[]) {
+    return apiClient.post<{ merged: number, results: QualificationDuplicate[] }>(`${BASE}merge-qualifications/`, { member, qualifications })
   },
   requestRelease() {
     return apiClient.post<{ requested: boolean, new: boolean }>(`${BASE}release-request/`)

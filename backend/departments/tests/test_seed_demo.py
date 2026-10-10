@@ -24,7 +24,7 @@ class SeedDemoTests(TestCase):
         call_command("seed_demo", password="demo-pass-123", stdout=cls.output)
 
     def test_fills_every_module_consistently(self):
-        self.assertEqual(Member.objects.count(), 53)
+        self.assertEqual(Member.objects.count(), 55)
         self.assertEqual(Member.objects.filter(departments__isnull=True).count(), 0)
         self.assertTrue(Attendance.objects.exists())
         self.assertTrue(Service.objects.filter(training_session__isnull=False).exists())
@@ -116,6 +116,20 @@ class SeedDemoTests(TestCase):
         self.assertTrue(member_portal_allowed(member))  # Mitte allows member accounts from 14
         self.assertFalse(Parent.objects.filter(children=member, account_link__isnull=False).exists())
         self.assertIn("eltern@demo.example.invalid", self.output.getvalue())
+
+    def test_leader_linked_as_member_and_parent(self):
+        """PORTAL-04: pending link, confirmation shown at first login, duplicate first-aid course."""
+        from portal.models import AccountLink
+
+        leader = get_user_model().objects.get(username="leitung.mitte")
+        link = leader.account_link
+        self.assertEqual(link.status, AccountLink.Status.PENDING)
+        self.assertEqual(link.member.get_full_name(), leader.get_full_name())
+        self.assertEqual(link.member.departments.get().code, "mitte")
+        self.assertEqual([c.name for c in link.parent.children.all()], ["Ella"])
+        self.assertTrue(Qualification.objects.filter(member=link.member, type__name="Erste-Hilfe-Ausbildung").exists())
+        self.assertTrue(Qualification.objects.filter(user=leader, type__name="Erste-Hilfe-Ausbildung").exists())
+        self.assertIn("leitung.mitte (Mitglied und Elternteil", self.output.getvalue())
 
     def test_one_open_change_request_from_the_parent(self):
         from portal.models import ChangeRequest

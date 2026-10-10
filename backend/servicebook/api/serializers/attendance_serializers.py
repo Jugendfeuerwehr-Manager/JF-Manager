@@ -7,6 +7,16 @@ from members.models import Member
 from servicebook.models import Attendance, Service
 
 
+def _single_entry(service, member_id):
+    """PORTAL-04.4: a linked person recorded as staff cannot also be a participant of the service."""
+    from servicebook.linked_people import CountedAsOther, check_single_entry
+
+    try:
+        check_single_entry(service, Attendance, member_id)
+    except CountedAsOther as error:
+        raise serializers.ValidationError({"person": str(error), "code": "counted_as_other"}) from error
+
+
 class AttendanceSerializer(serializers.ModelSerializer):
     """Standard attendance serializer with member details."""
 
@@ -40,6 +50,8 @@ class AttendanceSerializer(serializers.ModelSerializer):
             and not person.departments.filter(pk=service.department_id).exists()
         ):
             raise serializers.ValidationError("Person gehört nicht zur Abteilung dieses Dienstes.")
+        if person and service and data.get("state", getattr(self.instance, "state", None)) is not None:
+            _single_entry(service, person.pk)
         return data
 
     def get_person_details(self, obj):
@@ -106,6 +118,9 @@ class AttendanceBulkUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Ungültige Person-ID.") from None
         if requested_ids != valid_ids:
             raise serializers.ValidationError("Person gehört nicht zur Abteilung dieses Dienstes.")
+        for item in data["attendances"]:
+            if item["state"] is not None:
+                _single_entry(service, int(item["person_id"]))
         return data
 
     def save(self):

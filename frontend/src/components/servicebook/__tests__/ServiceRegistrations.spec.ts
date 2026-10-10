@@ -13,6 +13,8 @@ const { servicesApi, toastAdd } = vi.hoisted(() => ({
 }))
 vi.mock('@/api/servicebook', () => ({ servicesApi }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: toastAdd }) }))
+const { confirmRequire } = vi.hoisted(() => ({ confirmRequire: vi.fn() }))
+vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: confirmRequire }) }))
 
 const global = {
   plugins: [PrimeVue],

@@ -127,7 +127,8 @@
                 </div>
               </TabPanel>
               <TabPanel value="qualifications">
-                <QualificationsManager :member-id="memberId" />
+                <QualificationDuplicatesPanel v-if="authStore.hasPerm('qualifications.change_qualification')" :member-id="memberId" @merged="qualificationsKey++" />
+                <QualificationsManager :key="qualificationsKey" :member-id="memberId" />
               </TabPanel>
               <TabPanel value="specialtasks">
                 <SpecialTasksManager :member-id="memberId" />
@@ -266,6 +267,7 @@ import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
 import ChangeLogCard from '@/components/members/organisms/ChangeLogCard.vue'
+import QualificationDuplicatesPanel from '@/components/members/organisms/QualificationDuplicatesPanel.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'
 import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
@@ -286,6 +288,8 @@ const toast = useToast()
 const authStore = useAuthStore()
 // Account management links the member to the person's own staff account (PORTAL-04).
 const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuser'))
+// Reloads the qualification list after duplicates were merged (PORTAL-04.4).
+const qualificationsKey = ref(0)
 
 const member = ref<Member | null>(null)
 const parents = ref<Parent[]>([])
