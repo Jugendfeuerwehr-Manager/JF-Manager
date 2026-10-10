@@ -1,5 +1,5 @@
 <template>
-  <Button v-if="allowed" label="Dienst löschen" icon="pi pi-trash" severity="danger" outlined :loading="deleting" :disabled="deleting || disabled" @click="confirmDelete" />
+  <Button class="delete-service" v-if="allowed" label="Dienst löschen" icon="pi pi-trash" severity="danger" outlined :loading="deleting" :disabled="deleting || disabled" @click="confirmDelete" />
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
@@ -44,3 +44,7 @@ function confirmDelete() {
   })
 }
 </script>
+
+<style scoped>
+.delete-service { min-height: 44px; }
+</style>

@@ -32,6 +32,7 @@ describe('roles in user administration', () => {
     await wrapper.findAll('button').find(b => b.text() === 'Rollenzuweisung speichern')!.trigger('click'); await flushPromises()
     expect(api.apply).toHaveBeenCalledWith({ user_id: 7, department_id: 2, template_id: 11, operation: 'add', fingerprint: 'reviewed' })
     expect(wrapper.text()).toContain('Rollenzuweisung gespeichert.')
+    expect((wrapper.get('#role-template-2').element as HTMLSelectElement).value).toBe('')
     expect(wrapper.text()).toContain('Lokal, LDAP')
   })
   it('reviews local removal while explaining retained external sources', async () => {

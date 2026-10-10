@@ -96,9 +96,11 @@ watch(() => props.userId, id => {
   addedDepartments.value = []; selected.value = {}; newDepartment.value = null; openedArea.value = ''
   void store.load(id)
 }, { immediate: true })
+watch(() => store.success, success => { if (success) selected.value = {} })
 onUnmounted(() => store.clear())
 </script>
 <style scoped>
+.user-roles :deep(.p-button) { min-height: 44px; }
 .user-roles { margin-top: var(--jf-space-3); padding-top: var(--jf-space-3); border-top: 1px solid var(--jf-color-border); }
 .add-department, .role-choice { display: grid; gap: var(--jf-space-1); margin: var(--jf-space-2) 0; }
 select { min-height: 44px; width: 100%; padding: .6rem; font: inherit; border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); color: var(--jf-color-text); background: var(--jf-color-card); }
