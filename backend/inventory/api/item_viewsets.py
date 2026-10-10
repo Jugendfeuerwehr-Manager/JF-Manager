@@ -4,7 +4,7 @@ ViewSets for Category, Item, and ItemVariant.
 
 from django.db import transaction
 from django.db.models import Q, Sum
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS, BasePermission
@@ -18,6 +18,7 @@ from inventory.api.access import (
     visible_item_department_ids,
 )
 from inventory.models import Category, Item, ItemVariant, Stock
+from inventory.services.availability import lookup_code, stock_availability
 from jf_manager_backend.mixins import BasePermissionedViewSet
 
 from .serializers import (
@@ -108,6 +109,28 @@ class ItemViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets
         serializer = StockSerializer(stock_qs, many=True)
         total = stock_qs.aggregate(total=Sum("quantity"))["total"] or 0
         return Response({"total": total, "rows": serializer.data})
+
+    @action(detail=False, methods=["get"], url_path="availability")
+    def availability(self, request):
+        """Available, issued and ordered quantities per article or size."""
+        raw_ids = request.query_params.get("item")
+        item_ids = None
+        if raw_ids:
+            try:
+                item_ids = [int(value) for value in raw_ids.split(",") if value.strip()]
+            except ValueError as exc:
+                raise serializers.ValidationError({"item": "Ungültige Artikelkennung."}) from exc
+        return Response(stock_availability(request.user, item_ids))
+
+    @action(detail=False, methods=["get"], url_path="lookup")
+    def lookup(self, request):
+        """Resolve a scanned or typed code (inventory number, barcode, size article number)."""
+        code = request.query_params.get("code", "").strip()
+        if not code:
+            raise serializers.ValidationError({"code": "Bitte einen Code eingeben."})
+        if len(code) > 255:
+            raise serializers.ValidationError({"code": "Der Code ist zu lang."})
+        return Response({"code": code, "results": lookup_code(self.get_queryset(), code)})
 
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
