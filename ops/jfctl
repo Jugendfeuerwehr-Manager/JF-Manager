@@ -13,7 +13,7 @@ JFCTL_VERSION=$(jq -r '.version // empty' "$JFCTL_HOME/../MANIFEST.json" 2>/dev/
 . "$JFCTL_HOME/lib/common.sh"
 # shellcheck source=lib/release.sh
 . "$JFCTL_HOME/lib/release.sh"
-for _lib in basic maintenance backup restore update install migrate menu; do
+for _lib in basic maintenance backup restore update install migrate departments menu; do
     # shellcheck source=/dev/null
     [ -f "$JFCTL_HOME/lib/$_lib.sh" ] && . "$JFCTL_HOME/lib/$_lib.sh"
 done
@@ -50,6 +50,7 @@ Befehle:
   workers hold | release | status        Hintergrundaufträge anhalten/freigeben
   maintenance list | run AUFGABE         Wiederkehrende Wartung (über systemd-Timer)
   migrate legacy-compose --from VERZ.    Alte Compose-Installation übernehmen
+  departments list | move               Abteilungsdaten auswählen, Vorschau/gesicherter Umzug
   version                                Version von jfctl
 
 Optionen:

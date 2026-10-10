@@ -123,7 +123,7 @@ jobs:
 
       - name: Run ruff
         working-directory: backend
-        run: ruff check . --output-format=github
+        run: ruff check . ../ops/tools --output-format=github
 
   dependency-audit:
     name: Dependency Audit
