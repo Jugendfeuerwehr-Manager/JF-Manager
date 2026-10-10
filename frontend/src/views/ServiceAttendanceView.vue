@@ -7,6 +7,7 @@
         <p class="attendance-head__eyebrow">{{ dateLine }}</p>
         <h1>{{ service.topic || 'Dienst ohne Thema' }}</h1>
         <p v-if="service.place" class="attendance-head__meta">{{ service.place }}</p>
+        <DeleteServiceButton :service="service" />
         <router-link :to="{ name: 'service-edit', params: { id: serviceId } }" class="secondary-link">
           <i class="pi pi-pencil" aria-hidden="true"></i>Dienst bearbeiten
         </router-link>
@@ -60,6 +61,7 @@
 </template>
 
 <script setup lang="ts">
+import DeleteServiceButton from '@/components/servicebook/molecules/DeleteServiceButton.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { servicesApi } from '@/api/servicebook'

@@ -12,6 +12,7 @@ const { store, route, replace } = vi.hoisted(() => ({
   route: { params: { id: '11' } as Record<string, string>, query: {} as Record<string, string> },
   replace: vi.fn(),
 }))
+vi.mock('@/components/servicebook/molecules/DeleteServiceButton.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/stores/servicebook', () => ({ useServicebookStore: () => store }))
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
@@ -22,6 +23,7 @@ function render() {
       stubs: {
         RouterLink: { props: ['to'], template: '<a><slot /></a>' },
         ServiceForm: { props: ['submitLabel'], template: '<div class="form-stub">{{ submitLabel }}</div>' },
+        DeleteServiceButton: true,
         AttendanceManager: { template: '<div class="attendance-stub" />' },
       },
     },

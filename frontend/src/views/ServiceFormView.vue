@@ -16,6 +16,8 @@
         <p v-if="isEdit && service?.place" class="edit-head__meta">{{ service.place }}</p>
       </header>
 
+      <DeleteServiceButton v-if="service" :service="service" :disabled="saving" />
+
       <div v-if="isEdit" class="segmented" role="tablist" aria-label="Bereich" @keydown.left.prevent="switchByKey" @keydown.right.prevent="switchByKey">
         <button
           id="tab-details"
@@ -61,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import DeleteServiceButton from '@/components/servicebook/molecules/DeleteServiceButton.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
