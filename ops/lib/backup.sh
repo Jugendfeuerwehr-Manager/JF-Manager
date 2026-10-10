@@ -132,7 +132,7 @@ backup_retention() {
         --keep-last 3 --keep-daily "$JF_BACKUP_KEEP_DAILY" --keep-weekly "$JF_BACKUP_KEEP_WEEKLY" \
         --keep-monthly "$JF_BACKUP_KEEP_MONTHLY" >/dev/null &&
     restic forget --quiet --group-by host \
-        --tag jf-manager,kind=pre-update --tag jf-manager,kind=pre-restore \
+        --tag jf-manager,kind=pre-update --tag jf-manager,kind=pre-restore --tag jf-manager,kind=pre-department-move \
         --keep-within 30d --keep-last 2 >/dev/null &&
     restic prune --quiet >/dev/null
 }

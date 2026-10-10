@@ -23,6 +23,7 @@ cmd_menu() {
   5) Sicherung jetzt erstellen   10) Konfiguration anzeigen
                                  11) Administratorzugang wiederherstellen
                                  12) Zwei-Faktor-Anmeldung zurücksetzen
+                                 13) Daten in andere Abteilung verschieben
   q) Beenden
 EOF
         else
@@ -60,6 +61,17 @@ EOF
             10) _menu_run cmd_config show ;;
             11) _menu_run cmd_admin recover ;;
             12) _menu_run cmd_admin reset-mfa ;;
+            13) _menu_run cmd_departments list
+                local from to areas target_name execute
+                ask from "Quellkürzel (global = ohne Abteilung)" "global"
+                ask to "Zielkürzel (oder global)" "jugendfeuerwehr"
+                ask target_name "Name für neues Ziel (leer bei bestehendem Ziel)" ""
+                printf 'Bereiche: members,groups,lists,events,services,training,templates,email,inventory,orders\n'
+                ask areas "Zu verschiebende Bereiche als Kommaliste" "members,groups,lists,events,services,training,templates,email"
+                _menu_run cmd_departments move --from "$from" --to "$to" --areas "$areas" --create-target "$target_name"
+                ask execute "Ausführen? Zur Bestätigung Instanznamen eingeben (leer = abbrechen)" ""
+                [ "$execute" = "$JF_INSTANCE" ] && _menu_run cmd_departments move --from "$from" --to "$to" --areas "$areas" --create-target "$target_name" --apply --confirm "$execute"
+                ;;
             q|Q) return 0 ;;
             *) echo "Unbekannte Auswahl" ;;
         esac

@@ -77,3 +77,50 @@ Die Weboberfläche zeigt sie unter **Einstellungen → System → Betriebsstatus
 - `jfctl maintenance list` zeigt Aufgaben und Zustand, `enable`/`disable` schaltet einzelne Aufgaben, `run` führt sie sofort aus.
 - Läuft gerade ein Update, eine Wiederherstellung oder eine Sicherung, überspringt die Wartung ihren Lauf ohne Fehler; der nächste Lauf holt ihn nach. `sync-due` pausiert zusätzlich, solange Worker angehalten sind.
 - Ergebnisse stehen im Journal: `journalctl -u 'jf-manager-maint@*' -u jf-manager-backup`.
+
+## Daten zwischen Organisation und Abteilungen verschieben
+
+`jfctl departments list` zeigt aktive/inaktive Abteilungen mit ihren eindeutigen Kürzeln.
+`global` bezeichnet Datensätze ohne Abteilungszuordnung; bei Mitgliedern bedeutet das keine Abteilungsmitgliedschaft.
+Quelle und Ziel werden als Kürzel angegeben. Eine neue Zielabteilung lässt sich mit `--create-target NAME` anlegen;
+die Vorschau legt sie noch nicht an. Andere künftige Abteilungen werden nicht angelegt.
+
+```bash
+sudo jfctl departments move --from global --to jugendfeuerwehr \
+  --create-target Jugendfeuerwehr \
+  --areas members,groups,lists,events,services,training,templates,email
+```
+
+Ohne `--apply` ist der Aufruf eine reine Vorschau mit Mengen, Abhängigkeiten und Fingerprint.
+Die Auswahl ist immer ausdrücklich anzugeben. Bereiche:
+
+| Bereich | Inhalt |
+| --- | --- |
+| `members` | Mitgliedszuordnungen; Elternbezüge, Qualifikationen, Sonderaufgaben, Portalzugänge und Anhänge bleiben an denselben IDs erhalten |
+| `groups` | Mitgliedergruppen |
+| `lists` | Mitgliederlisten einschließlich Einträge/Abhakstatus; organisationsweite Listen werden Abteilungslisten |
+| `events` | Mitgliedsereignistypen; Ereignisse bleiben am Mitglied |
+| `services` | Alle vergangenen und zukünftigen Dienste einschließlich Anwesenheiten/Leitung |
+| `training` | Alle Planungen, Serien, Bausteine, Medien, Teilnahme und Rückmeldungen |
+| `templates` | Übungsvorlagen einschließlich Bausteine |
+| `email` | E-Mail-Historie einschließlich Empfänger/Anhänge |
+| `inventory` | Artikel/Lagerorte mit bestehenden Varianten, Beständen und Buchungen |
+| `orders` | Bestellungen mit Positionen und unverändertem Statusverlauf |
+
+Inventar und Bestellungen sind unabhängig auswählbar und im Beispiel ausgeschlossen: Die zentrale Kleiderkammer bleibt global.
+Die Trainingsbibliothek, Qualifikationstypen, globale Konfiguration, Teilnahmevorgaben, Portalrichtlinien,
+Benutzer, Favoriten und Rollen bleiben bestehen. Rechte müssen bei Bedarf separat in der Benutzerverwaltung vergeben werden.
+Mitglieder mit mehreren Abteilungen verlieren nur die Quellzuordnung und behalten ihre übrigen Zuordnungen.
+Verknüpfte Fachbereiche müssen zusammen gewählt werden; Konflikte und Altlisten-Zielzuordnungen verhindern den Umzug.
+
+Nach Prüfung dieselben Argumente um `--apply --confirm INSTANZNAME` ergänzen (`jfctl status` zeigt den Namen).
+Auch `--yes` ersetzt diese Bestätigung nicht. jfctl sperrt andere Betriebsvorgänge, hält Webzugriffe/Worker an,
+erstellt eine vollständige verschlüsselte Vorabsicherung und liest sie zur Verifikation wieder aus.
+Erst danach prüft der Umzug die Vorschau erneut unter Datenbanksperren und verändert alle ausgewählten Zuordnungen
+in einer Transaktion. Bei Änderung seit der Vorschau oder Fehler wird vollständig abgebrochen/zurückgerollt;
+die Anwendung wird wieder gestartet. IDs und Uploaddateien werden nicht verändert. Zugehörige Eingangseinträge
+folgen ihrem verschobenen Objekt, ohne neue Benachrichtigungen zu versenden.
+
+Die ausgegebene Sicherungs-ID ist der Rückkehrpunkt (`jfctl restore ID --confirm INSTANZNAME`).
+Nach Freigabe entstandene Änderungen würden bei einem Restore verloren gehen; deshalb den Umzug sofort prüfen.
+Das interaktive Menü enthält denselben Ablauf unter „Daten in andere Abteilung verschieben“.

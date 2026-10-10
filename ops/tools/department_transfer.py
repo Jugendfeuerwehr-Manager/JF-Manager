@@ -174,9 +174,13 @@ def build_plan(source, target, areas, create_name=None):
         owner_id = session or template
         if item is None or owner_id is None:
             continue
-        if item in selected.get("inventory.Item", set()) or owner_id in selected.get(owner, set()):
-            if after["inventory.Item"][item] != {None} and not after["inventory.Item"][item] & after[owner][owner_id]:
-                conflicts.append(f"Material #{pk}: Artikel gehört nach Umzug zu einer fremden Abteilung.")
+        changed = item in selected.get("inventory.Item", set()) or owner_id in selected.get(owner, set())
+        if (
+            changed
+            and after["inventory.Item"][item] != {None}
+            and not after["inventory.Item"][item] & after[owner][owner_id]
+        ):
+            conflicts.append(f"Material #{pk}: Artikel gehört nach Umzug zu einer fremden Abteilung.")
 
     # Resolved legacy lists carry a second explicit department identity. Refuse
     # rather than silently invalidate the stable legacy resolution mapping.
