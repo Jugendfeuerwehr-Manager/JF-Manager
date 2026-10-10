@@ -108,20 +108,7 @@
           <small v-if="isSelfSuperuser" class="text-color-secondary">(eigener Account)</small>
         </div>
 
-        <!-- Groups -->
-        <div class="field col-12">
-          <label>Gruppen</label>
-          <MultiSelect
-            v-model="localData.group_ids"
-            :options="groups"
-            option-label="name"
-            option-value="id"
-            placeholder="Gruppen auswählen..."
-            class="w-full"
-            display="chip"
-            :loading="groupsLoading"
-          />
-        </div>
+        <p class="field col-12">{{ isNew ? 'Nach dem Erstellen kannst du Abteilungen und Rollenvorlagen direkt bei diesem Benutzer zuweisen.' : 'Abteilungen und Rollenvorlagen verwaltest du unter diesem Formular.' }}</p>
       </div>
     </Fieldset>
 
@@ -188,7 +175,6 @@ import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
-import MultiSelect from 'primevue/multiselect'
 import Password from 'primevue/password'
 import Fieldset from 'primevue/fieldset'
 import Button from 'primevue/button'
@@ -211,8 +197,6 @@ const emit = defineEmits<{
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 
-const groups = computed(() => adminStore.groups)
-const groupsLoading = computed(() => adminStore.groupsLoading)
 
 const saving = ref(false)
 const errorMessage = ref('')
@@ -291,6 +275,9 @@ async function handleSubmit() {
   errorMessage.value = ''
   try {
     const payload: AdminUserWrite = { ...localData.value }
+    // Role assignments are saved independently with a reviewed fingerprint.
+    // Profile saves must not restore stale organization groups.
+    delete payload.group_ids
     // strip empty password
     if (!payload.password) {
       delete payload.password

@@ -88,7 +88,7 @@ export interface AdminUserWrite {
   email_signature?: string
   theme_mode?: string
   password?: string
-  group_ids: number[]
+  group_ids?: number[]
 }
 
 export type PaginatedAdminUsers = PaginatedResponse<AdminUser>

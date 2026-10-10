@@ -52,6 +52,7 @@ describe('UserDetailForm theme preferences', () => {
     await flushPromises()
     expect(updateUser).toHaveBeenCalledWith(2, expect.objectContaining({ first_name: 'Example' }))
     expect(updateUser.mock.calls[0]![1]).not.toHaveProperty('theme_mode')
+    expect(updateUser.mock.calls[0]![1]).not.toHaveProperty('group_ids')
     expect(wrapper.emitted('saved')).toEqual([[2]])
   })
 })

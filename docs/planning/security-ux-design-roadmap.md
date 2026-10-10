@@ -14,7 +14,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Release OPS-05.6b.2–b.3 (10.10.2026):** Tag v3.0.2 auf e2240697bdaffa81adc8b107e4d22bb8518bc5aa veröffentlicht; Lauf 38026781337 vollständig bestanden. Enthält expliziten RAM-Override, Timer-Steuerung für älteres systemd und persistierte Compose-Projekttrennung. Paket/Image-Digests auf NAS geprüft, Produktionsmigration und technische Abnahme abgeschlossen. Neue Tags nicht verschieben.
 
-**Aktueller Fixauftrag (10.10.2026):** FIX-03.1/2 umgesetzt; FIX-03.3 offen auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
+**Aktueller Fixauftrag (10.10.2026):** FIX-03.1–3 umgesetzt; Pflichtprüfungen laufen auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
 
 ### 0.1 Stand je Bereich
 
@@ -673,13 +673,13 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### FIX-03: Dienstbuch und schnelle Benutzerrollen
 
-- **Status:** in Arbeit; verantwortlich: Codex.
+- **Status:** in Prüfung; verantwortlich: Codex.
 - **Abhängigkeiten:** bestehende Dienst-CRUD-/Abteilungsrechte, ROLE-02-Vorschau/Fingerprint/Step-up, DES-01.
 - **Ziel und Abnahme:** Auf Mobilgeräten vergangene Dienste mit Pagination und Filtern öffnen; Dienst nach ausdrücklicher Löschbestätigung und nur mit passendem Löschrecht entfernen; beim ausgewählten Benutzer Abteilungen hinzufügen und in Akkordeons Vorlagen zuweisen/entfernen. Externe Quellen und Sicherheitsprüfungen erhalten.
 - **Stabile Teilschritte:** FIX-03.1 mobile Zeitraumwahl; FIX-03.2 Dienstlöschung mit UI-/Rechte-Regressionen; FIX-03.3 Abteilungsakkordeons und Vorlagenzuweisung beim Benutzer; FIX-03.4 Pflichtprüfungen und gesonderte Formatbereinigung falls erforderlich; FIX-03.5 Integration/main-Push/Tag v3.0.3 und Release-Abnahme.
-- **Checkpoint/Branch:** FIX-03.1/2 implementiert und gezielt geprüft, `feat/security-roles-training-operations`; Codegleichheit zu main per Git-Diff geprüft.
+- **Checkpoint/Branch:** FIX-03.1–3 implementiert und gezielt geprüft, `feat/security-roles-training-operations`; Codegleichheit zu main per Git-Diff geprüft.
 - **Dateien/Commit:** dieser Planungscommit; anschließend Dienstbuchansichten und Benutzerrollen-Komponente/Store/Tests.
-- **Umgesetzt/Prüfungen:** FIX-03.1/2 umgesetzt. Bestanden: 2/2 mobile Ansichtsregressionen, 5/5 Lösch-/Formular-Frontendtests und 5/5 API-Löschrechte-Tests. Nicht ausgeführt: Gesamtpflichtlauf.
+- **Umgesetzt/Prüfungen:** FIX-03.1–3 umgesetzt. Bestanden: Typecheck, Frontend-Lint und 10/10 Benutzerrollen-/Formular-/MFA-Tests. Gesamtprüfungen laufen. Backend-Lint bestanden, Formatcheck fehlgeschlagen (57 vorbestehende Dateien). Bestanden: 2/2 mobile Ansichtsregressionen, 5/5 Lösch-/Formular-Frontendtests und 5/5 API-Löschrechte-Tests. Nicht ausgeführt: Gesamtpflichtlauf.
 - **Risiken:** 57 bekannte Backend-Formatabweichungen; keine Tags verschieben. Kein Produktionsdeployment beauftragt.
 - **Prozesse/Fortsetzung:** keine eigenen Dienste; nächster Schritt FIX-03.1 implementieren und gezielt prüfen.
 
@@ -2281,3 +2281,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | FIX-03.2 | Bestätigte Löschung in Dienst-/Bearbeitungsansicht; globale bzw. objektbezogene Abteilungsrechte, Anwesenheitsverlust erklärt, verknüpfte Planung erhalten. | Bestanden: 5/5 UI-/Formtests, 5/5 API-Tests (anonym/Leserecht/fremde Abteilung/Administrator/Kaskade). Fehlgeschlagen: erster Teststart mit geerbtem Redis; isolierte Testsettings erfolgreich. Nicht ausgeführt: Gesamtpflichtlauf. | Dieser Commit: `feat(FIX-03.2): allow confirmed service deletion` | FIX-03.3 Benutzerrollen. |
 
 | 10.10.2026 | FIX-03.2a | Löschkomponente akzeptiert optionales Abteilungsfeld entsprechend bestehendem ServiceDetail-Vertrag; fehlende Abteilung gewährt keine Abteilungsrechte. | Fehlgeschlagen: erster Typecheck wegen optionalem department. Nicht ausgeführt: Nachlauf (Gesamtpflichtlauf folgt). | Dieser Commit: `fix(FIX-03.2a): match optional service department type` | FIX-03.3 und Gesamtprüfung. |
+
+| 10.10.2026 | FIX-03.3 | Benutzerverwaltung integriert Abteilungsakkordeons, Vorlagenauswahl, lokale Entfernung, Quellen und Wirkungsvorschau über Pinia-Store; Auswahl bleibt nach Konflikt, späte Vorschau eines vorherigen Benutzers wird verworfen. Profil speichert keine veralteten Gruppen zurück. | Bestanden: 10/10 Rollen-/Formular-/MFA-Tests, Typecheck, Frontend-Lint, Ruff-Lint. Fehlgeschlagen: Formatcheck (57 vorbestehende Dateien). Nicht ausgeführt: abgeschlossener Gesamtpflichtlauf/Release. | Dieser Commit: `feat(FIX-03.3): assign department role templates in user administration` | Gesamtprüfungen und gesonderte Backend-Formatbereinigung. |
