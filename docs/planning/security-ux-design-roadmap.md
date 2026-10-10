@@ -14,7 +14,7 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Release OPS-05.6b.2–b.3 (10.10.2026):** Tag v3.0.2 auf e2240697bdaffa81adc8b107e4d22bb8518bc5aa veröffentlicht; Lauf 38026781337 vollständig bestanden. Enthält expliziten RAM-Override, Timer-Steuerung für älteres systemd und persistierte Compose-Projekttrennung. Paket/Image-Digests auf NAS geprüft, Produktionsmigration und technische Abnahme abgeschlossen. Neue Tags nicht verschieben.
 
-**Aktueller Fixauftrag (10.10.2026):** FIX-03.1–4 umgesetzt; lokal und im Browser geprüft, auf main integriert. Tag `v3.0.3` auf `48d8e51184e0e10d0d727a72d1d528fdec6613ae` veröffentlicht; Release-Lauf [38032498297](https://github.com/Jugendfeuerwehr-Manager/JF-Manager/actions/runs/38032498297) läuft. Roadmap auf `feat/security-roles-training-operations`; Ausgangscode mit main identisch, fremdes `.claude/` bleibt unangetastet. Mobile Vergangenheit, Dienstlöschung und abteilungsweise Rollenvorlagen in der Benutzerverwaltung; anschließend autorisierter Merge/main-Push und neuer unveränderlicher Tag v3.0.3.
+**Fixrelease FIX-03 (10.10.2026):** Mobile Vergangenheit im Dienstbuch, bestätigte Dienstlöschung und abteilungsweise Rollenvorlagen direkt in der Benutzerverwaltung umgesetzt. Separat committet, nach main integriert und `v3.0.3` auf `48d8e51184e0e10d0d727a72d1d528fdec6613ae` veröffentlicht. [Release-Lauf 38032498297](https://github.com/Jugendfeuerwehr-Manager/JF-Manager/actions/runs/38032498297) vollständig bestanden: 1309 PostgreSQL-17-Backendtests ohne Überspringen, Frontendprüfungen, Images, Scans, Paket und Attestierung. Lokale 617 Frontendtests, Ruff-Lint/Format und Browser 390/1440 px bestanden; Paket-/Manifestprüfsummen und Pflichtdateien geprüft. 57 vorbestehende Backend-Formatabweichungen separat bereinigt. Fremdes `.claude/` erhalten. Kein Produktionsdeployment ausgeführt.
 
 ### 0.1 Stand je Bereich
 
@@ -620,6 +620,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
+| FIX-03 | abgeschlossen | Codex | FIX-03.1–5: Dienstbuch-/Benutzerrollen-Fixes, Pflicht-/Browserprüfungen und Release v3.0.3 vollständig abgenommen. |
 | WEB-PLAN | zurückgestellt (09.10.2026) | Codex (Marketing-Konzept) | WEB-PLAN.0: Auftrag, Abnahme und Dateiverantwortung aufgenommen; WEB-PLAN.1 Konzept und Mockups. |
 | EXEC-01 | abgeschlossen | Codex | Ausgangsstand, Plan, Agent-Regeln und Testbasis gesichert; 48 Backend- und 66 Frontendtests bestanden. |
 | SEC-01 | abgeschlossen | Claude (von Codex übernommen) | SEC-01.57c: Anwesenheits-API, Anhang-Schreibzugriffe und Staff-Einstellungen korrigiert, Alt-Views entfernt; 645/645 Backendtests. |
@@ -673,15 +674,15 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 ### FIX-03: Dienstbuch und schnelle Benutzerrollen
 
-- **Status:** in Prüfung; verantwortlich: Codex.
+- **Status:** abgeschlossen; verantwortlich: Codex.
 - **Abhängigkeiten:** bestehende Dienst-CRUD-/Abteilungsrechte, ROLE-02-Vorschau/Fingerprint/Step-up, DES-01.
-- **Ziel und Abnahme:** Auf Mobilgeräten vergangene Dienste mit Pagination und Filtern öffnen; Dienst nach ausdrücklicher Löschbestätigung und nur mit passendem Löschrecht entfernen; beim ausgewählten Benutzer Abteilungen hinzufügen und in Akkordeons Vorlagen zuweisen/entfernen. Externe Quellen und Sicherheitsprüfungen erhalten.
-- **Stabile Teilschritte:** FIX-03.1 mobile Zeitraumwahl; FIX-03.2 Dienstlöschung mit UI-/Rechte-Regressionen; FIX-03.3 Abteilungsakkordeons und Vorlagenzuweisung beim Benutzer; FIX-03.4 Pflichtprüfungen und gesonderte Formatbereinigung falls erforderlich; FIX-03.5 Integration/main-Push/Tag v3.0.3 und Release-Abnahme.
-- **Checkpoint/Branch:** FIX-03.1–3 implementiert und gezielt geprüft, `feat/security-roles-training-operations`; Codegleichheit zu main per Git-Diff geprüft.
-- **Dateien/Commit:** dieser Planungscommit; anschließend Dienstbuchansichten und Benutzerrollen-Komponente/Store/Tests.
-- **Umgesetzt/Prüfungen:** FIX-03.1–3 umgesetzt. Bestanden: Typecheck, Frontend-Lint und 10/10 Benutzerrollen-/Formular-/MFA-Tests. Gesamtprüfungen laufen. Backend-Lint/Format nach separater Bereinigung bestanden; 617 Frontendtests und 1309 Backendtests bestanden (12 PostgreSQL-only übersprungen), Build bestanden. Bestanden: 2/2 mobile Ansichtsregressionen, 5/5 Lösch-/Formular-Frontendtests und 5/5 API-Löschrechte-Tests. Nicht ausgeführt: Gesamtpflichtlauf.
-- **Risiken:** Backend-Formatabweichungen bereinigt; zwölf PostgreSQL-only Tests lokal übersprungen, Tag-CI prüft PostgreSQL 17. Keine Tags verschieben. Kein Produktionsdeployment beauftragt.
-- **Prozesse/Fortsetzung:** eigene Demo-/Frontendprozesse beendet. Nächster Schritt FIX-03.5 Merge/main-Push und neuer Tag v3.0.3; Tag-CI und Paket prüfen.
+- **Ziel und Abnahme:** Mobile Zeitraumwahl mit vergangener paginierter/ filterbarer Liste; Dienstlöschung nach Bestätigung mit passendem Objekt-/Abteilungsrecht; Rollenvorlagen direkt beim Benutzer in Abteilungsakkordeons hinzufügen/entfernen, Herkunft und Wirkung sichtbar. Erfüllt, automatisiert und im Browser mit fiktiven Daten geprüft.
+- **Stabile Teilschritte:** FIX-03.1 mobile Zeitraumwahl (`c5f2780`); FIX-03.2 Dienstlöschung (`eb72ca3`, Typkorrektur `8972fcc`); FIX-03.3 Benutzerrollen (`2682944`, Bedienungsdetails `70a7a98`); FIX-03.4 Pflichtprüfungen/Formatbereinigung (`bea4cbf`); FIX-03.5 Integration/Release (`48d8e51`, Checkpoint `49d3785`, abschließende Abnahme in diesem Commit).
+- **Checkpoint/Branch:** `feat/security-roles-training-operations`; main-Mergebaum exakt gleich geprüftem Featurestand. Tag v3.0.3 unverändert auf 48d8e51184e0e10d0d727a72d1d528fdec6613ae, Release veröffentlicht.
+- **Dateien/Commit:** Dienstbuchansichten/Löschkomponente/-tests, Benutzerrollenkomponente/Pinia-Store/-tests, Benutzerformular und zugehörige Typen; 57 vorbestehende Backenddateien in separatem Formatierungscommit (AST aller 55 Pythondateien unverändert).
+- **Umgesetzt/Prüfungen:** FIX-03.1–5 abgeschlossen. Bestanden: 617 Frontendtests, Typecheck/Lint/Build, Ruff-Lint/Format (724 Dateien), 1309 lokale SQLite-Backendtests (12 PostgreSQL-only übersprungen), 1309 PostgreSQL-17-Tests in Tag-CI ohne Überspringen, Migrationscheck, Browser 390/1440 px, beide Image-Builds/Scans, Releasepaket/Attestierung/Veröffentlichung. Lokale Paket-/Manifest-SHA256, Version/Commit/PostgreSQL 17/Image-Digests, sichere Archivpfade, Pflichtdateien und eingebettetes Manifest bestanden.
+- **Risiken/Grenzen:** Keine offenen Fehler im Fixauftrag. Lokale Attestierungsverifikation und Produktionsdeployment nicht ausgeführt. Veröffentlichte Tags nicht verschieben.
+- **Prozesse/Fortsetzung:** eigene Demo-/Frontendprozesse beendet. Release-Abnahme nach main übernehmen/pushen; danach kein offener Schritt dieses Auftrags.
 
 ### WEB-PLAN: Marketing-Konzept und wartbare Projektwebsite
 
@@ -2291,3 +2292,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | FIX-03.5 Releasecheckpoint | Alle Implementierungsteilschritte separat auf Roadmap-Branch committet; Nutzer autorisiert Merge/main-Push und neuen Tag. Lokale Demo-/Frontendprozesse beendet, fremdes .claude/ unangetastet. | Bestanden: 617 Frontendtests, Typecheck/Lint/Build, 1309 Backendtests (12 PostgreSQL-only übersprungen), Ruff-Lint/Format, Browser 390/1440 px und git diff --check. Nicht ausgeführt: neue Tag-Pipeline/Paketprüfung. | Dieser Commit: `docs(FIX-03.5): record acceptance before v3.0.3` | Nach main mergen und v3.0.3 veröffentlichen; bestehenden Tag nicht verschieben. |
 
 | 10.10.2026 | FIX-03.5 Integration/Tag | main-Merge 48d8e51184e0e10d0d727a72d1d528fdec6613ae und neuer Tag v3.0.3 gepusht. 60 Konflikte durch frühere Squash-/Cherry-Pick-Historie: Ausgangsbaum main exakt gleich 27920b0, Konflikte mit geprüftem Featurestand aufgelöst; gesamter Mergebaum exakt gleich c5f9ecb. Tag-Lauf 38032498297 läuft. | Bestanden: main/Feature/Tag-Push, Baumgleichheit, Tag-Frontendprüfungen/Build, Backend-Lint, Betriebswerkzeuge, Abhängigkeitsprüfung. Nicht ausgeführt: abgeschlossene PostgreSQL-Tests/Images/Scans/Releasepaket. | Dieser Commit: `docs(FIX-03.5): checkpoint published v3.0.3 tag` | Lauf abschließend prüfen, Paket/Manifest/Prüfsummen abnehmen. Tag nicht verschieben. |
+
+| 10.10.2026 | FIX-03.5 Releaseabnahme | v3.0.3 auf 48d8e51184e0e10d0d727a72d1d528fdec6613ae veröffentlicht. Lauf 38032498297 vollständig grün; heruntergeladenes Paket und Manifest geprüft. | Bestanden: alle Tag-Tests inkl. 1309 PostgreSQL-17-Tests ohne Überspringen, Frontend/Lint/Build/Betriebs-/Abhängigkeitsprüfungen, beide Images/Scans, Releasepaket/Attestierung/Veröffentlichung; beide SHA256SUMS-Einträge und Manifest-Tarballhash, Version/Commit/PostgreSQL/Digests, sichere Pfade/Pflichtdateien/eingebettetes Manifest. Nicht ausgeführt: lokale Attestierungsverifikation, Produktionsdeployment. | Dieser Commit: `docs(FIX-03.5): record verified v3.0.3 release` | Abnahmedokumentation nach main pushen; Fixauftrag abgeschlossen, Tag unverändert lassen. |
