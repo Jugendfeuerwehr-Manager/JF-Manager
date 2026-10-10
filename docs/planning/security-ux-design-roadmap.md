@@ -16,6 +16,8 @@ Dieses Dokument ist Spezifikation, Aufgabenübersicht und laufendes Arbeitsjourn
 
 **Fixrelease FIX-03 (10.10.2026):** Mobile Vergangenheit im Dienstbuch, bestätigte Dienstlöschung und abteilungsweise Rollenvorlagen direkt in der Benutzerverwaltung umgesetzt. Separat committet, nach main integriert und `v3.0.3` auf `48d8e51184e0e10d0d727a72d1d528fdec6613ae` veröffentlicht. [Release-Lauf 38032498297](https://github.com/Jugendfeuerwehr-Manager/JF-Manager/actions/runs/38032498297) vollständig bestanden: 1309 PostgreSQL-17-Backendtests ohne Überspringen, Frontendprüfungen, Images, Scans, Paket und Attestierung. Lokale 617 Frontendtests, Ruff-Lint/Format und Browser 390/1440 px bestanden; Paket-/Manifestprüfsummen und Pflichtdateien geprüft. 57 vorbestehende Backend-Formatabweichungen separat bereinigt. Fremdes `.claude/` erhalten. Kein Produktionsdeployment ausgeführt.
 
+**Synology-Update OPS-05.7 (10.10.2026):** Nutzer autorisiert Aktualisierung der bestehenden NAS-Instanz auf das vollständig geprüfte v3.0.3. SSH/sudo und laufender Stand v3.0.2 bestätigt; Update ausschließlich über jfctl mit eigener pre-update-Sicherung und automatischem Rückkehrpfad. Vorprüfung, Update und technische Abnahme offen.
+
 ### 0.1 Stand je Bereich
 
 | Bereich | Pakete | Stand |
@@ -671,6 +673,18 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | PART-04 | geplant | — | Positionen, Mindestbesetzung, Warteliste, Zuteilungsboard, Besetzungsvorlagen. |
 | NOTIF-01 | abgenommen | Claude (Portal-Sitzung) | NOTIF-01.6: PostgreSQL 17, echter Mailweg mit Quick Action im Browser; offen: echter SMTP-/Push-Versand als Nutzerabnahme. |
 | PORTAL-04 | geplant | — | Verwaltendenkonto 1:1 an Mitglied mit Login-Bestätigung, Eigenänderungsprotokoll, Vier-Augen für eigene Qualifikationen. |
+
+### OPS-05.7: Synology auf Fixrelease v3.0.3 aktualisieren
+
+- **Status:** in Arbeit; verantwortlich: Codex.
+- **Abhängigkeiten:** FIX-03.5 vollständig abgenommen; OPS-05.6 laufende NAS-Installation und administrativer SSH-Zugang bestätigt.
+- **Ziel/Abnahme:** Bestehende Instanz jf-manager-v3 mit jfctl auf v3.0.3 aktualisieren; pre-update-Sicherung vorhanden und verifiziert, Version/Image-Digests korrekt, Daten/Uploads erhalten, doctor/HTTPS/Sitzungs-API/Timer/Worker geprüft. Alte Container bleiben erhalten gestoppt.
+- **Stabile Teilschritte:** OPS-05.7a Plattform-/Daten-/Sicherungs-Vorprüfung; OPS-05.7b jfctl update --version 3.0.3 mit automatischer Sicherung und Rückkehr bei Fehler; OPS-05.7c technische Abnahme, verifizierte Sicherung und Home-Anleitung aktualisieren.
+- **Checkpoint/Branch:** vor Produktionsänderung auf feat/security-roles-training-operations; main/Feature-Ausgangscode identisch, fremdes .claude/ bleibt erhalten.
+- **Dateien/Commit:** Roadmap; geschützte technische Nachweise auf NAS. Keine Geheimnisse oder Personen in Journal.
+- **Prüfungen:** Bestanden: SSH/sudo, Version 3.0.2, sechs aktive Container (Worker mit bekanntem unpassendem HTTP-Healthcheck). Nicht ausgeführt: Vorprüfung/Update/Abnahme.
+- **Risiken:** Wartungsfenster während Sicherung/Wechsel; begrenzter NAS-RAM; bekannte Worker-Healthcheck-Anzeige. jfctl übernimmt Rückkehr vor Schreibfreigabe.
+- **Prozesse/Fortsetzung:** keine eigenen Hintergrundaktionen; nächster Schritt OPS-05.7a doctor/Speicher/Timer und Bestandsnachweis, dann Update.
 
 ### FIX-03: Dienstbuch und schnelle Benutzerrollen
 
@@ -2294,3 +2308,5 @@ Neue Einträge anhängen. Frühere Ergebnisse nicht nachträglich als erfolgreic
 | 10.10.2026 | FIX-03.5 Integration/Tag | main-Merge 48d8e51184e0e10d0d727a72d1d528fdec6613ae und neuer Tag v3.0.3 gepusht. 60 Konflikte durch frühere Squash-/Cherry-Pick-Historie: Ausgangsbaum main exakt gleich 27920b0, Konflikte mit geprüftem Featurestand aufgelöst; gesamter Mergebaum exakt gleich c5f9ecb. Tag-Lauf 38032498297 läuft. | Bestanden: main/Feature/Tag-Push, Baumgleichheit, Tag-Frontendprüfungen/Build, Backend-Lint, Betriebswerkzeuge, Abhängigkeitsprüfung. Nicht ausgeführt: abgeschlossene PostgreSQL-Tests/Images/Scans/Releasepaket. | Dieser Commit: `docs(FIX-03.5): checkpoint published v3.0.3 tag` | Lauf abschließend prüfen, Paket/Manifest/Prüfsummen abnehmen. Tag nicht verschieben. |
 
 | 10.10.2026 | FIX-03.5 Releaseabnahme | v3.0.3 auf 48d8e51184e0e10d0d727a72d1d528fdec6613ae veröffentlicht. Lauf 38032498297 vollständig grün; heruntergeladenes Paket und Manifest geprüft. | Bestanden: alle Tag-Tests inkl. 1309 PostgreSQL-17-Tests ohne Überspringen, Frontend/Lint/Build/Betriebs-/Abhängigkeitsprüfungen, beide Images/Scans, Releasepaket/Attestierung/Veröffentlichung; beide SHA256SUMS-Einträge und Manifest-Tarballhash, Version/Commit/PostgreSQL/Digests, sichere Pfade/Pflichtdateien/eingebettetes Manifest. Nicht ausgeführt: lokale Attestierungsverifikation, Produktionsdeployment. | Dieser Commit: `docs(FIX-03.5): record verified v3.0.3 release` | Abnahmedokumentation nach main pushen; Fixauftrag abgeschlossen, Tag unverändert lassen. |
+
+| 10.10.2026 | OPS-05.7 Start | Nutzer beauftragt Synology-Update auf das gerade veröffentlichte v3.0.3; bestehenden SSH-/sudo-Zugang und jfctl-Stand 3.0.2 geprüft. | Bestanden: Zugang/Status, Release-Abnahme aus FIX-03.5. Nicht ausgeführt: Produktionsupdate. | Dieser Commit: `docs(OPS-05.7): plan authorized Synology update` | Vorprüfung, jfctl-Sicherungs-/Updateweg, technische Abnahme. |
