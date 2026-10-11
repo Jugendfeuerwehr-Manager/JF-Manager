@@ -29,7 +29,7 @@
 
     <Drawer id="module-drawer" v-model:visible="navigationVisible" position="left" class="module-drawer">
       <template #header>
-        <span class="drawer-brand"><span class="brand-mark" aria-hidden="true"><i class="pi pi-shield"></i></span>{{ websiteTitle }}</span>
+        <span class="drawer-brand"><BrandMark :size="32" />{{ websiteTitle }}</span>
       </template>
       <div class="drawer-context"><DepartmentSwitcher /><Button :icon="themeIcon" text rounded aria-label="Farbschema wechseln" @click="cycleTheme" /></div>
       <ModuleNavigation @navigate="navigationVisible = false" />
@@ -44,6 +44,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
+import BrandMark from '@/components/common/BrandMark.vue'
 import { useInboxStore } from '@/stores/inbox'
 import { useAppSettings } from '@/composables/useAppSettings'
 import { useTheme } from '@/composables/useTheme'
@@ -113,7 +114,6 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); inbox.st
 .mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav [aria-expanded="true"] { color: var(--jf-color-primary); font-weight: var(--jf-weight-bold); }
 .mobile-bottom-nav [aria-current="page"] i { background: var(--jf-color-selected); border-radius: 999px; padding: 2px var(--jf-space-2); }
 .drawer-brand { display: flex; align-items: center; gap: var(--jf-space-1); font-weight: var(--jf-weight-bold); font-size: var(--jf-text-lg); }
-.brand-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--jf-radius-md); background: var(--jf-color-primary); color: var(--jf-color-on-primary); }
 .drawer-context { display: flex; align-items: center; justify-content: space-between; gap: var(--jf-space-1); }
 .drawer-context > .department-switcher { flex: 1 1 auto; min-width: 0; }
 @media (max-width: 1023px) { .layout-main { margin-left: 0; padding-top: var(--mobile-bar-height); padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); } .layout-content { padding: var(--jf-space-2); } .layout-content--full-width { padding: 0; } }

@@ -3,7 +3,7 @@
     <section class="login-intro" aria-label="JF-Manager">
       <div class="brand">
         <img v-if="branding?.logo_url" :src="branding.logo_url" :alt="`Logo ${branding.title || 'JF-Manager'}`" />
-        <i v-else class="pi pi-shield" aria-hidden="true"></i>
+        <BrandMark v-else :size="44" />
         <span>{{ branding?.title || 'JF-Manager' }}</span>
       </div>
       <div class="intro-copy">
@@ -88,6 +88,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import BrandMark from '@/components/common/BrandMark.vue'
 import { oidcApi } from '@/api/oidc'
 import { brandingApi } from '@/api/branding'
 import type { OIDCPublicConfig } from '@/types/oidc'
@@ -259,7 +260,6 @@ async function handleLogin() {
 .login-intro { background: #172534; color: #fff; padding: clamp(2rem, 5vw, 5rem); display: flex; flex-direction: column; justify-content: space-between; gap: 4rem; }
 .brand { display: flex; align-items: center; gap: .8rem; font-size: 1.3rem; font-weight: 700; }
 .brand img { width: 42px; height: 42px; object-fit: contain; }
-.brand > i { display: grid; place-items: center; background: #b42b36; width: 44px; height: 44px; border-radius: 12px; font-size: 1.4rem; }
 .eyebrow { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--text-color-secondary, #637080); margin: 0 0 1rem; }
 .intro-copy .eyebrow { color: #eaa5ab; }
 h1 { font-size: clamp(2.6rem, 4.4vw, 4.7rem); line-height: 1.08; letter-spacing: -.045em; margin: 0 0 1.7rem; white-space: pre-line; overflow-wrap: anywhere; }

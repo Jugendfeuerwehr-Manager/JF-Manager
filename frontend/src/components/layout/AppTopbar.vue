@@ -3,7 +3,7 @@
     <Toolbar class="topbar-menubar">
       <template #start>
         <router-link class="logo" to="/">
-          <span class="brand-mark" aria-hidden="true"><i class="pi pi-shield"></i></span>
+          <BrandMark class="brand-mark" :size="36" />
           <span class="logo-text">{{ websiteTitle }}</span>
         </router-link>
       </template>
@@ -74,6 +74,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppSettings } from '@/composables/useAppSettings'
+import BrandMark from '@/components/common/BrandMark.vue'
 import { useTheme } from '@/composables/useTheme'
 import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
@@ -157,18 +158,8 @@ const toggleUserMenu = (event: Event) => {
 }
 
 .brand-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
   border-radius: var(--jf-radius-md);
-  background: var(--jf-color-primary);
-  color: var(--jf-color-on-primary);
   box-shadow: var(--jf-shadow-sm);
-}
-
-.brand-mark i {
-  font-size: 1.1rem;
 }
 
 .topbar-end {

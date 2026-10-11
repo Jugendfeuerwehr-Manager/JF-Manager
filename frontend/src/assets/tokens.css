@@ -56,6 +56,11 @@
   --jf-color-selected: var(--p-highlight-background);
   --jf-color-selected-text: var(--p-highlight-color);
 
+  /* Product logo (BrandMark): fixed, independent of the configurable brand colour */
+  --jf-logo-blue: #0b4ea2;
+  --jf-logo-orange: #e57a00;
+  --jf-logo-light: #ffffff;
+
   /* PrimeVue 3 compatibility: names still used across the components */
   --p-surface-ground: var(--jf-color-ground);
   --surface-ground: var(--jf-color-ground);
