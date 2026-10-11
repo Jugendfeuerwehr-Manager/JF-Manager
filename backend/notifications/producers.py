@@ -5,6 +5,10 @@ member account and parent accounts that still see the child (minor or
 extended). Responsible staff (D10) are the creator of the planned service and
 the leaders of its service-book entry (inbox, e-mail and push); everyone with
 the planning right in the department gets the inbox entry only.
+
+Registrations, applications and cancellations (NOTIF-02) reach every staff
+recipient of the inbox entry, superusers included, by e-mail and push as well;
+the person who recorded the change gets neither.
 """
 
 from datetime import timedelta
@@ -18,16 +22,24 @@ from participation.signals import (
     eligibility_conflict,
     place_freed,
     registration_changed,
+    response_requested,
     session_changed,
     session_published,
 )
 
 from .dispatch import common_context, queue_email, queue_push
-from .inbox import notify, staff_with_permission
+from .inbox import complete_tasks, notify, staff_with_permission
 from .models import InboxItem
 
 User = get_user_model()
 PLANNING = "training.can_manage_training"
+STAFF_MAIL_DELAY = timedelta(minutes=5)  # registrations of one service arriving close together share a mail
+STATE_LABELS = {
+    "registered": "angemeldet",
+    "waitlisted": "auf der Warteliste",
+    "applied": "beworben",
+    "assigned": "zugeteilt",
+}
 WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 REASONS = {
     "krankheit": "Krankheit",
@@ -109,6 +121,12 @@ def responsibles(session):
         staff_with_permission(PLANNING, session.department_id).values_list("pk", flat=True)
     )
     return primary_users, list(User.objects.filter(pk__in=everyone))
+
+
+def staff_recipients(session, actor_id=None):
+    """(inbox, mail): everyone addressed in the inbox; mail and push skip the acting person (NOTIF-02)."""
+    _primary, everyone = responsibles(session)
+    return everyone, [user for user in everyone if user.pk != actor_id]
 
 
 def _person_label(member, relation):
@@ -212,6 +230,43 @@ def on_session_published(sender, session, **kwargs):
             )
 
 
+@receiver(response_requested)
+def on_response_requested(sender, session, member_ids, **kwargs):
+    """Staff ask target people without a response (NOTIF-02.3): notice, e-mail and push with a quick action."""
+    from members.models import Member
+    from participation.service import deadlines, participation_for
+
+    participation, _ = participation_for(session)
+    due = deadlines(session, participation)
+    extra = {
+        "deadlines": {
+            "registration": _moment(due.registration_closes_at),
+            "cancellation": _moment(due.cancellation_closes_at),
+        },
+        "participation": {"mode": participation.mode},
+    }
+    stamp = timezone.now().strftime("%Y%m%d%H%M%S")
+    for member in Member.objects.filter(pk__in=member_ids):
+        for user, relation in accounts_for_member(member):
+            if participation.mode == "opt_out":
+                withdraw = ("cancel", f"{member.name} abmelden" if relation == "child" else "Abmelden")
+            else:
+                verb = "bewerben" if participation.mode == "assignment" else "anmelden"
+                withdraw = ("register", f"{member.name} {verb}" if relation == "child" else verb.capitalize())
+            _participant_mail(
+                "response_requested",
+                user,
+                relation,
+                member,
+                session,
+                participation,
+                title=f"Bitte um Rückmeldung für {member.name}: {session.title} am {_date(session.date)}",
+                extra=extra,
+                withdraw=withdraw,
+                event_key=f"response_requested:{session.pk}:{stamp}:{user.pk}:{member.pk}",
+            )
+
+
 @receiver(session_changed)
 def on_session_changed(sender, session, kind, old, new, member_ids, **kwargs):
     from members.models import Member
@@ -269,6 +324,8 @@ def on_registration_changed(
     session, member = registration.session, registration.member
     participation, _ = participation_for(session)
     stamp = registration.state_changed_at.strftime("%Y%m%d%H%M%S%f") if registration.state_changed_at else "0"
+    if via != "system":
+        _staff_registration(registration, session, member, participation, stamp, from_state, to_state, actor_id)
     if to_state == "waitlisted" and from_state != "waitlisted":
         for user, relation in accounts_for_member(member):
             _participant_mail(
@@ -309,7 +366,7 @@ def on_registration_changed(
     elif to_state in ("assigned", "not_selected") and via != "system":
         _assignment_mail(registration, session, member, participation, stamp, from_state)
     elif to_state == "cancelled" and via != "system":
-        _staff_cancellation(registration, session, member, participation, stamp)
+        _staff_cancellation(registration, session, member, participation, stamp, actor_id)
 
 
 def _assignment_mail(registration, session, member, participation, stamp, from_state):
@@ -390,13 +447,137 @@ def on_place_freed(sender, session_id, slot_label, waiting, **kwargs):
         queue_push(user, item, "participation", explicit=True)
 
 
-def _staff_cancellation(registration, session, member, participation, stamp):
+def _staff_mail(kind, users, session, item, route, label, extra, *, event):
+    """E-mail (bundled per service and person) and push to staff recipients (NOTIF-02)."""
+    for user in users:
+        open_url = _link(user, "open", {"r": route}, route)
+        context = {
+            **common_context(user, open_url=open_url, actions=[{"label": label, "url": open_url, "style": "primary"}]),
+            "session": _session(session),
+            **extra,
+        }
+        queue_email(
+            kind,
+            user,
+            context,
+            event_key=f"{event}:{user.pk}",
+            bundle_key=f"{kind}:{session.pk}:{user.pk}",
+            delay=STAFF_MAIL_DELAY,
+            explicit=True,
+        )
+        queue_push(user, item, "participation", explicit=True)
+
+
+def _staff_registration(registration, session, member, participation, stamp, from_state, to_state, actor_id):
+    """Registration (also waitlist or a cancellation taken back) and application for staff (NOTIF-02).
+
+    Applications open one task per service ("Bewerbungen zuteilen"); it is done once the
+    assignment was published or nobody applies any more. Registrations are a bundled notice.
+    """
+    from participation.models import Registration
+
+    decided = to_state in ("assigned", "not_selected")
+    if (
+        from_state == "applied"
+        and to_state != "applied"
+        and (decided or not Registration.objects.filter(session=session, state="applied").exists())
+    ):
+        complete_tasks(obj=session, kind="reg_received", by=User.objects.filter(pk=actor_id).first())
+    if to_state not in ("registered", "waitlisted", "applied") or from_state in ("registered", "waitlisted"):
+        return  # moving up, staff seating a waiting person or no new registration at all
+    inbox, mail = staff_recipients(session, actor_id)
+    if not inbox:
+        return
+    route = f"/training/sessions/{session.pk}/plan"
+    states = list(Registration.objects.filter(session=session).values_list("state", flat=True))
+    counts = {state: states.count(state) for state in ("registered", "waitlisted", "applied", "assigned")}
+    when = f"{session.title}, {_date(session.date)}"
+    if to_state == "applied":
+        title = f"Bewerbungen zuteilen ({counts['applied']} offen) · {when}"
+        item = _open_task(session, "reg_received", title)
+        if item is None:
+            item = notify(
+                kind="reg_received",
+                category=InboxItem.Category.REGISTRATIONS,
+                item_type=InboxItem.ItemType.TASK,
+                title=title,
+                department=session.department_id,
+                obj=session,
+                permission=PLANNING,
+                link=route,
+                recipients=inbox,
+            )
+        else:
+            _readdress(item, inbox)
+        label = "Zuteilen"
+    else:
+        registered = counts["registered"] + counts["waitlisted"]
+        item = notify(
+            kind="reg_received",
+            category=InboxItem.Category.REGISTRATIONS,
+            title=f"{registered} Anmeldung{'en' if registered != 1 else ''} · {when}",
+            department=session.department_id,
+            obj=session,
+            permission=PLANNING,
+            link=route,
+            recipients=inbox,
+            group_key=f"reg_received:session:{session.pk}",
+        )
+        label = "Meldungen ansehen"
+    slot = registration.preferred_slot if to_state != "registered" else registration.slot
+    entry = {
+        "name": member.get_full_name(),
+        "state": STATE_LABELS.get(to_state, to_state),
+        "slot": slot.label if slot is not None else "",
+        "at": _moment(registration.state_changed_at),
+        "by_staff": registration.source == Registration.Source.STAFF,
+    }
+    _staff_mail(
+        "reg_received",
+        mail,
+        session,
+        item,
+        route,
+        label,
+        {"entries": [entry], "counts": counts},
+        event=f"reg_received:{registration.pk}:{stamp}",
+    )
+
+
+def _open_task(session, kind, title):
+    """The open task of ``kind`` for ``session``, moved up with a new title, or None."""
+    from django.db.models import F
+
+    task = InboxItem.objects.filter(
+        item_type=InboxItem.ItemType.TASK,
+        task_state=InboxItem.TaskState.OPEN,
+        kind=kind,
+        object_type="training.trainingsession",
+        object_id=session.pk,
+    ).first()
+    if task is None:
+        return None
+    InboxItem.objects.filter(pk=task.pk).update(count=F("count") + 1, title=title[:200], updated_at=timezone.now())
+    task.refresh_from_db()
+    return task
+
+
+def _readdress(item, users):
+    """Mark ``item`` unread again for its recipients and add new ones."""
+    from .models import InboxRecipient
+
+    InboxRecipient.objects.filter(item=item).update(read_at=None, hidden_at=None)
+    existing = set(InboxRecipient.objects.filter(item=item).values_list("user_id", flat=True))
+    InboxRecipient.objects.bulk_create([InboxRecipient(item=item, user=u) for u in users if u.pk not in existing])
+
+
+def _staff_cancellation(registration, session, member, participation, stamp, actor_id=None):
     from participation.models import Registration
     from participation.service import effective_defaults, session_start
 
     cancelled = Registration.objects.filter(session=session, state="cancelled").count()
-    primary, everyone = responsibles(session)
-    if not everyone:
+    inbox, mail = staff_recipients(session, actor_id)
+    if not inbox:
         return
     title = f"{cancelled} Abmeldung{'en' if cancelled != 1 else ''} · {session.title}, {_date(session.date)}"
     route = f"/training/sessions/{session.pk}/plan"
@@ -408,15 +589,15 @@ def _staff_cancellation(registration, session, member, participation, stamp):
         obj=session,
         permission=PLANNING,
         link=route,
-        recipients=everyone,
+        recipients=inbox,
         group_key=f"reg_cancelled:session:{session.pk}",
     )
+    seated = Registration.objects.filter(session=session).exclude(state="cancelled").count()
     urgent_hours = effective_defaults(session.department_id).get("urgent_notice_h") or 48
     start = session_start(session)
-    if start is None or start - timezone.now() > timedelta(hours=urgent_hours):
-        return  # earlier cancellations go into the daily digest (NOTIF-01.5c)
-    seated = Registration.objects.filter(session=session).exclude(state="cancelled").count()
-    missing = _staffing_missing(session, participation)
+    missing = []
+    if start is not None and start - timezone.now() <= timedelta(hours=urgent_hours):
+        missing = _staffing_missing(session, participation)
     if missing:
         notify(
             kind="staffing_at_risk",
@@ -427,33 +608,29 @@ def _staff_cancellation(registration, session, member, participation, stamp):
             obj=session,
             permission=PLANNING,
             link=route,
-            recipients=everyone,
+            recipients=inbox,
         )
-    for user in primary:
-        open_url = _link(user, "open", {"r": route}, route)
-        context = {
-            **common_context(
-                user, open_url=open_url, actions=[{"label": "Meldungen ansehen", "url": open_url, "style": "primary"}]
-            ),
-            "session": _session(session, participation),
-            "cancellations": [
-                {
-                    "name": member.get_full_name(),
-                    "reason_category": REASONS.get(registration.reason_category, "ohne Angabe"),
-                    "at": _moment(registration.state_changed_at),
-                }
-            ],
-            "counts": {"expected": seated, "cancelled": cancelled},
-            "staffing": {"missing": missing},
-        }
-        queue_email(
-            "reg_cancelled",
-            user,
-            context,
-            event_key=f"reg_cancelled:{registration.pk}:{stamp}:{user.pk}",
-            explicit=True,
-        )
-        queue_push(user, item, "participation", explicit=True)
+    extra = {
+        "cancellations": [
+            {
+                "name": member.get_full_name(),
+                "reason_category": REASONS.get(registration.reason_category, "ohne Angabe"),
+                "at": _moment(registration.state_changed_at),
+            }
+        ],
+        "counts": {"expected": seated, "cancelled": cancelled},
+        "staffing": {"missing": missing},
+    }
+    _staff_mail(
+        "reg_cancelled",
+        mail,
+        session,
+        item,
+        route,
+        "Meldungen ansehen",
+        extra,
+        event=f"reg_cancelled:{registration.pk}:{stamp}",
+    )
 
 
 def _staffing_missing(session, participation):

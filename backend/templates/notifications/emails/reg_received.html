@@ -1,0 +1,6 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>für <strong>{{ session.title }}</strong> am {{ session.date }}, {{ session.time }} {% if entries|length == 1 %}gibt es eine neue Meldung{% else %}gibt es {{ entries|length }} neue Meldungen{% endif %}:</p>
+<ul>{% for e in entries %}<li>{{ e.name }} – {{ e.state }}{% if e.slot %} ({{ e.slot }}){% endif %}, {{ e.at }}{% if e.by_staff %}, durch Betreuende erfasst{% endif %}</li>{% endfor %}</ul>
+<p>Stand jetzt: {% if counts.applied %}{{ counts.applied }} offene Bewerbung{{ counts.applied|pluralize:"en" }}, {{ counts.assigned }} zugeteilt{% else %}{{ counts.registered }} angemeldet{% if counts.waitlisted %}, {{ counts.waitlisted }} auf der Warteliste{% endif %}{% endif %}.</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

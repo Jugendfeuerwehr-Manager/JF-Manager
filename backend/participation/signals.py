@@ -22,3 +22,7 @@ registration_changed = Signal()
 # Sent after commit when a place became free but nobody moves up automatically (manual waiting list or
 # assignment mode, E5): ``session_id``, ``slot_label`` ("" without position) and ``waiting`` (count).
 place_freed = Signal()
+
+# Sent after commit when staff ask for a response (NOTIF-02.3): ``session`` and ``member_ids`` (target people
+# without a registration who meet the requirements).
+response_requested = Signal()

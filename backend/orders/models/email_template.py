@@ -19,7 +19,8 @@ class EmailTemplate(models.Model):
         ("account_link", "Konto: Verknüpfung bestätigen"),
         ("cr_submitted", "Änderungsantrag gestellt"),
         ("cr_decided", "Änderungsantrag entschieden"),
-        ("reg_cancelled", "Kurzfristige Abmeldung"),
+        ("reg_received", "Neue Anmeldungen und Bewerbungen"),
+        ("reg_cancelled", "Abmeldung"),
         ("reg_digest", "Meldungen: Tageszusammenfassung"),
         ("slot_free_manual", "Platz frei (Warteliste manuell)"),
         ("staffing_at_risk", "Mindestbesetzung gefährdet"),
@@ -28,6 +29,7 @@ class EmailTemplate(models.Model):
         ("assign_published", "Teilnahme: Zuteilung"),
         ("session_changed", "Teilnahme: Dienst geändert oder abgesagt"),
         ("session_published", "Teilnahme: Neuer Dienst"),
+        ("response_requested", "Teilnahme: Bitte um Rückmeldung"),
         ("eligibility_conflict", "Voraussetzung nicht mehr erfüllt"),
         ("parent_access_end", "Elternzugriff endet"),
         # Legacy template types (for backward compatibility)

@@ -119,22 +119,24 @@ class ProducerTests(TestCase):
         item = InboxItem.objects.get(kind="reg_cancelled")
         self.assertEqual(item.group_key, f"reg_cancelled:session:{session.pk}")
         self.assertEqual(set(item.recipients.values_list("user__username", flat=True)), {"leitung", "vertretung"})
+        # NOTIF-02: every staff recipient of the inbox entry gets the mail, not only the session lead.
         self.assertEqual(
-            list(EmailDelivery.objects.filter(kind="reg_cancelled").values_list("user__username", flat=True)),
-            ["leitung"],
+            set(EmailDelivery.objects.filter(kind="reg_cancelled").values_list("user__username", flat=True)),
+            {"leitung", "vertretung"},
         )
-        deliver_emails()
+        deliver_emails(now=timezone.now() + timedelta(minutes=10))
         self.assertIn("Krankheit", mail.outbox[-1].body)
         self.assertNotIn("sandra", mail.outbox[-1].to[0])
 
-    def test_early_cancellation_only_reaches_the_inbox(self):
+    def test_early_cancellation_is_mailed_too(self):
         session = self.publish(day=future_day(20))
         with self.captureOnCommitCallbacks(execute=True):
             service.set_registration(
                 session.pk, self.child.pk, "cancelled", actor=self.parent_user, source="portal_parent"
             )
         self.assertTrue(InboxItem.objects.filter(kind="reg_cancelled").exists())
-        self.assertFalse(EmailDelivery.objects.filter(kind="reg_cancelled").exists())
+        self.assertTrue(EmailDelivery.objects.filter(kind="reg_cancelled").exists())  # NOTIF-02
+        self.assertFalse(InboxItem.objects.filter(kind="staffing_at_risk").exists())
 
     def test_cancelled_service_is_announced(self):
         session = self.publish()

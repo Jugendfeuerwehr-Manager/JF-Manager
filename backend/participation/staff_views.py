@@ -1,9 +1,12 @@
 """Staff API for the participation of a planned service (PART-01.3)."""
 
 import re
+from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -18,7 +21,7 @@ from training.models import TrainingSession
 
 from . import assignment, changes, service, slots, states
 from .eligibility import neutral_audience_notice
-from .models import Mode, Registration, Slot, WaitlistMode
+from .models import Mode, Registration, RegistrationEvent, RegistrationSeen, Slot, WaitlistMode
 from .rules import Names, summarize, validate_rule
 from .service import ParticipationError
 from .views import MAX_TARGET, target_members
@@ -232,6 +235,7 @@ def config_payload(session, participation):
         ),
         staffing=slots.staffing(participation, positions, held, seated=sum(held.values())),
         revision=participation.revision,
+        response_requested_at=participation.response_requested_at,
         session=session.pk,
         department=session.department_id,
         effective={
@@ -508,6 +512,134 @@ class MemberRegistrationView(StaffView):
         )
         body["changed"] = changed
         return Response(body, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------- asking for a response (NOTIF-02.3)
+
+REQUEST_INTERVAL = timedelta(hours=1)
+
+
+class ResponseRequestView(StaffView):
+    """Ask target people without a response by portal notice, e-mail and push (NOTIF-02.3).
+
+    Only people without any registration who meet the requirements are asked; people
+    without a portal account are counted so staff can ask them in person or on paper.
+    """
+
+    def post(self, request, session_id):
+        self.session_for(request, session_id, write=True)
+        from notifications.producers import accounts_for_member
+
+        now = timezone.now()
+        with transaction.atomic():
+            session = TrainingSession.objects.select_for_update(of=("self",)).get(pk=session_id)
+            participation, persisted = service.participation_for(session)
+            if session.status != TrainingSession.Status.PUBLISHED:
+                return error_response(ParticipationError("not_open", "Der Dienst ist nicht veröffentlicht."))
+            if not participation.portal_visible:
+                return error_response(ParticipationError("not_open", "Der Dienst ist im Portal nicht sichtbar."))
+            if now >= service.session_start(session):
+                return error_response(ParticipationError("deadline_passed", "Der Dienst hat bereits begonnen."))
+            last = participation.response_requested_at
+            if last is not None and now - last < REQUEST_INTERVAL:
+                local = timezone.localtime(last).strftime("%H:%M")
+                return error_response(
+                    ParticipationError(
+                        "too_soon",
+                        f"Um {local} Uhr wurde bereits um Rückmeldung gebeten; bitte später erneut.",
+                        status=429,
+                    )
+                )
+            members = target_members(session)
+            members = list(members) if members is not None else []
+            answered = set(Registration.objects.filter(session=session).values_list("member_id", flat=True))
+            members = [m for m in members if m.pk not in answered]
+            results = service.eligibility_for(session, participation, [m.pk for m in members])
+            members = [m for m in members if results.get(m.pk) is None or results[m.pk].ok]
+            reachable = [m for m in members if accounts_for_member(m)]
+            if not persisted:
+                participation.revision = 1
+            participation.response_requested_at = now
+            participation.save()
+            ids = [m.pk for m in reachable]
+            if ids:
+                from .signals import response_requested
+
+                transaction.on_commit(
+                    lambda: response_requested.send(sender=TrainingSession, session=session, member_ids=ids)
+                )
+        return Response(
+            {
+                "asked": len(reachable),
+                "without_account": len(members) - len(reachable),
+                "response_requested_at": now,
+            }
+        )
+
+
+# ---------------------------------------------------------------- new responses (NOTIF-02.3)
+
+MAX_NEWS_IDS = 500
+NOTICE_KINDS = ("reg_received", "reg_cancelled")
+
+
+def new_responses(user, sessions):
+    """``{session_id: n}``: responses by others after the user last opened the registrations."""
+    seen = dict(RegistrationSeen.objects.filter(user=user, session__in=sessions).values_list("session_id", "seen_at"))
+    events = (
+        RegistrationEvent.objects.filter(registration__session__in=sessions)
+        .exclude(via="system")
+        .exclude(actor=user)
+        .values_list("registration__session_id", "at")
+    )
+    counts = {}
+    for session_id, at in events:
+        if session_id not in seen or at > seen[session_id]:
+            counts[session_id] = counts.get(session_id, 0) + 1
+    return counts
+
+
+class NewResponsesView(StaffView):
+    """Number of new responses per service for the calendar and the planner (``?ids=1,2,3``)."""
+
+    def get(self, request):
+        raw = request.query_params.get("ids", "")
+        try:
+            ids = sorted({int(value) for value in raw.split(",") if value.strip()})
+        except ValueError:
+            return Response({"detail": "Ungültige Dienstliste."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(ids) > MAX_NEWS_IDS:
+            return Response({"detail": f"Höchstens {MAX_NEWS_IDS} Dienste."}, status=status.HTTP_400_BAD_REQUEST)
+        today = timezone.localdate()
+        sessions = [
+            session
+            for session in TrainingSession.objects.filter(pk__in=ids, date__gte=today).annotate(
+                responses=Count("registrations")
+            )
+            if session.responses and can_view(request.user, session)
+        ]
+        counts = new_responses(request.user, sessions)
+        return Response({"sessions": {str(pk): n for pk, n in counts.items()}})
+
+
+class RegistrationsSeenView(StaffView):
+    """Mark the registrations of a service as seen; also reads its registration notices in the inbox."""
+
+    def post(self, request, session_id):
+        session = self.session_for(request, session_id, write=False)
+        from notifications.models import InboxRecipient
+
+        now = timezone.now()
+        RegistrationSeen.objects.update_or_create(user=request.user, session=session, defaults={"seen_at": now})
+        InboxRecipient.objects.filter(
+            user=request.user,
+            read_at__isnull=True,
+            item__item_type="notice",
+            item__kind__in=NOTICE_KINDS,
+            item__object_type="training.trainingsession",
+            item__object_id=session.pk,
+        ).update(read_at=now)
+        return Response({"seen_at": now})
 
 
 # ---------------------------------------------------------------- assignment board (PART-04.4)

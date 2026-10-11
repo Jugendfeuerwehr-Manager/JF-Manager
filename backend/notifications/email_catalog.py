@@ -132,9 +132,37 @@ CATALOG = {
             }
         },
     ),
+    "reg_received": _type(
+        "Neue Anmeldungen und Bewerbungen",
+        "{% if counts.applied %}Bewerbung{% else %}Anmeldung{% endif %}: {{ session.title }} am {{ session.date }}",
+        "important",
+        [
+            SESSION_VARIABLE,
+            {"name": "entries", "type": "list", "description": "Meldungen: name, state, slot, at, by_staff"},
+            {
+                "name": "counts",
+                "type": "object",
+                "description": "Zähler",
+                "properties": ["registered", "waitlisted", "applied", "assigned"],
+            },
+        ],
+        {
+            "session": SESSION_SAMPLE,
+            "entries": [
+                {
+                    "name": "Mia Becker",
+                    "state": "beworben",
+                    "slot": "Truppmann/-frau",
+                    "at": "heute 16:40",
+                    "by_staff": False,
+                }
+            ],
+            "counts": {"registered": 0, "waitlisted": 0, "applied": 3, "assigned": 0},
+        },
+    ),
     "reg_cancelled": _type(
-        "Kurzfristige Abmeldung",
-        "Kurzfristige Abmeldung: {{ session.title }} am {{ session.date }}",
+        "Abmeldung",
+        "Abmeldung: {{ session.title }} am {{ session.date }}",
         "important",
         [
             SESSION_VARIABLE,
@@ -282,6 +310,29 @@ CATALOG = {
             "series": {"title": "", "dates": []},
             "deadlines": {"registration": "So 12.10., 18:00 Uhr", "cancellation": "Di 14.10., 16:00 Uhr"},
             "participation": {"mode": "opt_out"},
+        },
+        required=PARTICIPATION_LINKS,
+    ),
+    "response_requested": _type(
+        "Teilnahme: Bitte um Rückmeldung",
+        "Bitte um Rückmeldung: {{ session.title }} am {{ session.date }}",
+        "events",
+        [
+            PERSON_VARIABLE,
+            SESSION_VARIABLE,
+            {
+                "name": "deadlines",
+                "type": "object",
+                "description": "Fristen",
+                "properties": ["registration", "cancellation"],
+            },
+            {"name": "participation", "type": "object", "description": "Teilnahme", "properties": ["mode"]},
+        ],
+        {
+            "person": {"first_name": "Mia"},
+            "session": SESSION_SAMPLE,
+            "deadlines": {"registration": "So 12.10., 18:00 Uhr", "cancellation": "Di 14.10., 16:00 Uhr"},
+            "participation": {"mode": "opt_in"},
         },
         required=PARTICIPATION_LINKS,
     ),
