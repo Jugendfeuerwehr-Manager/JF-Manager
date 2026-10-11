@@ -24,7 +24,7 @@ Die Quellen bleiben in `docs/handbook/` und den ausgewählten Betriebs-/Fachrefe
 
 Das ZIP vollständig entpacken und den Inhalt auf einen statischen Webserver kopieren. `index.html` ist der Einstieg. Die Navigation verwendet relative HTML-Pfade. Direktes Öffnen per `file://` ist zum Lesen möglich; **Suche funktioniert zuverlässig über HTTP**, weil der Browser den Suchindex laden muss. Für einzelne Artikel kann die Browser-Druckfunktion auch PDF erzeugen. Das ZIP ist kein einziges zusammenhängendes PDF-Handbuch.
 
-Das [MkDocs-Auslieferungsverfahren](https://www.mkdocs.org/user-guide/deploying-your-docs/) beschreibt statisches Hosting. Schrift, Navigation, Suche und Styles des Builds verwenden lokale Assets; keine Analyse-/Trackingdienste werden eingebunden.
+Das [MkDocs-Auslieferungsverfahren](https://www.mkdocs.org/user-guide/deploying-your-docs/) beschreibt statisches Hosting. Schrift, Navigation, Suche und Styles des Builds verwenden lokale Assets; keine Analyse-/Trackingdienste werden eingebunden. Das Erscheinungsbild kommt aus dem eigenen Theme in `scripts/docs/theme/` (Layout `base.html`, Gestaltung `css/handbook-theme.css`, Schriften Bricolage Grotesque und Figtree unter SIL Open Font License); es ist auf die Website jfmanager.de abgestimmt.
 
 ## GitHub Pages vorbereiten
 

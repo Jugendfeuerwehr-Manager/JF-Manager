@@ -8,12 +8,11 @@ site_dir: .docs-build/site
 use_directory_urls: false
 strict: true
 theme:
-  name: mkdocs
+  # Eigenes, eigenständiges Theme im Stil von jfmanager.de (scripts/docs/theme).
+  name: null
   custom_dir: scripts/docs/theme
-  locale: de
-  color_mode: light
-  user_color_mode_toggle: false
-  highlightjs: false
+  static_templates:
+    - 404.html
 plugins:
   - search:
       lang: de

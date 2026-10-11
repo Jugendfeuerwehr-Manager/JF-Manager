@@ -1,0 +1,165 @@
+{#-
+  Eigenes Layout des Benutzerhandbuchs im Stil von jfmanager.de.
+  Ersetzt das Bootstrap-Layout des MkDocs-Themes vollständig; alle Assets
+  (Schriften, Logo, CSS, JS) liegen in scripts/docs/theme und werden lokal ausgeliefert.
+  Die Suche nutzt das MkDocs-Suchplugin (search/main.js, IDs mkdocs-search-*).
+-#}
+{%- set audiences = {
+  'Jugendleiter / Bediener': {'icon': 'users', 'text': 'Mitglieder, Dienstbuch, Anwesenheit, Übungsplanung und Inventar im Alltag.'},
+  'Administratoren': {'icon': 'shield', 'text': 'Organisation, Konten, Rollen, Einstellungen und Integrationen einrichten.'},
+  'Eltern und Mitglieder': {'icon': 'heart', 'text': 'Termine, Abmeldungen und eigene Daten im Portal.'},
+  'Server & Operations': {'icon': 'server', 'text': 'Installation, Sicherung, Updates und Hilfe im Notfall.'}
+} -%}
+{%- set icons = {
+  'users': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  'shield': 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  'heart': 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z',
+  'server': 'M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zM6 6h.01M6 18h.01',
+  'search': 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
+  'menu': 'M4 6h16M4 12h16M4 18h16',
+  'left': 'M19 12H5M11 18l-6-6 6-6',
+  'right': 'M5 12h14M13 6l6 6-6 6',
+  'book': 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5'
+} -%}
+{%- macro icon(name, size=22) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ icons[name] }}"/></svg>
+{%- endmacro -%}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- if page and page.is_homepage %}<meta name="description" content="{{ config.site_description }}">{% endif %}
+  {%- if page and page.canonical_url %}<link rel="canonical" href="{{ page.canonical_url }}">{% endif %}
+  <title>{% if page and page.title and not page.is_homepage %}{{ page.title }} · {% endif %}JF-Manager Handbuch</title>
+  <link rel="icon" href="{{ 'img/logo.svg'|url }}" type="image/svg+xml">
+  <link rel="preload" href="{{ 'fonts/figtree-latin-wght-normal.woff2'|url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ 'fonts/bricolage-grotesque-latin-wght-normal.woff2'|url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ 'css/handbook-theme.css'|url }}">
+  {%- for path in config.extra_css %}
+  <link rel="stylesheet" href="{{ path|url }}">
+  {%- endfor %}
+</head>
+<body class="{% if page and page.is_homepage %}is-home{% endif %}">
+  <a class="skip-link" href="#inhalt">Zum Inhalt springen</a>
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="false" data-nav-toggle>
+        {{ icon('menu') }}<span class="sr-only">Navigation öffnen</span>
+      </button>
+      <a class="brand" href="{{ nav.homepage.url|url }}">
+        <img src="{{ 'img/logo.svg'|url }}" alt="" width="40" height="40">
+        <span><strong>JF-Manager</strong><small>Benutzerhandbuch</small></span>
+      </a>
+      {%- if 'search' in config.plugins %}
+      <div class="search" role="search">
+        <label class="sr-only" for="mkdocs-search-query">Im Handbuch suchen</label>
+        <span class="search__icon">{{ icon('search', 18) }}</span>
+        <input type="search" id="mkdocs-search-query" placeholder="Im Handbuch suchen …" autocomplete="off" data-search-input>
+        <kbd class="search__key" aria-hidden="true">/</kbd>
+        <div class="search__panel" id="mkdocs-search-results" data-no-results-text="Nichts gefunden. Versucht ein anderes Stichwort." aria-live="polite" hidden></div>
+      </div>
+      {%- endif %}
+      <nav class="topbar__links" aria-label="Projekt">
+        <a href="https://jfmanager.de/">jfmanager.de</a>
+        {%- if config.repo_url %}<a href="{{ config.repo_url }}">GitHub</a>{% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Kapitel">
+      <nav class="sidebar__nav">
+        <ul>
+        {%- for item in nav %}
+          {%- if item.children %}
+          <li class="nav-section{% if item.active %} is-active{% endif %}">
+            <details{% if item.active %} open{% endif %}>
+              <summary>{{ item.title }}</summary>
+              <ul>
+              {%- for child in item.children %}
+                <li><a href="{{ child.url|url }}"{% if child.active %} class="is-current" aria-current="page"{% endif %}>{{ child.title }}</a></li>
+              {%- endfor %}
+              </ul>
+            </details>
+          </li>
+          {%- else %}
+          <li><a class="nav-top{% if item.active %} is-current{% endif %}" href="{{ item.url|url }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+          {%- endif %}
+        {%- endfor %}
+        </ul>
+      </nav>
+      <p class="sidebar__note">Etwas unklar oder veraltet? <a href="https://github.com/Jugendfeuerwehr-Manager/JF-Manager/issues">Sagt uns Bescheid.</a></p>
+    </aside>
+    <div class="sidebar-backdrop" data-nav-close hidden></div>
+
+    <main class="main" id="inhalt" tabindex="-1">
+      {%- block hero %}
+      {%- if page and page.is_homepage %}
+      <section class="hero">
+        <p class="kicker">{{ icon('book', 16) }} Benutzerhandbuch</p>
+        <h1>Schön, dass ihr da seid.</h1>
+        <p class="lead">Hier findet ihr Schritt für Schritt, wie ihr JF-Manager im Vereinsalltag nutzt, einrichtet und betreibt. Wählt einfach euren Bereich oder sucht oben nach einem Stichwort.</p>
+        <ul class="audiences">
+        {%- for item in nav if item.children and item.title in audiences %}
+          {%- set a = audiences[item.title] %}
+          <li><a href="{{ item.children[0].url|url }}">
+            <span class="audiences__icon">{{ icon(a.icon) }}</span>
+            <strong>{{ item.title }}</strong>
+            <span>{{ a.text }}</span>
+          </a></li>
+        {%- endfor %}
+        </ul>
+      </section>
+      {%- endif %}
+      {%- endblock %}
+
+      <div class="page">
+        <article class="content">
+          {%- if page and not page.is_homepage and page.parent %}
+          <p class="breadcrumb">{{ page.parent.title }}</p>
+          {%- endif %}
+          {%- block content %}{{ page.content }}{% endblock %}
+
+          {%- if page and (page.previous_page or page.next_page) %}
+          <nav class="pager" aria-label="Weiterblättern">
+            {%- if page.previous_page %}
+            <a class="pager__prev" rel="prev" href="{{ page.previous_page.url|url }}"><span>{{ icon('left', 18) }} Zurück</span><strong>{{ page.previous_page.title }}</strong></a>
+            {%- else %}<span></span>{% endif %}
+            {%- if page.next_page %}
+            <a class="pager__next" rel="next" href="{{ page.next_page.url|url }}"><span>Weiter {{ icon('right', 18) }}</span><strong>{{ page.next_page.title }}</strong></a>
+            {%- endif %}
+          </nav>
+          {%- endif %}
+        </article>
+
+        {%- if page and page.toc and page.toc.items and (page.toc.items|length > 1 or page.toc.items[0].children) %}
+        <aside class="toc" aria-label="Auf dieser Seite">
+          <p class="toc__title">Auf dieser Seite</p>
+          <ul>
+          {%- for h in page.toc.items %}
+            {%- for h2 in (h.children if h.level == 1 else [h]) %}
+            <li><a href="{{ h2.url }}">{{ h2.title }}</a></li>
+            {%- endfor %}
+          {%- endfor %}
+          </ul>
+        </aside>
+        {%- endif %}
+      </div>
+
+      <footer class="footer">
+        <img src="{{ 'img/logo.svg'|url }}" alt="" width="32" height="32">
+        <p><strong>JF-Manager</strong> ist eine freie Vereinsverwaltung aus der Jugendfeuerwehr, Open Source unter AGPL-3.0.</p>
+        <p class="footer__links"><a href="https://jfmanager.de/">jfmanager.de</a> · <a href="https://jfmanager.de/installation/">Installation</a> · <a href="https://github.com/Jugendfeuerwehr-Manager/JF-Manager">Quellcode</a></p>
+      </footer>
+    </main>
+  </div>
+
+  <script>var base_url = {{ base_url|tojson }};</script>
+  <script src="{{ 'js/handbook.js'|url }}" defer></script>
+  {%- for script in config.extra_javascript %}
+  {{ script|script_tag }}
+  {%- endfor %}
+</body>
+</html>
