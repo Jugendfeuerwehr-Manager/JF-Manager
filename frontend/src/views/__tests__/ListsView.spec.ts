@@ -166,4 +166,3 @@ describe('ListsView department-aware forms', () => {
     expect(wrapper.text()).toContain('Noch keine Listen')
   })
 })
-
