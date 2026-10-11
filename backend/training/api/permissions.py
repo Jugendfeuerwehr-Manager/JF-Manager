@@ -61,6 +61,10 @@ class CanManageTraining(DepartmentRoleModelPermissions):
         if request.method in permissions.SAFE_METHODS:
             return [f"training.view_{model._meta.model_name}"]
         if request.method == "DELETE":
+            if model._meta.model_name == "trainingsession":
+                # Planning includes deleting an exercise (NOTIF-02, user decision 11.10.2026): it removes
+                # planning data only, never personal master data, so no separate delete right is needed.
+                return ["training.can_manage_training"]
             return ["training.can_manage_training", f"training.delete_{model._meta.model_name}"]
         if request.method in ("POST", "PUT", "PATCH"):
             return ["training.can_manage_training"]

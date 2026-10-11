@@ -7,12 +7,16 @@ import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 
 const mocks = vi.hoisted(() => ({
   plan: vi.fn(), draggable: vi.fn(), resizable: vi.fn(), unset: vi.fn(),
+  confirm: vi.fn(), deleteSession: vi.fn(), push: vi.fn(), news: vi.fn(),
   leave: undefined as (() => boolean) | undefined,
   update: undefined as (() => boolean) | undefined,
 }))
 vi.mock('@/api/training', () => ({ trainingSessionsApi: { plan: mocks.plan } }))
+vi.mock('@/api/participation', () => ({ participationApi: { newResponses: mocks.news } }))
+vi.mock('@/stores/training', () => ({ useTrainingStore: () => ({ deleteSession: mocks.deleteSession }) }))
+vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: mocks.confirm }) }))
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: mocks.push }),
   onBeforeRouteLeave: (handler: () => boolean) => { mocks.leave = handler },
   onBeforeRouteUpdate: (handler: () => boolean) => { mocks.update = handler },
 }))
@@ -40,12 +44,13 @@ beforeEach(() => {
     description: '', location: '', notes: '', department: 1, groups: [], recurrence_rule: null,
     blocks: [block(1), block(2)],
   } })
+  mocks.news.mockResolvedValue({ data: { sessions: {} } })
 })
 
 const headerStubs = {
   WorkspaceHeader: { props: ['title', 'eyebrow'], template: '<header class="ws-stub"><h1>{{ title }}</h1><p class="eyebrow">{{ eyebrow }}</p><slot name="meta" /><slot name="status" /><div class="actions"><slot name="actions" /></div></header>' },
   Button: { props: ['label', 'ariaLabel', 'disabled'], emits: ['click'], template: '<button type="button" :aria-label="ariaLabel" :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>' },
-  Menu: { props: ['model'], template: '<ul class="menu-stub"><li v-for="item in model" :key="item.key" :data-disabled="item.disabled">{{ item.label }}</li></ul>' },
+  Menu: { props: ['model'], template: '<ul class="menu-stub"><li v-for="item in model" :key="item.key" :data-disabled="item.disabled" @click="item.command()">{{ item.label }}</li></ul>' },
 }
 
 function mountAt(width: number) {
@@ -86,6 +91,34 @@ describe('planner header', () => {
     expect(labels).not.toContain('Absagen')
     expect(wrapper.findAll('.menu-stub li').map((li) => li.text())).toContain('Absagen')
     expect(wrapper.get('[role="status"]').text()).toBe('Alles gespeichert')
+    wrapper.unmount()
+  })
+})
+
+describe('planner deletion and new responses', () => {
+  afterEach(() => { Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 }) })
+
+  it('deletes the exercise after confirmation and returns to the calendar', async () => {
+    mocks.deleteSession.mockResolvedValue(undefined)
+    const wrapper = mountAt(390)
+    await flushPromises()
+    await wrapper.findAll('.menu-stub li').find((li) => li.text() === 'Löschen')!.trigger('click')
+    const request = mocks.confirm.mock.calls[0]![0]
+    expect(request.message).toContain('Teilnehmende werden nicht benachrichtigt')
+    expect(mocks.deleteSession).not.toHaveBeenCalled()
+    request.accept()
+    await flushPromises()
+    expect(mocks.deleteSession).toHaveBeenCalledWith(1, { deleteLinkedService: false })
+    expect(mocks.push).toHaveBeenCalledWith('/training')
+    wrapper.unmount()
+  })
+
+  it('announces new responses with a way to the registrations', async () => {
+    mocks.news.mockResolvedValue({ data: { sessions: { 1: 3 } } })
+    const wrapper = mountAt(1700)
+    await flushPromises()
+    expect(mocks.news).toHaveBeenCalledWith([1])
+    expect(wrapper.get('.planner-news').text()).toContain('3 neue Rückmeldungen')
     wrapper.unmount()
   })
 })

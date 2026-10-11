@@ -15,6 +15,8 @@ const trainingStore = reactive({
   deleteSession: vi.fn(),
 })
 vi.mock('@/stores/training', () => ({ useTrainingStore: () => trainingStore }))
+const participationStore = reactive({ newResponses: {} as Record<number, number>, loadNewResponses: vi.fn() })
+vi.mock('@/stores/participation', () => ({ useParticipationStore: () => participationStore }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPerm: () => true }) }))
 vi.mock('@/stores/departments', () => ({
   useDepartmentsStore: () => ({ activeDepartmentId: 1, departments: [{ id: 1, code: 'JF', name: 'Jugendfeuerwehr', color: '#c62828' }] }),
@@ -53,6 +55,8 @@ describe('TrainingCalendar', () => {
     push.mockReset()
     trainingStore.fetchSessions.mockReset().mockResolvedValue(undefined)
     trainingStore.error = null
+    participationStore.newResponses = {}
+    participationStore.loadNewResponses.mockReset()
     trainingStore.sessions = [
       session({ id: 1 }),
       session({ id: 2, title: 'Abgesagte Übung', status: 'cancelled', date: '2026-10-17', start_time: '10:00:00' }),
@@ -98,6 +102,20 @@ describe('TrainingCalendar', () => {
     await chips[0]!.trigger('click')
     expect(push).toHaveBeenCalledWith('/training/sessions/1/plan')
     expect(wrapper.find('.dialog-stub').exists()).toBe(false)
+  })
+
+  it('marks upcoming services with new responses on the chip, in its label and in the list', async () => {
+    participationStore.newResponses = { 1: 2 }
+    const wrapper = mountCalendar()
+    await flushPromises()
+    expect(participationStore.loadNewResponses).toHaveBeenCalledWith([1, 2])
+    const chip = wrapper.findAll('button.session-pill')[0]!
+    expect(chip.get('.session-pill__news').text()).toBe('2')
+    expect(chip.attributes('aria-label')).toContain('2 neue Rückmeldungen')
+    expect(wrapper.findAll('.session-pill__news')).toHaveLength(1)
+    await wrapper.findAll('.segmented button').find((b) => b.text() === 'Liste')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.list-session-item .news-chip').text()).toBe('2 neu')
   })
 
   it('keeps three entries per day plus "+N weitere" when the cell height is not fixed', async () => {

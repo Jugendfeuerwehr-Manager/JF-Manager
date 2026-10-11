@@ -17,6 +17,48 @@
       <p class="reg-overview__deadlines">
         Anmeldeschluss {{ formatDateTime(data.deadlines.registration_closes_at) }} · Abmeldeschluss {{ formatDateTime(data.deadlines.cancellation_closes_at) }}
       </p>
+      <div v-if="canManage && data.session.status === 'published'" class="reg-request">
+        <Button
+          label="Um Rückmeldung bitten"
+          icon="pi pi-megaphone"
+          severity="secondary"
+          :loading="store.requesting"
+          :disabled="countOf(openStates) === 0"
+          @click="askForResponse"
+        />
+        <span class="reg-note">
+          {{ countOf(openStates) === 0 ? 'Alle haben sich zurückgemeldet.' : `Fragt ${countOf(openStates) === 1 ? 'eine Person' : `${countOf(openStates)} Personen`} ohne Rückmeldung per Portal, E-Mail und Push.` }}
+          <template v-if="lastRequest"> Zuletzt gebeten: {{ formatDateTime(lastRequest) }}.</template>
+        </span>
+      </div>
+      <p v-if="requestMessage" class="reg-overview__info" role="status"><i class="pi pi-check-circle" aria-hidden="true"></i>{{ requestMessage }}</p>
+      <section v-if="quickVerb" class="reg-quick" aria-labelledby="reg-quick-title">
+        <h3 id="reg-quick-title" class="reg-quick__title">Schnellerfassung</h3>
+        <p class="reg-note">Ein Tipp auf den Namen erfasst die {{ quickVerb.noun }}, etwa vom Papierzettel. Alphabetisch, nur Personen ohne Rückmeldung.</p>
+        <div v-if="data.mode === 'assignment' && data.slots?.length" class="reg-quick__wish">
+          <label for="reg-wish">Wunschposition</label>
+          <select id="reg-wish" v-model="wish" class="reg-input">
+            <option :value="null">Beliebige passende Position</option>
+            <option v-for="slot in data.slots" :key="slot.id" :value="slot.id">{{ slot.label }}</option>
+          </select>
+        </div>
+        <p v-if="!quickRows.length" class="reg-note">Alle Personen der Zielgruppe haben eine Rückmeldung.</p>
+        <div v-else class="reg-quick__people" role="group" aria-label="Personen ohne Rückmeldung">
+          <button
+            v-for="row in quickRows"
+            :key="row.member_id"
+            type="button"
+            class="reg-quick__person"
+            :aria-label="`${row.name} ${row.lastname} als ${quickVerb.state} erfassen`"
+            :disabled="store.busyMember !== null"
+            @click="quick(row)"
+          >
+            <i :class="store.busyMember === row.member_id ? 'pi pi-spin pi-spinner' : 'pi pi-plus'" aria-hidden="true"></i>
+            {{ row.lastname }}, {{ row.name }}
+          </button>
+        </div>
+        <p v-if="quickDone" class="reg-overview__info" role="status"><i class="pi pi-check-circle" aria-hidden="true"></i>{{ quickDone }}</p>
+      </section>
       <p v-if="data.truncated" class="reg-overview__error" role="status">Die Zielgruppe ist sehr groß; es werden nicht alle Personen aufgeführt.</p>
 
       <div class="reg-overview__filter">
@@ -51,6 +93,7 @@
             <td>
               <ul class="reg-hints">
                 <li v-if="row.registration?.late"><i class="pi pi-clock" aria-hidden="true"></i>Nach Frist erfasst</li>
+                <li v-if="row.registration?.source === 'staff'"><i class="pi pi-user-edit" aria-hidden="true"></i>Durch Betreuende erfasst</li>
                 <li v-if="row.registration?.conflict"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Voraussetzung nicht mehr erfüllt: {{ row.registration.conflict_reasons.join('; ') }}</li>
                 <li v-else-if="!row.eligibility.ok"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Voraussetzungen nicht erfüllt: {{ row.eligibility.reasons.join('; ') }}</li>
               </ul>
@@ -67,6 +110,17 @@
                   :loading="store.busyMember === row.member_id"
                   :disabled="store.busyMember !== null"
                   @click="register(row)"
+                />
+                <Button
+                  v-if="data.mode === 'assignment' && canApply(row)"
+                  label="Bewerbung erfassen"
+                  icon="pi pi-send"
+                  size="small"
+                  severity="secondary"
+                  :aria-label="`Bewerbung für ${row.name} ${row.lastname} erfassen`"
+                  :disabled="store.busyMember !== null"
+                  :loading="store.busyMember === row.member_id"
+                  @click="quick(row)"
                 />
                 <Button
                   v-if="row.state !== 'cancelled' && row.state !== 'not_selected'"
@@ -166,6 +220,53 @@ const formatDateTime = (iso: string | null) => iso
   ? new Date(iso).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   : '–'
 
+// Quick entry from paper or by word of mouth (NOTIF-02): one tap per person, no dialog, no search.
+const canApply = (row: RegistrationRow) => row.in_target && (row.state === 'no_response' || row.state === 'cancelled')
+const wish = ref<number | null>(null)
+const quickDone = ref<string | null>(null)
+const quickVerb = computed(() => {
+  if (!props.canManage || data.value?.session.status !== 'published') return null
+  if (data.value.mode === 'assignment') return { target: 'applied' as const, noun: 'Bewerbung', state: 'beworben' }
+  if (data.value.mode === 'opt_in') return { target: 'registered' as const, noun: 'Anmeldung', state: 'angemeldet' }
+  return null
+})
+const quickRows = computed(() => visibleRows.value
+  .filter(row => row.in_target && row.state === 'no_response')
+  .sort((a, b) => `${a.lastname} ${a.name}`.localeCompare(`${b.lastname} ${b.name}`, 'de')))
+
+async function quick(row: RegistrationRow) {
+  const verb = quickVerb.value
+  if (!verb) return
+  actionError.value = null
+  quickDone.value = null
+  const slot = verb.target === 'applied' ? { slot: wish.value } : {}
+  const result = await store.setRegistration(row.member_id, verb.target, {}, slot)
+  if (!result.ok) {
+    actionError.value = result.message ?? 'Die Meldung konnte nicht erfasst werden.'
+    return
+  }
+  quickDone.value = `${row.name} ${row.lastname}: ${verb.noun} erfasst.`
+}
+
+// "Um Rückmeldung bitten" (NOTIF-02.3): people without a portal account are only counted.
+const requestMessage = ref<string | null>(null)
+// The configuration is not loaded when the dialog opens on this tab; the answer of the request fills in.
+const requestedAt = ref<string | null>(null)
+const lastRequest = computed(() => requestedAt.value ?? store.config?.response_requested_at ?? null)
+async function askForResponse() {
+  actionError.value = null
+  requestMessage.value = null
+  const outcome = await store.requestResponse()
+  if (!outcome.ok || !outcome.result) {
+    actionError.value = outcome.message ?? 'Die Bitte um Rückmeldung konnte nicht versendet werden.'
+    return
+  }
+  const { asked, without_account: offline } = outcome.result
+  requestedAt.value = outcome.result.response_requested_at
+  requestMessage.value = `${asked === 1 ? 'Eine Person wurde' : `${asked} Personen wurden`} um Rückmeldung gebeten.`
+    + (offline ? ` ${offline === 1 ? 'Eine Person hat' : `${offline} Personen haben`} kein Portalkonto – bitte persönlich oder auf Papier fragen und hier erfassen.` : '')
+}
+
 async function register(row: RegistrationRow) {
   actionError.value = null
   const result = await store.setRegistration(row.member_id, 'registered')
@@ -185,8 +286,13 @@ async function confirmCancel() {
   if (!result.ok) actionError.value = result.message ?? 'Die Meldung konnte nicht geändert werden.'
 }
 
-onMounted(() => { void store.loadRegistrations(props.sessionId) })
-watch(() => props.sessionId, id => { void store.loadRegistrations(id) })
+// Opening the registrations marks new responses as seen (calendar, planner, inbox notices).
+async function open(id: number) {
+  await store.loadRegistrations(id)
+  if (store.registrations) void store.markSeen(id)
+}
+onMounted(() => { void open(props.sessionId) })
+watch(() => props.sessionId, id => { void open(id) })
 </script>
 
 <style scoped>
@@ -195,6 +301,17 @@ watch(() => props.sessionId, id => { void store.loadRegistrations(id) })
 .reg-overview__counts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1) var(--jf-space-2); margin: 0; padding: 0; list-style: none; }
 .reg-overview__deadlines, .reg-note { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); }
 .reg-overview__error { color: var(--p-red-600); }
+.reg-overview__info { color: var(--jf-color-text); }
+.reg-overview__info i, .reg-overview__error i { margin-right: var(--jf-space-0-5); }
+.reg-quick { display: grid; gap: var(--jf-space-1); padding: var(--jf-space-1-5); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-sm); }
+.reg-quick__title { margin: 0; font-size: var(--jf-text-base); }
+.reg-quick__wish { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); }
+.reg-quick__people { display: flex; flex-wrap: wrap; gap: var(--jf-space-1); }
+.reg-quick__person { display: inline-flex; align-items: center; gap: var(--jf-space-0-5); min-height: var(--jf-touch-target); padding: 0 var(--jf-space-1-5); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-sm); background: var(--jf-color-card); color: var(--jf-color-text); font: inherit; cursor: pointer; }
+.reg-quick__person:hover:not(:disabled) { border-color: var(--jf-color-primary); }
+.reg-quick__person:focus-visible { outline: 2px solid var(--jf-color-primary); outline-offset: 2px; }
+.reg-quick__person:disabled { opacity: 0.6; cursor: default; }
+.reg-request { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); }
 .reg-overview__filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); }
 .reg-input { min-height: var(--jf-touch-target); padding: 0 var(--jf-space-1-5); border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-sm); background: var(--jf-color-card); color: var(--jf-color-text); font: inherit; box-sizing: border-box; }
 .reg-table { width: 100%; border-collapse: collapse; }

@@ -4,6 +4,9 @@ from .staff_views import (
     AssignmentPublishView,
     AssignmentView,
     MemberRegistrationView,
+    NewResponsesView,
+    RegistrationsSeenView,
+    ResponseRequestView,
     SessionConfigView,
     SessionRegistrationsView,
 )
@@ -20,6 +23,12 @@ from .views import EligibilityPreviewView, EligibilityValidateView
 urlpatterns = [
     path("eligibility/validate/", EligibilityValidateView.as_view(), name="participation-eligibility-validate"),
     path("eligibility/preview/", EligibilityPreviewView.as_view(), name="participation-eligibility-preview"),
+    path("sessions/news/", NewResponsesView.as_view(), name="participation-new-responses"),
+    path(
+        "sessions/<int:session_id>/registrations/seen/",
+        RegistrationsSeenView.as_view(),
+        name="participation-registrations-seen",
+    ),
     path("sessions/<int:session_id>/config/", SessionConfigView.as_view(), name="participation-session-config"),
     path(
         "sessions/<int:session_id>/registrations/",
@@ -30,6 +39,11 @@ urlpatterns = [
         "sessions/<int:session_id>/registrations/<int:member_id>/",
         MemberRegistrationView.as_view(),
         name="participation-member-registration",
+    ),
+    path(
+        "sessions/<int:session_id>/request-response/",
+        ResponseRequestView.as_view(),
+        name="participation-request-response",
     ),
     path("sessions/<int:session_id>/assignment/", AssignmentView.as_view(), name="participation-assignment"),
     path(

@@ -28,6 +28,15 @@
           icon="pi pi-play"
           @click="router.push({ name: 'training-run', params: { id: sessionId } })"
         />
+        <Button
+          v-if="session && (canManage || session.status !== 'draft')"
+          :label="newResponseCount ? `Meldungen · ${newResponseCount} neu` : 'Meldungen'"
+          icon="pi pi-users"
+          :severity="newResponseCount ? undefined : 'secondary'"
+          :outlined="!newResponseCount"
+          :aria-label="newResponseCount ? `Meldungen, ${newResponseCount} neue Rückmeldung${newResponseCount === 1 ? '' : 'en'}` : 'Meldungen'"
+          @click="showParticipation = true"
+        />
         <Button v-if="session?.can_manage_plan" label="Plan bearbeiten" icon="pi pi-pencil" severity="secondary" outlined @click="router.push({ name: 'training-planner', params: { id: sessionId }, query: { edit: '1' } })" />
         <router-link v-if="session?.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
         <Button
@@ -124,6 +133,7 @@
     :session-start-min="sessionStartMin"
     @close="selectedBlock = null"
   />
+  <ParticipationDialog v-if="session" v-model:visible="showParticipation" :session-id="session.id" :can-manage="canManage" initial-tab="registrations" />
 </template>
 
 <script setup lang="ts">
@@ -133,6 +143,8 @@ import Button from 'primevue/button'
 import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import MobileBlockDetailSheet from '@/components/training/molecules/MobileBlockDetailSheet.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
+import { useParticipationStore } from '@/stores/participation'
+import ParticipationDialog from '@/components/participation/ParticipationDialog.vue'
 import type { PlannerBlock } from '@/types/training'
 
 interface Props {
@@ -149,6 +161,11 @@ const selectedBlock = ref<PlannerBlock | null>(null)
 
 // ── Session & blocks ────────────────────────────────────────────────────────
 const session = computed(() => plannerStore.session)
+// NOTIF-02: registrations and new responses on phones, e.g. for quick entry from paper.
+const participationStore = useParticipationStore()
+const showParticipation = ref(false)
+const canManage = computed(() => session.value?.can_manage_plan !== false)
+const newResponseCount = computed(() => (session.value ? participationStore.newResponses[session.value.id] ?? 0 : 0))
 
 const sessionStartMin = computed(() => {
   const t = session.value?.start_time
@@ -231,7 +248,8 @@ watch(() => props.sessionId, async (id) => {
   selectedBlock.value = null
   activeTab.value = 0
   plannerStore.reset()
-  try { await plannerStore.loadBlocks(id) } catch { /* visible store error */ }
+  try { await plannerStore.loadBlocks(id) } catch { return /* visible store error */ }
+  void participationStore.loadNewResponses([id])
 }, { immediate: true })
 onBeforeUnmount(() => plannerStore.reset())
 </script>

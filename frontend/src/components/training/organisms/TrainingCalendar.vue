@@ -51,6 +51,7 @@
             <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
               {{ departmentMeta(session.id).label }}
             </span>
+            <span v-if="newCount(session)" class="news-chip"><i class="pi pi-inbox" aria-hidden="true" />{{ newCount(session) }} neu</span>
             <span v-if="session.location" class="session-location">{{ session.location }}</span>
           </div>
           <div class="list-item-actions">
@@ -119,6 +120,7 @@
             <span v-if="session.start_time" class="session-pill__time">{{ formatTime(session.start_time) }}</span>
             <span class="session-pill__title">{{ session.title }}</span>
             <i v-if="session.is_recurring" class="pi pi-sync session-pill__recurring" aria-hidden="true" />
+            <span v-if="newCount(session)" class="session-pill__news" aria-hidden="true"><i class="pi pi-inbox" />{{ newCount(session) }}</span>
             <span v-if="session.location" class="session-pill__place">{{ session.location }}</span>
           </button>
           <button
@@ -173,6 +175,7 @@
             <span v-if="departmentMeta(session.id).label" class="dept-chip" :style="departmentChipStyle(session.id)">
               {{ departmentMeta(session.id).label }}
             </span>
+            <span v-if="newCount(session)" class="news-chip"><i class="pi pi-inbox" aria-hidden="true" />{{ newCount(session) }} neu</span>
             <span v-if="session.location" class="session-location">{{ session.location }}</span>
           </div>
           <div class="session-actions">
@@ -203,6 +206,7 @@ import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import SeriesDialog from '../molecules/SeriesDialog.vue'
 import TrainingTemplatesDialog from './TrainingTemplatesDialog.vue'
 import { useTrainingStore } from '@/stores/training'
+import { useParticipationStore } from '@/stores/participation'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
 import {
@@ -215,6 +219,9 @@ import { DEFAULT_SESSIONS_PER_CELL, sessionCapacity, visibleSessionCount } from 
 const router = useRouter()
 const confirm = useConfirm()
 const trainingStore = useTrainingStore()
+const participationStore = useParticipationStore()
+// NOTIF-02.3: new responses since the registrations were last opened (only upcoming services).
+const newCount = (session: TrainingCalendarSession) => participationStore.newResponses[session.id] ?? 0
 const departmentsStore = useDepartmentsStore()
 const auth = useAuthStore()
 const canCreate = computed(() => auth.hasPerm('training.can_manage_training'))
@@ -394,6 +401,7 @@ function sessionLabel(session: TrainingCalendarSession): string {
     session.title,
     trainingStatusMeta(session.status).label,
     session.is_recurring ? 'Terminserie' : '',
+    newCount(session) ? `${newCount(session)} neue Rückmeldung${newCount(session) === 1 ? '' : 'en'}` : '',
     departmentMeta(session.id).label ?? '',
     session.location ?? '',
   ].filter(Boolean).join(' · ')
@@ -406,7 +414,10 @@ async function loadSessions() {
     date_from: from,
     date_to: to,
     limit: 200,
-  }) } catch { /* visible store error, retry button */ }
+  }) } catch { /* visible store error, retry button */ return }
+  const today = toIsoDate(new Date())
+  const upcoming = trainingStore.sessions.filter((s) => s.date >= today && s.status !== 'draft').map((s) => s.id)
+  void participationStore.loadNewResponses([...new Set(upcoming)])
 }
 
 function toIsoDate(date: Date): string {
@@ -828,6 +839,28 @@ button.cell-day:hover {
   flex-shrink: 0;
   font-size: 0.65rem;
   color: var(--jf-color-text-muted);
+}
+
+.session-pill__news {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-radius: var(--jf-radius-sm);
+  background: var(--jf-color-primary);
+  color: var(--jf-color-on-primary);
+  font-size: 0.65rem;
+  font-weight: var(--jf-weight-semibold);
+}
+.session-pill__news i { font-size: 0.6rem; }
+.news-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  color: var(--jf-color-primary);
 }
 
 /* Shown only in large cells (UX-09); the full text is always in the label. */

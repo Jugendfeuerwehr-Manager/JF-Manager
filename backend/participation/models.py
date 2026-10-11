@@ -90,6 +90,8 @@ class SessionParticipation(models.Model):
     assignment_published_at = models.DateTimeField(null=True, blank=True)
     # "Bewerbungen offen lassen": unassigned applicants stay applied instead of not selected.
     assignment_keep_open = models.BooleanField(default=False)
+    # Last "Um Rückmeldung bitten" (NOTIF-02.3); a new request is possible after REQUEST_INTERVAL.
+    response_requested_at = models.DateTimeField(null=True, blank=True)
     # Staffing template the configuration was copied from (PART-04.5); later template changes do not apply.
     template_source = models.ForeignKey(
         "participation.StaffingTemplate", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
@@ -204,6 +206,20 @@ class RegistrationEvent(models.Model):
         if self.pk:
             raise ValueError("RegistrationEvent is append-only.")
         super().save(*args, **kwargs)
+
+
+class RegistrationSeen(models.Model):
+    """When a staff account last looked at the registrations of a service (NOTIF-02.3).
+
+    Responses recorded later by someone else count as new in the calendar and the planner.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    session = models.ForeignKey("training.TrainingSession", on_delete=models.CASCADE, related_name="+")
+    seen_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "session"], name="unique_registration_seen")]
 
 
 class StaffingTemplate(models.Model):

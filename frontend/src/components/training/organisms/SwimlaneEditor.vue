@@ -82,6 +82,11 @@
       <Button label="Serverstand laden und Entwurf verwerfen" severity="secondary" @click="discardForServerVersion" />
     </details>
 
+    <p v-if="session && newResponseCount" class="planner-news" role="status">
+      <i class="pi pi-inbox" aria-hidden="true"></i>
+      <span>{{ newResponseCount === 1 ? 'Eine neue Rückmeldung' : `${newResponseCount} neue Rückmeldungen` }}</span>
+      <Button label="Meldungen ansehen" size="small" severity="secondary" text @click="openRegistrations" />
+    </p>
     <PlanWarningsPanel v-if="canManage && session" @focus-block="focusBlock" />
     <PublishJustificationDialog
       v-model:visible="showJustification"
@@ -230,7 +235,7 @@
     <RotationDialog v-if="canManage" v-model:visible="showRotation" :duration="sessionDuration" />
     <DebriefDialog v-if="canManage && session && showDebrief" v-model:visible="showDebrief" :session="session" @saved="onDebriefSaved" />
     <SessionCopyDialog v-if="canManage" v-model:visible="showCopy" :mode="copyMode" :session="session" @copied="onCopied" @saved="onTemplateSaved" />
-    <ParticipationDialog v-if="session" v-model:visible="showParticipation" :session-id="session.id" :can-manage="canManage" />
+    <ParticipationDialog v-if="session" v-model:visible="showParticipation" :session-id="session.id" :can-manage="canManage" :initial-tab="participationTab" />
     <SeriesDialog v-if="canManage" v-model:visible="showSeries" :session-id="session?.id ?? null" :can-propagate="!!session?.series_uuid" />
 
     <!-- Session settings dialog -->
@@ -284,6 +289,9 @@ import type { MenuItem } from 'primevue/menuitem'
 import { useToast } from 'primevue/usetoast'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
+import { useTrainingStore } from '@/stores/training'
+import { useParticipationStore } from '@/stores/participation'
+import { useConfirm } from 'primevue/useconfirm'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus, TrainingDebrief } from '@/types/training'
 import interact from 'interactjs'
 import WorkspaceHeader from '@/components/common/WorkspaceHeader.vue'
@@ -332,6 +340,16 @@ const showSeries = ref(false)
 const showRotation = ref(false)
 const showDebrief = ref(false)
 const showParticipation = ref(false)
+const participationTab = ref<'settings' | 'registrations'>('settings')
+const participationStore = useParticipationStore()
+const trainingStore = useTrainingStore()
+const confirm = useConfirm()
+// NOTIF-02.3: responses by others since the registrations were last opened.
+const newResponseCount = computed(() => (session.value ? participationStore.newResponses[session.value.id] ?? 0 : 0))
+function openRegistrations() {
+  participationTab.value = 'registrations'
+  showParticipation.value = true
+}
 // Follow-up once the exercise has begun (device time); the server checks again.
 const canDebrief = computed(() => {
   const s = plannerStore.session
@@ -393,7 +411,7 @@ const allHeaderActions = computed<HeaderAction[]>(() => {
     { key: 'plan-action', label: 'Planaktion', icon: 'pi pi-arrows-h', tier: 'xl', visible: manage, disabled: busy.value || blocks.value.length < 1,
       command: () => { showPlanAction.value = true } },
     { key: 'participation', label: 'Teilnahme', icon: 'pi pi-users', tier: manage ? 'xl' : 'lg', text: true, visible: !!s && (manage || s.status !== 'draft'),
-      hint: 'Anmeldemodus, Fristen, Voraussetzungen und Meldungen', command: () => { showParticipation.value = true } },
+      hint: 'Anmeldemodus, Fristen, Voraussetzungen und Meldungen', command: () => { participationTab.value = 'settings'; showParticipation.value = true } },
     { key: 'handout', label: 'Handout', icon: 'pi pi-file-pdf', tier: manage ? 'menu' : 'lg', text: true, visible: true, command: goHandout },
     { key: 'series', label: 'Serie', icon: 'pi pi-sync', tier: 'menu', visible: manage && isSeries.value,
       disabled: busy.value || isDirty.value, disabledReason: 'zuerst speichern',
@@ -408,6 +426,9 @@ const allHeaderActions = computed<HeaderAction[]>(() => {
     // Cancelling is never a button next to "Speichern".
     { key: 'cancel', label: 'Absagen', icon: 'pi pi-ban', tier: 'menu', visible: manage && !!s && s.status !== 'cancelled' && s.status !== 'completed',
       disabled: busy.value, command: () => { void stageStatus('cancelled') } },
+    // Deleting removes the exercise for good; cancelling keeps it and informs participants.
+    { key: 'delete', label: 'Löschen', icon: 'pi pi-trash', tier: 'menu', visible: manage && !!s,
+      disabled: busy.value, command: confirmDelete },
   ]
 })
 
@@ -716,6 +737,52 @@ async function stageStatus(status: TrainingStatus) {
   plannerStore.stageSession({ status })
 }
 
+function hasFutureLinkedService() {
+  const s = session.value
+  if (!s || s.requires_service_confirmation || !s.linked_service_id || !s.linked_service_start) return false
+  return new Date(s.linked_service_start) >= new Date()
+}
+async function runDelete(deleteLinkedService: boolean) {
+  const s = session.value
+  if (!s) return
+  try {
+    await trainingStore.deleteSession(s.id, { deleteLinkedService })
+  } catch {
+    toast.add({ severity: 'error', summary: 'Löschen fehlgeschlagen', detail: 'Die Übung konnte nicht gelöscht werden.', life: 5000 })
+    return
+  }
+  plannerStore.reset()
+  toast.add({ severity: 'success', summary: 'Übung gelöscht', life: 3000 })
+  void router.push('/training')
+}
+function confirmDelete() {
+  const s = session.value
+  if (!s) return
+  const consequence = 'Plan, Teilnahme-Einstellungen und alle Meldungen werden endgültig entfernt; Teilnehmende werden nicht benachrichtigt. Zum Informieren stattdessen „Absagen“ wählen.'
+  if (hasFutureLinkedService()) {
+    confirm.require({
+      header: 'Übung und verknüpften Dienst löschen?',
+      message: `${consequence} Diese Übung ist mit einem zukünftigen Dienstbuch-Eintrag verknüpft: „Mit Dienstbuch löschen“ entfernt beide, „Nur Übung löschen“ entkoppelt den Eintrag.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Mit Dienstbuch löschen',
+      rejectLabel: 'Nur Übung löschen',
+      acceptClass: 'p-button-danger',
+      accept: () => { void runDelete(true) },
+      reject: () => { void runDelete(false) },
+    })
+    return
+  }
+  confirm.require({
+    header: `„${s.title}“ löschen?`,
+    message: consequence,
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Löschen',
+    rejectLabel: 'Abbrechen',
+    acceptClass: 'p-button-danger',
+    accept: () => { void runDelete(false) },
+  })
+}
+
 function focusBlock(id: number) {
   plannerStore.selectBlock(id)
   void nextTick(() => document.querySelector<HTMLElement>(`[data-block-id="${id}"]`)?.focus())
@@ -805,6 +872,7 @@ watch(() => props.sessionId, async (id) => {
   plannerStore.reset()
   try { await plannerStore.loadBlocks(id) }
   catch { return }
+  void participationStore.loadNewResponses([id])
   await nextTick()
   if (plannerStore.sessionId === id) setupInteract()
 }, { immediate: true })
@@ -903,6 +971,7 @@ function setupInteract() {
 
 <style scoped>
 /* ── Outer shell ──────────────────────────────────────────────────────── */
+.planner-news { display: flex; flex-wrap: wrap; align-items: center; gap: var(--jf-space-1); margin: 0; padding: var(--jf-space-1) var(--jf-space-2); border: 1px solid var(--jf-color-border); border-left: 4px solid var(--jf-color-primary); border-radius: var(--jf-radius-sm); background: var(--jf-color-card); font-weight: var(--jf-weight-semibold); }
 .plan-conflict { padding: var(--jf-space-2); overflow: auto; max-height: 240px; }
 .swimlane-editor {
   display: flex;

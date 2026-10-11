@@ -4,8 +4,9 @@ Producers create inbox entries (``notifications.inbox.notify``) and call
 ``queue_email``/``queue_push`` here. E-mails go through a durable outbox
 (``EmailDelivery``), idempotent per event key, rendered at send time with the
 current template and sent by the notification worker (``send_push --loop``).
-E-mail and push are on by default (E8, E16, E19; off for superusers, UX-10.1) and can be switched off per
-account and kind; the inbox cannot.
+E-mail and push are on by default (E8, E16, E19; off for superusers, UX-10.1, except for
+registrations, applications and cancellations, NOTIF-02) and can be switched off per account and kind;
+the inbox cannot.
 """
 
 import logging
@@ -27,6 +28,7 @@ logger = logging.getLogger("security.notifications")
 PORTAL_KINDS = {
     "session_published": "Neue Dienste",
     "session_changed": "Geänderte oder abgesagte Dienste",
+    "response_requested": "Bitten um Rückmeldung",
     "waitlist_placed": "Platz auf der Warteliste",
     "waitlist_promoted": "Nachgerückt",
     "assign_published": "Zuteilung",
@@ -35,7 +37,8 @@ PORTAL_KINDS = {
 }
 STAFF_KINDS = {
     "cr_submitted": "Neue Änderungsanträge",
-    "reg_cancelled": "Kurzfristige Abmeldungen",
+    "reg_received": "Neue Anmeldungen und Bewerbungen",
+    "reg_cancelled": "Abmeldungen",
     "reg_digest": "Tageszusammenfassung der Meldungen",
     "slot_free_manual": "Platz frei (Warteliste manuell)",
     "staffing_at_risk": "Mindestbesetzung gefährdet",
@@ -102,6 +105,17 @@ def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelt
     if not user.is_active or not user.email or not wants(user, kind, "email", explicit):
         return None
     ensure_flat(context)
+    send_after = timezone.now() + delay
+    if bundle_key:
+        # Join a mail of the same bundle that is still waiting, so a burst of events yields one mail.
+        waiting = (
+            EmailDelivery.objects.filter(user=user, bundle_key=bundle_key[:160], attempts=0)
+            .order_by("send_after")
+            .values_list("send_after", flat=True)
+            .first()
+        )
+        if waiting is not None and waiting > timezone.now():
+            send_after = waiting
     delivery, created = EmailDelivery.objects.get_or_create(
         event_key=event_key[:160],
         defaults={
@@ -109,7 +123,7 @@ def queue_email(kind, user, context, *, event_key, bundle_key="", delay=timedelt
             "kind": kind,
             "context": context,
             "bundle_key": bundle_key[:160],
-            "send_after": timezone.now() + delay,
+            "send_after": send_after,
         },
     )
     return delivery if created else None  # None: already queued for this event
@@ -134,7 +148,22 @@ def _merge_session_published(contexts):
     return first
 
 
-MERGERS = {"session_published": _merge_session_published}
+def _merge_list(name):
+    """Concatenate ``name`` of all contexts; counts and staffing come from the latest event (NOTIF-02)."""
+
+    def merge(contexts):
+        latest = dict(contexts[-1])
+        latest[name] = [entry for context in contexts for entry in context.get(name, [])]
+        return latest
+
+    return merge
+
+
+MERGERS = {
+    "session_published": _merge_session_published,
+    "reg_received": _merge_list("entries"),
+    "reg_cancelled": _merge_list("cancellations"),
+}
 
 
 # ----------------------------------------------------------------------------- worker

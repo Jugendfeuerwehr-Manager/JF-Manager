@@ -40,7 +40,7 @@ backend/{app}/
 - Eigene Endpunkte über `@action(detail=True|False, methods=[...])`.
 - Rechte über die vorhandenen Permission-Klassen erzwingen; `permission_classes` nur mit Begründung überschreiben. Rechte und Anmeldung jedes neuen Endpunkts testen (fehlende Rechte, fremde Abteilung).
 - Bestellstatus nur über `orders.notifications.OrderWorkflowService` ändern (`get_available_transitions`, `validate_status_change`).
-- Schemaänderungen immer mit Migration. OpenAPI-Schema: `pipenv run python manage.py spectacular --file schema.yml`.
+- Schemaänderungen immer mit Migration. Das OpenAPI-Schema liefert die Anwendung zur Laufzeit; keine Schemadatei ins Repository einchecken.
 
 ## Frontend-Struktur
 

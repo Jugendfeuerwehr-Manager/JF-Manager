@@ -55,6 +55,8 @@ export interface Staffing {
 export interface ParticipationConfig {
   session: number
   revision: number
+  /** Last "Um Rückmeldung bitten" (NOTIF-02.3). */
+  response_requested_at?: string | null
   mode: ParticipationMode
   portal_visible: boolean
   public_note: string
@@ -142,6 +144,9 @@ export interface RegistrationInput {
   accept_waitlist?: boolean
   slot?: number | null
 }
+
+/** Result of "Um Rückmeldung bitten": people asked through the portal and people without an account. */
+export interface ResponseRequestResult { asked: number, without_account: number, response_requested_at: string }
 
 export interface RuleValidation { summary: string, errors: RuleErrors, audience_notice: string | null }
 export interface RulePreviewResult extends RuleValidation {
@@ -277,6 +282,16 @@ export const participationApi = {
   setRegistration(sessionId: number, memberId: number, body: RegistrationInput) {
     return apiClient.put<RegistrationRow & { changed: boolean }>(
       `/participation/sessions/${sessionId}/registrations/${memberId}/`, body)
+  },
+  requestResponse(sessionId: number) {
+    return apiClient.post<ResponseRequestResult>(`/participation/sessions/${sessionId}/request-response/`)
+  },
+  /** New responses by others per service, `{ "12": 3 }` (only services with news). */
+  newResponses(ids: number[]) {
+    return apiClient.get<{ sessions: Record<string, number> }>('/participation/sessions/news/', { params: { ids: ids.join(',') } })
+  },
+  markSeen(sessionId: number) {
+    return apiClient.post<{ seen_at: string }>(`/participation/sessions/${sessionId}/registrations/seen/`)
   },
   assignment(sessionId: number) {
     return apiClient.get<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/`)

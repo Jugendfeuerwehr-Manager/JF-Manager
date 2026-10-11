@@ -104,9 +104,15 @@ class StandardTrainingRoleTests(APITestCase):
         for url in ("/api/v1/training/sessions/", "/api/v1/training/blocks/"):
             self.assertEqual(self.client.get(url).status_code, 403)
 
-    def test_destructive_model_right_is_not_implied_by_planning(self):
+    def test_planning_deletes_own_exercises_but_not_blocks_or_foreign_ones(self):
+        # NOTIF-02 (user decision 11.10.2026): deleting an exercise is part of planning; deleting single
+        # blocks through the block API still needs the explicit model right.
+        block = self.blocks[(self.a.pk, "draft")]
+        self.assertEqual(self.client.delete(f"/api/v1/training/blocks/{block.pk}/").status_code, 403)
+        foreign = self.sessions[(self.b.pk, "published")]
+        self.assertIn(self.client.delete(f"/api/v1/training/sessions/{foreign.pk}/").status_code, (403, 404))
         session = self.sessions[(self.a.pk, "draft")]
-        self.assertEqual(self.client.delete(f"/api/v1/training/sessions/{session.pk}/").status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/v1/training/sessions/{session.pk}/").status_code, 204)
 
 
 class StandardOrderRoleTests(APITestCase):
