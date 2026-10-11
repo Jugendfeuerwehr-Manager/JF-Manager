@@ -22,6 +22,8 @@ Inventar/Bestellungen und sämtliche IDs/Historien erhalten; keine weiteren Abte
 
 **Releaseintegration REL-31 (11.10.2026): abgeschlossen.** Vorbereiteten Featurestand mit erhaltenem Portal-Hotfix als 8afaaed nach main gesquasht/gepusht. CI-Nginx-Mount nach erstem fehlgeschlagenen Operationslauf korrigiert; vollständige main-CI 38128713874 auf 559ecad bestanden. Erst danach v3.1.0 auf genau diesem Commit veröffentlicht; Release-Lauf 38129193770 inklusive Tests, Images, Trivy-Scans, Paket/Herkunftsnachweis grün. Erneute lokale Abnahme: 1507 PG17-Backendtests ohne Überspringen, 695 Frontendtests/Typecheck/Lint/Build, Ruff-Lint/Format, Migrationsabgleich, 6 Handbuchtests/36 Seiten bestanden; Release-Prüfsummen, Manifest und 856 Backend-/Ops-Dateien gegen Tag geprüft. Nutzer hat das konkrete Fortsetzungsskript nach automatischer Ablehnung ausdrücklich freigegeben; mit geprüften Ziel-jfctl-Bibliotheken CSP gerendert, Frontend gesund gestartet und Updatezustand done/Version 3.1.0 gespeichert. REL-31.3 Nachabnahme bestanden: doctor, Zielimages, Elternansicht read-only 200/Equipment/Allowlist, anonym 401, vollständige Backup-Prüfung, HTTPS/Session/CSRF/JS/erzwungene CSP/lokale API-Dokumentationsassets, aktive Timer. 110 bestehende Datentabellen/Uploads/app.env/secrets.env unverändert; nur erwartete Django-Metadaten und neue Schemaelemente ergänzt. Alle sechs Container laufen ohne Neustarts/OOM; geerbte Worker-HTTP-Healthcheck-Anzeige unverändert, Worker-Laufprüfung bestanden. REL-31.4 Pages-Workflow 38131231776 auf main mit publish=true vollständig grün: 36 öffentliche Seiten, 43 Medien-/CSS-/JS-Dateien bytegenau und Suchindex 248 Einträge geprüft. Produktionsdetails ausschließlich in Instanznachweisen. Fremde unversionierte Dateien unangetastet.
 
+**Meldungen an Verwaltende NOTIF-02 (11.10.2026): in Arbeit.** Nutzerauftrag: Anmeldung, Bewerbung und Abmeldung lösen bei Verwaltenden (einschließlich Administration) Eingangseintrag, E-Mail und Push aus, Bewerbungen als Aufgabe zum Zuteilen; Verwaltende können Personen manuell als angemeldet bzw. beworben erfassen (Papier, mündlich, ohne Portal). Zuteilungsmitteilung an die Person besteht bereits (`assign_published`). Details in Abschnitt 6, NOTIF-02.
+
 ### 0.1 Stand je Bereich
 
 | Bereich | Pakete | Stand |
@@ -41,6 +43,7 @@ Nur Punkte, die laut Git-Verlauf und Detailblöcken nicht umgesetzt oder nicht a
 | --- | --- | --- | --- |
 | PART-04 | Abnahme | Positionen, Warteliste, Zuteilungsboard, Besetzungsvorlagen umgesetzt (PART-04.1–04.6); Browser-/Nutzerabnahme Board (Maus/Tastatur) und Portal 390/1440 px. | — |
 | PORTAL-04 | Abnahme | Verwaltendenkonto als Mitglied/Elternteil umgesetzt (PORTAL-04.1–04.5); Browser-/Nutzerabnahme Bestätigungsschritt (MFA, Passkey, SSO), „Meine …“-Bereiche, Vier-Augen-Sperre. | — |
+| NOTIF-02 | Bau | Meldungen (Anmeldung, Bewerbung, Abmeldung) an Verwaltende per Eingang, E-Mail und Push; manuelle Erfassung von Bewerbungen. | — |
 | PORTAL-01, NOTIF-01 | Abnahme | Echte Zustellung über SMTP und Web-Push (bisher Datei-Mailversand). | Produktivnahe Umgebung |
 
 | Punkt | Art | Inhalt | Voraussetzung |
@@ -609,6 +612,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
+| NOTIF-02 | in Arbeit | Claude | NOTIF-02.0 Detailblock; nächster Schritt NOTIF-02.1 Backend. |
 | REL-31 | abgeschlossen | Codex | v3.1.0 veröffentlicht (main-CI und Release-Lauf bestanden), Handbuch auf GitHub Pages veröffentlicht. |
 | OPS-06 | abgeschlossen | Codex | OPS-06.0–4 samt 06.1b: auswählbarer CLI-Umzug, 1321 PostgreSQL-17-Tests/617 Frontendtests/55 Betriebsprüfungen/Demo bestanden. |
 | FIX-04 | abgeschlossen | Codex | Elternansicht 200/Equipment geprüft; |
@@ -666,6 +670,17 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | NOTIF-01 | abgenommen | Claude (Portal-Sitzung) | NOTIF-01.6: PostgreSQL 17, echter Mailweg mit Quick Action im Browser; offen: echter SMTP-/Push-Versand als Nutzerabnahme. |
 | PORTAL-04 | umgesetzt, Browserabnahme offen | Claude (Subagent, Übernahme Planungssitzung) | PORTAL-04.5: CI-Satz SQLite und PostgreSQL 17 bestanden; Browser/Nutzerabnahme offen. |
 | PORTAL-04 | geplant | — | Verwaltendenkonto 1:1 an Mitglied mit Login-Bestätigung, Eigenänderungsprotokoll, Vier-Augen für eigene Qualifikationen. |
+
+### NOTIF-02: Meldungen an Verwaltende und manuelle Erfassung
+
+- **Auftrag (Nutzer, 11.10.2026):** Meldet sich ein Mitglied an, bewirbt es sich (auch auf eine Position) oder meldet es sich ab, erhalten Verwaltende einschließlich Administration Push, E-Mail und einen Eingangseintrag, damit zugeteilt werden kann. Nach der Zuteilung erhält die Person eine Nachricht (vorhanden: `assign_published`, NOTIF-01.5b). Verwaltende können Personen manuell als angemeldet bzw. beworben erfassen, damit Zuteilung auch bei Papier- oder mündlicher Meldung ohne Portal möglich ist.
+- **Entscheidung (ersetzt D10 für diese drei Ereignisse):** E-Mail und Push gehen nicht nur an die Dienstverantwortlichen, sondern an alle Empfänger des Eingangseintrags (Planungsrecht der Abteilung, Dienstverantwortliche, aktive Superuser). Superuser erhalten diese Arten abweichend von UX-10.1 standardmäßig; jedes Konto kann sie in „Profil → Mitteilungen“ abschalten. Die auslösende Person selbst erhält keine E-Mail und keinen Push.
+- **Abhängigkeiten:** PART-01 (Zustandsmaschine, `set_registration`, Betreuendenmeldung nach Frist), PART-04 (Zuteilungsboard, Wunschposition), NOTIF-01 (Eingang, `EmailDelivery`, Bündelung, Push-Kategorie `participation`, Vorlagenkatalog).
+- **Abnahme:** (1) Anmeldung (auch Warteliste, zurückgenommene Abmeldung) erzeugt einen je Dienst gebündelten Hinweis „Anmeldungen“; Bewerbung erzeugt je Dienst genau eine offene Aufgabe „Bewerbungen zuteilen“, die automatisch erledigt wird, sobald keine Bewerbung mehr offen ist. (2) Abmeldungen und zurückgezogene Bewerbungen erzeugen unabhängig vom Zeitpunkt E-Mail und Push; Mindestbesetzungswarnung bleibt an das Kurzfristfenster gebunden. (3) E-Mails je Empfänger und Dienst mit kurzer Wartezeit gebündelt (eine Mail mit Liste statt vieler), Push ohne Namen, idempotent. (4) Systemübergänge (Nachrücken, Moduswechsel) lösen nichts aus. (5) Verwaltende erfassen in „Meldungen“ eine Bewerbung mit optionaler Wunschposition; Kennzeichen „durch Betreuende erfasst“ sichtbar; Rechte wie bisher (Planungsrecht, fremde Abteilung 403). (6) Pflichtprüfungen bestanden.
+- **Teilschritte mit stabilen IDs:** `NOTIF-02.0` Detailblock; `NOTIF-02.1` Backend: Erzeuger, Aufgabe mit automatischem Erledigen, Vorlage `reg_received`, Arten/Einstellungen, Bündelung, Migration der Vorlagentypen, Tests; `NOTIF-02.2` Frontend: Bewerbung erfassen (Wunschposition), Herkunftskennzeichen, Tests; `NOTIF-02.3` Paketabnahme.
+- **Letzter dauerhafter Checkpoint:** `NOTIF-02.0` mit diesem Commit.
+- **Offene Fehler / Risiken:** Tageszusammenfassung `reg_digest` bleibt zusätzlich bestehen (Doppelinformation, einzeln abschaltbar). Echte SMTP-/Web-Push-Zustellung weiterhin nur in produktivnaher Umgebung prüfbar (NOTIF-01-Abnahme).
+- **Nächster konkreter Schritt:** `NOTIF-02.1`.
 
 ### REL-31: Squash, Release v3.1.0 und Veröffentlichung
 
@@ -2331,3 +2346,4 @@ Menü und Bedienungsdokumentation ergänzt. Sicherheitskopien 30 Tage/letzte zwe
 
 | 11.10.2026 | REL-31.4 | Handbuchworkflow 38131231776 auf main ausdrücklich mit publish=true gestartet; Build und GitHub-Pages-Deployment erfolgreich. Wiederaufnahme weiterhin automatisch abgelehnt, nicht ausgeführt. | Bestanden: 36 öffentliche Handbuchseiten HTTP 200, 43 Medien-/CSS-/JS-Dateien bytegenau gegen lokalen strikten Build, Suchindex 248 Einträge, veröffentlichte Seite im Browser sichtbar. privater Zustand bleibt ausschließlich in geschützten Nachweisen. | Dieser Commit: `docs(REL-31.4): accept published GitHub Pages handbook` | |
 | 11.10.2026 | PLAN-MAIN | Nutzerauftrag: gemeinsamen Checkout auf `main` umgestellt und `feat/security-roles-training-operations` per Merge `afef492` eingebunden (Bäume identisch, nur Historie verbunden); weitere Arbeit startet von `main`. NAS-Bezüge aus den REL-31-Einträgen wie zuvor entfernt (Absatz, Status, Journalzeilen REL-31.3). | Bestanden: Baumvergleich `origin/main` = Feature-Branch, Suche nach NAS/IP ohne Treffer. | Dieser Commit: `docs(PLAN): continue on main and drop production instance details` | Neue Arbeit von `main` |
+| 11.10.2026 | NOTIF-02.0 | Nutzerauftrag aufgenommen: Meldungen an Verwaltende (Eingang, E-Mail, Push inkl. Administration), Bewerbungen als Aufgabe zum Zuteilen, manuelle Erfassung von Bewerbungen. Bestand geprüft: Zuteilungsmitteilung an Betroffene vorhanden; Anmeldungen/Bewerbungen bisher ohne Mitteilung an Verwaltende, Abmeldungen per E-Mail nur kurzfristig und nur an Dienstverantwortliche; Betreuenden-API kann `applied` bereits setzen, Oberfläche bietet es nicht an. | Nicht ausgeführt: Anwendungstests (reine Planung). | Dieser Commit: `docs(NOTIF-02.0): plan staff registration notifications` | NOTIF-02.1 Backend |
