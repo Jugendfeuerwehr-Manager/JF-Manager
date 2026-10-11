@@ -41,7 +41,7 @@ import AssignmentBoard from './AssignmentBoard.vue'
 import RegistrationsOverview from './RegistrationsOverview.vue'
 import { useParticipationStore } from '@/stores/participation'
 
-defineProps<{ visible: boolean, sessionId: number, canManage: boolean }>()
+const props = defineProps<{ visible: boolean, sessionId: number, canManage: boolean, initialTab?: 'settings' | 'registrations' }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
 
 const store = useParticipationStore()
@@ -56,6 +56,8 @@ const tabs = computed(() => {
   if (store.config?.mode === 'assignment') list.push({ key: 'assignment', label: 'Zuteilung' })
   return list
 })
+// Opening from "neue Rückmeldungen" starts on the registrations (NOTIF-02.3).
+watch(() => props.visible, open => { if (open) tab.value = props.initialTab ?? 'settings' })
 watch(tabs, list => { if (!list.some(item => item.key === tab.value)) tab.value = 'settings' })
 
 function onKeydown(event: KeyboardEvent) {

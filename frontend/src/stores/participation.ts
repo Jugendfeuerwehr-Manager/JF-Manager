@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import {
   participationApi, staffingTemplatesApi,
   type ParticipationConfig, type ParticipationMode, type ReasonCategory, type RegistrationOverview,
-  type RegistrationTarget, type Rule, type RuleErrors, type RulePreviewResult, type WaitlistMode,
+  type RegistrationTarget, type ResponseRequestResult, type Rule, type RuleErrors, type RulePreviewResult, type WaitlistMode,
 } from '@/api/participation'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -347,12 +347,55 @@ export const useParticipationStore = defineStore('participation', () => {
     }
   }
 
+  // New responses per service for calendar and planner (NOTIF-02.3); kept across session changes.
+  const newResponses = ref<Record<number, number>>({})
+  const requesting = ref(false)
+
+  async function loadNewResponses(ids: number[]) {
+    if (!ids.length) return
+    try {
+      const { sessions } = (await participationApi.newResponses(ids.slice(0, 500))).data
+      const next = { ...newResponses.value }
+      for (const id of ids) delete next[id]
+      for (const [id, count] of Object.entries(sessions)) next[Number(id)] = count
+      newResponses.value = next
+    } catch {
+      // A missing hint must not break the calendar.
+    }
+  }
+
+  async function markSeen(id: number) {
+    try {
+      await participationApi.markSeen(id)
+      const next = { ...newResponses.value }
+      delete next[id]
+      newResponses.value = next
+    } catch {
+      // Seen state is a convenience only.
+    }
+  }
+
+  async function requestResponse(): Promise<ActionResult & { result?: ResponseRequestResult }> {
+    if (sessionId.value === null) return { ok: false }
+    requesting.value = true
+    try {
+      const result = (await participationApi.requestResponse(sessionId.value)).data
+      if (config.value) config.value = { ...config.value, response_requested_at: result.response_requested_at }
+      return { ok: true, result }
+    } catch (err) {
+      return { ok: false, code: bodyOf(err)?.data?.code, message: getApiErrorMessage(err, 'Die Bitte um Rückmeldung konnte nicht versendet werden.') }
+    } finally {
+      requesting.value = false
+    }
+  }
+
   async function refreshRegistrationsQuietly() {
     if (registrations.value) await loadRegistrations()
   }
 
   async function setRegistration(
     memberId: number, target: RegistrationTarget, reason: { category?: ReasonCategory, note?: string } = {},
+    options: { slot?: number | null } = {},
   ): Promise<ActionResult> {
     if (sessionId.value === null) return { ok: false }
     const row = registrations.value?.members.find(m => m.member_id === memberId)
@@ -364,6 +407,7 @@ export const useParticipationStore = defineStore('participation', () => {
         reason_note: reason.note ?? '',
         version: row?.registration?.version ?? null,
         accept_waitlist: true,
+        ...(options.slot !== undefined ? { slot: options.slot } : {}),
       })
       await loadRegistrations()
       return { ok: true }
@@ -378,9 +422,10 @@ export const useParticipationStore = defineStore('participation', () => {
 
   return {
     sessionId, config, draft, loading, saving, error, fieldErrors, conflict, notice, dirty,
-    registrations, registrationsLoading, registrationsError, busyMember,
+    registrations, registrationsLoading, registrationsError, busyMember, newResponses, requesting,
     ruleErrors, preview, previewLoading, previewError,
     loadConfig, setMode, discard, saveConfig, applyTemplate, addSlot, removeSlot, moveSlot, useServerVersion, keepDraftOnServerVersion,
     schedulePreview, runPreview, cancelPreview, loadRegistrations, setRegistration, reset,
+    loadNewResponses, markSeen, requestResponse,
   }
 })

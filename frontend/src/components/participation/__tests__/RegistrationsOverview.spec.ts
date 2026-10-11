@@ -7,7 +7,7 @@ import RulePreview from '../RulePreview.vue'
 import { participationApi } from '@/api/participation'
 
 vi.mock('@/api/participation', () => ({
-  participationApi: { config: vi.fn(), saveConfig: vi.fn(), registrations: vi.fn(), setRegistration: vi.fn(), validate: vi.fn(), preview: vi.fn() },
+  participationApi: { config: vi.fn(), saveConfig: vi.fn(), registrations: vi.fn(), setRegistration: vi.fn(), validate: vi.fn(), preview: vi.fn(), requestResponse: vi.fn(), markSeen: vi.fn() },
 }))
 const api = vi.mocked(participationApi)
 
@@ -68,6 +68,42 @@ describe('RegistrationsOverview', () => {
     const viewer = mount(RegistrationsOverview, { props: { sessionId: 7, canManage: false }, global: { plugins: [PrimeVue] } })
     await flushPromises()
     expect(viewer.find('button[aria-label$="abmelden"]').exists()).toBe(false)
+  })
+
+  it('records a paper application with an optional wished position', async () => {
+    const data = { ...overview('assignment'), slots: [{ id: 5, label: 'Wachführung', min: 1, max: 1, rule: {}, rule_summary: null, position: 0, seated: 0 }] }
+    api.registrations.mockResolvedValue({ data } as never)
+    api.setRegistration.mockResolvedValue({ data: {} } as never)
+    const wrapper = mount(RegistrationsOverview, { props: { sessionId: 7, canManage: true }, global: { plugins: [PrimeVue], stubs: { Dialog: { template: '<div><slot /><slot name="footer" /></div>' } } } })
+    await flushPromises()
+    // Only people without an open application: Cem (abgemeldet) and Dora (keine Rückmeldung).
+    expect(wrapper.findAll('button[aria-label^="Bewerbung für"]').map(b => b.attributes('aria-label'))).toEqual(['Bewerbung für Cem Muster erfassen', 'Bewerbung für Dora Muster erfassen'])
+    await wrapper.find('button[aria-label="Bewerbung für Dora Muster erfassen"]').trigger('click')
+    await wrapper.find('#reg-wish').setValue('5')
+    await wrapper.findAll('button').filter(b => b.text() === 'Bewerbung erfassen').at(-1)!.trigger('click')
+    await flushPromises()
+    expect(api.setRegistration).toHaveBeenCalledWith(7, 4, expect.objectContaining({ target: 'applied', slot: 5 }))
+  })
+
+  it('asks people without a response and names those without a portal account', async () => {
+    api.registrations.mockResolvedValue({ data: overview() } as never)
+    api.markSeen.mockResolvedValue({ data: {} } as never)
+    api.requestResponse.mockResolvedValue({ data: { asked: 3, without_account: 1, response_requested_at: '2029-12-20T10:00:00Z' } } as never)
+    const wrapper = mount(RegistrationsOverview, { props: { sessionId: 7, canManage: true }, global: { plugins: [PrimeVue] } })
+    await flushPromises()
+    expect(api.markSeen).toHaveBeenCalledWith(7)
+    expect(wrapper.text()).toContain('Fragt eine Person ohne Rückmeldung')
+    await wrapper.findAll('button').find(b => b.text() === 'Um Rückmeldung bitten')!.trigger('click')
+    await flushPromises()
+    expect(api.requestResponse).toHaveBeenCalledWith(7)
+    expect(wrapper.text()).toContain('3 Personen wurden um Rückmeldung gebeten. Eine Person hat kein Portalkonto')
+  })
+
+  it('marks registrations recorded by staff', async () => {
+    api.registrations.mockResolvedValue({ data: overview() } as never)
+    const wrapper = mount(RegistrationsOverview, { props: { sessionId: 7, canManage: false }, global: { plugins: [PrimeVue] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Durch Betreuende erfasst')
   })
 })
 
