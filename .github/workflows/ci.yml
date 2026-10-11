@@ -229,6 +229,7 @@ jobs:
           docker run --rm --add-host backend:127.0.0.1 \
             -v "$PWD/frontend/nginx.conf:/etc/nginx/nginx.conf:ro" -v "$PWD/frontend/conf.d:/etc/nginx/conf.d:ro" \
             -v "$PWD/frontend/snippets:/etc/nginx/snippets:ro" -v "$PWD/frontend/trusted-proxies.conf:/etc/nginx/trusted-proxies.conf:ro" \
+            -v "$PWD/frontend/csp-mode.conf:/etc/nginx/csp-mode.conf:ro" \
             mirror.gcr.io/library/nginx:1.27-alpine nginx -t
 
       - name: Caddy configuration
