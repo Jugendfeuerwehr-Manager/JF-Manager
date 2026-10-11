@@ -195,3 +195,30 @@ class UserSession(models.Model):
         verbose_name = "Angemeldetes Gerät"
         verbose_name_plural = "Angemeldete Geräte"
         ordering = ["-last_seen_at"]
+
+
+class ListPreference(models.Model):
+    """Saved filters, sorting and page size of a list view per user and department (UX-02.3).
+
+    Only layout and filter choices are stored, never search texts or other personal content.
+    """
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="list_preferences")
+    view = models.CharField(max_length=40)
+    department = models.ForeignKey(
+        "departments.Department", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    data = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Listeneinstellung"
+        verbose_name_plural = "Listeneinstellungen"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "view", "department"], name="unique_list_preference"),
+            models.UniqueConstraint(
+                fields=["user", "view"],
+                condition=models.Q(department__isnull=True),
+                name="unique_list_preference_without_department",
+            ),
+        ]

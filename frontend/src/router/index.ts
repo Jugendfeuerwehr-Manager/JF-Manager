@@ -30,6 +30,13 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      // Login step for a pending staff account link (PORTAL-04.2, E13)
+      path: '/konto-bestaetigen',
+      name: 'account-link-confirm',
+      component: () => import('@/views/AccountLinkConfirmView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/PasswordResetRequestView.vue'),
@@ -403,6 +410,15 @@ const router = createRouter({
           component: () => import('@/views/LogView.vue'),
           meta: { requiresStaff: true }
         },
+        // Own area of staff accounts linked to their member/parent record (PORTAL-04.3)
+        { path: 'ich', redirect: '/ich/dienste' },
+        {
+          path: 'ich/:section(dienste|daten|kinder)',
+          name: 'own-area',
+          component: () => import('@/views/own/OwnAreaView.vue'),
+          meta: { ownArea: true },
+          props: route => ({ section: route.params.section })
+        },
         {
           path: 'profile',
           name: 'profile',
@@ -486,6 +502,14 @@ router.beforeEach(async (to, from, next) => {
   } else if (authStore.mfaSetupRequired && requiresAuth && to.path !== '/profile') {
     // Accounts with mandatory MFA can only reach the setup until it is done.
     next({ path: '/profile', query: { mfa: 'setup' } })
+  } else if (
+    authStore.accountLinkPending && !authStore.isPortalAccount && !authStore.accountLinkDeferred &&
+    !authStore.mfaSetupRequired && requiresAuth && to.name !== 'account-link-confirm'
+  ) {
+    // A pending link waits for the account's decision before anything else (E13).
+    next({ name: 'account-link-confirm', query: to.fullPath === '/' ? {} : { next: to.fullPath } })
+  } else if (to.meta.ownArea && authStore.isAuthenticated && !authStore.hasOwnArea) {
+    next('/')
   } else if (to.meta.requiresSettings && authStore.isAuthenticated) {
     try {
       await settingsStore.fetchPermissions()

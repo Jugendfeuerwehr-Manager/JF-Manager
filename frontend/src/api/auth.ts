@@ -37,6 +37,12 @@ export interface SessionStatus {
   /** Short session profile for accounts with mandatory MFA. */
   privileged_session?: boolean
   account_kind?: 'staff' | 'portal'
+  /** Staff account with a link waiting for its confirmation (PORTAL-04.2). */
+  account_link_pending?: boolean
+  /** Confirmed link: own member record and/or minor children of the own parent record. */
+  linked_person?: { member: boolean, children: boolean }
+  /** Own member record and own children: evidence is kept by another person (four-eyes). */
+  own_member_ids?: number[]
 }
 
 export interface Passkey {

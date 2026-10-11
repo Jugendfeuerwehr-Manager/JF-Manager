@@ -1,7 +1,7 @@
 {
-  "captured_on": "2026-10-08",
+  "captured_on": "2026-10-10",
   "source": "backend/demo.py + seed_demo (isolated SQLite, fictitious data)",
-  "source_commit": "1b3e52b8c840b342a07816efd211ac1234581ce4",
+  "source_commit": "eb7d960ea034cf0f145b006d96c1b91b5ffb14af",
   "viewports": {
     "desktop": [
       1440,
@@ -13,7 +13,8 @@
     ]
   },
   "accounts": [
-    "admin (synthetic demo superuser)"
+    "admin (synthetic demo superuser)",
+    "eltern@demo.example.invalid (synthetic parent portal account, capture-portal.cjs)"
   ],
-  "scope": "Existing staff UI; portal changes in progress are not documented."
+  "scope": "Staff UI, portal, participation and assignment; animated GIFs from capture-portal.cjs."
 }

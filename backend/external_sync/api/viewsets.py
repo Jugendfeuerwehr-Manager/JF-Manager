@@ -1,6 +1,7 @@
 import json
 
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import transaction
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -51,6 +52,7 @@ class ExternalSyncScopeMixin:
 class SyncJobActionPermissions(DepartmentRoleModelPermissions):
     action_permissions = {
         "run_now": "external_sync.run_syncjob",
+        "preview": "external_sync.run_syncjob",
         "test_connection": "external_sync.test_syncjob",
         "spond_top_level_groups": "external_sync.test_syncjob",
         "garbage_collect": "external_sync.garbage_collect_syncjob",
@@ -105,7 +107,7 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
             return SyncJobListSerializer
         if self.action in {"spond_top_level_groups"}:
             return SpondGroupsLookupSerializer
-        if self.action in {"run_now", "test_connection", "garbage_collection_preview", "garbage_collect"}:
+        if self.action in {"run_now", "preview", "test_connection", "garbage_collection_preview", "garbage_collect"}:
             return SyncJobActionSerializer
         return SyncJobDetailSerializer
 
@@ -195,6 +197,31 @@ class SyncJobViewSet(ExternalSyncScopeMixin, viewsets.ModelViewSet):
         except ProviderRuntimeError as exc:
             run = self._record_failed_run(job, request.user, "manual", str(exc))
             return Response(SyncRunSerializer(run).data, status=status.HTTP_502_BAD_GATEWAY)
+
+    @action(detail=True, methods=["post"])
+    def preview(self, request, pk=None):
+        """Change preview before a run (UX-08.1): the provider runs inside a transaction that is
+        always rolled back, so the counts match a real run while nothing is stored."""
+        job = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                result = get_provider(job.provider).run(job=job, triggered_by=request.user)
+                transaction.set_rollback(True)
+        except ProviderNotImplementedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_501_NOT_IMPLEMENTED)
+        except ProviderRuntimeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        keys = (
+            "imported_members",
+            "imported_groups",
+            "updated_members",
+            "updated_groups",
+            "flagged_for_review",
+            "deleted_objects",
+        )
+        return Response({"job": job.pk, "counts": {key: result.get(key, 0) for key in keys}})
 
     @action(detail=False, methods=["post"], url_path="spond-top-level-groups")
     def spond_top_level_groups(self, request):

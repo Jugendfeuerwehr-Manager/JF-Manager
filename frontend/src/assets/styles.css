@@ -50,6 +50,15 @@ body {
   .p-button.p-button-icon-only:not(.p-button-sm) {
     min-width: var(--jf-touch-target);
   }
+
+  .p-paginator .p-paginator-first,
+  .p-paginator .p-paginator-prev,
+  .p-paginator .p-paginator-page,
+  .p-paginator .p-paginator-next,
+  .p-paginator .p-paginator-last {
+    min-width: var(--jf-touch-target);
+    min-height: var(--jf-touch-target);
+  }
 }
 
 #app {

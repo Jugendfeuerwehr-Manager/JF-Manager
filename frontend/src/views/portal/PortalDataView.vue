@@ -230,7 +230,7 @@ const period = (start?: string | null, end?: string | null) =>
     />
 
     <PortalNotice icon="pi pi-lock">
-      Anwesenheiten, Notizen und Dienstbuch sind im Portal nicht einsehbar. Welche Daten sichtbar sind, legt die Jugendfeuerwehr fest.
+      Anwesenheiten, Notizen und Dienstbuch sind im Portal nicht einsehbar. Welche Daten sichtbar sind, legt die Leitung fest.
     </PortalNotice>
   </div>
 </template>

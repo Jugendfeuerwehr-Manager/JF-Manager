@@ -169,9 +169,11 @@ class Command(BaseCommand):
         self.seed_members()
         self.seed_portal(password)
         self.seed_qualifications()
+        self.seed_staff_link()
         self.seed_inventory()
         self.seed_orders()
         self.seed_training()
+        self.seed_staffing()
         self.seed_services()
         self.seed_communication()
 
@@ -460,6 +462,67 @@ class Command(BaseCommand):
             end_date=self.today - timedelta(days=30),
             note="Abgegeben an Kreis.",
         )
+
+    def seed_staff_link(self):
+        """Fictitious leader who is a member and a parent (PORTAL-04): Tobias Lehmann, Mitte.
+
+        The link is pending, so the first login shows the confirmation step; afterwards
+        "Mein Bereich" lists his own services and his daughter. One first-aid course is
+        recorded both at the account and at the member to show the duplicate merge.
+        """
+        from members.models import Member, Parent
+        from portal.models import AccountLink
+        from qualifications.models import Qualification
+
+        leader = self.accounts["leitung.mitte"]
+        address = self.address()
+        member = Member.objects.create(
+            name=leader.first_name,
+            lastname=leader.last_name,
+            gender="male",
+            birthday=self.today.replace(year=self.today.year - 34) - timedelta(days=50),
+            joined=self.today - timedelta(days=9 * 365),
+            status=self.statuses["Aktiv"],
+            email=leader.email,
+            mobile=leader.mobile_phone,
+            canSwimm=True,
+            **address,
+        )
+        member.departments.add(self.departments["mitte"])
+        daughter = Member.objects.create(
+            name="Ella",
+            lastname=leader.last_name,
+            gender="female",
+            birthday=self.today.replace(year=self.today.year - 12) - timedelta(days=80),
+            joined=self.today - timedelta(days=400),
+            group=self.groups["mitte"][0],
+            status=self.statuses["Aktiv"],
+            canSwimm=True,
+            **address,
+        )
+        daughter.departments.add(self.departments["mitte"])
+        self.members["mitte"].append(daughter)
+        parent = Parent.objects.create(
+            name=leader.first_name, lastname=leader.last_name, email=leader.email, mobile=leader.mobile_phone, **address
+        )
+        parent.children.add(daughter)
+        account_aid = Qualification.objects.filter(user=leader, type__name="Erste-Hilfe-Ausbildung").first()
+        if account_aid is not None:
+            Qualification.objects.create(
+                type=account_aid.type,
+                member=member,
+                date_acquired=account_aid.date_acquired,
+                date_expires=account_aid.date_expires,
+                issued_by=account_aid.issued_by,
+            )
+        AccountLink.objects.create(
+            user=leader,
+            member=member,
+            parent=parent,
+            linked_by=self.accounts["admin"],
+            status=AccountLink.Status.PENDING,
+        )
+        self.staff_link_member = member
 
     def seed_inventory(self):
         from inventory.models import Category, Item, ItemVariant, StorageLocation, Transaction
@@ -826,6 +889,93 @@ class Command(BaseCommand):
             service.save(update_fields=["events"])
             self.attendance(service, code, Attendance, StaffAttendance)
 
+    def seed_staffing(self):
+        """PART-04: positions, waiting list, an assignment and the staffing template "Brandsicherheitswache"."""
+        from participation import assignment, service
+        from participation.models import StaffingTemplate
+        from participation.templates import apply_to_session
+        from qualifications.models import QualificationType
+        from training.models import TrainingSession
+
+        planner = self.accounts["ausbilder"]
+        spange = QualificationType.objects.get(name="Leistungsspange")
+        flame = QualificationType.objects.get(name="Jugendflamme Stufe 2")
+
+        def has(qtype):
+            return {"v": 1, "match": "all", "rules": [{"kind": "qualification", "op": "has_any", "values": [qtype.pk]}]}
+
+        guard = StaffingTemplate.objects.create(
+            name="Brandsicherheitswache",
+            description="Wachführung und zwei Truppleute, automatisches Nachrücken.",
+            department=self.departments["mitte"],
+            created_by=planner,
+            body={
+                "mode": "opt_in",
+                "eligibility": {"v": 1, "match": "all", "rules": [{"kind": "age", "op": "min", "min": 14}]},
+                "waitlist_mode": "auto",
+                "extra_places": 1,
+                "slots": [
+                    {"label": "Wachführung", "min": 1, "max": 1, "rule": has(spange)},
+                    {"label": "Truppmann/-frau", "min": 2, "max": 2, "rule": has(flame)},
+                ],
+            },
+        )
+        StaffingTemplate.objects.create(
+            name="Zeltlager-Helfende",
+            description="Zuteilung durch die Leitung, Bewerbungen mit Wunschposition.",
+            department=None,
+            created_by=planner,
+            body={
+                "mode": "assignment",
+                "eligibility": {},
+                "waitlist_mode": "manual",
+                "slots": [
+                    {"label": "Küche", "min": 1, "max": 2, "rule": {}},
+                    {"label": "Aufbau", "min": 2, "max": 3, "rule": {}},
+                ],
+            },
+        )
+
+        def planned(title, days):
+            plan = TrainingSession.objects.create(
+                title=title,
+                date=self.today + timedelta(days=days),
+                start_time=time(17, 0),
+                end_time=time(22, 0),
+                location="Festplatz Musterstadt",
+                department=self.departments["mitte"],
+                created_by=planner,
+                status=TrainingSession.Status.PUBLISHED,
+            )
+            plan.groups.set(self.groups["mitte"])
+            return plan
+
+        members = self.members["mitte"]
+        wache = planned("Brandsicherheitswache Stadtfest", 12)
+        apply_to_session(wache, guard.body, template=guard)
+        for member in members:
+            try:
+                service.set_registration(wache.pk, member.pk, "registered", actor=planner, source="staff")
+            except service.ParticipationError:
+                continue  # people who do not fit any position stay without registration
+
+        lager = planned("Aufbau Zeltlager", 20)
+        participation = apply_to_session(lager, StaffingTemplate.objects.get(name="Zeltlager-Helfende").body)[0]
+        slots = list(participation.slots.all())
+        for index, member in enumerate(members[:8]):
+            service.set_registration(
+                lager.pk,
+                member.pk,
+                "applied",
+                actor=planner,
+                source="staff",
+                slot=slots[index % 2].pk if index % 3 else None,
+            )
+        participation.refresh_from_db()
+        draft = {str(m.pk): slots[i % 2].pk for i, m in enumerate(members[:4])}
+        board = assignment.save_draft(lager.pk, draft, participation.revision)
+        assignment.publish(lager.pk, board["revision"], actor=planner, keep_open=True)
+
     def attendance(self, service, code, attendance_model, staff_model):
         for member in self.members[code]:
             roll = self.rng.random()
@@ -925,6 +1075,9 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Portalzugänge: eltern@{DEMO_DOMAIN} (Elternteil von {children}), "
             f"mitglied@{DEMO_DOMAIN} (Mitglied {self.portal_accounts[f'mitglied@{DEMO_DOMAIN}'].get_full_name()})"
+        )
+        self.stdout.write(
+            "Verwaltungskonto als Mitglied: leitung.mitte (Mitglied und Elternteil, Verknüpfung beim ersten Login bestätigen)"
         )
         self.stdout.write(f"Gemeinsames Passwort: {password}")
         if self.totp_accounts:

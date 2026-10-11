@@ -3,8 +3,40 @@ import { ref } from 'vue'
 import { memberListsApi } from '@/api/lists'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { useDepartmentsStore } from '@/stores/departments'
-import type { MemberList, MemberListCreate, MemberListDetail, MemberListUpdate, CreateFromEventTypeParams } from '@/types/lists'
+import type {
+  BulkAddResult,
+  BulkCheckPreview,
+  BulkCheckResult,
+  CreateFromEventTypeParams,
+  MemberList,
+  MemberListCreate,
+  MemberListDetail,
+  MemberListEntry,
+  MemberListEntryConflict,
+  MemberListEntryState,
+  MemberListUpdate,
+} from '@/types/lists'
 import type { Attachment } from '@/types/qualifications'
+
+/** Someone else changed the entry first; `current` is the state now shown (UX-03.2). */
+export class ListEntryConflictError extends Error {
+  constructor(public readonly current: MemberListEntryState, public readonly memberName: string) {
+    super('Der Eintrag wurde inzwischen geändert.')
+    this.name = 'ListEntryConflictError'
+  }
+}
+
+function conflictState(error: unknown): MemberListEntryState | null {
+  const response = (error as { response?: { status?: number; data?: Partial<MemberListEntryConflict> } }).response
+  return response?.status === 409 && response.data?.current ? response.data.current : null
+}
+
+function applyEntryState(entry: MemberListEntry, state: MemberListEntryState) {
+  entry.checked = state.checked
+  entry.checked_at = state.checked_at
+  entry.notes = state.notes
+  entry.version = state.version
+}
 
 export const useMemberListsStore = defineStore('memberLists', () => {
   // ── State ────────────────────────────────────────────────────────────────
@@ -107,59 +139,80 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     syncOverviewCount(listId)
   }
 
-  async function bulkAdd(listId: number, memberIds: number[]): Promise<void> {
-    await memberListsApi.bulkAdd(listId, memberIds)
+  async function previewBulkAdd(listId: number, memberIds: number[]): Promise<BulkAddResult> {
+    return (await memberListsApi.bulkAdd(listId, memberIds, true)).data
+  }
+
+  async function bulkAdd(listId: number, memberIds: number[]): Promise<BulkAddResult> {
+    const { data } = await memberListsApi.bulkAdd(listId, memberIds)
     await fetchList(listId)
+    return data
   }
 
   // ── Check / uncheck ──────────────────────────────────────────────────────
-  async function toggleCheck(listId: number, memberId: number): Promise<void> {
-    if (currentList.value?.id !== listId) return
-    // Optimistic update
-    const entry = currentList.value.entries.find((e) => e.member.id === memberId)
-    if (entry) {
-      entry.checked = !entry.checked
-      entry.checked_at = entry.checked ? new Date().toISOString() : null
-    }
+  function findEntry(listId: number, memberId: number) {
+    return currentList.value?.id === listId ? currentList.value.entries.find((e) => e.member.id === memberId) : undefined
+  }
+
+  /**
+   * Sets one entry explicitly and sends the version the user saw. On a
+   * conflict the current server state replaces the local one and a
+   * `ListEntryConflictError` tells the view what happened.
+   */
+  async function setCheck(listId: number, memberId: number, checked: boolean): Promise<void> {
+    const entry = findEntry(listId, memberId)
+    if (!entry) return
+    const previous = { checked: entry.checked, checked_at: entry.checked_at }
+    entry.checked = checked
+    entry.checked_at = checked ? new Date().toISOString() : null
     try {
-      const res = await memberListsApi.toggleCheck(listId, memberId)
-      if (entry) {
-        entry.checked = res.data.checked
-        entry.checked_at = res.data.checked_at
-      }
+      const { data } = await memberListsApi.setCheck(listId, memberId, checked, entry.version)
+      applyEntryState(entry, data)
     } catch (err) {
-      // Rollback
-      if (entry) {
-        entry.checked = !entry.checked
-        entry.checked_at = null
+      const current = conflictState(err)
+      if (current) {
+        applyEntryState(entry, current)
+        throw new ListEntryConflictError(current, entry.member.full_name ?? '')
       }
+      entry.checked = previous.checked
+      entry.checked_at = previous.checked_at
       throw err
+    } finally {
+      syncCheckedCount(listId)
     }
-    syncCheckedCount(listId)
   }
 
-  async function checkAll(listId: number): Promise<void> {
-    await memberListsApi.checkAll(listId)
-    if (currentList.value?.id === listId) {
-      const now = new Date().toISOString()
-      currentList.value.entries.forEach((e) => { e.checked = true; e.checked_at = now })
-    }
-    syncCheckedCount(listId)
+  async function previewBulkCheck(listId: number, checked: boolean): Promise<BulkCheckPreview> {
+    return (await memberListsApi.previewBulkCheck(listId, checked)).data
   }
 
-  async function uncheckAll(listId: number): Promise<void> {
-    await memberListsApi.uncheckAll(listId)
+  /** Applies a previewed bulk change and takes over the server state of every entry. */
+  async function applyBulkCheck(listId: number, checked: boolean, memberIds: number[]): Promise<BulkCheckResult> {
+    const { data } = await memberListsApi.applyBulkCheck(listId, checked, memberIds)
     if (currentList.value?.id === listId) {
-      currentList.value.entries.forEach((e) => { e.checked = false; e.checked_at = null })
+      const states = new Map(data.entries.map((state) => [state.member_id, state]))
+      currentList.value.entries.forEach((entry) => {
+        const state = states.get(entry.member.id)
+        if (state) applyEntryState(entry, state)
+      })
     }
     syncCheckedCount(listId)
+    return data
   }
 
   async function updateEntryNotes(listId: number, memberId: number, notes: string): Promise<void> {
-    await memberListsApi.updateEntryNotes(listId, memberId, notes)
-    if (currentList.value?.id === listId) {
-      const entry = currentList.value.entries.find((e) => e.member.id === memberId)
-      if (entry) entry.notes = notes
+    const entry = findEntry(listId, memberId)
+    try {
+      const { data } = await memberListsApi.updateEntryNotes(listId, memberId, notes, entry?.version)
+      if (entry) applyEntryState(entry, data)
+    } catch (err) {
+      const current = conflictState(err)
+      if (current && entry) {
+        applyEntryState(entry, current)
+        syncCheckedCount(listId)
+        throw new ListEntryConflictError(current, entry.member.full_name ?? '')
+      }
+      throw err
     }
   }
 
@@ -220,7 +273,8 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     }
   }
 
-  function syncCheckedCount(listId: number) {    const idx = lists.value.findIndex((l) => l.id === listId)
+  function syncCheckedCount(listId: number) {
+    const idx = lists.value.findIndex((l) => l.id === listId)
     const list = lists.value[idx]
     if (list && currentList.value?.id === listId) {
       list.checked_count = currentList.value.entries.filter((e) => e.checked).length
@@ -264,10 +318,11 @@ export const useMemberListsStore = defineStore('memberLists', () => {
     deleteList,
     addMember,
     removeMember,
+    previewBulkAdd,
     bulkAdd,
-    toggleCheck,
-    checkAll,
-    uncheckAll,
+    setCheck,
+    previewBulkCheck,
+    applyBulkCheck,
     updateEntryNotes,
     fetchListAttachments,
     uploadListAttachment,

@@ -127,6 +127,7 @@ services:
     volumes:
       - ${JF_DATA_DIR:-/var/lib/jf-manager}/static:/static:ro
       - ${JF_TRUSTED_PROXIES_FILE:-/etc/jf-manager/trusted-proxies.conf}:/etc/nginx/trusted-proxies.conf:ro
+      - ${JF_CSP_MODE_FILE:-/etc/jf-manager/csp-mode.conf}:/etc/nginx/csp-mode.conf:ro
     restart: unless-stopped
     networks:
       - internal

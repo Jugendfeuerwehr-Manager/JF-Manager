@@ -4,9 +4,11 @@
     <section v-for="section in visibleSections" :key="section.label" class="nav-section">
       <h2>{{ section.label }}</h2>
       <router-link v-for="item in section.items" :key="item.to" :to="item.to" class="nav-link" :class="{ active: isActive(item.to) }" :aria-current="isActive(item.to) ? 'page' : undefined" @click="$emit('navigate')">
-        <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
-        <span v-if="item.to === '/eingang' && inbox.counts.total > 0" class="nav-badge" :aria-label="`Eingang, ${inbox.counts.total} offen`">{{ inbox.counts.total }}</span>
-        <span v-if="item.to === '/portal-verwaltung' && requestCount > 0" class="nav-badge" :aria-label="`Portal, ${requestCount} ${requestCount === 1 ? 'offener Antrag' : 'offene Anträge'}`">{{ requestCount }}</span>
+        <!-- The number is shown visually; screen readers hear the sentence inside the label, so the
+             name reads "Portal, 1 offener Antrag" without a gap before the comma. -->
+        <i :class="item.icon" aria-hidden="true"></i><span>{{ item.label }}<span v-if="countSentence(item.to)" class="sr-only">{{ countSentence(item.to) }}</span></span>
+        <span v-if="item.to === '/eingang' && inbox.counts.total > 0" class="nav-badge" aria-hidden="true">{{ inbox.counts.total }}</span>
+        <span v-if="item.to === '/portal-verwaltung' && requestCount > 0" class="nav-badge" aria-hidden="true">{{ requestCount }}</span>
       </router-link>
     </section>
     <p v-if="!visibleSections.length" class="nav-empty">Kein passendes Modul gefunden.</p>
@@ -27,8 +29,14 @@ const inbox = useInboxStore()
 const search = ref('')
 const requestCount = computed(() => inbox.counts.by_category?.requests ?? 0)
 const settingsRights = ['all', 'general', 'email', 'member', 'service', 'order', 'ldap', 'oidc'].map(category => `settings_manager.view_${category}_settings`)
-interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean }
+interface NavItem { label: string; icon: string; to: string; permission?: string; admin?: boolean; own?: 'member' | 'children' }
 const sections: { label: string; items: NavItem[] }[] = [
+  // PORTAL-04: only for accounts with a confirmed link to their own records.
+  { label: 'Mein Bereich', items: [
+    { label: 'Meine Dienste', icon: 'pi pi-calendar-plus', to: '/ich/dienste', own: 'member' },
+    { label: 'Meine Daten', icon: 'pi pi-id-card', to: '/ich/daten', own: 'member' },
+    { label: 'Meine Kinder', icon: 'pi pi-users', to: '/ich/kinder', own: 'children' },
+  ] },
   { label: 'Überblick', items: [{ label: 'Dashboard', icon: 'pi pi-home', to: '/' }, { label: 'Eingang', icon: 'pi pi-inbox', to: '/eingang' }] },
   { label: 'Mitglieder', items: [
     { label: 'Mitglieder', icon: 'pi pi-users', to: '/members', permission: 'view_member' },
@@ -59,10 +67,19 @@ const sections: { label: string; items: NavItem[] }[] = [
 ]
 const vocabularyLabel = (item: NavItem) => ({ '/members': configuration.member_label, '/servicebook': configuration.service_label, '/training': configuration.training_label }[item.to] || item.label)
 const visibleSections = computed(() => sections.map(section => ({ ...section, items: section.items.map(item => ({ ...item, label: vocabularyLabel(item) })).filter(item =>
+  (!item.own || auth.linkedPerson?.[item.own]) &&
   (!item.permission || (item.to === '/settings' ? settingsRights.some(permission => auth.hasPerm(permission)) : auth.hasPerm(item.permission))) &&
   item.label.toLocaleLowerCase('de').includes(search.value.trim().toLocaleLowerCase('de'))
 ) })).filter(section => section.items.length))
 function isActive(target: string) { return route.path === target || (target !== '/' && route.path.startsWith(`${target}/`)) }
+
+function countSentence(to: string): string {
+  if (to === '/eingang' && inbox.counts.total > 0) return `, ${inbox.counts.total} offen`
+  if (to === '/portal-verwaltung' && requestCount.value > 0) {
+    return `, ${requestCount.value} ${requestCount.value === 1 ? 'offener Antrag' : 'offene Anträge'}`
+  }
+  return ''
+}
 </script>
 <style scoped>
 .module-navigation { padding: var(--jf-space-2) var(--jf-space-1-5); }
@@ -82,5 +99,6 @@ h2 { margin: 0 var(--jf-space-1-5) var(--jf-space-1); color: var(--jf-color-text
 .nav-link.active i { color: var(--jf-color-primary); }
 .nav-link:focus-visible { outline: var(--jf-focus-ring); outline-offset: -2px; }
 .nav-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--jf-color-primary); color: var(--jf-color-on-primary); font-size: var(--jf-text-xs); font-weight: var(--jf-weight-bold); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .nav-empty { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); padding: var(--jf-space-1); }
 </style>

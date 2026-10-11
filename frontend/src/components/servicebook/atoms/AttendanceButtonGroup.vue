@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { AttendanceState } from '@/types/servicebook'
+import { AttendanceState, AttendanceStateLabels } from '@/types/servicebook'
 
 interface Props {
   currentState: AttendanceState | null
@@ -45,9 +45,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const states = [
-  { value: AttendanceState.PRESENT, title: 'Anwesend', icon: 'pi pi-check' },
-  { value: AttendanceState.EXCUSED, title: 'Entschuldigt', icon: 'pi pi-clock' },
-  { value: AttendanceState.ABSENT, title: 'Fehlt', icon: 'pi pi-times' },
+  { value: AttendanceState.PRESENT, title: AttendanceStateLabels[AttendanceState.PRESENT], icon: 'pi pi-check' },
+  { value: AttendanceState.EXCUSED, title: AttendanceStateLabels[AttendanceState.EXCUSED], icon: 'pi pi-clock' },
+  { value: AttendanceState.ABSENT, title: AttendanceStateLabels[AttendanceState.ABSENT], icon: 'pi pi-times' },
 ]
 
 const isActive = (state: AttendanceState) => props.currentState === state

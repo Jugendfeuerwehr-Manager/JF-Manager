@@ -34,7 +34,7 @@ Das bebilderte Handbuch erklärt Grundkonzepte und führt schrittweise durch die
 | Kommunizieren | Empfängerauswahl, E-Mail-Vorschau, Vorlagen, Versandhistorie und freiwillige Gerätemitteilungen |
 | Zuständigkeiten regeln | Abteilungsrechte, 16 Standardrollen, Wirkungsvorschau, Delegation, LDAP und OIDC-SSO |
 
-Bestellungen findet ihr unter **Inventar → Bestellungen**, im Dashboard oder per Direktlink. Die **Anwesenheitsauswertung** ist eine eigene Seite im Dienstbuch. Ein Mitglieds-/Elterndatensatz ist kein Benutzerkonto. Eltern-/Mitgliederportal und erweiterte Teilnahmesteuerung befinden sich noch in Entwicklung und sind im Handbuch als solche gekennzeichnet.
+Bestellungen findet ihr unter **Inventar → Bestellungen**, im Dashboard oder per Direktlink. Die **Anwesenheitsauswertung** ist eine eigene Seite im Dienstbuch. Ein Mitglieds-/Elterndatensatz ist kein Benutzerkonto. Eltern und Mitglieder erhalten über das Portal einen eigenen Zugang für Termine, An- und Abmeldungen und Änderungsanträge; Positionen, Warteliste und Zuteilung steuert die Leitung je Dienst.
 
 ![Übungsplan mit Stationen, Gruppenbahnen und Planungswarnungen](docs/handbook/images/planner.png)
 

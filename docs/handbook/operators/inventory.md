@@ -11,7 +11,9 @@ Unter **Inventar** findest du Übersicht, Ausgabe, Ausgegeben, Bestand, Artikel,
 3. Wähle die auszugebenden Artikel und Mengen und bestätige die Ausgabe.
 4. Prüfe die Zuordnung anschließend unter **Ausgegeben** oder im Mitgliederprofil unter **Ausrüstung**.
 
-Bei einer Rückgabe nutze die Rückgabefunktion, damit die Ausleihe abgeschlossen und der Bestand korrekt verbucht wird. Bestandsbewegungen wie Eingang, Ausgabe, Umlagerung und Aussonderung werden als Buchungen dokumentiert. Eine Aussonderung benötigt einen Grund und entsprechende Rechte.
+Statt zu scannen, kannst du im Ausgabedialog einen **Code** eingeben (Größe, Nummer, Barcode oder Inventarnummer); der passende Artikel und die Größe werden übernommen. Je Zeile siehst du, wie viel verfügbar, bereits ausgegeben und nachbestellt ist.
+
+Bei einer Rückgabe öffne **Rücknahme**: Wähle das Mitglied, trage je Artikel die zurückgegebene Menge ein (auch Teilmengen, **Alles** übernimmt die ganze Menge) und den Lagerort. Alle Positionen werden in einer Buchung zurückgenommen; ist zu viel angegeben, wird nichts gebucht und der Grund genannt. Bestandsbewegungen wie Eingang, Ausgabe, Umlagerung und Aussonderung werden als Buchungen dokumentiert. Eine Aussonderung benötigt einen Grund und entsprechende Rechte.
 
 **Artikel** beschreiben eure Ausstattung, **Kategorien** strukturieren sie und **Lagerorte** geben an, wo sie liegt. Prüfe den Tab Verlauf, wenn eine Bestandsänderung nachvollzogen werden soll.
 
@@ -21,7 +23,7 @@ Bestellungen sind in das Inventarmodul integriert über **Inventar → Bestellun
 
 1. Erstelle die Bestellung mit den benötigten Positionen und Mengen.
 2. Öffne die Detailansicht, um Positionen und ihren Status zu prüfen.
-3. Wähle im Verlauf die zulässigen nächsten Status.
+3. Wähle im Verlauf die zulässigen nächsten Status. Der Abschnitt **Statusverlauf** zeigt je Position, wer wann welchen Status gesetzt hat.
 4. Bei inventarverknüpften Artikeln kannst du beim Eingang einen Lagerort für die Buchung auswählen und bei der Übergabe eine Ausleihe anlegen.
 
 Welche Statuswechsel möglich sind, richtet sich nach der eingerichteten Bestellkonfiguration. Die Auswertung der Bestellungen bietet einen Überblick über den Beschaffungsprozess. Wenn Push auf eurem Server eingerichtet und auf deinem Gerät aktiviert ist, können neue Bestellungen und Statusänderungen eine Mitteilung auslösen.

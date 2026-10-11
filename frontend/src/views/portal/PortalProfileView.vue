@@ -52,7 +52,7 @@ async function changePassword() {
     </section>
 
     <Message severity="info" :closable="false">
-      Namen und Kontaktdaten pflegt die Jugendfeuerwehr. Änderungen beantragst du bald unter „Daten“; sie werden nach Prüfung übernommen.
+      Namen und Kontaktdaten pflegt die Leitung. Änderungen beantragst du unter „Daten“; sie werden nach Prüfung übernommen.
     </Message>
 
     <section class="card" aria-labelledby="look">

@@ -49,8 +49,8 @@ class MemberListEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MemberListEntry
-        fields = ["id", "member", "member_id", "checked", "checked_at", "notes", "added_at"]
-        read_only_fields = ["id", "member", "checked_at", "added_at"]
+        fields = ["id", "member", "member_id", "checked", "checked_at", "notes", "added_at", "version"]
+        read_only_fields = ["id", "member", "checked_at", "added_at", "version"]
 
     def validate(self, attrs):
         member = attrs.get("member", getattr(self.instance, "member", None))
@@ -163,6 +163,76 @@ def validate_organization_wide_target():
     """Lists without a department are only allowed while no active department exists."""
     if Department.objects.filter(is_active=True).exists():
         raise serializers.ValidationError({"department": "Eine Abteilung ist erforderlich."})
+
+
+class EntryCheckInputSerializer(serializers.Serializer):
+    member_id = serializers.IntegerField(min_value=1)
+    checked = serializers.BooleanField(required=False)
+    expected_version = serializers.IntegerField(min_value=1, required=False)
+
+    def validate(self, attrs):
+        if self.context.get("require_checked") and "checked" not in attrs:
+            raise serializers.ValidationError({"checked": "checked erforderlich."})
+        return attrs
+
+
+class EntryNotesInputSerializer(serializers.Serializer):
+    member_id = serializers.IntegerField(min_value=1)
+    notes = serializers.CharField(max_length=500, allow_blank=True, required=False, default="")
+    expected_version = serializers.IntegerField(min_value=1, required=False)
+
+
+class EntryStateSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    member_id = serializers.IntegerField()
+    checked = serializers.BooleanField()
+    checked_at = serializers.DateTimeField(allow_null=True)
+    notes = serializers.CharField(allow_blank=True)
+    version = serializers.IntegerField()
+
+
+class EntryConflictSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    code = serializers.CharField()
+    current = EntryStateSerializer()
+
+
+class BulkCheckInputSerializer(serializers.Serializer):
+    dry_run = serializers.BooleanField(required=False, default=False)
+    member_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), required=False)
+
+
+class BulkCheckPreviewEntrySerializer(serializers.Serializer):
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    version = serializers.IntegerField()
+
+
+class BulkCheckResultSerializer(serializers.Serializer):
+    dry_run = serializers.BooleanField()
+    count = serializers.IntegerField(required=False)
+    changed = serializers.IntegerField(required=False)
+    skipped = serializers.IntegerField(required=False)
+    checked_count = serializers.IntegerField(required=False)
+    entries = serializers.ListField(child=serializers.DictField())
+
+
+class BulkAddInputSerializer(serializers.Serializer):
+    member_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), required=False, default=list)
+    dry_run = serializers.BooleanField(required=False, default=False)
+
+
+class BulkAddMemberSerializer(serializers.Serializer):
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class BulkAddResultSerializer(serializers.Serializer):
+    dry_run = serializers.BooleanField()
+    added = serializers.IntegerField()
+    already_in_list = serializers.IntegerField()
+    members = BulkAddMemberSerializer(many=True)
+    member_count = serializers.IntegerField()
 
 
 class CreateFromEventTypeInputSerializer(serializers.Serializer):

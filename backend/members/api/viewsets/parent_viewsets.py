@@ -10,9 +10,11 @@ from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import clone_request
+from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
@@ -38,6 +40,22 @@ class ParentViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "lastname"]
     ordering = ["lastname", "name"]
     department_field = "children__departments"
+
+    def perform_update(self, serializer):
+        # PORTAL-04 (E14): changes to the own parent record are logged as "Eigenänderung".
+        from portal.self_records import log_self_change, snapshot
+
+        before = snapshot(serializer.instance)
+        instance = serializer.save()
+        log_self_change(self.request.user, instance, before)
+
+    @extend_schema(summary="Change log of the parent record (own changes of linked staff accounts)")
+    @action(detail=True, methods=["get"], url_path="change-log")
+    def change_log(self, request, pk=None):
+        from portal.self_records import change_log, log_payload
+
+        parent = self.get_object()
+        return Response({"results": [log_payload(row) for row in change_log("parent", parent.pk)]})
 
     def perform_create(self, serializer):
         # Parent links are validated by the serializer; there is no direct

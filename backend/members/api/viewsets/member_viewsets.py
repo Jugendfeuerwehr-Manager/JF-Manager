@@ -173,8 +173,21 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             raise ValidationError({"departments": "Keine Schreibberechtigung für diese Abteilungszuordnung."})
 
     def perform_update(self, serializer):
+        from portal.self_records import log_self_change, snapshot
+
         self._validate_department_changes(serializer)
-        serializer.save()
+        before = snapshot(serializer.instance)
+        instance = serializer.save()
+        # PORTAL-04 (E14): linked staff edit their own record directly, logged as "Eigenänderung".
+        log_self_change(self.request.user, instance, before)
+
+    @extend_schema(summary="Change log of the member (portal requests and own changes)")
+    @action(detail=True, methods=["get"], url_path="change-log")
+    def change_log(self, request, pk=None):
+        from portal.self_records import change_log, log_payload
+
+        member = self.get_object()
+        return Response({"results": [log_payload(row) for row in change_log("member", member.pk)]})
 
     def perform_create(self, serializer):
         """Auto-assign department on create for dept-scoped users."""

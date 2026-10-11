@@ -4,6 +4,7 @@
 </template>
 
 <script setup lang="ts">
+import { telHref } from '@/utils/contactHref'
 import { computed } from 'vue'
 
 interface Props {
@@ -20,9 +21,7 @@ const trimmed = computed(() => (props.value ?? '').trim())
 const href = computed(() => {
   if (!trimmed.value) return ''
   if (props.kind === 'email') return `mailto:${trimmed.value}`
-  const digits = trimmed.value.replace(/[^\d+]/g, '')
-  const normalised = (digits.startsWith('+') ? '+' : '') + digits.replace(/\+/g, '')
-  return normalised ? `tel:${normalised}` : ''
+  return telHref(trimmed.value)
 })
 </script>
 

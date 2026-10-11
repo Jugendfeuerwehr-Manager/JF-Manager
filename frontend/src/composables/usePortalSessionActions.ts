@@ -9,11 +9,21 @@ export function usePortalSessionActions() {
   const sheetId = ref<number | null>(null)
   const sheetError = ref<string | null>(null)
   const sheetItem = computed(() => portal.sessions.find(s => s.id === sheetId.value) ?? null)
+  const positionId = ref<number | null>(null)
+  const positionError = ref<string | null>(null)
+  const positionItem = computed(() => portal.sessions.find(s => s.id === positionId.value) ?? null)
 
   async function run(item: PortalSessionItem, action: SessionAction) {
     if (action.opensSheet) {
       sheetId.value = item.id
       sheetError.value = null
+      portal.actionError = null
+      return
+    }
+    if ((action.kind === 'register' || action.kind === 'apply') && item.positions?.length) {
+      // PART-04.3: choose a position or "beliebig" (Zuteilung: optional wish, Q3)
+      positionId.value = item.id
+      positionError.value = null
       portal.actionError = null
       return
     }
@@ -34,5 +44,17 @@ export function usePortalSessionActions() {
 
   function closeSheet() { sheetId.value = null; sheetError.value = null }
 
-  return { sheetItem, sheetError, run, submitCancel, closeSheet }
+  async function submitPosition(slot: number | null) {
+    const item = positionItem.value
+    if (!item) return
+    positionError.value = null
+    const target = item.mode === 'assignment' ? 'applied' : 'registered'
+    const ok = await portal.setRegistration(item, { target, slot, accept_waitlist: true })
+    if (ok) positionId.value = null
+    else positionError.value = portal.actionError?.message ?? 'Die Meldung konnte nicht gespeichert werden.'
+  }
+
+  function closePosition() { positionId.value = null; positionError.value = null }
+
+  return { sheetItem, sheetError, run, submitCancel, closeSheet, positionItem, positionError, submitPosition, closePosition }
 }

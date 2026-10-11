@@ -1,0 +1,13 @@
+{% extends "drf_spectacular/redoc.html" %}
+{% comment %}
+  SEC-13: the packaged template loads web fonts from Google; the
+  Content-Security-Policy only allows same-origin styles and fonts.
+{% endcomment %}
+{% block head %}
+<title>{{ title|default:"Redoc" }}</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { margin: 0; padding: 0; }
+</style>
+{% endblock head %}

@@ -32,6 +32,10 @@ import type {
   TransactionCreate,
   BatchLoanCreate,
   BatchLoanResponse,
+  BatchReturnCreate,
+  BatchReturnResponse,
+  ItemAvailabilityResponse,
+  ItemLookupResponse,
   TransactionListParams,
   PaginatedResponse,
   MemberEquipmentResponse,
@@ -150,6 +154,16 @@ export const itemsApi = {
    */
   search(q: string) {
     return apiClient.get<{ results: Item[] }>('/inventory/items/search/', { params: { q } })
+  },
+
+  /** Available, issued and ordered quantities per article and size (UX-05.1). */
+  availability(itemIds: number[]) {
+    return apiClient.get<ItemAvailabilityResponse>('/inventory/items/availability/', { params: { item: itemIds.join(',') } })
+  },
+
+  /** Manual alternative to scanning: size, number, barcode or inventory number. */
+  lookup(code: string) {
+    return apiClient.get<ItemLookupResponse>('/inventory/items/lookup/', { params: { code } })
   }
 }
 
@@ -313,6 +327,11 @@ export const transactionsApi = {
   batchLoan(data: BatchLoanCreate) {
     const url = '/inventory/transactions/batch-loan/'
     return withIdempotencyKey('post', url, data, headers => apiClient.post<BatchLoanResponse>(url, data, { headers }))
+  },
+
+  batchReturn(data: BatchReturnCreate) {
+    const url = '/inventory/transactions/batch-return/'
+    return withIdempotencyKey('post', url, data, headers => apiClient.post<BatchReturnResponse>(url, data, { headers }))
   },
 
   /**

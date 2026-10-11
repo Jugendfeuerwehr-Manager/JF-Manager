@@ -157,10 +157,13 @@ function toggleCompactMenu(event: Event) {
 .department-switcher {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
+/* Long department names must not push the Select out of narrow containers (mobile drawer). */
 .dept-select {
-  min-width: 180px;
+  min-width: min(180px, 100%);
+  max-width: 100%;
   font-size: 0.875rem;
 }
 
@@ -168,6 +171,18 @@ function toggleCompactMenu(event: Event) {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.dept-option > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dept-color-dot,
+.dept-icon {
+  flex: none;
 }
 
 .dept-icon {

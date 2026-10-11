@@ -1,87 +1,51 @@
 <template>
-  <Card class="parent-card mobile-entity-card">
-    <template #content>
-      <div class="mobile-entity-card__header">
-        <div class="parent-header">
-          <Avatar
-            :label="parentInitials"
-            size="large"
-            shape="circle"
-            :style="{ backgroundColor: avatarColor, color: 'white' }"
-          />
-          <div class="parent-info">
-            <h3 class="mobile-entity-card__title">{{ parent.full_name || `${parent.name} ${parent.lastname}` }}</h3>
-          </div>
-        </div>
-        <Tag
-          v-if="parent.children && parent.children.length === 0"
-          value="Kein Kind"
-          severity="warn"
-          v-tooltip.top="'Kein Mitglied mit diesem Elternteil verknüpft'"
-        />
+  <article class="parent-card mobile-entity-card" :aria-label="displayName">
+    <div class="mobile-entity-card__header">
+      <div class="parent-header">
+        <span class="parent-initials" aria-hidden="true">{{ initials }}</span>
+        <h3 class="mobile-entity-card__title">{{ displayName }}</h3>
       </div>
+      <ParentLinkBadge :parent="parent" />
+    </div>
 
-      <div class="mobile-entity-card__section parent-details">
-        <div class="mobile-entity-card__row">
-          <span class="mobile-entity-card__label">
-            <i class="pi pi-envelope"></i>
-            E-Mail
-          </span>
-          <span class="mobile-entity-card__value"><ContactLink kind="email" :value="parent.email" /></span>
-        </div>
-
-        <div class="mobile-entity-card__row">
-          <span class="mobile-entity-card__label">
-            <i class="pi pi-phone"></i>
-            Telefon
-          </span>
-          <span class="mobile-entity-card__value"><ContactLink kind="phone" :value="parent.phone" /></span>
-        </div>
-
-        <div class="mobile-entity-card__row">
-          <span class="mobile-entity-card__label">
-            <i class="pi pi-mobile"></i>
-            Mobil
-          </span>
-          <span class="mobile-entity-card__value"><ContactLink kind="phone" :value="parent.mobile" /></span>
-        </div>
-
-        <div v-if="parentAddress" class="mobile-entity-card__row">
-          <span class="mobile-entity-card__label">
-            <i class="pi pi-map-marker"></i>
-            Adresse
-          </span>
-          <span class="mobile-entity-card__value">{{ parentAddress }}</span>
-        </div>
+    <dl class="parent-details">
+      <div class="parent-details__row">
+        <dt><i class="pi pi-envelope" aria-hidden="true"></i>E-Mail</dt>
+        <dd><ContactLink kind="email" :value="parent.email" /></dd>
       </div>
-
-      <div class="mobile-entity-card__actions">
-        <Button
-          label="Bearbeiten"
-          icon="pi pi-pencil"
-          outlined
-          @click="$emit('edit', parent)"
-          class="flex-1"
-        />
-        <Button
-          icon="pi pi-trash"
-          severity="danger"
-          outlined
-          @click="$emit('delete', parent)"
-        />
+      <div class="parent-details__row">
+        <dt><i class="pi pi-phone" aria-hidden="true"></i>Telefon</dt>
+        <dd><ContactLink kind="phone" :value="parent.phone" /></dd>
       </div>
-    </template>
-  </Card>
+      <div class="parent-details__row">
+        <dt><i class="pi pi-mobile" aria-hidden="true"></i>Mobil</dt>
+        <dd><ContactLink kind="phone" :value="parent.mobile" /></dd>
+      </div>
+      <div v-if="parentAddress" class="parent-details__row">
+        <dt><i class="pi pi-map-marker" aria-hidden="true"></i>Adresse</dt>
+        <dd>{{ parentAddress }}</dd>
+      </div>
+    </dl>
+
+    <div class="mobile-entity-card__actions">
+      <Button label="Bearbeiten" icon="pi pi-pencil" outlined class="parent-card__edit" :aria-label="`${displayName} bearbeiten`" @click="$emit('edit', parent)" />
+      <Button
+        icon="pi pi-trash"
+        severity="danger"
+        outlined
+        :aria-label="`${displayName} löschen`"
+        @click="$emit('delete', parent)"
+      />
+    </div>
+  </article>
 </template>
 
 <script setup lang="ts">
-import ContactLink from '@/components/common/ContactLink.vue'
 import { computed } from 'vue'
-import type { Parent } from '@/types/api'
-import Card from 'primevue/card'
-import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
+import ContactLink from '@/components/common/ContactLink.vue'
+import ParentLinkBadge from '@/components/parents/ParentLinkBadge.vue'
+import type { Parent } from '@/types/parents'
 
 interface Props {
   parent: Parent
@@ -94,11 +58,9 @@ defineEmits<{
   delete: [parent: Parent]
 }>()
 
-const parentInitials = computed(() => {
-  const first = props.parent.name?.[0] || ''
-  const last = props.parent.lastname?.[0] || ''
-  return `${first}${last}`.toUpperCase()
-})
+const displayName = computed(() => props.parent.full_name || `${props.parent.name} ${props.parent.lastname}`.trim())
+
+const initials = computed(() => `${props.parent.name?.[0] ?? ''}${props.parent.lastname?.[0] ?? ''}`.toUpperCase() || '?')
 
 const parentAddress = computed(() => {
   const parts = []
@@ -108,45 +70,62 @@ const parentAddress = computed(() => {
   }
   return parts.join(', ')
 })
-
-const avatarColor = computed(() => {
-  const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b']
-  const index = (props.parent.name?.charCodeAt(0) || 0) % colors.length
-  return colors[index]
-})
 </script>
 
 <style scoped>
-.parent-card {
-  height: 100%;
-}
-
-.parent-card :deep(.p-card-body) {
-  padding: 0;
-}
-
-.parent-card :deep(.p-card-content) {
-  padding: 0;
-}
-
 .parent-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--jf-space-1-5);
+  min-width: 0;
 }
 
-.parent-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.parent-initials {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--jf-color-selected);
+  color: var(--jf-color-selected-text);
+  font-weight: var(--jf-weight-bold);
 }
 
 .parent-details {
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+  margin: 0;
 }
 
-.flex-1 {
+.parent-details__row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: 32px;
+}
+
+.parent-details dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  color: var(--jf-color-text-muted);
+  font-size: var(--jf-text-sm);
+}
+
+.parent-details dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.parent-card__edit {
   flex: 1;
+}
+
+.mobile-entity-card__actions :deep(.p-button) {
+  min-height: var(--jf-touch-target);
+  min-width: var(--jf-touch-target);
 }
 </style>

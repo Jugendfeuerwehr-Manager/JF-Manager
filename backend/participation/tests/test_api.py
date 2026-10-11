@@ -72,6 +72,24 @@ class PreviewApiTests(TestCase):
         self.assertEqual(body["errors"], {})
         self.assertEqual(set(body["excluded"][0]), {"member_id", "name", "reasons"})
 
+    def test_preview_names_the_higher_qualification_that_fulfils_the_rule(self):
+        higher = QualificationType.objects.create(name="Gruppenführer")
+        higher.includes.add(self.qtype)
+        holder = self.members[1]
+        Qualification.objects.create(type=higher, member=holder, date_acquired=date(2020, 1, 1))
+        body = self.post().json()
+        self.assertEqual(body["eligible"], 11)
+        self.assertEqual(
+            body["substituted"],
+            [
+                {
+                    "member_id": holder.pk,
+                    "name": "M01 Test",
+                    "notes": ["Qualifikation ‚Maschinist‘ erfüllt durch ‚Gruppenführer‘"],
+                }
+            ],
+        )
+
     def test_preview_with_groups_uses_group_members(self):
         blue_member = Member.objects.create(name="Blau", lastname="Mitglied", group=self.blue)
         self.session.groups.set([self.blue])

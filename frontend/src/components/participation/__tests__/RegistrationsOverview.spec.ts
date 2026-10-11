@@ -79,6 +79,12 @@ describe('RulePreview', () => {
     expect(wrapper.text()).toContain('Ausgeschlossen (1)')
     expect(wrapper.text()).toContain('Qualifikation ‚Maschinist‘ fehlt')
   })
+  it('names the higher qualification that fulfils a requirement', () => {
+    const substituted = [{ member_id: 2, name: 'Ben Beispiel', notes: ['Qualifikation ‚Truppmann‘ erfüllt durch ‚Truppführer‘'] }]
+    const wrapper = mount(RulePreview, { props: { preview: { ...base, eligible: 1, substituted } } })
+    expect(wrapper.text()).toContain('Erfüllt durch höhere Qualifikation (1)')
+    expect(wrapper.text()).toContain('erfüllt durch ‚Truppführer‘')
+  })
   it('waits for valid conditions while rule errors exist', () => {
     const wrapper = mount(RulePreview, { props: { preview: base, errors: { 'rules[0].max': 'x' } } })
     expect(wrapper.text()).toContain('sobald alle Bedingungen gültig sind')

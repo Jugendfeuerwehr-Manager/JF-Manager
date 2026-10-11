@@ -42,7 +42,7 @@ Die getrennten Build-/Deployjobs folgen der [GitHub-Pages-Dokumentation](https:/
 
 ## Aktuelle Screenshots erzeugen
 
-Alle Bilder in `handbook/images/` stammen aus `backend/demo.py` und dem aktuellen `seed_demo`. Es werden keine bestehenden Datenbanken verwendet. `provenance.json` hält Aufnahmestand, Quelle und Größen fest. Der Abschnitt „App & Mitteilungen“ wird als gezielter Bildausschnitt aufgenommen. Das Konto ist ein Demo-Superuser; Fachkonten sehen entsprechend weniger Aktionen. Die produktive Push-Zustellung und echte Passkey-Geräte sind durch diese Aufnahmen nicht geprüft.
+Alle Bilder in `handbook/images/` stammen aus `backend/demo.py` und dem aktuellen `seed_demo`. Es werden keine bestehenden Datenbanken verwendet. `provenance.json` hält Aufnahmestand, Quelle und Größen fest. Der Abschnitt „App & Mitteilungen“ wird als gezielter Bildausschnitt aufgenommen. Portal-, Teilnahme- und Zuteilungsbilder sowie die animierten Drag-and-drop-Abläufe (`assignment-drag.gif`, `planner-drag.gif`) erzeugt `scripts/docs/capture-portal.cjs` gegen dieselbe Demo; dafür wird `ffmpeg` benötigt (Playwright: `playwright install ffmpeg`). Das Konto ist ein Demo-Superuser; Fachkonten sehen entsprechend weniger Aktionen. Die produktive Push-Zustellung und echte Passkey-Geräte sind durch diese Aufnahmen nicht geprüft.
 
 1. In `backend/` `PIPENV_DONT_LOAD_ENV=1 pipenv run python demo.py --port 8012` starten. Das Terminal nennt einen neuen temporären Ordner `jf-manager-demo-…`. Die Demo sperrt echten E-Mail-/Push-Versand.
 2. In `frontend/` `VITE_BACKEND_URL=http://127.0.0.1:8012 npm run dev -- --host 127.0.0.1 --port 5174` starten. Andere laufende Dienste nicht ersetzen.

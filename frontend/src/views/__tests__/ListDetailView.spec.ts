@@ -12,7 +12,10 @@ const { store, confirmRequire, toastAdd, push, generateChecklist } = vi.hoisted(
   push: vi.fn(),
   generateChecklist: vi.fn(),
 }))
-vi.mock('@/stores/lists', () => ({ useMemberListsStore: () => store }))
+vi.mock('@/stores/lists', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/stores/lists')>()),
+  useMemberListsStore: () => store,
+}))
 vi.mock('@/stores/members', () => ({ useMembersStore: () => ({ members: [], fetchMembers: vi.fn() }) }))
 vi.mock('@/stores/groups', () => ({ useGroupsStore: () => ({ groups: [], fetchGroups: vi.fn() }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: null }) }))
@@ -37,7 +40,7 @@ function resetStore() {
       entries: [entry(1, 'Jonas Becker', false), entry(2, 'Lena Weber', true), entry(3, 'Tim Hoffmann', false)],
     },
     fetchList: vi.fn(),
-    toggleCheck: vi.fn(),
+    setCheck: vi.fn(),
     checkAll: vi.fn(),
     uncheckAll: vi.fn(),
     updateEntryNotes: vi.fn(),
@@ -70,12 +73,12 @@ describe('ListDetailView', () => {
     expect(wrapper.text()).toContain('1 von 3 erledigt')
     expect(wrapper.text()).toContain('Offen (2)')
     await toggles[0]!.trigger('click')
-    expect(store.toggleCheck).toHaveBeenCalledWith(3, 1)
+    expect(store.setCheck).toHaveBeenCalledWith(3, 1, true)
   })
 
   it('shows saving and a failed save instead of failing silently', async () => {
     let reject!: (e: unknown) => void
-    ;(store.toggleCheck as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise((_, r) => { reject = r }))
+    ;(store.setCheck as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise((_, r) => { reject = r }))
     const wrapper = render()
     await flushPromises()
     await wrapper.findAll('[role="checkbox"]')[0]!.trigger('click')
@@ -84,6 +87,19 @@ describe('ListDetailView', () => {
     await flushPromises()
     expect(wrapper.get('.save-state').text()).toBe('Nicht gespeichert')
     expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }))
+  })
+
+  it('explains a conflict when someone else changed the entry first', async () => {
+    const { ListEntryConflictError } = await import('@/stores/lists')
+    ;(store.setCheck as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new ListEntryConflictError({ checked: true } as never, 'Jonas Becker'),
+    )
+    const wrapper = render()
+    await flushPromises()
+    await wrapper.findAll('[role="checkbox"]')[0]!.trigger('click')
+    await flushPromises()
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warn', summary: 'Inzwischen geändert' }))
+    expect(toastAdd.mock.calls[0]![0].detail).toContain('Jonas Becker wurde inzwischen von jemand anderem abgehakt')
   })
 
   it('keeps adding, notes and removal out of the checking mode', async () => {

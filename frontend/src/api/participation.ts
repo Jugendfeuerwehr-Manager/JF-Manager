@@ -22,6 +22,36 @@ export interface Rule { v: 1, match: RuleMatch, rules: Array<RuleCondition | Rul
 
 export type RuleErrors = Record<string, string>
 
+// ── Positions (PART-04) ───────────────────────────────────────────────────
+export interface SlotConfig {
+  id: number
+  label: string
+  min: number
+  max: number
+  rule: Rule | Record<string, never>
+  rule_summary: string | null
+  position: number
+  seated: number
+}
+
+export interface SlotInput {
+  id?: number | null
+  label: string
+  min: number
+  max: number
+  rule: Rule | Record<string, never>
+}
+
+export interface StaffingRow { id: number, label: string, min: number, max: number, seated: number, free: number, missing: number }
+export interface Staffing {
+  met: boolean
+  required: number
+  fulfilled: number
+  missing: Array<{ label: string, count: number }>
+  text: string
+  slots: StaffingRow[]
+}
+
 export interface ParticipationConfig {
   session: number
   revision: number
@@ -44,12 +74,18 @@ export interface ParticipationConfig {
   defaults: { mode: ParticipationMode, registration_offset_h: number, cancellation_offset_h: number, waitlist_mode: WaitlistMode }
   eligibility_summary: string | null
   audience_notice: string | null
+  extra_places: number | null
+  slots: SlotConfig[]
+  capacity: number | null
+  staffing: Staffing | null
+  template_source?: { id: number, name: string } | null
+  department?: number | null
 }
 
 export type ConfigUpdate = Partial<Pick<ParticipationConfig,
   'mode' | 'portal_visible' | 'public_note' | 'registration_opens_at' | 'registration_closes_at'
   | 'cancellation_closes_at' | 'max_participants' | 'min_participants' | 'waitlist_mode'>>
-  & { eligibility?: Rule | Record<string, never> | null, revision: number }
+  & { eligibility?: Rule | Record<string, never> | null, revision: number, extra_places?: number | null, slots?: SlotInput[] }
 
 export interface RegistrationDetail {
   version: number
@@ -60,6 +96,8 @@ export interface RegistrationDetail {
   conflict: boolean
   conflict_reasons: string[]
   state_changed_at: string
+  slot: number | null
+  preferred_slot: number | null
 }
 
 export interface RegistrationRow {
@@ -89,6 +127,9 @@ export interface RegistrationOverview {
   revision: number
   deadlines: { registration_opens_at: string | null, registration_closes_at: string, cancellation_closes_at: string }
   counts: RegistrationCounts
+  slots: SlotConfig[]
+  extra_places: number | null
+  staffing: Staffing | null
   truncated: boolean
   members: RegistrationRow[]
 }
@@ -99,6 +140,7 @@ export interface RegistrationInput {
   reason_note?: string
   version?: number | null
   accept_waitlist?: boolean
+  slot?: number | null
 }
 
 export interface RuleValidation { summary: string, errors: RuleErrors, audience_notice: string | null }
@@ -106,6 +148,120 @@ export interface RulePreviewResult extends RuleValidation {
   total: number
   eligible: number
   excluded: Array<{ member_id: number, name: string, reasons: string[] }>
+  /** Eligible people who meet a requirement through a higher qualification (E18). */
+  substituted?: Array<{ member_id: number, name: string, notes: string[] }>
+}
+
+// ── Assignment board (PART-04.4) ──────────────────────────────────────────
+/** Draft target: a position id or "extra" (place without position). */
+export type DraftTarget = number | 'extra'
+
+export interface BoardApplicant {
+  member_id: number
+  name: string
+  lastname: string
+  state: 'applied' | 'assigned' | 'not_selected'
+  version: number
+  applied_at: string
+  preferred_slot: number | null
+  general_ok: boolean
+  general_reasons: string[]
+  fits: number[]
+  reasons: Record<string, string[]>
+  notes: string[]
+  qualifications: string[]
+  recent_assignments: number
+  draft: DraftTarget | null
+  published: DraftTarget | null
+  conflict: boolean
+}
+
+export interface BoardSlot { id: number, label: string, min: number, max: number, drafted: number }
+
+export interface AssignmentBoard {
+  session: number
+  mode: ParticipationMode
+  revision: number
+  published_at: string | null
+  keep_open: boolean
+  dirty: boolean
+  slots: BoardSlot[]
+  extra_places: number | null
+  extra_drafted: number
+  staffing: Staffing | null
+  applicants: BoardApplicant[]
+  draft: Record<string, DraftTarget>
+}
+
+// ── Staffing templates (PART-04.5) ────────────────────────────────────────
+export interface StaffingTemplateBody {
+  mode?: ParticipationMode
+  eligibility?: Rule | Record<string, never>
+  max_participants?: number | null
+  min_participants?: number | null
+  extra_places?: number | null
+  waitlist_mode?: WaitlistMode
+  slots?: Array<{ label: string, min: number, max: number, rule: Rule | Record<string, never> }>
+}
+
+export interface StaffingTemplate {
+  id: number
+  name: string
+  description: string
+  department: number | null
+  department_name: string | null
+  scope: 'department' | 'organization'
+  version: number
+  archived: boolean
+  archived_at: string | null
+  updated_at: string
+  mode: ParticipationMode | null
+  slots: Array<{ label: string, min: number, max: number }>
+  summary: string | null
+  body?: StaffingTemplateBody
+}
+
+export interface StaffingTemplateInput {
+  name: string
+  description?: string
+  department: number | null
+  session?: number | null
+  body?: StaffingTemplateBody | null
+  version?: number
+}
+
+export interface TrainingTemplateStaffing {
+  staffing_template: number | null
+  name: string | null
+  mode: ParticipationMode | null
+  slots: Array<{ label: string, min: number, max: number }>
+}
+
+export const staffingTemplatesApi = {
+  list(params: { department?: number | null, archived?: boolean } = {}) {
+    const query: Record<string, string | number> = {}
+    if (params.department) query.department = params.department
+    if (params.archived) query.archived = '1'
+    return apiClient.get<{ results: StaffingTemplate[], can_manage_organization: boolean }>('/participation/templates/', { params: query })
+  },
+  create(body: StaffingTemplateInput) {
+    return apiClient.post<StaffingTemplate>('/participation/templates/', body)
+  },
+  update(id: number, body: StaffingTemplateInput) {
+    return apiClient.put<StaffingTemplate>(`/participation/templates/${id}/`, body)
+  },
+  archive(id: number, archived: boolean) {
+    return apiClient.post<StaffingTemplate>(`/participation/templates/${id}/${archived ? 'archive' : 'unarchive'}/`)
+  },
+  apply(sessionId: number, template: number, revision: number) {
+    return apiClient.post<ParticipationConfig & { warnings: string[] }>(`/participation/sessions/${sessionId}/apply-template/`, { template, revision })
+  },
+  trainingTemplate(id: number) {
+    return apiClient.get<TrainingTemplateStaffing>(`/participation/training-templates/${id}/`)
+  },
+  setTrainingTemplate(id: number, staffingTemplate: number | null) {
+    return apiClient.put<TrainingTemplateStaffing>(`/participation/training-templates/${id}/`, { staffing_template: staffingTemplate })
+  },
 }
 
 export const participationApi = {
@@ -121,6 +277,15 @@ export const participationApi = {
   setRegistration(sessionId: number, memberId: number, body: RegistrationInput) {
     return apiClient.put<RegistrationRow & { changed: boolean }>(
       `/participation/sessions/${sessionId}/registrations/${memberId}/`, body)
+  },
+  assignment(sessionId: number) {
+    return apiClient.get<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/`)
+  },
+  saveAssignment(sessionId: number, body: { revision: number, draft: Record<string, DraftTarget> }) {
+    return apiClient.put<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/`, body)
+  },
+  publishAssignment(sessionId: number, body: { revision: number, keep_open: boolean }) {
+    return apiClient.post<AssignmentBoard>(`/participation/sessions/${sessionId}/assignment/publish/`, body)
   },
   validate(rule: Rule) {
     return apiClient.post<RuleValidation>('/participation/eligibility/validate/', { rule })

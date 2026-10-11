@@ -3,6 +3,7 @@ from rest_framework.routers import SimpleRouter
 
 from notifications.inbox_views import PortalNotificationReadView, PortalNotificationsView
 
+from .account_link_views import AccountLinkViewSet
 from .views import (
     BulkInviteView,
     ChangeRequestDecideView,
@@ -24,6 +25,7 @@ from .views import (
 
 router = SimpleRouter()
 router.register("invitations", InvitationViewSet, basename="portal-invitations")
+router.register("account-links", AccountLinkViewSet, basename="portal-account-links")
 
 urlpatterns = [
     path("me/", PortalMeView.as_view(), name="portal-me"),

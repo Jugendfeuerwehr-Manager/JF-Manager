@@ -66,6 +66,7 @@ const { navHidden, toggleNav } = useWorkspaceNavigation()
   display: inline-flex;
   align-items: center;
   gap: var(--jf-space-0-5);
+  min-height: var(--jf-touch-target);
   color: var(--jf-color-primary);
   text-decoration: none;
 }

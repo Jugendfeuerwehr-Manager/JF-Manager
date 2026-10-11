@@ -4,9 +4,12 @@ Handles recipient collection, personalization, and SMTP delivery.
 """
 
 import logging
+from dataclasses import dataclass, field
 
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import EmailMultiAlternatives
+from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
 from django.utils.html import strip_tags
@@ -17,94 +20,174 @@ from members.models import EmailMessage, EmailRecipient, Group, Member, Parent
 logger = logging.getLogger(__name__)
 
 
+# Personalisation tokens understood by EmailTemplateRenderer.render_for_member.
+PERSONALIZATION_KEYS = ("vorname", "nachname", "vollername")
+
+
+def uses_personalization(*texts: str) -> bool:
+    """True when any text contains a member variable, so each member needs its own message."""
+    return any(f"{{{{{key}}}}}" in (text or "") for text in texts for key in PERSONALIZATION_KEYS)
+
+
+def _valid_address(address: str) -> bool:
+    try:
+        validate_email(address)
+    except DjangoValidationError:
+        return False
+    return True
+
+
+@dataclass
+class RecipientResolution:
+    """Outcome of a recipient check (UX-07.1).
+
+    ``recipients`` are the deliveries that will be created: one per address, or one per
+    address *and* member when the message is personalised, so two different personalised
+    messages are never merged only because they share an address. ``excluded`` lists
+    members or addresses that receive nothing, each with a reason code and text.
+    """
+
+    recipients: list[dict] = field(default_factory=list)
+    excluded: list[dict] = field(default_factory=list)
+    merged_duplicates: int = 0
+    member_count: int = 0
+    personalized: bool = False
+
+    def as_dict(self) -> dict:
+        return {
+            "count": len(self.recipients),
+            "member_count": self.member_count,
+            "personalized": self.personalized,
+            "merged_duplicates": self.merged_duplicates,
+            "recipients": self.recipients,
+            "excluded": self.excluded,
+        }
+
+
 class EmailRecipientCollector:
     """
     Collects email addresses for members based on recipient type.
-    Handles parent emails and deduplication logic.
+    Handles parent emails, invalid addresses and deduplication.
     """
 
+    EXCLUSION_REASONS = {
+        "no_address": "Keine E-Mail-Adresse bei Mitglied oder Eltern hinterlegt",
+        "invalid_address": "E-Mail-Adresse ist ungültig",
+    }
+
     @staticmethod
-    def get_member_emails(member: Member) -> list[dict[str, str]]:
-        """
-        Get all email addresses for a member (parents + own email if exists).
-
-        Returns list of dicts with:
-        - email: The email address
-        - name: Recipient name
-        - member_id: Associated member ID
-        """
-        emails = []
-        seen_emails: set[str] = set()
-
-        # Get parent emails
-        parents = Parent.objects.filter(children=member).distinct()
-        for parent in parents:
-            # Add primary email
-            if parent.email and parent.email.strip():
-                email_lower = parent.email.lower().strip()
-                if email_lower not in seen_emails:
-                    emails.append(
-                        {
-                            "email": parent.email.strip(),
-                            "name": parent.get_full_name(),
-                            "member_id": member.id,
-                            "member_name": member.get_full_name(),
-                        }
-                    )
-                    seen_emails.add(email_lower)
-
-            # Add secondary email
-            if parent.email2 and parent.email2.strip():
-                email_lower = parent.email2.lower().strip()
-                if email_lower not in seen_emails:
-                    emails.append(
-                        {
-                            "email": parent.email2.strip(),
-                            "name": parent.get_full_name(),
-                            "member_id": member.id,
-                            "member_name": member.get_full_name(),
-                        }
-                    )
-                    seen_emails.add(email_lower)
-
-        # Add member's own email if exists and not duplicate
+    def _candidate_addresses(member: Member) -> list[dict]:
+        """Every non-empty address of a member and its parents, in delivery order."""
+        candidates = []
+        for parent in Parent.objects.filter(children=member).distinct().order_by("pk"):
+            for address in (parent.email, parent.email2):
+                if address and address.strip():
+                    candidates.append({"email": address.strip(), "name": parent.get_full_name(), "relation": "parent"})
         if member.email and member.email.strip():
-            email_lower = member.email.lower().strip()
-            if email_lower not in seen_emails:
-                emails.append(
-                    {
-                        "email": member.email.strip(),
-                        "name": member.get_full_name(),
-                        "member_id": member.id,
-                        "member_name": member.get_full_name(),
-                    }
-                )
-                seen_emails.add(email_lower)
+            candidates.append({"email": member.email.strip(), "name": member.get_full_name(), "relation": "member"})
+        return candidates
 
+    @classmethod
+    def get_member_emails(cls, member: Member) -> list[dict[str, str]]:
+        """Valid, distinct addresses of one member (parents first, then the member)."""
+        emails = []
+        seen: set[str] = set()
+        for candidate in cls._candidate_addresses(member):
+            key = candidate["email"].lower()
+            if key in seen or not _valid_address(candidate["email"]):
+                continue
+            seen.add(key)
+            emails.append(
+                {
+                    "email": candidate["email"],
+                    "name": candidate["name"],
+                    "relation": candidate["relation"],
+                    "member_id": member.id,
+                    "member_name": member.get_full_name(),
+                }
+            )
         return emails
 
     @classmethod
-    def get_recipients_for_all_members(cls, member_qs=None) -> list[dict[str, str]]:
-        """Get all recipients for all active members."""
-        recipients = []
-        members = member_qs if member_qs is not None else Member.objects.all()
-
+    def resolve(cls, members, *, personalized: bool = False) -> RecipientResolution:
+        """Resolve deliveries and exclusions for the given members."""
+        resolution = RecipientResolution(personalized=personalized)
+        seen: set = set()
         for member in members:
-            recipients.extend(cls.get_member_emails(member))
+            resolution.member_count += 1
+            member_name = member.get_full_name()
+            candidates = cls._candidate_addresses(member)
+            valid = []
+            for candidate in candidates:
+                if _valid_address(candidate["email"]):
+                    valid.append(candidate)
+                else:
+                    resolution.excluded.append(
+                        {
+                            "member_id": member.id,
+                            "member_name": member_name,
+                            "email": candidate["email"],
+                            "relation": candidate["relation"],
+                            "reason_code": "invalid_address",
+                            "reason": cls.EXCLUSION_REASONS["invalid_address"],
+                        }
+                    )
+            if not valid:
+                if not candidates:
+                    resolution.excluded.append(
+                        {
+                            "member_id": member.id,
+                            "member_name": member_name,
+                            "email": "",
+                            "relation": "",
+                            "reason_code": "no_address",
+                            "reason": cls.EXCLUSION_REASONS["no_address"],
+                        }
+                    )
+                continue
+            for candidate in valid:
+                address = candidate["email"].lower()
+                key = (address, member.id) if personalized else address
+                if key in seen:
+                    resolution.merged_duplicates += 1
+                    continue
+                seen.add(key)
+                resolution.recipients.append(
+                    {
+                        "email": candidate["email"],
+                        "name": candidate["name"],
+                        "relation": candidate["relation"],
+                        "member_id": member.id,
+                        "member_name": member_name,
+                    }
+                )
+        return resolution
 
-        return recipients
+    @staticmethod
+    def members_for(recipient_type, *, group=None, member=None, members=None, member_qs=None):
+        """Members targeted by a selection, restricted to ``member_qs`` (department scope)."""
+        base_qs = member_qs if member_qs is not None else Member.objects.all()
+        if recipient_type == "all":
+            selected = base_qs
+        elif recipient_type == "group":
+            selected = base_qs.filter(group=group) if group is not None else base_qs.none()
+        elif recipient_type == "individual":
+            selected = base_qs.filter(pk=member.pk) if member is not None else base_qs.none()
+        elif recipient_type == "multiple":
+            selected = base_qs.filter(id__in=[m.id if hasattr(m, "id") else m for m in (members or [])])
+        else:
+            raise ValueError(f"Invalid recipient type: {recipient_type}")
+        return selected.order_by("lastname", "name", "pk").distinct()
+
+    @classmethod
+    def get_recipients_for_all_members(cls, member_qs=None) -> list[dict[str, str]]:
+        """Get all recipients for all members in scope."""
+        return cls.resolve(cls.members_for("all", member_qs=member_qs)).recipients
 
     @classmethod
     def get_recipients_for_group(cls, group: Group, member_qs=None) -> list[dict[str, str]]:
         """Get all recipients for members in a specific group."""
-        recipients = []
-        base_qs = member_qs if member_qs is not None else Member.objects.all()
-        members = base_qs.filter(group=group)
-
-        for member in members:
-            recipients.extend(cls.get_member_emails(member))
-
-        return recipients
+        return cls.resolve(cls.members_for("group", group=group, member_qs=member_qs)).recipients
 
     @classmethod
     def get_recipients_for_member(cls, member: Member) -> list[dict[str, str]]:
@@ -114,15 +197,7 @@ class EmailRecipientCollector:
     @classmethod
     def get_recipients_for_members(cls, members, member_qs=None) -> list[dict[str, str]]:
         """Get all recipients for an explicit list/queryset of members (grouped 'multiple' send)."""
-        recipients = []
-        member_ids = [m.id for m in members]
-        base_qs = member_qs if member_qs is not None else Member.objects.all()
-        allowed_members = base_qs.filter(id__in=member_ids)
-
-        for member in allowed_members:
-            recipients.extend(cls.get_member_emails(member))
-
-        return recipients
+        return cls.resolve(cls.members_for("multiple", members=list(members), member_qs=member_qs)).recipients
 
 
 class EmailTemplateRenderer:
@@ -257,6 +332,20 @@ class MemberEmailService:
         return email_message
 
     @staticmethod
+    def resolve_recipients(email_message: EmailMessage, member_qs=None) -> RecipientResolution:
+        """Recipient check for a stored message; same rules as the check before sending."""
+        members = EmailRecipientCollector.members_for(
+            email_message.recipient_type,
+            group=email_message.recipient_group,
+            member=email_message.recipient_member,
+            members=list(email_message.recipient_members.all()),
+            member_qs=member_qs,
+        )
+        return EmailRecipientCollector.resolve(
+            members, personalized=uses_personalization(email_message.body_html, email_message.body_text)
+        )
+
+    @staticmethod
     @transaction.atomic
     def prepare_recipients(email_message: EmailMessage, member_qs=None) -> int:
         """
@@ -270,37 +359,15 @@ class MemberEmailService:
         Returns:
             Number of recipients prepared
         """
-        # Collect recipients based on type
-        if email_message.recipient_type == "all":
-            recipients = EmailRecipientCollector.get_recipients_for_all_members(member_qs=member_qs)
-        elif email_message.recipient_type == "group":
-            recipients = EmailRecipientCollector.get_recipients_for_group(
-                email_message.recipient_group, member_qs=member_qs
-            )
-        elif email_message.recipient_type == "individual":
-            member = email_message.recipient_member
-            # The single recipient obeys the same department scope as all others.
-            if member is not None and member_qs is not None and not member_qs.filter(pk=member.pk).exists():
-                member = None
-            recipients = EmailRecipientCollector.get_recipients_for_member(member) if member else []
-        elif email_message.recipient_type == "multiple":
-            recipients = EmailRecipientCollector.get_recipients_for_members(
-                email_message.recipient_members.all(), member_qs=member_qs
-            )
-        else:
-            raise ValueError(f"Invalid recipient type: {email_message.recipient_type}")
+        resolution = MemberEmailService.resolve_recipients(email_message, member_qs=member_qs)
+        members_by_id = {
+            member.pk: member
+            for member in Member.objects.filter(pk__in={item["member_id"] for item in resolution.recipients})
+        }
 
-        # Deduplicate by email address
-        unique_recipients = {}
-        for recipient in recipients:
-            email = recipient["email"].lower()
-            if email not in unique_recipients:
-                unique_recipients[email] = recipient
-
-        # Create EmailRecipient records
         # Note: Signature is already included in body_html by the frontend
-        for _email, recipient_data in unique_recipients.items():
-            member = Member.objects.filter(id=recipient_data["member_id"]).first()
+        for recipient_data in resolution.recipients:
+            member = members_by_id.get(recipient_data["member_id"])
 
             # Personalize content for this member
             personalized_html, personalized_text = EmailTemplateRenderer.render_for_member(
@@ -321,14 +388,28 @@ class MemberEmailService:
             )
 
         # Update email message with recipient count
-        total_recipients = len(unique_recipients)
+        total_recipients = len(resolution.recipients)
         email_message.total_recipients = total_recipients
         email_message.save(update_fields=["total_recipients"])
 
         return total_recipients
 
     @staticmethod
-    @transaction.atomic
+    def dispatch(email_message: EmailMessage) -> dict[str, int] | None:
+        """Send in the background worker when one is configured, otherwise right away.
+
+        Returns the result for an immediate send and None when the message was queued.
+        """
+        if getattr(settings, "RQ_QUEUES", None):
+            from members.tasks import send_email_message_job
+
+            email_message.status = "sending"
+            email_message.save(update_fields=["status"])
+            send_email_message_job.delay(email_message.pk)
+            return None
+        return MemberEmailService.send_email_message(email_message)
+
+    @staticmethod
     def send_email_message(email_message: EmailMessage) -> dict[str, int]:
         """
         Send an email message to all its recipients.
@@ -345,9 +426,13 @@ class MemberEmailService:
         # Pre-load attachments
         attachments = list(email_message.attachments.all())
 
-        pending_recipients = email_message.recipients.filter(status="pending")
+        pending_ids = list(email_message.recipients.filter(status="pending").values_list("pk", flat=True))
 
-        for recipient in pending_recipients:
+        for recipient_id in pending_ids:
+            # Claim the recipient first: a parallel run (double click, retried job) skips it (UX-07.2).
+            if not EmailRecipient.objects.filter(pk=recipient_id, status="pending").update(status="sending"):
+                continue
+            recipient = EmailRecipient.objects.get(pk=recipient_id)
             try:
                 # Create email
                 email = EmailMultiAlternatives(
@@ -391,7 +476,9 @@ class MemberEmailService:
 
                 failed += 1
 
-        # Update email message status
+        # Totals over all recipients, so a resend reports the whole message.
+        successful = email_message.recipients.filter(status="sent").count()
+        failed = email_message.recipients.filter(status="failed").count()
         email_message.successful_sends = successful
         email_message.failed_sends = failed
         email_message.sent_at = timezone.now()

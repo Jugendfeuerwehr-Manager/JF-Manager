@@ -8,7 +8,10 @@
       @click="emit('update:modelValue', option.value)"
     >
       <span>{{ option.label }}</span>
-      <span v-if="option.count !== undefined && option.count !== null" class="segmented__count">{{ option.count }}</span>
+      <template v-if="option.count !== undefined && option.count !== null">
+        <span class="segmented__count" :aria-hidden="option.countLabel ? 'true' : undefined">{{ option.count }}</span>
+        <span v-if="option.countLabel" class="sr-only">, {{ option.countLabel }}</span>
+      </template>
     </button>
   </div>
 </template>
@@ -20,6 +23,8 @@ export interface SegmentedOption<V> {
   label: string
   /** Optional number shown next to the label, e.g. how many entries a view holds. */
   count?: number | null
+  /** Spoken instead of the bare number, e.g. "2 offene Anträge" (the number alone gives no context). */
+  countLabel?: string
 }
 
 defineProps<{ modelValue: T; options: SegmentedOption<T>[]; label: string }>()
@@ -43,7 +48,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: T] }>()
   align-items: center;
   justify-content: center;
   gap: var(--jf-space-1);
-  min-height: 40px;
+  min-height: var(--jf-touch-target);
   padding: 0 var(--jf-space-1-5);
   border: 0;
   border-radius: var(--jf-radius-sm);
@@ -64,6 +69,8 @@ const emit = defineEmits<{ 'update:modelValue': [value: T] }>()
   color: var(--jf-color-text);
   box-shadow: var(--jf-shadow-sm);
 }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .segmented__count {
   min-width: 1.5rem;

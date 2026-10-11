@@ -18,6 +18,8 @@ COPIED_FIELDS = (
     "max_participants",
     "min_participants",
     "waitlist_mode",
+    "extra_places",
+    "template_source_id",
 )
 DEADLINE_FIELDS = ("registration_opens_at", "registration_closes_at", "cancellation_closes_at")
 
@@ -44,6 +46,11 @@ def copy_configuration(source, target):
     start = timezone.make_aware(datetime.combine(target.date, target.start_time))
     values = {name: getattr(row, name) for name in COPIED_FIELDS}
     values.update({name: shift_deadline(getattr(row, name), days, start) for name in DEADLINE_FIELDS})
-    return SessionParticipation.objects.update_or_create(
+    copy_row = SessionParticipation.objects.update_or_create(
         session=target, defaults={**values, "eligibility": row.eligibility}
     )[0]
+    # PART-04.5: each occurrence gets its own positions (independent copy)
+    from .templates import copy_slots
+
+    copy_slots(row, copy_row)
+    return copy_row

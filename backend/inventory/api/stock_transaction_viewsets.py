@@ -29,7 +29,7 @@ from .access import (
     is_location_allowed_for_item_department,
     is_org_wide_user,
 )
-from .serializers import BatchLoanSerializer, StockSerializer, TransactionSerializer
+from .serializers import BatchLoanSerializer, BatchReturnSerializer, StockSerializer, TransactionSerializer
 
 
 class StockViewSet(BasePermissionedViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -65,7 +65,15 @@ class TransactionViewSet(
     )
     serializer_class = TransactionSerializer
     search_fields = ["item__name", "item_variant__parent_item__name", "source__name", "target__name", "note"]
-    filterset_fields = ["transaction_type", "item", "item_variant", "source", "target", "discard_reason"]
+    filterset_fields = [
+        "transaction_type",
+        "item",
+        "item_variant",
+        "item_variant__parent_item",
+        "source",
+        "target",
+        "discard_reason",
+    ]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -159,16 +167,9 @@ class TransactionViewSet(
         input_serializer.is_valid(raise_exception=True)
         data = input_serializer.validated_data
 
-        try:
-            member = Member.objects.get(pk=data["member"])
-        except Member.DoesNotExist:
-            return Response({"detail": "Mitglied nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
-
-        if not is_org_wide_user(request.user):
-            allowed_departments = get_user_department_ids(request.user)
-            member_departments = set(member.departments.values_list("id", flat=True))
-            if not member_departments.intersection(allowed_departments):
-                return Response({"detail": "Kein Zugriff auf dieses Mitglied."}, status=status.HTTP_403_FORBIDDEN)
+        member, denied = self._accessible_member(request, data["member"])
+        if denied is not None:
+            return denied
 
         with db_transaction.atomic():
             # Lock every candidate row up front in one stable order. Locking per
@@ -209,10 +210,13 @@ class TransactionViewSet(
                 available = sum(stock.quantity for stock in stocks)
                 if available < line["quantity"]:
                     if not data["order_missing"]:
+                        label = str(line.get("item") or line["item_variant"])
                         raise serializers.ValidationError(
                             {
                                 "items": [
-                                    "Nicht genügend Bestand. Für fehlende Artikel muss die Bestellung bestätigt werden."
+                                    f"{label}: nur {available} verfügbar, {line['quantity']} angefordert. "
+                                    "Der Bestand hat sich möglicherweise inzwischen geändert. Für fehlende "
+                                    "Artikel muss die Bestellung bestätigt werden."
                                 ]
                             }
                         )
@@ -316,6 +320,91 @@ class TransactionViewSet(
                 "transactions": TransactionSerializer(created_transactions, many=True).data,
                 "order": OrderDetailSerializer(order).data if order else None,
                 "missing_count": len(missing_lines),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def _accessible_member(self, request, member_id):
+        """Return ``(member, None)`` or ``(None, error response)`` for a booking target member."""
+        try:
+            member = Member.objects.get(pk=member_id)
+        except Member.DoesNotExist:
+            return None, Response({"detail": "Mitglied nicht gefunden."}, status=status.HTTP_404_NOT_FOUND)
+        if not is_org_wide_user(request.user):
+            allowed_departments = get_user_department_ids(request.user)
+            member_departments = set(member.departments.values_list("id", flat=True))
+            if not member_departments.intersection(allowed_departments):
+                return None, Response({"detail": "Kein Zugriff auf dieses Mitglied."}, status=status.HTTP_403_FORBIDDEN)
+        return member, None
+
+    @action(detail=False, methods=["post"], url_path="batch-return")
+    def batch_return(self, request):
+        return run_idempotent_booking(
+            request,
+            lambda: self._batch_return_impl(request),
+            replay_allowed=lambda data: all(
+                self.get_queryset().filter(pk=movement["id"]).exists() for movement in data.get("transactions", [])
+            ),
+        )
+
+    def _batch_return_impl(self, request):
+        """Take back several issued articles or part quantities from one member atomically."""
+        input_serializer = BatchReturnSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        data = input_serializer.validated_data
+
+        member, denied = self._accessible_member(request, data["member"])
+        if denied is not None:
+            return denied
+        member_location = StorageLocation.objects.filter(member=member, is_member=True).first()
+        if member_location is None:
+            raise serializers.ValidationError({"member": "An dieses Mitglied ist nichts ausgegeben."})
+
+        with db_transaction.atomic():
+            # Lock the member's rows in one stable order before checking the held quantities.
+            identities = Q(pk__in=[])
+            for line in data["items"]:
+                identities |= Q(item=line.get("item"), item_variant=line.get("item_variant"))
+            held = {
+                (stock.item_id, stock.item_variant_id): stock.quantity
+                for stock in Stock.objects.select_for_update()
+                .filter(identities, location=member_location)
+                .order_by("pk")
+            }
+            shortages = []
+            for line in data["items"]:
+                identity = (getattr(line.get("item"), "pk", None), getattr(line.get("item_variant"), "pk", None))
+                quantity = held.get(identity, 0)
+                if quantity < line["quantity"]:
+                    label = str(line.get("item") or line["item_variant"])
+                    shortages.append(f"{label}: {quantity} ausgegeben, {line['quantity']} zur Rücknahme angegeben.")
+            if shortages:
+                raise serializers.ValidationError({"items": shortages})
+
+            created_transactions = []
+            for line in data["items"]:
+                transaction_serializer = TransactionSerializer(
+                    data={
+                        "transaction_type": "RETURN",
+                        "item": line.get("item").pk if line.get("item") else None,
+                        "item_variant": line.get("item_variant").pk if line.get("item_variant") else None,
+                        "source": member_location.pk,
+                        "target": line["target"].pk,
+                        "quantity": line["quantity"],
+                        "note": data["note"],
+                    },
+                    context={"request": request},
+                )
+                transaction_serializer.is_valid(raise_exception=True)
+                try:
+                    created_transactions.append(transaction_serializer.save())
+                except DjangoValidationError as exc:
+                    raise serializers.ValidationError({"items": exc.messages}) from exc
+
+        return Response(
+            {
+                "transactions": TransactionSerializer(created_transactions, many=True).data,
+                "returned_quantity": sum(movement.quantity for movement in created_transactions),
             },
             status=status.HTTP_201_CREATED,
         )

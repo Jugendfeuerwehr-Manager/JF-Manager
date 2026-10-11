@@ -14,7 +14,13 @@ from django.contrib.auth import get_user_model
 from django.dispatch import receiver
 from django.utils import timezone
 
-from participation.signals import eligibility_conflict, registration_changed, session_changed, session_published
+from participation.signals import (
+    eligibility_conflict,
+    place_freed,
+    registration_changed,
+    session_changed,
+    session_published,
+)
 
 from .dispatch import common_context, queue_email, queue_push
 from .inbox import notify, staff_with_permission
@@ -276,14 +282,14 @@ def on_registration_changed(
                 extra={
                     "waitlist": {
                         "position": waitlist_position(registration) or 0,
-                        "slot": "",
+                        "slot": registration.preferred_slot.label if registration.preferred_slot_id else "",
                         "auto": participation.waitlist_mode == "auto",
                     }
                 },
                 withdraw=("waitlist_leave", "Von der Warteliste abmelden"),
                 event_key=f"waitlist_placed:{registration_id}:{stamp}:{user.pk}",
             )
-    elif from_state == "waitlisted" and to_state == "registered" and via == "system":
+    elif from_state == "waitlisted" and to_state == "registered":
         from participation.service import deadlines
 
         due = deadlines(session, participation)
@@ -300,8 +306,88 @@ def on_registration_changed(
                 withdraw=("cancel", f"{member.name} abmelden" if relation == "child" else "Abmelden"),
                 event_key=f"waitlist_promoted:{registration_id}:{stamp}:{user.pk}",
             )
+    elif to_state in ("assigned", "not_selected") and via != "system":
+        _assignment_mail(registration, session, member, participation, stamp, from_state)
     elif to_state == "cancelled" and via != "system":
         _staff_cancellation(registration, session, member, participation, stamp)
+
+
+def _assignment_mail(registration, session, member, participation, stamp, from_state):
+    """E16: published assignment or a later single change (assigned / not selected)."""
+    assigned = registration.state == "assigned"
+    if not assigned and from_state == "not_selected":
+        return
+    slot = registration.slot.label if assigned and registration.slot_id else ""
+    open_for_backfill = bool(getattr(participation, "assignment_keep_open", False))
+    for user, relation in accounts_for_member(member):
+        if assigned:
+            withdraw = ("cancel", f"{member.name} abmelden" if relation == "child" else "Abmelden")
+        else:
+            withdraw = ("unsubscribe", "Keine weiteren Nachrichten zu diesem Dienst")
+        label = "Zugeteilt" if assigned else "Nicht berücksichtigt"
+        _participant_mail(
+            "assign_published",
+            user,
+            relation,
+            member,
+            session,
+            participation,
+            title=f"{label}: {session.title} ({_date(session.date)})" + (f" · {slot}" if slot else ""),
+            extra={
+                "assignment": {
+                    "result": registration.state,
+                    "slot": slot,
+                    "open_for_backfill": open_for_backfill,
+                }
+            },
+            withdraw=withdraw,
+            event_key=f"assign_published:{registration.pk}:{stamp}:{user.pk}",
+        )
+
+
+@receiver(place_freed)
+def on_place_freed(sender, session_id, slot_label, waiting, **kwargs):
+    """Manual waiting list or assignment: task "Platz frei, Warteliste prüfen" (E5, slot_free_manual)."""
+    from training.models import TrainingSession
+
+    session = TrainingSession.objects.filter(pk=session_id).first()
+    if session is None:
+        return
+    primary, everyone = responsibles(session)
+    if not everyone:
+        return
+    route = f"/training/sessions/{session.pk}/plan"
+    where = f" ({slot_label})" if slot_label else ""
+    item = notify(
+        kind="slot_free_manual",
+        category=InboxItem.Category.STAFFING,
+        item_type=InboxItem.ItemType.TASK,
+        title=f"Platz frei{where} – Warteliste prüfen · {session.title}, {_date(session.date)}",
+        department=session.department_id,
+        obj=session,
+        permission=PLANNING,
+        link=route,
+        recipients=everyone,
+    )
+    stamp = timezone.now().strftime("%Y%m%d%H%M%S%f")
+    for user in primary:
+        open_url = _link(user, "open", {"r": route}, route)
+        context = {
+            **common_context(
+                user, open_url=open_url, actions=[{"label": "Platz besetzen", "url": open_url, "style": "primary"}]
+            ),
+            "session": _session(session),
+            "slot": {"label": slot_label},
+            "waitlist": waiting,
+        }
+        queue_email(
+            "slot_free_manual",
+            user,
+            context,
+            event_key=f"slot_free_manual:{session.pk}:{stamp}:{user.pk}",
+            explicit=True,
+        )
+        queue_push(user, item, "participation", explicit=True)
 
 
 def _staff_cancellation(registration, session, member, participation, stamp):
@@ -330,6 +416,19 @@ def _staff_cancellation(registration, session, member, participation, stamp):
     if start is None or start - timezone.now() > timedelta(hours=urgent_hours):
         return  # earlier cancellations go into the daily digest (NOTIF-01.5c)
     seated = Registration.objects.filter(session=session).exclude(state="cancelled").count()
+    missing = _staffing_missing(session, participation)
+    if missing:
+        notify(
+            kind="staffing_at_risk",
+            category=InboxItem.Category.STAFFING,
+            item_type=InboxItem.ItemType.TASK,
+            title=f"Mindestbesetzung gefährdet · {session.title}, {_date(session.date)}",
+            department=session.department_id,
+            obj=session,
+            permission=PLANNING,
+            link=route,
+            recipients=everyone,
+        )
     for user in primary:
         open_url = _link(user, "open", {"r": route}, route)
         context = {
@@ -345,7 +444,7 @@ def _staff_cancellation(registration, session, member, participation, stamp):
                 }
             ],
             "counts": {"expected": seated, "cancelled": cancelled},
-            "staffing": {"missing": []},
+            "staffing": {"missing": missing},
         }
         queue_email(
             "reg_cancelled",
@@ -355,6 +454,18 @@ def _staff_cancellation(registration, session, member, participation, stamp):
             explicit=True,
         )
         queue_push(user, item, "participation", explicit=True)
+
+
+def _staffing_missing(session, participation):
+    """Positions below their minimum (PART-04.1), ``[{label, count}]``."""
+    from participation import slots
+    from participation.models import Registration
+    from participation.service import SEATED
+
+    positions = slots.slots_for(participation)
+    held = slots.held_by_slot(Registration.objects.filter(session=session, state__in=SEATED).only("slot_id"))
+    result = slots.staffing(participation, positions, held, seated=sum(held.values()))
+    return result["missing"] if result else []
 
 
 @receiver(eligibility_conflict)

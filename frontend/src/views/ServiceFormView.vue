@@ -56,9 +56,21 @@
         role="tabpanel"
         aria-labelledby="tab-attendance"
       >
-        <AttendanceManager :service-id="serviceId" />
+        <AttendanceManager
+          ref="manager"
+          :service-id="serviceId"
+          :registrations="registrationsStore.registrations"
+          @takeover="sheetOpen = true"
+        />
       </div>
     </template>
+
+    <ExcusedTakeoverSheet
+      v-if="sheetOpen && serviceId !== null"
+      :service-id="serviceId"
+      @close="sheetOpen = false"
+      @applied="onTakeoverApplied"
+    />
   </div>
 </template>
 
@@ -70,6 +82,8 @@ import { useToast } from 'primevue/usetoast'
 import StateView from '@/components/common/StateView.vue'
 import ServiceForm from '@/components/servicebook/organisms/ServiceForm.vue'
 import AttendanceManager from '@/components/servicebook/organisms/AttendanceManager.vue'
+import ExcusedTakeoverSheet from '@/components/servicebook/organisms/ExcusedTakeoverSheet.vue'
+import { useServiceRegistrationsStore } from '@/stores/serviceRegistrations'
 import { useServicebookStore } from '@/stores/servicebook'
 import type { ServiceFormData } from '@/types/servicebook'
 import { getApiErrorMessage } from '@/utils/apiError'
@@ -78,6 +92,16 @@ const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const servicebookStore = useServicebookStore()
+// Registrations of the linked planned service (PART-02): the attendance tab shows
+// who cancelled, like the separate attendance page.
+const registrationsStore = useServiceRegistrationsStore()
+const manager = ref<InstanceType<typeof AttendanceManager> | null>(null)
+const sheetOpen = ref(false)
+
+async function onTakeoverApplied() {
+  if (serviceId.value === null) return
+  await Promise.all([registrationsStore.fetchRegistrations(serviceId.value, true), manager.value?.refresh()])
+}
 
 const serviceId = computed(() => {
   const id = route.params.id
@@ -112,6 +136,8 @@ function setTab(next: 'details' | 'attendance') {
 
 onMounted(async () => {
   if (isEdit.value && serviceId.value) {
+    registrationsStore.reset()
+    void registrationsStore.fetchRegistrations(serviceId.value, true)
     loading.value = true
     try {
       await servicebookStore.fetchService(serviceId.value)

@@ -8,7 +8,7 @@
       <i class="pi pi-exclamation-triangle"></i>
       <span class="stat-value">{{ summary.excused }}</span>
     </div>
-    <div class="stat-item stat-absent" title="Fehlend">
+    <div class="stat-item stat-absent" title="Fehlt">
       <i class="pi pi-times"></i>
       <span class="stat-value">{{ summary.absent }}</span>
     </div>

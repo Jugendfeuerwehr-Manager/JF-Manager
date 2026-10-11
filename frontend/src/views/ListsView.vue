@@ -1,19 +1,11 @@
 <template>
   <div class="lists-overview">
-    <!-- Header -->
-    <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">
-          <i class="pi pi-list-check title-icon"></i>
-          Listen
-        </h1>
-        <Tag :value="`${store.lists.length} Listen`" severity="secondary" />
-      </div>
-      <div class="header-actions">
+    <OverviewHeader title="Listen" :subtitle="subtitle">
+      <template #actions>
         <Button v-if="authStore.user?.is_superuser" label="Altlisten klären" icon="pi pi-shield" severity="secondary" outlined @click="router.push({ name: 'legacy-list-resolution' })" />
         <Button label="Neue Liste" icon="pi pi-plus" :disabled="!canCreate" :title="canCreate ? undefined : createBlockReason.title" @click="openCreateDialog" />
-      </div>
-    </div>
+      </template>
+    </OverviewHeader>
 
     <div v-if="!departmentsStore.loading && !canCreate" class="create-blocked" role="status">
       <i class="pi pi-info-circle" aria-hidden="true"></i>
@@ -35,26 +27,28 @@
       </span>
     </div>
 
-    <!-- Loading -->
-    <div v-if="store.loading" class="loading-state">
-      <ProgressSpinner style="width: 48px; height: 48px" />
-      <span>Lade Listen…</span>
-    </div>
-
-    <!-- Empty state -->
-    <div v-else-if="store.lists.length === 0" class="empty-hero">
-      <i class="pi pi-list-check empty-big-icon"></i>
-      <h2>Noch keine Listen</h2>
-      <p>Erstelle deine erste Liste, um Mitglieder zu organisieren.</p>
+    <StateView v-if="loadState === 'loading'" kind="loading" title="Listen werden geladen …" />
+    <StateView
+      v-else-if="loadState"
+      :kind="loadState"
+      :title="loadState === 'forbidden' ? 'Keine Berechtigung für Listen' : 'Listen konnten nicht geladen werden'"
+      :retry="loadState !== 'forbidden'"
+      @retry="loadLists"
+    />
+    <StateView
+      v-else-if="store.lists.length === 0"
+      kind="empty"
+      title="Noch keine Listen"
+      message="Erstelle deine erste Liste, um Mitglieder zu organisieren."
+    >
       <Button label="Erste Liste erstellen" icon="pi pi-plus" :disabled="!canCreate" @click="openCreateDialog" />
-    </div>
-
-    <!-- No search results -->
-    <div v-else-if="filteredLists.length === 0 && searchQuery" class="empty-hero">
-      <i class="pi pi-search empty-big-icon"></i>
-      <h2>Keine Listen gefunden</h2>
-      <p>Kein Ergebnis für „{{ searchQuery }}"</p>
-    </div>
+    </StateView>
+    <StateView
+      v-else-if="filteredLists.length === 0 && searchQuery"
+      kind="empty"
+      title="Keine Listen gefunden"
+      :message="`Kein Ergebnis für „${searchQuery}“.`"
+    />
 
     <!-- Cards grid -->
     <TransitionGroup v-else name="card-grid" tag="div" class="lists-grid">
@@ -215,15 +209,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
@@ -232,10 +225,13 @@ import { useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
-import { getApiErrorMessage } from '@/utils/apiError'
+import { classifyApiError, getApiErrorMessage } from '@/utils/apiError'
+import OverviewHeader from '@/components/layout/OverviewHeader.vue'
+import StateView, { stateForError, type StateKind } from '@/components/common/StateView.vue'
 import type { MemberList } from '@/types/lists'
 
 const router = useRouter()
+const route = useRoute()
 const store = useMemberListsStore()
 const membersStore = useMembersStore()
 const authStore = useAuthStore()
@@ -249,7 +245,26 @@ const colorPresets = [
 ]
 
 // ── Search ────────────────────────────────────────────────────────────────
-const searchQuery = ref('')
+// The search lives in the URL so filtered views can be linked and survive reloads.
+const searchQuery = ref(typeof route.query.q === 'string' ? route.query.q : '')
+watch(searchQuery, (q) => {
+  void router.replace({ query: { ...route.query, q: q.trim() ? q : undefined } })
+})
+const loadState = ref<StateKind | null>(null)
+const subtitle = computed(() => {
+  const n = store.lists.length
+  return n === 1 ? '1 Liste' : `${n} Listen`
+})
+
+async function loadLists() {
+  if (!store.lists.length) loadState.value = 'loading'
+  try {
+    await store.fetchLists()
+    loadState.value = null
+  } catch (error) {
+    loadState.value = stateForError(classifyApiError(error))
+  }
+}
 const filteredLists = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return store.lists
@@ -437,7 +452,7 @@ function formatDate(iso: string) {
 }
 
 onMounted(() => {
-  store.fetchLists()
+  void loadLists()
   membersStore.fetchMembers({ limit: 1000 })
   if (!departmentsStore.departments.length) departmentsStore.fetchDepartments()
 })
@@ -486,35 +501,6 @@ onMounted(() => {
   font-size: var(--jf-text-sm);
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem 1rem;
-  flex-wrap: wrap;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--p-text-color);
-}
-
-.title-icon {
-  color: var(--p-primary-500);
-}
-
 /* ─── Search ─────────────────────────────────────────────────────────────── */
 .search-bar {
   padding: 0 1.5rem 0.75rem;
@@ -530,43 +516,6 @@ onMounted(() => {
 }
 
 /* ─── Loading / Empty ────────────────────────────────────────────────────── */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  flex: 1;
-  color: var(--p-text-muted-color);
-  padding: 4rem;
-}
-
-.empty-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 4rem 2rem;
-  text-align: center;
-  color: var(--p-text-muted-color);
-}
-
-.empty-big-icon {
-  font-size: 4rem;
-  opacity: 0.25;
-}
-
-.empty-hero h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--p-text-color);
-}
-
-.empty-hero p {
-  margin: 0;
-  font-size: 0.9rem;
-}
 
 /* ─── Grid ───────────────────────────────────────────────────────────────── */
 .lists-grid {
@@ -774,11 +723,6 @@ onMounted(() => {
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .lists-grid {
     grid-template-columns: 1fr;
     padding: 0 1rem;

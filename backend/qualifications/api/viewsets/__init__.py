@@ -90,13 +90,33 @@ class PersonDepartmentScopeMixin(DepartmentScopeViewSetMixin):
         if not permission.has_object_permission(self.request, self, candidate):
             raise ValidationError({"member": "Keine Schreibberechtigung für die Zielperson."})
 
+    def _deny_own(self, member_id=None, person_user_id=None):
+        """Four-eyes (PORTAL-04, E14): evidence about oneself or one's own children is kept by someone else."""
+        from portal.self_records import deny_own_evidence
+
+        deny_own_evidence(self.request.user, member_id=member_id, person_user_id=person_user_id)
+
+    def _deny_own_object(self, obj):
+        self._deny_own(member_id=obj.member_id, person_user_id=obj.user_id)
+
     def perform_create(self, serializer):
         self._validate_person_target(serializer)
+        member = serializer.validated_data.get("member")
+        person = serializer.validated_data.get("user")
+        self._deny_own(member_id=getattr(member, "pk", None), person_user_id=getattr(person, "pk", None))
         serializer.save()
 
     def perform_update(self, serializer):
         self._validate_person_target(serializer)
+        self._deny_own_object(serializer.instance)
+        member = serializer.validated_data.get("member")
+        person = serializer.validated_data.get("user")
+        self._deny_own(member_id=getattr(member, "pk", None), person_user_id=getattr(person, "pk", None))
         serializer.save()
+
+    def perform_destroy(self, instance):
+        self._deny_own_object(instance)
+        instance.delete()
 
     def _scope_person_queryset(self, queryset, permission, *, filter_permission=True):
         user = self.request.user
@@ -260,6 +280,8 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
         POST: Upload an attachment for a qualification
         """
         qualification = self.get_object()
+        if request.method != "GET":
+            self._deny_own_object(qualification)
 
         if request.method == "GET":
             # List attachments
@@ -291,6 +313,7 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     def delete_attachment(self, request, pk=None, attachment_id=None):
         """Delete an attachment from a qualification."""
         qualification = self.get_object()
+        self._deny_own_object(qualification)
 
         attachment = get_object_or_404(qualification.attachments, pk=attachment_id)
         attachment.delete()
@@ -344,6 +367,7 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
         Sets end_date to today
         """
         task = self.get_object()
+        self._deny_own_object(task)
 
         if task.end_date and task.end_date <= date.today():
             return Response({"error": "Task is already ended"}, status=status.HTTP_400_BAD_REQUEST)
@@ -361,6 +385,8 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
         POST: Upload an attachment for a special task
         """
         task = self.get_object()
+        if request.method != "GET":
+            self._deny_own_object(task)
 
         if request.method == "GET":
             # List attachments
@@ -388,6 +414,7 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     def delete_attachment(self, request, pk=None, attachment_id=None):
         """Delete an attachment from a special task."""
         task = self.get_object()
+        self._deny_own_object(task)
 
         attachment = get_object_or_404(task.attachments, pk=attachment_id)
         attachment.delete()

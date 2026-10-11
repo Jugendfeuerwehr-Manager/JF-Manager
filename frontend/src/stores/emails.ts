@@ -13,6 +13,8 @@ import type {
   EmailPreviewRequest,
   EmailListParams,
   EmailRecipientCountRequest,
+  EmailRecipientCheckRequest,
+  EmailRecipientCheckResponse,
 } from '@/types/emails'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -163,7 +165,41 @@ export const useEmailsStore = defineStore('emails', () => {
     }
   }
 
+  // Recipient check before sending (UX-07.1). Only the latest request may update
+  // the state, so a slow answer for an older selection never overwrites a newer one.
+  const recipientCheck = ref<EmailRecipientCheckResponse | null>(null)
+  const checkingRecipients = ref(false)
+  const recipientCheckError = ref<string | null>(null)
+  let recipientCheckSequence = 0
+
+  async function checkRecipients(data: EmailRecipientCheckRequest) {
+    const sequence = ++recipientCheckSequence
+    checkingRecipients.value = true
+    recipientCheckError.value = null
+    try {
+      const response = await emailsApi.checkRecipients(data)
+      if (sequence === recipientCheckSequence) recipientCheck.value = response.data
+      return response.data
+    } catch (err) {
+      if (sequence === recipientCheckSequence) {
+        recipientCheck.value = null
+        recipientCheckError.value = getApiErrorMessage(err, 'Die Empfänger konnten nicht geprüft werden.')
+      }
+      throw err
+    } finally {
+      if (sequence === recipientCheckSequence) checkingRecipients.value = false
+    }
+  }
+
+  function clearRecipientCheck() {
+    recipientCheckSequence++
+    recipientCheck.value = null
+    recipientCheckError.value = null
+    checkingRecipients.value = false
+  }
+
   function resetStore() {
+    clearRecipientCheck()
     emails.value = []
     currentEmail.value = null
     templateVariables.value = []
@@ -193,6 +229,11 @@ export const useEmailsStore = defineStore('emails', () => {
     previewEmail,
     fetchTemplateVariables,
     getRecipientCount,
+    recipientCheck,
+    checkingRecipients,
+    recipientCheckError,
+    checkRecipients,
+    clearRecipientCheck,
     resetStore
   }
 })

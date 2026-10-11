@@ -5,6 +5,7 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import PortalAbsenceDialog from './PortalAbsenceDialog.vue'
 import PortalCancelSheet from './PortalCancelSheet.vue'
+import PortalPositionSheet from './PortalPositionSheet.vue'
 import PortalEmptyCard from './PortalEmptyCard.vue'
 import PortalSessionCard from './PortalSessionCard.vue'
 import type { PortalAbsenceResult } from '@/api/portal'
@@ -15,7 +16,7 @@ import { formatDay, monthKey, monthLabel } from '@/utils/portalSessions'
 const props = defineProps<{ limit?: number, grouped?: boolean }>()
 
 const portal = usePortalStore()
-const { sheetItem, sheetError, run, submitCancel, closeSheet } = usePortalSessionActions()
+const { sheetItem, sheetError, run, submitCancel, closeSheet, positionItem, positionError, submitPosition, closePosition } = usePortalSessionActions()
 const absenceOpen = ref(false)
 const absenceResult = ref<PortalAbsenceResult | null>(null)
 
@@ -81,6 +82,10 @@ const resultText = computed(() => {
       severity="secondary" outlined @click="absenceOpen = true"
     />
 
+    <PortalPositionSheet
+      v-if="positionItem" :item="positionItem" :person="portal.selectedPerson" :busy="portal.pendingSessionIds.includes(positionItem.id)"
+      :error="positionError" @close="closePosition" @submit="submitPosition"
+    />
     <PortalCancelSheet
       v-if="sheetItem" :item="sheetItem" :person="portal.selectedPerson" :busy="portal.pendingSessionIds.includes(sheetItem.id)"
       :error="sheetError" @close="closeSheet" @submit="submitCancel"

@@ -59,6 +59,9 @@
               <span v-if="person.reg.conflict" class="person__conflict"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>Konflikt</span>
             </span>
             <span v-if="person.reg && metaLine(person.reg)" class="person__meta">{{ metaLine(person.reg) }}</span>
+            <span v-if="otherEntry(person)" class="person__linked">
+              <i class="pi pi-link" aria-hidden="true"></i>{{ otherEntry(person) }}
+            </span>
           </div>
           <span class="person__state" :class="{ 'person__state--done': person.state }">{{ person.state ? 'erfasst' : 'offen' }}</span>
         </div>
@@ -89,6 +92,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import AttendanceButtonGroup from '../atoms/AttendanceButtonGroup.vue'
@@ -114,11 +118,28 @@ const props = defineProps<{
 const emit = defineEmits<{ takeover: [] }>()
 
 type Filter = 'open' | 'all' | 'cancelled' | 'guests'
+/**
+ * PORTAL-04.4: a linked person is recorded either as participant or as staff.
+ * Returns the hint when the other list already holds an entry for them.
+ */
+function otherEntry(person: Row) {
+  if (kind.value === 'member' && person.linked_staff_id) {
+    const other = board.value.staff.find((p) => p.id === person.linked_staff_id)
+    return other?.state ? 'Als Betreuer/in erfasst' : 'Auch im Team gelistet'
+  }
+  if (kind.value === 'staff' && person.linked_member_id) {
+    const other = board.value.members.find((p) => p.id === person.linked_member_id)
+    return other?.state ? 'Als Teilnehmende/r erfasst' : 'Auch als Teilnehmende/r gelistet'
+  }
+  return ''
+}
+
 interface Row extends AttendanceBoardPerson {
   reg: RegistrationPerson | null
   guest: boolean
 }
 const toast = useToast()
+const confirm = useConfirm()
 const board = ref<AttendanceBoard>({ members: [], staff: [] })
 const kind = ref<'member' | 'staff'>(props.fixedKind ?? 'member')
 const searchQuery = ref('')
@@ -149,7 +170,7 @@ const rows = computed<Row[]>(() => {
   const known = new Set(board.value.members.map((m) => m.id))
   const list: Row[] = board.value.members.map((m) => {
     const reg = regById.value.get(m.id) ?? null
-    return { id: m.id, full_name: m.full_name, state: m.state, reg, guest: !!reg && !reg.in_target }
+    return { id: m.id, full_name: m.full_name, state: m.state, linked_staff_id: m.linked_staff_id, reg, guest: !!reg && !reg.in_target }
   })
   for (const reg of props.registrations?.people ?? []) {
     if (known.has(reg.member_id) || reg.in_target) continue
@@ -224,7 +245,7 @@ async function refresh() {
   }
 }
 
-async function update(person: Row, state: AttendanceState) {
+async function update(person: Row, state: AttendanceState, replaceLinked = false) {
   const selectedKind = kind.value
   const key = `${selectedKind}-${person.id}`
   if (pending.value.has(key)) return
@@ -243,11 +264,18 @@ async function update(person: Row, state: AttendanceState) {
       person_id: person.id,
       state: next,
       expected_state: previous,
+      ...(replaceLinked ? { replace_linked: true } : {}),
     })
     syncState.value = 'saved'
     syncMessage.value = 'Gespeichert'
   } catch (error) {
     setLocalState(person, previous)
+    if (isCountedAsOther(error)) {
+      syncState.value = 'saved'
+      syncMessage.value = 'Gespeichert'
+      offerSwitch(person, state, selectedKind)
+      return
+    }
     syncState.value = 'error'
     syncMessage.value = 'Nicht gespeichert'
     toast.add({
@@ -264,6 +292,27 @@ async function update(person: Row, state: AttendanceState) {
     revision++
     await refresh()
   }
+}
+
+function isCountedAsOther(error: unknown) {
+  const response = (error as { response?: { status?: number; data?: { code?: string } } }).response
+  return response?.status === 409 && response.data?.code === 'counted_as_other'
+}
+
+/** The same person may only be counted once per service: offer to move the entry here. */
+function offerSwitch(person: Row, state: AttendanceState, selectedKind: 'member' | 'staff') {
+  const here = selectedKind === 'member' ? 'Teilnehmende/r' : 'Betreuer/in'
+  const there = selectedKind === 'member' ? 'Betreuer/in' : 'Teilnehmende/r'
+  confirm.require({
+    header: 'Bereits erfasst',
+    message: `${person.full_name} ist für diesen Dienst schon als ${there} erfasst. Eine Person zählt je Dienst nur einmal. Stattdessen als ${here} erfassen?`,
+    acceptLabel: `Als ${here} erfassen`,
+    rejectLabel: 'Abbrechen',
+    rejectProps: { severity: 'secondary', outlined: true },
+    accept: () => {
+      if (kind.value === selectedKind) void update(person, state, true)
+    },
+  })
 }
 
 function setLocalState(person: Row, state: AttendanceState | null) {
@@ -315,6 +364,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.person__linked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-0-5);
+  font-size: var(--jf-text-xs);
+  color: var(--jf-color-text-muted);
+}
 .attendance-manager {
   display: flex;
   flex-direction: column;

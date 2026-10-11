@@ -173,6 +173,7 @@ neu eingegeben werden; es wird weder entschlüsselt noch still gelöscht.
 | `SECURE_HSTS_SECONDS` | Dauer der HSTS-Vorgabe in Sekunden; `0` schaltet sie ab | `31536000` bei `Secure`-Cookies |
 | `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD` | HSTS auf Subdomains ausdehnen bzw. Preload anmelden | `false` |
 | `TRUST_PROXY_SSL_HEADER` | `X-Forwarded-Proto` des Reverse Proxy als HTTPS-Nachweis vertrauen | `true` |
+| `CSP_REPORT_ONLY` | Content-Security-Policy nur melden statt durchsetzen (Fehlersuche, siehe [production-security.md](operations/production-security.md)) | `false` |
 | `ALLOWED_HOSTS` | Kommagetrennte Hostnamen | `localhost,127.0.0.1` |
 | `CSRF_TRUSTED_ORIGINS` | Vertrauenswürdige Herkünfte hinter einem Proxy | leer |
 | `REDIS_URL` | Redis-Verbindung | `none` |

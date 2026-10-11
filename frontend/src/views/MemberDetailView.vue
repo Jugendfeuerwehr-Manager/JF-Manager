@@ -42,7 +42,7 @@
           <Button label="Bearbeiten" icon="pi pi-pencil" @click="navigateToEdit" />
         </div>
         <div v-if="primaryContact || primaryEmail" class="profile-head__quick">
-          <a v-if="primaryContact" :href="`tel:${primaryContact.phone}`" class="quick-action quick-action--primary">
+          <a v-if="primaryContact" :href="telHref(primaryContact.phone)" class="quick-action quick-action--primary">
             <i class="pi pi-phone" aria-hidden="true"></i>{{ primaryContact.parent.name }} anrufen
           </a>
           <a v-if="primaryEmail" :href="`mailto:${primaryEmail}`" class="quick-action">
@@ -81,7 +81,7 @@
                         <li v-for="record in recentAttendance" :key="record.id" :class="`attendance-mark attendance-mark--${record.state ?? 'none'}`" :title="`${formatDate(record.service_date)}: ${record.state_display}`">
                           <span class="attendance-mark__box"><i :class="attendanceIcon(record.state)" aria-hidden="true"></i></span>
                           <span class="attendance-mark__day">{{ formatDay(record.service_date) }}</span>
-                          <span class="visually-hidden">{{ record.state_display }}</span>
+                          <span class="visually-hidden">{{ attendanceLabel(record) }}</span>
                         </li>
                       </ol>
                       <p class="muted">{{ attendanceSummaryText }}</p>
@@ -127,7 +127,8 @@
                 </div>
               </TabPanel>
               <TabPanel value="qualifications">
-                <QualificationsManager :member-id="memberId" />
+                <QualificationDuplicatesPanel v-if="authStore.hasPerm('qualifications.change_qualification')" :member-id="memberId" @merged="qualificationsKey++" />
+                <QualificationsManager :key="qualificationsKey" :member-id="memberId" />
               </TabPanel>
               <TabPanel value="specialtasks">
                 <SpecialTasksManager :member-id="memberId" />
@@ -160,7 +161,7 @@
                 </span>
                 <a
                   v-if="reachableNumber(parent)"
-                  :href="`tel:${reachableNumber(parent)}`"
+                  :href="telHref(reachableNumber(parent))"
                   class="contact__action contact__action--call"
                   :aria-label="`${parent.full_name} anrufen`"
                 ><i class="pi pi-phone" aria-hidden="true"></i><span>Anrufen</span></a>
@@ -195,6 +196,14 @@
                 {{ member.canSwimm ? 'Kann schwimmen' : 'Kann nicht schwimmen' }}
               </dd>
             </dl>
+          </section>
+
+          <section class="detail-card aside-card">
+            <ChangeLogCard kind="member" :record-id="memberId" />
+          </section>
+
+          <section v-if="canLinkAccounts" class="detail-card aside-card">
+            <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
           </section>
 
           <section class="detail-card aside-card" aria-labelledby="notes-heading">
@@ -233,6 +242,7 @@
 </template>
 
 <script setup lang="ts">
+import { telHref } from '@/utils/contactHref'
 import ContactLink from '@/components/common/ContactLink.vue'
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -247,6 +257,9 @@ import type { Member, Parent } from '@/types/api'
 import type { Event } from '@/types/events'
 import type { Qualification } from '@/types/qualifications'
 import type { Attendance, AttendanceSummary } from '@/types/servicebook'
+import { AttendanceStateLabels, type AttendanceState } from '@/types/servicebook'
+
+const attendanceLabel = (record: Attendance) => AttendanceStateLabels[record.state as AttendanceState] ?? record.state_display
 import type { MemberDeletionStrategy } from '@/types/inventory'
 import Button from 'primevue/button'
 import Tabs from 'primevue/tabs'
@@ -256,6 +269,9 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
+import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
+import ChangeLogCard from '@/components/members/organisms/ChangeLogCard.vue'
+import QualificationDuplicatesPanel from '@/components/members/organisms/QualificationDuplicatesPanel.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'
 import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
@@ -274,6 +290,10 @@ const route = useRoute()
 const confirm = useConfirm()
 const toast = useToast()
 const authStore = useAuthStore()
+// Account management links the member to the person's own staff account (PORTAL-04).
+const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuser'))
+// Reloads the qualification list after duplicates were merged (PORTAL-04.4).
+const qualificationsKey = ref(0)
 
 const member = ref<Member | null>(null)
 const parents = ref<Parent[]>([])

@@ -1,5 +1,6 @@
 <template>
   <div class="mobile-list">
+    <OwnAreaEntry v-if="auth.hasOwnArea" />
     <StateView v-if="store.overviewLoading && !hasAny" kind="loading" title="Dienste werden geladen …" />
     <StateView
       v-else-if="store.overviewError"
@@ -36,6 +37,11 @@ import { computed, onMounted, watch } from 'vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import ServiceOverviewCard from '../molecules/ServiceOverviewCard.vue'
 import { useServiceRegistrationsStore } from '@/stores/serviceRegistrations'
+import OwnAreaEntry from '@/components/own/OwnAreaEntry.vue'
+import { useAuthStore } from '@/stores/auth'
+
+// PORTAL-04.3: linked staff find their own services as a separate area on the phone.
+const auth = useAuthStore()
 
 const props = defineProps<{ department?: number | null }>()
 const store = useServiceRegistrationsStore()

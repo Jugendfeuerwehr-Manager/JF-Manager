@@ -84,10 +84,14 @@ export interface EmailPreviewResponse {
 
 export interface EmailSendResponse {
   email: EmailMessageDetail
+  /** Totals after an immediate send; null while the background worker sends (UX-07.2). */
   result: {
     successful: number
     failed: number
-  }
+  } | null
+  queued?: boolean
+  /** The same request was already accepted; nothing was sent again. */
+  replayed?: boolean
 }
 
 export interface EmailRecipientCountRequest {
@@ -105,6 +109,41 @@ export interface EmailRecipientCountResponse {
     member_id: number
     member_name: string
   }>
+}
+
+/** Recipient check before sending (UX-07.1). */
+export interface EmailRecipientCheckRequest extends EmailRecipientCountRequest {
+  body_html?: string
+  body_text?: string
+}
+
+export interface ResolvedEmailRecipient {
+  email: string
+  name: string
+  relation: 'parent' | 'member'
+  member_id: number
+  member_name: string
+}
+
+export interface ExcludedEmailRecipient {
+  member_id: number
+  member_name: string
+  /** Empty when the member has no address at all. */
+  email: string
+  relation: '' | 'parent' | 'member'
+  reason_code: 'no_address' | 'invalid_address'
+  reason: string
+}
+
+export interface EmailRecipientCheckResponse {
+  /** Number of e-mails that will be sent. */
+  count: number
+  member_count: number
+  /** The text uses member variables: every member gets its own message. */
+  personalized: boolean
+  merged_duplicates: number
+  recipients: ResolvedEmailRecipient[]
+  excluded: ExcludedEmailRecipient[]
 }
 
 export interface EmailListParams {

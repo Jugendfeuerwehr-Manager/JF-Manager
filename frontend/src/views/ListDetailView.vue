@@ -6,9 +6,7 @@
       <header class="list-head">
         <div class="list-head__top">
           <router-link :to="{ name: 'lists' }" class="back-link"><i class="pi pi-arrow-left" aria-hidden="true"></i>Listen</router-link>
-          <span class="save-state" :class="`save-state--${saveState}`" role="status">
-            <i :class="saveStateIcon" aria-hidden="true"></i>{{ saveStateText }}
-          </span>
+          <SaveStateIndicator :state="saveState" />
         </div>
         <div class="list-head__main">
           <div class="list-head__title">
@@ -111,7 +109,7 @@
               class="entry__toggle"
               :aria-checked="entry.checked"
               :disabled="pending.has(entry.member.id)"
-              @click="toggle(entry.member.id)"
+              @click="toggle(entry)"
             >
               <span class="entry__box" aria-hidden="true"><i v-if="entry.checked" class="pi pi-check"></i></span>
               <span class="entry__text">
@@ -207,6 +205,19 @@
       </template>
     </Dialog>
 
+    <BulkPreviewDialog
+      :visible="bulk !== null"
+      :title="bulk?.title ?? ''"
+      :intro="bulk?.intro ?? ''"
+      :note="bulk?.note"
+      :names="bulk?.names ?? []"
+      :confirm-label="bulk?.confirmLabel ?? ''"
+      :danger="bulk?.danger"
+      :busy="bulkBusy"
+      @cancel="bulk = null"
+      @confirm="confirmBulk"
+    />
+
     <MemberExportDialog
       v-model="showExportDialog"
       :exporting="store.loading"
@@ -233,10 +244,13 @@ import InputText from 'primevue/inputtext'
 import Menu from 'primevue/menu'
 import Textarea from 'primevue/textarea'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
+import SaveStateIndicator, { type SaveState } from '@/components/common/SaveStateIndicator.vue'
+import BulkPreviewDialog from '@/components/lists/molecules/BulkPreviewDialog.vue'
+import { getApiErrorMessage } from '@/utils/apiError'
 import { classifyApiError } from '@/utils/apiError'
 import AttachmentsSection from '@/components/qualifications/organisms/AttachmentsSection.vue'
 import MemberExportDialog from '@/components/members/molecules/MemberExportDialog.vue'
-import { useMemberListsStore } from '@/stores/lists'
+import { ListEntryConflictError, useMemberListsStore } from '@/stores/lists'
 import { useMembersStore } from '@/stores/members'
 import { useGroupsStore } from '@/stores/groups'
 import { useListPdf } from '@/composables/useListPdf'
@@ -292,23 +306,41 @@ const progressPercent = computed(() => (totalCount.value ? Math.round((checkedCo
 const editing = ref(false)
 const pending = reactive(new Set<number>())
 const failedSaves = ref(0)
-const saveState = computed<'saving' | 'error' | 'saved'>(() => {
+/** Set when the server refused a stale write and its current state is shown instead. */
+const conflictShown = ref(false)
+const saveState = computed<SaveState>(() => {
   if (pending.size) return 'saving'
   if (failedSaves.value) return 'error'
+  if (conflictShown.value) return 'conflict'
   return 'saved'
 })
-const saveStateText = computed(() => ({ saving: 'Speichert …', error: 'Nicht gespeichert', saved: 'Gespeichert' })[saveState.value])
-const saveStateIcon = computed(() => ({ saving: 'pi pi-spin pi-spinner', error: 'pi pi-exclamation-triangle', saved: 'pi pi-check' })[saveState.value])
 
-async function toggle(memberId: number) {
+function reportConflict(error: ListEntryConflictError, what: 'check' | 'notes') {
+  conflictShown.value = true
+  failedSaves.value = 0
+  const name = error.memberName || 'Der Eintrag'
+  const detail = what === 'notes'
+    ? `Die Notiz zu ${name} wurde inzwischen von jemand anderem geändert. Der aktuelle Stand wird angezeigt; deine Notiz wurde nicht gespeichert.`
+    : `${name} wurde inzwischen von jemand anderem ${error.current.checked ? 'abgehakt' : 'wieder auf offen gesetzt'}. Der aktuelle Stand wird angezeigt.`
+  toast.add({ severity: 'warn', summary: 'Inzwischen geändert', detail, life: 7000 })
+}
+
+async function toggle(entry: MemberListEntry) {
+  const memberId = entry.member.id
   if (!store.currentList || pending.has(memberId)) return
   pending.add(memberId)
   try {
-    await store.toggleCheck(store.currentList.id, memberId)
+    // An explicit target state plus the seen version: a stale tap never flips someone else's change.
+    await store.setCheck(store.currentList.id, memberId, !entry.checked)
     failedSaves.value = 0
-  } catch {
-    failedSaves.value += 1
-    toast.add({ severity: 'error', summary: 'Nicht gespeichert', detail: 'Der Haken wurde zurückgenommen. Bitte erneut versuchen.', life: 5000 })
+    conflictShown.value = false
+  } catch (error) {
+    if (error instanceof ListEntryConflictError) {
+      reportConflict(error, 'check')
+    } else {
+      failedSaves.value += 1
+      toast.add({ severity: 'error', summary: 'Nicht gespeichert', detail: 'Der Haken wurde zurückgenommen. Bitte erneut versuchen.', life: 5000 })
+    }
   } finally {
     pending.delete(memberId)
   }
@@ -337,8 +369,8 @@ const actionsMenu = ref()
 const actionItems = computed(() => {
   const list = store.currentList
   const items = [
-    { label: 'Alle abhaken', icon: 'pi pi-check-square', command: () => handleCheckAll() },
-    { label: 'Alle Haken entfernen …', icon: 'pi pi-stop', command: () => handleUncheckAll() },
+    { label: 'Alle abhaken …', icon: 'pi pi-check-square', command: () => previewBulkCheck(true) },
+    { label: 'Alle Haken entfernen …', icon: 'pi pi-stop', command: () => previewBulkCheck(false) },
     { separator: true },
     { label: 'E-Mail an alle', icon: 'pi pi-envelope', command: () => handleEmail('all') },
     { label: 'PDF erstellen', icon: 'pi pi-file-pdf', command: () => handlePdf() },
@@ -403,37 +435,40 @@ async function onAutoCompleteEnter() {
   }
 }
 
-async function addAllMembers() {
+function addAllMembers() {
   const alreadyIds = new Set(store.currentList?.entries.map((e) => e.member.id) ?? [])
   const toAdd = membersStore.members.filter((m) => !alreadyIds.has(m.id)).map((m) => m.id)
-  if (toAdd.length === 0) {
-    toast.add({ severity: 'info', summary: 'Alle bereits in Liste', life: 2000 })
-    return
-  }
-  await store.bulkAdd(listId.value, toAdd)
-  toast.add({ severity: 'success', summary: `${toAdd.length} Mitglieder hinzugefügt`, life: 2500 })
+  void previewAdd(toAdd, 'Alle Mitglieder hinzufügen', 'Alle bereits in der Liste')
 }
 
-async function addGroup(groupId: number) {
+function addGroup(groupId: number) {
   const alreadyIds = new Set(store.currentList?.entries.map((e) => e.member.id) ?? [])
   const toAdd = membersStore.members
     .filter((m) => !alreadyIds.has(m.id) && m.group?.id === groupId)
     .map((m) => m.id)
-  if (toAdd.length === 0) {
-    toast.add({ severity: 'info', summary: 'Alle Mitglieder der Gruppe sind bereits in der Liste', life: 2500 })
-    return
-  }
-  await store.bulkAdd(listId.value, toAdd)
-  toast.add({ severity: 'success', summary: `${toAdd.length} Mitglieder hinzugefügt`, life: 2500 })
+  const group = groupsStore.groups.find((g) => g.id === groupId)
+  void previewAdd(toAdd, `Gruppe „${group?.name ?? ''}“ hinzufügen`, 'Alle Mitglieder der Gruppe sind bereits in der Liste')
 }
 
 // ── Remove member ─────────────────────────────────────────────────────────
-async function removeMember(memberId: number) {
-  try {
-    await store.removeMember(listId.value, memberId)
-  } catch {
-    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht entfernt werden.', life: 3000 })
-  }
+/** Removing drops the check state and note of that person, so it is confirmed first. */
+function removeMember(memberId: number) {
+  const entry = store.currentList?.entries.find((e) => e.member.id === memberId)
+  confirm.require({
+    header: 'Aus der Liste entfernen?',
+    message: `${entry?.member.full_name ?? 'Der Eintrag'} wird aus der Liste entfernt; Haken und Notiz gehen dabei verloren.`,
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Entfernen',
+    rejectLabel: 'Abbrechen',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await store.removeMember(listId.value, memberId)
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht entfernt werden.', life: 3000 })
+      }
+    },
+  })
 }
 
 // ── Notes local state (prevents value reset on re-render) ───────────────
@@ -452,33 +487,113 @@ watch(
 )
 
 async function saveNotes(memberId: number) {
-  await store.updateEntryNotes(listId.value, memberId, localNotes[memberId] ?? '')
-}
-
-// ── Check all / uncheck all ───────────────────────────────────────────────
-async function runBulk(action: () => Promise<void>) {
+  const entry = store.currentList?.entries.find((e) => e.member.id === memberId)
+  const notes = localNotes[memberId] ?? ''
+  if (entry && entry.notes === notes) return
   try {
-    await action()
-  } catch {
-    toast.add({ severity: 'error', summary: 'Nicht gespeichert', detail: 'Die Änderung konnte nicht gespeichert werden.', life: 5000 })
-    await store.fetchList(listId.value)
+    await store.updateEntryNotes(listId.value, memberId, notes)
+    conflictShown.value = false
+  } catch (error) {
+    if (error instanceof ListEntryConflictError) {
+      localNotes[memberId] = error.current.notes
+      reportConflict(error, 'notes')
+    } else {
+      failedSaves.value += 1
+      toast.add({ severity: 'error', summary: 'Notiz nicht gespeichert', detail: getApiErrorMessage(error, 'Bitte erneut versuchen.'), life: 5000 })
+    }
   }
 }
 
-async function handleCheckAll() {
-  await runBulk(() => store.checkAll(listId.value))
+// ── Bulk actions: always preview, then confirm (UX-03.1) ─────────────────
+interface BulkPlan {
+  kind: 'check' | 'uncheck' | 'add'
+  title: string
+  intro: string
+  note?: string
+  names: string[]
+  memberIds: number[]
+  confirmLabel: string
+  danger?: boolean
+}
+const bulk = ref<BulkPlan | null>(null)
+const bulkBusy = ref(false)
+
+async function previewBulkCheck(checked: boolean) {
+  if (!store.currentList) return
+  try {
+    const preview = await store.previewBulkCheck(store.currentList.id, checked)
+    if (!preview.count) {
+      toast.add({ severity: 'info', summary: checked ? 'Alle sind bereits abgehakt' : 'Keine Haken gesetzt', life: 2500 })
+      return
+    }
+    bulk.value = {
+      kind: checked ? 'check' : 'uncheck',
+      title: checked ? 'Alle abhaken?' : 'Alle Haken entfernen?',
+      intro: checked
+        ? `${preview.count} offene ${preview.count === 1 ? 'Eintrag wird' : 'Einträge werden'} als erledigt markiert:`
+        : `${preview.count} erledigte ${preview.count === 1 ? 'Eintrag wird' : 'Einträge werden'} wieder auf offen gesetzt:`,
+      note: checked ? undefined : 'Die Erledigt-Zeitpunkte gehen dabei verloren.',
+      names: preview.entries.map((entry) => entry.name),
+      memberIds: preview.entries.map((entry) => entry.member_id),
+      confirmLabel: checked ? `${preview.count} abhaken` : `${preview.count} Haken entfernen`,
+      danger: !checked,
+    }
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Vorschau nicht möglich', detail: getApiErrorMessage(error, 'Bitte erneut versuchen.'), life: 5000 })
+  }
 }
 
-function handleUncheckAll() {
-  confirm.require({
-    header: 'Alle Haken entfernen?',
-    message: `${checkedCount.value} erledigte Einträge werden wieder auf offen gesetzt. Die Erledigt-Zeitpunkte gehen dabei verloren.`,
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Haken entfernen',
-    rejectLabel: 'Abbrechen',
-    acceptClass: 'p-button-danger',
-    accept: () => runBulk(() => store.uncheckAll(listId.value)),
-  })
+async function previewAdd(memberIds: number[], title: string, emptyMessage: string) {
+  if (!memberIds.length) {
+    toast.add({ severity: 'info', summary: emptyMessage, life: 2500 })
+    return
+  }
+  try {
+    const preview = await store.previewBulkAdd(listId.value, memberIds)
+    if (!preview.added) {
+      toast.add({ severity: 'info', summary: emptyMessage, life: 2500 })
+      return
+    }
+    bulk.value = {
+      kind: 'add',
+      title,
+      intro: `${preview.added} ${preview.added === 1 ? 'Mitglied wird' : 'Mitglieder werden'} zur Liste hinzugefügt:`,
+      note: preview.already_in_list ? `${preview.already_in_list} bereits in der Liste.` : undefined,
+      names: preview.members.map((member) => member.name),
+      memberIds: preview.members.map((member) => member.member_id),
+      confirmLabel: `${preview.added} hinzufügen`,
+    }
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Vorschau nicht möglich', detail: getApiErrorMessage(error, 'Bitte erneut versuchen.'), life: 5000 })
+  }
+}
+
+async function confirmBulk() {
+  const plan = bulk.value
+  if (!plan || bulkBusy.value) return
+  bulkBusy.value = true
+  try {
+    if (plan.kind === 'add') {
+      const result = await store.bulkAdd(listId.value, plan.memberIds)
+      toast.add({ severity: 'success', summary: `${result.added} ${result.added === 1 ? 'Mitglied' : 'Mitglieder'} hinzugefügt`, life: 2500 })
+    } else {
+      const result = await store.applyBulkCheck(listId.value, plan.kind === 'check', plan.memberIds)
+      toast.add({
+        severity: result.skipped ? 'warn' : 'success',
+        summary: `${result.changed} ${result.changed === 1 ? 'Eintrag' : 'Einträge'} geändert`,
+        detail: result.skipped ? `${result.skipped} hatte inzwischen schon jemand anderes geändert; der aktuelle Stand wird angezeigt.` : undefined,
+        life: result.skipped ? 7000 : 2500,
+      })
+    }
+    failedSaves.value = 0
+    bulk.value = null
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Nicht gespeichert', detail: getApiErrorMessage(error, 'Die Änderung konnte nicht gespeichert werden.'), life: 5000 })
+    await store.fetchList(listId.value).catch(() => undefined)
+    bulk.value = null
+  } finally {
+    bulkBusy.value = false
+  }
 }
 
 // ── PDF ───────────────────────────────────────────────────────────────────
@@ -586,32 +701,6 @@ onMounted(async () => {
   font-weight: var(--jf-weight-semibold);
   text-decoration: none;
 }
-
-.save-state {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--jf-space-0-5);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: var(--jf-text-xs);
-  font-weight: var(--jf-weight-semibold);
-  background: var(--p-green-100);
-  color: var(--p-green-800);
-}
-
-.save-state--saving {
-  background: var(--surface-hover);
-  color: var(--jf-color-text-muted);
-}
-
-.save-state--error {
-  background: var(--p-red-100);
-  color: var(--p-red-800);
-}
-
-.app-dark .save-state { background: color-mix(in srgb, var(--p-green-400), transparent 84%); color: var(--p-green-300); }
-.app-dark .save-state--saving { background: var(--surface-hover); color: var(--jf-color-text-muted); }
-.app-dark .save-state--error { background: color-mix(in srgb, var(--p-red-400), transparent 84%); color: var(--p-red-300); }
 
 .list-head__main {
   display: flex;

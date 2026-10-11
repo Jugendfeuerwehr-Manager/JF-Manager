@@ -7,12 +7,17 @@
         Qualifikationen
       </h3>
       <Button
+        v-if="!locked"
         label="Qualifikation hinzufügen"
         icon="pi pi-plus"
         size="small"
         @click="showCreateDialog = true"
       />
     </div>
+
+    <p v-if="locked" class="own-lock" role="note">
+      <i class="pi pi-lock" aria-hidden="true"></i>Nachweise pflegt eine andere Person (Vier-Augen-Prinzip).
+    </p>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
@@ -24,6 +29,7 @@
       <i class="pi pi-graduation-cap" style="font-size: 3rem; color: var(--text-color-secondary)"></i>
       <p>Noch keine Qualifikationen vorhanden</p>
       <Button
+        v-if="!locked"
         label="Erste Qualifikation hinzufügen"
         icon="pi pi-plus"
         @click="showCreateDialog = true"
@@ -75,7 +81,7 @@
         <!-- Actions -->
         <Column header="Aktionen" headerStyle="width: 8rem">
           <template #body="slotProps">
-            <div class="action-buttons">
+            <div v-if="!locked" class="action-buttons">
               <Button
                 icon="pi pi-pencil"
                 text
@@ -159,6 +165,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useQualificationsStore } from '@/stores/qualifications'
 import type { Qualification } from '@/types/qualifications'
 import Button from 'primevue/button'
+import { useAuthStore } from '@/stores/auth'
 import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -171,6 +178,9 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+// PORTAL-04.3: own records (and own children) of a linked account are kept by someone else.
+const authStore = useAuthStore()
+const locked = computed(() => authStore.ownMemberIds.includes(props.memberId))
 const toast = useToast()
 const confirm = useConfirm()
 const qualificationsStore = useQualificationsStore()
@@ -296,6 +306,17 @@ const formatDate = (dateString: string | null): string => {
 </script>
 
 <style scoped>
+.own-lock {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  margin: 0 0 var(--jf-space-2);
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border-radius: var(--jf-radius-md);
+  background: var(--surface-hover);
+  font-size: var(--jf-text-sm);
+}
+
 .qualifications-manager {
   display: flex;
   flex-direction: column;

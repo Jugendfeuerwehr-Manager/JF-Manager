@@ -11,6 +11,7 @@ from members.models import Member
 from servicebook.models import Attendance, Service, StaffAttendance
 from users.people import ANONYMOUS_USERNAME, person_accounts
 
+from ..linked_people import CountedAsOther, check_single_entry, members_for_staff, staff_for_members
 from .attendance_permissions import has_department_permission
 
 
@@ -19,6 +20,8 @@ class BoardChangeSerializer(serializers.Serializer):
     person_id = serializers.IntegerField(min_value=1)
     state = serializers.ChoiceField(choices=["A", "E", "F"], allow_null=True)
     expected_state = serializers.ChoiceField(choices=["A", "E", "F"], allow_null=True)
+    # PORTAL-04.4: move a linked person's entry from the other list instead of refusing.
+    replace_linked = serializers.BooleanField(required=False, default=False)
 
 
 def roster_people(service):
@@ -45,21 +48,40 @@ def board_response(service):
     members, staff = roster_people(service)
     member_states = dict(Attendance.objects.filter(service=service).values_list("person_id", "state"))
     staff_states = dict(StaffAttendance.objects.filter(service=service).values_list("person_id", "state"))
+    members, staff = list(members), list(staff)
+    # Same person in both lists (confirmed staff/member link): each row names its counterpart.
+    member_links = staff_for_members([p.pk for p in members])
+    staff_links = members_for_staff([p.pk for p in staff])
     return Response(
         {
             "members": [
-                {"id": p.pk, "full_name": p.get_full_name(), "state": member_states.get(p.pk)} for p in members
+                {
+                    "id": p.pk,
+                    "full_name": p.get_full_name(),
+                    "state": member_states.get(p.pk),
+                    "linked_staff_id": member_links.get(p.pk),
+                }
+                for p in members
             ],
             "staff": [
-                {"id": p.pk, "full_name": p.get_full_name() or p.username, "state": staff_states.get(p.pk)}
+                {
+                    "id": p.pk,
+                    "full_name": p.get_full_name() or p.username,
+                    "state": staff_states.get(p.pk),
+                    "linked_member_id": staff_links.get(p.pk),
+                }
                 for p in staff
             ],
         }
     )
 
 
-def set_attendance(service, model, person_id, state, expected_state):
-    """Compare-and-set one attendance value; returns ``(applied, current_state)``. The only write path."""
+def set_attendance(service, model, person_id, state, expected_state, replace_linked=False):
+    """Compare-and-set one attendance value; returns ``(applied, current_state)``. The only write path.
+
+    Raises ``CountedAsOther`` when a linked person already has an entry in the other list
+    (PORTAL-04.4); ``replace_linked`` moves that entry here instead.
+    """
     with transaction.atomic():
         # Lock the parent even when no attendance exists yet; serializes concurrent inserts.
         Service.objects.select_for_update().get(pk=service.pk)
@@ -67,6 +89,8 @@ def set_attendance(service, model, person_id, state, expected_state):
         current = records.values_list("state", flat=True).first()
         if current != expected_state:
             return False, current
+        if state is not None:
+            check_single_entry(service, model, person_id, replace=replace_linked)
         if state is None:
             records.delete()
         else:
@@ -86,7 +110,17 @@ def update_board(request, service):
     if not people.filter(pk=change["person_id"]).exists():
         raise serializers.ValidationError({"person_id": "Person gehört nicht zur Teilnehmerliste dieses Dienstes."})
     model = Attendance if change["kind"] == "member" else StaffAttendance
-    applied, current = set_attendance(service, model, change["person_id"], change["state"], change["expected_state"])
+    try:
+        applied, current = set_attendance(
+            service,
+            model,
+            change["person_id"],
+            change["state"],
+            change["expected_state"],
+            replace_linked=change["replace_linked"],
+        )
+    except CountedAsOther as error:
+        return Response({"detail": str(error), "code": "counted_as_other", "recorded_as": error.kind}, status=409)
     if not applied:
         return Response(
             {

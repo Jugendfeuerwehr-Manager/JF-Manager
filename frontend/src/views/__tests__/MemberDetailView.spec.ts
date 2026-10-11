@@ -4,7 +4,7 @@ import PrimeVue from 'primevue/config'
 import MemberDetailView from '../MemberDetailView.vue'
 
 const { auth, membersApi, qualificationsApi, servicebookApi } = vi.hoisted(() => ({
-  auth: { canAccessModule: vi.fn((_perm: string) => true) },
+  auth: { canAccessModule: vi.fn((_perm: string) => true), hasPerm: vi.fn((_perm: string) => false) },
   membersApi: { get: vi.fn(), getParents: vi.fn(), getEvents: vi.fn(), delete: vi.fn(), deleteWithStrategy: vi.fn() },
   qualificationsApi: { list: vi.fn() },
   servicebookApi: { attendance: { getByMember: vi.fn() } },
@@ -39,7 +39,7 @@ function render() {
       stubs: {
         RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
         QualificationsManager: true, SpecialTasksManager: true, EventsManager: true,
-        AttendanceTab: true, MemberEquipmentTab: true, AttachmentsManager: true, MemberDeletionDialog: true,
+        AttendanceTab: true, MemberEquipmentTab: true, AttachmentsManager: true, MemberDeletionDialog: true, AccountLinkCard: true, ChangeLogCard: true, QualificationDuplicatesPanel: true,
       },
     },
   })
@@ -68,7 +68,7 @@ describe('MemberDetailView', () => {
     const wrapper = render()
     await flushPromises()
     const call = wrapper.get('a.contact__action--call')
-    expect(call.attributes('href')).toBe('tel:0171 1234567')
+    expect(call.attributes('href')).toBe('tel:01711234567')
     expect(call.attributes('aria-label')).toBe('Katrin Weber anrufen')
     expect(wrapper.get('[aria-label="Telefonnummer für Daniel Weber ergänzen"]').attributes('href')).toBe('/parents/7/edit')
     expect(wrapper.get('.quick-action--primary').text()).toContain('Katrin anrufen')

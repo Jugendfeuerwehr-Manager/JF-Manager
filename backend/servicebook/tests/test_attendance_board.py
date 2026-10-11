@@ -55,15 +55,10 @@ class AttendanceBoardTests(TestCase):
         self.assertEqual(self.change(self.member, state=None, expected="A").status_code, 200)
         self.assertFalse(Attendance.objects.filter(person=self.member).exists())
 
-    def test_staff_attendance_and_hours_report(self):
+    def test_staff_attendance_is_recorded_separately(self):
         self.assertEqual(self.change(self.staff, kind="staff").status_code, 200)
         self.assertEqual(StaffAttendance.objects.get(person=self.staff).state, "A")
         self.assertFalse(Attendance.objects.exists())
-        report = self.client.get("/api/v1/servicebook/services/staff_statistics/").json()["results"]
-        self.assertEqual(report[0]["present"], 1)
-        self.assertEqual(report[0]["hours"], 2)
-        empty = self.client.get("/api/v1/servicebook/services/staff_statistics/", {"date_to": "2000-01-01"})
-        self.assertEqual(empty.json()["results"], [])
 
     def test_invalid_person_and_state_are_rejected(self):
         outsider = Member.objects.create(name="Outside", lastname="Department")
@@ -93,7 +88,6 @@ class AttendanceBoardTests(TestCase):
         self.service.department = self.other
         self.service.save()
         self.assertEqual(self.client.get(self.url).status_code, 404)
-        self.assertEqual(self.client.get("/api/v1/servicebook/services/staff_statistics/").json()["results"], [])
 
     def test_staff_flag_alone_grants_no_attendance_access(self):
         self.staff.is_staff = True
@@ -102,11 +96,9 @@ class AttendanceBoardTests(TestCase):
 
         board = self.client.get(self.url)
         update = self.change(self.member)
-        statistics = self.client.get("/api/v1/servicebook/services/staff_statistics/")
 
         self.assertEqual(board.status_code, 403)
         self.assertEqual(update.status_code, 403)
-        self.assertEqual(statistics.status_code, 403)
         self.assertFalse(Attendance.objects.filter(service=self.service, person=self.member).exists())
 
         self.staff.user_permissions.add(
@@ -114,7 +106,6 @@ class AttendanceBoardTests(TestCase):
         )
         self.client.force_authenticate(get_user_model().objects.get(pk=self.staff.pk))
         self.assertEqual(self.client.get(self.url).status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/servicebook/services/staff_statistics/").status_code, 200)
 
     def test_legacy_attendance_endpoints_cannot_bypass_department_scope(self):
         foreign_service = Service.objects.create(start=self.service.start, end=self.service.end, department=self.other)
@@ -170,12 +161,13 @@ class AttendanceBoardTests(TestCase):
             ).status_code,
             403,
         )
-        response = self.client.get("/api/v1/servicebook/services/staff_statistics/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["results"], [])
-        self.assertEqual(self.client.get("/api/v1/servicebook/services/statistics/").status_code, 200)
 
-    def test_service_statistics_and_chart_do_not_leak_other_department(self):
+    def test_removed_statistics_endpoints_are_gone(self):
+        # UX-04.4: replaced by the attendance report (UX-04.2); no frontend consumer left.
+        for path in ("statistics", "staff_statistics"):
+            self.assertEqual(self.client.get(f"/api/v1/servicebook/services/{path}/").status_code, 404)
+
+    def test_attendance_chart_does_not_leak_other_department(self):
         own_group = Group.objects.create(name="Nord Sicht")
         own_group.permissions.add(
             Permission.objects.get(content_type__app_label="servicebook", codename="view_service")
@@ -184,10 +176,6 @@ class AttendanceBoardTests(TestCase):
         foreign_service = Service.objects.create(start=self.service.start, end=self.service.end, department=self.other)
         Attendance.objects.create(person=self.member, service=foreign_service, state="A")
         self.client.force_authenticate(get_user_model().objects.get(pk=self.staff.pk))
-        statistics = self.client.get("/api/v1/servicebook/services/statistics/")
-        self.assertEqual(statistics.status_code, 200)
-        self.assertEqual(statistics.json()["total_services"], 1)
-        self.assertEqual(statistics.json()["top_lists"]["most_present"], [])
         chart = self.client.get("/api/v1/servicebook/services/attendance_chart/")
         self.assertEqual(chart.status_code, 200)
         self.assertEqual(chart.json()["attendance_data"]["A"], [0])

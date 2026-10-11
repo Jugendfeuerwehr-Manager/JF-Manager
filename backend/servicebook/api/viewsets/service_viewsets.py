@@ -13,7 +13,6 @@ from departments.mixins import DepartmentScopeViewSetMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from portal.permissions import StaffAccountRequired
 from servicebook.models import Attendance, Service
-from servicebook.selectors import get_top_lists_by_state
 
 from ..attendance_permissions import filter_by_permission, has_department_permission
 from ..serializers import (
@@ -55,7 +54,7 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Get services filtered by department scope."""
         self.queryset = Service.objects.select_related("training_session").prefetch_related("operations_manager")
         queryset = super().get_queryset()
-        if self.action in ("attendance_board", "staff_statistics", "registrations", "apply_excused"):
+        if self.action in ("attendance_board", "registrations", "apply_excused"):
             # These actions enforce attendance rights instead of service rights.
             return queryset
         permission = {
@@ -99,37 +98,6 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         detail_serializer = ServiceDetailSerializer(service)
         headers = self.get_success_headers(detail_serializer.data)
         return Response(detail_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    @action(detail=False, methods=["get"])
-    def statistics(self, request):
-        """
-        Get overall servicebook statistics.
-
-        Returns:
-        - Total services count
-        - Recent services summary
-        - Top attendance lists (most present, excused, absent)
-        """
-        services = self.get_queryset()
-        services_count = services.count()
-        recent_services = services.order_by("-start")[:5]
-
-        # Get top lists
-        top_present = get_top_lists_by_state("A", max_entries=7, services=services)
-        top_excused = get_top_lists_by_state("E", max_entries=7, services=services)
-        top_absent = get_top_lists_by_state("F", max_entries=7, services=services)
-
-        return Response(
-            {
-                "total_services": services_count,
-                "recent_services": ServiceListSerializer(recent_services, many=True).data,
-                "top_lists": {
-                    "most_present": list(top_present),
-                    "most_excused": list(top_excused),
-                    "most_absent": list(top_absent),
-                },
-            }
-        )
 
     @action(detail=False, methods=["get"])
     def attendance_chart(self, request):
@@ -245,49 +213,6 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
                 service, dry_run=data.validated_data["dry_run"], member_ids=data.validated_data.get("member_ids")
             )
         )
-
-    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
-    def staff_statistics(self, request):
-        from rest_framework.exceptions import PermissionDenied
-
-        from ..attendance_board import staff_report
-
-        if not (
-            request.user.is_superuser
-            or request.user.has_perm("servicebook.view_attendance")
-            or request.user.has_perm("servicebook.change_attendance")
-            or request.user.department_roles.filter(
-                groups__permissions__content_type__app_label="servicebook",
-                groups__permissions__codename__in=["view_attendance", "change_attendance"],
-            ).exists()
-        ):
-            raise PermissionDenied("Keine Berechtigung zum Anzeigen der Anwesenheit.")
-        from rest_framework import serializers
-
-        class DateRange(serializers.Serializer):
-            date_from = serializers.DateField(required=False)
-            date_to = serializers.DateField(required=False)
-
-        dates = DateRange(data=request.query_params)
-        dates.is_valid(raise_exception=True)
-        services = self.filter_queryset(self.get_queryset())
-        if (
-            not request.user.is_superuser
-            and not request.user.has_perm("servicebook.view_attendance")
-            and not request.user.has_perm("servicebook.change_attendance")
-        ):
-            from django.db.models import Q
-
-            allowed = request.user.department_roles.filter(
-                groups__permissions__codename__in=["view_attendance", "change_attendance"],
-                groups__permissions__content_type__app_label="servicebook",
-            ).values_list("department_id", flat=True)
-            services = services.filter(Q(department_id__in=allowed))
-        if dates.validated_data.get("date_from"):
-            services = services.filter(start__date__gte=dates.validated_data["date_from"])
-        if dates.validated_data.get("date_to"):
-            services = services.filter(start__date__lte=dates.validated_data["date_to"])
-        return staff_report(services)
 
     def perform_create(self, serializer):
         """Handle service creation and clear cache."""

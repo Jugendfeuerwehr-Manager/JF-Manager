@@ -130,7 +130,7 @@ const deletionLoading = ref(false)
 const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 let pendingDeleteMember: Member | null = null
 
-const { filters, lazyParams, loadData, onPage, onSort, onFilterChange } = useMembersTableState()
+const { filters, lazyParams, loadData, restoreSaved, onPage, onSort, onFilterChange } = useMembersTableState()
 const { isMobileSearchMode, onSearchFocus, closeMobileSearch } = useMembersMobileSearch()
 const { stats, statsLoading, statsExpanded, toggleStats } = useMembersStats()
 const { isMobile } = useMobile()
@@ -143,7 +143,7 @@ const subtitle = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([membersStore.fetchStatuses(), membersStore.fetchGroups()])
+  await Promise.all([membersStore.fetchStatuses(), membersStore.fetchGroups(), restoreSaved()])
   loadData()
 })
 

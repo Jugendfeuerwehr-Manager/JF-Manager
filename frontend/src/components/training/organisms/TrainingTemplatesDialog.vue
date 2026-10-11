@@ -22,6 +22,10 @@
               {{ template.block_count }} Bausteine<template v-if="template.location"> · {{ template.location }}</template>
             </span>
             <span v-if="template.description" class="templates__meta">{{ template.description }}</span>
+            <details class="templates__staffing" @toggle="onStaffingToggle(template.id, $event)">
+              <summary>Besetzung</summary>
+              <TemplateStaffingPicker v-if="staffingOpen.includes(template.id)" :template-id="template.id" :department="template.department ?? null" :title="template.title" />
+            </details>
           </div>
           <div class="templates__actions">
             <Button label="Übung anlegen" icon="pi pi-plus" size="small" :disabled="!date || busyId !== null" :loading="busyId === template.id" @click="instantiate(template)" />
@@ -43,6 +47,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { trainingTemplatesApi } from '@/api/training'
+import TemplateStaffingPicker from '@/components/participation/TemplateStaffingPicker.vue'
 import type { TrainingSessionDetail, TrainingTemplate } from '@/types/training'
 
 const props = defineProps<{ visible: boolean; defaultDate?: string | null; department?: number | null }>()
@@ -54,6 +59,11 @@ const search = ref('')
 const loading = ref(false)
 const busyId = ref<number | null>(null)
 const error = ref('')
+// PART-04.5: staffing pickers load only when opened
+const staffingOpen = ref<number[]>([])
+function onStaffingToggle(id: number, event: Event) {
+  if ((event.target as HTMLDetailsElement).open && !staffingOpen.value.includes(id)) staffingOpen.value = [...staffingOpen.value, id]
+}
 
 const filtered = computed(() => {
   const query = search.value.trim().toLowerCase()
@@ -136,4 +146,5 @@ watch(
 .templates__info { display: grid; gap: var(--jf-space-0-5); min-width: 0; }
 .templates__meta { font-size: var(--jf-text-sm); color: var(--jf-color-text-muted); }
 .templates__actions { display: flex; gap: var(--jf-space-1); }
+.templates__staffing summary { min-height: var(--jf-touch-target); display: flex; align-items: center; cursor: pointer; font-size: var(--jf-text-sm); font-weight: var(--jf-weight-semibold); }
 </style>

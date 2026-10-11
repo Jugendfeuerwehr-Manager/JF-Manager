@@ -370,3 +370,33 @@ class BatchLoanSerializer(serializers.Serializer):
         if len(identities) != len(set(identities)):
             raise serializers.ValidationError("Ein Artikel darf in einer Sammelausgabe nur einmal vorkommen.")
         return value
+
+
+class BatchReturnLineSerializer(serializers.Serializer):
+    item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all(), required=False, allow_null=True)
+    item_variant = serializers.PrimaryKeyRelatedField(
+        queryset=ItemVariant.objects.select_related("parent_item"), required=False, allow_null=True
+    )
+    quantity = serializers.IntegerField(min_value=1)
+    target = serializers.PrimaryKeyRelatedField(queryset=StorageLocation.objects.all())
+
+    def validate(self, attrs):
+        if (attrs.get("item") is None) == (attrs.get("item_variant") is None):
+            raise serializers.ValidationError("Genau ein Artikel oder eine Artikel-Variante ist erforderlich.")
+        if attrs["target"].is_member:
+            raise serializers.ValidationError({"target": "Rücknahme nur in einen Lagerort, nicht an ein Mitglied."})
+        return attrs
+
+
+class BatchReturnSerializer(serializers.Serializer):
+    member = serializers.IntegerField(min_value=1)
+    items = BatchReturnLineSerializer(many=True, allow_empty=False)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate_items(self, value):
+        identities = [
+            ("item", line["item"].pk) if line.get("item") else ("variant", line["item_variant"].pk) for line in value
+        ]
+        if len(identities) != len(set(identities)):
+            raise serializers.ValidationError("Ein Artikel darf in einer Rücknahme nur einmal vorkommen.")
+        return value

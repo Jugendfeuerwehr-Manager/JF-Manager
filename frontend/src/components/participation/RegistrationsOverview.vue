@@ -11,7 +11,8 @@
         <li v-for="item in countItems" :key="item.key"><StatusBadge :label="`${item.label}: ${item.value}`" :severity="item.severity" :icon="item.icon" /></li>
         <li v-if="data.counts.conflicts > 0"><StatusBadge :label="`Voraussetzung nicht mehr erfüllt: ${data.counts.conflicts}`" severity="warning" icon="pi pi-exclamation-triangle" /></li>
         <li v-if="data.counts.max_participants !== null">Plätze: {{ data.counts.seated }} von {{ data.counts.max_participants }} belegt<template v-if="data.counts.free !== null">, {{ data.counts.free }} frei</template></li>
-        <li v-if="data.counts.min_participants">Mindestzahl: {{ data.counts.min_participants }}<template v-if="data.counts.seated < data.counts.min_participants"> (noch nicht erreicht)</template></li>
+        <li v-if="data.staffing?.required && data.slots?.length"><StatusBadge :label="data.staffing.text" :severity="data.staffing.met ? 'success' : 'warning'" :icon="data.staffing.met ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" /></li>
+        <li v-if="data.counts.min_participants && !data.slots?.length">Mindestzahl: {{ data.counts.min_participants }}<template v-if="data.counts.seated < data.counts.min_participants"> (noch nicht erreicht)</template></li>
       </ul>
       <p class="reg-overview__deadlines">
         Anmeldeschluss {{ formatDateTime(data.deadlines.registration_closes_at) }} · Abmeldeschluss {{ formatDateTime(data.deadlines.cancellation_closes_at) }}
@@ -43,6 +44,7 @@
             <th scope="row">{{ row.name }} {{ row.lastname }}<span v-if="!row.in_target" class="reg-note"> (nicht mehr in der Zielgruppe)</span></th>
             <td>
               <StatusBadge v-bind="stateLabel(row.state, row.waitlist_position)" />
+              <div v-if="positionText(row)" class="reg-note">{{ positionText(row) }}</div>
               <div v-if="row.registration?.reason_category" class="reg-note">{{ reasonLabel(row.registration.reason_category) }}</div>
               <div v-if="row.registration?.reason_note" class="reg-note">{{ row.registration.reason_note }}</div>
             </td>
@@ -140,6 +142,19 @@ const countItems = computed(() => {
   ]
   return items.filter(item => item.value > 0 || ['registered', 'cancelled'].includes(item.key))
 })
+
+const slotName = (id: number | null | undefined) => data.value?.slots?.find(slot => slot.id === id)?.label ?? null
+
+/** "Position: Wachführung", "ohne Position", or the wished/asked position while waiting. */
+function positionText(row: RegistrationRow): string | null {
+  if (!data.value?.slots?.length || !row.registration) return null
+  if (row.state === 'registered' || row.state === 'assigned') return `Position: ${slotName(row.registration.slot) ?? 'ohne Position'}`
+  if (row.state === 'waitlisted' || row.state === 'applied') {
+    const wish = slotName(row.registration.preferred_slot)
+    return wish ? `${row.state === 'applied' ? 'Wunsch' : 'Wartet auf'}: ${wish}` : (row.state === 'applied' ? 'Wunsch: beliebige passende Position' : 'Wartet auf: beliebige Position')
+  }
+  return null
+}
 
 const actionError = ref<string | null>(null)
 const cancelling = ref(false)

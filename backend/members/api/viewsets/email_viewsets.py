@@ -2,6 +2,7 @@
 API viewsets for email messaging system.
 """
 
+from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -22,7 +23,12 @@ from members.api.serializers.email_serializers import (
     EmailTemplateVariablesSerializer,
 )
 from members.models import EmailAttachment, EmailMessage, Member
-from members.services.email_service import EmailRecipientCollector, EmailTemplateRenderer, MemberEmailService
+from members.services.email_service import (
+    EmailRecipientCollector,
+    EmailTemplateRenderer,
+    MemberEmailService,
+    uses_personalization,
+)
 
 
 class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
@@ -127,6 +133,15 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         - subject, body_html, body_text, recipient_type, recipient_group, recipient_member
         - attachments: one or more files (field name: "attachments")
         """
+        key = request.headers.get("Idempotency-Key", "").strip()
+        if len(key) > 128:
+            return Response({"error": "Idempotenzschlüssel ist zu lang."}, status=status.HTTP_400_BAD_REQUEST)
+        if key:
+            # A repeated request (double click, network retry) never sends a second time (UX-07.2).
+            existing = EmailMessage.objects.filter(sender=request.user, idempotency_key=key).first()
+            if existing is not None:
+                return self._send_response(existing, None, replayed=True)
+
         create_serializer = EmailMessageCreateSerializer(data=request.data, context={"request": request})
         create_serializer.is_valid(raise_exception=True)
         self._validate_targets(create_serializer.validated_data, self._get_accessible_member_queryset())
@@ -139,7 +154,22 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         except ValidationError as exc:
             return Response({"error": str(exc.detail["file"])}, status=status.HTTP_400_BAD_REQUEST)
         # Validate the entire batch before creating the message or storing any file.
-        email_message = create_serializer.save()
+        extra = {"idempotency_key": key}
+        if create_serializer.validated_data.get("department") is None:
+            # The client sends the active department as query parameter; store it so department
+            # senders find the message in their history and can resend failed deliveries.
+            requested = self._resolve_requested_department(request.user)
+            allowed = self._sending_department_ids()
+            if requested is None and allowed is not None and len(allowed) == 1:
+                requested = allowed[0]
+            if requested is not None:
+                extra["department_id"] = requested
+        try:
+            with transaction.atomic():
+                email_message = create_serializer.save(**extra)
+        except IntegrityError:
+            existing = EmailMessage.objects.get(sender=request.user, idempotency_key=key)
+            return self._send_response(existing, None, replayed=True)
         for f, content_type in zip(files, content_types, strict=True):
             EmailAttachment.objects.create(
                 email_message=email_message,
@@ -157,13 +187,8 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             if recipient_count == 0:
                 return Response({"error": "Keine Empfänger gefunden"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Send emails
-            result = MemberEmailService.send_email_message(email_message)
-
-            # Return detailed response
-            detail_serializer = EmailMessageDetailSerializer(email_message)
-
-            return Response({"email": detail_serializer.data, "result": result}, status=status.HTTP_201_CREATED)
+            result = MemberEmailService.dispatch(email_message)
+            return self._send_response(email_message, result)
 
         except Exception as e:
             email_message.status = "failed"
@@ -188,12 +213,26 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         failed_recipients = email_message.recipients.filter(status="failed")
         failed_recipients.update(status="pending", error_message="")
 
-        # Send again
-        result = MemberEmailService.send_email_message(email_message)
+        # Send again (only the reset recipients); in the background when a worker is configured
+        result = MemberEmailService.dispatch(email_message)
+        return self._send_response(email_message, result, created=False)
 
-        detail_serializer = EmailMessageDetailSerializer(email_message)
-
-        return Response({"email": detail_serializer.data, "result": result})
+    def _send_response(self, email_message, result, *, replayed=False, created=True):
+        """201 after an immediate send, 202 while queued; a replay answers 200 with the stored message."""
+        email_message.refresh_from_db()
+        payload = {
+            "email": EmailMessageDetailSerializer(email_message).data,
+            "result": result,
+            "queued": result is None and not replayed,
+        }
+        if replayed:
+            payload["replayed"] = True
+            code = status.HTTP_200_OK
+        elif result is None:
+            code = status.HTTP_202_ACCEPTED
+        else:
+            code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(payload, status=code)
 
     @action(detail=False, methods=["post"])
     def preview(self, request):
@@ -252,6 +291,70 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         serializer = EmailTemplateVariablesSerializer(variables, many=True)
         return Response(serializer.data)
 
+    def _selected_members(self, data):
+        """Members targeted by a recipient selection inside the sending scope.
+
+        Returns ``(members, error_response)``; unknown or foreign targets give the same
+        404 so the check does not reveal records outside the caller's scope.
+        """
+        from members.models import Group
+
+        recipient_type = data.get("recipient_type")
+        member_qs = self._get_accessible_member_queryset()
+        if recipient_type == "all":
+            return EmailRecipientCollector.members_for("all", member_qs=member_qs), None
+        if recipient_type == "group":
+            group_id = data.get("recipient_group")
+            if not group_id:
+                return None, Response({"error": "recipient_group erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
+            group = Group.objects.filter(pk=group_id).first() if str(group_id).isdigit() else None
+            allowed_ids = self._sending_department_ids()
+            if group is None or (
+                group.department_id is not None and allowed_ids is not None and group.department_id not in allowed_ids
+            ):
+                return None, Response(
+                    {"error": "Gruppe nicht gefunden oder kein Zugriff"}, status=status.HTTP_404_NOT_FOUND
+                )
+            return EmailRecipientCollector.members_for("group", group=group, member_qs=member_qs), None
+        if recipient_type == "individual":
+            member_id = data.get("recipient_member")
+            if not member_id:
+                return None, Response({"error": "recipient_member erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
+            member = member_qs.filter(id=member_id).first() if str(member_id).isdigit() else None
+            if not member:
+                return None, Response(
+                    {"error": "Mitglied nicht gefunden oder kein Zugriff"}, status=status.HTTP_404_NOT_FOUND
+                )
+            return EmailRecipientCollector.members_for("individual", member=member, member_qs=member_qs), None
+        if recipient_type == "multiple":
+            member_ids = data.get("recipient_members") or []
+            if not isinstance(member_ids, list) or not member_ids:
+                return None, Response({"error": "recipient_members erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
+            member_ids = [int(item) for item in member_ids if str(item).isdigit()]
+            return EmailRecipientCollector.members_for("multiple", members=member_ids, member_qs=member_qs), None
+        return None, Response({"error": "Ungültiger recipient_type"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["post"])
+    def recipient_check(self, request):
+        """
+        Recipient check before sending (UX-07.1).
+
+        POST /api/v1/emails/recipient_check/
+
+        Same selection as ``recipient_count`` plus optional ``body_html``/``body_text``.
+        Returns the deliveries that would be created (count and list), the members and
+        addresses that are excluded with a reason, and how many duplicate addresses were
+        merged. Personalised messages (member variables) are never merged across members.
+        """
+        members, error = self._selected_members(request.data)
+        if error is not None:
+            return error
+        personalized = uses_personalization(
+            str(request.data.get("body_html") or ""), str(request.data.get("body_text") or "")
+        )
+        resolution = EmailRecipientCollector.resolve(members, personalized=personalized)
+        return Response(resolution.as_dict())
+
     @action(detail=False, methods=["post"])
     def recipient_count(self, request):
         """
@@ -261,44 +364,13 @@ class EmailMessageViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
         Request body:
         {
-            "recipient_type": "all|group|individual",
+            "recipient_type": "all|group|individual|multiple",
             "recipient_group": 1,  // if type is "group"
             "recipient_member": 1   // if type is "individual"
         }
         """
-        recipient_type = request.data.get("recipient_type")
-        member_qs = self._get_accessible_member_queryset()
-
-        if recipient_type == "all":
-            recipients = EmailRecipientCollector.get_recipients_for_all_members(member_qs=member_qs)
-        elif recipient_type == "group":
-            from members.models import Group
-
-            group_id = request.data.get("recipient_group")
-            if not group_id:
-                return Response({"error": "recipient_group erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
-            group = Group.objects.get(id=group_id)
-            recipients = EmailRecipientCollector.get_recipients_for_group(group, member_qs=member_qs)
-        elif recipient_type == "individual":
-            member_id = request.data.get("recipient_member")
-            if not member_id:
-                return Response({"error": "recipient_member erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
-            member = member_qs.filter(id=member_id).first()
-            if not member:
-                return Response(
-                    {"error": "Mitglied nicht gefunden oder kein Zugriff"}, status=status.HTTP_404_NOT_FOUND
-                )
-            recipients = EmailRecipientCollector.get_recipients_for_member(member)
-        elif recipient_type == "multiple":
-            member_ids = request.data.get("recipient_members") or []
-            if not member_ids:
-                return Response({"error": "recipient_members erforderlich"}, status=status.HTTP_400_BAD_REQUEST)
-            members = member_qs.filter(id__in=member_ids)
-            recipients = EmailRecipientCollector.get_recipients_for_members(members, member_qs=member_qs)
-        else:
-            return Response({"error": "Ungültiger recipient_type"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Deduplicate
-        unique_emails = set(r["email"].lower() for r in recipients)
-
-        return Response({"count": len(unique_emails), "recipients": recipients})
+        members, error = self._selected_members(request.data)
+        if error is not None:
+            return error
+        resolution = EmailRecipientCollector.resolve(members)
+        return Response({"count": len(resolution.recipients), "recipients": resolution.recipients})

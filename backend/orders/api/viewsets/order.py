@@ -25,7 +25,7 @@ from orders.api.serializers import (
     OrderSerializer,
     OrderUpdateSerializer,
 )
-from orders.models import Order, OrderItem, OrderStatus
+from orders.models import Order, OrderItem, OrderItemStatusHistory, OrderStatus
 from orders.notifications import OrderNotificationService
 
 
@@ -97,17 +97,22 @@ class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def detail_with_history(self, request, pk=None):
         """Get order with full item history"""
+        from orders.api.serializers import OrderItemStatusHistorySerializer
+
         order = self.get_object()
-        serializer = OrderDetailSerializer(order)
+        data = OrderDetailSerializer(order).data
 
-        # Add status history for all items
-        data = serializer.data
+        # Status history of all lines in one query, newest first (written by OrderItem.save).
+        histories = {}
+        entries = (
+            OrderItemStatusHistory.objects.filter(order_item__order=order)
+            .select_related("from_status", "to_status", "changed_by")
+            .order_by("-changed_at", "-pk")
+        )
+        for entry in entries:
+            histories.setdefault(entry.order_item_id, []).append(entry)
         for item_data in data["items"]:
-            item = OrderItem.objects.get(id=item_data["id"])
-            history = item.status_history.all().order_by("-changed_at")
-            from orders.api.serializers import OrderItemStatusHistorySerializer
-
-            item_data["history"] = OrderItemStatusHistorySerializer(history, many=True).data
+            item_data["history"] = OrderItemStatusHistorySerializer(histories.get(item_data["id"], []), many=True).data
 
         return Response(data)
 

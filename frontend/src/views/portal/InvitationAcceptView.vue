@@ -74,7 +74,7 @@
               :invalid="!!fieldError('privacy_accepted')"
               :aria-describedby="fieldError('privacy_accepted') ? 'accept-privacy-error' : undefined"
             />
-            <label for="accept-privacy">Ich habe den Datenschutzhinweis zur Kenntnis genommen und bin mit der Verarbeitung meiner Daten für die Organisation des Jugendfeuerwehrdienstes einverstanden.</label>
+            <label for="accept-privacy">Ich habe den Datenschutzhinweis zur Kenntnis genommen und bin mit der Verarbeitung meiner Daten für die Organisation der Dienste einverstanden.</label>
           </div>
           <small v-if="fieldError('privacy_accepted')" id="accept-privacy-error" class="err" role="alert">{{ fieldError('privacy_accepted') }}</small>
         </div>

@@ -66,6 +66,7 @@ ad_render() {
         echo "JF_DATA_DIR=$(kv_quote "$JF_DATA_DIR")"
         echo "JF_APP_ENV=$(kv_quote "$JF_APP_ENV")"
         echo "JF_TRUSTED_PROXIES_FILE=$(kv_quote "$JF_TRUSTED_PROXIES")"
+        echo "JF_CSP_MODE_FILE=$(kv_quote "$JF_CSP_MODE")"
         echo "JF_POSTGRES_MAJOR=$(kv_quote "$JF_POSTGRES_MAJOR")"
         echo "JF_EDGE_SUBNET=$(kv_quote "$JF_EDGE_SUBNET")"
         echo "JF_DOMAIN=$(kv_quote "${JF_DOMAIN:-localhost}")"
@@ -75,6 +76,7 @@ ad_render() {
     } >"$tmp"
     mv -f "$tmp" "$JF_COMPOSE_ENV"
     render_trusted_proxies compose
+    render_csp_mode
     mkdir -p "$JF_DATA_DIR"/{uploads,static,postgres,redis,caddy,ops-public}
     # uploads and collected static files belong to the container user django
     # (uid 1000, gid 2000); nginx reads static files (world-readable).

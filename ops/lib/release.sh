@@ -123,4 +123,19 @@ render_trusted_proxies() {
     mv -f "$tmp" "$JF_TRUSTED_PROXIES"
 }
 
+# nginx half of the CSP switch; the backend reads CSP_REPORT_ONLY from app.env.
+render_csp_mode() {
+    local tmp mode=enforce
+    case $(kv_get "$JF_APP_ENV" CSP_REPORT_ONLY 2>/dev/null | tr '[:upper:]' '[:lower:]') in
+        true|1|yes) mode=report-only ;;
+    esac
+    tmp=$(mktemp "$JF_CSP_MODE.XXXXXX")
+    {
+        echo "# Erzeugt von jfctl aus CSP_REPORT_ONLY in app.env (jfctl config set CSP_REPORT_ONLY …)."
+        echo "default $mode;"
+    } >"$tmp"
+    chmod 644 "$tmp"
+    mv -f "$tmp" "$JF_CSP_MODE"
+}
+
 workers_held() { [ -f "$JF_STATE_DIR/workers-held" ]; }

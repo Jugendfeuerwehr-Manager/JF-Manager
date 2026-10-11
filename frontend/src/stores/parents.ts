@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { parentsApi, type Parent, type ParentCreate, type MemberListParams } from '@/api/members'
+import { membersApi, parentsApi, type Parent, type ParentCreate, type MemberListParams } from '@/api/members'
 import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useParentsStore = defineStore('parents', () => {
@@ -14,6 +14,9 @@ export const useParentsStore = defineStore('parents', () => {
     next: null as string | null,
     previous: null as string | null
   })
+  /** Members a parent can be linked to; kept apart from the members list state. */
+  const childOptions = ref<{ label: string; value: number }[]>([])
+  const childOptionsLoading = ref(false)
 
   // Computed
   const parentOptions = computed(() => 
@@ -56,6 +59,17 @@ export const useParentsStore = defineStore('parents', () => {
       throw err
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchChildOptions() {
+    childOptionsLoading.value = true
+    try {
+      const response = await membersApi.list({ limit: 1000, ordering: 'lastname,name' })
+      childOptions.value = response.data.results.map((member) => ({ label: member.full_name, value: member.id }))
+      return childOptions.value
+    } finally {
+      childOptionsLoading.value = false
     }
   }
 
@@ -135,12 +149,15 @@ export const useParentsStore = defineStore('parents', () => {
     loading,
     error,
     pagination,
+    childOptions,
+    childOptionsLoading,
     // Computed
     parentOptions,
     allParentEmails,
     emailAllParentsLink,
     // Actions
     fetchParents,
+    fetchChildOptions,
     fetchParentById,
     createParent,
     updateParent,

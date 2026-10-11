@@ -32,7 +32,7 @@ defineEmits<{ retry: [] }>()
 const defaults: Record<StateKind, { icon: string; title: string; message?: string }> = {
   loading: { icon: 'pi pi-spinner', title: 'Wird geladen …' },
   empty: { icon: 'pi pi-inbox', title: 'Noch keine Einträge', message: 'Sobald Daten vorhanden sind, erscheinen sie hier.' },
-  forbidden: { icon: 'pi pi-lock', title: 'Keine Berechtigung', message: 'Dir fehlt das Recht für diesen Bereich. Wende dich bei Bedarf an deine Jugendfeuerwehrleitung.' },
+  forbidden: { icon: 'pi pi-lock', title: 'Keine Berechtigung', message: 'Dir fehlt das Recht für diesen Bereich. Wende dich bei Bedarf an deine Leitung.' },
   offline: { icon: 'pi pi-wifi', title: 'Keine Verbindung', message: 'Der Server ist nicht erreichbar. Bereits eingegebene Daten bleiben erhalten.' },
   error: { icon: 'pi pi-exclamation-triangle', title: 'Laden fehlgeschlagen', message: 'Beim Laden ist ein Fehler aufgetreten.' },
 }

@@ -78,6 +78,17 @@ setup() { jf_source_libs; }
     [ "$status" -eq "$EX_USAGE" ]
 }
 
+@test "CSP mode follows CSP_REPORT_ONLY and enforces by default" {
+    render_csp_mode
+    [ "$(grep -v '^#' "$JF_CSP_MODE")" = "default enforce;" ]
+    kv_set "$JF_APP_ENV" CSP_REPORT_ONLY True
+    render_csp_mode
+    [ "$(grep -v '^#' "$JF_CSP_MODE")" = "default report-only;" ]
+    kv_set "$JF_APP_ENV" CSP_REPORT_ONLY false
+    render_csp_mode
+    [ "$(grep -v '^#' "$JF_CSP_MODE")" = "default enforce;" ]
+}
+
 @test "jfctl: unknown command exits 2, missing installation exits 8" {
     run "$OPS_DIR/jfctl" frobnicate
     [ "$status" -eq 2 ]
