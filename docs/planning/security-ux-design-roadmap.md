@@ -612,6 +612,7 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 
 | Paket | Status | Verantwortlich | Letzter Checkpoint / nächster Schritt |
 | --- | --- | --- | --- |
+| REL-32 | in Arbeit | Claude | REL-32.1 Änderungsprotokoll und Releasebeschreibung; nächster Schritt Merge nach main, CI, Tag v3.2.1. |
 | FIX-05 | umgesetzt, Browser geprüft | Claude | FIX-05.1: eine Dienstseite für alle Einstiege, Löschen sichtbar in Planer und Handy-Ansicht; nächster Schritt Merge/Release nur auf Auftrag. |
 | NOTIF-02 | abgeschlossen, v3.2.0 | Claude | Merge `1e85eaa`, main-CI grün, Release v3.2.0 veröffentlicht; offen nur echte SMTP-/Web-Push-Zustellung. |
 | REL-31 | abgeschlossen | Codex | v3.1.0 veröffentlicht (main-CI und Release-Lauf bestanden), Handbuch auf GitHub Pages veröffentlicht. |
@@ -671,6 +672,13 @@ Die Tabelle während der Umsetzung pflegen. Jeder übernommene Eintrag erhält d
 | NOTIF-01 | abgenommen | Claude (Portal-Sitzung) | NOTIF-01.6: PostgreSQL 17, echter Mailweg mit Quick Action im Browser; offen: echter SMTP-/Push-Versand als Nutzerabnahme. |
 | PORTAL-04 | umgesetzt, Browserabnahme offen | Claude (Subagent, Übernahme Planungssitzung) | PORTAL-04.5: CI-Satz SQLite und PostgreSQL 17 bestanden; Browser/Nutzerabnahme offen. |
 | PORTAL-04 | geplant | — | Verwaltendenkonto 1:1 an Mitglied mit Login-Bestätigung, Eigenänderungsprotokoll, Vier-Augen für eigene Qualifikationen. |
+
+### REL-32: Release v3.2.1 mit Änderungsprotokoll
+
+- **Auftrag (Nutzer, 12.10.2026):** FIX-05 per Merge-Commit nach `main`, nach grüner CI als v3.2.1 taggen; die Releasebeschreibung soll die Änderungen als Changelog enthalten.
+- **Umsetzung:** `CHANGELOG.md` (Abschnitte 3.2.1 und rückwirkend 3.2.0, nutzerorientiert), `ops/release/changelog-notes.sh` gibt den Abschnitt einer Version aus (Exit 1 ohne Abschnitt), `build-push.yml` stellt ihn vor Installationshinweise und Image-Digests (fehlt er, nur ein Hinweis, Release läuft weiter), Skript in der Shellcheck-Liste der CI, Regel in `AGENTS.md`. Die Beschreibung des bereits veröffentlichten v3.2.0 bleibt unverändert (kein Token zum nachträglichen Bearbeiten).
+- **Teilschritte:** `REL-32.1` Änderungsprotokoll/Workflow (dieser Commit); `REL-32.2` Merge, main-CI, Tag, Releaseprüfung.
+- **Nächster konkreter Schritt:** `REL-32.2`.
 
 ### FIX-05: Löschen sichtbar, eine Dienstseite
 
@@ -2370,3 +2378,4 @@ Menü und Bedienungsdokumentation ergänzt. Sicherheitskopien 30 Tage/letzte zwe
 | 11.10.2026 | NOTIF-02.3 | Schnellerfassung ohne Suche, Meldungen in der Mobilansicht, Löschen mit Planungsrecht (Nutzerentscheidung), Browserabnahme. | Bestanden: Browser 390/1440 px (Demo, Headless Chrome), Frontend Typecheck/ESLint/150 Dateien 704 Tests/Build, Ruff-Lint/Format, Migrationsabgleich, CI-Modulsatz SQLite 1525 Tests mit 9 Fehlschlägen nur in den vorbestehenden Mailversand-Tests (identisch auf main). Nicht ausgeführt: PostgreSQL 17 lokal, Push/SMTP. | Dieser Commit: `feat(NOTIF-02.3): quick entry, registrations on phones, delete with planning right` | Merge nach main, Release |
 | 11.10.2026 | NOTIF-02 Release | Merge-Commit `1e85eaa` (in temporärem Worktree, weil `main` in einem fremden Worktree ausgecheckt ist) nach `main` gepusht; main-CI 38169953688 mit allen sechs Jobs grün; Tag `v3.2.0` gesetzt, Release-Lauf 38170527374 veröffentlicht Paket, Manifest und `SHA256SUMS`. | Bestanden: main-CI (Backend-Tests, Lint, Frontend, Build, Operations, Audit), Prüfsummen von Paket und Manifest lokal, Manifest-Version 3.2.0/Commit `1e85eaa`/PostgreSQL 17/Image-Digests, neue Migration und Vorlagen im Paket. Nicht ausgeführt: Attestierungsprüfung (offizielle gh-CLI fehlt), Einzeljobs des Release-Laufs nur über veröffentlichte Assets belegt (API-Limit), Produktionsupdate. | Dieser Commit: `docs(NOTIF-02): record v3.2.0 release` | Produktionsupdate nur auf Auftrag über jfctl |
 | 12.10.2026 | FIX-05.1 | Eine Dienstseite für alle Einstiege mit „Dienstdaten“ zuerst, sichtbares Löschen für abgesagte Übungen im Planer und in der Handy-Ansicht. | Bestanden: Frontend Typecheck, ESLint, 152 Dateien/711 Tests (neu: Dienstseite, Absage-Hinweis, Löschen mobil); Browser (isolierte Demo, Headless Chrome) 1440 px Liste und Planer öffnen dieselbe Seite mit Beschreibung, abgesagte Übung gelöscht, 390 px Handy-Ansicht gelöscht. Backend unverändert, nicht erneut ausgeführt. | Dieser Commit: `fix(FIX-05.1): one service page and visible delete for exercises` | Merge/Release auf Auftrag |
+| 12.10.2026 | REL-32.1 | Änderungsprotokoll `CHANGELOG.md`, Extraktionsskript und Übernahme in die Releasebeschreibung. | Bestanden: Skript unter macOS und Ubuntu 24.04 (Abschnitt 3.2.1/3.2.0, Exit 1 für unbekannte Version), Shellcheck (Docker). Nicht ausgeführt: Release-Workflow (folgt mit dem Tag). | Dieser Commit: `docs(REL-32.1): add changelog and use it as release notes` | REL-32.2 Merge/CI/Tag |

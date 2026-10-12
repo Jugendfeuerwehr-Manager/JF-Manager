@@ -69,6 +69,7 @@ Weitere Details: `docs/architecture/backend-structure.md`, `docs/architecture/fr
 - Lokal starten: `./start-dev.sh` (erwartet `backend/.env`, Vorlage `backend/example.env`, siehe `docs/getting-started.md`). Backend `:8000`, Frontend `:5173`, API unter `/api/v1/`.
 - Demodaten: Management-Command `seed_demo`. Neue Funktionen ergänzen die Demodaten mit fiktiven Personen.
 - Container für Entwicklung: `make dev-up` (`dev/compose.yml`). Produktion ausschließlich über `jfctl` (`docs/operations/ops-jfctl.md`).
+- Releases: vor jedem Tag `vX.Y.Z` in `CHANGELOG.md` einen Abschnitt `## [X.Y.Z] – Datum` mit den für Nutzende sichtbaren Änderungen ergänzen; der Release-Workflow übernimmt ihn in die Releasebeschreibung (`ops/release/changelog-notes.sh`).
 
 ## Pflichtprüfungen vor Abschluss jeder Codeänderung
 

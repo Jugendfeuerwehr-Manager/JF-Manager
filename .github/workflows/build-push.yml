@@ -291,7 +291,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          cat >/tmp/notes.md <<EOF
+          # Changes of this version from CHANGELOG.md; a missing section only leaves a hint.
+          if ! ops/release/changelog-notes.sh "$TAG" >/tmp/changes.md; then
+            echo "Keine Änderungsnotizen für $TAG in CHANGELOG.md." >/tmp/changes.md
+          fi
+          {
+            cat /tmp/changes.md
+            echo
+            echo "---"
+            echo
+          } >/tmp/notes.md
+          cat >>/tmp/notes.md <<EOF
           Installation und Update mit jfctl:
           docs/operations/ops-install.md, docs/operations/ops-backup-restore-update.md
 
