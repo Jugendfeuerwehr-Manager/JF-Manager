@@ -38,7 +38,17 @@
           @click="showParticipation = true"
         />
         <Button v-if="session?.can_manage_plan" label="Plan bearbeiten" icon="pi pi-pencil" severity="secondary" outlined @click="router.push({ name: 'training-planner', params: { id: sessionId }, query: { edit: '1' } })" />
-        <router-link v-if="session?.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
+        <router-link v-if="session?.linked_service_id" :to="`/servicebook/${session.linked_service_id}`">Dienst im Dienstbuch</router-link>
+        <Button
+          v-if="session?.can_manage_plan"
+          label="Löschen"
+          icon="pi pi-trash"
+          size="small"
+          severity="danger"
+          outlined
+          :aria-label="`${session.title} löschen`"
+          @click="confirmDelete"
+        />
         <Button
           icon="pi pi-file-pdf"
           label="Handout"
@@ -145,6 +155,7 @@ import MobileBlockDetailSheet from '@/components/training/molecules/MobileBlockD
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
 import { useParticipationStore } from '@/stores/participation'
 import ParticipationDialog from '@/components/participation/ParticipationDialog.vue'
+import { useTrainingSessionDelete } from '@/composables/useTrainingSessionDelete'
 import type { PlannerBlock } from '@/types/training'
 
 interface Props {
@@ -161,6 +172,7 @@ const selectedBlock = ref<PlannerBlock | null>(null)
 
 // ── Session & blocks ────────────────────────────────────────────────────────
 const session = computed(() => plannerStore.session)
+const { confirmDelete } = useTrainingSessionDelete(session, () => plannerStore.reset())
 // NOTIF-02: registrations and new responses on phones, e.g. for quick entry from paper.
 const participationStore = useParticipationStore()
 const showParticipation = ref(false)

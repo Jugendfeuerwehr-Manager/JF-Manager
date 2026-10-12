@@ -14,7 +14,7 @@
       <template v-if="session" #meta>
         <TrainingStatusBadge :status="session.status" />
         <span>Version {{ session.revision }}</span>
-        <router-link v-if="session.linked_service_id" :to="`/servicebook/${session.linked_service_id}/attendance`">Dienst und Anwesenheit</router-link>
+        <router-link v-if="session.linked_service_id" :to="`/servicebook/${session.linked_service_id}`">Dienst im Dienstbuch</router-link>
         <span v-if="session.location || laneSummary">{{ [laneSummary, session.location].filter(Boolean).join(' · ') }}</span>
       </template>
       <template #status>
@@ -82,6 +82,11 @@
       <Button label="Serverstand laden und Entwurf verwerfen" severity="secondary" @click="discardForServerVersion" />
     </details>
 
+    <p v-if="session && canManage && session.status === 'cancelled'" class="planner-news planner-news--cancelled" role="status">
+      <i class="pi pi-ban" aria-hidden="true"></i>
+      <span>Diese Übung ist abgesagt. Wird sie nicht mehr gebraucht, kann sie gelöscht werden.</span>
+      <Button label="Übung löschen" icon="pi pi-trash" size="small" severity="danger" outlined @click="confirmDelete" />
+    </p>
     <p v-if="session && newResponseCount" class="planner-news" role="status">
       <i class="pi pi-inbox" aria-hidden="true"></i>
       <span>{{ newResponseCount === 1 ? 'Eine neue Rückmeldung' : `${newResponseCount} neue Rückmeldungen` }}</span>
@@ -289,9 +294,8 @@ import type { MenuItem } from 'primevue/menuitem'
 import { useToast } from 'primevue/usetoast'
 import TrainingSessionForm from '../molecules/TrainingSessionForm.vue'
 import { useTrainingPlannerStore } from '@/stores/trainingPlanner'
-import { useTrainingStore } from '@/stores/training'
 import { useParticipationStore } from '@/stores/participation'
-import { useConfirm } from 'primevue/useconfirm'
+import { useTrainingSessionDelete } from '@/composables/useTrainingSessionDelete'
 import type { PlannerBlock, LibraryBlockList, TrainingSessionDetail, TrainingSessionCreate, GroupMini, TrainingBlockMove, TrainingStatus, TrainingDebrief } from '@/types/training'
 import interact from 'interactjs'
 import WorkspaceHeader from '@/components/common/WorkspaceHeader.vue'
@@ -342,8 +346,6 @@ const showDebrief = ref(false)
 const showParticipation = ref(false)
 const participationTab = ref<'settings' | 'registrations'>('settings')
 const participationStore = useParticipationStore()
-const trainingStore = useTrainingStore()
-const confirm = useConfirm()
 // NOTIF-02.3: responses by others since the registrations were last opened.
 const newResponseCount = computed(() => (session.value ? participationStore.newResponses[session.value.id] ?? 0 : 0))
 function openRegistrations() {
@@ -469,6 +471,7 @@ const selectedBlockId = computed(() => plannerStore.selectedBlockId)
 const isDirty = computed(() => plannerStore.isDirty)
 const isSeries = computed(() => !!session.value && (!!session.value.recurrence_rule || !!session.value.series_uuid || session.value.series_parent !== null))
 const session = computed(() => plannerStore.session)
+const { confirmDelete } = useTrainingSessionDelete(session, () => plannerStore.reset())
 const canManage = computed(() => session.value?.can_manage_plan !== false)
 const readingBlock = ref<PlannerBlock | null>(null)
 const totalHeightPx = computed(() => sessionDuration.value * MINUTE_PX)
@@ -735,52 +738,6 @@ async function stageStatus(status: TrainingStatus) {
     }
   }
   plannerStore.stageSession({ status })
-}
-
-function hasFutureLinkedService() {
-  const s = session.value
-  if (!s || s.requires_service_confirmation || !s.linked_service_id || !s.linked_service_start) return false
-  return new Date(s.linked_service_start) >= new Date()
-}
-async function runDelete(deleteLinkedService: boolean) {
-  const s = session.value
-  if (!s) return
-  try {
-    await trainingStore.deleteSession(s.id, { deleteLinkedService })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Löschen fehlgeschlagen', detail: 'Die Übung konnte nicht gelöscht werden.', life: 5000 })
-    return
-  }
-  plannerStore.reset()
-  toast.add({ severity: 'success', summary: 'Übung gelöscht', life: 3000 })
-  void router.push('/training')
-}
-function confirmDelete() {
-  const s = session.value
-  if (!s) return
-  const consequence = 'Plan, Teilnahme-Einstellungen und alle Meldungen werden endgültig entfernt; Teilnehmende werden nicht benachrichtigt. Zum Informieren stattdessen „Absagen“ wählen.'
-  if (hasFutureLinkedService()) {
-    confirm.require({
-      header: 'Übung und verknüpften Dienst löschen?',
-      message: `${consequence} Diese Übung ist mit einem zukünftigen Dienstbuch-Eintrag verknüpft: „Mit Dienstbuch löschen“ entfernt beide, „Nur Übung löschen“ entkoppelt den Eintrag.`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Mit Dienstbuch löschen',
-      rejectLabel: 'Nur Übung löschen',
-      acceptClass: 'p-button-danger',
-      accept: () => { void runDelete(true) },
-      reject: () => { void runDelete(false) },
-    })
-    return
-  }
-  confirm.require({
-    header: `„${s.title}“ löschen?`,
-    message: consequence,
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Löschen',
-    rejectLabel: 'Abbrechen',
-    acceptClass: 'p-button-danger',
-    accept: () => { void runDelete(false) },
-  })
 }
 
 function focusBlock(id: number) {
