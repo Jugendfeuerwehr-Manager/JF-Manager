@@ -7,17 +7,14 @@
         <p class="attendance-head__eyebrow">{{ dateLine }}</p>
         <h1>{{ service.topic || 'Dienst ohne Thema' }}</h1>
         <p v-if="service.place" class="attendance-head__meta">{{ service.place }}</p>
-        <DeleteServiceButton :service="service" />
-        <router-link :to="{ name: 'service-edit', params: { id: serviceId } }" class="secondary-link">
-          <i class="pi pi-pencil" aria-hidden="true"></i>Dienst bearbeiten
-        </router-link>
+        <DeleteServiceButton :service="service" :disabled="saving" />
       </template>
     </header>
 
     <template v-if="!state">
       <div class="tabs" role="tablist" aria-label="Dienstbereiche" @keydown="onTabKey">
         <button
-          v-for="t in tabs"
+          v-for="t in visibleTabs"
           :id="`tab-${t.id}`"
           :key="t.id"
           type="button"
@@ -31,8 +28,25 @@
       </div>
 
       <div :id="`panel-${tab}`" role="tabpanel" :aria-labelledby="`tab-${tab}`" class="panel" tabindex="0">
+        <template v-if="tab === 'details'">
+          <ServiceForm
+            v-if="canEdit"
+            :initial-data="servicebookStore.currentService"
+            :loading="saving"
+            submit-label="Änderungen speichern"
+            @submit="save"
+            @cancel="router.push({ name: 'servicebook' })"
+          />
+          <dl v-else-if="service" class="service-facts">
+            <div><dt>Termin</dt><dd>{{ dateLine }}</dd></div>
+            <div><dt>Ort</dt><dd>{{ service.place || '–' }}</dd></div>
+            <div><dt>Leitung</dt><dd>{{ leaders || '–' }}</dd></div>
+            <div><dt>Beschreibung</dt><dd class="service-facts__text">{{ service.description || '–' }}</dd></div>
+            <div><dt>Besondere Vorkommnisse</dt><dd class="service-facts__text">{{ service.events || '–' }}</dd></div>
+          </dl>
+        </template>
         <ServiceRegistrations
-          v-if="tab === 'registrations'"
+          v-else-if="tab === 'registrations'"
           :data="store.registrations"
           :loading="store.registrationsLoading"
           :error="store.registrationsError"
@@ -72,10 +86,19 @@ import AttendanceManager from '@/components/servicebook/organisms/AttendanceMana
 import ServiceRegistrations from '@/components/servicebook/organisms/ServiceRegistrations.vue'
 import ServiceEventsNote from '@/components/servicebook/organisms/ServiceEventsNote.vue'
 import ExcusedTakeoverSheet from '@/components/servicebook/organisms/ExcusedTakeoverSheet.vue'
+import ServiceForm from '@/components/servicebook/organisms/ServiceForm.vue'
 import { useServiceRegistrationsStore } from '@/stores/serviceRegistrations'
+import { useServicebookStore } from '@/stores/servicebook'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from 'primevue/usetoast'
+import type { ServiceFormData } from '@/types/servicebook'
+import { getApiErrorMessage } from '@/utils/apiError'
 
-type TabId = 'registrations' | 'attendance' | 'staff' | 'events'
+// One service page for every entry point (list, planner, run, dashboard): data, registrations,
+// attendance, staff and notes. The route only picks the first tab.
+type TabId = 'details' | 'registrations' | 'attendance' | 'staff' | 'events'
 const tabs: Array<{ id: TabId; label: string }> = [
+  { id: 'details', label: 'Dienstdaten' },
   { id: 'registrations', label: 'Meldungen' },
   { id: 'attendance', label: 'Anwesenheit' },
   { id: 'staff', label: 'Betreuende' },
@@ -84,18 +107,34 @@ const tabs: Array<{ id: TabId; label: string }> = [
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const store = useServiceRegistrationsStore()
+const servicebookStore = useServicebookStore()
+const auth = useAuthStore()
+const saving = ref(false)
 const serviceId = computed(() => Number(route.params.id))
 const service = ref<ServiceDetail | null>(null)
 const state = ref<'forbidden' | 'offline' | 'error' | null>(null)
 const sheetOpen = ref(false)
 const manager = ref<{ refresh: () => Promise<void> } | null>(null)
 
-/** The attendance route keeps opening on "Anwesenheit"; the detail route starts at "Meldungen". */
+/** Department-scoped right to edit the service data (same rule as deleting). */
+const canEdit = computed(() => {
+  const user = auth.user
+  if (!user || !service.value) return false
+  if (user.is_superuser) return true
+  const has = (permissions: string[]) => permissions.includes('servicebook.change_service') || permissions.includes('change_service')
+  return has(user.permissions) || user.department_roles.some((role) => role.department_id === service.value?.department && has(role.permissions))
+})
+// The data tab already contains the notes field for editors.
+const visibleTabs = computed(() => tabs.filter((t) => !(t.id === 'events' && canEdit.value)))
+const leaders = computed(() => (service.value?.operations_manager ?? []).map((m) => m.full_name || m.username).join(', '))
+
+/** The attendance route keeps opening on "Anwesenheit" (taking attendance on site); all others on "Dienstdaten". */
 function initialTab(): TabId {
   const q = route.query.tab
   if (typeof q === 'string' && tabs.some((t) => t.id === q)) return q as TabId
-  return route.name === 'service-attendance' ? 'attendance' : 'registrations'
+  return route.name === 'service-attendance' ? 'attendance' : 'details'
 }
 const tab = ref<TabId>(initialTab())
 
@@ -108,18 +147,34 @@ function onTabKey(event: KeyboardEvent) {
   const keys = ['ArrowRight', 'ArrowLeft', 'Home', 'End']
   if (!keys.includes(event.key)) return
   event.preventDefault()
-  const i = tabs.findIndex((t) => t.id === tab.value)
-  const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (i + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
-  selectTab(tabs[next]!.id)
-  void nextTick(() => document.getElementById(`tab-${tabs[next]!.id}`)?.focus())
+  const list = visibleTabs.value
+  const i = list.findIndex((t) => t.id === tab.value)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? list.length - 1 : (i + (event.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length
+  selectTab(list[next]!.id)
+  void nextTick(() => document.getElementById(`tab-${list[next]!.id}`)?.focus())
 }
 
 async function load() {
   state.value = null
   try {
     service.value = (await servicesApi.get(serviceId.value)).data
+    // The form edits the store copy; failures there show in the page state above.
+    void Promise.resolve(servicebookStore.fetchService(serviceId.value)).catch(() => {})
   } catch (error) {
     state.value = stateForError(classifyApiError(error))
+  }
+}
+
+async function save(data: ServiceFormData) {
+  saving.value = true
+  try {
+    await servicebookStore.updateService(serviceId.value, data)
+    service.value = (await servicesApi.get(serviceId.value)).data
+    toast.add({ severity: 'success', summary: 'Gespeichert', detail: 'Dienst wurde aktualisiert', life: 3000 })
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: getApiErrorMessage(err, 'Fehler beim Speichern des Dienstes'), life: 5000 })
+  } finally {
+    saving.value = false
   }
 }
 
@@ -146,7 +201,7 @@ onMounted(() => {
   void load()
   void loadRegistrations(false)
   // Registrations change slowly; attendance has its own 3 s sync.
-  timer = setInterval(() => { if (!document.hidden && tab.value !== 'events') void loadRegistrations(true) }, 15000)
+  timer = setInterval(() => { if (!document.hidden && tab.value !== 'events' && tab.value !== 'details') void loadRegistrations(true) }, 15000)
 })
 onUnmounted(() => clearInterval(timer))
 watch(serviceId, () => { store.reset(); void load(); void loadRegistrations(false) })
@@ -202,6 +257,12 @@ watch(serviceId, () => { store.reset(); void load(); void loadRegistrations(fals
   margin: 0;
   color: var(--jf-color-text-muted);
 }
+
+.service-facts { display: grid; gap: var(--jf-space-1-5); margin: 0; }
+.service-facts div { display: grid; gap: 2px; }
+.service-facts dt { color: var(--jf-color-text-muted); font-size: var(--jf-text-sm); font-weight: var(--jf-weight-semibold); }
+.service-facts dd { margin: 0; }
+.service-facts__text { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .tabs {
   display: flex;

@@ -213,7 +213,7 @@ jobs:
           sudo apt-get install -y shellcheck bats
 
       - name: ShellCheck
-        run: shellcheck -x ops/jfctl ops/lib/*.sh ops/release/build-release.sh ops/proxmox/jf-lxc.sh backend/docker-entrypoint.sh
+        run: shellcheck -x ops/jfctl ops/lib/*.sh ops/release/build-release.sh ops/release/changelog-notes.sh ops/proxmox/jf-lxc.sh backend/docker-entrypoint.sh
 
       - name: jfctl tests
         run: bats ops/tests

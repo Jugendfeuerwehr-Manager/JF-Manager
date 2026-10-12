@@ -113,6 +113,17 @@ describe('planner deletion and new responses', () => {
     wrapper.unmount()
   })
 
+  it('offers deleting directly on a cancelled exercise', async () => {
+    mocks.plan.mockResolvedValue({ data: { ...(await mocks.plan.getMockImplementation()?.() ?? {}), id: 1, revision: 1, title: 'Abgesagt', date: '2030-01-01', start_time: '18:00:00', end_time: '20:00:00',
+      description: '', location: '', notes: '', department: 1, groups: [], recurrence_rule: null, status: 'cancelled', blocks: [] } })
+    const wrapper = mountAt(1700)
+    await flushPromises()
+    expect(wrapper.get('.planner-news--cancelled').text()).toContain('Diese Übung ist abgesagt')
+    await wrapper.findAll('.planner-news--cancelled button').find((b) => b.text() === 'Übung löschen')!.trigger('click')
+    expect(mocks.confirm).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('announces new responses with a way to the registrations', async () => {
     mocks.news.mockResolvedValue({ data: { sessions: { 1: 3 } } })
     const wrapper = mountAt(1700)

@@ -162,7 +162,8 @@ const router = createRouter({
         {
           path: 'servicebook/:id/edit',
           name: 'service-edit',
-          component: () => import('@/views/ServiceFormView.vue')
+          // Same page as detail and attendance; it opens on "Dienstdaten".
+          component: () => import('@/views/ServiceAttendanceView.vue')
         },
         {
           path: 'servicebook/:id(\\d+)',
