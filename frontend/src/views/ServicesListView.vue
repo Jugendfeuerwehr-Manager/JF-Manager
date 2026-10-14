@@ -115,6 +115,7 @@ import { useQueryTableState } from '@/composables/useQueryTableState'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { servicesApi } from '@/api/servicebook'
 import type { Service } from '@/types/servicebook'
+import { toIsoDateLocal } from '@/utils/dateParsing'
 
 const router = useRouter()
 const servicebookStore = useServicebookStore()
@@ -198,7 +199,7 @@ function todayStatus(service: Service) {
 }
 
 function urlState() {
-  return { search: filters.value.search, topic: filters.value.topic, place: filters.value.place, operations_manager: filters.value.operations_manager, dateFrom: filters.value.dateFrom?.toISOString().split('T')[0], dateTo: filters.value.dateTo?.toISOString().split('T')[0], page: currentPage.value, rows: pageSize.value, scope: scope.value }
+  return { search: filters.value.search, topic: filters.value.topic, place: filters.value.place, operations_manager: filters.value.operations_manager, dateFrom: filters.value.dateFrom ? toIsoDateLocal(filters.value.dateFrom) : undefined, dateTo: filters.value.dateTo ? toIsoDateLocal(filters.value.dateTo) : undefined, page: currentPage.value, rows: pageSize.value, scope: scope.value }
 }
 
 async function setScope(next: 'upcoming' | 'past') {

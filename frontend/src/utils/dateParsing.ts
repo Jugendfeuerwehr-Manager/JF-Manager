@@ -55,3 +55,13 @@ export function formatDateGerman(date: Date | null | undefined): string {
   const year = date.getFullYear()
   return `${day}.${month}.${year}`
 }
+
+/**
+ * Formats a Date as yyyy-mm-dd using its local calendar day.
+ * Unlike toISOString(), this does not shift the day when the local time zone is ahead of UTC.
+ */
+export function toIsoDateLocal(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}

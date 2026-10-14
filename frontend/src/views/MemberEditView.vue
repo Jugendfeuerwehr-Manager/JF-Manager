@@ -411,7 +411,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import MemberStatusBadge from '@/components/members/atoms/MemberStatusBadge.vue'
 import Dialog from 'primevue/dialog'
 import { getApiErrorMessage } from '@/utils/apiError'
-import { parseFlexibleDate, formatDateGerman } from '@/utils/dateParsing'
+import { parseFlexibleDate, formatDateGerman, toIsoDateLocal } from '@/utils/dateParsing'
 import { useMemberDuplicates } from '@/composables/useMemberDuplicates'
 
 const route = useRoute()
@@ -781,7 +781,7 @@ async function handleSubmit() {
     formDataToSend.append('lastname', formData.lastname)
     
     if (formData.birthday) {
-      const birthdayStr = formData.birthday.toISOString().split('T')[0]
+      const birthdayStr = toIsoDateLocal(formData.birthday)
       if (birthdayStr) {
         formDataToSend.append('birthday', birthdayStr)
       }
@@ -794,7 +794,7 @@ async function handleSubmit() {
     if (formData.mobile) formDataToSend.append('mobile', formData.mobile)
     formDataToSend.append('notes', formData.notes)
     if (formData.joined) {
-      const joinedStr = formData.joined.toISOString().split('T')[0]
+      const joinedStr = toIsoDateLocal(formData.joined)
       if (joinedStr) {
         formDataToSend.append('joined', joinedStr)
       }

@@ -16,6 +16,7 @@ import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import SelectButton from 'primevue/selectbutton'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { parseFlexibleDate } from '@/utils/dateParsing'
 
 interface Props {
   qualificationId?: number
@@ -71,7 +72,7 @@ function toISODateString(date: Date): string {
 // Computed properties for date fields (Calendar expects Date objects)
 const dateAcquiredModel = computed<Date | null>({
   get() {
-    return formData.value.date_acquired ? new Date(formData.value.date_acquired) : null
+    return formData.value.date_acquired ? parseFlexibleDate(formData.value.date_acquired) : null
   },
   set(value) {
     formData.value.date_acquired = value ? toISODateString(value) : ''
@@ -243,10 +244,14 @@ function recalculateExpiry() {
   const months = validityMonths.value
 
   if (dateAcquired && months && months > 0) {
-    const acquired = new Date(dateAcquired)
+    const acquired = parseFlexibleDate(dateAcquired)
+    if (!acquired) {
+      formData.value.date_expires = null
+      return
+    }
     const expires = new Date(acquired)
     expires.setMonth(expires.getMonth() + months)
-    formData.value.date_expires = expires.toISOString().split('T')[0]
+    formData.value.date_expires = toISODateString(expires)
   } else {
     formData.value.date_expires = null
   }
