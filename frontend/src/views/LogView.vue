@@ -312,6 +312,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
+import { toIsoDateLocal } from '@/utils/dateParsing'
 
 const eventsStore = useEventsStore()
 const membersStore = useMembersStore()
@@ -490,8 +491,8 @@ async function submitCreateList() {
       name: newListName.value.trim(),
       event_type_id: selectedTypeId.value,
       invert: invertSelection.value,
-      date_from: dateFrom.value ? dateFrom.value.toISOString().split('T')[0] : null,
-      date_to: dateTo.value ? dateTo.value.toISOString().split('T')[0] : null,
+      date_from: dateFrom.value ? toIsoDateLocal(dateFrom.value) : null,
+      date_to: dateTo.value ? toIsoDateLocal(dateTo.value) : null,
     })
     showCreateListDialog.value = false
     toast.add({

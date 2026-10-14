@@ -1,89 +1,99 @@
-# Arbeitsregeln für die Roadmap
+# AGENTS.md – Arbeitsregeln für Coding-Agents im JF-Manager
 
-Vor Änderungen an Sicherheit, Rollen, Übungsplanung, Bedienung oder Betrieb zuerst `docs/planning/security-ux-design-roadmap.md` lesen. Den Wiederaufnahmestand, Paketstatus und die letzten Journaleinträge mit Git-Diff und tatsächlichem Code abgleichen.
+Diese Datei gilt für alle Agents (Claude Code, Copilot, Codex …). Sie beschreibt, **wie** im Projekt gearbeitet wird und **welche Architekturregeln nicht verhandelbar sind**. Details stehen in `docs/architecture/`; bei Widerspruch zwischen dieser Datei, der Doku und dem Code zuerst den Code prüfen und die Abweichung im PR benennen, statt still einer Seite zu folgen.
 
-- Roadmap-Änderungen auf `feat/security-roles-training-operations` integrieren.
-- Vor Paketbeginn den Detailblock in Abschnitt 6 mit Abnahme, Abhängigkeiten und stabilen Teilschritt-IDs ausfüllen.
-- Jeden abgeschlossenen Teilschritt separat committen. Nur eigene zugehörige Dateien oder Hunks stagen und den Staged-Diff prüfen.
-- Im selben Commit Wiederaufnahmeübersicht, Paketstatus und Journal aktualisieren. Prüfergebnisse als bestanden, fehlgeschlagen oder nicht ausgeführt kennzeichnen.
-- Bei Unterbrechung einen wiederaufnehmbaren Checkpoint mit offenen Änderungen, Risiken und nächstem Schritt festhalten.
-- Vorhandene oder fremde Änderungen nicht zurücksetzen oder als eigene Roadmap-Ergebnisse ausgeben. Keine Geheimnisse oder personenbezogenen Echtdaten ins Journal aufnehmen.
+## Projekt in einem Absatz
 
-Die vollständigen fachlichen Anforderungen und Prüfregeln stehen in der Roadmap. Eltern-/Mitgliederportal und Teilnahmesteuerung sind in `docs/planning/portal-participation-concept.md` spezifiziert.
+JF-Manager verwaltet Jugendfeuerwehren und vergleichbare Organisationen (Vereine, Einsatzabteilungen): Mitglieder, Eltern, Portal, Teilnahme, Inventar, Bestellungen, Qualifikationen, Dienstbuch und Übungsplanung. Die Anwendung läuft öffentlich im Internet und verarbeitet sensible Daten von Minderjährigen. Mehrere Abteilungen teilen sich eine Installation und sind strikt voneinander getrennt.
 
-# Projektüberblick
+- **Backend:** Django 5.2, DRF, PostgreSQL (SQLite nur für schnelle lokale Tests), RQ-Worker über Redis, `pipenv` (`backend/Pipfile`).
+- **Frontend:** Vue 3, TypeScript (strict), Pinia (Composition API), PrimeVue, Vite (`frontend/`).
+- **Betrieb:** ausschließlich über `jfctl` (`docs/operations/ops-jfctl.md`).
 
-JF-Manager verwaltet Jugendfeuerwehren: Mitglieder, Eltern, Inventar, Bestellungen, Qualifikationen, Dienstbuch und Übungsplanung. Seit 2018 intern entwickelt, seit 2025 Open Source.
+## Architektur-Leitplanken (verbindlich)
 
-- **Backend:** Django 5.2, Django REST Framework, PostgreSQL (SQLite für schnelle lokale Tests), Abhängigkeiten über `pipenv` (`backend/Pipfile`).
-- **Frontend:** Vue 3, TypeScript, Pinia, PrimeVue, Vite (`frontend/`).
-- **Anmeldung:** Cookie-Sitzungen mit CSRF (`users.session_auth.SessionAuthentication`), MFA und Passkeys. Kein JWT.
-- **Rechte:** `DEFAULT_PERMISSION_CLASSES = jf_manager_backend.permissions.CustomDefaultPermissions`; Abteilungstrennung und Rollenmodell siehe `docs/architecture/departments-and-permissions.md` und `docs/planning/role-permission-manifest.md`.
+### 1. Das Backend entscheidet über Rechte – immer
 
-## Backend-Struktur
+- Jeder Endpunkt prüft Anmeldung **und** Recht serverseitig. Das Frontend blendet nur aus; es ist nie die Sicherheitsgrenze.
+- Standard: `jf_manager_backend.permissions.CustomDefaultPermissions` (Django-Modellrechte plus Abteilungsrollen). `permission_classes` nur mit Begründung im Code überschreiben.
+- Abteilungsdaten laufen über `departments.mixins.DepartmentScopeViewSetMixin` bzw. eigene Queryset-Helfer nach dem Muster `inventory/api/access.py`.
+- **Sichtbarkeit darf breiter sein als Änderbarkeit:** zentrale Datensätze (`department=NULL`) dürfen sichtbar sein, Schreiben bleibt bei der besitzenden Abteilung.
+- Organisationsweiter Zugriff (`can_access_all_departments`) erteilt **keine** Modellrechte; Abteilungsrollen wirken nur in ihrer Abteilung; `is_staff` allein gewährt nichts.
+- Der `department`-Parameter aus dem Frontend ist Kontext, keine Rechteaussage. Fehlende oder manipulierte Parameter dürfen nie mehr Rechte ergeben.
+- Jeder neue oder geänderte Endpunkt bekommt Tests für: anonym, fehlendes Recht, fremde Abteilung, berechtigter Fall.
+- Referenz: `docs/architecture/departments-and-permissions.md`, `docs/planning/role-permission-manifest.md`.
+
+### 2. Anmeldung: nur Cookie-Sitzungen
+
+- Sitzung + CSRF (`users.session_auth.SessionAuthentication`), MFA und Passkeys. **Kein JWT, keine Token-Anmeldung, keine API-Keys** – auch nicht „nur für einen Test“ oder ein Skript.
+
+### 3. Backend-Schichten
 
 ```
 backend/{app}/
-├── api/              # REST-API (hier entwickeln)
-│   ├── serializers/  # fachlich getrennte Serializer
-│   ├── viewsets/     # DRF-ViewSets mit Aktionen
-│   ├── filters.py    # django-filter-Klassen
+├── api/
+│   ├── viewsets/      # dünne DRF-ViewSets: Rechte, Serializer, Aufruf der Fachlogik
+│   ├── serializers/   # je Aktion passende Serializer
+│   ├── filters.py
 │   └── permissions.py
-├── views.py          # Altbestand (Django-Templates), keine neuen Endpunkte
+├── services/          # Fachlogik, Zustandsübergänge, Transaktionen
 ├── models/
-└── notifications/    # Fachlogik als Services (Beispiel: orders)
+└── tests/
 ```
 
-- Neue Endpunkte immer in `{app}/api/viewsets/`, registriert in `backend/jf_manager_backend/rest_urls.py`. Referenzimplementierung: `backend/orders/api/`.
-- Listen-Endpunkte sind paginiert (`LimitOffsetPagination`, `PAGE_SIZE` 100): Antwort `{count, next, previous, results}`.
-- Serializer je Aktion über `get_serializer_class()` wählen (Liste schlank, Anlage mit Validierung, Detail vollständig).
-- Eigene Endpunkte über `@action(detail=True|False, methods=[...])`.
-- Rechte über die vorhandenen Permission-Klassen erzwingen; `permission_classes` nur mit Begründung überschreiben. Rechte und Anmeldung jedes neuen Endpunkts testen (fehlende Rechte, fremde Abteilung).
-- Bestellstatus nur über `orders.notifications.OrderWorkflowService` ändern (`get_available_transitions`, `validate_status_change`).
-- Schemaänderungen immer mit Migration. Das OpenAPI-Schema liefert die Anwendung zur Laufzeit; keine Schemadatei ins Repository einchecken.
+- ViewSets bleiben dünn. Fachregeln, Zustandsübergänge und alles, was mehrere Modelle in einer Transaktion ändert, gehören in Services bzw. Fachmodule, nicht in ViewSets oder Serializer.
+- Zustandsautomaten nur über ihren Service ändern (z. B. Bestellstatus über `orders.notifications.OrderWorkflowService`).
+- Neue Endpunkte: ViewSet in `{app}/api/viewsets/`, Basis `BasePermissionedViewSet` (`jf_manager_backend/mixins.py`), Registrierung in `jf_manager_backend/rest_urls.py`, eigene Aktionen per `@action`. Referenzimplementierung: `backend/orders/api/`.
+- Listen sind paginiert (`LimitOffsetPagination`, `{count, next, previous, results}`).
+- Seiteneffekte (E-Mail, Push, Sync) laufen asynchron über den RQ-Worker bzw. die vorhandenen Producer/Dispatcher in `notifications/`, nicht synchron im Request.
+- **Bestehende Abweichungen:** `portal/`, `participation/` und `notifications/` nutzen `APIView`s in `*views.py` und eigene `urls.py`. Dort im vorhandenen Stil weiterarbeiten und nicht in derselben Änderung umbauen. Neue Apps folgen dem obigen Schema.
+- `views.py` mit Django-Templates ist Altbestand: keine neuen Template-Views.
+- Jede Modelländerung mit Migration; Migrationen nicht von Hand editieren. Kein OpenAPI-Schema ins Repository einchecken (wird zur Laufzeit erzeugt).
 
-## Frontend-Struktur
+### 4. Frontend-Schichten
 
 ```
 frontend/src/
-├── types/<domäne>.ts       # TypeScript-Schnittstellen, PaginatedResponse<T>
-├── api/<domäne>.ts         # HTTP-Client auf Basis von api/index.ts (Sitzung, CSRF)
-├── stores/<domäne>.ts      # Pinia-Store, Composition API
-└── components/<domäne>/
-    ├── atoms/
-    ├── molecules/
-    └── organisms/
+├── types/<domäne>.ts        # Schnittstellen, PaginatedResponse<T>
+├── api/<domäne>.ts          # HTTP über api/index.ts (Sitzung, CSRF, Abteilungskontext)
+├── stores/<domäne>.ts       # Pinia, defineStore('x', () => { … }), Lade-/Fehlerzustand
+├── composables/             # wiederverwendbare UI-Logik ohne eigenen Datenbesitz
+├── utils/                   # reine Hilfsfunktionen
+├── views/                   # Routenseiten, setzen Organismen zusammen
+└── components/<domäne>/{atoms,molecules,organisms}/
 ```
 
-- Komponenten sind Darstellung; Fachlogik und API-Aufrufe liegen in Pinia-Stores (`defineStore('name', () => { … })` mit `ref`, `computed`, async Aktionen und Lade-/Fehlerzustand).
-- Store-Zustand nie direkt aus Komponenten verändern, sondern über Store-Aktionen.
-- Bei Listen `response.data.results` übernehmen, nicht `response.data`.
-- Keine Mockdaten in Komponenten; echte Daten über Stores laden.
-- Props und Emits typisiert (`defineProps<Props>()`, `defineEmits<{ … }>()`).
-- Design: DES-01-Tokens, Status nie nur über Farbe, Touchflächen ≥ 44 px, mobil zuerst.
+- Datenfluss: Komponente → Store-Aktion → `api/` → Backend. **Neue Komponenten rufen `api/` nicht direkt auf**; bestehende Direktaufrufe (Altbestand) nicht vermehren, beim Anfassen gern in den Store ziehen.
+- Store-Zustand nur über Store-Aktionen ändern. Bei Listen `response.data.results` übernehmen.
+- Typisierte Props/Emits (`defineProps<Props>()`, `defineEmits<{…}>()`); kein `any` außer an Integrationsgrenzen.
+- Keine Mockdaten in Komponenten.
 
-Weitere Details: `docs/architecture/backend-structure.md`, `docs/architecture/frontend-structure.md`, `CONTRIBUTING.md`.
+Muster (Referenz: `frontend/src/api/orders.ts`, `frontend/src/stores/orders.ts`):
 
-## Entwicklung
+```typescript
+// api/orders.ts – nur HTTP, keine Logik
+export const ordersApi = {
+  list: (params?: OrderListParams) =>
+    apiClient.get<PaginatedResponse<Order>>('/orders/', { params }),
+}
 
-- Lokal starten: `./start-dev.sh` (erwartet `backend/.env`, Vorlage `backend/example.env`, siehe `docs/getting-started.md`). Backend `:8000`, Frontend `:5173`, API unter `/api/v1/`.
-- Demodaten: Management-Command `seed_demo`. Neue Funktionen ergänzen die Demodaten mit fiktiven Personen.
-- Container für Entwicklung: `make dev-up` (`dev/compose.yml`). Produktion ausschließlich über `jfctl` (`docs/operations/ops-jfctl.md`).
-- Releases: vor jedem Tag `vX.Y.Z` in `CHANGELOG.md` einen Abschnitt `## [X.Y.Z] – Datum` mit den für Nutzende sichtbaren Änderungen ergänzen; der Release-Workflow übernimmt ihn in die Releasebeschreibung (`ops/release/changelog-notes.sh`).
+// stores/orders.ts – Zustand, Laden, Fehler
+export const useOrdersStore = defineStore('orders', () => {
+  const orders = ref<Order[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-## Pflichtprüfungen vor Abschluss jeder Codeänderung
-
-Alle Prüfungen lokal ausführen und jeden Fehler beheben:
-
-- Frontend-Typprüfung: `cd frontend && npm run type-check`
-- Frontend-Lint: `cd frontend && npm run lint`
-- Frontend-Tests: `cd frontend && npm run test:unit -- --run`
-- Backend-Lint/Format: `cd backend && pipenv run ruff check . && pipenv run ruff format --check .`
-- Backend-Tests mit expliziten Modulen (`pipenv run python manage.py test <module>`); `manage.py test` ohne Module scheitert am Namenskonflikt `inventory/tests.py` / `inventory/tests/`.
-- Bei Modelländerungen: `pipenv run python manage.py makemigrations --check`.
-
-## Allgemeine Regeln
-
-- Keine Markdown-Dateien ohne ausdrücklichen Auftrag anlegen; Ausnahme sind die Roadmap und Planungsdokumente unter `docs/planning/`.
-- Code folgt den vorhandenen Mustern und Konventionen des jeweiligen Moduls.
-- Für neue Funktionen Tests anlegen (Unit, Integration, bei Bedarf Browser).
+  async function fetchOrders(params?: OrderListParams) {
+    loading.value = true
+    error.value = null
+    try {
+      orders.value = (await ordersApi.list(params)).data.results // nicht .data
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Bestellungen konnten nicht geladen werden') // utils/apiError.ts
+    } finally {
+      loading.value = false
+    }
+  }
+  return { orders, loading, error, fetchOrders }
+})
+```

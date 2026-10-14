@@ -162,6 +162,7 @@ import DataView from 'primevue/dataview'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { toIsoDateLocal } from '@/utils/dateParsing'
 
 interface Props {
   memberId: number
@@ -274,7 +275,7 @@ const saveEvent = async () => {
   saving.value = true
 
   try {
-    const datetimeStr = eventForm.value.datetime!.toISOString().split('T')[0]
+    const datetimeStr = toIsoDateLocal(eventForm.value.datetime!)
     if (!datetimeStr) {
       throw new Error('Invalid date')
     }
