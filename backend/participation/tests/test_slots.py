@@ -125,7 +125,10 @@ class SlotConfigApiTests(StaffApiBase):
         bad = {"v": 1, "match": "all", "rules": [{"kind": "age", "op": "between", "min": 9, "max": 5}]}
         response = self.put({"revision": 1, "slots": [{"label": "Wachführung", "min": 1, "max": 1, "rule": bad}]})
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["slots"][0]["rule"], {"rules[0].max": "Mindestalter größer als Höchstalter"})
+        errors = response.json()["slots"]
+        # DRF >= 3.18 keys nested list errors by index, older versions return a list.
+        slot_errors = errors["0"] if isinstance(errors, dict) else errors[0]
+        self.assertEqual(slot_errors["rule"], {"rules[0].max": "Mindestalter größer als Höchstalter"})
 
     def test_validation(self):
         cases = {
