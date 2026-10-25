@@ -77,8 +77,12 @@ function fieldErrorsOf(data: Record<string, unknown> | undefined): { fields: Rec
   const fields: Record<string, string> = {}
   let rule: RuleErrors = {}
   for (const [key, value] of Object.entries(data ?? {})) {
-    if (key === 'slots' && Array.isArray(value) && value.some(item => item && typeof item === 'object')) {
-      value.forEach((item, index) => {
+    // DRF >= 3.18 reports nested list errors as `{"0": {...}}`, older versions as `[{...}]`.
+    const slotErrors: [number, unknown][] | null = key !== 'slots' || !value || typeof value !== 'object' ? null
+      : Array.isArray(value) ? value.map((item, index) => [index, item])
+        : Object.entries(value).map(([index, item]) => [Number(index), item])
+    if (slotErrors?.some(([, item]) => item && typeof item === 'object')) {
+      slotErrors.forEach(([index, item]) => {
         if (!item || typeof item !== 'object') return
         for (const [field, message] of Object.entries(item as Record<string, unknown>)) {
           if (field === 'rule' && message && typeof message === 'object' && !Array.isArray(message)) {
