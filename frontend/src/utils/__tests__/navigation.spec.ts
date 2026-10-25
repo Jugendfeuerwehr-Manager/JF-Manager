@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { safeReturnPath } from '../navigation'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { hardNavigate, safeReturnPath } from '../navigation'
 
 describe('safeReturnPath', () => {
   it('keeps relative paths with one leading slash, also quick-action links', () => {
@@ -12,5 +12,22 @@ describe('safeReturnPath', () => {
     '/\\evil.example', '\\\\evil.example', 'evil.example', '', '/login', '/a/x\n//evil', undefined, null, 5,
   ])('rejects %j', (value) => {
     expect(safeReturnPath(value)).toBe('/')
+  })
+})
+
+describe('hardNavigate', () => {
+  const assign = vi.fn()
+  afterEach(() => { assign.mockReset(); vi.unstubAllGlobals() })
+
+  it.each([
+    ['/login?next=%2Fa', '/login?next=%2Fa'],
+    ['/admin/', '/admin/'],
+    ['//evil.example', '/'],
+    ['https://evil.example', '/'],
+    ['/\\evil.example', '/'],
+  ])('navigates %j to %j', (path, expected) => {
+    vi.stubGlobal('location', { assign })
+    hardNavigate(path)
+    expect(assign).toHaveBeenCalledWith(expected)
   })
 })

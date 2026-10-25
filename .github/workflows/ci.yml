@@ -12,6 +12,9 @@ on:
   # image or release package is published (OPS-03.3).
   workflow_call:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true

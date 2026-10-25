@@ -41,6 +41,8 @@ jobs:
   tests:
     name: Tests for release tag
     if: github.event_name == 'push'
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
 
   build-backend:
