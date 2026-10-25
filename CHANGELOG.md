@@ -2,6 +2,17 @@
 
 Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim Release automatisch in die GitHub-Releasebeschreibung übernommen.
 
+## [3.2.2] – 2026-10-25
+
+### Behoben
+
+- **Datumsfelder behalten den gewählten Tag.** Beim Speichern eines Datumsfelds (etwa Geburtstag, Qualifikation oder Dienst) wurde in Zeitzonen östlich von UTC, also auch in Deutschland, der Vortag gespeichert (aus 01.05. wurde 30.04.). Der ausgewählte Tag bleibt jetzt erhalten, und auch der Ablauf von Qualifikationen wird mit dem richtigen Kalendertag berechnet.
+
+### Sicherheit
+
+- Abhängigkeiten mit bekannten Sicherheitslücken aktualisiert: Pillow (Bildverarbeitung), Django REST Framework, certifi und DOMPurify. Dabei wurde die Fehlerauswertung der Slot-Konfiguration an die neue Fehlerform des Frameworks angepasst.
+- Die Pipeline-Workflows erhalten nur noch Lesezugriff auf das Repository, und die Weiterleitung per `hardNavigate` folgt ausschließlich Pfaden der eigenen Anwendung.
+
 ## [3.2.1] – 2026-10-12
 
 ### Geändert
