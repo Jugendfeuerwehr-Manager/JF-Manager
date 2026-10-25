@@ -6,7 +6,7 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 ### Behoben
 
-- **Datumsfelder behalten den gewählten Tag.** Beim Speichern eines Datumsfelds (etwa Geburtstag) konnte der gewählte Kalendertag je nach Zeitzone um einen Tag verrutschen. Der ausgewählte Tag bleibt jetzt erhalten.
+- **Datumsfelder behalten den gewählten Tag.** Beim Speichern eines Datumsfelds (etwa Geburtstag, Qualifikation oder Dienst) wurde in Zeitzonen östlich von UTC, also auch in Deutschland, der Vortag gespeichert (aus 01.05. wurde 30.04.). Der ausgewählte Tag bleibt jetzt erhalten, und auch der Ablauf von Qualifikationen wird mit dem richtigen Kalendertag berechnet.
 
 ### Sicherheit
 
