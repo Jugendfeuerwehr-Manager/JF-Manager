@@ -79,14 +79,18 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Create service and return detailed response."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        from rest_framework.exceptions import PermissionDenied
+        from rest_framework.exceptions import PermissionDenied, ValidationError
 
         department = serializer.validated_data.get("department")
         department_id = department.pk if department else self._resolve_requested_department(request.user)
         if department_id is None and not self._user_is_org_wide(request.user):
             assigned = self._user_department_ids(request.user)
             department_id = assigned[0] if len(assigned) == 1 else None
-        if not has_department_permission(request.user, "servicebook.add_service", department_id):
+            if department_id is None:
+                # A multi-department user would otherwise save a central service
+                # (department=NULL) that is invisible in their own department views.
+                raise ValidationError({"department": "Bitte eine Abteilung angeben."})
+        if not self._has_right_in_department(request.user, "servicebook.add_service", department_id):
             raise PermissionDenied("Keine Berechtigung zum Anlegen in dieser Abteilung.")
         if department is None and department_id is not None:
             from departments.models import Department
@@ -226,7 +230,7 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         from rest_framework.exceptions import PermissionDenied
 
         department = serializer.validated_data.get("department", serializer.instance.department)
-        if not has_department_permission(
+        if not self._has_right_in_department(
             self.request.user, "servicebook.change_service", department.pk if department else None
         ):
             raise PermissionDenied("Keine Berechtigung zum Verschieben in diese Abteilung.")

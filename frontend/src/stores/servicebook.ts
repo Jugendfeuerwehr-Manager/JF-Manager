@@ -19,6 +19,7 @@ import type {
   MemberAttendanceParams
 } from '@/types/servicebook'
 import servicebookApi from '@/api/servicebook'
+import { useDepartmentsStore } from '@/stores/departments'
 import { getApiErrorMessage } from '@/utils/apiError'
 
 export const useServicebookStore = defineStore('servicebook', () => {
@@ -108,7 +109,14 @@ export const useServicebookStore = defineStore('servicebook', () => {
     servicesError.value = null
 
     try {
-      const response = await servicebookApi.services.create(data)
+      // The department query parameter is only attached to GET requests, so the
+      // active department has to travel in the payload or the service is saved
+      // without one (and vanishes from the department-filtered views).
+      const activeDepartmentId = useDepartmentsStore().activeDepartmentId
+      const response = await servicebookApi.services.create({
+        ...data,
+        department: data.department ?? activeDepartmentId
+      })
       // Add to local state
       const newService: Service = {
         id: response.data.id,
