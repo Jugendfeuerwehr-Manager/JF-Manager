@@ -18,11 +18,15 @@
 
     <Message v-if="privacyStore.legalError" severity="error" :closable="false">{{ privacyStore.legalError }}</Message>
     <ProgressSpinner v-if="privacyStore.legalLoading && !privacyStore.legalPages.length" />
-    <Tabs v-else v-model:value="activeKind">
+    <Tabs v-else v-model:value="activeTab">
       <TabList>
         <Tab v-for="page in privacyStore.legalPages" :key="page.kind" :value="page.kind">{{ page.label }}</Tab>
+        <Tab value="retention">Aufbewahrungsfristen</Tab>
       </TabList>
       <TabPanels>
+        <TabPanel value="retention">
+          <ConfigurationSection kind="privacy" embedded />
+        </TabPanel>
         <TabPanel v-for="page in privacyStore.legalPages" :key="page.kind" :value="page.kind">
           <LegalPageEditor
             :page="page"
@@ -51,6 +55,7 @@ import TabPanel from 'primevue/tabpanel'
 import TabPanels from 'primevue/tabpanels'
 import Tabs from 'primevue/tabs'
 import LegalPageEditor from '@/components/privacy/organisms/LegalPageEditor.vue'
+import ConfigurationSection from './ConfigurationSection.vue'
 import { useMobile } from '@/composables/useMobile'
 import { usePrivacyStore } from '@/stores/privacy'
 import { useSettingsStore } from '@/stores/settings'
@@ -61,15 +66,15 @@ const settingsStore = useSettingsStore()
 const toast = useToast()
 const router = useRouter()
 const { isMobile } = useMobile()
-const activeKind = ref<LegalPageKind>('imprint')
+const activeTab = ref<LegalPageKind | 'retention'>('imprint')
 
 onMounted(async () => {
   await privacyStore.fetchLegalPages()
-  await privacyStore.fetchVersions(activeKind.value)
+  await privacyStore.fetchVersions('imprint')
 })
 
-watch(activeKind, kind => {
-  if (!privacyStore.versions[kind]) void privacyStore.fetchVersions(kind)
+watch(activeTab, tab => {
+  if (tab !== 'retention' && !privacyStore.versions[tab]) void privacyStore.fetchVersions(tab)
 })
 
 async function handleSave(kind: LegalPageKind, data: { draft_title: string, draft_body: string }) {

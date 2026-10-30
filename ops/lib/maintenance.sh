@@ -13,6 +13,7 @@ MAINT_TASKS=(
     "inbox|*-*-* 04:10:00|purge_inbox|1|Erledigte und gelesene Eingangseinträge nach 180 Tagen löschen (NOTIF-01)"
     "registration-digest|*-*-* 18:00:00|send_registration_digest|1|Tageszusammenfassung der Meldungen an Dienstverantwortliche (NOTIF-01.5c)"
     "registration-notes|*-*-* 03:50:00|purge_registration_notes|1|Abmelde-Kurztexte 90 Tage nach dem Dienst löschen (PART-01.4)"
+    "personal-data|*-*-* 04:20:00|purge_personal_data|1|Personenbezogene Daten nach den Aufbewahrungsfristen löschen (DSGVO)"
     "registration-check|*-*-* 04:00:00|recheck_registrations|1|Teilnahmevoraussetzungen kommender Meldungen nachprüfen (PART-03.5)"
     "order-reminders|Mon *-*-* 07:00:00|send_pending_reminders|0|Erinnerungs-E-Mails für offene Bestellungen (optional)"
 )
