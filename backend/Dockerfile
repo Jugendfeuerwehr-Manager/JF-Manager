@@ -58,7 +58,8 @@ ENV PYTHONUNBUFFERED=1 \
     MEDIA_ROOT=/uploads \
     MEDIA_URL=/uploads/
 
-# Install runtime dependencies only
+# Install runtime dependencies only. tzdata is listed so the image always carries the current
+# Debian security build even when the base image lags behind (DLA-4854-1).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     default-mysql-client \
@@ -67,6 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libldap-2.5-0 \
     libsasl2-2 \
     curl \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade the base-image installer before copying packages so its old metadata is removed.
