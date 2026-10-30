@@ -1,7 +1,5 @@
 from django import forms
 from django.contrib import admin
-from import_export import resources
-from import_export.admin import ImportExportModelAdmin
 
 from .hierarchy import find_cycle
 from .models import Qualification, QualificationType, SpecialTask, SpecialTaskType
@@ -22,33 +20,8 @@ class QualificationTypeAdminForm(forms.ModelForm):
         return included
 
 
-class QualificationTypeResource(resources.ModelResource):
-    class Meta:
-        model = QualificationType
-        skip_unchanged = True
-
-
-class QualificationResource(resources.ModelResource):
-    class Meta:
-        model = Qualification
-        skip_unchanged = True
-
-
-class SpecialTaskTypeResource(resources.ModelResource):
-    class Meta:
-        model = SpecialTaskType
-        skip_unchanged = True
-
-
-class SpecialTaskResource(resources.ModelResource):
-    class Meta:
-        model = SpecialTask
-        skip_unchanged = True
-
-
 @admin.register(QualificationType)
-class QualificationTypeAdmin(ImportExportModelAdmin):
-    resource_class = QualificationTypeResource
+class QualificationTypeAdmin(admin.ModelAdmin):
     list_display = ["name", "expires", "validity_period", "description"]
     list_filter = ["expires"]
     search_fields = ["name", "description"]
@@ -58,8 +31,7 @@ class QualificationTypeAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Qualification)
-class QualificationAdmin(ImportExportModelAdmin):
-    resource_class = QualificationResource
+class QualificationAdmin(admin.ModelAdmin):
     list_display = ["get_person_name", "type", "date_acquired", "date_expires", "is_expired", "issued_by"]
     list_filter = ["type", "date_acquired", "date_expires"]
     search_fields = [
@@ -87,16 +59,14 @@ class QualificationAdmin(ImportExportModelAdmin):
 
 
 @admin.register(SpecialTaskType)
-class SpecialTaskTypeAdmin(ImportExportModelAdmin):
-    resource_class = SpecialTaskTypeResource
+class SpecialTaskTypeAdmin(admin.ModelAdmin):
     list_display = ["name", "description"]
     search_fields = ["name", "description"]
     ordering = ["name"]
 
 
 @admin.register(SpecialTask)
-class SpecialTaskAdmin(ImportExportModelAdmin):
-    resource_class = SpecialTaskResource
+class SpecialTaskAdmin(admin.ModelAdmin):
     list_display = ["get_person_name", "task", "start_date", "end_date", "is_active"]
     list_filter = ["task", "start_date", "end_date"]
     search_fields = [
