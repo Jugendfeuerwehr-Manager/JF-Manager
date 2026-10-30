@@ -1,116 +1,58 @@
 <template>
-  <div class="training-handout" ref="handoutEl">
-    <!-- Header -->
-    <div class="handout-header">
-      <div class="handout-title-row">
+  <div class="training-handout">
+    <!-- Header: same structure as page 1 of the PDF -->
+    <header class="handout-header">
+      <img v-if="logoUrl && !logoFailed" class="handout-logo" :src="logoUrl" alt="" @error="logoFailed = true" />
+      <BrandMark v-else class="handout-logo" :size="48" />
+      <div class="handout-heading">
+        <p class="handout-eyebrow">
+          <template v-if="orgName">{{ orgName }} · </template>Ausbildungsplan
+          <TrainingStatusBadge :status="handout.status" />
+        </p>
         <h1 class="handout-title">{{ handout.title }}</h1>
-        <div class="handout-meta">
-          <TrainingStatusBadge :status="handout.status" /><span>Version {{ handout.revision }}<template v-if="standLabel"> · Stand {{ standLabel }}</template></span>
-          <span>· {{ formatDate(handout.date) }}</span>
-          <span v-if="handout.start_time">· {{ handout.start_time.slice(0, 5) }}<template v-if="handout.end_time">–{{ handout.end_time.slice(0, 5) }}</template></span>
-          <span v-if="handout.location">· {{ handout.location }}</span>
-        </div>
+        <p class="handout-meta">
+          {{ [formatDate(handout.date), timeRange, handout.location].filter(Boolean).join(' · ') }}
+        </p>
       </div>
+    </header>
 
-      <div v-if="handout.groups?.length" class="handout-groups">
-        Gruppen: <strong>{{ handout.groups.map((g) => g.name).join(', ') }}</strong>
-      </div>
-    </div>
+    <p class="handout-facts">
+      <span v-for="fact in facts" :key="fact.label"><span class="muted">{{ fact.label }}</span> <strong>{{ fact.value }}</strong></span>
+      <strong v-if="openStations" class="warn">{{ openStations }} {{ openStations === 1 ? 'Station' : 'Stationen' }} unbesetzt</strong>
+    </p>
 
-    <!-- Schedule overview -->
-    <section class="schedule-section no-print-break">
-      <h2>Übungsablauf</h2>
-      <table class="schedule-table">
-        <thead>
-          <tr>
-            <th>Zeit</th>
-            <th>Ausbildungspunkt</th>
-            <th>Dauer</th>
-            <th>Gruppe</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="block in handout.blocks" :key="block.id">
-            <td class="time-col">{{ offsetToTime(block.start_offset_minutes, handout.start_time) }}</td>
-            <td>{{ block.title }}</td>
-            <td>{{ block.duration_minutes }} Min.</td>
-            <td>{{ block.groups?.length ? block.groups.map((g) => g.name).join(', ') : 'Alle' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Station cards: one per station with all its slots -->
-    <section v-if="cards.length" class="stations-section">
-      <h2>Stationskarten</h2>
-      <div class="station-cards">
-        <article v-for="card in cards" :key="card.key" class="station-card">
-          <h3>{{ card.title }}</h3>
-          <dl>
-            <template v-if="card.location"><dt>Ort</dt><dd>{{ card.location }}</dd></template>
-            <template v-if="card.instructors.length"><dt>Ausbilder</dt><dd>{{ card.instructors.map((i) => i.name).join(', ') }}</dd></template>
-            <dt>Gruppen</dt>
-            <dd>
-              <span v-for="(slot, i) in card.slots" :key="i" class="station-slot">
-                {{ offsetToTime(slot.start, handout.start_time) }}–{{ offsetToTime(slot.end, handout.start_time) }} {{ slot.groups }}
-              </span>
-            </dd>
-            <template v-if="card.learningObjective"><dt>Lernziel</dt><dd>{{ card.learningObjective }}</dd></template>
-            <template v-if="card.safetyNotes"><dt>Sicherheit</dt><dd>{{ card.safetyNotes }}</dd></template>
-            <template v-if="card.materials.length">
-              <dt>Material</dt>
-              <dd>{{ card.materials.map((m) => `${m.quantity} × ${m.label}`).join(', ') }}</dd>
+    <!-- Swimlane overview: time to scale, a block for several neighbouring groups is one box -->
+    <section v-if="handout.blocks.length" class="handout-section overview-section">
+      <h2>Ablaufplan</h2>
+      <div class="overview-scroll">
+        <div class="overview" :style="{ '--lanes': lanes.length }">
+          <div class="overview-head">
+            <span v-for="lane in lanes" :key="lane.key">{{ lane.label }}</span>
+          </div>
+          <div class="overview-body" :style="{ height: totalMinutes * SCALE + 'px' }">
+            <template v-for="tick in ticks" :key="tick.offset">
+              <span class="tick-label" :class="{ full: tick.full }" :style="{ top: tick.offset * SCALE + 'px' }">{{ clockTime(tick.offset, handout.start_time) }}</span>
+              <span v-if="tick.offset" class="tick-line" :class="{ full: tick.full }" :style="{ top: tick.offset * SCALE + 'px' }" />
             </template>
-          </dl>
-        </article>
-      </div>
-    </section>
-
-    <!-- Material list -->
-    <section v-if="materials.length" class="materials-section no-print-break">
-      <h2>Materialliste</h2>
-      <p class="materials-hint">Planungswerte; Material einer Station zählt einmal, weil die Gruppen nacheinander üben. Bestand wird nicht gebucht.</p>
-      <table class="schedule-table">
-        <thead><tr><th>Menge</th><th>Material</th><th>Verwendet bei</th></tr></thead>
-        <tbody>
-          <tr v-for="line in materials" :key="line.label + line.usedAt.join()">
-            <td class="time-col">{{ line.quantity }}</td>
-            <td>{{ line.label }}</td>
-            <td>{{ line.usedAt.join(', ') }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Static Swimlane overview -->
-    <section v-if="handout.blocks.length" class="swimlane-section no-print-break">
-      <h2>Ablauf-Übersicht</h2>
-      <div class="swimlane-wrap" :style="{ height: swimlaneHeight + 'px' }">
-        <!-- Time ruler -->
-        <div class="sl-ruler">
-          <template v-for="tick in swimlaneTicks" :key="tick.offset">
-            <div class="sl-tick" :style="{ top: tick.px + 'px' }">{{ offsetToTime(tick.offset, handout.start_time) }}</div>
-            <div class="sl-line" :style="{ top: tick.px + 'px', opacity: tick.offset % 60 === 0 ? 1 : 0.4 }" />
-          </template>
-        </div>
-        <!-- Lane columns -->
-        <div class="sl-lanes">
-          <div v-for="lane in swimlaneLanes" :key="lane.key" class="sl-lane">
-            <div class="sl-lane-header">{{ lane.label }}</div>
-            <div class="sl-lane-body" :style="{ height: swimlaneHeight + 'px' }">
+            <div class="overview-lanes">
+              <span v-for="(lane, i) in lanes" v-show="i > 0" :key="lane.key" class="lane-divider" :style="{ left: `calc(${i} / var(--lanes) * 100%)` }" />
               <div
-                v-for="block in lane.blocks"
-                :key="block.id"
-                class="sl-block"
+                v-for="box in boxes"
+                :key="box.key"
+                class="overview-block"
+                :class="{ compact: lineCount(box.block) < 1 }"
                 :style="{
-                  top: (block.start_offset_minutes ?? 0) * SCALE + 'px',
-                  height: Math.max(20, block.duration_minutes * SCALE) + 'px',
-                  background: block.color ? block.color + '33' : '#dbeafe',
-                  borderColor: block.color ?? '#3b82f6',
+                  top: box.block.start_offset_minutes * SCALE + 1 + 'px',
+                  height: Math.max(4, box.block.duration_minutes * SCALE - 2) + 'px',
+                  left: `calc(${box.from} / var(--lanes) * 100% + 2px)`,
+                  width: `calc(${box.to - box.from + 1} / var(--lanes) * 100% - 4px)`,
+                  '--block-color': colorOf(box.block),
                 }"
+                :title="box.block.title"
               >
-                <span class="sl-block-title">{{ block.title }}</span>
-                <span class="sl-block-dur">{{ block.duration_minutes }}'</span>
+                <strong>{{ box.block.title }}<span v-if="lineCount(box.block) < 2" class="inline-time">{{ span(box.block) }}</span></strong>
+                <span v-if="lineCount(box.block) >= 2">{{ [span(box.block), box.block.location].filter(Boolean).join(' · ') }}</span>
+                <span v-if="lineCount(box.block) >= 3 && box.block.instructors?.length">{{ box.block.instructors.map((i) => i.name).join(', ') }}</span>
               </div>
             </div>
           </div>
@@ -118,379 +60,457 @@
       </div>
     </section>
 
-    <!-- Per-block details grouped by swimlane -->
-    <template v-for="(lane, laneIndex) in swimlaneLanes" :key="`lane-${lane.key}`">
-      <div class="lane-section-header" :class="{ 'lane-break': laneIndex > 0 }">
-        <h2>{{ lane.label }}</h2>
+    <!-- Who is where -->
+    <section v-if="assignments.length" class="handout-section print-break">
+      <h2>Wer ist wo?</h2>
+      <div class="table-scroll">
+        <table class="handout-table">
+          <thead><tr><th>Ausbilder</th><th>Einsatz</th><th>Ort</th><th>Zeit</th></tr></thead>
+          <tbody>
+            <template v-for="person in assignments" :key="person.id ?? 'open'">
+              <tr v-for="(duty, i) in person.duties" :key="`${person.id}-${i}`">
+                <th v-if="i === 0" scope="row" :rowspan="person.duties.length" :class="{ warn: person.id === null }">{{ person.name }}</th>
+                <td>{{ duty.title }}</td>
+                <td :class="{ muted: !duty.location }">{{ duty.location || '—' }}</td>
+                <td class="muted nowrap">
+                  <span v-for="([s, e], j) in duty.slots" :key="j" class="line">{{ timeSpan(s, e, handout.start_time) }}</span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
       </div>
-      <section
-        v-for="block in lane.blocks"
-        :key="`detail-${block.id}`"
-        class="block-detail"
-      >
-        <div class="block-detail-header">
-          <div class="block-detail-color" :style="{ background: block.color ?? 'var(--primary-color)' }" />
-          <h3 class="block-detail-title">{{ block.title }}</h3>
-          <span class="block-detail-duration text-color-secondary text-sm">{{ block.duration_minutes }} Min.</span>
-        </div>
-        <SafeHtml v-if="block.content" class="block-detail-content prose" :html="block.content" />
-        <!-- Attached documents -->
-        <div v-if="block.attachments && block.attachments.length" class="block-attachments">
-          <p class="attachments-label">Anhänge:</p>
-          <ul class="attachments-list">
-            <li v-for="att in block.attachments" :key="att.id">
-              <a :href="att.file_url ?? '#'" @click.prevent="att.file_url && downloadMedia(att.file_url, att.name)" target="_blank" rel="noopener" class="attachment-link">
-                <i class="pi pi-file-pdf" v-if="att.mime_type === 'application/pdf'" />
-                <i class="pi pi-file" v-else />
-                {{ att.name }}
-                <span v-if="att.file_size" class="att-size">({{ formatAttSize(att.file_size) }})</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-    </template>
+    </section>
 
-    <!-- Notes -->
-    <section v-if="handout.notes" class="notes-section">
-      <h2>Notizen</h2>
-      <p>{{ handout.notes }}</p>
+    <!-- Route of every group -->
+    <section class="handout-section" :class="{ 'print-break': !assignments.length }">
+      <h2>{{ lanes.length > 1 ? 'Laufzettel der Gruppen' : 'Übungsablauf' }}</h2>
+      <div v-for="lane in lanes" :key="lane.key" class="route">
+        <h3 v-if="lanes.length > 1">{{ lane.label }}</h3>
+        <div class="table-scroll">
+          <table class="handout-table">
+            <thead><tr><th>Zeit</th><th>Programmpunkt</th><th>Ort</th><th>Ausbilder</th></tr></thead>
+            <tbody>
+              <tr v-for="block in laneBlocks(handout.blocks, lane)" :key="block.id">
+                <td class="nowrap"><strong>{{ span(block) }}</strong></td>
+                <td><span class="swatch" :style="{ background: colorOf(block) }" />{{ block.title }}</td>
+                <td class="muted">{{ block.location }}</td>
+                <td class="muted">{{ (block.instructors ?? []).map((i) => i.name).join(', ') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- One sheet per station -->
+    <article v-for="(card, index) in cards" :key="card.key" class="handout-section station-sheet print-break" :style="{ '--block-color': colorOf(blockOf(card)) }">
+      <header class="station-head">
+        <div>
+          <p class="handout-eyebrow">Station {{ index + 1 }} von {{ cards.length }}</p>
+          <h2 class="station-title">{{ card.title }}</h2>
+        </div>
+        <p class="station-duration"><strong>{{ slotMinutes(card) }}</strong> Min. je Durchgang</p>
+      </header>
+      <dl class="station-facts">
+        <div><dt>Ort</dt><dd>{{ card.location || '—' }}</dd></div>
+        <div>
+          <dt>Ausbilder</dt>
+          <dd v-if="card.instructors.length">{{ card.instructors.map((i) => i.name).join(', ') }}</dd>
+          <dd v-else class="warn">noch nicht besetzt</dd>
+        </div>
+      </dl>
+      <h3>Durchgänge</h3>
+      <table class="handout-table">
+        <thead><tr><th>Zeit</th><th>Gruppe</th><th>Anwesend</th><th><span class="sr-only">Erledigt</span></th></tr></thead>
+        <tbody>
+          <tr v-for="(slot, i) in card.slots" :key="i">
+            <td class="nowrap"><strong>{{ timeSpan(slot.start, slot.end, handout.start_time) }}</strong></td>
+            <td>{{ slot.groups }}</td>
+            <td />
+            <td class="check-col"><span class="checkbox" /></td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-if="card.learningObjective" class="handout-note"><strong>Lernziel</strong><p>{{ card.learningObjective }}</p></div>
+      <div v-if="card.safetyNotes" class="handout-note warn-note"><strong>Sicherheit</strong><p>{{ card.safetyNotes }}</p></div>
+      <template v-if="card.materials.length">
+        <h3>Material</h3>
+        <ul class="checklist">
+          <li v-for="(m, i) in card.materials" :key="i"><span class="checkbox" /><strong>{{ m.quantity }} ×</strong> {{ m.label }}</li>
+        </ul>
+      </template>
+      <template v-if="blockOf(card)?.content">
+        <h3>Ablauf</h3>
+        <SafeHtml class="prose" :html="blockOf(card)!.content" />
+      </template>
+      <HandoutAttachments :attachments="blockOf(card)?.attachments" />
+      <div class="print-only">
+        <h3>Notizen</h3>
+        <div class="note-lines" />
+      </div>
+    </article>
+
+    <!-- Shared programme items -->
+    <section v-if="programme.length" class="handout-section print-break">
+      <h2>Gemeinsame Programmpunkte</h2>
+      <article v-for="block in programme" :key="block.id" class="programme-item">
+        <h3>{{ block.title }}</h3>
+        <p class="muted small">
+          {{ [span(block), block.groups?.length ? block.groups.map((g) => g.name).join(', ') : 'Alle Gruppen', block.location, (block.instructors ?? []).map((i) => i.name).join(', ')].filter(Boolean).join(' · ') }}
+        </p>
+        <div v-if="block.learning_objective" class="handout-note"><strong>Lernziel</strong><p>{{ block.learning_objective }}</p></div>
+        <div v-if="block.safety_notes" class="handout-note warn-note"><strong>Sicherheit</strong><p>{{ block.safety_notes }}</p></div>
+        <SafeHtml v-if="block.content" class="prose" :html="block.content" />
+        <HandoutAttachments :attachments="block.attachments" />
+      </article>
+    </section>
+
+    <!-- Packing list and notes -->
+    <section v-if="materials.length" class="handout-section print-break">
+      <h2>Packliste</h2>
+      <p class="muted small">Planungswerte: Material einer Station zählt einmal, weil die Gruppen nacheinander üben. Bestand wird nicht gebucht.</p>
+      <div class="table-scroll">
+        <table class="handout-table">
+          <thead><tr><th><span class="sr-only">Gepackt</span></th><th>Menge</th><th>Material</th><th>Verwendet bei</th></tr></thead>
+          <tbody>
+            <tr v-for="line in materials" :key="line.label + line.usedAt.join()">
+              <td class="check-col"><span class="checkbox" /></td>
+              <td><strong>{{ line.quantity }}</strong></td>
+              <td>{{ line.label }}</td>
+              <td class="muted">{{ line.usedAt.join(', ') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section v-if="handout.notes" class="handout-section" :class="{ 'print-break': !materials.length }">
+      <h2>Anmerkungen</h2>
+      <p class="notes">{{ handout.notes }}</p>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
-import { downloadMedia } from '@/utils/privateMedia'
+import { computed, ref } from 'vue'
+import BrandMark from '@/components/common/BrandMark.vue'
 import SafeHtml from '@/components/common/SafeHtml.vue'
-import { computed } from 'vue'
-import { materialSummary, stationCards } from '../utils/handoutSummary'
-import type { TrainingSessionHandout, TrainingBlock } from '@/types/training'
+import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
+import HandoutAttachments from '../molecules/HandoutAttachments.vue'
+import { safeBlockColor } from '../utils/blockColor'
+import {
+  blockEnd, blockLaneRuns, byStart, clockTime, handoutLanes, instructorAssignments, laneBlocks, materialSummary,
+  stationCards, timeSpan, type StationCard,
+} from '../utils/handoutSummary'
+import type { BlockKind, TrainingBlock, TrainingSessionHandout } from '@/types/training'
 
 interface Props {
   handout: TrainingSessionHandout
+  orgName?: string
+  logoUrl?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { orgName: '', logoUrl: '' })
 
+/** px per minute in the overview */
+const SCALE = 2.6
+/** Height of one text line in an overview box, px */
+const BOX_LINE = 14
+const NEUTRAL_KINDS: Partial<Record<BlockKind, string>> = { break: '#94a3b8', transition: '#cbd5e1' }
+
+const logoFailed = ref(false)
+const lanes = computed(() => handoutLanes(props.handout))
 const cards = computed(() => stationCards(props.handout.blocks))
 const materials = computed(() => materialSummary(props.handout.blocks))
-const standLabel = computed(() => props.handout.updated_at
-  ? new Date(props.handout.updated_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+const assignments = computed(() => instructorAssignments(props.handout.blocks))
+const programme = computed(() => props.handout.blocks
+  .filter((b) => b.kind !== 'station' && (b.content || b.learning_objective || b.safety_notes || b.attachments?.length))
+  .sort(byStart))
+const totalMinutes = computed(() => Math.max(30, ...props.handout.blocks.map(blockEnd)))
+const openStations = computed(() => cards.value.filter((c) => !c.instructors.length).length)
+
+const timeRange = computed(() => props.handout.start_time
+  ? `${props.handout.start_time.slice(0, 5)}${props.handout.end_time ? `–${props.handout.end_time.slice(0, 5)}` : ''} Uhr`
   : '')
 
-function formatAttSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+const facts = computed(() => {
+  const total = props.handout.blocks.length ? Math.max(...props.handout.blocks.map(blockEnd)) : 0
+  const hours = Math.floor(total / 60)
+  const instructors = new Set(props.handout.blocks.flatMap((b) => (b.instructors ?? []).map((i) => i.id)))
+  return [
+    { label: 'Dauer', value: hours ? `${hours}:${String(total % 60).padStart(2, '0')} h` : `${total} Min.` },
+    ...(lanes.value[0]?.groupId === null ? [] : [{ label: 'Gruppen', value: String(lanes.value.length) }]),
+    { label: 'Stationen', value: String(cards.value.length) },
+    { label: 'Ausbilder', value: String(instructors.size) },
+  ]
+})
+
+const boxes = computed(() => [...props.handout.blocks].sort(byStart).flatMap((block) =>
+  blockLaneRuns(block, lanes.value).map(([from, to]) => ({ key: `${block.id}-${from}`, block, from, to }))))
+
+const ticks = computed(() => {
+  const startMinute = Number(props.handout.start_time?.split(':')[1] ?? 0)
+  const result: { offset: number; full: boolean }[] = []
+  for (let t = 0; t <= totalMinutes.value; t += 15) result.push({ offset: t, full: (startMinute + t) % 60 === 0 })
+  return result
+})
+
+/** Text lines that fit into a block's box in the overview. */
+function lineCount(block: TrainingBlock) {
+  return Math.floor((block.duration_minutes * SCALE - 6) / BOX_LINE)
 }
 
-const SCALE = 2 // px per minute
+function span(block: TrainingBlock) {
+  return timeSpan(block.start_offset_minutes, blockEnd(block), props.handout.start_time)
+}
 
-// ── Static swimlane ──────────────────────────────────────────────────────────
+function colorOf(block: TrainingBlock | undefined) {
+  if (!block) return 'var(--p-primary-color)'
+  return safeBlockColor(block.color) ?? NEUTRAL_KINDS[block.kind ?? 'block'] ?? 'var(--p-primary-color)'
+}
 
-const swimlaneLanes = computed(() => {
-  const map = new Map<string, { key: string; label: string; blocks: TrainingBlock[] }>()
+function blockOf(card: StationCard) {
+  return props.handout.blocks.find((b) => b.id === card.blockId)
+}
 
-  const allBlocks = props.handout.blocks.filter((b) => !b.groups?.length)
-  if (allBlocks.length) map.set('all', { key: 'all', label: 'Alle Gruppen', blocks: allBlocks })
-
-  for (const block of props.handout.blocks) {
-    for (const g of block.groups ?? []) {
-      if (!map.has(String(g.id))) map.set(String(g.id), { key: String(g.id), label: g.name, blocks: [] })
-      map.get(String(g.id))!.blocks.push(block)
-    }
-  }
-
-  return [...map.values()]
-})
-
-const swimlaneMaxMin = computed(() => {
-  if (!props.handout.blocks.length) return 60
-  return Math.max(...props.handout.blocks.map((b) => (b.start_offset_minutes ?? 0) + b.duration_minutes))
-})
-
-const swimlaneHeight = computed(() => swimlaneMaxMin.value * SCALE)
-
-const swimlaneTicks = computed(() => {
-  const ticks: { offset: number; px: number }[] = []
-  for (let t = 0; t <= swimlaneMaxMin.value; t += 15) {
-    ticks.push({ offset: t, px: t * SCALE })
-  }
-  return ticks
-})
+function slotMinutes(card: StationCard) {
+  const slot = card.slots[0]
+  return slot ? slot.end - slot.start : 0
+}
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('de-DE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function offsetToTime(offsetMinutes: number | null | undefined, startTime?: string | null): string {
-  if (!startTime || offsetMinutes == null) return offsetMinutes ? `+${offsetMinutes}m` : '—'
-  const parts = startTime.split(':')
-  const h = Number(parts[0] ?? 0)
-  const m = Number(parts[1] ?? 0)
-  const totalMinutes = h * 60 + m + offsetMinutes
-  const hh = Math.floor(totalMinutes / 60) % 24
-  const mm = totalMinutes % 60
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+  return new Date(dateStr).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 </script>
 
 <style scoped>
 .training-handout {
+  --handout-warn: var(--p-amber-700, #b45309);
   min-width: 0;
   overflow-wrap: anywhere;
-  max-width: 1000px;
+  max-width: 960px;
   margin: 0 auto;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #1a1a1a;
+  box-sizing: border-box;
+  padding: var(--jf-space-3) var(--jf-space-4) var(--jf-space-4);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  /* Sheet on the page ground, like a printed handout */
+  background: var(--jf-color-card);
+  color: var(--jf-color-text);
+  font-size: 0.9rem;
 }
 
+@media (max-width: 640px) {
+  .training-handout { padding: var(--jf-space-2); }
+}
+
+.muted { color: var(--jf-color-text-muted); }
+.small { font-size: 0.8rem; }
+.warn { color: var(--handout-warn); }
+.nowrap { white-space: nowrap; }
+.line { display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
 .handout-header {
-  border-bottom: 3px solid #1d4ed8;
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-.handout-title { font-size: 1.75rem; font-weight: 800; margin: 0 0 0.25rem; }
-.handout-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-size: 1rem; color: #555; }
-.handout-groups { font-size: 0.95rem; margin-top: 0.5rem; }
-
-.schedule-section { margin-bottom: 2rem; }
-.schedule-section h2 { font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
-
-.station-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.75rem; }
-.station-card { break-inside: avoid; padding: 0.75rem 1rem; border: 1px solid var(--jf-color-border); border-radius: var(--jf-radius-md); }
-.station-card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
-.station-card dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 0.75rem; margin: 0; font-size: 0.875rem; }
-.station-card dt { font-weight: 600; }
-.station-card dd { margin: 0; }
-.station-slot { display: block; }
-.materials-hint { margin: 0 0 0.5rem; font-size: 0.8125rem; color: var(--jf-color-text-muted); }
-.schedule-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-.schedule-table th {
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-}
-.schedule-table td {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid #e2e8f0;
-  vertical-align: top;
-}
-.schedule-table tr:nth-child(even) td { background: #f8fafc; }
-.time-col { white-space: nowrap; font-weight: 600; }
-
-.block-detail {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-  overflow: hidden;
-  page-break-inside: avoid;
-}
-
-.block-detail-header {
   display: flex;
+  gap: var(--jf-space-2);
+  align-items: flex-start;
+  padding-top: var(--jf-space-2);
+  border-top: 3px solid var(--p-primary-color);
+}
+.handout-logo { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.handout-heading { min-width: 0; }
+.handout-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-}
-.block-detail-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.block-detail-title { font-size: 1rem; font-weight: 700; margin: 0; flex: 1; }
-
-.block-detail-content {
-  padding: 1rem;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.block-detail-content :deep(img) { max-width: 100%; border-radius: 4px; }
-.block-detail-content :deep(h1),
-.block-detail-content :deep(h2),
-.block-detail-content :deep(h3) { font-weight: 700; margin-top: 1rem; }
-.block-detail-content :deep(ul),
-.block-detail-content :deep(ol) { padding-left: 1.5rem; }
-
-.block-attachments {
-  margin-top: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #e2e8f0;
-}
-.attachments-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #64748b;
-  margin: 0 0 0.25rem;
-}
-.attachments-list {
-  list-style: none;
-  padding: 0;
+  gap: var(--jf-space-1);
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.attachment-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.85rem;
-  color: var(--primary-color);
-  text-decoration: none;
-}
-.attachment-link:hover { text-decoration: underline; }
-.att-size {
-  color: #94a3b8;
   font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--p-primary-color);
 }
+.handout-title { margin: 0.15rem 0; font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+.handout-meta { margin: 0; color: var(--jf-color-text-muted); }
 
-@media print {
-  .block-attachments { border-top: 1px solid #ccc; }
-  .attachment-link { color: #1e40af; }
-}
-
-.notes-section {
-  border: 1px dashed #cbd5e1;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-top: 1.5rem;
-}
-.notes-section h2 { font-size: 1rem; font-weight: 700; margin: 0 0 0.5rem; }
-
-/* ── Static swimlane ──────────────────────────────────────────────── */
-.swimlane-section { margin-bottom: 2rem; page-break-inside: avoid; }
-.swimlane-section h2 { font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; margin-bottom: 0.75rem; }
-
-.swimlane-wrap {
+.handout-facts {
   display: flex;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  overflow: hidden;
-  font-size: 0.72rem;
+  flex-wrap: wrap;
+  gap: var(--jf-space-0-5) var(--jf-space-3);
+  margin: var(--jf-space-2) 0 0;
+  padding-top: var(--jf-space-1);
+  border-top: 1px solid var(--jf-color-border);
+  font-size: 0.85rem;
 }
 
-.sl-ruler {
-  width: 52px;
-  flex-shrink: 0;
-  position: relative;
-  background: #f8fafc;
-  border-right: 1px solid #e2e8f0;
+/* ── Sections ────────────────────────────────────────────────────────── */
+.handout-section { margin-top: var(--jf-space-4); }
+.handout-section h2 { margin: 0 0 var(--jf-space-1-5); font-size: 1.15rem; font-weight: 700; }
+.handout-section > h2::after {
+  content: '';
+  display: block;
+  width: 1.5rem;
+  height: 2px;
+  margin-top: 0.3rem;
+  background: var(--p-primary-color);
 }
+.handout-section h3 { margin: var(--jf-space-2) 0 var(--jf-space-1); font-size: 0.95rem; font-weight: 700; }
 
-.sl-tick {
-  position: absolute;
-  right: 4px;
-  transform: translateY(-50%);
+.table-scroll { overflow-x: auto; }
+.handout-table { width: 100%; border-collapse: collapse; }
+.handout-table thead th {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--jf-color-text-muted);
+  border-bottom: 1px solid color-mix(in srgb, var(--p-primary-color) 35%, transparent);
+}
+.handout-table td,
+.handout-table tbody th {
+  padding: 0.4rem 0.5rem;
+  vertical-align: top;
+  text-align: left;
+  border-bottom: 1px solid var(--jf-color-border);
+}
+.swatch { display: inline-block; width: 0.55rem; height: 0.55rem; margin-right: 0.45rem; border-radius: 2px; }
+.route + .route { margin-top: var(--jf-space-1); }
+
+/* ── Overview ────────────────────────────────────────────────────────── */
+.overview-scroll { overflow-x: auto; }
+.overview { --axis: 2.75rem; min-width: calc(var(--axis) + var(--lanes) * 8rem); }
+.overview-head {
+  display: grid;
+  grid-template-columns: repeat(var(--lanes), minmax(0, 1fr));
+  margin-left: var(--axis);
+  border-bottom: 2px solid var(--p-primary-color);
+}
+.overview-head span {
+  padding: 0 0.3rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
   white-space: nowrap;
-  color: #64748b;
-  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-.sl-line {
+.overview-body { position: relative; margin-bottom: var(--jf-space-1); }
+.tick-label {
   position: absolute;
   left: 0;
-  right: 0;
-  height: 1px;
-  background: #94a3b8;
+  width: calc(var(--axis) - 0.4rem);
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  text-align: right;
+  color: var(--jf-color-text-muted);
 }
-
-.sl-lanes {
-  flex: 1;
-  min-width: 0; /* scroll inside instead of widening the page on phones */
-  display: flex;
-  overflow-x: auto;
-}
-
-.sl-lane {
-  flex: 1;
-  min-width: 180px;
-  border-right: 1px solid #e2e8f0;
-}
-.sl-lane:last-child { border-right: none; }
-
-.sl-lane-header {
-  height: 24px;
-  background: #f1f5f9;
-  border-bottom: 2px solid #3b82f6;
-  display: flex;
-  align-items: center;
-  padding: 0 6px;
-  font-weight: 700;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sl-lane-body {
-  position: relative;
-}
-
-.sl-block {
+.tick-label:first-child { transform: none; }
+.tick-label.full { font-weight: 700; color: var(--jf-color-text); }
+.tick-line { position: absolute; left: var(--axis); right: 0; border-top: 1px dashed var(--jf-color-border); }
+.tick-line.full { border-top-style: solid; }
+.overview-lanes { position: absolute; inset: 0 0 0 var(--axis); }
+.lane-divider { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--jf-color-border); }
+.overview-block {
   position: absolute;
-  left: 3px;
-  right: 3px;
-  border: 1.5px solid #3b82f6;
-  border-radius: 4px;
-  padding: 2px 4px;
   display: flex;
   flex-direction: column;
+  padding: 0.1rem 0.35rem 0 0.5rem;
   overflow: hidden;
   box-sizing: border-box;
+  border-left: 3px solid var(--block-color);
+  border-radius: 0 3px 3px 0;
+  background: color-mix(in srgb, var(--block-color) 12%, var(--jf-color-card));
+  font-size: 0.7rem;
+  line-height: 1.3;
 }
+.overview-block strong { display: flex; gap: 0.5rem; font-size: 0.75rem; }
+.overview-block.compact { padding-top: 0; font-size: 0.6rem; line-height: 1; justify-content: center; }
+.overview-block.compact strong { font-size: 0.6rem; }
+.inline-time { margin-left: auto; font-weight: 400; color: var(--jf-color-text-muted); }
+.overview-block > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.overview-block span { color: var(--jf-color-text-muted); }
 
-.sl-block-title {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* ── Station sheet ───────────────────────────────────────────────────── */
+.station-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--jf-space-1);
+  padding-bottom: var(--jf-space-1);
+  border-bottom: 2px solid var(--block-color);
 }
-
-.sl-block-dur {
-  color: #64748b;
-  font-size: 0.65rem;
-}
-
-.lane-section-header {
-  margin: 2rem 0 0.75rem;
-  padding: 0.5rem 1rem;
-  background: #eff6ff;
-  border-left: 4px solid #1d4ed8;
-  border-radius: 0 4px 4px 0;
-}
-.lane-section-header h2 {
-  font-size: 1rem;
+.station-head .station-title { margin: 0; }
+.station-duration { margin: 0; color: var(--jf-color-text-muted); font-size: 0.8rem; }
+.station-duration strong { font-size: 1.2rem; color: var(--jf-color-text); }
+.station-facts { display: flex; flex-wrap: wrap; gap: var(--jf-space-1) var(--jf-space-4); margin: var(--jf-space-1-5) 0 0; }
+.station-facts dt {
+  font-size: 0.7rem;
   font-weight: 700;
-  margin: 0;
-  color: #1d4ed8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--jf-color-text-muted);
 }
+.station-facts dd { margin: 0; font-weight: 700; }
+.check-col { width: 1.5rem; }
+.checkbox {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1px solid var(--jf-color-text-muted);
+  border-radius: 2px;
+  vertical-align: -0.1rem;
+}
+.checklist { margin: 0; padding: 0; list-style: none; }
+.checklist li { display: flex; align-items: baseline; gap: 0.45rem; padding: 0.15rem 0; }
+
+.handout-note {
+  margin-top: var(--jf-space-1-5);
+  padding: 0.1rem 0 0.1rem 0.6rem;
+  border-left: 2px solid var(--p-primary-color);
+}
+.handout-note strong { font-size: 0.75rem; color: var(--p-primary-color); }
+.handout-note p { margin: 0.1rem 0 0; }
+.warn-note { border-left-color: var(--handout-warn); }
+.warn-note strong { color: var(--handout-warn); }
+
+.programme-item + .programme-item { margin-top: var(--jf-space-3); }
+.programme-item h3 { margin: 0; }
+.programme-item > .muted { margin: 0.1rem 0 0; }
+
+.prose { line-height: 1.6; }
+.prose :deep(img) { max-width: 100%; border-radius: 4px; }
+.prose :deep(ul), .prose :deep(ol) { padding-left: 1.5rem; }
+
+.notes { white-space: pre-line; margin: 0; }
+.print-only { display: none; }
 
 @media print {
-  .training-handout { max-width: 100%; margin: 0; }
-  .no-print-break { page-break-inside: avoid; }
-  .lane-section-header { page-break-after: avoid; }
-  .lane-break { page-break-before: always; }
-
-  /* Preserve block colors and background colors in print */
-  * {
+  .training-handout {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 9.5pt;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+  .overview { min-width: 0; }
+  .overview-section, .station-sheet table, .route { break-inside: avoid; }
+  .print-break { break-before: page; margin-top: 0; }
+  .handout-section h2, .handout-section h3 { break-after: avoid; }
+  .print-only { display: block; }
+  .note-lines {
+    height: 90px;
+    background: repeating-linear-gradient(to bottom, transparent 0 17px, #cbd5e1 17px 18px);
   }
 }
 </style>
