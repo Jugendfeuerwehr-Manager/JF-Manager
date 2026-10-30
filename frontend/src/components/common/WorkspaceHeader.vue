@@ -5,7 +5,28 @@
         <router-link :to="backTo" class="workspace-head__back"><i class="pi pi-arrow-left" aria-hidden="true"></i>{{ backLabel }}</router-link>
         <span v-if="eyebrow"> · {{ eyebrow }}</span>
       </p>
-      <h1 class="workspace-head__title">{{ title }}</h1>
+      <input
+        v-if="editing"
+        ref="titleInput"
+        v-model="draft"
+        class="workspace-head__title workspace-head__title-input"
+        type="text"
+        maxlength="200"
+        aria-label="Titel"
+        @keydown.enter.prevent="commit"
+        @keydown.esc.prevent="editing = false"
+        @blur="commit"
+      />
+      <h1 v-else class="workspace-head__title">
+        <button
+          v-if="editable"
+          type="button"
+          class="workspace-head__title-btn"
+          v-tooltip.bottom="'Titel bearbeiten'"
+          @click="startEdit"
+        >{{ title }}<i class="pi pi-pencil" aria-hidden="true"></i></button>
+        <template v-else>{{ title }}</template>
+      </h1>
       <div v-if="$slots.meta" class="workspace-head__meta"><slot name="meta" /></div>
     </div>
     <div class="workspace-head__actions">
@@ -26,17 +47,39 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from 'vue'
 import Button from 'primevue/button'
 import type { RouteLocationRaw } from 'vue-router'
 import { useWorkspaceNavigation } from '@/composables/useWorkspaceNavigation'
 
 /** Header for workspace routes (meta.workspace): back link, title and the shared "hide navigation" toggle. */
-defineProps<{
+const props = defineProps<{
   title: string
   backTo: RouteLocationRaw
   backLabel: string
   eyebrow?: string
+  /** Click on the title edits it inline; emits `rename` with the trimmed new title. */
+  editable?: boolean
 }>()
+const emit = defineEmits<{ rename: [title: string] }>()
+
+const editing = ref(false)
+const draft = ref('')
+const titleInput = ref<HTMLInputElement | null>(null)
+
+async function startEdit() {
+  draft.value = props.title
+  editing.value = true
+  await nextTick()
+  titleInput.value?.select()
+}
+
+function commit() {
+  if (!editing.value) return
+  editing.value = false
+  const next = draft.value.trim()
+  if (next && next !== props.title) emit('rename', next)
+}
 
 const { navHidden, toggleNav } = useWorkspaceNavigation()
 </script>
@@ -71,6 +114,27 @@ const { navHidden, toggleNav } = useWorkspaceNavigation()
   text-decoration: none;
 }
 .workspace-head__back i { font-size: 0.7rem; }
+.workspace-head__title-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  max-width: 100%;
+  cursor: text;
+  border-radius: var(--jf-radius-sm);
+}
+.workspace-head__title-btn i { font-size: 0.7rem; opacity: 0; color: var(--jf-color-text-muted); }
+.workspace-head__title-btn:hover i, .workspace-head__title-btn:focus-visible i { opacity: 1; }
+.workspace-head__title-btn:focus-visible { outline: 2px solid var(--jf-color-primary); outline-offset: 2px; }
+.workspace-head__title-input {
+  font: inherit;
+  width: min(100%, 40rem);
+  color: inherit;
+  background: var(--jf-color-card);
+  border: 1px solid var(--jf-color-primary);
+  border-radius: var(--jf-radius-sm);
+  padding: 0 var(--jf-space-1);
+}
 .workspace-head__title {
   margin: 0;
   font-size: var(--jf-text-xl);

@@ -195,7 +195,7 @@
 <script setup lang="ts">
 import TrainingStatusBadge from '../atoms/TrainingStatusBadge.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -217,6 +217,7 @@ import { trainingStatusMeta } from '../utils/trainingStatus'
 import { DEFAULT_SESSIONS_PER_CELL, sessionCapacity, visibleSessionCount } from '../utils/calendarLayout'
 
 const router = useRouter()
+const route = useRoute()
 const confirm = useConfirm()
 const trainingStore = useTrainingStore()
 const participationStore = useParticipationStore()
@@ -227,8 +228,10 @@ const auth = useAuthStore()
 const canCreate = computed(() => auth.hasPerm('training.can_manage_training'))
 
 const today = new Date()
-const currentYear = ref(today.getFullYear())
-const currentMonth = ref(today.getMonth()) // 0-based
+// `?month=YYYY-MM` (e.g. from the planner's back link) selects the initial month.
+const requested = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(route.query.month ?? ''))
+const currentYear = ref(requested ? Number(requested[1]) : today.getFullYear())
+const currentMonth = ref(requested ? Number(requested[2]) - 1 : today.getMonth()) // 0-based
 
 const showCreate = ref(false)
 const showDayDetail = ref(false)

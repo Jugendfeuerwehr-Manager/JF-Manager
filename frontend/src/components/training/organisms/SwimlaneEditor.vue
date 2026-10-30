@@ -7,8 +7,10 @@
       class="planner-head"
       :class="`planner-head--${tier}`"
       :title="session?.title ?? 'Trainingsplanung'"
-      back-to="/training"
+      :back-to="calendarBackTo"
       back-label="Ausbildung"
+      :editable="!!session && canManage"
+      @rename="(title) => plannerStore.stageSession({ title })"
       :eyebrow="eyebrow"
     >
       <template v-if="session" #meta>
@@ -471,6 +473,11 @@ const selectedBlockId = computed(() => plannerStore.selectedBlockId)
 const isDirty = computed(() => plannerStore.isDirty)
 const isSeries = computed(() => !!session.value && (!!session.value.recurrence_rule || !!session.value.series_uuid || session.value.series_parent !== null))
 const session = computed(() => plannerStore.session)
+// Back to the calendar month of the session being edited (YYYY-MM from its date).
+const calendarBackTo = computed(() => {
+  const month = session.value?.date?.slice(0, 7)
+  return month ? { path: '/training', query: { month } } : '/training'
+})
 const { confirmDelete } = useTrainingSessionDelete(session, () => plannerStore.reset())
 const canManage = computed(() => session.value?.can_manage_plan !== false)
 const readingBlock = ref<PlannerBlock | null>(null)

@@ -2,6 +2,13 @@
 
 Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim Release automatisch in die GitHub-Releasebeschreibung übernommen.
 
+## [Unreleased]
+
+### Geändert
+
+- **Zurück in den richtigen Monat.** Der Link „Ausbildung“ im Planer führt jetzt in den Kalendermonat der bearbeiteten Übung statt in den aktuellen Monat.
+- **Titel direkt im Planer ändern.** Ein Klick auf den Titel einer Übung macht ihn bearbeitbar; Enter oder Wegklicken übernimmt, Esc bricht ab. Die Änderung wird wie die übrigen Planänderungen mit „Speichern“ übernommen. Nur wer den Plan bearbeiten darf, kann den Titel ändern.
+
 ## [3.2.3] – 2026-10-30
 
 ### Behoben

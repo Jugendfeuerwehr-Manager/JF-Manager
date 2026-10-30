@@ -4,7 +4,8 @@ import { reactive } from 'vue'
 import type { TrainingSessionList } from '@/types/training'
 
 const push = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
+const route = { query: {} as Record<string, string> }
+vi.mock('vue-router', () => ({ useRouter: () => ({ push }), useRoute: () => route }))
 vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: vi.fn() }) }))
 
 const trainingStore = reactive({
@@ -53,6 +54,7 @@ describe('TrainingCalendar', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 9, 9, 12))
     push.mockReset()
+    route.query = {}
     trainingStore.fetchSessions.mockReset().mockResolvedValue(undefined)
     trainingStore.error = null
     participationStore.newResponses = {}
@@ -75,6 +77,14 @@ describe('TrainingCalendar', () => {
     expect(wrapper.findAll('.cal-weekday')).toHaveLength(7)
     expect(wrapper.findAll('.cal-cell.is-weekend')).toHaveLength(10)
     expect(trainingStore.fetchSessions).toHaveBeenCalledWith({ date_from: '2026-09-01', date_to: '2026-11-30', limit: 200 })
+  })
+
+  it('opens the month given by the month query parameter', async () => {
+    route.query = { month: '2026-03' }
+    const wrapper = mountCalendar()
+    await flushPromises()
+    expect(trainingStore.fetchSessions).toHaveBeenCalledWith({ date_from: '2026-02-01', date_to: '2026-04-30', limit: 200 })
+    expect(wrapper.find('.cal-title').text()).toContain('März 2026')
   })
 
   it('marks today with aria-current and labels each day for keyboard users', async () => {
