@@ -155,13 +155,17 @@ class InvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 class InvitationAcceptView(SessionCsrfMixin, APIView):
-    """Public: GET ?token= shows whom an invitation is for, POST sets the password."""
+    """Public: GET shows whom an invitation is for, POST sets the password.
+
+    GET reads the token from the ``X-Invitation-Token`` header, never from the
+    query string: URLs end up in proxy and web server logs (DSGVO).
+    """
 
     throttle_classes = [PasswordActionThrottle]
 
     def get(self, request):
         try:
-            invitation = open_invitation(request.query_params.get("token", ""))
+            invitation = open_invitation(request.headers.get("X-Invitation-Token", ""))
         except InvitationError as error:
             return Response({"detail": error.detail, "code": error.code}, status=error.status)
         return Response({"email": invitation.email, "kind": invitation.kind, "expires_at": invitation.expires_at})

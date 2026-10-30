@@ -108,7 +108,8 @@ def _send(invitation, raw_token):
             "children": [child.name for child in record.children.all()] if invitation.kind == "parent" else [],
             "kind": invitation.kind,
         },
-        "links": {"open": f"{settings.FRONTEND_URL.rstrip('/')}/passwort-festlegen?token={raw_token}"},
+        # The fragment never reaches a server, so the token stays out of access logs.
+        "links": {"open": f"{settings.FRONTEND_URL.rstrip('/')}/passwort-festlegen#token={raw_token}"},
         "actions": [],
         "site_name": prefs["general__title"],
     }

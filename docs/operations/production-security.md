@@ -84,3 +84,14 @@ Anmelde-, MFA- und Passwortlimits, die OIDC-Einmalmarken und das Limit für CSP-
 `check --deploy` meldet in diesem Fall den Fehler `users.E001`. Der Backend-Container führt `check --deploy --fail-level ERROR` vor jedem Start aus und startet ohne gemeinsamen Cache nicht. Alle mitgelieferten Compose-Dateien setzen `REDIS_URL=redis://redis:6379`.
 
 Redis läuft mit `maxmemory 256mb` und `allkeys-lru`. Unter Speicherdruck kann Redis Limitzähler vorzeitig verwerfen; Redis deshalb nicht mit anderen Anwendungen teilen und die Speichernutzung beobachten.
+
+## Zugriffsprotokolle: ohne Geheimnisse, 14 Tage
+
+Zugriffsprotokolle enthalten IP-Adressen und damit personenbezogene Daten. Sie dienen nur der Fehlersuche und der Abwehr von Angriffen.
+
+- **Inhalt:** Nginx protokolliert Methode, Pfad ohne Abfrageparameter, Status, Größe und User-Agent. Den Referer protokolliert es nicht. Pfadbestandteile mit Geheimnissen ersetzt es durch `[redacted]`: `/reset-password/…`, `/api/v1/attachment-preview/<id>/…` und Schnellaktionslinks `/a/…`. uWSGI schreibt kein eigenes Request-Protokoll (`disable-logging = true`).
+- **Einladungslinks** tragen das Token im Fragment (`/passwort-festlegen#token=…`). Der Browser schickt es nie an einen Server. Die Oberfläche übergibt es im Header `X-Invitation-Token` und entfernt es sofort aus der Adresszeile. Ältere Links mit `?token=` funktionieren weiter; Nginx protokolliert sie ohne den Abfrageteil.
+- **Aufbewahrung, nativer Betrieb:** jfctl richtet `/etc/logrotate.d/jf-manager` ein (täglich, 14 Tage, komprimiert) für alle Dateien in `/var/log/jf-manager/`.
+- **Aufbewahrung, Compose-Betrieb:** Docker begrenzt die Protokolle nur nach Größe (5 × 10 MB je Container). Wer eine feste Frist braucht, stellt den Logging-Treiber auf `journald` um und setzt auf dem Host `MaxRetentionSec=14d` in `/etc/systemd/journald.conf`.
+
+Ein vorgelagerter Reverse Proxy (Abschnitt oben) führt eigene Protokolle. Für ihn gelten dieselben Regeln: keine Abfrageparameter protokollieren und höchstens 14 Tage aufbewahren.

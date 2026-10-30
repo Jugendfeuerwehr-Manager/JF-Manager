@@ -12,6 +12,7 @@ NATIVE_PACKAGES=(python3 python3-venv python3-dev build-essential pkg-config lib
     libldap2-dev libsasl2-dev libssl-dev default-libmysqlclient-dev
     postgresql redis-server nginx restic curl jq openssl ca-certificates)
 SYSTEMD_DIR=${JFCTL_SYSTEMD_DIR:-/etc/systemd/system}
+LOGROTATE_DIR=${JFCTL_LOGROTATE_DIR:-/etc/logrotate.d}
 
 _entry_units() {
     local units=("${NATIVE_ENTRY_UNITS[@]}")
@@ -58,7 +59,7 @@ ad_preflight() {
 }
 
 _render_tmpl() { # src dst
-    sed -e "s#@ETC@#$JF_ETC#g" -e "s#@OPT@#$JF_OPT#g" -e "s#@DATA@#$JF_DATA_DIR#g" "$1" >"$2"
+    sed -e "s#@ETC@#$JF_ETC#g" -e "s#@OPT@#$JF_OPT#g" -e "s#@DATA@#$JF_DATA_DIR#g" -e "s#@LOG@#$JF_LOG_DIR#g" "$1" >"$2"
 }
 
 _native_env() {
@@ -132,6 +133,9 @@ ad_render() {
     for unit in "$JF_OPT"/current/ops/native/systemd/*; do
         _render_tmpl "$unit" "$SYSTEMD_DIR/$(basename "$unit")"
     done
+    # Access logs hold IP addresses: keep them 14 days (docs/operations/production-security.md).
+    mkdir -p "$LOGROTATE_DIR"
+    _render_tmpl "$JF_OPT/current/ops/native/logrotate.tmpl" "$LOGROTATE_DIR/jf-manager"
     systemctl daemon-reload
     systemctl enable jf-manager.target "${NATIVE_APP_UNITS[@]}" "${NATIVE_ENTRY_UNITS[@]}" >/dev/null 2>&1
     if [ "$JF_TLS" = caddy ]; then systemctl enable caddy.service >/dev/null 2>&1; fi

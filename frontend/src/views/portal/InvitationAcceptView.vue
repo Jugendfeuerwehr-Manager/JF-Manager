@@ -111,8 +111,13 @@ function fieldError(name: string) {
 }
 
 onMounted(() => {
+  // New links carry the token in the fragment (never sent to the server);
+  // links mailed before that still use ?token=.
+  const fromHash = new URLSearchParams(route.hash.replace(/^#/, '')).get('token')
   const raw = route.query.token
-  token.value = Array.isArray(raw) ? (raw[0] ?? '') : (raw ?? '')
+  token.value = fromHash ?? (Array.isArray(raw) ? (raw[0] ?? '') : (raw ?? ''))
+  // Drop the token from the address bar, history and later Referer headers.
+  void router.replace({ path: route.path })
   void store.loadInvitation(token.value)
 })
 

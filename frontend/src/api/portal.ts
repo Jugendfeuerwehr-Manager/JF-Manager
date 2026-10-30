@@ -176,7 +176,8 @@ export const portalApi = {
     return apiClient.post<PortalAbsenceResult>(`${personBase}/absences/`, data)
   },
   invitationInfo(token: string) {
-    return apiClient.get<InvitationInfo>('/portal/invitations/accept/', { params: { token } })
+    // Header instead of query string: URLs end up in server logs.
+    return apiClient.get<InvitationInfo>('/portal/invitations/accept/', { headers: { 'X-Invitation-Token': token } })
   },
   acceptInvitation(data: AcceptInvitationPayload) {
     return apiClient.post<{ username: string }>('/portal/invitations/accept/', data)
