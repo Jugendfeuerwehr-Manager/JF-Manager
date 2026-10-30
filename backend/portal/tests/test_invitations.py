@@ -183,12 +183,27 @@ class AcceptTests(InvitationTestBase):
         self.assertEqual(data["kind"], "parent")
         self.assertNotIn("Mia", str(data))
 
+    def test_accept_records_the_notice_version_and_voluntary_photo_consents(self):
+        from privacy.models import LegalPage
+        from privacy.services import legal
+
+        page = legal.get_page(LegalPage.Kind.PRIVACY)
+        legal.save_draft(page, title="Datenschutz", body="<p>Wir verarbeiten …</p>", user=self.staff)
+        legal.publish(page, user=self.staff)
+        self.assertEqual(self.accept(photo_internal=True).status_code, 201)
+        user = User.objects.get(username="eva@example.invalid")
+        self.assertEqual(user.consent_records.get().text_version, "privacy:v1")
+        child = self.parent.children.get()
+        self.assertEqual(list(child.consent_records.values_list("kind", "status")), [("photo_internal", "granted")])
+
     def test_accept_creates_a_linked_portal_account_that_can_log_in(self):
         response = self.accept()
         self.assertEqual(response.status_code, 201, response.content)
         user = User.objects.get(username="eva@example.invalid")
         self.assertTrue(user.is_portal_account)
-        self.assertTrue(user.dsgvo_external)
+        ack = user.consent_records.get(kind="privacy_notice_ack")
+        self.assertEqual((ack.status, ack.source, ack.text_version), ("granted", "self", ""))
+        self.assertFalse(self.parent.children.first().consent_records.exists())  # photos stay opt-in
         self.assertEqual((user.first_name, user.last_name), ("Eva", "Beispiel"))
         link = user.account_link
         self.assertEqual((link.parent, link.status, link.linked_by), (self.parent, "confirmed", self.staff))

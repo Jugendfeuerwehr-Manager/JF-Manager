@@ -86,6 +86,8 @@ class SettingsViewSet(viewsets.ViewSet):
         "oidc": {"prefix": "oidc", "fields": []},
         "security": {"prefix": "security", "fields": []},
         "push": {"prefix": "push", "fields": []},
+        # Legal texts live in the privacy app; retention periods follow as preferences.
+        "privacy": {"prefix": "privacy", "fields": []},
         "training": {
             "prefix": "training",
             "fields": ["training_start_time", "training_end_time", "default_block_duration_minutes"],

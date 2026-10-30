@@ -45,8 +45,10 @@ describe('InvitationAcceptView', () => {
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(wrapper.text()).toContain('Bitte bestätigen.')
 
+    await wrapper.get('#accept-photo-internal').setValue(true)
     vi.mocked(portalApi.acceptInvitation).mockResolvedValueOnce({ data: { username: 'eltern@example.org' } } as never)
     await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(vi.mocked(portalApi.acceptInvitation).mock.lastCall?.[0]).toMatchObject({ photo_internal: true, photo_public: false })
     expect(wrapper.text()).toContain('Dein Zugang ist eingerichtet.')
     await wrapper.get('button').trigger('click')
     expect(push).toHaveBeenCalledWith('/login')

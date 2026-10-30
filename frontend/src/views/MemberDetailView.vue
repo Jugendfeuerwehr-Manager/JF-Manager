@@ -202,6 +202,10 @@
             <ChangeLogCard kind="member" :record-id="memberId" />
           </section>
 
+          <section class="detail-card aside-card">
+            <ConsentPanel :subject="{ field: 'member', id: memberId }" :can-edit="authStore.hasPerm('members.change_member')" />
+          </section>
+
           <section v-if="canLinkAccounts" class="detail-card aside-card">
             <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
           </section>
@@ -271,6 +275,7 @@ import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
 import ChangeLogCard from '@/components/members/organisms/ChangeLogCard.vue'
+import ConsentPanel from '@/components/privacy/organisms/ConsentPanel.vue'
 import QualificationDuplicatesPanel from '@/components/members/organisms/QualificationDuplicatesPanel.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'

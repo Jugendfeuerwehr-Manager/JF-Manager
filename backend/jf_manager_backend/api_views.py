@@ -6,6 +6,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from privacy.models import LegalPage, LegalPageVersion
+
 DEFAULT_BRAND_COLOR = "#b91c1c"
 LOGIN_TEXT_FIELDS = ("login_eyebrow", "login_headline", "login_intro", "login_footer", "login_help")
 
@@ -40,6 +42,10 @@ class PublicBrandingView(APIView):
             "login_texts": {
                 name.removeprefix("login_"): str(global_preferences.get(f"general__{name}") or "")
                 for name in LOGIN_TEXT_FIELDS
+            },
+            # Which legal texts are published, so every page can link them.
+            "legal": {
+                kind: LegalPageVersion.objects.filter(page__kind=kind).exists() for kind in LegalPage.Kind.values
             },
         }
 

@@ -19,7 +19,7 @@ function render(user?: AdminUserDetail) {
     InputText: { props: ['modelValue'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
     Fieldset: { template: '<div><slot /></div>' },
     Checkbox: true, MultiSelect: true, Password: true, Button: true,
-    Message: true, PermissionInfoIcon: true,
+    Message: true, PermissionInfoIcon: true, ConsentPanel: true,
   } } })
 }
 

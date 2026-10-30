@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from departments.models import Department
 from members.models import Member, Parent
 from participation.throttles import PortalWriteThrottle
+from privacy.consent_kinds import PHOTO_KINDS
 from users.auth_security import PasswordActionThrottle
 from users.session_views import SessionCsrfMixin
 
@@ -171,7 +172,11 @@ class InvitationAcceptView(SessionCsrfMixin, APIView):
         data = InvitationAcceptSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         try:
-            user = accept(data.validated_data["token"], data.validated_data["password"])
+            user = accept(
+                data.validated_data["token"],
+                data.validated_data["password"],
+                photo_consents=[kind for kind in PHOTO_KINDS if data.validated_data[kind]],
+            )
         except InvitationError as error:
             field = "password" if error.code == "password" else "detail"
             return Response({field: error.detail, "code": error.code}, status=error.status)

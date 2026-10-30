@@ -116,6 +116,7 @@ INSTALLED_APPS = [
     "training.apps.TrainingConfig",
     "external_sync.apps.ExternalSyncConfig",
     "settings_manager.apps.SettingsManagerConfig",
+    "privacy.apps.PrivacyConfig",
     "django_rq",
     "health",
     "notifications.apps.NotificationsConfig",

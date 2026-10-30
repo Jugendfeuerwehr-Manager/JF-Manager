@@ -25,6 +25,10 @@
 
       <ParentPortalAccessCard v-if="isEditMode" :parent-id="parentId" />
 
+      <section v-if="isEditMode" class="form-card">
+        <ConsentPanel :subject="{ field: 'parent', id: parentId }" :can-edit="authStore.hasPerm('members.change_parent')" />
+      </section>
+
       <section v-if="isEditMode && canLinkAccounts" class="form-card account-link">
         <AccountLinkCard kind="parent" :record-id="parentId" :record-name="`${formData.name} ${formData.lastname}`.trim()" />
       </section>
@@ -168,6 +172,7 @@ import type { ParentCreate } from '@/types/parents'
 import { classifyApiError, getApiErrorMessage } from '@/utils/apiError'
 import ParentPortalAccessCard from '@/views/portal-admin/ParentPortalAccessCard.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
+import ConsentPanel from '@/components/privacy/organisms/ConsentPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 
 type TextField = 'name' | 'lastname' | 'email' | 'email2' | 'phone' | 'mobile' | 'street' | 'zip_code' | 'city'
@@ -181,7 +186,8 @@ const parentsStore = useParentsStore()
 const parentId = computed(() => Number(route.params.id))
 const isEditMode = computed(() => !!route.params.id)
 // Account management links staff accounts to parent records (PORTAL-04, Q4).
-const canLinkAccounts = computed(() => useAuthStore().hasPerm('users.change_customuser'))
+const authStore = useAuthStore()
+const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuser'))
 
 const nameFields: { id: TextField; label: string; autocomplete: string }[] = [
   { id: 'name', label: 'Vorname', autocomplete: 'off' },

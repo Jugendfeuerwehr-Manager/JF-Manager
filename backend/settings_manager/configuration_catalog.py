@@ -22,6 +22,7 @@ CATEGORY_LABELS = {
     "oidc": "Single Sign-On",
     "security": "Sitzungsrichtlinien",
     "push": "Push-Benachrichtigungen",
+    "privacy": "Datenschutz",
 }
 FIELD_LABELS = {
     "email_credentials_unavailable": "SMTP-Passwort nicht entschlüsselbar",
@@ -105,6 +106,7 @@ SERIALIZERS = {
             "order": "OrderSettingsSerializer",
             "ldap": "LDAPSettingsSerializer",
             "oidc": "OIDCSettingsSerializer",
+            "privacy": "PrivacySettingsSerializer",
         }.items()
     },
     "security": SecurityPolicySerializer,

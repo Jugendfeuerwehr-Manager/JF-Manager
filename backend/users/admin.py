@@ -25,14 +25,13 @@ class CustomUserAdmin(UserAdmin):
     model = CustomUser
     fieldsets = (
         *UserAdmin.fieldsets,
-        ("DSGVO", {"classes": ("wide",), "fields": ("dsgvo_internal", "dsgvo_external")}),
         ("Kontakt", {"fields": ("phone", "mobile_phone", "street", "zip_code", "city")}),
         ("Weiteres", {"fields": ("avatar", "account_kind")}),
     )
     # Converting portal and staff accounts is a checked administrative step (PORTAL-01).
     readonly_fields = ("account_kind",)
-    list_filter = (*UserAdmin.list_filter, "account_kind", "dsgvo_internal", "dsgvo_external")
-    list_display = ["username", "email", "is_staff", "dsgvo_internal", "dsgvo_external"]
+    list_filter = (*UserAdmin.list_filter, "account_kind")
+    list_display = ["username", "email", "is_staff", "account_kind"]
 
 
 admin.site.register(CustomUser, CustomUserAdmin)

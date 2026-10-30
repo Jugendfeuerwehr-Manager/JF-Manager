@@ -62,8 +62,6 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "last_login",
             "avatar",
             "avatar_url",
-            "dsgvo_internal",
-            "dsgvo_external",
             "email_signature",
             "theme_mode",
             "auth_source",

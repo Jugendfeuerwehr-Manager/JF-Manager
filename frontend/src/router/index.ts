@@ -17,6 +17,21 @@ const router = createRouter({
       component: () => import('@/views/OIDCCallbackView.vue'),
       meta: { requiresAuth: false }
     },
+    // Imprint and privacy notice: public, also without login (DSGVO / TMG).
+    {
+      path: '/impressum',
+      name: 'legal-imprint',
+      component: () => import('@/views/LegalPageView.vue'),
+      props: { kind: 'imprint' },
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/datenschutz',
+      name: 'legal-privacy',
+      component: () => import('@/views/LegalPageView.vue'),
+      props: { kind: 'privacy' },
+      meta: { requiresAuth: false }
+    },
     {
       path: '/passwort-festlegen',
       name: 'portal-invitation-accept',
@@ -371,6 +386,12 @@ const router = createRouter({
               name: 'settings-order',
               component: () =>
                 import('@/components/settings/organisms/sections/OrderSection.vue'),
+            },
+            {
+              path: 'privacy',
+              name: 'settings-privacy',
+              component: () =>
+                import('@/components/settings/organisms/sections/PrivacySection.vue'),
             },
             {
               path: 'ldap',

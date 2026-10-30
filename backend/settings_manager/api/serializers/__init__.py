@@ -325,6 +325,10 @@ class OIDCGroupMappingSerializer(RoleMappingValidation, serializers.ModelSeriali
         return instance
 
 
+class PrivacySettingsSerializer(serializers.Serializer):
+    """DSGVO settings category; the legal texts have their own endpoints (privacy app)."""
+
+
 class AllSettingsSerializer(serializers.Serializer):
     """
     Combined serializer for all settings
@@ -343,6 +347,7 @@ class AllSettingsSerializer(serializers.Serializer):
     order = OrderSettingsSerializer(required=False)
     ldap = LDAPSettingsSerializer(required=False)
     oidc = OIDCSettingsSerializer(required=False)
+    privacy = PrivacySettingsSerializer(required=False)
 
 
 class CategorySettingsUpdateSerializer(serializers.Serializer):
@@ -386,6 +391,7 @@ __all__ = [
     "LDAPSettingsSerializer",
     "MemberSettingsSerializer",
     "OrderSettingsSerializer",
+    "PrivacySettingsSerializer",
     "ServiceSettingsSerializer",
     "UserPermissionsSerializer",
 ]

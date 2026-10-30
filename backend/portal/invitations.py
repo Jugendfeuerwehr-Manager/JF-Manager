@@ -207,7 +207,29 @@ def open_invitation(raw_token):
 
 
 @transaction.atomic
-def accept(raw_token, password):
+def _record_consents(invitation, user, photo_consents):
+    """Evidence for the acknowledged privacy notice (with its version) and for
+    voluntary photo consents, given for the child(ren) or the member."""
+    from privacy.models import ConsentRecord, LegalPage
+    from privacy.services.consent import record_consent
+    from privacy.services.legal import version_label
+
+    granted, source = ConsentRecord.Status.GRANTED, ConsentRecord.Source.SELF
+    version = version_label(LegalPage.Kind.PRIVACY)
+    note = "" if version else "Zum Zeitpunkt der Annahme war keine Datenschutzerklärung veröffentlicht."
+    record_consent(
+        user, "privacy_notice_ack", granted, source=source, text_version=version, recorded_by=user, note=note
+    )
+    record = invitation.record
+    people = list(record.children.all()) if invitation.kind == "parent" else [record]
+    for kind in photo_consents:
+        for person in people:
+            record_consent(
+                person, kind, granted, source=source, recorded_by=user, note="Bei der Portal-Einladung erteilt."
+            )
+
+
+def accept(raw_token, password, photo_consents=()):
     invitation = open_invitation(raw_token)
     invitation = Invitation.objects.select_for_update().get(pk=invitation.pk)
     if invitation.state != "open":
@@ -226,7 +248,6 @@ def accept(raw_token, password):
         first_name=record.name,
         last_name=record.lastname,
         account_kind=User.AccountKind.PORTAL,
-        dsgvo_external=True,
     )
     try:
         validate_password(password, user=user)
@@ -242,6 +263,7 @@ def accept(raw_token, password):
         confirmed_at=now,
         **{invitation.kind: record},
     )
+    _record_consents(invitation, user, photo_consents)
     invitation.accepted_at, invitation.accepted_user = now, user
     invitation.save(update_fields=["accepted_at", "accepted_user"])
     security_log.info("portal invitation accepted", extra={"invitation": invitation.pk, "user": user.pk})

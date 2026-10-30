@@ -112,6 +112,19 @@ const userMenuItems = computed<MenuItem[]>(() => [
     separator: true
   },
   {
+    label: 'Impressum',
+    icon: 'pi pi-info-circle',
+    command: () => router.push('/impressum')
+  },
+  {
+    label: 'Datenschutz',
+    icon: 'pi pi-lock',
+    command: () => router.push('/datenschutz')
+  },
+  {
+    separator: true
+  },
+  {
     label: 'Abmelden',
     icon: 'pi pi-sign-out',
     command: () => void authStore.logout()

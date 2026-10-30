@@ -26,6 +26,7 @@ from members.api.viewsets import (
     StatusViewSet,
 )
 from orders.api.viewsets import OrderableItemViewSet, OrderItemViewSet, OrderStatusViewSet, OrderViewSet
+from privacy.api.viewsets import ConsentRecordViewSet, LegalPageViewSet
 from qualifications.api.viewsets import (
     QualificationTypeViewSet,
     QualificationViewSet,
@@ -110,6 +111,10 @@ api.register(r"settings/email-templates", EmailTemplateViewSet, basename="email-
 api.register(r"settings/email-layout-templates", EmailLayoutTemplateViewSet, basename="email-layout-templates")
 api.register(r"ldap-department-mappings", LDAPDepartmentMappingViewSet, basename="ldap-department-mappings")
 api.register(r"oidc-group-mappings", OIDCGroupMappingViewSet, basename="oidc-group-mappings")
+
+# Privacy (DSGVO): legal texts and consent records
+api.register(r"privacy/legal-pages", LegalPageViewSet, basename="privacy-legal-pages")
+api.register(r"privacy/consents", ConsentRecordViewSet, basename="privacy-consents")
 
 # Training endpoints - most specific routes FIRST
 api.register(r"training/library/categories", LibraryBlockCategoryViewSet, basename="training-library-categories")

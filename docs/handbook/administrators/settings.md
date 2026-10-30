@@ -16,6 +16,7 @@ Die Einstellungsnavigation zeigt nur Kategorien, für die du Rechte hast. Änder
 | LDAP / OIDC | Verzeichnis, externe Anmeldung und Rollenmapping | Neue Anmeldung mit Testkonto prüfen; lokalen Notfallzugang erhalten |
 | Sitzungen | Inaktivität und maximale Dauer, normale/privilegierte Konten | Wirkt bei nächster Sitzungsprüfung; Maximum mindestens Inaktivität |
 | Push | Kontaktadresse, Versandschlüssel, Aktivierung | Geräte müssen zusätzlich im eigenen Profil zustimmen |
+| Datenschutz | Impressum und Datenschutzerklärung | Veröffentlichte Versionen sind öffentlich und bleiben als Nachweis erhalten |
 | Einstellungsübersicht | Speicherung, Herkunft, Regeln und Wirksamkeit | Hostvorgaben sind gesperrt; keine Geheimniswerte angezeigt |
 | Betriebsstatus | Version, Sicherung und Workerzustand | Nur lesen; Hoständerungen über `jfctl` |
 
@@ -35,6 +36,14 @@ Einstellungen können aus Datenbank oder Hostvorgaben stammen. Prüfe die Einste
 4. Zustellung und die Auswahl der Kategorien prüfen.
 
 Schlüsselwechsel schaltet Push aus und erfordert eine erneute Anmeldung aller Geräte. Verändere ein bestehendes Paar nur mit einem abgestimmten Wechselplan. Geplante Teilnahme-Mitteilungen sind noch nicht Teil dieses Handbuchstands.
+
+## Impressum und Datenschutzerklärung
+
+Unter **Datenschutz** pflegst du beide Texte im Editor. **Entwurf speichern** ändert nichts Öffentliches. **Veröffentlichen** friert den Entwurf als neue Version ein. Sie erscheint dann unter `/impressum` bzw. `/datenschutz`, verlinkt auf der Anmeldeseite, im Portal und im Benutzermenü. Ältere Versionen bleiben erhalten und lassen sich nicht ändern.
+
+Nimmt ein Elternteil eine Portal-Einladung an, speichert die Anwendung die Kenntnisnahme mit der dann gültigen Version (z. B. `privacy:v3`). Freiwillige Foto-Einwilligungen aus der Einladung landen beim Kind. Weitere Einwilligungen, etwa nach einem Papierformular, erfasst die Leitung beim Mitglied, beim Elternteil oder am Konto. Ein Widerruf ist ein neuer Eintrag; der Verlauf bleibt vollständig.
+
+Rechte: `settings_manager.view_privacy_settings` bzw. `change_privacy_settings` (oder die entsprechenden Rechte für alle Einstellungen). Die Texte sind keine Rechtsberatung; lass sie von der oder dem Datenschutzbeauftragten des Trägers prüfen.
 
 ## Betriebsstatus
 

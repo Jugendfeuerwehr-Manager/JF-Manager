@@ -8,7 +8,9 @@ class RoleSourceMigrationTests(TransactionTestCase):
         executor = MigrationExecutor(connection)
         leaves = executor.loader.graph.leaf_nodes()
         self.addCleanup(lambda: MigrationExecutor(connection).migrate(leaves))
-        user_leaves = [node for node in leaves if node[0] == "users"]
+        # users 0015+ carries the DSGVO flags into privacy.ConsentRecord and thereby
+        # depends on newer department migrations; stay on the state before that.
+        user_leaves = [("users", "0014_list_preferences")]
         before = [("departments", "0005_alter_roletemplate_options_and_more"), *user_leaves]
         executor.migrate(before)
         apps = executor.loader.project_state(before).apps

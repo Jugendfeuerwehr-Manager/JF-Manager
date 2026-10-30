@@ -44,8 +44,6 @@ export interface AdminUser {
   is_staff: boolean
   is_active: boolean
   is_superuser: boolean
-  dsgvo_internal: boolean
-  dsgvo_external: boolean
   email_signature: string
   theme_mode: string
   auth_source: 'local' | 'ldap' | 'oidc'
@@ -83,8 +81,6 @@ export interface AdminUserWrite {
   is_staff: boolean
   is_active: boolean
   is_superuser: boolean
-  dsgvo_internal?: boolean
-  dsgvo_external?: boolean
   email_signature?: string
   theme_mode?: string
   password?: string

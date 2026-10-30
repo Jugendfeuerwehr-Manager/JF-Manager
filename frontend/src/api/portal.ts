@@ -54,6 +54,8 @@ export interface AcceptInvitationPayload {
   password: string
   password_confirm: string
   privacy_accepted: boolean
+  photo_internal?: boolean
+  photo_public?: boolean
 }
 
 export type PortalRegistrationState =

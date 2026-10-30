@@ -158,6 +158,7 @@ export const useSettingsStore = defineStore('settings', () => {
       { id: 'training' as const, title: 'Übungsstandards', icon: 'pi pi-calendar', description: 'Zeiten und Bausteindauer für neue Übungen' },
       { id: 'security' as const, title: 'Sitzungen', icon: 'pi pi-shield', description: 'Wirksame Sicherheitsrichtlinien' },
       { id: 'push' as const, title: 'Push', icon: 'pi pi-bell', description: 'Push aktivieren und Versandschlüssel einrichten' },
+      { id: 'privacy' as const, title: 'Datenschutz', icon: 'pi pi-lock', description: 'Impressum, Datenschutzerklärung und Fristen' },
       { id: 'catalog' as const, title: 'Einstellungsübersicht', icon: 'pi pi-list', description: 'Herkunft, Regeln und Speicherorte' },
     ]) {
       if (canViewCategory.value(tab.id) || (tab.id === 'catalog' && canViewAnySettings.value)) tabs.push(tab)
@@ -178,6 +179,7 @@ export const useSettingsStore = defineStore('settings', () => {
       { label: 'Mitglieder', icon: 'pi pi-users', ids: ['member'] },
       { label: 'Betrieb', icon: 'pi pi-briefcase', ids: ['service', 'training', 'order'] },
       { label: 'Sicherheit', icon: 'pi pi-shield', ids: ['security', 'ldap', 'oidc'] },
+      { label: 'Datenschutz', icon: 'pi pi-lock', ids: ['privacy'] },
       { label: 'System', icon: 'pi pi-server', ids: ['operations'] },
     ]
 

@@ -8,6 +8,7 @@ import PortalPersonSwitcher from '@/components/portal/PortalPersonSwitcher.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePortalStore } from '@/stores/portal'
 import type { PublicBranding } from '@/types/settings'
+import LegalLinks from '@/components/privacy/molecules/LegalLinks.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -59,6 +60,7 @@ onMounted(() => {
     </header>
 
     <main class="content"><RouterView /></main>
+    <footer class="portal-footer"><LegalLinks :legal="branding?.legal" /></footer>
 
     <nav class="nav" aria-label="Portal">
       <RouterLink v-for="item in items" :key="item.name" v-slot="{ href, navigate }" :to="{ name: item.name }" custom>
@@ -97,4 +99,5 @@ onMounted(() => {
   .nav-link[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--p-primary-color); }
   .content { padding-bottom: 32px; }
 }
+.portal-footer { display: flex; justify-content: center; padding: 1rem; }
 </style>

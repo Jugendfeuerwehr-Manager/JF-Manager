@@ -352,7 +352,6 @@ class Command(BaseCommand):
                 first_name=first,
                 last_name=last,
                 account_kind=model.AccountKind.PORTAL,
-                dsgvo_external=True,
             )
             AccountLink.objects.create(
                 user=user,

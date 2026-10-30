@@ -54,9 +54,6 @@ class CustomUser(AbstractUser):
     oidc_issuer = models.CharField(max_length=500, blank=True, default="", editable=False)
     oidc_subject = models.CharField(max_length=255, blank=True, default="", editable=False)
 
-    dsgvo_internal = models.BooleanField(default=False)
-    dsgvo_external = models.BooleanField(default=False)
-
     phone = PhoneNumberField(blank=True)
     mobile_phone = PhoneNumberField(blank=True)
     street = models.CharField(max_length=200, blank=True, default="")
