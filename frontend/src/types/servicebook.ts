@@ -120,6 +120,7 @@ export interface ServiceFormData {
   topic?: string
   description?: string
   events?: string
+  department?: number | null
   operations_manager_ids?: number[]
 }
 
