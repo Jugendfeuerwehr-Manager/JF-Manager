@@ -205,7 +205,7 @@
           </section>
 
           <section class="detail-card aside-card">
-            <ConsentPanel :subject="{ field: 'member', id: memberId }" :can-edit="authStore.hasPerm('members.change_member')" />
+            <ConsentPanel :subject="{ field: 'member', id: memberId }" :can-edit="authStore.hasPerm('members.change_member')" :can-export="authStore.hasPerm('members.export_member')" />
           </section>
 
           <section v-if="canLinkAccounts" class="detail-card aside-card">

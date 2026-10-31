@@ -7,6 +7,12 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 SUBJECT_FIELDS = ("member", "parent", "user")
 
 
+def subject_department_ids(obj, field):
+    if field == "user":
+        return [None]
+    return _department_ids(obj, field)
+
+
 def _department_ids(obj, field):
     if field == "member":
         ids = list(obj.departments.values_list("id", flat=True))

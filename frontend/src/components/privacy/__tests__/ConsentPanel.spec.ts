@@ -6,7 +6,7 @@ import ConsentPanel from '../organisms/ConsentPanel.vue'
 import { privacyApi } from '@/api/privacy'
 import type { ConsentRecord } from '@/types/privacy'
 
-vi.mock('@/api/privacy', () => ({ privacyApi: { consents: vi.fn(), recordConsent: vi.fn() } }))
+vi.mock('@/api/privacy', () => ({ privacyApi: { consents: vi.fn(), recordConsent: vi.fn(), subjectAccess: vi.fn() } }))
 
 const record = (id: number, kind: string, status: 'granted' | 'withdrawn', label: string): ConsentRecord => ({
   id, kind, kind_label: label, status, status_label: status === 'granted' ? 'Erteilt' : 'Widerrufen',
@@ -14,9 +14,9 @@ const record = (id: number, kind: string, status: 'granted' | 'withdrawn', label
   recorded_by_name: 'Leitung', note: '',
 })
 
-const render = (canEdit = true) => mount(ConsentPanel, {
-  props: { subject: { field: 'member', id: 7 }, canEdit },
-  global: { plugins: [PrimeVue] },
+const render = (canEdit = true, canExport = false) => mount(ConsentPanel, {
+  props: { subject: { field: 'member', id: 7 }, canEdit, canExport },
+  global: { plugins: [PrimeVue], directives: { tooltip: {} } },
 })
 
 describe('ConsentPanel', () => {
@@ -40,5 +40,16 @@ describe('ConsentPanel', () => {
     const wrapper = render(false); await flushPromises()
     expect(wrapper.text()).toContain('Keine Einwilligungen erfasst.')
     expect(wrapper.text()).not.toContain('Erfassen')
+  })
+
+  it('offers the data copy only with the export right', async () => {
+    vi.mocked(privacyApi.consents).mockResolvedValue({ data: [] } as never)
+    expect(render(false, false).text()).not.toContain('Datenauskunft')
+    vi.mocked(privacyApi.subjectAccess).mockResolvedValue({ data: new Blob(['zip']) } as never)
+    URL.createObjectURL = vi.fn(() => 'blob:x')
+    const wrapper = render(false, true); await flushPromises()
+    const button = wrapper.findAll('button').find(b => b.text().includes('Datenauskunft'))!
+    await button.trigger('click'); await flushPromises()
+    expect(privacyApi.subjectAccess).toHaveBeenCalledWith({ field: 'member', id: 7 })
   })
 })

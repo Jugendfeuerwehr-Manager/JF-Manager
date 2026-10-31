@@ -1,7 +1,7 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -116,3 +116,45 @@ class ConsentRecordViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, views
             note=data.validated_data["note"],
         )
         return Response(ConsentRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+
+
+class SubjectAccessView(APIView):
+    """Art. 15/20 DSGVO: all data about one person as a ZIP (?member=, ?parent= or ?user=).
+
+    Needs the export right where the person belongs (accounts: user administration
+    or the own account), a fresh confirmation, and writes an export audit entry.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={(200, "application/zip"): bytes})
+    def get(self, request):
+        from django.http import HttpResponse
+
+        from members.models import ExportAudit
+        from privacy.api.subjects import subject_department_ids
+        from privacy.services.subject_access import build_archive
+        from users.step_up import require_step_up
+
+        field, subject = resolve_subject(request, request.query_params, write=False)
+        departments = subject_department_ids(subject, field)
+        if field in ("member", "parent") and not request.user.is_superuser:
+            from departments.mixins import DepartmentScopeViewSetMixin
+
+            scope = DepartmentScopeViewSetMixin()
+            if not any(scope._has_right_in_department(request.user, "members.export_member", d) for d in departments):
+                raise PermissionDenied("Für eine Datenauskunft ist das Exportrecht nötig.")
+        require_step_up(request)
+        archive = build_archive(field, subject)
+        ExportAudit.objects.create(
+            actor_id=request.user.pk,
+            action="subject_access",
+            object_type=f"{subject._meta.label_lower}",
+            object_id=subject.pk,
+            department_ids=[d for d in departments if d is not None],
+            status_code=200,
+        )
+        response = HttpResponse(archive, content_type="application/zip")
+        response["Content-Disposition"] = f'attachment; filename="datenauskunft-{field}-{subject.pk}.zip"'
+        response["Cache-Control"] = "private, no-store"
+        return response

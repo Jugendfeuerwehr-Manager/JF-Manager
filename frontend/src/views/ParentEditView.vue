@@ -26,7 +26,7 @@
       <ParentPortalAccessCard v-if="isEditMode" :parent-id="parentId" />
 
       <section v-if="isEditMode" class="form-card">
-        <ConsentPanel :subject="{ field: 'parent', id: parentId }" :can-edit="authStore.hasPerm('members.change_parent')" />
+        <ConsentPanel :subject="{ field: 'parent', id: parentId }" :can-edit="authStore.hasPerm('members.change_parent')" :can-export="authStore.hasPerm('members.export_member')" />
       </section>
 
       <section v-if="isEditMode && canLinkAccounts" class="form-card account-link">

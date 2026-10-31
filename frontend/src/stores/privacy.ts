@@ -126,7 +126,32 @@ export const usePrivacyStore = defineStore('privacy', () => {
     }
   }
 
+  // Art. 15 DSGVO: ZIP with all data of one person (step-up is handled by the API client).
+  const exporting = ref(false)
+
+  async function downloadSubjectAccess(subject: ConsentSubject) {
+    exporting.value = true
+    consentsError.value = null
+    try {
+      const response = await privacyApi.subjectAccess(subject)
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `datenauskunft-${subject.field}-${subject.id}.zip`
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      return true
+    } catch (e) {
+      consentsError.value = getApiErrorMessage(e, 'Datenauskunft konnte nicht erstellt werden')
+      return false
+    } finally {
+      exporting.value = false
+    }
+  }
+
   return {
+    exporting,
+    downloadSubjectAccess,
     legalPages,
     versions,
     legalLoading,

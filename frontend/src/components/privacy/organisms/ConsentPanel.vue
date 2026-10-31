@@ -2,14 +2,26 @@
   <section class="consent-panel">
     <div class="consent-panel__header">
       <h3 class="consent-panel__title">Einwilligungen</h3>
-      <Button
-        v-if="canEdit && !formOpen"
-        label="Erfassen"
-        icon="pi pi-plus"
-        size="small"
-        text
-        @click="formOpen = true"
-      />
+      <div class="consent-panel__actions">
+        <Button
+          v-if="canExport"
+          label="Datenauskunft"
+          icon="pi pi-download"
+          size="small"
+          text
+          :loading="privacyStore.exporting"
+          v-tooltip.bottom="'Alle gespeicherten Daten dieser Person als ZIP (Art. 15 DSGVO)'"
+          @click="privacyStore.downloadSubjectAccess(subject)"
+        />
+        <Button
+          v-if="canEdit && !formOpen"
+          label="Erfassen"
+          icon="pi pi-plus"
+          size="small"
+          text
+          @click="formOpen = true"
+        />
+      </div>
     </div>
 
     <Message v-if="privacyStore.consentsError" severity="error" :closable="false">{{ privacyStore.consentsError }}</Message>
@@ -68,9 +80,11 @@ import { CONSENT_KIND_OPTIONS, type ConsentRecord, type ConsentStatus, type Cons
 interface Props {
   subject: ConsentSubject
   canEdit: boolean
+  /** Offers the Art. 15 data copy; the server checks the export right again. */
+  canExport?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { canExport: false })
 const privacyStore = usePrivacyStore()
 
 const formOpen = ref(false)
@@ -115,6 +129,7 @@ async function submit() {
 .consent-panel { display: flex; flex-direction: column; gap: .75rem; }
 .consent-panel__header { display: flex; align-items: center; justify-content: space-between; }
 .consent-panel__title { margin: 0; font-size: 1rem; }
+.consent-panel__actions { display: flex; gap: .25rem; }
 .consent-panel__form { display: flex; flex-direction: column; gap: .5rem; }
 .consent-panel__form-actions { display: flex; justify-content: flex-end; gap: .5rem; }
 .consent-panel__empty { color: var(--text-color-secondary); margin: 0; }

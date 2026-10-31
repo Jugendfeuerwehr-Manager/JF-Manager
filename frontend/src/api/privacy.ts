@@ -22,6 +22,8 @@ export const privacyApi = {
   publicPage: (kind: LegalPageKind) => apiClient.get<PublicLegalPage>(`/legal/${kind}/`),
   consents: (subject: ConsentSubject) =>
     apiClient.get<ConsentRecord[]>('/privacy/consents/', { params: { [subject.field]: subject.id } }),
+  subjectAccess: (subject: ConsentSubject) =>
+    apiClient.get<Blob>('/privacy/subject-access/', { params: { [subject.field]: subject.id }, responseType: 'blob' }),
   recordConsent: (subject: ConsentSubject, data: ConsentCreate) =>
     apiClient.post<ConsentRecord>('/privacy/consents/', { ...data, [subject.field]: subject.id }),
 }

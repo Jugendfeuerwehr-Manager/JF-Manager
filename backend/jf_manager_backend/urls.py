@@ -16,7 +16,7 @@ from drf_spectacular.views import (
 
 from jf_manager_backend.dashboard_api import DashboardSummaryView
 from members.attachment_links import attachment_preview, deny_direct_attachments
-from privacy.api.viewsets import PublicLegalPageView
+from privacy.api.viewsets import PublicLegalPageView, SubjectAccessView
 from users.device_views import DeviceListView, DeviceRevokeOthersView, DeviceRevokeView
 from users.mfa_views import (
     MFAConfirmView,
@@ -114,6 +114,8 @@ api_patterns = [
     path("api/v1/app/branding/", PublicBrandingView.as_view(), name="public-branding"),
     # Published imprint / privacy notice (no auth required)
     path("api/v1/legal/<str:kind>/", PublicLegalPageView.as_view(), name="public-legal-page"),
+    # Art. 15 DSGVO: data copy of one person
+    path("api/v1/privacy/subject-access/", SubjectAccessView.as_view(), name="privacy-subject-access"),
     # API Documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerSplitView.as_view(url_name="schema"), name="swagger-ui"),

@@ -114,7 +114,7 @@
 
     <!-- Consents (DSGVO evidence) -->
     <Fieldset v-if="!isNew && user?.id" legend="Einwilligungen" :toggleable="true" :collapsed="true" class="mb-3">
-      <ConsentPanel :subject="{ field: 'user', id: user.id }" :can-edit="authStore.hasPerm('users.change_customuser')" />
+      <ConsentPanel :subject="{ field: 'user', id: user.id }" :can-edit="authStore.hasPerm('users.change_customuser')" :can-export="authStore.hasPerm('users.view_customuser')" />
     </Fieldset>
 
     <!-- Signature -->
