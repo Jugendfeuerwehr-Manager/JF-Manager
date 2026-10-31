@@ -187,6 +187,14 @@ class AnonymizeApiTests(APITestCase):
         listed = {row["id"] for row in self.client.get("/api/v1/members/?include_anonymized=true").json()["results"]}
         self.assertIn(self.member.pk, listed)
 
+    def test_leave_date_is_saved_and_can_be_cleared(self):
+        self.client.force_authenticate(self.user("leiter", self.mitte, "view_member", "change_member"))
+        url = f"/api/v1/members/{self.member.pk}/"
+        self.assertEqual(self.client.patch(url, {"left_at": "2026-09-30"}, format="multipart").status_code, 200)
+        self.assertEqual(Member.objects.get(pk=self.member.pk).left_at, date(2026, 9, 30))
+        self.assertEqual(self.client.patch(url, {"left_at": ""}, format="multipart").status_code, 200)
+        self.assertIsNone(Member.objects.get(pk=self.member.pk).left_at)
+
     def test_delete_uses_the_erasure_service(self):
         ChangeLog.objects.create(target_kind="member", target_id=self.member.pk, field="city", old="A", new="B")
         self.client.force_authenticate(self.user("admin", self.mitte, "view_member", "delete_member"))

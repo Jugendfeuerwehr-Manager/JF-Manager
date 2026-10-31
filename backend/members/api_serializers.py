@@ -249,6 +249,7 @@ class MemberCreateUpdateSerializer(serializers.ModelSerializer):
             "mobile",
             "notes",
             "joined",
+            "left_at",
             "identityCardNumber",
             "canSwimm",
             "gender",
