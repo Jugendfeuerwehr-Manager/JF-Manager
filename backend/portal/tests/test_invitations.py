@@ -24,7 +24,7 @@ STRONG = "Feuerwehr-Zugang-2026!"
 
 
 def token_from_mail(message):
-    return re.search(r"passwort-festlegen\?token=([\w-]+)", message.body).group(1)
+    return re.search(r"passwort-festlegen#token=([\w-]+)", message.body).group(1)
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -145,11 +145,15 @@ class InviteTests(InvitationTestBase):
         new_token = token_from_mail(mail.outbox[1])
         self.assertNotEqual(old_token, new_token)
         anonymous = APIClient()
-        self.assertEqual(anonymous.get(f"/api/v1/portal/invitations/accept/?token={old_token}").status_code, 404)
-        self.assertEqual(anonymous.get(f"/api/v1/portal/invitations/accept/?token={new_token}").status_code, 200)
+
+        def info(token):
+            return anonymous.get("/api/v1/portal/invitations/accept/", HTTP_X_INVITATION_TOKEN=token)
+
+        self.assertEqual(info(old_token).status_code, 404)
+        self.assertEqual(info(new_token).status_code, 200)
         revoked = self.client.post(f"/api/v1/portal/invitations/{first['id']}/revoke/")
         self.assertEqual(revoked.json()["state"], "revoked")
-        self.assertEqual(anonymous.get(f"/api/v1/portal/invitations/accept/?token={new_token}").status_code, 404)
+        self.assertEqual(info(new_token).status_code, 404)
         self.assertEqual(self.client.post(f"/api/v1/portal/invitations/{first['id']}/revoke/").status_code, 409)
         self.assertEqual(self.invite_parent().status_code, 201)  # a revoked invitation frees the record
 
@@ -178,7 +182,7 @@ class AcceptTests(InvitationTestBase):
         return self.anonymous.post("/api/v1/portal/invitations/accept/", {**data, **overrides}, format="json")
 
     def test_info_shows_only_the_invited_address(self):
-        data = self.anonymous.get(f"/api/v1/portal/invitations/accept/?token={self.token}").json()
+        data = self.anonymous.get("/api/v1/portal/invitations/accept/", HTTP_X_INVITATION_TOKEN=self.token).json()
         self.assertEqual(data["email"], "eva@example.invalid")
         self.assertEqual(data["kind"], "parent")
         self.assertNotIn("Mia", str(data))
@@ -195,6 +199,13 @@ class AcceptTests(InvitationTestBase):
         self.assertEqual(user.consent_records.get().text_version, "privacy:v1")
         child = self.parent.children.get()
         self.assertEqual(list(child.consent_records.values_list("kind", "status")), [("photo_internal", "granted")])
+
+    def test_token_stays_out_of_urls(self):
+        # URLs end up in proxy and web server logs (DSGVO): the mailed link carries
+        # the token in the fragment, the lookup only reads the header.
+        self.assertNotIn("?token=", mail.outbox[0].body)
+        response = self.anonymous.get(f"/api/v1/portal/invitations/accept/?token={self.token}")
+        self.assertEqual(response.status_code, 404)
 
     def test_accept_creates_a_linked_portal_account_that_can_log_in(self):
         response = self.accept()
