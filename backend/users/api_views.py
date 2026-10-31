@@ -15,6 +15,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from departments.mixins import DepartmentScopeViewSetMixin
 from orders.notifications.template_service import TemplateRenderer
 from users.people import person_accounts
 
@@ -112,12 +113,21 @@ def send_password_reset(email):
 
 
 @extend_schema_view(
-    list=extend_schema(summary="List all users", description="Get a paginated list of all users"),
+    list=extend_schema(
+        summary="List colleagues",
+        description="Accounts sharing a department with the caller (all staff for organisation-wide scope).",
+    ),
     retrieve=extend_schema(summary="Get user details", description="Get detailed information about a specific user"),
     update=extend_schema(summary="Update user", description="Update user information"),
     partial_update=extend_schema(summary="Partially update user", description="Update specific user fields"),
 )
-class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class UserViewSet(
+    DepartmentScopeViewSetMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = User.objects.prefetch_related(
         "groups",
         "user_permissions",
@@ -134,9 +144,17 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
     ordering_fields = ["username", "email", "date_joined"]
     ordering = ["username"]
 
+    # Accounts are scoped through their role assignments: a colleague is visible
+    # only when they share a department with the caller. Portal accounts are
+    # parents/members, not colleagues, and stay hidden; account administration
+    # uses the admin endpoints instead.
+    department_field = "department_roles__department"
+
     def get_queryset(self):
+        scoped = super().get_queryset().exclude(account_kind=User.AccountKind.PORTAL)
+        own = User.objects.filter(pk=self.request.user.pk)
         # django-guardian's AnonymousUser is a system account, never a person to pick.
-        return person_accounts(super().get_queryset(), active_only=False)
+        return person_accounts((scoped | own).distinct(), active_only=False)
 
     # Allow POST so custom POST actions (e.g. request_password_reset, reset_password,
     # change_password) are reachable while still avoiding DELETE/PUT

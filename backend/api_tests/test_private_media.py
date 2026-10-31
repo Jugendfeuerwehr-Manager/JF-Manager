@@ -76,6 +76,16 @@ class PrivateMediaTests(APITestCase):
         self.assertIn("/private-media/user-avatar/", response.data["avatar"])
         self.assertNotIn("/uploads/", response.data["avatar_url"])
 
+    def test_user_avatar_follows_the_department_scope_of_the_directory(self):
+        colleague = get_user_model().objects.create_user(username="colleague", avatar=image_file())
+        stranger = get_user_model().objects.create_user(username="stranger", avatar=image_file())
+        UserDepartmentRole.objects.create(user=colleague, department=self.department)
+        UserDepartmentRole.objects.create(user=stranger, department=self.foreign)
+        response = self.client.get(f"/api/v1/private-media/user-avatar/{colleague.pk}/")
+        self.assertEqual(response.status_code, 200)
+        b"".join(response.streaming_content)
+        self.assertEqual(self.client.get(f"/api/v1/private-media/user-avatar/{stranger.pk}/").status_code, 404)
+
     def test_shared_library_media_still_requires_login(self):
         library = LibraryBlock.objects.create(title="Shared")
         media = TrainingMedia.objects.create(content_object=library, file=image_file())
