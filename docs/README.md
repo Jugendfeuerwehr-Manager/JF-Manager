@@ -28,3 +28,4 @@ Das [Benutzerhandbuch](handbook/index.md) beschreibt die täglichen Aufgaben und
 - [Migration einschließlich Portainer](operations/ops-migration.md)
 - [Releasepakete](operations/ops-release.md)
 - [Produktionsvorgaben](operations/production-security.md), [Sitzungen und MFA](operations/session-auth.md), [Schlüsselrotation](operations/encryption-rotation.md)
+- [Datenschutz (DSGVO)](privacy/README.md): Rollen, Verzeichnis, TOM, Betroffenenanfragen, Vorlagen; [Aufbewahrung und Löschung](operations/data-retention.md)

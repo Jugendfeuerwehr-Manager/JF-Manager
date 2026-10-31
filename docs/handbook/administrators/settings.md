@@ -43,7 +43,7 @@ Unter **Datenschutz** pflegst du beide Texte im Editor. **Entwurf speichern** ä
 
 Nimmt ein Elternteil eine Portal-Einladung an, speichert die Anwendung die Kenntnisnahme mit der dann gültigen Version (z. B. `privacy:v3`). Freiwillige Foto-Einwilligungen aus der Einladung landen beim Kind. Weitere Einwilligungen, etwa nach einem Papierformular, erfasst die Leitung beim Mitglied, beim Elternteil oder am Konto. Ein Widerruf ist ein neuer Eintrag; der Verlauf bleibt vollständig.
 
-Rechte: `settings_manager.view_privacy_settings` bzw. `change_privacy_settings` (oder die entsprechenden Rechte für alle Einstellungen). Die Texte sind keine Rechtsberatung; lass sie von der oder dem Datenschutzbeauftragten des Trägers prüfen.
+Rechte: `settings_manager.view_privacy_settings` bzw. `change_privacy_settings` (oder die entsprechenden Rechte für alle Einstellungen). Die Texte sind keine Rechtsberatung; lass sie von der oder dem Datenschutzbeauftragten des Trägers prüfen. Vorlagen und Checkliste: [Datenschutz](../../privacy/README.md).
 
 ## Betriebsstatus
 
