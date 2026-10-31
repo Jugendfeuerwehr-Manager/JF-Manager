@@ -14,6 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from members.models import Member, Parent
+from users.models import CustomUser as User
 from users.models import UserSession
 
 from .models import AccountLink, Invitation, ParentAccessExtension
@@ -198,13 +199,21 @@ def daily(today=None):
         user__account_kind="portal", user__is_active=True, parent__isnull=False, member__isnull=True
     )
     for link in links:
-        if link.parent.children.exists() and not visible_children(link.parent, today).exists():
+        # Also ends accounts whose parent has no child left at all (left or removed).
+        if not visible_children(link.parent, today).exists():
             user = link.user
             user.is_active = False
             user.save(update_fields=["is_active"])
             revoke_sessions(user)
             security_log.info("parent portal access ended (age)", extra={"user": user.pk})
             ended.append(user.pk)
+    for user in User.objects.filter(account_kind="portal", is_active=True, account_link__isnull=True):
+        # A portal account without any linked record has nothing to see.
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+        revoke_sessions(user)
+        security_log.info("portal access ended (no record)", extra={"user": user.pk})
+        ended.append(user.pk)
     warn_from = eighteen_years_before(today + timedelta(days=WARNING_DAYS))
     for child in Member.objects.filter(
         parent__account_link__isnull=False, birthday__gt=eighteen_years_before(today), birthday__lte=warn_from

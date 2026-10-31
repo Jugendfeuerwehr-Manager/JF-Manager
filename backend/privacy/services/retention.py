@@ -126,7 +126,60 @@ def _announce(members, days):
         )
 
 
+def _inactive(cutoff):
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
+    return (
+        get_user_model()
+        .objects.filter(is_active=False)
+        .filter(Q(last_login__lt=cutoff) | Q(last_login__isnull=True, date_joined__lt=cutoff))
+    )
+
+
+def _portal_accounts(cutoff, dry_run):
+    """Ended portal accounts without any record: delete (consents and sessions go along)."""
+    from django.db.models import ProtectedError
+
+    queryset = _inactive(cutoff).filter(account_kind="portal", account_link__isnull=True)
+    if dry_run:
+        return queryset.count()
+    count = 0
+    for user in queryset.iterator():
+        try:
+            with transaction.atomic():
+                user.delete()
+            count += 1
+        except ProtectedError:
+            continue  # bookings keep the account; nothing personal beyond the name remains
+    return count
+
+
+def _staff_accounts(cutoff, dry_run):
+    """Deactivated staff accounts keep their name for references, nothing else."""
+    from django.db.models import Q
+
+    personal = ~Q(email="") | ~Q(phone="") | ~Q(mobile_phone="") | ~Q(street="") | ~Q(zip_code="") | ~Q(city="")
+    personal |= ~Q(avatar="") | ~Q(email_signature="")
+    queryset = _inactive(cutoff).exclude(account_kind="portal").filter(personal)
+    if dry_run:
+        return queryset.count()
+    count = 0
+    for user in queryset.iterator():
+        if user.avatar:
+            user.avatar.delete(save=False)
+        user.email = user.phone = user.mobile_phone = user.street = user.zip_code = user.city = ""
+        user.email_signature = ""
+        user.save(
+            update_fields=["email", "phone", "mobile_phone", "street", "zip_code", "city", "avatar", "email_signature"]
+        )
+        count += 1
+    return count
+
+
 PURGES = {
+    "portal_account_delete_days": _portal_accounts,
+    "staff_account_anonymize_days": _staff_accounts,
     "member_anonymize_after_days": _former_members,
     "email_history_days": _email_history,
     "notification_log_days": _notification_log,

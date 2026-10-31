@@ -22,6 +22,20 @@ RETENTIONS = (
         "Die Leitung wird 30 Tage vorher im Eingang informiert.",
     ),
     Retention(
+        "portal_account_delete_days",
+        "Beendete Portalzugänge löschen (Tage nach letzter Anmeldung)",
+        180,
+        30,
+        "Deaktivierte Eltern- und Mitgliederzugänge ohne verknüpften Datensatz werden gelöscht.",
+    ),
+    Retention(
+        "staff_account_anonymize_days",
+        "Deaktivierte Benutzerkonten bereinigen (Tage nach letzter Anmeldung)",
+        365,
+        90,
+        "Adresse, Telefon, E-Mail, Bild und Signatur werden entfernt; der Name bleibt für Verweise erhalten.",
+    ),
+    Retention(
         "email_history_days",
         "E-Mail-Verlauf (Tage)",
         365,
