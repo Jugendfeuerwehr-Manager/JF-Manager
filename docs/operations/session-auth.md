@@ -65,7 +65,11 @@ API: `POST /api/v1/auth/session/passkey/options/` liefert die Challenge ohne Kon
 
 Nach Passwort bzw. SSO dienen **Passkeys** und/oder eine **Authenticator-App** (TOTP) als zweiter Faktor. Beides lässt sich im Profil parallel einrichten; ein Konto kann bis zu zehn Passkeys haben.
 
-Verpflichtend für Superuser, Staff (Django-Admin), Konten mit Rechten zur Benutzer-, Gruppen-, Rollen-, Abteilungs- oder Sicherheitseinstellungsverwaltung sowie die Rollenvorlagen Jugendwart, Abteilungsjugendwart und Systemadministration. Solche Konten erreichen nach dem Login nur die Einrichtung im Profil, bis MFA aktiv ist. Alle anderen Konten können MFA freiwillig einrichten.
+Verpflichtend für Superuser, Staff (Django-Admin), Konten mit Rechten zur Benutzer-, Gruppen-, Rollen-, Abteilungs- oder Sicherheitseinstellungsverwaltung sowie die Rollenvorlagen Jugendwart, Abteilungsjugendwart und Systemadministration. Seit dem Datenschutz-Paket ist MFA außerdem für jedes Konto Pflicht, das Mitgliederdaten lesen darf (`members.view_member`, z. B. Betreuer und Jugendleiter). Diese Konten behalten die normale Sitzungsdauer; nur die privilegierten Konten oben haben das kurze Sitzungsprofil. Abschalten lässt sich die Pflicht für Mitgliederdaten nur auf dem Host: `jfctl config set MFA_REQUIRED_FOR_MEMBER_DATA false` und Neustart. Das ist nicht empfohlen, weil die Anwendung Daten Minderjähriger verarbeitet (Art. 32 DSGVO). Solche Konten erreichen nach dem Login nur die Einrichtung im Profil, bis MFA aktiv ist. Alle anderen Konten können MFA freiwillig einrichten.
+
+**Vor dem Update ankündigen:** Betreuer und Jugendleiter müssen beim nächsten Login MFA einrichten (Authenticator-App oder Passkey).
+
+Passwörter brauchen mindestens 10 Zeichen. Bestehende kürzere Passwörter bleiben gültig, bis sie geändert werden. Die Anfrage zum Zurücksetzen läuft im Hintergrunddienst, damit die Antwortzeit nicht verrät, ob eine Adresse registriert ist.
 
 - Jeder TOTP-Code gilt nur einmal. Die zehn Wiederherstellungscodes werden mit dem ersten Faktor ausgegeben, gelten jeweils einmal (auch für Konten nur mit Passkeys) und werden nur gehasht gespeichert.
 - Das TOTP-Geheimnis ist mit dem Feldschlüssel verschlüsselt. `rotate_field_encryption` schließt es ein (siehe [encryption-rotation.md](encryption-rotation.md)). Von Passkeys speichert JF-Manager nur den öffentlichen Schlüssel und den Signaturzähler; ein Zähler, der nicht steigt, deutet auf einen kopierten Schlüssel und wird abgelehnt. Eine Attestierung (Gerätemodell) wird nicht abgefragt.

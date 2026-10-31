@@ -1,7 +1,10 @@
 """Who must use MFA, and enforcement for every session-based request.
 
 MFA is mandatory for superusers, staff (Django admin), accounts with
-administrative rights and delegating leadership roles. Everyone else may opt in.
+administrative rights and delegating leadership roles ("privileged"), and -
+unless MFA_REQUIRED_FOR_MEMBER_DATA is off - for every account that can read
+member data (minors' personal data, DSGVO Art. 32). Everyone else may opt in.
+Only privileged accounts get the short session profile.
 """
 
 import time
@@ -66,7 +69,29 @@ def _role_groups(user):
     return Group.objects.filter(department_assignments__user=user)
 
 
+MEMBER_DATA_PERMISSION = ("members", "view_member")
+
+
+def reads_member_data(user):
+    if not user or not user.is_authenticated:
+        return False
+    app, codename = MEMBER_DATA_PERMISSION
+    if user.has_perm(f"{app}.{codename}"):
+        return True
+    return Permission.objects.filter(
+        group__in=_role_groups(user), content_type__app_label=app, codename=codename
+    ).exists()
+
+
 def mfa_required(user):
+    """A second factor is mandatory (enrolment is enforced)."""
+    if privileged_account(user):
+        return True
+    return getattr(settings, "MFA_REQUIRED_FOR_MEMBER_DATA", True) and reads_member_data(user)
+
+
+def privileged_account(user):
+    """Administrative and leadership accounts: short sessions, console-only MFA reset."""
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser or user.is_staff:

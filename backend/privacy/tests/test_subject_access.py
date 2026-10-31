@@ -7,6 +7,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
@@ -94,6 +95,9 @@ class SubjectAccessTests(APITestCase):
         self.assertNotIn("password", data["konto"])
         self.assertEqual(data["abteilungsrollen"][0]["abteilung"], "Mitte")
 
+    # Session test about scope/step-up, not MFA (covered in privacy.tests.test_hardening).
+
+    @override_settings(MFA_REQUIRED_FOR_MEMBER_DATA=False)
     def test_step_up_is_required_for_real_sessions(self):
         from users import mfa
 

@@ -17,6 +17,8 @@ Ergebnis und letzte erfolgreiche Sicherung stehen in `/var/lib/jf-manager/state/
 
 **Backup-Passwort:** `/etc/jf-manager/backup.pass`. Ohne dieses Passwort ist keine Sicherung lesbar. Es gehört zusätzlich an einen Ort außerhalb des Servers (Passwortmanager, Tresor). Das Repository sollte auf einem anderen Gerät liegen: lokaler Pfad auf zweitem Datenträger, `sftp:benutzer@host:/pfad` oder S3-kompatibler Speicher. Zugangsdaten für entfernte Repositorys gehören in `/etc/jf-manager/restic.env` (0600, z. B. `AWS_ACCESS_KEY_ID=…`).
 
+**Datenschutz:** Die Sicherung enthält `app.env` mit `FIELD_ENCRYPTION_KEY`. Wer Repository und Backup-Passwort hat, kann deshalb auch verschlüsselte Felder lesen, etwa Gesundheitsangaben. Backup-Passwort und Repository darum getrennt aufbewahren, das Repository nicht auf demselben Server belassen, und den Feldschlüssel zusätzlich offline sichern. Gelöschte Daten verschwinden aus den Sicherungen erst mit deren Ablauf ([data-retention.md](data-retention.md)).
+
 `jfctl backup list` zeigt Sicherungen mit Version und Art (`scheduled`, `manual`, `pre-update`, `pre-restore`). `jfctl backup verify [ID]` prüft das Repository (`restic check`, 10 % der Daten gelesen), liest die Sicherung vollständig aus und kontrolliert Prüfsumme und Lesbarkeit des Dumps (`pg_restore --list`), die enthaltenen Schlüssel und die Zahl der Uploaddateien.
 
 ## Wiederherstellung

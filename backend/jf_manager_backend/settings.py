@@ -202,6 +202,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -294,6 +295,12 @@ PRIVILEGED_SESSION_IDLE_TIMEOUT_SECONDS = _bounded_seconds(
 )
 PRIVILEGED_SESSION_MAX_AGE_SECONDS = _bounded_seconds("PRIVILEGED_SESSION_MAX_AGE_SECONDS", 8 * 3600, 3600, 7 * 86400)
 SESSION_COOKIE_AGE = SESSION_MAX_AGE_SECONDS
+# DSGVO Art. 32: accounts that can read member data (minors) need a second factor.
+MFA_REQUIRED_FOR_MEMBER_DATA = os.environ.get("MFA_REQUIRED_FOR_MEMBER_DATA", "true").lower() not in (
+    "0",
+    "false",
+    "no",
+)
 CONFIGURATION_ENV_OVERRIDES = frozenset(
     name
     for name in (

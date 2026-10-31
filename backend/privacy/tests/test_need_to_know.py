@@ -3,6 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.db import connection
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from departments.models import Department, UserDepartmentRole
@@ -97,6 +98,9 @@ class HealthEndpointTests(APITestCase):
         self.client.force_authenticate(self.user("nord", self.nord, "view_member", "view_member_health"))
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
+    # Session test about scope/step-up, not MFA (covered in privacy.tests.test_hardening).
+
+    @override_settings(MFA_REQUIRED_FOR_MEMBER_DATA=False)
     def test_every_disclosure_needs_a_fresh_confirmation_and_is_logged(self):
         user = self.user("betreuer", self.mitte, "view_member", "view_member_health")
         self.client.force_login(user)

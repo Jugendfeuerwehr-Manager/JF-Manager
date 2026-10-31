@@ -17,7 +17,7 @@ from django.dispatch import receiver
 from settings_manager.runtime_policy import effective_policy
 from users.devices import touch_device
 from users.mfa import REAUTH_KEY
-from users.mfa_policy import mfa_required
+from users.mfa_policy import privileged_account
 
 STARTED_KEY = "_session_started_at"
 ACTIVITY_KEY = "_session_last_activity"
@@ -40,7 +40,7 @@ def start_session_clock(sender, request, user, **kwargs):
     request.session[ACTIVITY_KEY] = now
     # A completed login counts as a fresh confirmation for security changes.
     request.session[REAUTH_KEY] = now
-    _apply_profile(request.session, mfa_required(user), now)
+    _apply_profile(request.session, privileged_account(user), now)
 
 
 def _apply_profile(session, privileged, now):
@@ -92,10 +92,10 @@ class SessionPolicyMiddleware:
             # Sessions created outside login() (or before this policy) start now.
             session[STARTED_KEY] = session.get(STARTED_KEY, now)
             session[ACTIVITY_KEY] = now
-            _apply_profile(session, mfa_required(user), now)
+            _apply_profile(session, privileged_account(user), now)
             return
         if now - session.get(PRIVILEGE_CHECKED_KEY, 0) >= PRIVILEGE_RECHECK_INTERVAL:
-            privileged = mfa_required(user)
+            privileged = privileged_account(user)
             if privileged != bool(session.get(PRIVILEGED_KEY)):
                 _apply_profile(session, privileged, now)
                 deadlines = session_deadlines(session)

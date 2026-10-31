@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -39,6 +40,9 @@ class DepartmentScopeSecurityTests(APITestCase):
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
         self.assertTrue(login_response.data["authenticated"])
 
+    # Session test about scope/step-up, not MFA (covered in privacy.tests.test_hardening).
+
+    @override_settings(MFA_REQUIRED_FOR_MEMBER_DATA=False)
     def test_department_scoped_session_cannot_request_foreign_department(self):
         allowed_response = self.client.get(f"/api/v1/members/?department={self.allowed_department.id}")
         self.assertEqual(allowed_response.status_code, status.HTTP_200_OK)

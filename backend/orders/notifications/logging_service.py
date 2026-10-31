@@ -10,6 +10,8 @@ from typing import Any
 
 from django.utils import timezone
 
+from jf_manager_backend.log_safety import mask_email
+
 from ..models import NotificationLog, Order, OrderItem
 from .base import BaseNotificationService
 
@@ -64,7 +66,9 @@ class NotificationLogger(BaseNotificationService):
                 status="pending",
             )
 
-            logger.info(f"Created notification log entry {log_entry.id} for {notification_type} to {recipient_email}")
+            logger.info(
+                f"Created notification log entry {log_entry.id} for {notification_type} to {mask_email(recipient_email)}"
+            )
 
             return log_entry
 

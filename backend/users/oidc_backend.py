@@ -16,6 +16,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
+from jf_manager_backend.log_safety import mask_email
+
 logger = logging.getLogger("users.oidc_backend")
 
 
@@ -163,9 +165,9 @@ class JFManagerOIDCBackend(OIDCAuthenticationBackend):
         self._apply_claims(user, claims, groups, config)
 
         logger.info(
-            "OIDC: created new user '%s' (email='%s') via provider '%s'",
-            user.username,
-            email,
+            "OIDC: created new user %s (email=%s) via provider '%s'",
+            user.pk,
+            mask_email(email),
             config.provider_name,
         )
         return user
