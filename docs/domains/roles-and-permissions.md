@@ -45,11 +45,25 @@ Die Erklärung kennzeichnet **Lokal**, **LDAP** und **OIDC**. Eine lokale Rolle 
 
 Archivieren verhindert neue Zuweisungen und erhält bestehende Rechte. Für einen Entzug deshalb die einzelnen Zuweisungen beziehungsweise externen Mappings bearbeiten. Vorlagen duplizieren erzeugt eine eigenständige, noch nicht freigegebene Rolle. Rechteänderungen einer bereits zugewiesenen Gruppe wirken unmittelbar auf deren Personen; vorher den Soll/Ist-Vergleich und die Zuweisungszahlen prüfen.
 
+## Mitgliederdaten nach Erforderlichkeit (DSGVO)
+
+Das Leserecht auf Mitglieder (`members.view_member`) zeigt nur Name, Gruppe, Status, Geburtstag, Ein- und Austritt. Weitere Felder brauchen eigene Rechte in einer Abteilung des Mitglieds:
+
+| Recht | Felder | Standardrollen |
+| --- | --- | --- |
+| `members.view_member_contact` | E-Mail, Adresse, Telefon, Mobil | Jugendwart, Abteilungsjugendwart, Jugendleiter |
+| `members.view_member_sensitive` | Bemerkungen, Ausweisnummer, Schwimmfähigkeit | Jugendwart, Abteilungsjugendwart |
+| `members.view_member_health` | Gesundheitsangaben (verschlüsselt) | Jugendwart, Abteilungsjugendwart, Jugendleiter, Betreuer |
+
+Gesundheitsangaben werden nie mit dem Mitglied ausgeliefert. Sie kommen nur über `GET/PUT /api/v1/members/{id}/health/`, nach erneuter Bestätigung bei jedem Abruf, und jeder Abruf oder jede Änderung landet im Export-Audit (`health_view`, `health_change`). Ändern verlangt zusätzlich `members.change_member`. Felder ohne Recht fehlen in Antworten und im Excel-Export und werden beim Speichern ignoriert.
+
+**Update bestehender Installationen:** Die Migration erhält zunächst den bisherigen Stand. Gruppen und Konten mit Leserecht behalten Kontakt- und vertrauliche Felder, Gruppen mit Änderungsrecht bekommen das Gesundheitsrecht. Für die strengeren Standardrollen (Vorlagenversionen: Jugendwart/Abteilungsjugendwart 8, Jugendleiter/Betreuer 2) die Abweichungen unter **Rollenvorlagen** prüfen und angleichen, z. B. mit `python manage.py reconcile_role_groups --template-key supervisor --group-id <ID>`.
+
 ## Fachliche Bereiche
 
 | Aufgabe | Passende Rolle und Grenze |
 | --- | --- |
-| Anwesenheit erfassen | Betreuer; Dienste und veröffentlichte Übungen der eigenen Abteilung lesen, keine Stammdatenbearbeitung. |
+| Anwesenheit erfassen | Betreuer; Dienste und veröffentlichte Übungen der eigenen Abteilung lesen, Gesundheitsangaben für Notfälle, keine Kontaktdaten der Kinder und keine Stammdatenbearbeitung. |
 | Material ausgeben/rücknehmen | Inventarverwaltung; minimale Personenauswahl, Lagerbewegungen und nachvollziehbare Gegenbuchungen im eigenen Bereich. |
 | Bestellung und Wareneingang | Bestellverwaltung; Bestellung, Artikel und Eingangslager werden auf den tatsächlichen Bereich geprüft. Das Eingangsrecht erlaubt keine beliebigen Inventarbuchungen. |
 | Zentrale Kleiderkammer | Organisationsvariante Inventarverwaltung; kann Mitglieder aller Abteilungen auswählen. Organisationssicht allein genügt nicht. |

@@ -212,7 +212,14 @@
             <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
           </section>
 
-          <section class="detail-card aside-card" aria-labelledby="notes-heading">
+          <HealthNotesCard
+            v-if="member.has_health_notes !== undefined"
+            :member-id="memberId"
+            :has-notes="!!member.has_health_notes"
+            :can-edit="authStore.hasPerm('members.change_member')"
+          />
+
+          <section v-if="member.notes !== undefined" class="detail-card aside-card" aria-labelledby="notes-heading">
             <div class="aside-card__title">
               <i class="pi pi-shield" aria-hidden="true"></i>
               <h2 id="notes-heading">Hinweise und Bemerkungen</h2>
@@ -278,6 +285,7 @@ import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
 import ChangeLogCard from '@/components/members/organisms/ChangeLogCard.vue'
+import HealthNotesCard from '@/components/members/organisms/HealthNotesCard.vue'
 import ConsentPanel from '@/components/privacy/organisms/ConsentPanel.vue'
 import QualificationDuplicatesPanel from '@/components/members/organisms/QualificationDuplicatesPanel.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'

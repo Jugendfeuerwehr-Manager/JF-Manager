@@ -31,6 +31,7 @@ from members.api_serializers import (
     MemberListSerializer,
     ParentSerializer,
 )
+from members.field_access import hidden_fields
 from members.models import Attachment, Group, Member, Status
 from privacy.services.erasure import ErasureError, anonymize_member, erase_member
 from users.step_up import StepUpForExports
@@ -456,6 +457,46 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
 
+    class _HealthSerializer(serializers.Serializer):
+        health_notes = serializers.CharField(allow_blank=True, max_length=4000)
+
+    @extend_schema(
+        summary="Health notes of a member (Art. 9 DSGVO)",
+        description="Separate from the member data; needs the health right and a fresh confirmation each time.",
+        request=_HealthSerializer,
+        responses={200: _HealthSerializer},
+    )
+    # Model permissions do not fit (PUT would mean change_member only); the health
+    # right is checked against the member's departments below, then step-up.
+    @action(detail=True, methods=["get", "put"], url_path="health", permission_classes=[IsAuthenticated])
+    def health(self, request, pk=None):
+        from members.field_access import has_member_right
+        from members.models import ExportAudit
+        from users.step_up import require_step_up
+
+        member = self.get_object()
+        needed = ["members.view_member_health"] + (["members.change_member"] if request.method == "PUT" else [])
+        if not all(has_member_right(request.user, member, permission) for permission in needed):
+            raise PermissionDenied("Keine Berechtigung für Gesundheitsangaben.")
+        require_step_up(request)
+        if request.method == "PUT":
+            data = self._HealthSerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            member.health_notes = data.validated_data["health_notes"]
+            member.save(update_fields=["health_notes"])
+        # Accountability: every disclosure and change of health data is logged.
+        ExportAudit.objects.create(
+            actor_id=request.user.pk,
+            action="health_change" if request.method == "PUT" else "health_view",
+            object_type="members.member",
+            object_id=member.pk,
+            department_ids=list(member.departments.values_list("id", flat=True)),
+            status_code=200,
+        )
+        response = Response({"health_notes": member.health_notes})
+        response["Cache-Control"] = "private, no-store"
+        return response
+
     class _DeleteWithStrategySerializer(serializers.Serializer):
         STRATEGY_CHOICES = ["unlink", "anonymize"]
         strategy = serializers.ChoiceField(choices=STRATEGY_CHOICES)
@@ -543,15 +584,20 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             cell.alignment = Alignment(horizontal="center")
 
         today = date.today()
+        field_context = {"request": request}
 
         for row_idx, member in enumerate(qs, start=2):
+            # Need-to-know: columns without the field right stay empty for this member.
+            hidden = hidden_fields(member, field_context)
             parents = list(visible_parents.filter(children=member)[:2])
             p1 = parents[0] if len(parents) > 0 else None
             p2 = parents[1] if len(parents) > 1 else None
 
             for col_idx, col_key in enumerate(selected_columns, start=1):
                 value: str | int = ""
-                if col_key == "name":
+                if col_key in hidden:
+                    value = ""
+                elif col_key == "name":
                     value = member.name
                 elif col_key == "lastname":
                     value = member.lastname

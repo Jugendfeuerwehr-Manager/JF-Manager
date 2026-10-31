@@ -21,7 +21,17 @@ class RoleSpec:
 PERMISSION_BLOCKS = {
     "organization_scope": ("departments.can_access_all_departments",),
     "member_reader": ("members.view_member",),
-    "member_editor": ("members.view_member", "members.add_member", "members.change_member"),
+    "member_editor": (
+        "members.view_member",
+        "members.add_member",
+        "members.change_member",
+        "members.view_member_contact",
+        "members.view_member_sensitive",
+        "members.view_member_health",
+    ),
+    # Need-to-know (DSGVO): reading a member shows name, group and status only.
+    "member_contact_reader": ("members.view_member_contact",),
+    "member_health_reader": ("members.view_member_health",),
     # DSGVO erasure of former members; not delegable (role-permission-manifest).
     "member_anonymizer": ("members.anonymize_member",),
     "parent_reader": ("members.view_parent",),
@@ -187,7 +197,7 @@ ROLE_SPECS = (
             "leadership_delegation",
             "organization_scope",
         ),
-        version=7,
+        version=8,
     ),
     RoleSpec(
         "department_youth_director",
@@ -211,7 +221,7 @@ ROLE_SPECS = (
             "task_editor",
             "delegation",
         ),
-        version=7,
+        version=8,
     ),
     RoleSpec(
         "youth_leader",
@@ -221,6 +231,8 @@ ROLE_SPECS = (
         True,
         _permissions(
             "member_reader",
+            "member_contact_reader",
+            "member_health_reader",
             "parent_reader",
             "group_reader",
             "list_editor",
@@ -228,6 +240,7 @@ ROLE_SPECS = (
             "training_editor",
             "qualification_reader",
         ),
+        version=2,
     ),
     RoleSpec(
         "supervisor",
@@ -235,7 +248,15 @@ ROLE_SPECS = (
         "Dienste und Übungen lesen sowie Anwesenheit erfassen.",
         "department",
         True,
-        _permissions("member_reader", "parent_reader", "service_reader", "attendance_editor", "training_reader"),
+        _permissions(
+            "member_reader",
+            "member_health_reader",
+            "parent_reader",
+            "service_reader",
+            "attendance_editor",
+            "training_reader",
+        ),
+        version=2,
     ),
     RoleSpec(
         "inventory_manager",

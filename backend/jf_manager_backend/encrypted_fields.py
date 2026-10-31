@@ -33,6 +33,16 @@ class StrictEncryptedCharField(EncryptedCharField):
         return None if value is None else crypter().encrypt(str(value).encode("utf-8")).decode("ascii")
 
 
+class EncryptedTextField(models.TextField):
+    """Personal data at rest (e.g. health notes); an empty value stays empty."""
+
+    def from_db_value(self, value, expression, connection):
+        return decrypt_secret(value) if value else value
+
+    def get_db_prep_save(self, value, connection):
+        return crypter().encrypt(str(value).encode("utf-8")).decode("ascii") if value else value
+
+
 class EncryptedJSONField(models.JSONField):
     """Store a Fernet token as a JSON string; expose only decoded dictionaries."""
 

@@ -53,6 +53,13 @@ export const membersApi = {
     })
   },
 
+  /** Health notes travel separately and need a fresh confirmation (Art. 9 DSGVO). */
+  health(id: number) {
+    return apiClient.get<{ health_notes: string }>(`/members/${id}/health/`)
+  },
+  saveHealth(id: number, healthNotes: string) {
+    return apiClient.put<{ health_notes: string }>(`/members/${id}/health/`, { health_notes: healthNotes })
+  },
   anonymize(id: number) {
     return apiClient.post<Member>(`/members/${id}/anonymize/`)
   },

@@ -41,13 +41,6 @@ STATE_LABELS = {
     "assigned": "zugeteilt",
 }
 WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-REASONS = {
-    "krankheit": "Krankheit",
-    "schule_beruf": "Schule/Beruf",
-    "urlaub": "Urlaub",
-    "familie": "Familie",
-    "sonstiges": "Sonstiges",
-}
 
 
 # ----------------------------------------------------------------------------- formatting
@@ -613,8 +606,8 @@ def _staff_cancellation(registration, session, member, participation, stamp, act
     extra = {
         "cancellations": [
             {
-                "name": member.get_full_name(),
-                "reason_category": REASONS.get(registration.reason_category, "ohne Angabe"),
+                # Data minimisation: first name and initial, never the (possibly health-related) reason.
+                "name": f"{member.name} {member.lastname[:1]}.".strip() if member.lastname else member.name,
                 "at": _moment(registration.state_changed_at),
             }
         ],

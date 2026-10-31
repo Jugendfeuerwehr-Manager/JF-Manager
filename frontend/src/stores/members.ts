@@ -132,6 +132,44 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
+  // Health notes are fetched only on explicit request (step-up) and kept per member.
+  const healthNotes = ref<Record<number, string>>({})
+  const healthLoading = ref(false)
+  const healthError = ref<string | null>(null)
+
+  async function fetchHealthNotes(id: number) {
+    healthLoading.value = true
+    healthError.value = null
+    try {
+      healthNotes.value = { ...healthNotes.value, [id]: (await membersApi.health(id)).data.health_notes }
+      return true
+    } catch (err) {
+      healthError.value = getApiErrorMessage(err, 'Gesundheitsangaben konnten nicht geladen werden')
+      return false
+    } finally {
+      healthLoading.value = false
+    }
+  }
+
+  async function saveHealthNotes(id: number, text: string) {
+    healthLoading.value = true
+    healthError.value = null
+    try {
+      healthNotes.value = { ...healthNotes.value, [id]: (await membersApi.saveHealth(id, text)).data.health_notes }
+      return true
+    } catch (err) {
+      healthError.value = getApiErrorMessage(err, 'Gesundheitsangaben konnten nicht gespeichert werden')
+      return false
+    } finally {
+      healthLoading.value = false
+    }
+  }
+
+  function forgetHealthNotes(id: number) {
+    const { [id]: _removed, ...rest } = healthNotes.value
+    healthNotes.value = rest
+  }
+
   /** DSGVO: replace identifying data; the row stays for statistics. */
   async function anonymizeMember(id: number) {
     loading.value = true
@@ -257,6 +295,12 @@ export const useMembersStore = defineStore('members', () => {
     updateMember,
     deleteMember,
     anonymizeMember,
+    healthNotes,
+    healthLoading,
+    healthError,
+    fetchHealthNotes,
+    saveHealthNotes,
+    forgetHealthNotes,
     fetchStatuses,
     fetchGroups,
     fetchEvents,

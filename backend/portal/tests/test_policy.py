@@ -83,7 +83,9 @@ class PersonViewTests(TestCase):
         )
         cls.child.departments.add(cls.mitte)
         cls.parent = Parent.objects.create(name="Eva", lastname="Beispiel", phone="0151", notes=MARKER)
-        cls.other_parent = Parent.objects.create(name="Paul", lastname="Beispiel", phone="0170", notes=MARKER)
+        cls.other_parent = Parent.objects.create(
+            name="Paul", lastname="Beispiel", phone="0170", notes=MARKER, share_contact_with_coparent=True
+        )
         for parent in (cls.parent, cls.other_parent):
             parent.children.add(cls.child)
         qtype = QualificationType.objects.create(name="Jugendflamme 1")

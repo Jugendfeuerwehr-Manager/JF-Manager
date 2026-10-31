@@ -281,7 +281,7 @@
             <div class="field">
               <label for="notes">Bemerkungen</label>
               <Textarea id="notes" v-model="formData.notes" rows="4" auto-resize aria-describedby="notes-hint" />
-              <p id="notes-hint" class="hint">Sichtbar für alle, die dieses Mitglied ansehen dürfen. In der Detailansicht erst auf Abruf eingeblendet.</p>
+              <p id="notes-hint" class="hint">Nur für Berechtigte mit Zugriff auf vertrauliche Angaben, in der Detailansicht erst auf Abruf eingeblendet. Keine Gesundheitsdaten hier eintragen – dafür gibt es im Profil die geschützten Gesundheitsangaben.</p>
             </div>
           </section>
 

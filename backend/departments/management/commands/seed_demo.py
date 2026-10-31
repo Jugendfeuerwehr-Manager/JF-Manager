@@ -279,7 +279,7 @@ class Command(BaseCommand):
                     mobile=self.phone() if age >= 12 else "",
                     canSwimm=self.rng.random() > 0.15,
                     identityCardNumber=f"JF-{code.upper()}-{index + 1:03d}",
-                    notes="Allergie: Wespenstich – Notfallset im Erste-Hilfe-Rucksack." if index == 3 else "",
+                    health_notes="Allergie: Wespenstich – Notfallset im Erste-Hilfe-Rucksack." if index == 3 else "",
                     **self.address(),
                 )
                 member.departments.add(department)

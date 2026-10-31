@@ -24,6 +24,9 @@ RIGHTS = [
     ("members", "change_member"),
     ("members", "view_parent"),
     ("members", "change_parent"),
+    # Leaders edit contact data and notes (field rights, DSGVO need-to-know).
+    ("members", "view_member_contact"),
+    ("members", "view_member_sensitive"),
     ("qualifications", "view_qualification"),
     ("qualifications", "add_qualification"),
     ("qualifications", "change_qualification"),

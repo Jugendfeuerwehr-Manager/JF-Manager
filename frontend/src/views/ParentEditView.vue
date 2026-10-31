@@ -124,6 +124,13 @@
             <label for="notes">Notizen<span class="field__optional"> (optional)</span></label>
             <Textarea id="notes" v-model="formData.notes" rows="4" auto-resize />
           </div>
+          <div class="field field--wide field--check">
+            <Checkbox v-model="formData.share_contact_with_coparent" input-id="share-coparent" binary />
+            <label for="share-coparent">
+              Telefonnummern im Portal für den anderen Elternteil freigeben
+              <span class="field__optional">(nur mit Einverständnis, z. B. nicht bei getrennt lebenden Eltern ohne Absprache)</span>
+            </label>
+          </div>
         </section>
       </form>
 
@@ -161,6 +168,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
@@ -217,6 +225,7 @@ const formData = reactive<Required<ParentCreate>>({
   zip_code: '',
   city: '',
   notes: '',
+  share_contact_with_coparent: false,
   children: [],
 })
 const errors = reactive<Partial<Record<ErrorField, string>>>({})
@@ -258,6 +267,7 @@ async function load() {
       zip_code: parent.zip_code ?? '',
       city: parent.city ?? '',
       notes: parent.notes ?? '',
+      share_contact_with_coparent: parent.share_contact_with_coparent ?? false,
       children: [...(parent.children ?? [])],
     })
     savedName.value = parent.full_name || `${parent.name} ${parent.lastname}`.trim()
@@ -430,6 +440,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
   min-width: 0;
 }
 
+.field--check { flex-direction: row; align-items: flex-start; gap: .5rem; }
 .field--wide {
   grid-column: 1 / -1;
 }

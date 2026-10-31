@@ -125,7 +125,8 @@ class ProducerTests(TestCase):
             {"leitung", "vertretung"},
         )
         deliver_emails(now=timezone.now() + timedelta(minutes=10))
-        self.assertIn("Krankheit", mail.outbox[-1].body)
+        # Data minimisation: no (possibly health-related) reason, first name and initial only.
+        self.assertNotIn("Krankheit", mail.outbox[-1].body)
         self.assertNotIn("sandra", mail.outbox[-1].to[0])
 
     def test_early_cancellation_is_mailed_too(self):

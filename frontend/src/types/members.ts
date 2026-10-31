@@ -33,6 +33,8 @@ export interface Member {
   left_at?: string | null
   /** Set once the member was anonymized (DSGVO); the row then holds no personal data. */
   anonymized_at?: string | null
+  /** Only for holders of the health right; the text itself has its own endpoint. */
+  has_health_notes?: boolean
   identityCardNumber: string
   canSwimm: boolean
   gender: 'male' | 'female' | 'diverse' | ''

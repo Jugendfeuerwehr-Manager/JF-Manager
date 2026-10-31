@@ -119,7 +119,8 @@ class StaffRegistrationNoticeTests(TestCase):
         self.assertEqual(self.mailed("reg_cancelled"), {"leitung", "vertretung", "admin"})
         deliver_emails(now=later())
         body = next(m.body for m in mail.outbox if m.subject.startswith("Abmeldung"))
-        self.assertIn("Krankheit", body)
+        self.assertNotIn("Krankheit", body)
+        self.assertIn("Mia T.", body)
 
     def test_system_promotion_is_not_a_new_registration(self):
         session = self.session(mode="opt_in", max_participants=1)

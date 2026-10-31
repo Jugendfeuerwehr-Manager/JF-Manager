@@ -86,7 +86,9 @@ def _equipment(member):
 
 
 def _other_parents(member, viewer_parent):
-    others = Parent.objects.filter(children=member).exclude(pk=getattr(viewer_parent, "pk", None))
+    others = Parent.objects.filter(children=member, share_contact_with_coparent=True).exclude(
+        pk=getattr(viewer_parent, "pk", None)
+    )
     return [{"name": p.get_full_name(), "phone": p.phone, "mobile": p.mobile} for p in others.order_by("lastname")]
 
 

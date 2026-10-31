@@ -16,6 +16,8 @@ export interface Parent {
   zip_code: string
   city: string
   notes: string
+  /** Portal: the other parent may see this contact (opt-in, DSGVO). */
+  share_contact_with_coparent?: boolean
   children: number[]
 }
 
@@ -30,5 +32,6 @@ export interface ParentCreate {
   zip_code?: string
   city?: string
   notes?: string
+  share_contact_with_coparent?: boolean
   children?: number[]
 }

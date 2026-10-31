@@ -1,7 +1,13 @@
+EXPORT_ACTIONS = ("export_excel",)
+
+
 class ExportAuditMixin:
+    # ViewSets with further bulk exports of personal data list them here.
+    audited_export_actions = EXPORT_ACTIONS
+
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
-        if getattr(self, "action", None) == "export_excel":
+        if getattr(self, "action", None) in self.audited_export_actions:
             from members.models import ExportAudit
 
             user = getattr(request, "user", None)
@@ -12,6 +18,7 @@ class ExportAuditMixin:
                 departments = [int(requested)] if requested.isdecimal() else []
             ExportAudit.objects.create(
                 actor_id=user.pk if user and user.is_authenticated else None,
+                action=self.action,
                 object_type=self.queryset.model._meta.label_lower,
                 object_id=int(object_id) if object_id.isdecimal() else None,
                 department_ids=departments,

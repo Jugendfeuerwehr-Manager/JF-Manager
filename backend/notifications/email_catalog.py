@@ -166,13 +166,13 @@ CATALOG = {
         "important",
         [
             SESSION_VARIABLE,
-            {"name": "cancellations", "type": "list", "description": "Abmeldungen: name, reason_category, at"},
+            {"name": "cancellations", "type": "list", "description": "Abmeldungen: name (Vorname und Initiale), at"},
             {"name": "counts", "type": "object", "description": "Zähler", "properties": ["expected", "cancelled"]},
             {"name": "staffing", "type": "object", "description": "Besetzung", "properties": ["missing"]},
         ],
         {
             "session": SESSION_SAMPLE,
-            "cancellations": [{"name": "Mia Becker", "reason_category": "Krankheit", "at": "heute 16:40"}],
+            "cancellations": [{"name": "Mia B.", "at": "heute 16:40"}],
             "counts": {"expected": 11, "cancelled": 3},
             "staffing": {"missing": []},
         },

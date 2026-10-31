@@ -109,7 +109,17 @@ def anonymize_member(member, *, by=None):
         member.avatar.delete(save=False)
     member.name = ANONYMOUS_FIRST_NAME
     member.lastname = anonymous_lastname(member)
-    for field in ("email", "street", "zip_code", "city", "phone", "mobile", "notes", "identityCardNumber"):
+    for field in (
+        "email",
+        "street",
+        "zip_code",
+        "city",
+        "phone",
+        "mobile",
+        "notes",
+        "identityCardNumber",
+        "health_notes",
+    ):
         setattr(member, field, "")
     member.canSwimm = False
     member.storage_location = None
