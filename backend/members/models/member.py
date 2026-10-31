@@ -11,7 +11,10 @@ from .utils import get_file_path
 
 class Member(models.Model):
     class Meta:
-        permissions = [("export_member", "Kann Mitglieder exportieren")]
+        permissions = [
+            ("export_member", "Kann Mitglieder exportieren"),
+            ("anonymize_member", "Kann Mitglieder anonymisieren"),
+        ]
 
     class Gender(models.TextChoices):
         MALE = "male", "Männlich"
@@ -35,6 +38,10 @@ class Member(models.Model):
         null=True,
         blank=True,
     )
+    # DSGVO: the leave date starts the retention period; anonymized rows keep only
+    # what statistics need (gender, joined, left_at, birth year, departments).
+    left_at = models.DateField("Ausgetreten", null=True, blank=True)
+    anonymized_at = models.DateTimeField("Anonymisiert am", null=True, blank=True, editable=False)
     identityCardNumber = models.CharField(max_length=50, blank=True, default="", verbose_name="Ausweis Nr.")
     canSwimm = models.BooleanField(default=False, verbose_name="Kann schwimmen")
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)

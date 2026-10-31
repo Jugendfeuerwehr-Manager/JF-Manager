@@ -8,6 +8,7 @@ Unter **Einstellungen → Datenschutz → Aufbewahrungsfristen**, Recht `setting
 
 | Daten | Standard | Minimum | Was passiert |
 | --- | --- | --- | --- |
+| Ehemalige Mitglieder | 365 Tage nach dem Austrittsdatum | 30 | Mitglied wird anonymisiert (siehe unten); die Leitung erhält 30 Tage vorher eine Aufgabe im Eingang |
 | E-Mail-Verlauf | 365 Tage | 30 | Nachricht mit Empfängern, persönlichem Text und Anhängen wird gelöscht (laufende Sendungen ausgenommen) |
 | Bestell-Benachrichtigungsprotokoll | 180 Tage | 7 | Protokollzeile mit Empfängeradresse wird gelöscht |
 | Hängende Benachrichtigungs-E-Mails | 90 Tage | 7 | Nicht zustellbarer Ausgangseintrag samt Inhalt wird gelöscht |
@@ -32,6 +33,13 @@ Unter **Einstellungen → Datenschutz → Aufbewahrungsfristen**, Recht `setting
 
 Gelöschte Daten bleiben in Sicherungen bis zu deren eigenem Ablauf erhalten: 7 tägliche, 4 wöchentliche und 6 monatliche Stände ([ops-backup-restore-update.md](ops-backup-restore-update.md)), also bis zu etwa sechs Monate. Nach einer Wiederherstellung führt der nächste nächtliche Lauf die Fristen erneut aus.
 
+## Austritt, Anonymisierung und Löschen von Mitgliedern
+
+- **Austrittsdatum** (`left_at`) im Mitgliederformular setzen. Es startet die Frist und ist unabhängig vom frei wählbaren Status. Leeren bei Wiedereintritt.
+- **Anonymisieren** (Aktion im Mitgliederprofil oder automatisch nach Frist, Recht `members.anonymize_member`): Name wird zu „Ehemaliges Mitglied #ID“. Gelöscht werden Kontaktdaten, Adresse, Bemerkungen, Ausweisnummer, Bild, Anhänge, Verlaufseinträge, Notizen an Listen, Qualifikationen und Bestellungen, Abmeldegründe, Einwilligungen, E-Mail-Empfängerkopien, Änderungsprotokoll, Eingangstitel, Verknüpfungen zur Synchronisation und Namen in Inventarbuchungen. Elternteile ohne weiteres Kind werden gelöscht. Erhalten bleiben Geschlecht, Jahrgang (Geburtstag auf 1. Januar), Ein- und Austritt, Abteilungen, Gruppe, Status, Anwesenheit und Qualifikationen. Anonymisierte Mitglieder erscheinen nicht mehr in der Mitgliederliste (`?include_anonymized=true` zeigt sie).
+- **Löschen** (Recht `members.delete_member`) entfernt das Mitglied und dieselben Spuren vollständig.
+- **Synchronisation:** Ein Abgleich mit Spond oder Hi-Org legt eine Person, die in der Quelle noch existiert, neu an. Vor dem Anonymisieren oder Löschen die Person deshalb in der Quelle entfernen.
+
 ## Noch offen
 
-Austritt und Anonymisierung von Mitgliedern sowie das Löschen inaktiver Konten folgen als eigene Schritte.
+Das Löschen inaktiver Konten folgt als eigener Schritt.

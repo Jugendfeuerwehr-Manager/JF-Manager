@@ -22,6 +22,8 @@ PERMISSION_BLOCKS = {
     "organization_scope": ("departments.can_access_all_departments",),
     "member_reader": ("members.view_member",),
     "member_editor": ("members.view_member", "members.add_member", "members.change_member"),
+    # DSGVO erasure of former members; not delegable (role-permission-manifest).
+    "member_anonymizer": ("members.anonymize_member",),
     "parent_reader": ("members.view_parent",),
     "parent_editor": ("members.view_parent", "members.add_parent", "members.change_parent"),
     "portal_inviter": ("portal.invite_portal_account",),
@@ -169,6 +171,7 @@ ROLE_SPECS = (
         False,
         _permissions(
             "member_editor",
+            "member_anonymizer",
             "parent_editor",
             "portal_inviter",
             "portal_policy_editor",
@@ -184,7 +187,7 @@ ROLE_SPECS = (
             "leadership_delegation",
             "organization_scope",
         ),
-        version=6,
+        version=7,
     ),
     RoleSpec(
         "department_youth_director",
@@ -194,6 +197,7 @@ ROLE_SPECS = (
         False,
         _permissions(
             "member_editor",
+            "member_anonymizer",
             "parent_editor",
             "portal_inviter",
             "portal_policy_editor",
@@ -207,7 +211,7 @@ ROLE_SPECS = (
             "task_editor",
             "delegation",
         ),
-        version=6,
+        version=7,
     ),
     RoleSpec(
         "youth_leader",

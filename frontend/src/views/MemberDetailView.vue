@@ -26,6 +26,8 @@
             <li v-if="member.birthday"><i class="pi pi-calendar" aria-hidden="true"></i><span>{{ member.age }} Jahre<span class="profile-head__extra"> · geb. {{ formatDate(member.birthday) }}</span></span></li>
             <li v-if="member.group"><i class="pi pi-users" aria-hidden="true"></i>{{ member.group.name }}</li>
             <li v-if="member.joined" class="profile-head__extra"><i class="pi pi-sign-in" aria-hidden="true"></i>Mitglied seit {{ formatDate(member.joined) }}</li>
+            <li v-if="member.left_at"><i class="pi pi-sign-out" aria-hidden="true"></i>Ausgetreten am {{ formatDate(member.left_at) }}</li>
+            <li v-if="member.anonymized_at"><i class="pi pi-eye-slash" aria-hidden="true"></i>Anonymisiert am {{ formatDate(member.anonymized_at) }}</li>
           </ul>
         </div>
         <div class="profile-head__actions">
@@ -252,7 +254,8 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { membersApi, parentsApi } from '@/api/members'
+import { membersApi } from '@/api/members'
+import { useMembersStore } from '@/stores/members'
 import { qualificationsApi } from '@/api/qualifications'
 import { servicebookApi } from '@/api/servicebook'
 import { useAuthStore } from '@/stores/auth'
@@ -295,6 +298,7 @@ const route = useRoute()
 const confirm = useConfirm()
 const toast = useToast()
 const authStore = useAuthStore()
+const membersStore = useMembersStore()
 // Account management links the member to the person's own staff account (PORTAL-04).
 const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuser'))
 // Reloads the qualification list after duplicates were merged (PORTAL-04.4).
@@ -325,10 +329,13 @@ const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 const memberId = Number(route.params.id)
 const RECENT_SERVICES = 14
 
-const menuItems = ref([
+const menuItems = computed(() => [
   {
     label: 'Aktionen',
     items: [
+      ...(authStore.hasPerm('members.anonymize_member') && !member.value?.anonymized_at
+        ? [{ label: 'Anonymisieren', icon: 'pi pi-eye-slash', command: () => confirmAnonymize() }]
+        : []),
       {
         label: 'Löschen',
         icon: 'pi pi-trash',
@@ -537,7 +544,9 @@ const confirmDelete = () => {
   )
 
   confirm.require({
-    message: `Möchten Sie ${member.value?.full_name} wirklich löschen?`,
+    message: orphanedParents.length
+      ? `Möchten Sie ${member.value?.full_name} endgültig löschen? Elternteile ohne weiteres Kind werden mitgelöscht: ${orphanedParents.map((p) => p.full_name).join(', ')}.`
+      : `Möchten Sie ${member.value?.full_name} endgültig löschen?`,
     header: 'Löschen bestätigen',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Ja, löschen',
@@ -552,41 +561,7 @@ const confirmDelete = () => {
           detail: 'Mitglied wurde gelöscht',
           life: 3000
         })
-        if (orphanedParents.length > 0) {
-          const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
-          confirm.require({
-            message: `${orphanedParents.length === 1 ? 'Der folgende Elternteil hat' : 'Die folgenden Elternteile haben'} nun kein verknüpftes Mitglied mehr: ${parentNames}. Möchten Sie ${orphanedParents.length === 1 ? 'diesen' : 'diese'} ebenfalls löschen?`,
-            header: 'Eltern ohne Kind',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'Ja, löschen',
-            rejectLabel: 'Behalten',
-            accept: async () => {
-              try {
-                await Promise.all(orphanedParents.map((p) => parentsApi.delete(p.id)))
-                toast.add({
-                  severity: 'success',
-                  summary: 'Eltern gelöscht',
-                  detail: `${orphanedParents.length === 1 ? 'Elternteil wurde' : 'Elternteile wurden'} gelöscht`,
-                  life: 3000
-                })
-              } catch {
-                toast.add({
-                  severity: 'error',
-                  summary: 'Fehler',
-                  detail: 'Elternteile konnten nicht gelöscht werden',
-                  life: 3000
-                })
-              } finally {
-                router.push('/members')
-              }
-            },
-            reject: () => {
-              router.push('/members')
-            }
-          })
-        } else {
-          router.push('/members')
-        }
+        router.push('/members')
       } catch (err: unknown) {
         const axiosErr = err as { response?: { status?: number; data?: { transaction_count?: number; member_name?: string } } }
         if (axiosErr.response?.status === 409 && axiosErr.response.data?.transaction_count !== undefined) {
@@ -603,6 +578,26 @@ const confirmDelete = () => {
             life: 3000
           })
         }
+      }
+    }
+  })
+}
+
+// DSGVO: identity goes, statistics (gender, birth year, joined/left, attendance) stay.
+const confirmAnonymize = () => {
+  confirm.require({
+    message: `${member.value?.full_name} wird anonymisiert: Name, Kontaktdaten, Bemerkungen, Bild, Anhänge, Verlaufseinträge und Einwilligungen werden gelöscht, Elternteile ohne weiteres Kind ebenfalls. Erhalten bleiben Geschlecht, Jahrgang, Ein- und Austritt, Abteilung, Anwesenheit und Qualifikationen. Das lässt sich nicht rückgängig machen.`,
+    header: 'Mitglied anonymisieren',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Anonymisieren',
+    rejectLabel: 'Abbrechen',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        member.value = await membersStore.anonymizeMember(memberId)
+        toast.add({ severity: 'success', summary: 'Anonymisiert', detail: 'Personenbezogene Daten wurden entfernt', life: 3000 })
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Anonymisieren fehlgeschlagen', life: 5000 })
       }
     }
   })

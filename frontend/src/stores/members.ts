@@ -132,6 +132,23 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
+  /** DSGVO: replace identifying data; the row stays for statistics. */
+  async function anonymizeMember(id: number) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await membersApi.anonymize(id)
+      if (currentMember.value?.id === id) currentMember.value = response.data
+      members.value = members.value.filter((m) => m.id !== id)
+      return response.data
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Anonymisieren fehlgeschlagen')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function fetchStatuses() {
     try {
       const response = await statusesApi.list()
@@ -239,6 +256,7 @@ export const useMembersStore = defineStore('members', () => {
     createMember,
     updateMember,
     deleteMember,
+    anonymizeMember,
     fetchStatuses,
     fetchGroups,
     fetchEvents,

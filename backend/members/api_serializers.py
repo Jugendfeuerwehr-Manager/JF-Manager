@@ -104,6 +104,8 @@ class MemberListSerializer(serializers.ModelSerializer):
             "mobile",
             "city",
             "joined",
+            "left_at",
+            "anonymized_at",
             "gender",
             "status",
             "group",
@@ -112,7 +114,7 @@ class MemberListSerializer(serializers.ModelSerializer):
             "has_alert",
             "department_ids",
         ]
-        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "has_alert"]
+        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "has_alert", "anonymized_at"]
 
     @extend_schema_field(serializers.URLField(allow_null=True))
     def get_avatar_url(self, obj):
@@ -170,6 +172,8 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             "mobile",
             "notes",
             "joined",
+            "left_at",
+            "anonymized_at",
             "identityCardNumber",
             "canSwimm",
             "gender",
@@ -183,7 +187,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             "avatar_url",
             "departments",
         ]
-        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url"]
+        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "anonymized_at"]
 
     def get_avatar_url(self, obj):
         if obj.avatar:

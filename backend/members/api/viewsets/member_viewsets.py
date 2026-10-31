@@ -6,7 +6,6 @@ from datetime import date
 from io import BytesIO
 
 import openpyxl
-from django.db import transaction as db_transaction
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -15,7 +14,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -33,6 +32,7 @@ from members.api_serializers import (
     ParentSerializer,
 )
 from members.models import Attachment, Group, Member, Status
+from privacy.services.erasure import ErasureError, anonymize_member, erase_member
 from users.step_up import StepUpForExports
 
 
@@ -137,6 +137,13 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
     ordering = ["lastname", "name"]
     # Members use M2M so we override get_queryset below
     department_field = "departments"
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        # Anonymized former members stay for statistics but leave the everyday list.
+        if self.action == "list" and self.request.query_params.get("include_anonymized") not in ("1", "true"):
+            queryset = queryset.filter(anonymized_at__isnull=True)
+        return queryset
 
     def get_queryset(self):
         """Filter members by department using M2M lookup."""
@@ -363,7 +370,9 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             return self._member_stock_response()
 
         try:
-            self.perform_destroy(instance)
+            erase_member(instance)
+        except ErasureError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
         except ProtectedError:
             # Race-condition fallback if a transaction is created concurrently.
             transaction_count = self._get_member_transaction_count(instance)
@@ -421,6 +430,32 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             status=status.HTTP_409_CONFLICT,
         )
 
+    @extend_schema(
+        summary="Anonymize a member (DSGVO)",
+        description=(
+            "Removes everything that identifies the member and keeps the row for statistics "
+            "(gender, birth year, joined/left, departments, attendance, qualifications)."
+        ),
+        request=None,
+        responses={200: MemberDetailSerializer},
+    )
+    # Model permissions would map POST to add_member; the dedicated right is checked
+    # below against the member's own departments instead.
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def anonymize(self, request, pk=None):
+        member = self.get_object()
+        department_ids = list(member.departments.values_list("id", flat=True)) or [None]
+        if not any(
+            self._has_right_in_department(request.user, "members.anonymize_member", department_id)
+            for department_id in department_ids
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Anonymisieren dieses Mitglieds.")
+        try:
+            member = anonymize_member(member, by=request.user)
+        except ErasureError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
+        return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
+
     class _DeleteWithStrategySerializer(serializers.Serializer):
         STRATEGY_CHOICES = ["unlink", "anonymize"]
         strategy = serializers.ChoiceField(choices=STRATEGY_CHOICES)
@@ -445,20 +480,9 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
 
         strategy = serializer.validated_data["strategy"]
         try:
-            with db_transaction.atomic():
-                from inventory.models import StorageLocation
-
-                member = Member.objects.select_for_update().get(pk=member.pk)
-                personal_locations = list(StorageLocation.objects.select_for_update().filter(member=member))
-                if self._has_member_stock(member):
-                    return self._member_stock_response()
-                for location in personal_locations:
-                    location.member = None
-                    location.is_member = False
-                    if strategy == "anonymize":
-                        location.name = f"Ehemaliges Mitglied #{location.pk}"
-                    location.save(update_fields=["member", "is_member", "name"])
-                member.delete()
+            erase_member(member, keep_inventory_name=strategy == "unlink")
+        except ErasureError:
+            return self._member_stock_response()
         except ProtectedError:
             transaction_count = self._get_member_transaction_count(member)
             return self._member_protected_response(member, transaction_count)

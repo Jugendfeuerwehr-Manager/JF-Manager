@@ -14,6 +14,14 @@ class Retention:
 
 RETENTIONS = (
     Retention(
+        "member_anonymize_after_days",
+        "Anonymisierung ehemaliger Mitglieder (Tage nach Austritt)",
+        365,
+        30,
+        "Danach bleiben nur Geschlecht, Jahrgang, Ein-/Austritt, Abteilung, Anwesenheit und Qualifikationen. "
+        "Die Leitung wird 30 Tage vorher im Eingang informiert.",
+    ),
+    Retention(
         "email_history_days",
         "E-Mail-Verlauf (Tage)",
         365,

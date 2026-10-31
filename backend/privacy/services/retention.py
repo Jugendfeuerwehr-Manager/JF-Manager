@@ -86,7 +86,48 @@ def _absence_illness(cutoff, dry_run):
     return queryset.count() if dry_run else queryset.update(reason_category="")
 
 
+NOTICE_DAYS = 30
+
+
+def _former_members(cutoff, dry_run):
+    """Anonymize members whose leave date passed the period; announce it 30 days ahead."""
+    from privacy.services.erasure import anonymize_member, members_due_for_anonymization
+
+    days = retention_days("member_anonymize_after_days")
+    due = list(members_due_for_anonymization(days))
+    if dry_run:
+        return len(due)
+    _announce(members_due_for_anonymization(days - NOTICE_DAYS).exclude(pk__in=[m.pk for m in due]), days)
+    for member in due:
+        anonymize_member(member)
+    return len(due)
+
+
+def _announce(members, days):
+    from notifications import inbox
+    from notifications.models import InboxItem
+
+    for member in members.prefetch_related("departments"):
+        if InboxItem.objects.filter(
+            kind="privacy_anonymize_due", object_type="members.member", object_id=member.pk
+        ).exists():
+            continue
+        when = member.left_at + timedelta(days=days)
+        department = member.departments.first()
+        inbox.notify(
+            kind="privacy_anonymize_due",
+            category=InboxItem.Category.ACCOUNTS,
+            item_type=InboxItem.ItemType.TASK,
+            title=f"{member.name} {member.lastname} wird am {when:%d.%m.%Y} anonymisiert",
+            department=department,
+            obj=member,
+            permission="members.anonymize_member",
+            link=f"/members/{member.pk}",
+        )
+
+
 PURGES = {
+    "member_anonymize_after_days": _former_members,
     "email_history_days": _email_history,
     "notification_log_days": _notification_log,
     "email_outbox_days": _email_outbox,

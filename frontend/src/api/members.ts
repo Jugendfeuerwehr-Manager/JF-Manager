@@ -53,6 +53,9 @@ export const membersApi = {
     })
   },
 
+  anonymize(id: number) {
+    return apiClient.post<Member>(`/members/${id}/anonymize/`)
+  },
   delete(id: number) {
     return apiClient.delete(`/members/${id}/`)
   },
