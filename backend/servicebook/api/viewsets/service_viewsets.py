@@ -5,11 +5,12 @@ from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from departments.models import Department
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from portal.permissions import StaffAccountRequired
 from servicebook.models import Attendance, Service
@@ -79,22 +80,14 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         """Create service and return detailed response."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        from rest_framework.exceptions import PermissionDenied, ValidationError
 
         department = serializer.validated_data.get("department")
         department_id = department.pk if department else self._resolve_requested_department(request.user)
-        if department_id is None and not self._user_is_org_wide(request.user):
-            assigned = self._user_department_ids(request.user)
-            department_id = assigned[0] if len(assigned) == 1 else None
-            if department_id is None:
-                # A multi-department user would otherwise save a central service
-                # (department=NULL) that is invisible in their own department views.
-                raise ValidationError({"department": "Bitte eine Abteilung angeben."})
+        if department_id is None:
+            department_id = self._fallback_department(request.user)
         if not self._has_right_in_department(request.user, "servicebook.add_service", department_id):
             raise PermissionDenied("Keine Berechtigung zum Anlegen in dieser Abteilung.")
         if department is None and department_id is not None:
-            from departments.models import Department
-
             serializer.validated_data["department"] = Department.objects.get(pk=department_id)
         service = self.perform_create(serializer)
 
@@ -102,6 +95,23 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         detail_serializer = ServiceDetailSerializer(service)
         headers = self.get_success_headers(detail_serializer.data)
         return Response(detail_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def _fallback_department(self, user):
+        """Department for a create without one, or a validation error.
+
+        Without a department the service is saved centrally (department=NULL) and
+        vanishes from every department view (issue #25). Fall back only when there
+        is exactly one candidate; org-wide accounts follow the same rule.
+        """
+        if self._user_is_org_wide(user):
+            candidates = set(Department.objects.values_list("pk", flat=True)[:2])
+            if not candidates:
+                return None  # installation without departments
+        else:
+            candidates = set(self._user_department_ids(user))
+        if len(candidates) != 1:
+            raise ValidationError({"department": "Bitte eine Abteilung angeben."})
+        return candidates.pop()
 
     @action(detail=False, methods=["get"])
     def attendance_chart(self, request):

@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ServiceForm from '../ServiceForm.vue'
 import { useUsersStore } from '@/stores/users'
+import { useDepartmentsStore } from '@/stores/departments'
 
 vi.mock('@/api/settings', () => ({ settingsApi: { getService: vi.fn().mockResolvedValue({ data: {}, headers: {} }) } }))
 
@@ -23,5 +24,51 @@ describe('service lead picker', () => {
       { label: 'Alex Aktiv', value: 1 },
       { label: 'Robin Alt (inaktiv)', value: 9 },
     ])
+  })
+})
+
+describe('service department', () => {
+  const departments = [{ id: 1, name: 'Süd-Ost' }, { id: 2, name: 'Mitte' }] as never
+  const service = { start: '2026-11-01T18:00:00Z', end: '2026-11-01T20:00:00Z', operations_manager: [] }
+
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.spyOn(useUsersStore(), 'fetchUsers').mockResolvedValue([] as never)
+  })
+
+  const departmentSelect = (wrapper: ReturnType<typeof shallowMount>) => wrapper.findComponent({ name: 'Select' })
+
+  it('is not asked when a department is active', async () => {
+    const store = useDepartmentsStore()
+    store.departments = departments
+    store.setActiveDepartment(1)
+    const wrapper = shallowMount(ServiceForm)
+    await flushPromises()
+    expect(departmentSelect(wrapper).exists()).toBe(false)
+  })
+
+  it('is required in the all-departments view and sent with the service', async () => {
+    useDepartmentsStore().departments = departments
+    const wrapper = shallowMount(ServiceForm, { props: { initialData: null } })
+    await flushPromises()
+    ;(wrapper.vm as unknown as { formData: { start: Date; end: Date } }).formData.start = new Date(service.start)
+    ;(wrapper.vm as unknown as { formData: { start: Date; end: Date } }).formData.end = new Date(service.end)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(wrapper.text()).toContain('Bitte eine Abteilung wählen')
+
+    departmentSelect(wrapper).vm.$emit('update:modelValue', 2)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ department: 2 })
+  })
+
+  it('lets a service without department be assigned to one', async () => {
+    const store = useDepartmentsStore()
+    store.departments = departments
+    store.setActiveDepartment(1)
+    const wrapper = shallowMount(ServiceForm, { props: { initialData: { ...service, department: null } as never } })
+    await flushPromises()
+    expect(departmentSelect(wrapper).exists()).toBe(true)
   })
 })

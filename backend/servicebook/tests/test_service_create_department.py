@@ -65,3 +65,29 @@ class ServiceCreateDepartmentTests(TestCase):
         response = self.post(self.multi, query=f"?department={self.other.pk}")
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Service.objects.get(pk=response.data["id"]).department_id, self.other.pk)
+
+    def test_org_wide_account_without_department_is_rejected(self):
+        # An outdated frontend sends no department; org-wide accounts used to get a
+        # central service that 404s in the department views (issue #25, follow-up).
+        admin = User.objects.create_superuser("admin", password="x")
+        response = self.post(admin)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("department", response.data)
+        self.assertFalse(Service.objects.exists())
+
+    def test_org_wide_account_with_department_in_payload_is_stored(self):
+        admin = User.objects.create_superuser("admin", password="x")
+        response = self.post(admin, {"department": self.foreign.pk})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Service.objects.get(pk=response.data["id"]).department_id, self.foreign.pk)
+
+
+class SingleDepartmentInstallationTests(TestCase):
+    def test_org_wide_account_falls_back_to_the_only_department(self):
+        dept = Department.objects.create(name="Einzig", code="ei")
+        admin = User.objects.create_superuser("admin", password="x")
+        client = APIClient()
+        client.force_authenticate(admin)
+        response = client.post(URL, PAYLOAD, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Service.objects.get(pk=response.data["id"]).department_id, dept.pk)
