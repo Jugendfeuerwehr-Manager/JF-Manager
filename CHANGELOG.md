@@ -2,6 +2,13 @@
 
 Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim Release automatisch in die GitHub-Releasebeschreibung übernommen.
 
+## [Unreleased]
+
+### Geändert
+
+- **Neues Übungs-Handout zum Arbeiten während der Ausbildung.** PDF und Druckansicht zeigen auf der ersten Seite den Ablaufplan maßstäblich: Die Höhe eines Blocks entspricht seiner Dauer, Blöcke für mehrere oder alle Gruppen sind ein durchgehender Kasten, mit Ort und Ausbildern. Danach folgen „Wer ist wo?“ mit allen Einsätzen je Ausbilder und unbesetzten Stationen, Laufzettel je Gruppe und ein eigenes Blatt je Station zum Austeilen (Durchgänge zum Abhaken, Lernziel, Sicherheit, Material-Checkliste, Ablauf, Notizlinien). Zum Schluss kommen eine Packliste zum Abhaken und die Anmerkungen.
+- **Handout im Branding der Organisation.** Das Handout übernimmt das gewählte Farbschema und das Logo der Organisation (ohne eigenes Logo das JF-Manager-Zeichen). Block-Inhalte behalten Überschriften, Listen und Hervorhebungen; Bilder werden auch als WebP oder SVG eingebettet. Am Bildschirm erscheint das Handout als weißes Blatt auf dem Seitenhintergrund.
+
 ## [3.2.3] – 2026-10-30
 
 ### Behoben
