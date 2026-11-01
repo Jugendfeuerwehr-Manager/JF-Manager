@@ -15,7 +15,7 @@ from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from portal.permissions import StaffAccountRequired
 from servicebook.models import Attendance, Service
 
-from ..attendance_permissions import filter_by_permission, has_department_permission
+from ..attendance_permissions import attendance_departments, filter_by_permission, has_department_permission
 from ..serializers import (
     ServiceCreateSerializer,
     ServiceDetailSerializer,
@@ -36,6 +36,8 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
+    # department=NULL marks a service for the whole organisation (e.g. a general assembly).
+    include_central_records = True
     queryset = Service.objects.all()  # Base queryset for router registration
     serializer_class = ServiceDetailSerializer  # Default serializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -64,7 +66,10 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             "partial_update": "servicebook.change_service",
             "destroy": "servicebook.delete_service",
         }.get(self.action, "servicebook.view_service")
-        return filter_by_permission(queryset, self.request.user, permission)
+        # Organisation-wide services are readable from every department; writing them
+        # stays with organisation-wide rights.
+        include_central = permission == "servicebook.view_service"
+        return filter_by_permission(queryset, self.request.user, permission, include_central=include_central)
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""
@@ -82,9 +87,13 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         department = serializer.validated_data.get("department")
-        department_id = department.pk if department else self._resolve_requested_department(request.user)
-        if department_id is None:
-            department_id = self._fallback_department(request.user)
+        if "department" in serializer.validated_data:
+            # An explicit null asks for a service of the whole organisation.
+            department_id = department.pk if department else None
+        else:
+            department_id = self._resolve_requested_department(request.user)
+            if department_id is None:
+                department_id = self._fallback_department(request.user)
         if not self._has_right_in_department(request.user, "servicebook.add_service", department_id):
             raise PermissionDenied("Keine Berechtigung zum Anlegen in dieser Abteilung.")
         if department is None and department_id is not None:
@@ -99,9 +108,10 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     def _fallback_department(self, user):
         """Department for a create without one, or a validation error.
 
-        Without a department the service is saved centrally (department=NULL) and
-        vanishes from every department view (issue #25). Fall back only when there
-        is exactly one candidate; org-wide accounts follow the same rule.
+        A missing department must not silently become a service for the whole
+        organisation (issue #25); that takes an explicit ``department: null``. Fall
+        back only when there is exactly one candidate; org-wide accounts follow the
+        same rule.
         """
         if self._user_is_org_wide(user):
             candidates = set(Department.objects.values_list("pk", flat=True)[:2])
@@ -176,14 +186,16 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
         from ..attendance_board import board_response, update_board
 
         service = self.get_object()
-        if not (
-            has_department_permission(request.user, "servicebook.view_attendance", service.department_id)
-            or has_department_permission(request.user, "servicebook.change_attendance", service.department_id)
-        ):
+        scopes = [
+            attendance_departments(request.user, service, permission)
+            for permission in ("servicebook.view_attendance", "servicebook.change_attendance")
+        ]
+        departments = None if None in scopes else scopes[0] | scopes[1]
+        if departments is not None and not departments:
             raise PermissionDenied("Keine Berechtigung zum Anzeigen der Anwesenheit.")
         if request.method == "PATCH":
             return update_board(request, service)
-        return board_response(service)
+        return board_response(service, departments)
 
     @action(
         detail=False,

@@ -12,19 +12,19 @@
       <section v-if="store.overview.today.length" aria-labelledby="ml-today">
         <h2 id="ml-today" class="bucket-title">Heute</h2>
         <div class="bucket">
-          <ServiceOverviewCard v-for="card in store.overview.today" :key="card.id" :card="card" today />
+          <ServiceOverviewCard v-for="card in store.overview.today" :key="card.id" :card="card" :show-department="showDepartment" today />
         </div>
       </section>
       <section v-if="store.overview.open.length" aria-labelledby="ml-open">
         <h2 id="ml-open" class="bucket-title">Anwesenheit offen</h2>
         <div class="bucket">
-          <ServiceOverviewCard v-for="card in store.overview.open" :key="card.id" :card="card" />
+          <ServiceOverviewCard v-for="card in store.overview.open" :key="card.id" :card="card" :show-department="showDepartment" />
         </div>
       </section>
       <section v-if="store.overview.upcoming.length" aria-labelledby="ml-upcoming">
         <h2 id="ml-upcoming" class="bucket-title">Demnächst</h2>
         <div class="bucket">
-          <ServiceOverviewCard v-for="card in store.overview.upcoming" :key="card.id" :card="card" />
+          <ServiceOverviewCard v-for="card in store.overview.upcoming" :key="card.id" :card="card" :show-department="showDepartment" />
         </div>
       </section>
       <StateView v-if="!hasAny" kind="empty" title="Keine Dienste" message="Heute, demnächst und offen gibt es keine Dienste." />
@@ -43,7 +43,7 @@ import { useAuthStore } from '@/stores/auth'
 // PORTAL-04.3: linked staff find their own services as a separate area on the phone.
 const auth = useAuthStore()
 
-const props = defineProps<{ department?: number | null }>()
+const props = defineProps<{ department?: number | null; showDepartment?: boolean }>()
 const store = useServiceRegistrationsStore()
 
 const hasAny = computed(() => store.overview.today.length + store.overview.upcoming.length + store.overview.open.length > 0)

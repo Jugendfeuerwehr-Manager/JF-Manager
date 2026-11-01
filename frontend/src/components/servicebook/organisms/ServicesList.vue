@@ -30,6 +30,7 @@
                 :key="service.id"
                 :service="service"
                 :show-actions="showActions"
+                :show-department="showDepartment"
                 @view="(id) => $emit('view', id)"
                 @edit="(id) => $emit('edit', id)"
                 @open-training="(trainingId) => $emit('open-training', trainingId)"
@@ -57,6 +58,7 @@ interface Props {
   currentPage?: number
   pageSize?: number
   showActions?: boolean
+  showDepartment?: boolean
   emptyTitle?: string
   emptyMessage?: string
 }
@@ -76,6 +78,7 @@ withDefaults(defineProps<Props>(), {
   currentPage: 1,
   pageSize: 12,
   showActions: true,
+  showDepartment: false,
   emptyTitle: 'Keine Dienste gefunden',
   emptyMessage: '',
 })

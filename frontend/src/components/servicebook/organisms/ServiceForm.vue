@@ -71,12 +71,16 @@
           <Select
             input-id="service-department"
             v-model="formData.department"
-            :options="departmentsStore.departments"
+            :options="departmentOptions"
             option-label="name"
             option-value="id"
             placeholder="Abteilung wählen"
             :invalid="!!errors.department"
+            :aria-describedby="authStore.isOrgWide ? 'service-department-hint' : undefined"
           />
+          <p v-if="authStore.isOrgWide" id="service-department-hint" class="field-hint">
+            „Alle Abteilungen“ ist für gemeinsame Termine wie eine Vollversammlung. Jede Abteilung erfasst dort die Anwesenheit ihrer Mitglieder.
+          </p>
           <p v-if="errors.department" class="field-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.department }}</p>
         </div>
         <div class="form-field form-field--wide">
@@ -124,6 +128,7 @@ import UserChipSelector from '@/components/servicebook/atoms/UserChipSelector.vu
 import type { ServiceFormData, ServiceDetail } from '@/types/servicebook'
 import { useUsersStore } from '@/stores/users'
 import { useDepartmentsStore } from '@/stores/departments'
+import { useAuthStore } from '@/stores/auth'
 import { settingsApi } from '@/api/settings'
 import type { UserInfo } from '@/types/api'
 import type { ServiceSettings } from '@/types/settings'
@@ -149,6 +154,16 @@ const emit = defineEmits<Emits>()
 
 const usersStore = useUsersStore()
 const departmentsStore = useDepartmentsStore()
+const authStore = useAuthStore()
+
+/** Choice for a service of the whole organisation (sent as ``department: null``). */
+const ORGANISATION = 'organisation'
+type DepartmentChoice = number | typeof ORGANISATION | null
+
+const departmentOptions = computed(() => [
+  ...(authStore.isOrgWide ? [{ id: ORGANISATION, name: 'Alle Abteilungen (gemeinsamer Dienst)' }] : []),
+  ...departmentsStore.departments.map((d) => ({ id: d.id, name: d.name }))
+])
 
 const formData = ref<{
   start: Date | null
@@ -158,7 +173,7 @@ const formData = ref<{
   description: string
   events: string
   operations_manager_ids: number[]
-  department: number | null
+  department: DepartmentChoice
 }>({
   start: null,
   end: null,
@@ -271,7 +286,7 @@ watch(
         description: newData.description || '',
         events: newData.events || '',
         operations_manager_ids: newData.operations_manager?.map((m) => m.id) || [],
-        department: newData.department ?? null
+        department: newData.department ?? (authStore.isOrgWide ? ORGANISATION : null)
       }
     }
   },
@@ -279,7 +294,7 @@ watch(
 )
 
 // Only ask for the department when it is not obvious: no active department, or a
-// service that was saved without one (issue #25) and needs to be assigned.
+// service for the whole organisation (department=NULL) that may be reassigned.
 const showDepartment = computed(
   () =>
     departmentsStore.departments.length > 1 &&
@@ -321,7 +336,9 @@ const handleSubmit = () => {
     operations_manager_ids: formData.value.operations_manager_ids.length
       ? formData.value.operations_manager_ids
       : undefined,
-    ...(showDepartment.value && formData.value.department != null ? { department: formData.value.department } : {})
+    ...(showDepartment.value && formData.value.department != null
+      ? { department: formData.value.department === ORGANISATION ? null : formData.value.department }
+      : {})
   }
 
   emit('submit', submitData)

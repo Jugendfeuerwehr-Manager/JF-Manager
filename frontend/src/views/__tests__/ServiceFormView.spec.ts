@@ -21,6 +21,7 @@ vi.mock('@/components/servicebook/molecules/DeleteServiceButton.vue', () => ({ d
 vi.mock('@/stores/servicebook', () => ({ useServicebookStore: () => store }))
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isOrgWide: false }) }))
 vi.mock('@/stores/serviceRegistrations', () => ({ useServiceRegistrationsStore: () => registrations }))
 
 function render() {

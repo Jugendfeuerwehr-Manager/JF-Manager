@@ -10,6 +10,9 @@ const { store, route, replace } = vi.hoisted(() => ({
 vi.mock('@/stores/servicebook', () => ({ useServicebookStore: () => store }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPerm: () => true }) }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => ({ activeDepartmentId: 7 }) }))
+vi.mock('@/stores/serviceRegistrations', () => ({
+  useServiceRegistrationsStore: () => ({ overview: { today: [], upcoming: [], open: [] }, fetchOverview: vi.fn() }),
+}))
 vi.mock('@/composables/useMobile', () => ({ useMobile: () => ({ isMobile: ref(true) }) }))
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('@/api/servicebook', () => ({ servicesApi: { list: vi.fn() } }))

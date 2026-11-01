@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import ServiceForm from '../ServiceForm.vue'
 import { useUsersStore } from '@/stores/users'
 import { useDepartmentsStore } from '@/stores/departments'
+import { useAuthStore } from '@/stores/auth'
 
 vi.mock('@/api/settings', () => ({ settingsApi: { getService: vi.fn().mockResolvedValue({ data: {}, headers: {} }) } }))
 
@@ -38,6 +39,8 @@ describe('service department', () => {
   })
 
   const departmentSelect = (wrapper: ReturnType<typeof shallowMount>) => wrapper.findComponent({ name: 'Select' })
+  const optionsOf = (wrapper: ReturnType<typeof shallowMount>) =>
+    (wrapper.vm as unknown as { departmentOptions: { id: number | string; name: string }[] }).departmentOptions
 
   it('is not asked when a department is active', async () => {
     const store = useDepartmentsStore()
@@ -61,6 +64,26 @@ describe('service department', () => {
     departmentSelect(wrapper).vm.$emit('update:modelValue', 2)
     await wrapper.find('form').trigger('submit')
     expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ department: 2 })
+  })
+
+  it('lets organisation-wide accounts create a service for all departments', async () => {
+    useDepartmentsStore().departments = departments
+    useAuthStore().user = { has_org_wide_access: true } as never
+    const wrapper = shallowMount(ServiceForm, { props: { initialData: null } })
+    await flushPromises()
+    expect(optionsOf(wrapper)[0]).toEqual({ id: 'organisation', name: 'Alle Abteilungen (gemeinsamer Dienst)' })
+    ;(wrapper.vm as unknown as { formData: { start: Date; end: Date } }).formData.start = new Date(service.start)
+    ;(wrapper.vm as unknown as { formData: { start: Date; end: Date } }).formData.end = new Date(service.end)
+    departmentSelect(wrapper).vm.$emit('update:modelValue', 'organisation')
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ department: null })
+  })
+
+  it('does not offer the organisation-wide choice to department roles', async () => {
+    useDepartmentsStore().departments = departments
+    const wrapper = shallowMount(ServiceForm, { props: { initialData: null } })
+    await flushPromises()
+    expect(optionsOf(wrapper).map((o) => o.id)).toEqual([1, 2])
   })
 
   it('lets a service without department be assigned to one', async () => {
