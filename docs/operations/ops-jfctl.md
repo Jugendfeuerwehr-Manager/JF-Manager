@@ -14,7 +14,7 @@ Ohne Argument öffnet `sudo jfctl` ein Menü. Jeder Menüpunkt ruft denselben Un
 | `jfctl start \| stop \| restart` | Anwendung starten/stoppen; `start` wartet auf Backend und Nginx |
 | `jfctl logs [dienst] [-f] [-n N]` | Protokolle der Dienste (`backend`, `worker`, `push-worker`, `frontend`, nativ `web`, `worker`, `push`, `nginx`); `jfctl logs jfctl` zeigt das eigene Protokoll |
 | `jfctl update --version X.Y.Z` | Geprüfter Releasewechsel ([ops-backup-restore-update.md](ops-backup-restore-update.md)) |
-| `jfctl backup create \| list \| verify [ID]` | Verschlüsselte Sicherung mit Restic |
+| `jfctl backup create \| list \| init \| verify [ID]` | Verschlüsselte Sicherung mit Restic; `init` legt ein fehlendes Repository an |
 | `jfctl restore <ID>` | Wiederherstellung mit Vorabprüfung und ausdrücklicher Bestätigung |
 | `jfctl config show` | Betriebsangaben und Anwendungswerte (Geheimnisse maskiert) |
 | `jfctl config set KEY WERT` | Ändert eine Betriebsangabe (`JF_DOMAIN`, `JF_TLS`, `JF_BACKUP_*` …) oder einen Infrastrukturwert der Anwendung (`EMAIL_*`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` …); Schlüssel nur über `config edit` |

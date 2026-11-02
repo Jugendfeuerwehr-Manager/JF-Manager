@@ -26,17 +26,66 @@ restic_env() {
     fi
 }
 
+# ok | missing | password | unreachable. restic >= 0.17 exits 10 for a missing
+# repository and 12 for a wrong password; older versions only exit 1, so a
+# local path without a config file also counts as missing.
+backup_repo_state() {
+    local rc=0
+    restic cat config >/dev/null 2>&1 || rc=$?
+    case $rc in
+        0) echo ok ;;
+        10) echo missing ;;
+        12) echo password ;;
+        *) if [[ $JF_BACKUP_REPO == /* ]] && [ ! -f "$JF_BACKUP_REPO/config" ]; then echo missing; else echo unreachable; fi ;;
+    esac
+}
+
+_backup_password_check() {
+    [ -n "${RESTIC_PASSWORD:-}" ] || [ -s "$RESTIC_PASSWORD_FILE" ] ||
+        die "$EX_PRECHECK" "Backup-Passwortdatei $RESTIC_PASSWORD_FILE fehlt oder ist leer."
+}
+
+_backup_repo_die() { # state
+    case $1 in
+        password) die "$EX_PRECHECK" "Passwort für Backup-Repository $JF_BACKUP_REPO falsch (Passwortdatei $RESTIC_PASSWORD_FILE)." ;;
+        *) die "$EX_PRECHECK" "Backup-Repository $JF_BACKUP_REPO nicht erreichbar (Pfad, Netzwerk oder Zugangsdaten in $JF_ETC/restic.env prüfen)." ;;
+    esac
+}
+
 backup_repo_init() {
     restic_env
     have restic || die "$EX_PRECHECK" "restic ist nicht installiert."
-    [ -s "$JF_BACKUP_PASSWORD_FILE" ] || die "$EX_PRECHECK" "Backup-Passwortdatei $JF_BACKUP_PASSWORD_FILE fehlt oder ist leer."
-    if restic cat config >/dev/null 2>&1; then
-        ok "Backup-Repository vorhanden ($JF_BACKUP_REPO)"
-    else
-        case $JF_BACKUP_REPO in /*) mkdir -p "$JF_BACKUP_REPO"; chmod 700 "$JF_BACKUP_REPO" ;; esac
-        restic init >/dev/null || die "$EX_ERROR" "Backup-Repository konnte nicht angelegt werden."
-        ok "Backup-Repository angelegt ($JF_BACKUP_REPO)"
-    fi
+    _backup_password_check
+    local state; state=$(backup_repo_state)
+    case $state in
+        ok) ok "Backup-Repository vorhanden ($JF_BACKUP_REPO)" ;;
+        missing)
+            case $JF_BACKUP_REPO in /*) mkdir -p "$JF_BACKUP_REPO"; chmod 700 "$JF_BACKUP_REPO" ;; esac
+            restic init >/dev/null || die "$EX_ERROR" "Backup-Repository konnte nicht angelegt werden."
+            ok "Backup-Repository angelegt ($JF_BACKUP_REPO)" ;;
+        *) _backup_repo_die "$state" ;;
+    esac
+}
+
+# Before any downtime: the repository is readable, or it is created when this
+# installation never completed a backup. A repository that is gone after
+# successful backups is not recreated silently (unmounted disk, changed path).
+backup_repo_ready() {
+    restic_env
+    have restic || die "$EX_PRECHECK" "restic ist nicht installiert."
+    _backup_password_check
+    local state last
+    state=$(backup_repo_state)
+    case $state in
+        ok) return 0 ;;
+        missing)
+            last=$(jq -r '.last_success.finished // empty' "$JF_STATE_DIR/last-backup.json" 2>/dev/null || true)
+            [ -z "$last" ] ||
+                die "$EX_PRECHECK" "Backup-Repository $JF_BACKUP_REPO fehlt, obwohl am $last zuletzt gesichert wurde. Laufwerk oder Freigabe eingehängt? Bewusst neu anlegen: jfctl backup init"
+            warn "Backup-Repository $JF_BACKUP_REPO fehlt und wird angelegt"
+            backup_repo_init ;;
+        *) _backup_repo_die "$state" ;;
+    esac
 }
 
 _backup_status() { # status snapshot message
@@ -56,9 +105,7 @@ _backup_status() { # status snapshot message
 backup_create() {
     local kind=$1 reason=$2 in_window=${3:-} staging dump snap was_running=0 out
     staging="$JF_DATA_DIR/backup-staging"
-    restic_env
-    have restic || die "$EX_PRECHECK" "restic ist nicht installiert."
-    restic cat config >/dev/null 2>&1 || die "$EX_PRECHECK" "Backup-Repository $JF_BACKUP_REPO nicht erreichbar oder Passwort falsch."
+    backup_repo_ready
 
     rm -rf "$staging"; mkdir -p "$staging/config"; chmod 700 "$staging"
     if [ "$in_window" != --in-window ]; then
@@ -230,6 +277,10 @@ cmd_backup() {
             fi
             backup_create "$kind" "jfctl backup create" ;;
         list) backup_list ;;
+        init)
+            need_root
+            acquire_lock "backup init"
+            backup_repo_init ;;
         verify)
             need_root
             local id=${1:-latest} tmp
@@ -247,6 +298,6 @@ cmd_backup() {
             else
                 rm -rf "$tmp"; die "$EX_VERIFY" "Sicherung $id ist beschädigt oder unvollständig."
             fi ;;
-        *) die "$EX_USAGE" "jfctl backup create | list | verify [ID]" ;;
+        *) die "$EX_USAGE" "jfctl backup create | list | init | verify [ID]" ;;
     esac
 }

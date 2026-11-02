@@ -42,7 +42,8 @@ Befehle:
   start | stop | restart                 Anwendung starten/stoppen
   logs [dienst] [-f] [-n ZEILEN]         Bereinigte Protokolle
   update --version X.Y.Z                 Geprüfter Releasewechsel mit Sicherung
-  backup create | list | verify [ID]     Verschlüsselte Sicherungen (Restic)
+  backup create | list | init | verify [ID]
+                                         Verschlüsselte Sicherungen (Restic)
   restore <backup-id> [--confirm NAME]   Wiederherstellung mit Vorabprüfung
   config [show | set KEY WERT | edit]    Betriebsangaben anzeigen/ändern
   admin bootstrap | recover | reset-mfa  Erstes Administratorkonto / Zugang wiederherstellen /

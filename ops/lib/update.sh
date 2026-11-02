@@ -14,8 +14,13 @@ _update_state() { printf '%s' "$JF_STATE_DIR/update.state"; }
 _update_stage() { state_dir >/dev/null; [ -f "$(_update_state)" ] || install -m 600 /dev/null "$(_update_state)"; kv_set "$(_update_state)" STAGE "$1"; kv_set "$(_update_state)" UPDATED "$(_ts)"; }
 
 _RESTORE_DB_ONLY=0
+_UPDATE_PID=""
 
 _update_rollback() { # reason
+    # set -E hands the ERR trap to subshells ($(…), pipelines). A rollback there
+    # ends only the subshell while the update carries on with the new version
+    # recorded but the old one running. Fail the subshell; the caller decides.
+    [ "$BASHPID" = "$_UPDATE_PID" ] || exit 1
     local prev snap stage
     stage=$(kv_get "$(_update_state)" STAGE || true)
     prev=$(kv_get "$(_update_state)" PREVIOUS_VERSION || true)
@@ -77,6 +82,14 @@ cmd_update() {
             *) die "$EX_PRECHECK" "Vorheriges Update unvollständig (Stufe $(kv_get "$(_update_state)" STAGE)). Siehe jfctl status / jfctl logs jfctl." ;;
         esac
     fi
+    # Updates before the fix for #25 could record the target version while the
+    # previous release kept running. The linked release is what actually runs.
+    local linked; linked=$(linked_version)
+    if [ -n "$linked" ] && [ "$linked" != "$current" ] && [ -d "$JF_OPT/releases/$linked" ]; then
+        warn "jfctl.conf nennt Version $current, es läuft aber $linked (früheres Update nicht vollständig gewechselt). Es gilt $linked."
+        current=$linked; JF_VERSION=$linked
+        conf_save
+    fi
     cmp=$(version_cmp "$target" "$current")
     [ "$cmp" = 0 ] && { ok "Version $target ist bereits installiert."; return 0; }
     [ "$cmp" = -1 ] && die "$EX_PRECHECK" "Zielversion $target ist älter als $current. Zurück nur über jfctl restore (Datenbankschema)."
@@ -99,6 +112,7 @@ cmd_update() {
     ok "Release $target bereit"
     confirm_yes "Update auf $target jetzt durchführen? Die Anwendung ist währenddessen nicht erreichbar." ||
         die "$EX_ABORTED" "Abgebrochen – nichts geändert."
+    backup_repo_ready
 
     step "3/6 Wartungsmodus und vollständige Sicherung"
     install -m 600 /dev/null "$(_update_state)"
@@ -107,6 +121,7 @@ cmd_update() {
     _update_stage maintenance
     ad_entry_stop
     ad_workers_stop
+    _UPDATE_PID=$BASHPID
     trap '_update_rollback "unerwarteter Abbruch"' ERR
     if ! backup_in_window pre-update "vor Update auf $target"; then
         trap - ERR; ad_app_start; ad_entry_start; _update_stage "done"

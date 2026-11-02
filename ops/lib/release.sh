@@ -87,6 +87,13 @@ switch_current() {
     fi
 }
 
+# Version that /opt/jf-manager/current points to (empty without a link).
+linked_version() {
+    local link
+    link=$(readlink "$JF_OPT/current" 2>/dev/null) || return 0
+    printf '%s' "${link##*/}"
+}
+
 # Keep the current, the previous and the newest two other releases.
 release_prune() {
     local keep current previous
@@ -126,7 +133,9 @@ render_trusted_proxies() {
 # nginx half of the CSP switch; the backend reads CSP_REPORT_ONLY from app.env.
 render_csp_mode() {
     local tmp mode=enforce
-    case $(kv_get "$JF_APP_ENV" CSP_REPORT_ONLY 2>/dev/null | tr '[:upper:]' '[:lower:]') in
+    # Installs don't write the key; missing means enforce. Without "|| true" the
+    # pipeline fails under pipefail and fires the update's ERR trap (#25).
+    case $({ kv_get "$JF_APP_ENV" CSP_REPORT_ONLY 2>/dev/null || true; } | tr '[:upper:]' '[:lower:]') in
         true|1|yes) mode=report-only ;;
     esac
     tmp=$(mktemp "$JF_CSP_MODE.XXXXXX")

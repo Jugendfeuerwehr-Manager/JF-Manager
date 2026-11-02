@@ -4,6 +4,11 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 ## [Unreleased]
 
+### Behoben
+
+- **`jfctl update` wechselt wieder wirklich auf die neue Version.** Seit 3.1.0 brach ein Update in Stufe 4 mit „unerwarteter Abbruch“ ab, wenn in `/etc/jf-manager/app.env` kein `CSP_REPORT_ONLY` stand (der Normalfall). Der Rückfall auf die alte Version lief dann nur in einem Teilprozess, und das Update machte danach weiter. Am Ende meldete jfctl „Update abgeschlossen“ und trug die neue Version ein, gestartet blieb aber die alte (#25). Ein fehlender Schlüssel gilt jetzt als „CSP durchsetzen“. Ein Rückfall läuft nur noch im eigentlichen Update-Prozess. Weil ein Update mit dem jfctl der installierten Version läuft, vor dem Update auf diese Version einmalig `CSP_REPORT_ONLY=false` in `app.env` eintragen. Wer schon betroffen ist, setzt vorher `JF_VERSION` in `/etc/jf-manager/jfctl.conf` auf die laufende Version zurück (`readlink /opt/jf-manager/current`). Ab dieser Version erkennt jfctl eine solche Abweichung selbst: `doctor` meldet sie, `update` geht von der tatsächlich laufenden Version aus.
+- **Fehlendes Backup-Repository blockiert Sicherung und Update nicht mehr.** `jfctl backup create` und `jfctl update` meldeten bei einem fehlenden Repository nur „nicht erreichbar oder Passwort falsch“ und legten es nie an. Jetzt unterscheiden sie: Repository fehlt, Passwort falsch, Ziel nicht erreichbar. Die Prüfung läuft vor dem Wartungsfenster. Hat die Installation noch nie eine Sicherung abgeschlossen, legt jfctl das Repository selbst an. Fehlt es nach erfolgreichen Sicherungen, bricht jfctl ab, statt still ein leeres Repository anzulegen. Neu: `jfctl backup init`. `jfctl doctor` prüft das Repository mit (#25).
+
 ## [3.3.0] – 2026-11-02
 
 ### Neu
