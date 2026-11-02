@@ -24,6 +24,12 @@ describe('servicebook store – createService', () => {
     expect(create).toHaveBeenCalledWith({ ...form, department: 1 })
   })
 
+  it('keeps an explicit null for a service of the whole organisation', async () => {
+    useDepartmentsStore().setActiveDepartment(1)
+    await useServicebookStore().createService({ ...form, department: null })
+    expect(create).toHaveBeenCalledWith({ ...form, department: null })
+  })
+
   it('keeps an explicitly chosen department', async () => {
     useDepartmentsStore().setActiveDepartment(1)
     await useServicebookStore().createService({ ...form, department: 3 })

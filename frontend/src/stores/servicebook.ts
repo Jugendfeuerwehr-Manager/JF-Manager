@@ -65,20 +65,29 @@ export const useServicebookStore = defineStore('servicebook', () => {
   /**
    * Fetch services list with optional filters
    */
+  // Only the latest list request may write the list: switching scope or department
+  // quickly must not let an older, slower response replace the current one.
+  let latestServicesRequest = 0
+
   async function fetchServices(params?: ServiceListParams) {
+    const request = ++latestServicesRequest
     servicesLoading.value = true
     servicesError.value = null
 
     try {
       const response = await servicebookApi.services.list(params)
-      services.value = response.data.results
-      servicesTotalCount.value = response.data.count
+      if (request === latestServicesRequest) {
+        services.value = response.data.results
+        servicesTotalCount.value = response.data.count
+      }
       return services.value
     } catch (error) {
-      servicesError.value = getApiErrorMessage(error, 'Fehler beim Laden der Dienste')
+      if (request === latestServicesRequest) {
+        servicesError.value = getApiErrorMessage(error, 'Fehler beim Laden der Dienste')
+      }
       throw error
     } finally {
-      servicesLoading.value = false
+      if (request === latestServicesRequest) servicesLoading.value = false
     }
   }
 
@@ -115,7 +124,8 @@ export const useServicebookStore = defineStore('servicebook', () => {
       const activeDepartmentId = useDepartmentsStore().activeDepartmentId
       const response = await servicebookApi.services.create({
         ...data,
-        department: data.department ?? activeDepartmentId
+        // An explicit null asks for a service of the whole organisation.
+        department: data.department !== undefined ? data.department : activeDepartmentId
       })
       // Add to local state
       const newService: Service = {

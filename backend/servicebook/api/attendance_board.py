@@ -12,7 +12,7 @@ from servicebook.models import Attendance, Service, StaffAttendance
 from users.people import ANONYMOUS_USERNAME, person_accounts
 
 from ..linked_people import CountedAsOther, check_single_entry, members_for_staff, staff_for_members
-from .attendance_permissions import has_department_permission
+from .attendance_permissions import attendance_departments
 
 
 class BoardChangeSerializer(serializers.Serializer):
@@ -24,10 +24,15 @@ class BoardChangeSerializer(serializers.Serializer):
     replace_linked = serializers.BooleanField(required=False, default=False)
 
 
-def roster_people(service):
+def roster_people(service, departments=None):
+    """People listed for ``service``; ``departments`` narrows an organisation-wide
+    service to the departments the caller acts for (``None``: everybody)."""
     members = Member.objects.all()
     staff = person_accounts()
-    if service.department_id:
+    if service.department_id is None and departments is not None:
+        members = members.filter(departments__in=departments)
+        staff = staff.filter(department_roles__department_id__in=departments)
+    elif service.department_id:
         # Guests (registered or assigned from outside the department) and anyone already recorded stay listed.
         guests = Q(attendance__service=service)
         if service.training_session_id:
@@ -44,8 +49,8 @@ def roster_people(service):
     )
 
 
-def board_response(service):
-    members, staff = roster_people(service)
+def board_response(service, departments=None):
+    members, staff = roster_people(service, departments)
     member_states = dict(Attendance.objects.filter(service=service).values_list("person_id", "state"))
     staff_states = dict(StaffAttendance.objects.filter(service=service).values_list("person_id", "state"))
     members, staff = list(members), list(staff)
@@ -100,12 +105,13 @@ def set_attendance(service, model, person_id, state, expected_state, replace_lin
 
 
 def update_board(request, service):
-    if not has_department_permission(request.user, "servicebook.change_attendance", service.department_id):
+    departments = attendance_departments(request.user, service, "servicebook.change_attendance")
+    if departments is not None and not departments:
         raise PermissionDenied("Keine Berechtigung zum Bearbeiten der Anwesenheit.")
     serializer = BoardChangeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     change = serializer.validated_data
-    members, staff = roster_people(service)
+    members, staff = roster_people(service, departments)
     people = members if change["kind"] == "member" else staff
     if not people.filter(pk=change["person_id"]).exists():
         raise serializers.ValidationError({"person_id": "Person gehört nicht zur Teilnehmerliste dieses Dienstes."})
