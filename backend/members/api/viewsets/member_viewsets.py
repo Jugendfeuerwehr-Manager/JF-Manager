@@ -457,6 +457,38 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
 
+    class _LeaveSerializer(serializers.Serializer):
+        left_at = serializers.DateField(allow_null=True)
+        status_id = serializers.PrimaryKeyRelatedField(
+            queryset=Status.objects.all(), source="status", required=False, allow_null=True
+        )
+
+    @extend_schema(
+        summary="Record or withdraw a member's leave",
+        description="Sets the leave date (null withdraws it) and optionally a new status.",
+        request=_LeaveSerializer,
+        responses={200: MemberDetailSerializer},
+    )
+    # Model permissions would map POST to add_member; changing the member is what
+    # matters, checked against the member's own departments.
+    @action(detail=True, methods=["post"], url_path="leave", permission_classes=[IsAuthenticated])
+    def leave(self, request, pk=None):
+        from members.services.membership_leave import record_leave
+
+        member = self.get_object()
+        department_ids = list(member.departments.values_list("id", flat=True)) or [None]
+        if not any(
+            self._has_right_in_department(request.user, "members.change_member", department_id)
+            for department_id in department_ids
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Bearbeiten dieses Mitglieds.")
+        if member.anonymized_at is not None:
+            return Response({"detail": "Das Mitglied ist bereits anonymisiert."}, status=status.HTTP_409_CONFLICT)
+        data = self._LeaveSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        member = record_leave(member, left_at=data.validated_data["left_at"], status=data.validated_data.get("status"))
+        return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
+
     class _HealthSerializer(serializers.Serializer):
         health_notes = serializers.CharField(allow_blank=True, max_length=4000)
 

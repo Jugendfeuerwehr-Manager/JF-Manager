@@ -170,6 +170,24 @@ export const useMembersStore = defineStore('members', () => {
     healthNotes.value = rest
   }
 
+  /** Record or withdraw a leave; the leave date starts the anonymization deadline. */
+  async function recordLeave(id: number, data: { left_at: string | null; status_id?: number }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await membersApi.leave(id, data)
+      if (currentMember.value?.id === id) currentMember.value = response.data
+      const index = members.value.findIndex((m) => m.id === id)
+      if (index !== -1) members.value[index] = response.data
+      return response.data
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Austritt konnte nicht gespeichert werden')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   /** DSGVO: replace identifying data; the row stays for statistics. */
   async function anonymizeMember(id: number) {
     loading.value = true
@@ -295,6 +313,7 @@ export const useMembersStore = defineStore('members', () => {
     updateMember,
     deleteMember,
     anonymizeMember,
+    recordLeave,
     healthNotes,
     healthLoading,
     healthError,

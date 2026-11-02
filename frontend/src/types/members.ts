@@ -35,6 +35,8 @@ export interface Member {
   anonymized_at?: string | null
   /** Only for holders of the health right; the text itself has its own endpoint. */
   has_health_notes?: boolean
+  /** Date of the automatic anonymization after leaving (DSGVO), if any. */
+  anonymize_due?: string | null
   identityCardNumber: string
   canSwimm: boolean
   gender: 'male' | 'female' | 'diverse' | ''

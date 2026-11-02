@@ -157,6 +157,7 @@ class MemberDetailSerializer(MemberFieldAccessMixin, serializers.ModelSerializer
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar_url = serializers.SerializerMethodField()
     has_health_notes = serializers.SerializerMethodField()
+    anonymize_due = serializers.SerializerMethodField()
 
     class Meta:
         model = Member
@@ -190,6 +191,7 @@ class MemberDetailSerializer(MemberFieldAccessMixin, serializers.ModelSerializer
             "avatar_url",
             "departments",
             "has_health_notes",
+            "anonymize_due",
         ]
         read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "anonymized_at"]
 
@@ -202,6 +204,11 @@ class MemberDetailSerializer(MemberFieldAccessMixin, serializers.ModelSerializer
 
     def get_has_health_notes(self, obj) -> bool:
         return bool(obj.health_notes)
+
+    def get_anonymize_due(self, obj):
+        from members.services.membership_leave import anonymize_due
+
+        return anonymize_due(obj)
 
     def get_parents(self, obj):
         return visible_parent_data(obj, self.context, self.root.instance)

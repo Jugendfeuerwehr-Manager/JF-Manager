@@ -63,6 +63,10 @@ export const membersApi = {
   anonymize(id: number) {
     return apiClient.post<Member>(`/members/${id}/anonymize/`)
   },
+  /** Record (or with ``left_at: null`` withdraw) a leave. */
+  leave(id: number, data: { left_at: string | null; status_id?: number }) {
+    return apiClient.post<Member>(`/members/${id}/leave/`, data)
+  },
   delete(id: number) {
     return apiClient.delete(`/members/${id}/`)
   },
