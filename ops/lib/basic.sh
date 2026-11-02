@@ -83,6 +83,21 @@ cmd_doctor() {
         if [ -z "$v" ] || [[ $v == CHANGE_ME* ]]; then _bad "$key fehlt in app.env"; else ok "$key gesetzt"; fi
     done
     [ -f "$JF_BACKUP_PASSWORD_FILE" ] && ok "Backup-Passwortdatei vorhanden" || _bad "Backup-Passwortdatei $JF_BACKUP_PASSWORD_FILE fehlt"
+    v=$(linked_version)
+    if [ -n "$v" ] && [ "$v" != "${JF_VERSION#v}" ]; then
+        _bad "jfctl.conf nennt Version ${JF_VERSION#v}, es läuft $v (wird beim nächsten jfctl update korrigiert)"
+    fi
+    if have restic; then
+        restic_env
+        case $(backup_repo_state) in
+            ok) ok "Backup-Repository lesbar ($JF_BACKUP_REPO)" ;;
+            missing) _bad "Backup-Repository $JF_BACKUP_REPO fehlt (anlegen: jfctl backup init)" ;;
+            password) _bad "Passwort für Backup-Repository $JF_BACKUP_REPO falsch ($RESTIC_PASSWORD_FILE)" ;;
+            *) _bad "Backup-Repository $JF_BACKUP_REPO nicht erreichbar" ;;
+        esac
+    else
+        _bad "restic ist nicht installiert"
+    fi
 
     step "Plattform"
     ad_preflight || problems=$((problems + 1))
