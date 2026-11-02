@@ -22,6 +22,10 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 - **Neue Dienste landen auch bei Admin-Konten in der richtigen Abteilung.** Ist oben eine Abteilung gewählt, wird der Dienst genau dort angelegt. Fehlt die Abteilung, etwa weil im Browser nach dem Update noch die alte Oberfläche lief, speichert das System bei organisationsweiten Konten keinen Dienst ohne Abteilung mehr. Stattdessen bittet es um die Auswahl, außer es gibt nur eine Abteilung. In der Ansicht „Alle Abteilungen“ fragt das Formular nach der Abteilung. Dienste, die durch den Fehler ohne Abteilung gespeichert wurden, erscheinen jetzt als gemeinsame Dienste und lassen sich im Formular einer Abteilung zuordnen (#25).
 
+### Sicherheit
+
+- `pyasn1` (indirekte Abhängigkeit, ASN.1-Verarbeitung) auf 0.6.5 aktualisiert, um vier bekannte Sicherheitslücken zu schließen.
+
 ## [3.2.3] – 2026-10-30
 
 ### Behoben
