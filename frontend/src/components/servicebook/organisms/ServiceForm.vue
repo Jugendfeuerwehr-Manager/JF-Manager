@@ -66,6 +66,23 @@
           <label for="place">Ort</label>
           <InputText id="place" v-model="formData.place" placeholder="z. B. Gerätehaus" />
         </div>
+        <div v-if="showDepartment" class="form-field">
+          <label for="service-department">Abteilung</label>
+          <Select
+            input-id="service-department"
+            v-model="formData.department"
+            :options="departmentOptions"
+            option-label="name"
+            option-value="id"
+            placeholder="Abteilung wählen"
+            :invalid="!!errors.department"
+            :aria-describedby="authStore.isOrgWide ? 'service-department-hint' : undefined"
+          />
+          <p v-if="authStore.isOrgWide" id="service-department-hint" class="field-hint">
+            „Alle Abteilungen“ ist für gemeinsame Termine wie eine Vollversammlung. Jede Abteilung erfasst dort die Anwesenheit ihrer Mitglieder.
+          </p>
+          <p v-if="errors.department" class="field-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.department }}</p>
+        </div>
         <div class="form-field form-field--wide">
           <span id="operations-manager-label" class="field-label">Leitung</span>
           <UserChipSelector
@@ -106,9 +123,12 @@ import Textarea from 'primevue/textarea'
 import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Select from 'primevue/select'
 import UserChipSelector from '@/components/servicebook/atoms/UserChipSelector.vue'
 import type { ServiceFormData, ServiceDetail } from '@/types/servicebook'
 import { useUsersStore } from '@/stores/users'
+import { useDepartmentsStore } from '@/stores/departments'
+import { useAuthStore } from '@/stores/auth'
 import { settingsApi } from '@/api/settings'
 import type { UserInfo } from '@/types/api'
 import type { ServiceSettings } from '@/types/settings'
@@ -133,6 +153,17 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const usersStore = useUsersStore()
+const departmentsStore = useDepartmentsStore()
+const authStore = useAuthStore()
+
+/** Choice for a service of the whole organisation (sent as ``department: null``). */
+const ORGANISATION = 'organisation'
+type DepartmentChoice = number | typeof ORGANISATION | null
+
+const departmentOptions = computed(() => [
+  ...(authStore.isOrgWide ? [{ id: ORGANISATION, name: 'Alle Abteilungen (gemeinsamer Dienst)' }] : []),
+  ...departmentsStore.departments.map((d) => ({ id: d.id, name: d.name }))
+])
 
 const formData = ref<{
   start: Date | null
@@ -142,6 +173,7 @@ const formData = ref<{
   description: string
   events: string
   operations_manager_ids: number[]
+  department: DepartmentChoice
 }>({
   start: null,
   end: null,
@@ -149,7 +181,8 @@ const formData = ref<{
   place: '',
   description: '',
   events: '',
-  operations_manager_ids: []
+  operations_manager_ids: [],
+  department: departmentsStore.activeDepartmentId
 })
 
 const errors = ref<Record<string, string>>({})
@@ -252,15 +285,28 @@ watch(
         place: newData.place || '',
         description: newData.description || '',
         events: newData.events || '',
-        operations_manager_ids: newData.operations_manager?.map((m) => m.id) || []
+        operations_manager_ids: newData.operations_manager?.map((m) => m.id) || [],
+        department: newData.department ?? (authStore.isOrgWide ? ORGANISATION : null)
       }
     }
   },
   { immediate: true }
 )
 
+// Only ask for the department when it is not obvious: no active department, or a
+// service for the whole organisation (department=NULL) that may be reassigned.
+const showDepartment = computed(
+  () =>
+    departmentsStore.departments.length > 1 &&
+    (departmentsStore.activeDepartmentId === null || (!!props.initialData && props.initialData.department == null))
+)
+
 const validate = (): boolean => {
   errors.value = {}
+
+  if (showDepartment.value && formData.value.department == null) {
+    errors.value.department = 'Bitte eine Abteilung wählen'
+  }
 
   if (!formData.value.start) {
     errors.value.start = 'Startdatum ist erforderlich'
@@ -289,7 +335,10 @@ const handleSubmit = () => {
     events: formData.value.events || undefined,
     operations_manager_ids: formData.value.operations_manager_ids.length
       ? formData.value.operations_manager_ids
-      : undefined
+      : undefined,
+    ...(showDepartment.value && formData.value.department != null
+      ? { department: formData.value.department === ORGANISATION ? null : formData.value.department }
+      : {})
   }
 
   emit('submit', submitData)

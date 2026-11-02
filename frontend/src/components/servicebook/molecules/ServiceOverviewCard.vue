@@ -2,6 +2,7 @@
   <article class="overview-card" :class="{ 'overview-card--today': today }">
     <p class="overview-card__when">{{ whenLine }}</p>
     <h3 class="overview-card__title">{{ card.topic || 'Dienst ohne Thema' }}</h3>
+    <DepartmentTag v-if="departmentVisible" class="overview-card__department" :department-id="card.department" />
     <p v-if="card.groups.length" class="overview-card__groups">{{ card.groups.join(', ') }}</p>
     <dl class="overview-card__counts" :aria-label="`Zähler: ${card.counts.expected} erwartet, ${card.counts.cancelled} abgemeldet, ${card.counts.recorded} erfasst`">
       <div><dt>erwartet</dt><dd>{{ card.counts.expected }}</dd></div>
@@ -31,8 +32,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ServiceOverviewCard } from '@/types/servicebook'
+import DepartmentTag from '@/components/departments/atoms/DepartmentTag.vue'
 
-const props = defineProps<{ card: ServiceOverviewCard; today?: boolean }>()
+const props = defineProps<{ card: ServiceOverviewCard; today?: boolean; showDepartment?: boolean }>()
+
+/** Services for the whole organisation always say so. */
+const departmentVisible = computed(() => props.card.department === null || props.showDepartment)
 
 const openCount = computed(() => Math.max(props.card.counts.total - props.card.counts.recorded, 0))
 const whenLine = computed(() => {
@@ -57,6 +62,7 @@ const whenLine = computed(() => {
   min-width: 0;
 }
 .overview-card--today { border-color: var(--jf-color-primary); }
+.overview-card__department { align-self: flex-start; }
 .overview-card__when {
   margin: 0;
   font-size: var(--jf-text-xs);

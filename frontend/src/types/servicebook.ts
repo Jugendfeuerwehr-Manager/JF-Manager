@@ -422,6 +422,7 @@ export interface ServiceOverviewCard {
   start: string
   end: string
   topic: string | null
+  department: number | null
   groups: string[]
   session_id: number | null
   mode: string | null

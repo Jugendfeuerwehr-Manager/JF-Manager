@@ -42,7 +42,7 @@
       />
     </section>
 
-    <ServiceMobileList v-if="isMobile && scope === 'upcoming'" :department="departmentsStore.activeDepartmentId" />
+    <ServiceMobileList v-if="isMobile && scope === 'upcoming'" :department="departmentsStore.activeDepartmentId" :show-department="showDepartment" />
 
     <template v-if="!isMobile || scope === 'past'">
     <section v-if="!isMobile && todayServices.length" class="today" aria-labelledby="today-title">
@@ -78,8 +78,20 @@
       </article>
     </section>
 
+    <section v-if="!isMobile && scope === 'upcoming' && openServices.length" class="open-services" aria-labelledby="open-services-title">
+      <div class="open-services__header">
+        <h2 id="open-services-title">Anwesenheit offen</h2>
+        <p>Vergangene Dienste, bei denen noch Anwesenheiten fehlen.</p>
+      </div>
+      <div class="open-services__cards">
+        <ServiceOverviewCard v-for="card in openServices" :key="card.id" :card="card" :show-department="showDepartment" />
+      </div>
+    </section>
+
+    <h2 v-if="!isMobile && scope === 'upcoming' && openServices.length" class="list-title">Kommende Dienste</h2>
     <ServicesList
       :services="servicebookStore.services"
+      :show-department="showDepartment"
       :loading="servicebookStore.servicesLoading"
       :error="servicebookStore.servicesError"
       :total-records="servicebookStore.servicesTotalCount"
@@ -103,6 +115,8 @@ import { ref, onMounted, onActivated, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ServiceMobileList from '@/components/servicebook/organisms/ServiceMobileList.vue'
+import ServiceOverviewCard from '@/components/servicebook/molecules/ServiceOverviewCard.vue'
+import { useServiceRegistrationsStore } from '@/stores/serviceRegistrations'
 import { useMobile } from '@/composables/useMobile'
 import { useDepartmentsStore } from '@/stores/departments'
 import ServicesList from '@/components/servicebook/organisms/ServicesList.vue'
@@ -121,6 +135,7 @@ const router = useRouter()
 const servicebookStore = useServicebookStore()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()
+const registrationsStore = useServiceRegistrationsStore()
 /** PART-02.2: below 768px the servicebook shows the mobile list instead of the table list. */
 const { isMobile } = useMobile(768)
 const canViewReport = computed(() => authStore.hasPerm('servicebook.view_attendance') || authStore.hasPerm('servicebook.change_attendance'))
@@ -147,9 +162,18 @@ const activeFilterCount = computed(() => [
   filters.value.dateFrom, filters.value.dateTo,
 ].filter(Boolean).length)
 
+/** With several departments in view, every service names its department. */
+const showDepartment = computed(() => departmentsStore.isAllDepartments && departmentsStore.departments.length > 1)
+
+/** Past services with missing attendance get their own section instead of mixing into "Kommend". */
+const openServices = computed(() => registrationsStore.overview.open)
+
 async function loadDesktop() {
   if (isMobile.value && scope.value === 'upcoming') return
-  await Promise.all([loadServices(), ...(!isMobile.value ? [loadToday()] : [])])
+  const desktopExtras = !isMobile.value
+    ? [loadToday(), ...(scope.value === 'upcoming' ? [registrationsStore.fetchOverview(departmentsStore.activeDepartmentId)] : [])]
+    : []
+  await Promise.all([loadServices(), ...desktopExtras])
 }
 
 onMounted(async () => {
@@ -356,6 +380,32 @@ const handleOpenTraining = (trainingId: number) => {
   border-color: var(--jf-color-primary);
   background: var(--jf-color-primary);
   color: var(--jf-color-on-primary);
+}
+
+.open-services {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+}
+
+.open-services__header h2,
+.list-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--jf-color-text);
+}
+
+.open-services__header p {
+  margin: var(--jf-space-0-5) 0 0;
+  color: var(--jf-color-text-muted);
+  font-size: 0.875rem;
+}
+
+.open-services__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--jf-space-2);
 }
 
 .list-controls {

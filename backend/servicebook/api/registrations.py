@@ -157,6 +157,7 @@ def overview_card(service):
         "start": local(service.start),
         "end": local(service.end),
         "topic": service.topic,
+        "department": service.department_id,
         "groups": groups,
         "session_id": session.pk if session is not None else None,
         "mode": session_body["mode"] if session_body else None,

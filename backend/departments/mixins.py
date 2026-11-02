@@ -187,9 +187,15 @@ class DepartmentScopeViewSetMixin:
         requested_dept = self._resolve_requested_department(user)
 
         if self._user_is_org_wide(user):
-            # Org-wide: optionally narrow to a single dept
+            # Org-wide: optionally narrow to a single dept (central records stay
+            # visible where the ViewSet surfaces them, as for dept-scoped users)
             if requested_dept is not None:
-                qs = qs.filter(**{self.department_field: requested_dept})
+                from django.db.models import Q
+
+                narrowed = Q(**{self.department_field: requested_dept})
+                if self.include_central_records:
+                    narrowed |= Q(**{f"{self.department_field}__isnull": True})
+                qs = qs.filter(narrowed)
             return self._filter_by_action_permission(qs, user)
 
         # Department-scoped user

@@ -15,6 +15,7 @@
       </h3>
       <p class="service-row__meta">{{ [timeRange, service.place].filter(Boolean).join(' · ') }}</p>
       <div class="service-row__badges">
+        <DepartmentTag v-if="departmentVisible" :department-id="service.department ?? null" />
         <TrainingStatusBadge v-if="service.training_status" :status="service.training_status" />
         <StatusBadge v-if="attendanceTotal" severity="success" icon="pi pi-users" :label="attendanceLabel" />
         <StatusBadge v-else-if="isStarted" severity="warning" icon="pi pi-user-plus" label="Anwesenheit offen" />
@@ -56,11 +57,14 @@ import { computed } from 'vue'
 import Button from 'primevue/button'
 import TrainingStatusBadge from '@/components/training/atoms/TrainingStatusBadge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import DepartmentTag from '@/components/departments/atoms/DepartmentTag.vue'
 import type { Service } from '@/types/servicebook'
 
 interface Props {
   service: Service
   showActions?: boolean
+  /** Name the department, e.g. in the "Alle Abteilungen" view. */
+  showDepartment?: boolean
 }
 
 interface Emits {
@@ -70,10 +74,14 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showActions: true
+  showActions: true,
+  showDepartment: false
 })
 
 defineEmits<Emits>()
+
+/** Services for the whole organisation always say so. */
+const departmentVisible = computed(() => props.service.department === null || props.showDepartment)
 
 const start = computed(() => new Date(props.service.start))
 const end = computed(() => new Date(props.service.end))
