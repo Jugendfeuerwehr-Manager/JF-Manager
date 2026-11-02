@@ -4,10 +4,23 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 ## [Unreleased]
 
+## [3.3.0] – 2026-11-02
+
+### Neu
+
+- **Gemeinsame Dienste für alle Abteilungen.** Für Termine der ganzen Organisation, etwa eine Vollversammlung, gibt es beim Anlegen die Abteilung „Alle Abteilungen (gemeinsamer Dienst)“. Das können nur Konten mit organisationsweitem Zugriff wählen. Solche Dienste erscheinen in jeder Abteilung, gekennzeichnet mit „Alle Abteilungen“. Jede Abteilungsleitung erfasst dort die Anwesenheit ihrer eigenen Mitglieder. Bearbeiten und Löschen bleiben organisationsweiten Konten vorbehalten.
+- **Abteilung in der Dienstliste.** In der Ansicht „Alle Abteilungen“ steht bei jedem Dienst, zu welcher Abteilung er gehört (am Desktop und mobil).
+
 ### Geändert
 
+- **Kommende Dienste in der richtigen Reihenfolge.** Unter „Kommend“ steht der nächste Dienst immer oben, vergangene Dienste tauchen dort nicht mehr auf. Vorher konnte ein Ladevorgang im Hintergrund nach dem Anmelden oder beim Wechsel der Abteilung die Liste mit allen Diensten in absteigender Reihenfolge überschreiben.
+- **„Anwesenheit offen“ als eigener Bereich.** Vergangene Dienste, bei denen noch Anwesenheiten fehlen, stehen am Desktop über den kommenden Diensten in einem eigenen Bereich (wie bisher schon in der mobilen Ansicht).
 - **Neues Übungs-Handout zum Arbeiten während der Ausbildung.** PDF und Druckansicht zeigen auf der ersten Seite den Ablaufplan maßstäblich: Die Höhe eines Blocks entspricht seiner Dauer, Blöcke für mehrere oder alle Gruppen sind ein durchgehender Kasten, mit Ort und Ausbildern. Danach folgen „Wer ist wo?“ mit allen Einsätzen je Ausbilder und unbesetzten Stationen, Laufzettel je Gruppe und ein eigenes Blatt je Station zum Austeilen (Durchgänge zum Abhaken, Lernziel, Sicherheit, Material-Checkliste, Ablauf, Notizlinien). Zum Schluss kommen eine Packliste zum Abhaken und die Anmerkungen.
 - **Handout im Branding der Organisation.** Das Handout übernimmt das gewählte Farbschema und das Logo der Organisation (ohne eigenes Logo das JF-Manager-Zeichen). Block-Inhalte behalten Überschriften, Listen und Hervorhebungen; Bilder werden auch als WebP oder SVG eingebettet. Am Bildschirm erscheint das Handout als weißes Blatt auf dem Seitenhintergrund.
+
+### Behoben
+
+- **Neue Dienste landen auch bei Admin-Konten in der richtigen Abteilung.** Ist oben eine Abteilung gewählt, wird der Dienst genau dort angelegt. Fehlt die Abteilung, etwa weil im Browser nach dem Update noch die alte Oberfläche lief, speichert das System bei organisationsweiten Konten keinen Dienst ohne Abteilung mehr. Stattdessen bittet es um die Auswahl, außer es gibt nur eine Abteilung. In der Ansicht „Alle Abteilungen“ fragt das Formular nach der Abteilung. Dienste, die durch den Fehler ohne Abteilung gespeichert wurden, erscheinen jetzt als gemeinsame Dienste und lassen sich im Formular einer Abteilung zuordnen (#25).
 
 ## [3.2.3] – 2026-10-30
 
