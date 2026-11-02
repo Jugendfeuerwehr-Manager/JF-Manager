@@ -65,20 +65,33 @@ export interface ConsentCreate {
   text_version?: string
 }
 
-/** Kinds offered when recording a consent by hand. */
-export const CONSENT_KIND_OPTIONS: Record<ConsentSubjectField, Array<{ value: string, label: string }>> = {
-  member: [
-    { value: 'photo_internal', label: 'Fotos intern (App, Aushang, Gruppen)' },
-    { value: 'photo_public', label: 'Fotos öffentlich (Website, Presse, soziale Medien)' },
-    { value: 'data_processing_guardian', label: 'Einwilligung der Sorgeberechtigten in die Datenverarbeitung' },
-    { value: 'privacy_notice_ack', label: 'Datenschutzhinweise zur Kenntnis genommen' },
-  ],
-  parent: [
-    { value: 'privacy_notice_ack', label: 'Datenschutzhinweise zur Kenntnis genommen' },
-    { value: 'data_processing_guardian', label: 'Einwilligung der Sorgeberechtigten in die Datenverarbeitung' },
-  ],
-  user: [
-    { value: 'confidentiality', label: 'Verpflichtung auf Vertraulichkeit' },
-    { value: 'privacy_notice_ack', label: 'Datenschutzhinweise zur Kenntnis genommen' },
-  ],
+/** A kind of consent; admins add their own in the privacy settings. */
+export interface ConsentKind {
+  id: number
+  slug: string
+  label: string
+  /** Wording people agree to; a change raises ``version``. */
+  description: string
+  version: number
+  /** Parents grant and withdraw it in the portal for each child. */
+  in_portal: boolean
+  active: boolean
+  built_in: boolean
+  position: number
+}
+
+export type ConsentKindInput = Pick<ConsentKind, 'slug' | 'label' | 'description' | 'in_portal' | 'active' | 'position'>
+
+/** Portal: consents per child. */
+export interface PortalConsentEntry {
+  status: ConsentStatus
+  recorded_at: string
+  recorded_by_name: string
+  source: string
+  text_version: string
+}
+
+export interface PortalConsentOverview {
+  kinds: Array<Pick<ConsentKind, 'slug' | 'label' | 'description' | 'version'>>
+  people: Array<{ member_id: number, name: string, consents: Record<string, PortalConsentEntry | null> }>
 }

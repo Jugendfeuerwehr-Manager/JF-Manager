@@ -1,4 +1,4 @@
-"""Known consent kinds with their labels; services accept further slugs."""
+"""Built-in consent kinds. They seed ``ConsentKind``; admins add further kinds there."""
 
 CONSENT_KINDS = {
     "privacy_notice_ack": "Datenschutzhinweise zur Kenntnis genommen",
@@ -12,3 +12,8 @@ CONSENT_KINDS = {
 }
 
 PHOTO_KINDS = ("photo_internal", "photo_public")
+
+# Offered to parents in the portal from the start; admins can change this per kind.
+PORTAL_KINDS = PHOTO_KINDS
+# Former yes/no flags: kept for the history, no longer offered.
+LEGACY_KINDS = ("dsgvo_internal", "dsgvo_external")

@@ -40,13 +40,23 @@
     <ul v-else class="consent-panel__list">
       <li v-for="record in current" :key="record.kind">
         <i :class="record.status === 'granted' ? 'pi pi-check-circle consent-panel__ok' : 'pi pi-times-circle consent-panel__no'" />
-        <div>
+        <div class="consent-panel__entry">
           <div>{{ record.kind_label }}</div>
           <small>
             {{ record.status_label }} am {{ formatDate(record.recorded_at) }} · {{ record.source_label }}
+            <template v-if="record.recorded_by_name"> ({{ record.recorded_by_name }})</template>
             <template v-if="record.text_version"> · {{ record.text_version }}</template>
             <template v-if="record.note"> · {{ record.note }}</template>
           </small>
+          <!-- Withdrawing is a new record, but it is offered on the consent it ends. -->
+          <div v-if="canEdit && record.status === 'granted'" class="consent-panel__withdraw">
+            <template v-if="withdrawing === record.kind">
+              <InputText v-model="withdrawNote" placeholder="Notiz, z. B. „Anruf am 02.11.“" maxlength="300" size="small" class="w-full" />
+              <Button label="Widerruf speichern" severity="danger" size="small" :loading="privacyStore.consentsSaving" @click="withdraw(record)" />
+              <Button label="Abbrechen" severity="secondary" size="small" text @click="withdrawing = null" />
+            </template>
+            <Button v-else label="Widerrufen" icon="pi pi-undo" size="small" text @click="startWithdraw(record)" />
+          </div>
         </div>
       </li>
     </ul>
@@ -75,7 +85,7 @@ import Message from 'primevue/message'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import { usePrivacyStore } from '@/stores/privacy'
-import { CONSENT_KIND_OPTIONS, type ConsentRecord, type ConsentStatus, type ConsentSubject } from '@/types/privacy'
+import type { ConsentRecord, ConsentStatus, ConsentSubject } from '@/types/privacy'
 
 interface Props {
   subject: ConsentSubject
@@ -96,7 +106,28 @@ const statusOptions = [
   { label: 'Erteilt', value: 'granted' },
   { label: 'Widerrufen', value: 'withdrawn' },
 ]
-const kindOptions = computed(() => CONSENT_KIND_OPTIONS[props.subject.field])
+// Active kinds from the privacy settings; old records keep their label from the server.
+const kindOptions = computed(() =>
+  privacyStore.consentKinds.filter(kind => kind.active).map(kind => ({ value: kind.slug, label: kind.label }))
+)
+const withdrawing = ref<string | null>(null)
+const withdrawNote = ref('')
+
+if (!privacyStore.consentKinds.length) void privacyStore.fetchConsentKinds()
+
+function startWithdraw(record: ConsentRecord) {
+  withdrawNote.value = ''
+  withdrawing.value = record.kind
+}
+
+async function withdraw(record: ConsentRecord) {
+  const ok = await privacyStore.recordConsent(props.subject, {
+    kind: record.kind,
+    status: 'withdrawn',
+    note: withdrawNote.value || 'Widerruf',
+  })
+  if (ok) withdrawing.value = null
+}
 
 /** Newest record per kind (the list arrives newest first). */
 const current = computed(() => {
@@ -138,5 +169,7 @@ async function submit() {
 .consent-panel__list small { color: var(--text-color-secondary); }
 .consent-panel__ok { color: var(--p-green-600); margin-top: .2rem; }
 .consent-panel__no { color: var(--p-red-600); margin-top: .2rem; }
+.consent-panel__entry { display: flex; flex-direction: column; gap: .15rem; min-width: 0; flex: 1; }
+.consent-panel__withdraw { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: .15rem; }
 .consent-panel__history { margin: 0; padding-left: 1.25rem; font-size: .85rem; color: var(--text-color-secondary); }
 </style>

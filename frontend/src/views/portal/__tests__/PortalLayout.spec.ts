@@ -23,6 +23,7 @@ async function mountAt(name: string) {
       { path: '', name: 'portal-home', component: stub },
       { path: 'termine', name: 'portal-sessions', component: PortalPlaceholderView, props },
       { path: 'daten', name: 'portal-data', component: PortalDataView },
+      { path: 'einwilligungen', name: 'portal-consents', component: stub },
       { path: 'profil', name: 'portal-profile', component: stub },
     ] }] })
   await router.push({ name }); await router.isReady()
@@ -44,12 +45,12 @@ describe('PortalLayout', () => {
     } }) as never)
   })
 
-  it('renders greeting, org name and four nav items with aria-current on the active one', async () => {
+  it('renders greeting, org name and the nav items (consents for parents) with aria-current on the active one', async () => {
     const wrapper = await mountAt('portal-data')
     expect(wrapper.text()).toContain('Hallo Anna')
     expect(wrapper.text()).toContain('Jugendfeuerwehr Musterstadt')
     const links = wrapper.findAll('nav a')
-    expect(links.map(l => l.text())).toEqual(['Übersicht', 'Termine', 'Daten', 'Profil'])
+    expect(links.map(l => l.text())).toEqual(['Übersicht', 'Termine', 'Daten', 'Einwilligungen', 'Profil'])
     expect(links.filter(l => l.attributes('aria-current') === 'page').map(l => l.text())).toEqual(['Daten'])
     expect(names).toHaveLength(4)
   })

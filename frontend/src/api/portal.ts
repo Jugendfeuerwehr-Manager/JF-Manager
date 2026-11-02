@@ -155,7 +155,16 @@ export interface PortalNotice {
  */
 let personBase: '/portal' | '/my' = '/portal'
 
+import type { ConsentStatus, PortalConsentOverview } from '@/types/privacy'
+
 export const portalApi = {
+  /** Consents per child; every change is logged as a new row (DSGVO Art. 7). */
+  consents() {
+    return apiClient.get<PortalConsentOverview>('/portal/consents/')
+  },
+  changeConsent(data: { member: number, kind: string, status: ConsentStatus }) {
+    return apiClient.post<PortalConsentOverview>('/portal/consents/', data)
+  },
   useBase(base: '/portal' | '/my') {
     personBase = base
   },

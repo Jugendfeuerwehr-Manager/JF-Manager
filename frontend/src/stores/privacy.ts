@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { privacyApi } from '@/api/privacy'
 import type {
   ConsentCreate,
+  ConsentKind,
+  ConsentKindInput,
   ConsentRecord,
   ConsentSubject,
   LegalPage,
@@ -31,6 +33,53 @@ export const usePrivacyStore = defineStore('privacy', () => {
   const consentsLoading = ref(false)
   const consentsSaving = ref(false)
   const consentsError = ref<string | null>(null)
+
+  // Kinds of consent (labels, choices; editable in the privacy settings)
+  const consentKinds = ref<ConsentKind[]>([])
+  const kindsLoading = ref(false)
+  const kindsSaving = ref(false)
+  const kindsError = ref<string | null>(null)
+
+  async function fetchConsentKinds() {
+    kindsLoading.value = true
+    kindsError.value = null
+    try {
+      consentKinds.value = (await privacyApi.consentKinds()).data
+    } catch (e) {
+      kindsError.value = getApiErrorMessage(e, 'Einwilligungsarten konnten nicht geladen werden')
+    } finally {
+      kindsLoading.value = false
+    }
+  }
+
+  async function saveConsentKind(data: ConsentKindInput, id?: number) {
+    kindsSaving.value = true
+    kindsError.value = null
+    try {
+      const kind = (id ? await privacyApi.updateConsentKind(id, data) : await privacyApi.createConsentKind(data)).data
+      consentKinds.value = id
+        ? consentKinds.value.map(item => (item.id === id ? kind : item))
+        : [...consentKinds.value, kind]
+      return true
+    } catch (e) {
+      kindsError.value = getApiErrorMessage(e, 'Einwilligungsart konnte nicht gespeichert werden')
+      return false
+    } finally {
+      kindsSaving.value = false
+    }
+  }
+
+  async function deleteConsentKind(id: number) {
+    kindsError.value = null
+    try {
+      await privacyApi.deleteConsentKind(id)
+      consentKinds.value = consentKinds.value.filter(item => item.id !== id)
+      return true
+    } catch (e) {
+      kindsError.value = getApiErrorMessage(e, 'Einwilligungsart konnte nicht gelöscht werden')
+      return false
+    }
+  }
 
   function replacePage(page: LegalPage) {
     legalPages.value = legalPages.value.map(item => (item.kind === page.kind ? page : item))
@@ -150,6 +199,13 @@ export const usePrivacyStore = defineStore('privacy', () => {
   }
 
   return {
+    consentKinds,
+    kindsLoading,
+    kindsSaving,
+    kindsError,
+    fetchConsentKinds,
+    saveConsentKind,
+    deleteConsentKind,
     exporting,
     downloadSubjectAccess,
     legalPages,

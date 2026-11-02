@@ -492,6 +492,7 @@ const router = createRouter({
         { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalSessionsView.vue') },
         { path: 'termine/:id(\\d+)', name: 'portal-session', component: () => import('@/views/portal/PortalSessionDetailView.vue'), props: route => ({ id: Number(route.params.id) }) },
         { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalDataView.vue') },
+        { path: 'einwilligungen', name: 'portal-consents', component: () => import('@/views/portal/PortalConsentsView.vue') },
         { path: 'profil', name: 'portal-profile', component: () => import('@/views/portal/PortalProfileView.vue') }
       ]
     },

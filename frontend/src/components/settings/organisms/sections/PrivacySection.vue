@@ -12,7 +12,7 @@
       />
       <div>
         <h2 class="settings-section__title">Datenschutz</h2>
-        <p class="settings-section__description">Impressum und Datenschutzerklärung pflegen und veröffentlichen</p>
+        <p class="settings-section__description">Impressum, Datenschutzerklärung, Einwilligungen und Aufbewahrungsfristen</p>
       </div>
     </div>
 
@@ -21,9 +21,13 @@
     <Tabs v-else v-model:value="activeTab">
       <TabList>
         <Tab v-for="page in privacyStore.legalPages" :key="page.kind" :value="page.kind">{{ page.label }}</Tab>
+        <Tab value="consents">Einwilligungsarten</Tab>
         <Tab value="retention">Aufbewahrungsfristen</Tab>
       </TabList>
       <TabPanels>
+        <TabPanel value="consents">
+          <ConsentKindsEditor :can-edit="settingsStore.canChangeCategory('privacy')" />
+        </TabPanel>
         <TabPanel value="retention">
           <ConfigurationSection kind="privacy" embedded />
         </TabPanel>
@@ -55,6 +59,7 @@ import TabPanel from 'primevue/tabpanel'
 import TabPanels from 'primevue/tabpanels'
 import Tabs from 'primevue/tabs'
 import LegalPageEditor from '@/components/privacy/organisms/LegalPageEditor.vue'
+import ConsentKindsEditor from '@/components/privacy/organisms/ConsentKindsEditor.vue'
 import ConfigurationSection from './ConfigurationSection.vue'
 import { useMobile } from '@/composables/useMobile'
 import { usePrivacyStore } from '@/stores/privacy'
@@ -66,7 +71,7 @@ const settingsStore = useSettingsStore()
 const toast = useToast()
 const router = useRouter()
 const { isMobile } = useMobile()
-const activeTab = ref<LegalPageKind | 'retention'>('imprint')
+const activeTab = ref<LegalPageKind | 'consents' | 'retention'>('imprint')
 
 onMounted(async () => {
   await privacyStore.fetchLegalPages()
@@ -74,7 +79,7 @@ onMounted(async () => {
 })
 
 watch(activeTab, tab => {
-  if (tab !== 'retention' && !privacyStore.versions[tab]) void privacyStore.fetchVersions(tab)
+  if (tab !== 'retention' && tab !== 'consents' && !privacyStore.versions[tab]) void privacyStore.fetchVersions(tab)
 })
 
 async function handleSave(kind: LegalPageKind, data: { draft_title: string, draft_body: string }) {

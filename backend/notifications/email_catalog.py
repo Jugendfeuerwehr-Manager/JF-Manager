@@ -90,6 +90,28 @@ CATALOG = {
         [{"name": "link", "type": "object", "description": "Verknüpfung", "properties": ["member_name", "linked_by"]}],
         {"link": {"member_name": "Jana Krüger", "linked_by": "Alex Sommer"}},
     ),
+    "consent_changed": _type(
+        "Einwilligung im Portal geändert",
+        "Einwilligung {{ consent.status }}: {{ consent.person_name }}",
+        "important",
+        [
+            {
+                "name": "consent",
+                "type": "object",
+                "description": "Einwilligung (Art, erteilt/widerrufen, von wem, wann)",
+                "properties": ["person_name", "kind", "status", "by", "date"],
+            }
+        ],
+        {
+            "consent": {
+                "person_name": "Mia Becker",
+                "kind": "Fotos öffentlich (Website, Presse, soziale Medien)",
+                "status": "widerrufen",
+                "by": "Sandra Becker",
+                "date": "02.11.2026",
+            }
+        },
+    ),
     "cr_submitted": _type(
         "Änderungsantrag gestellt",
         "Änderungsantrag für {{ request.person_name }}",

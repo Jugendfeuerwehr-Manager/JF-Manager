@@ -45,6 +45,7 @@ STAFF_KINDS = {
     "eligibility_conflict": "Voraussetzung nicht mehr erfüllt",
     "parent_access_end": "Ende von Elternzugängen",
     "account_link": "Kontoverknüpfungen",
+    "consent_changed": "Einwilligungen aus dem Portal",
 }
 
 

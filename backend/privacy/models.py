@@ -56,6 +56,37 @@ class LegalPageVersion(models.Model):
         return f"{self.page} v{self.version}"
 
 
+class ConsentKind(models.Model):
+    """A kind of consent. Built-in kinds are seeded; admins add their own.
+
+    ``description`` is the wording people agree to; changing it raises
+    ``version`` so every record keeps the version it was given for.
+    """
+
+    slug = models.SlugField(max_length=50, unique=True, verbose_name="Kennung")
+    label = models.CharField(max_length=200, verbose_name="Bezeichnung")
+    description = models.TextField(blank=True, verbose_name="Wortlaut")
+    version = models.PositiveIntegerField(default=1, editable=False, verbose_name="Version")
+    in_portal = models.BooleanField(
+        default=False, verbose_name="Im Portal", help_text="Eltern erteilen und widerrufen sie im Portal je Kind."
+    )
+    active = models.BooleanField(default=True, verbose_name="Aktiv")
+    built_in = models.BooleanField(default=False, editable=False, verbose_name="Mitgeliefert")
+    position = models.PositiveIntegerField(default=0, verbose_name="Reihenfolge")
+
+    class Meta:
+        ordering = ["position", "label"]
+        verbose_name = "Einwilligungsart"
+        verbose_name_plural = "Einwilligungsarten"
+
+    def __str__(self):
+        return self.label
+
+    @property
+    def text_version(self):
+        return f"{self.slug}:v{self.version}"
+
+
 class ConsentRecord(models.Model):
     """Append-only evidence of a consent or acknowledgement (Art. 7 Abs. 1 DSGVO).
 

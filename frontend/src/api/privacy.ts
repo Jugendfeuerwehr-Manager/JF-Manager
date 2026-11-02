@@ -3,6 +3,8 @@
 import apiClient from './index'
 import type {
   ConsentCreate,
+  ConsentKind,
+  ConsentKindInput,
   ConsentRecord,
   ConsentSubject,
   LegalPage,
@@ -26,4 +28,9 @@ export const privacyApi = {
     apiClient.get<Blob>('/privacy/subject-access/', { params: { [subject.field]: subject.id }, responseType: 'blob' }),
   recordConsent: (subject: ConsentSubject, data: ConsentCreate) =>
     apiClient.post<ConsentRecord>('/privacy/consents/', { ...data, [subject.field]: subject.id }),
+  consentKinds: () => apiClient.get<ConsentKind[]>('/privacy/consent-kinds/'),
+  createConsentKind: (data: ConsentKindInput) => apiClient.post<ConsentKind>('/privacy/consent-kinds/', data),
+  updateConsentKind: (id: number, data: Partial<ConsentKindInput>) =>
+    apiClient.patch<ConsentKind>(`/privacy/consent-kinds/${id}/`, data),
+  deleteConsentKind: (id: number) => apiClient.delete(`/privacy/consent-kinds/${id}/`),
 }

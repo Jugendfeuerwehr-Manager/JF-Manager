@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from privacy.api.permissions import PrivacySettingsPermission
 from privacy.api.serializers import (
     ConsentCreateSerializer,
+    ConsentKindSerializer,
     ConsentRecordSerializer,
     LegalPageSerializer,
     LegalPageVersionSerializer,
@@ -16,7 +17,7 @@ from privacy.api.serializers import (
     PublishSerializer,
 )
 from privacy.api.subjects import resolve_subject
-from privacy.models import ConsentRecord, LegalPage
+from privacy.models import ConsentKind, ConsentRecord, LegalPage
 from privacy.services import consent as consent_service
 from privacy.services import legal
 
@@ -101,21 +102,56 @@ class ConsentRecordViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, views
         field, subject = resolve_subject(self.request, self.request.query_params, write=False)
         return ConsentRecord.objects.filter(**{field: subject}).select_related("recorded_by")
 
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "kind_labels": consent_service.kind_labels()}
+
     @extend_schema(request=ConsentCreateSerializer, responses=ConsentRecordSerializer)
     def create(self, request, *args, **kwargs):
         data = ConsentCreateSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         _, subject = resolve_subject(request, data.validated_data, write=True)
+        kind = data.validated_data["kind"]
         record = consent_service.record_consent(
             subject,
-            data.validated_data["kind"],
+            kind.slug,
             data.validated_data["status"],
             source=ConsentRecord.Source.STAFF,
-            text_version=data.validated_data["text_version"],
+            text_version=data.validated_data["text_version"] or kind.text_version,
+            text_snapshot=kind.description or kind.label,
             recorded_by=request.user,
             note=data.validated_data["note"],
         )
         return Response(ConsentRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+
+
+class ConsentKindViewSet(viewsets.ModelViewSet):
+    """Kinds of consent. Staff read them (labels, choices); changing them is
+    organisation configuration and follows the privacy settings rights."""
+
+    serializer_class = ConsentKindSerializer
+    queryset = ConsentKind.objects.all()
+    pagination_class = None
+
+    def get_permissions(self):
+        from portal.permissions import StaffAccountRequired
+
+        if self.request.method in ("GET", "HEAD", "OPTIONS"):
+            return [IsAuthenticated(), StaffAccountRequired()]
+        return [IsAuthenticated(), PrivacySettingsPermission()]
+
+    def perform_create(self, serializer):
+        serializer.instance = consent_service.save_kind(ConsentKind(), serializer.validated_data)
+
+    def perform_update(self, serializer):
+        serializer.instance = consent_service.save_kind(serializer.instance, serializer.validated_data)
+
+    def destroy(self, request, *args, **kwargs):
+        if not consent_service.delete_kind(self.get_object()):
+            return Response(
+                {"detail": "Mitgelieferte oder bereits verwendete Arten lassen sich nur deaktivieren."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SubjectAccessView(APIView):
