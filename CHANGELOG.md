@@ -25,6 +25,7 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 ### Sicherheit
 
 - `pyasn1` (indirekte Abhängigkeit, ASN.1-Verarbeitung) auf 0.6.5 aktualisiert, um vier bekannte Sicherheitslücken zu schließen.
+- `follow-redirects` (indirekte Abhängigkeit der Oberfläche über axios) auf 1.16.2 aktualisiert: Bei Weiterleitungen konnten Zugangsdaten an ein anderes Ziel gelangen.
 
 ## [3.2.3] – 2026-10-30
 
