@@ -26,7 +26,7 @@
             <li v-if="member.birthday"><i class="pi pi-calendar" aria-hidden="true"></i><span>{{ member.age }} Jahre<span class="profile-head__extra"> · geb. {{ formatDate(member.birthday) }}</span></span></li>
             <li v-if="member.group"><i class="pi pi-users" aria-hidden="true"></i>{{ member.group.name }}</li>
             <li v-if="member.joined" class="profile-head__extra"><i class="pi pi-sign-in" aria-hidden="true"></i>Mitglied seit {{ formatDate(member.joined) }}</li>
-            <li v-if="member.left_at"><i class="pi pi-sign-out" aria-hidden="true"></i>Ausgetreten am {{ formatDate(member.left_at) }}</li>
+            <li v-if="member.left_at"><i class="pi pi-sign-out" aria-hidden="true"></i>Ausgetreten am {{ formatDate(member.left_at) }}<template v-if="member.anonymize_due"> · Anonymisierung am {{ formatDate(member.anonymize_due) }}</template></li>
             <li v-if="member.anonymized_at"><i class="pi pi-eye-slash" aria-hidden="true"></i>Anonymisiert am {{ formatDate(member.anonymized_at) }}</li>
           </ul>
         </div>
@@ -62,6 +62,14 @@
       </section>
 
       <div class="detail-columns">
+        <div class="detail-main">
+        <!-- Health data sits in the main column: it matters at exercises and trips. -->
+        <HealthNotesCard
+          v-if="member.has_health_notes !== undefined"
+          :member-id="memberId"
+          :has-notes="!!member.has_health_notes"
+          :can-edit="authStore.hasPerm('members.change_member')"
+        />
         <section class="detail-card detail-tabs" aria-label="Bereiche">
           <Tabs v-model:value="activeTab" lazy scrollable>
             <TabList>
@@ -150,6 +158,7 @@
             </TabPanels>
           </Tabs>
         </section>
+        </div>
 
         <aside class="detail-aside">
           <section class="detail-card aside-card" aria-labelledby="emergency-heading">
@@ -212,13 +221,6 @@
             <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
           </section>
 
-          <HealthNotesCard
-            v-if="member.has_health_notes !== undefined"
-            :member-id="memberId"
-            :has-notes="!!member.has_health_notes"
-            :can-edit="authStore.hasPerm('members.change_member')"
-          />
-
           <section v-if="member.notes !== undefined" class="detail-card aside-card" aria-labelledby="notes-heading">
             <div class="aside-card__title">
               <i class="pi pi-shield" aria-hidden="true"></i>
@@ -250,6 +252,16 @@
       :loading="deletionLoading"
       @confirm="handleDeletionStrategy"
       @cancel="showDeletionDialog = false"
+    />
+
+    <MemberLeaveDialog
+      v-if="member"
+      v-model="showLeaveDialog"
+      :member-name="member.full_name"
+      :joined="member.joined"
+      :statuses="membersStore.statuses"
+      :loading="membersStore.loading"
+      @confirm="handleLeave"
     />
   </div>
 </template>
@@ -298,6 +310,7 @@ import SpecialTasksManager from '@/components/members/profile/SpecialTasksManage
 import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.vue'
 import AttendanceTab from '@/components/members/profile/AttendanceTab.vue'
 import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
+import MemberLeaveDialog from '@/components/members/molecules/MemberLeaveDialog.vue'
 
 type SourceState = 'loading' | 'forbidden' | 'offline' | 'error' | null
 
@@ -331,6 +344,7 @@ const sources = reactive({
 })
 
 const showDeletionDialog = ref(false)
+const showLeaveDialog = ref(false)
 const deletionLoading = ref(false)
 const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 
@@ -341,6 +355,14 @@ const menuItems = computed(() => [
   {
     label: 'Aktionen',
     items: [
+      // Guided leave instead of a bare date field; the date starts the anonymization deadline.
+      ...(authStore.hasPerm('members.change_member') && !member.value?.anonymized_at
+        ? [
+            member.value?.left_at
+              ? { label: 'Austritt zurücknehmen', icon: 'pi pi-replay', command: () => confirmWithdrawLeave() }
+              : { label: 'Austritt erfassen', icon: 'pi pi-sign-out', command: () => openLeaveDialog() }
+          ]
+        : []),
       ...(authStore.hasPerm('members.anonymize_member') && !member.value?.anonymized_at
         ? [{ label: 'Anonymisieren', icon: 'pi pi-eye-slash', command: () => confirmAnonymize() }]
         : []),
@@ -591,6 +613,40 @@ const confirmDelete = () => {
   })
 }
 
+async function openLeaveDialog() {
+  if (!membersStore.statuses.length) await membersStore.fetchStatuses()
+  showLeaveDialog.value = true
+}
+
+async function handleLeave(payload: { left_at: string; status_id?: number }) {
+  try {
+    member.value = await membersStore.recordLeave(memberId, payload)
+    showLeaveDialog.value = false
+    const due = member.value.anonymize_due ? ` Anonymisierung am ${formatDate(member.value.anonymize_due)}.` : ''
+    toast.add({ severity: 'success', summary: 'Austritt erfasst', detail: `Ausgetreten am ${formatDate(payload.left_at)}.${due}`, life: 5000 })
+  } catch {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Austritt konnte nicht gespeichert werden', life: 5000 })
+  }
+}
+
+const confirmWithdrawLeave = () => {
+  confirm.require({
+    message: `Der Austritt von ${member.value?.full_name} wird zurückgenommen. Die geplante Anonymisierung entfällt. Einen geänderten Status bitte bei Bedarf unter „Bearbeiten“ zurücksetzen.`,
+    header: 'Austritt zurücknehmen',
+    icon: 'pi pi-replay',
+    acceptLabel: 'Zurücknehmen',
+    rejectLabel: 'Abbrechen',
+    accept: async () => {
+      try {
+        member.value = await membersStore.recordLeave(memberId, { left_at: null })
+        toast.add({ severity: 'success', summary: 'Austritt zurückgenommen', life: 3000 })
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Austritt konnte nicht zurückgenommen werden', life: 5000 })
+      }
+    }
+  })
+}
+
 // DSGVO: identity goes, statistics (gender, birth year, joined/left, attendance) stay.
 const confirmAnonymize = () => {
   confirm.require({
@@ -798,8 +854,15 @@ async function handleDeletionStrategy(strategy: MemberDeletionStrategy) {
   gap: var(--jf-space-3);
 }
 
-.detail-tabs {
+.detail-main {
   flex: 2 1 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-3);
+  min-width: 0;
+}
+
+.detail-tabs {
   min-width: 0;
   overflow: hidden;
 }
