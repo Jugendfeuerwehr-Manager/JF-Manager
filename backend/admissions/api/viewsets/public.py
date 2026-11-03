@@ -1,0 +1,74 @@
+"""Public endpoints for applicants. No account; the voucher code is the only key.
+
+The code travels in the ``X-Admission-Code`` header, never in the URL: URLs end up in proxy
+and server logs (DSGVO). The QR code carries it in the URL fragment, which browsers do not send.
+"""
+
+from drf_spectacular.utils import extend_schema
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from admissions.api.serializers.vouchers import PublicSubmitSerializer
+from admissions.api.throttles import AdmissionCodeThrottle
+from admissions.services import submission
+from admissions.services.vouchers import VoucherError
+from users.session_views import SessionCsrfMixin
+
+INVALID = {"detail": "Der Code ist ungültig, abgelaufen oder wurde bereits verwendet.", "code": "invalid_code"}
+
+
+def _code(request):
+    return request.headers.get("X-Admission-Code", "")
+
+
+class PublicAdmissionViewSet(SessionCsrfMixin, viewsets.ViewSet):
+    # SessionCsrfMixin: AllowAny without authentication; applicants have no account.
+    throttle_classes = [AdmissionCodeThrottle]
+
+    @extend_schema(summary="The published form for a voucher code (code in X-Admission-Code)")
+    def list(self, request):
+        try:
+            voucher, version = submission.form_for_code(_code(request))
+        except VoucherError:
+            return Response(INVALID, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {
+                "department": voucher.department.name,
+                "title": version.title,
+                "intro": version.intro,
+                "signature_mode": version.signature_mode,
+                "decision_body": voucher.form.decision_body,
+                "version": version.version,
+                "schema": version.schema,
+                "prefill": voucher.prefill,
+                "expires_at": voucher.expires_at,
+            }
+        )
+
+    @extend_schema(summary="Submit the application (code in X-Admission-Code)", request=PublicSubmitSerializer)
+    def create(self, request):
+        data = PublicSubmitSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            application, seal = submission.submit(_code(request), data.validated_data["answers"])
+        except VoucherError:
+            return Response(INVALID, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {
+                "applicant_name": application.applicant_name,
+                "submitted_at": application.submitted_at,
+                "seal": {"public_id": seal.public_id, "seal_hash": seal.seal_hash},
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(summary="Check a seal by its public id; reveals no personal data")
+    @action(detail=False, methods=["get"], url_path=r"verify/(?P<public_id>[A-Za-z0-9_-]{8,16})")
+    def verify(self, request, public_id=None):
+        from admissions.services.verification import verify_public
+
+        result = verify_public(public_id)
+        if result is None:
+            return Response({"valid": False, "detail": "Unbekanntes Siegel."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(result)
