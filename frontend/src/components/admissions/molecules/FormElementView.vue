@@ -300,7 +300,7 @@ async function onPhoto(event: Event) {
 
 .el-required,
 .el-error {
-  color: #b91c1c;
+  color: var(--jf-color-danger);
 }
 
 .el-hint,

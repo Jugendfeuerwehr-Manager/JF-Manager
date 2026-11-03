@@ -126,7 +126,7 @@ function remove(index: number) {
 
 .guardians__error {
   margin: 0;
-  color: #b91c1c;
+  color: var(--jf-color-danger);
   font-size: var(--jf-text-sm);
 }
 </style>

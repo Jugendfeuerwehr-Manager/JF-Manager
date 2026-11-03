@@ -324,13 +324,13 @@ onMounted(load)
   gap: var(--jf-space-1);
   padding: var(--jf-space-1-5) var(--jf-space-2);
   border-radius: var(--jf-radius-lg);
-  background: #fef2f2;
-  color: #7f1d1d;
+  background: var(--jf-color-danger-surface);
+  color: var(--jf-color-danger);
 }
 
 .report__status[data-ok='true'] {
-  background: #f0fdf4;
-  color: #14532d;
+  background: var(--jf-color-success-surface);
+  color: var(--jf-color-success);
 }
 
 .report__verdict {

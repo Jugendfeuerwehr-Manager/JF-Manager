@@ -109,14 +109,14 @@ watch(
 }
 
 .timeline__state--error {
-  color: var(--p-red-700);
+  color: var(--jf-color-danger);
 }
 
 .timeline__list {
   list-style: none;
   margin: var(--jf-space-2) 0 0;
   padding: 0;
-  border-left: 2px solid var(--jf-color-border, #d4d4d8);
+  border-left: 2px solid var(--jf-color-border);
 }
 
 .timeline__item {
@@ -135,11 +135,11 @@ watch(
 }
 
 .timeline__item[data-kind='join'] .timeline__dot {
-  background: var(--p-green-600);
+  background: var(--jf-color-success);
 }
 
 .timeline__item[data-kind='exit'] .timeline__dot {
-  background: var(--p-red-600);
+  background: var(--jf-color-danger);
 }
 
 .timeline__title {
@@ -161,9 +161,9 @@ watch(
 .timeline__select {
   min-height: 44px;
   padding: 0 var(--jf-space-1);
-  border: 1px solid var(--jf-color-border, #d4d4d8);
+  border: 1px solid var(--jf-color-border);
   border-radius: var(--jf-radius-md);
-  background: var(--p-content-background);
+  background: var(--jf-color-card);
   color: inherit;
   font: inherit;
 }

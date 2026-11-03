@@ -47,7 +47,7 @@ const describedby = computed(
 
 .adm-field__required,
 .adm-field__error {
-  color: #b91c1c;
+  color: var(--jf-color-danger);
 }
 
 .adm-field__hint,

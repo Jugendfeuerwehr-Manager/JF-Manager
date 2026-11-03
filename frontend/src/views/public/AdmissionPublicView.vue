@@ -339,15 +339,15 @@ onMounted(() => {
 .public__error {
   padding: var(--jf-space-1) var(--jf-space-1-5);
   border-radius: var(--jf-radius-md);
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--jf-color-danger-surface);
+  color: var(--jf-color-danger);
 }
 
 .public__note {
   padding: var(--jf-space-1) var(--jf-space-1-5);
   border-radius: var(--jf-radius-md);
-  background: #fffbeb;
-  color: #92400e;
+  background: var(--jf-color-warning-surface);
+  color: var(--jf-color-warning);
 }
 
 .public__done {
@@ -359,7 +359,7 @@ onMounted(() => {
 
 .public__done-icon {
   font-size: 2.5rem;
-  color: #15803d;
+  color: var(--jf-color-success);
 }
 
 .public__seal {

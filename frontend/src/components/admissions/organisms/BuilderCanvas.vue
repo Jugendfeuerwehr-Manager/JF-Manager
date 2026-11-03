@@ -231,11 +231,12 @@ function summary(element: FormElement) {
 
 .canvas__item--selected {
   border-color: var(--jf-color-primary);
-  box-shadow: var(--jf-focus-ring);
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
 }
 
 .canvas__item--issue {
-  border-left: 4px solid #d97706;
+  border-left: 4px solid var(--jf-color-warning);
 }
 
 .canvas__handle {
@@ -293,7 +294,7 @@ function summary(element: FormElement) {
 
 .canvas__issue {
   font-size: var(--jf-text-sm);
-  color: #b45309;
+  color: var(--jf-color-warning);
 }
 
 .canvas__actions {

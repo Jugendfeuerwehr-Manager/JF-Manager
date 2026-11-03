@@ -48,7 +48,8 @@ withDefaults(defineProps<Props>(), { variant: 'secondary', type: 'button', icon:
 
 .adm-button:focus-visible {
   outline: none;
-  box-shadow: var(--jf-focus-ring);
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
 }
 
 .adm-button:disabled {
@@ -70,7 +71,7 @@ withDefaults(defineProps<Props>(), { variant: 'secondary', type: 'button', icon:
 .adm-button--danger {
   border-color: transparent;
   background: transparent;
-  color: #b91c1c;
+  color: var(--jf-color-danger);
 }
 
 .adm-button--icon-only {

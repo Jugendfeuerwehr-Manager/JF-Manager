@@ -13,11 +13,12 @@
 .adm-input:focus-visible {
   outline: none;
   border-color: var(--jf-color-primary);
-  box-shadow: var(--jf-focus-ring);
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
 }
 
 .adm-input[aria-invalid='true'] {
-  border-color: #b91c1c;
+  border-color: var(--jf-color-danger);
 }
 
 textarea.adm-input {

@@ -29,8 +29,8 @@
   margin: 0;
   padding: var(--jf-space-1) var(--jf-space-1-5);
   border-radius: var(--jf-radius-md);
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--jf-color-danger-surface);
+  color: var(--jf-color-danger);
 }
 
 .adm-card {
@@ -96,23 +96,23 @@
 .adm-badge[data-state='open'],
 .adm-badge[data-state='submitted'],
 .adm-badge[data-state='deferred'] {
-  background: #eff6ff;
-  color: #1e40af;
+  background: var(--jf-color-info-surface);
+  color: var(--jf-color-info);
 }
 
 .adm-badge[data-state='approved'],
 .adm-badge[data-state='taken_over'],
 .adm-badge[data-state='used'],
 .adm-badge[data-state='valid'] {
-  background: #f0fdf4;
-  color: #166534;
+  background: var(--jf-color-success-surface);
+  color: var(--jf-color-success);
 }
 
 .adm-badge[data-state='rejected'],
 .adm-badge[data-state='revoked'],
 .adm-badge[data-state='invalid'] {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--jf-color-danger-surface);
+  color: var(--jf-color-danger);
 }
 
 .adm-dialog {
@@ -126,7 +126,7 @@
 }
 
 .adm-dialog::backdrop {
-  background: rgb(0 0 0 / 40%);
+  background: var(--jf-color-backdrop);
 }
 
 .adm-dialog__body {

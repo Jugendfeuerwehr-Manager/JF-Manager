@@ -56,6 +56,17 @@
   --jf-color-selected: var(--p-highlight-background);
   --jf-color-selected-text: var(--p-highlight-color);
 
+  /* Status: text on a tinted surface (messages, badges, seal state) */
+  --jf-color-danger: var(--p-red-700);
+  --jf-color-danger-surface: var(--p-red-50);
+  --jf-color-success: var(--p-green-700);
+  --jf-color-success-surface: var(--p-green-50);
+  --jf-color-warning: var(--p-amber-800);
+  --jf-color-warning-surface: var(--p-amber-50);
+  --jf-color-info: var(--p-blue-800);
+  --jf-color-info-surface: var(--p-blue-50);
+  --jf-color-backdrop: color-mix(in srgb, var(--p-surface-950) 45%, transparent);
+
   /* Product logo (BrandMark): fixed, independent of the configurable brand colour */
   --jf-logo-blue: #0b4ea2;
   --jf-logo-orange: #e57a00;
@@ -155,6 +166,15 @@
   --jf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --jf-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45);
   --jf-shadow-lg: 0 12px 24px -8px rgba(0, 0, 0, 0.6);
+
+  --jf-color-danger: var(--p-red-300);
+  --jf-color-danger-surface: color-mix(in srgb, var(--p-red-500) 18%, transparent);
+  --jf-color-success: var(--p-green-300);
+  --jf-color-success-surface: color-mix(in srgb, var(--p-green-500) 18%, transparent);
+  --jf-color-warning: var(--p-amber-300);
+  --jf-color-warning-surface: color-mix(in srgb, var(--p-amber-500) 18%, transparent);
+  --jf-color-info: var(--p-blue-300);
+  --jf-color-info-surface: color-mix(in srgb, var(--p-blue-500) 18%, transparent);
 
   /* Light tints used as selected/active backgrounds must stay dark here */
   --primary-50: var(--p-highlight-background);

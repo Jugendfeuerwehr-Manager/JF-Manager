@@ -50,7 +50,8 @@ function fit() {
   ctx.lineWidth = 2.2
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = '#111827'
+  // Ink and paper stay black on white in every theme: the signature is printed.
+  ctx.strokeStyle = 'black'
   // Resizing wipes the canvas; a stored signature is redrawn so it stays visible.
   if (modelValue.value) restore(modelValue.value)
 }
@@ -127,7 +128,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
   height: 160px;
   border: 1px dashed var(--jf-color-border);
   border-radius: var(--jf-radius-md);
-  background: #fff;
+  background: white;
   touch-action: none;
   cursor: crosshair;
 }

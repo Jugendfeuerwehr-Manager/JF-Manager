@@ -82,6 +82,7 @@ const groups = (['Eingabe', 'Inhalt', 'Rechtliches', 'Personen'] as const).map((
 
 .palette__tile:focus-visible {
   outline: none;
-  box-shadow: var(--jf-focus-ring);
+  outline: var(--jf-focus-ring);
+  outline-offset: 2px;
 }
 </style>

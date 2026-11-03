@@ -129,7 +129,7 @@ onMounted(() => {
 
 .forms__error {
   margin: 0;
-  color: #991b1b;
+  color: var(--jf-color-danger);
 }
 
 .forms__list {
@@ -171,7 +171,7 @@ onMounted(() => {
 
 .forms__issues {
   font-size: var(--jf-text-sm);
-  color: #b45309;
+  color: var(--jf-color-warning);
 }
 
 .forms__dialog {
@@ -185,7 +185,7 @@ onMounted(() => {
 }
 
 .forms__dialog::backdrop {
-  background: rgb(0 0 0 / 40%);
+  background: var(--jf-color-backdrop);
 }
 
 .forms__dialog-body {

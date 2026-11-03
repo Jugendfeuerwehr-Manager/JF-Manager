@@ -74,13 +74,13 @@ onMounted(() => store.verify(publicId))
 }
 
 .verify__verdict--ok {
-  background: #f0fdf4;
-  color: #166534;
+  background: var(--jf-color-success-surface);
+  color: var(--jf-color-success);
 }
 
 .verify__verdict--bad {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--jf-color-danger-surface);
+  color: var(--jf-color-danger);
 }
 
 .verify__facts {

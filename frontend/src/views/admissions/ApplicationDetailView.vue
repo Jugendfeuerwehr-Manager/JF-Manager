@@ -244,11 +244,11 @@ onMounted(() => store.openApplication(id))
   gap: var(--jf-space-1);
   margin: 0 0 var(--jf-space-1);
   font-weight: var(--jf-weight-semibold);
-  color: #991b1b;
+  color: var(--jf-color-danger);
 }
 
 .detail__verdict[data-ok='true'] {
-  color: #166534;
+  color: var(--jf-color-success);
 }
 
 .detail__seals,

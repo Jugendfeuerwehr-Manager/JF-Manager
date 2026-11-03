@@ -421,8 +421,8 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: var(--jf-space-1) var(--jf-space-1-5);
   border-radius: var(--jf-radius-md);
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--jf-color-danger-surface);
+  color: var(--jf-color-danger);
 }
 
 .builder__grid {
@@ -448,8 +448,8 @@ onBeforeUnmount(() => {
   margin-top: var(--jf-space-2);
   padding: var(--jf-space-1-5) var(--jf-space-2);
   border-radius: var(--jf-radius-md);
-  background: #fffbeb;
-  color: #92400e;
+  background: var(--jf-color-warning-surface);
+  color: var(--jf-color-warning);
 }
 
 .builder__issues h2 {
@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
 }
 
 .builder__dialog::backdrop {
-  background: rgb(0 0 0 / 40%);
+  background: var(--jf-color-backdrop);
 }
 
 .builder__dialog-body {
