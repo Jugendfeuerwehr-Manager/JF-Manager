@@ -1,6 +1,12 @@
 <template>
   <div class="signature">
+    <!-- Read-only (review, sealed application): the stored image, nothing to draw on. -->
+    <template v-if="disabled">
+      <img v-if="modelValue" :src="modelValue" :alt="label" class="signature__image" />
+      <p v-else class="signature__empty">Nicht unterschrieben</p>
+    </template>
     <canvas
+      v-else
       ref="canvas"
       class="signature__canvas"
       :aria-label="label"
@@ -11,7 +17,7 @@
       @pointerleave="stop"
       @pointercancel="stop"
     ></canvas>
-    <div class="signature__bar">
+    <div v-if="!disabled" class="signature__bar">
       <span class="signature__hint">{{ modelValue ? 'Unterschrieben' : 'Mit Finger, Stift oder Maus unterschreiben' }}</span>
       <AdmButton variant="ghost" icon="pi pi-eraser" :disabled="disabled || !modelValue" @click="clear">Löschen</AdmButton>
     </div>
@@ -19,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdmButton from './AdmButton.vue'
 
 interface Props {
@@ -31,6 +37,8 @@ const props = withDefaults(defineProps<Props>(), { disabled: false })
 const modelValue = defineModel<string>({ default: '' })
 const canvas = ref<HTMLCanvasElement | null>(null)
 let drawing = false
+// What the pad itself emitted last; anything else came from outside and is redrawn.
+let emitted = ''
 let resizeObserver: ResizeObserver | null = null
 
 function context() {
@@ -96,7 +104,8 @@ function draw(event: PointerEvent) {
 function stop() {
   if (!drawing) return
   drawing = false
-  modelValue.value = canvas.value!.toDataURL('image/png')
+  emitted = canvas.value!.toDataURL('image/png')
+  modelValue.value = emitted
 }
 
 function clear() {
@@ -104,8 +113,19 @@ function clear() {
   const ctx = context()
   if (!element || !ctx) return
   ctx.clearRect(0, 0, element.width, element.height)
+  emitted = ''
   modelValue.value = ''
 }
+
+watch(modelValue, (value) => {
+  if (value === emitted) return
+  const element = canvas.value
+  const ctx = context()
+  if (!element || !ctx) return
+  ctx.clearRect(0, 0, element.width, element.height)
+  emitted = value
+  if (value) restore(value)
+})
 
 onMounted(() => {
   fit()
@@ -131,6 +151,21 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
   background: white;
   touch-action: none;
   cursor: crosshair;
+}
+
+.signature__image {
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: white;
+}
+
+.signature__empty {
+  margin: 0;
+  font-size: var(--jf-text-sm);
+  color: var(--jf-color-text-muted);
 }
 
 .signature__bar {
