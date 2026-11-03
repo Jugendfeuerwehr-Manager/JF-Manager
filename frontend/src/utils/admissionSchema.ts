@@ -37,7 +37,8 @@ export const PALETTE: PaletteEntry[] = [
   { type: 'legal_ack', label: 'Rechtstext bestätigen', icon: 'pi pi-shield', group: 'Rechtliches' },
   { type: 'consent', label: 'Einwilligung', icon: 'pi pi-verified', group: 'Rechtliches' },
   { type: 'signature', label: 'Unterschrift', icon: 'pi pi-pen-to-square', group: 'Rechtliches' },
-  { type: 'guardians', label: 'Sorgeberechtigte', icon: 'pi pi-users', group: 'Personen' }
+  { type: 'guardians', label: 'Sorgeberechtigte', icon: 'pi pi-users', group: 'Personen' },
+  { type: 'attachment', label: 'Anlage (PDF)', icon: 'pi pi-paperclip', group: 'Personen' }
 ]
 
 export const ELEMENT_LABELS: Record<ElementType, string> = Object.fromEntries(
@@ -345,6 +346,7 @@ export function paletteItems(schema: FormSchema, references: BuilderReferences |
     })),
     { id: 'consent', label: 'Einwilligung …', icon: 'pi pi-verified', group: 'Personen & Rechtliches', once: false, used: false },
     { id: 'confirm', label: 'Bestätigung', icon: 'pi pi-check-circle', group: 'Personen & Rechtliches', once: false, used: false },
+    { id: 'attachment', label: 'Anlage (PDF)', icon: 'pi pi-paperclip', group: 'Personen & Rechtliches', once: false, used: false },
     ...(Object.keys(SIGNATURE_PALETTE) as SignatureRole[]).map((role) => ({
       id: `signature:${role}`,
       label: SIGNATURE_PALETTE[role],
@@ -429,6 +431,14 @@ export function elementFromPalette(
       role,
       label: SIGNATURE_ROLE_LABELS[role],
       visible_if: role === 'applicant' ? null : { age_below: 18 }
+    }
+  }
+  if (kind === 'attachment') {
+    return {
+      ...createElement('attachment', schema),
+      key: keyFrom('anlage', schema),
+      label: 'Anlage',
+      help: 'PDF, höchstens 5 MB, z. B. ein Attest oder eine Bescheinigung.'
     }
   }
   if (kind === 'confirm') {

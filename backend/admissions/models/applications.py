@@ -72,6 +72,7 @@ class ApplicationFile(models.Model):
     class Kind(models.TextChoices):
         PHOTO = "photo", "Passbild"
         SIGNATURE = "signature", "Unterschrift"
+        ATTACHMENT = "attachment", "Anlage"
 
     application = models.ForeignKey(Application, on_delete=models.CASCADE, related_name="files")
     key = models.CharField(max_length=50, verbose_name="Kennung")

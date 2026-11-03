@@ -145,6 +145,35 @@
     </template>
   </AdmField>
 
+  <AdmField
+    v-else-if="element.type === 'attachment'"
+    :input-id="inputId"
+    :label="element.label"
+    :hint="element.help || 'PDF, höchstens 5 MB.'"
+    :error="attachmentError || error"
+    :required="element.required"
+  >
+    <template #default="{ describedby }">
+      <p v-if="attachmentName" class="el-file">
+        <i class="pi pi-file-pdf" aria-hidden="true"></i>
+        <span class="el-file__name">{{ attachmentName }}</span>
+        <button v-if="!disabled" type="button" class="el-file__remove" :aria-label="`${attachmentName} entfernen`" @click="removeAttachment">
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </p>
+      <input
+        v-if="!disabled && !attachmentName"
+        :id="inputId"
+        type="file"
+        accept="application/pdf,.pdf"
+        class="adm-input"
+        :aria-describedby="describedby"
+        @change="onAttachment"
+      />
+      <p v-else-if="disabled && !attachmentName" class="el-file el-file--empty">Keine Datei</p>
+    </template>
+  </AdmField>
+
   <fieldset v-else-if="element.type === 'signature'" class="el-group">
     <legend class="el-legend">
       {{ element.label || SIGNATURE_ROLE_LABELS[element.role ?? 'applicant'] }}<span v-if="element.required" class="el-required">
@@ -226,6 +255,36 @@ function escapeHtml(text: string) {
 
 function emitValue(value: unknown) {
   emit('update:modelValue', value)
+}
+
+const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+const attachmentError = ref('')
+// A File while filling in; ``{ file, name }`` once stored in a sealed application.
+const attachmentName = computed(() => {
+  const value = props.modelValue
+  if (value instanceof File) return value.name
+  if (value && typeof value === 'object' && 'name' in value) return String((value as { name: unknown }).name)
+  return ''
+})
+
+function onAttachment(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  attachmentError.value = ''
+  if (!file) return
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+  if (!isPdf) attachmentError.value = 'Bitte eine PDF-Datei wählen.'
+  else if (file.size > ATTACHMENT_MAX_BYTES) attachmentError.value = 'Die Datei ist zu groß (höchstens 5 MB).'
+  if (attachmentError.value) {
+    input.value = ''
+    return
+  }
+  emitValue(file)
+}
+
+function removeAttachment() {
+  attachmentError.value = ''
+  emitValue(undefined)
 }
 
 const PHOTO_MAX_PX = 1200
@@ -329,6 +388,40 @@ async function onPhoto(event: Event) {
 .el-legal__text summary {
   cursor: pointer;
   font-weight: var(--jf-weight-semibold);
+}
+
+.el-file {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  min-height: var(--jf-touch-target, 44px);
+  margin: 0;
+  padding: 0 var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+}
+
+.el-file--empty {
+  color: var(--jf-color-text-muted);
+}
+
+.el-file__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.el-file__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--jf-touch-target, 44px);
+  height: var(--jf-touch-target, 44px);
+  border: 0;
+  background: none;
+  color: var(--jf-color-danger);
+  cursor: pointer;
 }
 
 .el-photo {

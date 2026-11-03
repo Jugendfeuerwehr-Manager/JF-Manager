@@ -5,13 +5,18 @@ and server logs (DSGVO). The QR code carries it in the URL fragment, which brows
 A public link is meant to be shared, so its slug may sit in the path.
 """
 
+import json
+
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from admissions.api.serializers.vouchers import PublicSubmitSerializer
 from admissions.api.throttles import AdmissionCodeThrottle
+from admissions.schema import MAX_ATTACHMENTS
 from admissions.services import submission
 from admissions.services.vouchers import VoucherError
 from users.session_views import SessionCsrfMixin
@@ -35,9 +40,33 @@ def _code(request):
     return request.headers.get("X-Admission-Code", "")
 
 
+def _payload(request):
+    """Answers and attachment uploads from a JSON body or, with PDFs, a multipart body.
+
+    Multipart carries the JSON as the ``payload`` field and every PDF as ``file:<key>``.
+    """
+    if not request.FILES:
+        data = PublicSubmitSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        return data.validated_data, {}
+    try:
+        body = json.loads(request.data.get("payload") or "{}")
+    except ValueError as exc:
+        raise ValidationError({"detail": "Der Antrag konnte nicht gelesen werden."}) from exc
+    uploads = {name.removeprefix("file:"): upload for name, upload in request.FILES.items()}
+    if len(uploads) > MAX_ATTACHMENTS or sum(upload.size for upload in uploads.values()) > (
+        MAX_ATTACHMENTS * submission.MAX_ATTACHMENT_BYTES
+    ):
+        raise ValidationError({"detail": "Zu viele oder zu große Anlagen."})
+    data = PublicSubmitSerializer(data=body)
+    data.is_valid(raise_exception=True)
+    return data.validated_data, uploads
+
+
 class PublicAdmissionViewSet(SessionCsrfMixin, viewsets.ViewSet):
     # SessionCsrfMixin: AllowAny without authentication; applicants have no account.
     throttle_classes = [AdmissionCodeThrottle]
+    parser_classes = [JSONParser, MultiPartParser]
 
     @extend_schema(summary="The published form for a voucher code (code in X-Admission-Code)")
     def list(self, request):
@@ -61,10 +90,9 @@ class PublicAdmissionViewSet(SessionCsrfMixin, viewsets.ViewSet):
 
     @extend_schema(summary="Submit the application (code in X-Admission-Code)", request=PublicSubmitSerializer)
     def create(self, request):
-        data = PublicSubmitSerializer(data=request.data)
-        data.is_valid(raise_exception=True)
+        values, uploads = _payload(request)
         try:
-            application, seal = submission.submit(_code(request), data.validated_data["answers"])
+            application, seal = submission.submit(_code(request), values["answers"], uploads)
         except VoucherError:
             return Response(INVALID, status=status.HTTP_404_NOT_FOUND)
         return _created(application, seal)
@@ -91,14 +119,11 @@ class PublicAdmissionViewSet(SessionCsrfMixin, viewsets.ViewSet):
                     "expires_at": None,
                 }
             )
-        data = PublicSubmitSerializer(data=request.data)
-        data.is_valid(raise_exception=True)
-        if data.validated_data["website"]:
+        values, uploads = _payload(request)
+        if values["website"]:
             # Honeypot filled: a bot. Same answer as an invalid choice, nothing stored.
             return Response({"department": ["Bitte eine der angebotenen Abteilungen wählen."]}, status=400)
-        application, seal = submission.submit_public(
-            slug, data.validated_data["answers"], data.validated_data["department"]
-        )
+        application, seal = submission.submit_public(slug, values["answers"], values["department"], uploads)
         return _created(application, seal)
 
     @extend_schema(summary="Check a seal by its public id; reveals no personal data")

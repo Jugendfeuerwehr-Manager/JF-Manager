@@ -11,12 +11,15 @@ from admissions.field_catalog import GUARDIAN_CATALOG, MEMBER_CATALOG
 INPUT_TYPES = {"text", "textarea", "number", "date", "email", "phone", "select", "radio", "checkbox", "photo"}
 CONTENT_TYPES = {"heading", "richtext", "divider"}
 LEGAL_TYPES = {"legal_ack", "consent"}
-ELEMENT_TYPES = INPUT_TYPES | CONTENT_TYPES | LEGAL_TYPES | {"guardians", "signature"}
+# Documents (PDF) go with the application and later to the member's attachments.
+DOCUMENT_TYPES = {"attachment"}
+ELEMENT_TYPES = INPUT_TYPES | CONTENT_TYPES | LEGAL_TYPES | DOCUMENT_TYPES | {"guardians", "signature"}
 CHOICE_TYPES = {"select", "radio"}
 SIGNATURE_ROLES = {"applicant", "guardian_1", "guardian_2"}
 CONSENT_PERSONS = {"applicant", "guardians"}
 KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,49}$")
 MAX_GUARDIANS = 4
+MAX_ATTACHMENTS = 5
 
 
 def iter_elements(schema):
@@ -79,7 +82,7 @@ def check_schema(schema, *, legal_kinds=(), consent_kinds=(), extra_catalog=None
     _check_containers(schema, errors)
     seen_ids, seen_keys, seen_targets, seen_once = set(), set(), set(), set()
     catalog = {**MEMBER_CATALOG, **(extra_catalog or {})}
-    guardian_blocks = 0
+    guardian_blocks = attachments = 0
     for path, element in iter_elements(schema):
         if not isinstance(element, dict):
             errors.add(path, "Ungültiges Element.")
@@ -95,6 +98,8 @@ def check_schema(schema, *, legal_kinds=(), consent_kinds=(), extra_catalog=None
             continue
         if element_type == "guardians":
             guardian_blocks += 1
+        if element_type == "attachment":
+            attachments += 1
 
         _check_visibility(path, element, seen_keys, errors)
         if element_type in CONTENT_TYPES:
@@ -113,6 +118,8 @@ def check_schema(schema, *, legal_kinds=(), consent_kinds=(), extra_catalog=None
         _check_by_type(path, element, seen_targets, catalog, legal_kinds, consent_kinds, errors)
         _check_once(path, element, seen_once, errors)
 
+    if attachments > MAX_ATTACHMENTS:
+        errors.add("pages", f"Höchstens {MAX_ATTACHMENTS} Anlagen je Formular.")
     if guardian_blocks > 1:
         errors.add("pages", "Der Block „Sorgeberechtigte“ darf nur einmal vorkommen.")
     # Taking an application over creates a member, which needs a name.

@@ -76,6 +76,10 @@
           <option v-for="field in targets" :key="field.key" :value="field.key">{{ targetLabel(field.key, references) }}</option>
         </select>
       </AdmField>
+      <p v-else-if="element.type === 'attachment'" class="props__info props__wide">
+        Nur PDF, höchstens 5 MB. Die Datei wird mit dem Antrag versiegelt und bei der Übernahme als Anhang am Mitglied
+        gespeichert.
+      </p>
       <p v-else-if="element.type === 'checkbox' && !element.target" class="props__info props__wide">
         Bestätigung: steht nur im versiegelten Antrag, nicht am Mitglied. Deshalb immer eine Pflichtangabe.
       </p>
@@ -237,7 +241,9 @@ const isContentType = computed(() => isContent(props.element.type))
 const hasKey = computed(() => !isContentType.value)
 const hasLabel = computed(() => !['richtext', 'divider'].includes(props.element.type))
 const hasHelp = computed(() => !isContentType.value && !['signature', 'guardians', 'legal_ack', 'consent'].includes(props.element.type))
-const hasRequired = computed(() => INPUTS.includes(props.element.type) || ['legal_ack', 'consent', 'signature'].includes(props.element.type))
+const hasRequired = computed(
+  () => INPUTS.includes(props.element.type) || ['legal_ack', 'consent', 'signature', 'attachment'].includes(props.element.type)
+)
 const isExtraTarget = computed(() => (props.element.target ?? '').startsWith('member.extra.'))
 const hasOptions = computed(
   () => ['select', 'radio'].includes(props.element.type) && props.element.target !== 'member.gender' && !isExtraTarget.value

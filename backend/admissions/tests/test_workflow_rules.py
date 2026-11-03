@@ -1,5 +1,6 @@
 """Answers that reach the member, organisation forms and public links. Fictional data."""
 
+import json
 import shutil
 
 from django.contrib.auth import get_user_model
@@ -195,3 +196,65 @@ class PublicFormTests(APITestCase):
         )
         self.assertEqual(response.status_code, 201, response.content)
         self.assertEqual(Application.objects.get().department, self.mitte)
+
+
+PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class AttachmentTests(APITestCase):
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA, ignore_errors=True)
+
+    def setUp(self):
+        cache.clear()
+        self.mitte = Department.objects.create(name="Mitte", code="at-mitte")
+        publish_privacy_text()
+        self.form = form_service.create_form(department=self.mitte, title="Aufnahme")
+        schema = self.form.draft_schema
+        schema["pages"][0]["sections"][0]["elements"].append(
+            {"id": "e_attest", "type": "attachment", "key": "attest", "label": "Ärztliches Attest", "required": True}
+        )
+        form_service.save_draft(self.form, schema)
+        form_service.publish(self.form)
+        _, self.code = vouchers.create_voucher(self.form)
+
+    def post(self, files):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        body = {"payload": json.dumps({"answers": child_answers()})}
+        for key, (name, data) in files.items():
+            body[f"file:{key}"] = SimpleUploadedFile(name, data, content_type="application/pdf")
+        return self.client.post(PUBLIC, body, format="multipart", HTTP_X_ADMISSION_CODE=self.code)
+
+    def test_required_attachment_must_be_sent(self):
+        response = self.client.post(
+            PUBLIC, {"answers": child_answers()}, format="json", HTTP_X_ADMISSION_CODE=self.code
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("attest", response.json()["answers"])
+
+    def test_only_real_pdfs_are_accepted(self):
+        for name, data in (("attest.png", PDF), ("attest.pdf", b"not a pdf")):
+            response = self.post({"attest": (name, data)})
+            self.assertEqual(response.status_code, 400, name)
+        self.assertFalse(Application.objects.exists())
+
+    def test_too_large_pdf_is_refused(self):
+        response = self.post({"attest": ("attest.pdf", PDF + b"0" * (5 * 1024 * 1024))})
+        self.assertEqual(response.status_code, 400)
+
+    def test_pdf_is_sealed_and_becomes_a_member_attachment(self):
+        response = self.post({"attest": ("Attest Mia.pdf", PDF)})
+        self.assertEqual(response.status_code, 201, response.content)
+        application = Application.objects.get()
+        self.assertEqual(application.answers["attest"], {"file": "attest", "name": "Attest Mia.pdf"})
+        self.assertEqual(application.files.get(key="attest").kind, "attachment")
+
+        decisions.record_decision(application, outcome="approved", decided_on=timezone.localdate())
+        member = take_over(application)
+        attachment = member.attachments.get()
+        self.assertEqual(attachment.name, "Attest Mia.pdf")
+        self.assertEqual(attachment.mime_type, "application/pdf")

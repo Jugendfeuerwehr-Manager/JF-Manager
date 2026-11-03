@@ -16,7 +16,14 @@ export type InputElementType =
   | 'checkbox'
   | 'photo'
 export type ContentElementType = 'heading' | 'richtext' | 'divider'
-export type ElementType = InputElementType | ContentElementType | 'legal_ack' | 'consent' | 'guardians' | 'signature'
+export type ElementType =
+  | InputElementType
+  | ContentElementType
+  | 'legal_ack'
+  | 'consent'
+  | 'guardians'
+  | 'signature'
+  | 'attachment'
 
 export type SignatureRole = 'applicant' | 'guardian_1' | 'guardian_2'
 export type ConsentPerson = 'applicant' | 'guardians'
@@ -251,7 +258,7 @@ export interface ApplicationListItem {
 }
 
 export interface ApplicationFileRef {
-  kind: 'photo' | 'signature'
+  kind: 'photo' | 'signature' | 'attachment'
   sha256: string
   url: string
 }

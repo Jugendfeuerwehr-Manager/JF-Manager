@@ -82,14 +82,24 @@ export const meetingsApi = {
     apiClient.post<{ decided: number[] }>(`/admissions/meetings/${id}/decide/`, data)
 }
 
+/** JSON, or multipart with the JSON as ``payload`` and each PDF as ``file:<key>``. */
+export type PublicSubmitBody = Record<string, unknown> | FormData
+
+const multipart = (body: PublicSubmitBody) =>
+  body instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+
 /** Public endpoints: the voucher code goes in a header, never in the URL. */
 export const publicAdmissionApi = {
   form: (code: string) =>
     apiClient.get<PublicAdmissionForm>('/public/admissions/', { headers: { 'X-Admission-Code': code } }),
-  submit: (code: string, answers: Record<string, unknown>) =>
-    apiClient.post<PublicSubmitResult>('/public/admissions/', { answers }, { headers: { 'X-Admission-Code': code } }),
+  submit: (code: string, body: PublicSubmitBody) =>
+    apiClient.post<PublicSubmitResult>('/public/admissions/', body, {
+      headers: { 'X-Admission-Code': code, ...multipart(body) }
+    }),
   publicForm: (slug: string) => apiClient.get<PublicAdmissionForm>(`/public/admissions/form/${encodeURIComponent(slug)}/`),
-  submitPublic: (slug: string, data: { answers: Record<string, unknown>; department: number | null; website: string }) =>
-    apiClient.post<PublicSubmitResult>(`/public/admissions/form/${encodeURIComponent(slug)}/`, data),
+  submitPublic: (slug: string, body: PublicSubmitBody) =>
+    apiClient.post<PublicSubmitResult>(`/public/admissions/form/${encodeURIComponent(slug)}/`, body, {
+      headers: multipart(body)
+    }),
   verify: (publicId: string) => apiClient.get<PublicSealCheck>(`/public/admissions/verify/${encodeURIComponent(publicId)}/`)
 }

@@ -28,6 +28,8 @@ TEXT_LIMITS = {"text": 300, "email": 254, "phone": 50, "textarea": 4000}
 # The whole JSON body must stay below DATA_UPLOAD_MAX_MEMORY_SIZE (2.5 MB); the form scales photos down.
 MAX_PHOTO_BYTES = 1536 * 1024
 MAX_SIGNATURE_BYTES = 512 * 1024
+# Attachments travel as multipart files, outside the JSON size limit.
+MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 SUBJECT = "admissions.application"
 
 
@@ -68,11 +70,33 @@ def _decode_image(value, *, limit, name):
     return upload
 
 
+def _check_pdf(upload, key):
+    """The uploaded attachment as a PDF upload, or a ValueError with a message."""
+    if upload.size > MAX_ATTACHMENT_BYTES:
+        raise ValueError("Die Datei ist zu groß (höchstens 5 MB).")
+    original = (upload.name or "").strip()
+    if not original.lower().endswith(".pdf"):
+        raise ValueError("Bitte eine PDF-Datei hochladen.")
+    data = upload.read()
+    upload.seek(0)
+    # Stored under a neutral name; the original one is kept in the sealed answers.
+    clean = SimpleUploadedFile(f"{key}.pdf", data, content_type="application/pdf")
+    try:
+        if validate_upload(clean) != "application/pdf":
+            raise ValueError("Bitte eine PDF-Datei hochladen.")
+    except ValidationError as exc:
+        raise ValueError("Die Datei ist keine lesbare PDF-Datei.") from exc
+    clean.seek(0)
+    name = "".join(char for char in original if char.isprintable())[-120:]
+    return clean, name
+
+
 class _Checker:
     """Walks the published schema once and collects clean answers, files and errors."""
 
-    def __init__(self, schema, raw):
+    def __init__(self, schema, raw, uploads=None):
         self.schema = schema
+        self.uploads = uploads or {}
         self.raw = raw if isinstance(raw, dict) else {}
         self.answers = {}
         self.files = {}
@@ -124,7 +148,18 @@ class _Checker:
             return self._guardians(element, key, value)
         if element_type in ("photo", "signature"):
             return self._image(element, key, value)
+        if element_type == "attachment":
+            return self._attachment(element, key)
         return None
+
+    def _attachment(self, element, key):
+        upload = self.uploads.get(key)
+        if upload is None:
+            self._missing(element, None)
+            return
+        clean, name = _check_pdf(upload, key)
+        self.files[key] = (ApplicationFile.Kind.ATTACHMENT, clean)
+        self.answers[key] = {"file": key, "name": name}
 
     def _text(self, element, key, value):
         value = value.strip() if isinstance(value, str) else ""
@@ -249,8 +284,8 @@ def public_form(slug):
     return form, version
 
 
-def _checked(version, raw_answers):
-    checked = _Checker(version.schema, raw_answers).run()
+def _checked(version, raw_answers, uploads=None):
+    checked = _Checker(version.schema, raw_answers, uploads).run()
     if checked.errors:
         raise ValidationError({"answers": checked.errors})
     return checked
@@ -262,10 +297,13 @@ def _unchanged(form, version):
         raise ValidationError({"detail": "Das Formular wurde gerade geändert. Bitte die Seite neu laden."})
 
 
-def submit(code, raw_answers):
-    """Store, seal and announce an application. Raises ``VoucherError`` or ``ValidationError``."""
+def submit(code, raw_answers, uploads=None):
+    """Store, seal and announce an application. Raises ``VoucherError`` or ``ValidationError``.
+
+    ``uploads`` maps attachment keys to uploaded PDF files.
+    """
     voucher, version = form_for_code(code)
-    checked = _checked(version, raw_answers)
+    checked = _checked(version, raw_answers, uploads)
     with transaction.atomic():
         voucher = open_voucher(code, lock=True)
         _unchanged(voucher.form, version)
@@ -277,13 +315,13 @@ def submit(code, raw_answers):
     return application, submission_seal
 
 
-def submit_public(slug, raw_answers, department_id):
+def submit_public(slug, raw_answers, department_id, uploads=None):
     """Submit through the public link into one of the departments the form offers."""
     form, version = public_form(slug)
     allowed = {department.pk: department for department in form.selectable_departments()}
     if department_id not in allowed:
         raise ValidationError({"department": "Bitte eine der angebotenen Abteilungen wählen."})
-    checked = _checked(version, raw_answers)
+    checked = _checked(version, raw_answers, uploads)
     with transaction.atomic():
         AdmissionForm.objects.select_for_update().get(pk=form.pk)
         _unchanged(form, version)

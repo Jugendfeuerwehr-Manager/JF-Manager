@@ -22,6 +22,22 @@
         </section>
 
         <aside class="detail__side">
+          <section v-if="attachments.length" class="adm-card" aria-labelledby="attachments-title">
+            <h2 id="attachments-title">Anlagen</h2>
+            <ul class="detail__files">
+              <li v-for="attachment in attachments" :key="attachment.key">
+                <a :href="attachment.url" target="_blank" rel="noopener" class="detail__file">
+                  <i class="pi pi-file-pdf" aria-hidden="true"></i>
+                  <span>
+                    <strong>{{ attachment.label }}</strong>
+                    <span class="detail__hint">{{ attachment.name }}</span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+            <p class="detail__hint">Mit dem Antrag versiegelt; bei der Übernahme werden sie Anhänge am Mitglied.</p>
+          </section>
+
           <section class="adm-card" aria-labelledby="seal-title">
             <h2 id="seal-title">Siegel</h2>
             <p class="detail__verdict" :data-ok="store.verification?.valid">
@@ -153,6 +169,17 @@ const guardians = computed(() => {
   const rows = element?.key ? app.answers[element.key] : null
   return Array.isArray(rows) ? (rows as Record<string, string>[]) : []
 })
+const attachments = computed(() => {
+  const app = application.value
+  if (!app) return []
+  return app.schema.pages
+    .flatMap((page) => page.sections.flatMap((section) => section.elements))
+    .filter((element) => element.type === 'attachment' && element.key && app.files[element.key])
+    .map((element) => {
+      const answer = app.answers[element.key!] as { name?: string } | undefined
+      return { key: element.key!, label: element.label || 'Anlage', name: answer?.name ?? 'PDF', url: app.files[element.key!]!.url }
+    })
+})
 // Files are referenced by key in the answers; show the loaded images instead.
 const displayAnswers = computed(() => ({ ...(application.value?.answers ?? {}), ...images.value }))
 
@@ -160,9 +187,11 @@ async function loadImages() {
   const files = application.value?.files ?? {}
   const loaded: Record<string, string> = {}
   await Promise.all(
-    Object.entries(files).map(async ([key, file]) => {
-      loaded[key] = await imageAsDataUrl(file.url).catch(() => '')
-    })
+    Object.entries(files)
+      .filter(([, file]) => file.kind !== 'attachment')
+      .map(async ([key, file]) => {
+        loaded[key] = await imageAsDataUrl(file.url).catch(() => '')
+      })
   )
   images.value = loaded
 }
@@ -296,5 +325,35 @@ onMounted(() => store.openApplication(id))
   .detail__grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.detail__files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+  margin: 0 0 var(--jf-space-1);
+  padding: 0;
+  list-style: none;
+}
+
+.detail__file {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  color: var(--jf-color-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.detail__file:hover {
+  border-color: var(--jf-color-primary);
+}
+
+.detail__file span {
+  display: flex;
+  flex-direction: column;
 }
 </style>

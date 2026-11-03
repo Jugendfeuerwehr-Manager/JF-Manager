@@ -148,6 +148,7 @@ def take_over(application, *, joined=None, parent_links=None, invite_parents=Fal
             parent.children.add(member)
             parents.append(parent)
 
+        _attachments(application, member, by)
         lifecycle.admit(member, on=joined, by=by, note=f"Aufnahmeantrag #{application.pk}")
         _consents(application, member, parents, by)
 
@@ -159,6 +160,26 @@ def take_over(application, *, joined=None, parent_links=None, invite_parents=Fal
         if invite_parents and by is not None:
             transaction.on_commit(lambda: _invite(parents, by))
     return member
+
+
+def _attachments(application, member, by):
+    """PDFs from the application become attachments of the member (the sealed copies stay)."""
+    from django.core.files.base import ContentFile
+
+    from members.models import Attachment
+
+    labels = {element["key"]: element.get("label") or "Anlage" for element in _elements(application)}
+    for item in application.files.filter(kind=ApplicationFile.Kind.ATTACHMENT).order_by("key"):
+        answer = application.answers.get(item.key) or {}
+        with item.file.open("rb") as source:
+            content = ContentFile(source.read(), name=f"{item.key}.pdf")
+        Attachment.objects.create(
+            content_object=member,
+            file=content,
+            name=(answer.get("name") or labels.get(item.key) or "Anlage")[:255],
+            description=f"{labels.get(item.key, 'Anlage')} · Aufnahmeantrag #{application.pk}",
+            uploaded_by=by,
+        )
 
 
 def _link_or_create_parent(application, row, parent_id):

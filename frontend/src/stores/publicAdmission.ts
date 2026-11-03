@@ -8,6 +8,17 @@ interface FieldErrors {
   answers?: Record<string, string>
 }
 
+/** PDFs go as multipart files (outside the JSON size limit); everything else as JSON. */
+function submitBody(extra: Record<string, unknown>, answers: Record<string, unknown>) {
+  const files = Object.entries(answers).filter((entry): entry is [string, File] => entry[1] instanceof File)
+  const plain = Object.fromEntries(Object.entries(answers).filter(([, value]) => !(value instanceof File)))
+  if (!files.length) return { ...extra, answers: plain }
+  const body = new FormData()
+  body.append('payload', JSON.stringify({ ...extra, answers: plain }))
+  for (const [key, file] of files) body.append(`file:${key}`, file, file.name)
+  return body
+}
+
 /** State of one applicant filling in a form; nothing is kept in browser storage. */
 export const usePublicAdmissionStore = defineStore('publicAdmission', () => {
   const code = ref('')
@@ -77,15 +88,13 @@ export const usePublicAdmissionStore = defineStore('publicAdmission', () => {
     error.value = null
     fieldErrors.value = {}
     try {
+      const body = submitBody(
+        slug.value ? { department: department.value, website: website.value } : {},
+        answers.value
+      )
       result.value = slug.value
-        ? (
-            await publicAdmissionApi.submitPublic(slug.value, {
-              answers: answers.value,
-              department: department.value,
-              website: website.value
-            })
-          ).data
-        : (await publicAdmissionApi.submit(code.value, answers.value)).data
+        ? (await publicAdmissionApi.submitPublic(slug.value, body)).data
+        : (await publicAdmissionApi.submit(code.value, body)).data
       return result.value
     } catch (e) {
       const data = (e as { response?: { data?: FieldErrors } }).response?.data
