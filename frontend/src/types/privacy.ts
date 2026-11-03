@@ -1,6 +1,13 @@
 /** Legal texts (imprint, privacy notice) and consent records (DSGVO). */
 
-export type LegalPageKind = 'imprint' | 'privacy'
+export type LegalPageKind = 'imprint' | 'privacy' | 'portal_terms'
+
+/** Public route of each legal text. */
+export const LEGAL_PAGE_PATHS: Record<LegalPageKind, string> = {
+  imprint: '/impressum',
+  privacy: '/datenschutz',
+  portal_terms: '/nutzungsregeln',
+}
 
 export interface LegalPageVersion {
   version: number

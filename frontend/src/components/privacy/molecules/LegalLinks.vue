@@ -1,7 +1,8 @@
 <template>
-  <span v-if="legal?.imprint || legal?.privacy" class="legal-links">
+  <span v-if="legal?.imprint || legal?.privacy || legal?.portal_terms" class="legal-links">
     <RouterLink v-if="legal.imprint" to="/impressum">Impressum</RouterLink>
     <RouterLink v-if="legal.privacy" to="/datenschutz">Datenschutz</RouterLink>
+    <RouterLink v-if="legal.portal_terms" to="/nutzungsregeln">Nutzungsregeln</RouterLink>
   </span>
 </template>
 

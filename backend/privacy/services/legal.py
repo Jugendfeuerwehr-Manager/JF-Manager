@@ -7,7 +7,11 @@ from django.utils import timezone
 from jf_manager_backend.html_safety import sanitize_rich_html
 from privacy.models import LegalPage, LegalPageVersion
 
-DEFAULT_TITLES = {LegalPage.Kind.IMPRINT: "Impressum", LegalPage.Kind.PRIVACY: "Datenschutzerklärung"}
+DEFAULT_TITLES = {
+    LegalPage.Kind.IMPRINT: "Impressum",
+    LegalPage.Kind.PRIVACY: "Datenschutzerklärung",
+    LegalPage.Kind.PORTAL_TERMS: "Nutzungsregeln für das Portal",
+}
 
 
 class LegalPageError(Exception):

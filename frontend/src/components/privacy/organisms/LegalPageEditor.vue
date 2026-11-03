@@ -46,7 +46,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
-import type { LegalPage, LegalPageVersion } from '@/types/privacy'
+import { LEGAL_PAGE_PATHS, type LegalPage, type LegalPageVersion } from '@/types/privacy'
 import { sanitizeRichHtml } from '@/utils/htmlSafety'
 
 interface Props {
@@ -73,7 +73,7 @@ watch(() => props.page, page => {
 
 const dirty = computed(() => title.value !== props.page.draft_title || body.value !== props.page.draft_body)
 const safeBody = computed(() => sanitizeRichHtml(props.page.draft_body))
-const publicPath = computed(() => (props.page.kind === 'imprint' ? '/impressum' : '/datenschutz'))
+const publicPath = computed(() => LEGAL_PAGE_PATHS[props.page.kind])
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })

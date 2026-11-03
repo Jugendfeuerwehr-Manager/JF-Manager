@@ -1,4 +1,4 @@
-"""DSGVO: imprint and privacy notice are edited as drafts and published as versions. Fictional data."""
+"""DSGVO: imprint, privacy notice and portal terms are edited as drafts and published as versions. Fictional data."""
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -35,7 +35,7 @@ class LegalPageEditorTests(APITestCase):
     def test_draft_publish_and_versions(self):
         self.client.force_authenticate(self.editor)
         pages = self.client.get(BASE).json()
-        self.assertEqual({page["kind"] for page in pages}, {"imprint", "privacy"})
+        self.assertEqual({page["kind"] for page in pages}, {"imprint", "privacy", "portal_terms"})
 
         draft = self.client.patch(
             f"{BASE}privacy/",
@@ -84,7 +84,10 @@ class PublicLegalPageTests(APITestCase):
         response = self.client.get("/api/v1/legal/imprint/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["title"], "Impressum")
-        self.assertEqual(self.client.get("/api/v1/app/branding/").json()["legal"], {"imprint": True, "privacy": False})
+        self.assertEqual(
+            self.client.get("/api/v1/app/branding/").json()["legal"],
+            {"imprint": True, "privacy": False, "portal_terms": False},
+        )
 
     def test_portal_accounts_can_read_it(self):
         portal = User.objects.create_user("eltern@example.org", password="x", account_kind=User.AccountKind.PORTAL)
@@ -97,3 +100,14 @@ class PublicLegalPageTests(APITestCase):
 
         legal.save_draft(legal.get_page(LegalPage.Kind.IMPRINT), title="Geheim", body="<p>Entwurf</p>", user=None)
         self.assertEqual(self.client.get("/api/v1/legal/imprint/").json()["title"], "Impressum")
+
+
+class PortalTermsTests(APITestCase):
+    def test_portal_terms_are_a_legal_page_with_an_acknowledgement_kind(self):
+        from privacy.models import ConsentKind
+        from privacy.services import legal
+
+        self.assertEqual(legal.get_page("portal_terms").draft_title, "Nutzungsregeln für das Portal")
+        self.assertEqual(self.client.get("/api/v1/legal/portal_terms/").status_code, 404)  # not published yet
+        kind = ConsentKind.objects.get(slug="portal_terms_ack")
+        self.assertTrue(kind.built_in and kind.active and not kind.in_portal)

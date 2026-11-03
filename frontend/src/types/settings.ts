@@ -31,7 +31,7 @@ export interface PublicBranding {
   /** Plain texts of the login page (CFG-02); empty hides the element. */
   login_texts?: LoginTexts
   /** Which legal texts are published (DSGVO). */
-  legal?: { imprint: boolean, privacy: boolean }
+  legal?: { imprint: boolean, privacy: boolean, portal_terms?: boolean }
 }
 
 export interface EmailSettings {

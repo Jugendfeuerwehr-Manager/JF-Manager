@@ -33,6 +33,13 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/nutzungsregeln',
+      name: 'legal-portal-terms',
+      component: () => import('@/views/LegalPageView.vue'),
+      props: { kind: 'portal_terms' },
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/passwort-festlegen',
       name: 'portal-invitation-accept',
       component: () => import('@/views/portal/InvitationAcceptView.vue'),

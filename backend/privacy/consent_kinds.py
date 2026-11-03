@@ -6,6 +6,7 @@ CONSENT_KINDS = {
     "photo_internal": "Fotos intern (App, Aushang, Gruppen)",
     "photo_public": "Fotos öffentlich (Website, Presse, soziale Medien)",
     "confidentiality": "Verpflichtung auf Vertraulichkeit",
+    "portal_terms_ack": "Nutzungsregeln des Portals akzeptiert",
     # Carried over from the former yes/no flags on user accounts.
     "dsgvo_internal": "Einwilligung zur internen Datenweitergabe (früheres Kennzeichen)",
     "dsgvo_external": "Einwilligung zur externen Datenweitergabe (früheres Kennzeichen)",

@@ -12,6 +12,8 @@ class LegalPage(models.Model):
     class Kind(models.TextChoices):
         IMPRINT = "imprint", "Impressum"
         PRIVACY = "privacy", "Datenschutzerklärung"
+        # Accepted when applying for membership while the portal is active (admissions).
+        PORTAL_TERMS = "portal_terms", "Nutzungsregeln Portal"
 
     kind = models.CharField(max_length=20, choices=Kind.choices, unique=True, verbose_name="Art")
     draft_title = models.CharField(max_length=200, blank=True, verbose_name="Titel (Entwurf)")
