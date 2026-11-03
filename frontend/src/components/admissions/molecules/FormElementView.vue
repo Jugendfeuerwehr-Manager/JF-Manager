@@ -268,6 +268,12 @@ async function onPhoto(event: Event) {
   margin: 0 0 var(--jf-space-1);
 }
 
+.el-richtext :deep(ol),
+.el-richtext :deep(ul) {
+  margin: 0 0 var(--jf-space-1);
+  padding-left: 1.4rem;
+}
+
 .el-divider {
   border: 0;
   border-top: 1px solid var(--jf-color-border);

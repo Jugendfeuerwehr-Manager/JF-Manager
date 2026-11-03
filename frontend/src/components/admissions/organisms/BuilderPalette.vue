@@ -51,7 +51,7 @@ const groups = (['Eingabe', 'Inhalt', 'Rechtliches', 'Personen'] as const).map((
 
 .palette__list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--jf-space-0-5);
   list-style: none;
   margin: 0;

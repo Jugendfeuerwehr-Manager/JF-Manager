@@ -428,7 +428,7 @@ onBeforeUnmount(() => {
 
 .builder__grid {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr) 20rem;
+  grid-template-columns: 13rem minmax(0, 1fr) 20rem;
   gap: var(--jf-space-2);
   align-items: start;
 }
