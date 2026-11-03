@@ -44,6 +44,7 @@ const sections: { label: string; items: NavItem[] }[] = [
     { label: 'Portal', icon: 'pi pi-id-card', to: '/portal-verwaltung', permission: 'portal.invite_portal_account' },
     { label: 'Gruppen', icon: 'pi pi-sitemap', to: '/groups', permission: 'members.view_group' },
     { label: 'Listen', icon: 'pi pi-list-check', to: '/lists', permission: 'view_memberlist' },
+    { label: 'Jahresmeldung', icon: 'pi pi-chart-bar', to: '/mitglieder/jahresmeldung', permission: 'membership.view_annualreport' },
   ] },
   { label: 'Aufnahme', items: [
     { label: 'Anträge', icon: 'pi pi-inbox', to: '/aufnahme/antraege', permission: 'admissions.view_application' },

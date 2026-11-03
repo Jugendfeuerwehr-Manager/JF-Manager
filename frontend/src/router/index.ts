@@ -113,6 +113,12 @@ const router = createRouter({
           meta: { requiresPerm: 'admissions.view_admissionform' }
         },
         {
+          path: 'mitglieder/jahresmeldung',
+          name: 'annual-report',
+          component: () => import('@/views/membership/AnnualReportView.vue'),
+          meta: { requiresPerm: 'membership.view_annualreport' }
+        },
+        {
           path: 'aufnahme/antraege',
           name: 'admission-applications',
           component: () => import('@/views/admissions/ApplicationsView.vue'),

@@ -80,3 +80,66 @@ export interface LeavePayload {
   kind?: ExitKind
   exit_reason?: ExitReason | ''
 }
+
+// ── DJF annual report ───────────────────────────────────────────────────────
+
+export interface GenderCounts {
+  m: number
+  w: number
+  d: number
+  total: number
+}
+
+export interface ReportRow extends GenderCounts {
+  key: string
+  label: string
+}
+
+export interface ReportCheck {
+  rule: string
+  ok: boolean
+  message: string
+}
+
+export interface ReportWarning {
+  member: number
+  name: string
+  message: string
+}
+
+export interface ReportManual {
+  supervisors?: GenderCounts
+  activities?: { label: string; value: number }[]
+}
+
+export interface AnnualReportData {
+  year: number
+  reference_date: string
+  organisation: { name: string; djf_org_id: string; org_kind: 'JF' | 'KF'; founded_on: string | null }
+  members: GenderCounts
+  previous: GenderCounts & { source: 'snapshot' | 'computed' }
+  movements: ReportRow[]
+  exit_reasons: { key: ExitReason; label: string; total: number }[]
+  age: ReportRow[]
+  checks: ReportCheck[]
+  ok: boolean
+  warnings: ReportWarning[]
+  approximated_ages: number
+  suggestions: { supervisors: number; services: number }
+  manual: ReportManual
+}
+
+export interface AnnualReportResponse {
+  state: 'draft' | 'final'
+  finalized_at?: string | null
+  data: AnnualReportData
+}
+
+export interface StatisticsProfile {
+  id: number
+  department: number
+  djf_org_id: string
+  org_kind: 'JF' | 'KF'
+  founded_on: string | null
+  include_status_categories: ('trial' | 'active' | 'passive')[]
+}

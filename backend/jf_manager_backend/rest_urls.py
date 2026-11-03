@@ -30,6 +30,7 @@ from members.api.viewsets import (
     StatusViewSet,
 )
 from membership.api.viewsets.events import MembershipEventViewSet
+from membership.api.viewsets.reports import AnnualReportViewSet, StatisticsProfileViewSet
 from orders.api.viewsets import OrderableItemViewSet, OrderItemViewSet, OrderStatusViewSet, OrderViewSet
 from privacy.api.viewsets import ConsentKindViewSet, ConsentRecordViewSet, LegalPageViewSet
 from qualifications.api.viewsets import (
@@ -84,6 +85,8 @@ api.register(r"event-types", EventTypeViewSet)
 api.register(r"attachments", AttachmentViewSet)
 api.register(r"emails", EmailMessageViewSet)
 api.register(r"membership/events", MembershipEventViewSet, basename="membership-events")
+api.register(r"membership/annual-reports", AnnualReportViewSet, basename="membership-annual-reports")
+api.register(r"membership/statistics-profiles", StatisticsProfileViewSet, basename="membership-statistics-profiles")
 api.register(r"admissions/forms", AdmissionFormViewSet, basename="admission-forms")
 api.register(r"admissions/text-blocks", AdmissionTextBlockViewSet, basename="admission-text-blocks")
 api.register(r"admissions/vouchers", AdmissionVoucherViewSet, basename="admission-vouchers")
