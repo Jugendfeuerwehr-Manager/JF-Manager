@@ -105,6 +105,20 @@
             "preLaunchTask": "redis: start locally"
         },
         {
+            // Shows the current authenticator code of a seeded demo account in the local database.
+            "name": "Dev: Anmeldecode (Demo)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/dev_env.py",
+            "cwd": "${workspaceFolder}/backend",
+            "args": ["totp", "${input:demoUser}"],
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "env": {
+                "DEV_ALLOW_UNREADABLE_SMTP": "True"
+            }
+        },
+        {
             "name": "Frontend: Unit-Tests",
             "type": "node",
             "request": "launch",
@@ -126,6 +140,13 @@
             "description": "Lokale Datenbank, Uploads und Cache löschen und Demodaten laden?",
             "options": ["nein", "ja"],
             "default": "nein"
+        },
+        {
+            "id": "demoUser",
+            "type": "pickString",
+            "description": "Demokonto mit Authenticator",
+            "options": ["admin", "jugendwart", "leitung.mitte", "leitung.nord", "leitung.kinder"],
+            "default": "admin"
         }
     ],
     "compounds": [
