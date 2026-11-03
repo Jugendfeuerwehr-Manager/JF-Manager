@@ -216,6 +216,16 @@
             </dl>
           </section>
 
+          <section v-if="extraRows.length" class="detail-card aside-card" aria-labelledby="extra-fields-heading">
+            <h2 id="extra-fields-heading">Zusatzangaben</h2>
+            <dl class="kv">
+              <template v-for="row in extraRows" :key="row.key">
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.value }}</dd>
+              </template>
+            </dl>
+          </section>
+
           <section class="detail-card aside-card">
             <ChangeLogCard kind="member" :record-id="memberId" />
           </section>
@@ -285,6 +295,8 @@ import { useMembersStore } from '@/stores/members'
 import { qualificationsApi } from '@/api/qualifications'
 import { servicebookApi } from '@/api/servicebook'
 import { useAuthStore } from '@/stores/auth'
+import { useMemberFieldsStore } from '@/stores/memberFields'
+import { extraFieldText } from '@/utils/extraFields'
 import { classifyApiError } from '@/utils/apiError'
 import type { Member, Parent } from '@/types/api'
 import type { Event } from '@/types/events'
@@ -335,6 +347,16 @@ const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuse
 const qualificationsKey = ref(0)
 
 const member = ref<Member | null>(null)
+const memberFieldsStore = useMemberFieldsStore()
+const extraRows = computed(() => {
+  if (!member.value) return []
+  const values = member.value.extra_fields ?? {}
+  return memberFieldsStore.applicableTo(member.value.department_ids ?? []).map((definition) => ({
+    key: definition.key,
+    label: definition.label,
+    value: extraFieldText(definition, values[definition.key])
+  }))
+})
 const parents = ref<Parent[]>([])
 const loading = ref(true)
 const loadingParents = ref(false)
@@ -385,6 +407,7 @@ const menuItems = computed(() => [
 ])
 
 onMounted(async () => {
+  memberFieldsStore.ensureLoaded()
   await loadMember()
 })
 

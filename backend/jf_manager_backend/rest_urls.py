@@ -24,6 +24,7 @@ from members.api.viewsets import (
     EventTypeViewSet,
     EventViewSet,
     GroupViewSet,
+    MemberFieldDefinitionViewSet,
     MemberListViewSet,
     MemberViewSet,
     ParentViewSet,
@@ -78,6 +79,7 @@ api.register(r"sync-runs", SyncRunViewSet, basename="sync-runs")
 api.register(r"members", MemberViewSet)
 api.register(r"parents", ParentViewSet)
 api.register(r"statuses", StatusViewSet)
+api.register(r"member-fields", MemberFieldDefinitionViewSet, basename="member-fields")
 api.register(r"groups", GroupViewSet)
 api.register(r"member-lists", MemberListViewSet)
 api.register(r"events", EventViewSet)

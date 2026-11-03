@@ -54,7 +54,33 @@ export interface Member {
   parents?: import('@/types/parents').Parent[]
   has_alert: boolean
   department_ids: number[]
+  /** Values of additional member fields, keyed by ``MemberFieldDefinition.key``. */
+  extra_fields?: ExtraFieldValues
 }
+
+export type ExtraFieldValue = string | number | boolean
+export type ExtraFieldValues = Record<string, ExtraFieldValue>
+export type MemberFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
+
+/** An additional member field of the organisation (department null) or one department. */
+export interface MemberFieldDefinition {
+  id: number
+  department: number | null
+  key: string
+  label: string
+  field_type: MemberFieldType
+  options: string[]
+  help_text: string
+  position: number
+  active: boolean
+  in_use: boolean
+}
+
+export type MemberFieldDefinitionInput = Pick<
+  MemberFieldDefinition,
+  'department' | 'label' | 'field_type' | 'options' | 'help_text'
+> &
+  Partial<Pick<MemberFieldDefinition, 'key' | 'position' | 'active'>>
 
 export interface MemberCreate {
   name: string
