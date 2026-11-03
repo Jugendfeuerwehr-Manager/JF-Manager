@@ -8,7 +8,6 @@ from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
-from admissions.form_template import jf_template
 from admissions.models import AdmissionForm, AdmissionTextBlock
 from admissions.schema import check_structure
 from admissions.services import forms as form_service
@@ -42,7 +41,7 @@ def single_section(*elements):
 
 class SchemaRuleTests(TestCase):
     def test_sample_form_is_valid(self):
-        self.assertEqual(form_service.check(jf_template(), for_publish=True), [])
+        self.assertEqual(form_service.check(form_service.template_for(None), for_publish=True), [])
 
     def test_empty_form_cannot_be_published(self):
         self.assertTrue(form_service.check({"pages": []}, for_publish=True))

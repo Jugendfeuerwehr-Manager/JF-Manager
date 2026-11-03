@@ -5,12 +5,13 @@ import hashlib
 import json
 
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from rest_framework.exceptions import ValidationError
 
+from admissions.field_catalog import EXTRA_PREFIX, extra_catalog, extra_definitions
 from admissions.form_template import jf_template
 from admissions.models import AdmissionForm, AdmissionFormVersion, AdmissionTextBlock
-from admissions.schema import check_schema, check_structure, iter_elements
+from admissions.schema import INPUT_TYPES, check_schema, check_structure, is_confirmation, iter_elements
 from jf_manager_backend.html_safety import sanitize_rich_html
 from privacy.models import ConsentKind, LegalPage
 from privacy.services import legal
@@ -39,8 +40,18 @@ def _reference_slugs():
     }
 
 
-def check(schema, *, for_publish=False):
-    return check_schema(schema, for_publish=for_publish, **_reference_slugs())
+def check(schema, department_id=None, *, for_publish=False):
+    return check_schema(
+        schema, for_publish=for_publish, extra_catalog=extra_catalog(department_id), **_reference_slugs()
+    )
+
+
+def draft_issues(form):
+    """Everything that blocks publishing, including texts that still have to be published elsewhere."""
+    issues = check(form.draft_schema, form.department_id, for_publish=True)
+    seen = {(issue["path"], issue["message"]) for issue in issues}
+    _, missing = snapshot(form.draft_schema, form.department_id)
+    return issues + [issue for issue in missing if (issue["path"], issue["message"]) not in seen]
 
 
 def sanitize_draft(schema):
@@ -52,13 +63,51 @@ def sanitize_draft(schema):
     return clean
 
 
+def template_for(department_id, schema=None):
+    """The sample form, keeping only inputs whose answer has a home: catalog targets,
+    existing additional fields with the same key, and confirmations."""
+    schema = schema or jf_template()
+    extra = {definition.key: definition for definition in extra_definitions(department_id)}
+    for page in schema["pages"]:
+        for section in page["sections"]:
+            kept = []
+            for element in section["elements"]:
+                if element["type"] not in INPUT_TYPES or element.get("target") or is_confirmation(element):
+                    kept.append(element)
+                    continue
+                definition = extra.get(element.get("key"))
+                if definition is None or definition.field_type != element["type"]:
+                    continue
+                kept.append({**element, "target": f"{EXTRA_PREFIX}{definition.key}", "options": _options(definition)})
+            section["elements"] = kept
+    return schema
+
+
+def _options(definition):
+    return [{"value": option, "label": option} for option in definition.options]
+
+
 def create_form(*, department, title, from_template=True, by=None):
+    department_id = department.pk if department is not None else None
     return AdmissionForm.objects.create(
         department=department,
         title=title,
-        draft_schema=jf_template() if from_template else {"pages": []},
+        draft_schema=template_for(department_id) if from_template else {"pages": []},
         updated_by=by,
     )
+
+
+def new_public_slug(title):
+    """A readable, unguessable-enough link: the title plus a random suffix."""
+    import secrets
+
+    from django.utils.text import slugify
+
+    base = slugify(title)[:40] or "aufnahme"
+    while True:
+        slug = f"{base}-{secrets.token_hex(3)}"
+        if not AdmissionForm.objects.filter(public_slug=slug).exists():
+            return slug
 
 
 def save_draft(form, schema, *, by=None):
@@ -66,7 +115,7 @@ def save_draft(form, schema, *, by=None):
     structural = check_structure(schema)
     if structural:
         raise ValidationError({"draft_schema": structural})
-    errors = check(schema)
+    errors = check(schema, form.department_id)
     form.draft_schema = schema
     form.updated_by = by
     form.save(update_fields=["draft_schema", "updated_by", "updated_at"])
@@ -77,9 +126,16 @@ def snapshot(schema, department_id):
     """Copy text blocks, legal texts and consent wording into the schema so the version stands alone."""
     frozen = copy.deepcopy(schema)
     missing = []
-    blocks = {block.pk: block for block in AdmissionTextBlock.objects.filter(department_id__in=[department_id, None])}
+    # ``department_id__in=[x, None]`` would silently skip the central blocks (NULL).
+    scope = Q(department__isnull=True) | Q(department_id=department_id)
+    blocks = {block.pk: block for block in AdmissionTextBlock.objects.filter(scope)}
     kinds = {kind.slug: kind for kind in ConsentKind.objects.filter(active=True)}
+    extra = {f"{EXTRA_PREFIX}{d.key}": d for d in extra_definitions(department_id)}
     for path, element in iter_elements(frozen):
+        definition = extra.get(element.get("target") or "")
+        if definition is not None and definition.field_type == "select":
+            # The member side owns the choices; the version keeps the ones valid when publishing.
+            element["options"] = _options(definition)
         if element["type"] == "richtext":
             block = blocks.get(element.get("text_block"))
             if element.get("text_block") and block is None:
@@ -97,14 +153,16 @@ def snapshot(schema, department_id):
                 "version": legal.version_label(element["legal_kind"]),
             }
         elif element["type"] == "consent":
-            kind = kinds[element["consent_kind"]]
+            kind = kinds.get(element.get("consent_kind"))
+            if kind is None:
+                continue
             element["consent"] = {"label": kind.label, "text": kind.description, "version": kind.text_version}
     return frozen, missing
 
 
 def publish(form, *, by=None, change_note=""):
     """Freeze the draft as the next version."""
-    errors = check(form.draft_schema, for_publish=True)
+    errors = check(form.draft_schema, form.department_id, for_publish=True)
     if errors:
         raise ValidationError({"draft_schema": errors})
     schema, missing = snapshot(form.draft_schema, form.department_id)

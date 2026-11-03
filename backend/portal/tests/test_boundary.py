@@ -143,6 +143,7 @@ class PortalAllowlistTests(TestCase):
                 "public-branding",
                 "public-legal-page",
                 "public-admissions-list",
+                "public-admissions-form",
                 "public-admissions-verify",
                 "oidc-public-config",
                 "csp-report",

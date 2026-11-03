@@ -33,23 +33,49 @@ Both build on the privacy module (`privacy.ConsentRecord`, `privacy.ConsentKind`
 
 - `AdmissionForm` holds the draft (`draft_schema`), settings and the decision body;
   `AdmissionFormVersion` is the frozen, immutable version applicants fill in.
-- Schema: pages → sections → elements. Element types: inputs (`text`, `textarea`, `date`, `email`,
+- `department=NULL` is an organisation form for every department (visible to all, changed only
+  with the right organisation-wide). The voucher, or on a public link the applicant's choice among
+  `public_departments`, decides where an application goes.
+- `access`: `voucher` or `public`. Public forms get a `public_slug` (`/aufnahme/f/<slug>`); vouchers
+  keep working for them.
+- Schema: pages → sections → elements. Element types: inputs (`text`, `textarea`, `number`, `date`, `email`,
   `phone`, `select`, `radio`, `checkbox`, `photo`), content (`heading`, `richtext`, `divider`), legal
   (`legal_ack` → a published `LegalPage`, `consent` → an active `ConsentKind`), `guardians` and
   `signature`. Visibility: `{"age_below": n}` or `{"field": key, "equals": value}`.
-- `admissions/field_catalog.py` lists the member and guardian fields a form may fill; elements
-  without `target` are free fields kept in the application only.
+- `admissions/field_catalog.py` lists the member and guardian fields a form may fill, plus the
+  additional member fields (`member.extra.<key>`, see below). Every data input needs a target so
+  no answer is lost on takeover; only required checkboxes (confirmations) stay in the application
+  alone. Legal texts, consents (per kind and person) and signatures (per role) occur once per form.
+- Organisation forms may only use organisation-wide additional fields; department forms also their
+  own department's. Select options of additional fields are copied into the version on publishing.
+- `draft_issues` includes what blocks publishing elsewhere (e.g. an unpublished privacy text), so the
+  builder's publish dialog lists it before the request fails.
 - `admissions/schema.py` holds the rules (drafts must pass `check_structure`, publishing the full
   `check_schema`). Draft rich text is sanitised on save.
 - Publishing copies text blocks, the published legal text and the consent wording into the
   version and stores a canonical SHA-256 (`schema_hash`).
 - The builder (`views/admissions/FormBuilderView.vue`) uses no PrimeVue components: own controls on
-  the `--jf-*` tokens, drag & drop with interact.js plus click-to-add and arrow buttons.
+  the `--jf-*` tokens, drag & drop with interact.js plus click-to-add and arrow buttons. The palette
+  offers blocks by destination (member data, additional fields, people & legal, content); used
+  single-use blocks are greyed out. Elements are edited inline; consent kinds
+  (`privacy/consent-kinds`) and additional fields can be created from modal dialogs.
+
+## Additional member fields
+
+- `members.MemberFieldDefinition` (`department=NULL`: organisation-wide) with `key`, `label`,
+  `field_type` (`text`, `textarea`, `number`, `date`, `select`, `checkbox`) and `options`; values live
+  in `Member.extra_fields` keyed by `key`. API `GET/POST /api/v1/member-fields/`: every staff account
+  reads, writing needs the model rights in the owning department. Key, type and scope are fixed
+  after creation; a field with values can only be deactivated.
+- `members/services/extra_fields.py` cleans values for the member dialog and the takeover; a member
+  carries the fields of the organisation and of its departments. Anonymization clears them.
 
 ## Vouchers and the public form
 
 - `AdmissionVoucher`: 12 Crockford Base32 characters (`XXXX-XXXX-XXXX`), only the SHA-256 is stored,
   the code is returned once by `POST /api/v1/admissions/vouchers/`.
+- Public links: `GET`/`POST /api/v1/public/admissions/form/<slug>/` with the chosen `department`
+  (must be one of the offered ones) and a honeypot field `website`; same throttle as codes.
 - The QR code points to `/aufnahme#code=…`; the fragment never reaches the server. The page sends
   the code in the `X-Admission-Code` header to `GET`/`POST /api/v1/public/admissions/`.
 - Unknown, used, expired and revoked codes get the same 404 answer; the endpoints are throttled per

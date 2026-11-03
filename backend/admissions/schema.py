@@ -8,7 +8,7 @@ import re
 
 from admissions.field_catalog import GUARDIAN_CATALOG, MEMBER_CATALOG
 
-INPUT_TYPES = {"text", "textarea", "date", "email", "phone", "select", "radio", "checkbox", "photo"}
+INPUT_TYPES = {"text", "textarea", "number", "date", "email", "phone", "select", "radio", "checkbox", "photo"}
 CONTENT_TYPES = {"heading", "richtext", "divider"}
 LEGAL_TYPES = {"legal_ack", "consent"}
 ELEMENT_TYPES = INPUT_TYPES | CONTENT_TYPES | LEGAL_TYPES | {"guardians", "signature"}
@@ -63,10 +63,11 @@ def check_structure(schema):
     return errors.items
 
 
-def check_schema(schema, *, legal_kinds=(), consent_kinds=(), for_publish=False):
+def check_schema(schema, *, legal_kinds=(), consent_kinds=(), extra_catalog=None, for_publish=False):
     """Return a list of ``{"path", "message"}``; empty when the form is valid.
 
-    ``legal_kinds`` and ``consent_kinds`` are the slugs that may be referenced.
+    ``legal_kinds`` and ``consent_kinds`` are the slugs that may be referenced,
+    ``extra_catalog`` the additional member fields (``{target: CatalogField}``).
     """
     errors = SchemaErrors()
     if not isinstance(schema, dict) or not isinstance(schema.get("pages"), list):
@@ -76,7 +77,8 @@ def check_schema(schema, *, legal_kinds=(), consent_kinds=(), for_publish=False)
         errors.add("pages", "Ein leeres Formular kann nicht veröffentlicht werden.")
 
     _check_containers(schema, errors)
-    seen_ids, seen_keys, seen_targets = set(), set(), set()
+    seen_ids, seen_keys, seen_targets, seen_once = set(), set(), set(), set()
+    catalog = {**MEMBER_CATALOG, **(extra_catalog or {})}
     guardian_blocks = 0
     for path, element in iter_elements(schema):
         if not isinstance(element, dict):
@@ -108,17 +110,21 @@ def check_schema(schema, *, legal_kinds=(), consent_kinds=(), for_publish=False)
         if not (element.get("label") or "").strip() and element_type != "signature":
             errors.add(path, "Bitte eine Beschriftung angeben.")
 
-        _check_by_type(path, element, seen_targets, legal_kinds, consent_kinds, errors)
+        _check_by_type(path, element, seen_targets, catalog, legal_kinds, consent_kinds, errors)
+        _check_once(path, element, seen_once, errors)
 
     if guardian_blocks > 1:
         errors.add("pages", "Der Block „Sorgeberechtigte“ darf nur einmal vorkommen.")
+    # Taking an application over creates a member, which needs a name.
+    if for_publish and not {"member.name", "member.lastname"} <= seen_targets:
+        errors.add("pages", "Vorname und Nachname des Mitglieds müssen abgefragt werden.")
     return errors.items
 
 
-def _check_by_type(path, element, seen_targets, legal_kinds, consent_kinds, errors):
+def _check_by_type(path, element, seen_targets, catalog, legal_kinds, consent_kinds, errors):
     element_type = element["type"]
     if element_type in INPUT_TYPES:
-        _check_input(path, element, seen_targets, errors)
+        _check_input(path, element, seen_targets, catalog, errors)
         return
     if element_type == "guardians":
         _check_guardians(path, element, errors)
@@ -165,22 +171,50 @@ def _check_content(path, element, errors):
         errors.add(path, "Bitte Text eingeben oder einen Textbaustein wählen.")
 
 
-def _check_input(path, element, seen_targets, errors):
+def is_confirmation(element):
+    """A required checkbox without target: a declaration that only lives in the sealed application."""
+    return element.get("type") == "checkbox" and not element.get("target") and bool(element.get("required"))
+
+
+def _check_once(path, element, seen, errors):
+    """Elements that make sense once per form: one legal text, consent or signature each."""
+    element_type = element["type"]
+    if element_type == "legal_ack":
+        token, label = ("legal", element.get("legal_kind")), "Dieser Rechtstext"
+    elif element_type == "consent":
+        token = ("consent", element.get("consent_kind"), element.get("person", "applicant"))
+        label = "Diese Einwilligung"
+    elif element_type == "signature":
+        token, label = ("signature", element.get("role")), "Diese Unterschrift"
+    else:
+        return
+    if None in token or "" in token:
+        return
+    if token in seen:
+        errors.add(path, f"{label} kommt schon im Formular vor.")
+    seen.add(token)
+
+
+def _check_input(path, element, seen_targets, catalog, errors):
     element_type = element["type"]
     target = element.get("target")
-    if target:
-        field = MEMBER_CATALOG.get(target)
+    if not target:
+        if element_type == "photo":
+            errors.add(path, "Ein Foto muss dem Passbild zugeordnet sein.")
+        elif not is_confirmation(element):
+            errors.add(path, "Diese Angabe landet nicht am Mitglied. Bitte ein Mitglieds- oder Zusatzfeld zuordnen.")
+    else:
+        field = catalog.get(target)
         if field is None:
-            errors.add(path, f"Unbekanntes Zielfeld „{target}“.")
+            errors.add(path, "Das Zielfeld gibt es nicht (mehr). Bitte ein anderes wählen.")
         elif field.input_type != element_type and not (field.input_type == "text" and element_type == "textarea"):
             errors.add(path, f"„{field.label}“ passt nicht zum Elementtyp.")
         elif target in seen_targets:
             errors.add(path, f"„{field.label}“ ist schon einem anderen Feld zugeordnet.")
         seen_targets.add(target)
-    elif element_type == "photo":
-        errors.add(path, "Ein Foto muss dem Passbild zugeordnet sein.")
 
-    if element_type not in CHOICE_TYPES or target == "member.gender":
+    # Gender and additional selects take their choices from the member side.
+    if element_type not in CHOICE_TYPES or target == "member.gender" or (target or "").startswith("member.extra."):
         return
     options = element.get("options") or []
     values = [option.get("value") for option in options if isinstance(option, dict)]

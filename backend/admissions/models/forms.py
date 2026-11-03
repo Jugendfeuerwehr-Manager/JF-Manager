@@ -15,10 +15,30 @@ class AdmissionForm(models.Model):
         PRINT = "print", "Ausdrucken und unterschreiben"
         BOTH = "both", "Digital unterschreiben und ausdrucken"
 
+    class Access(models.TextChoices):
+        VOUCHER = "voucher", "Nur mit Voucher"
+        PUBLIC = "public", "Öffentlich und mit Voucher"
+
+    # Empty: the form belongs to the organisation and serves every department. The voucher,
+    # or for public forms the applicant's choice, decides where an application goes.
     department = models.ForeignKey(
-        "departments.Department", on_delete=models.CASCADE, related_name="admission_forms", verbose_name="Abteilung"
+        "departments.Department",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="admission_forms",
+        verbose_name="Abteilung",
     )
     title = models.CharField(max_length=200, verbose_name="Titel")
+    access = models.CharField(max_length=10, choices=Access.choices, default=Access.VOUCHER, verbose_name="Zugang")
+    public_slug = models.SlugField(max_length=60, unique=True, null=True, blank=True, verbose_name="Öffentlicher Link")
+    public_departments = models.ManyToManyField(
+        "departments.Department",
+        blank=True,
+        related_name="+",
+        verbose_name="Auswählbare Abteilungen",
+        help_text="Nur diese Abteilungen nennt das öffentliche Formular.",
+    )
     intro = models.TextField(blank=True, verbose_name="Einleitung")
     initial_status = models.ForeignKey(
         "members.Status",
@@ -52,6 +72,18 @@ class AdmissionForm(models.Model):
     @property
     def current_version(self):
         return self.versions.order_by("-version").first()
+
+    @property
+    def is_public(self):
+        return self.access == self.Access.PUBLIC and bool(self.public_slug)
+
+    def selectable_departments(self):
+        """Departments a public applicant may choose: the form's own, or the chosen subset."""
+        from departments.models import Department
+
+        if self.department_id is not None:
+            return Department.objects.filter(pk=self.department_id, is_active=True)
+        return self.public_departments.filter(is_active=True).order_by("name")
 
 
 class AdmissionFormVersion(models.Model):

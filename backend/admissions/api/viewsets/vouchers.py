@@ -33,12 +33,18 @@ class AdmissionVoucherViewSet(
     def create(self, request):
         data = AdmissionVoucherCreateSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        form = get_object_or_404(AdmissionForm, pk=data.validated_data["form"])
-        if not self._has_right_in_department(request.user, "admissions.add_admissionvoucher", form.department_id):
-            raise ValidationError({"form": "Keine Berechtigung für die Abteilung dieses Formulars."})
         values = data.validated_data
+        form = get_object_or_404(AdmissionForm, pk=values["form"])
+        department_id = form.department_id or values["department"]
+        if department_id is None:
+            raise ValidationError({"department": "Bitte die Abteilung wählen, an die der Antrag geht."})
+        if form.department_id is not None and values["department"] not in (None, form.department_id):
+            raise ValidationError({"department": "Dieses Formular gehört zu einer anderen Abteilung."})
+        if not self._has_right_in_department(request.user, "admissions.add_admissionvoucher", department_id):
+            raise ValidationError({"department": "Keine Berechtigung für diese Abteilung."})
         voucher, code = voucher_service.create_voucher(
             form,
+            department_id=department_id,
             label=values["label"] or f"{values['vorname']} {values['nachname']}".strip(),
             prefill={"vorname": values["vorname"], "nachname": values["nachname"]},
             valid_days=values["valid_days"],

@@ -4,22 +4,32 @@
 
 ### Formular gestalten
 
-1. Öffne **Aufnahme › Formulare** und lege ein Formular an. Die Vorlage „Jugendfeuerwehr“ enthält
-   Personalien, Erziehungsberechtigte, Gesundheit, Passbild, Datenschutz, Einwilligungen,
-   Verpflichtung und Unterschriften.
-2. Ziehe Bausteine aus der linken Palette an die gewünschte Stelle oder tippe sie an. Verschieben
-   geht über den Griff links am Element oder mit den Pfeilen.
-3. Wähle ein Element aus, um rechts Beschriftung, Pflichtangabe, Sichtbarkeit (z. B. nur unter 18)
-   und das Feld festzulegen, in das der Wert bei der Übernahme geschrieben wird.
-4. Rechtstexte und Einwilligungen kommen aus **Einstellungen › Datenschutz**. Der veröffentlichte
-   Wortlaut wird beim Veröffentlichen des Formulars mitgespeichert.
-5. Prüfe die **Vorschau** und **veröffentliche** das Formular. Erst danach lassen sich Voucher
-   erstellen. Änderungen gelten nur für neue Anträge.
+1. Öffne **Aufnahme › Formulare** und lege ein Formular an. Wähle, ob es für die **ganze
+   Organisation** oder eine Abteilung gilt. Die Vorlage „Jugendfeuerwehr“ enthält Personalien,
+   Erziehungsberechtigte, Gesundheit, Passbild, Datenschutz, Einwilligungen, Verpflichtung und
+   Unterschriften.
+2. Oben siehst du die **Seiten** des Formulars als Schritte. Ziehe Bausteine aus der linken Palette
+   an die gewünschte Stelle oder tippe sie an. Die Palette sortiert nach Ziel: Mitgliedsdaten,
+   Zusatzfelder, Personen und Rechtliches, Inhalt. Was es nur einmal geben darf (z. B. Vorname,
+   Datenschutz, eine Unterschrift je Person), wird nach dem Einfügen ausgegraut.
+3. Tippe ein Element an: Es klappt direkt im Formular auf. Dort legst du Beschriftung, Pflichtangabe
+   und Sichtbarkeit (z. B. nur unter 18) fest; rechts siehst du live, wie es am Handy aussieht.
+4. Jede Angabe landet am Mitglied. Fehlt dir ein Feld, lege mit **Zusatzfeld anlegen** ein eigenes
+   an (z. B. Schule, T-Shirt-Größe). Es erscheint danach auch in der Mitgliedsbearbeitung unter
+   „Zusatzangaben“ und in **Einstellungen › Mitglieder › Zusatzfelder**.
+5. **Einwilligung …** öffnet einen Dialog: vorhandene Einwilligungsart wählen oder direkt eine neue
+   anlegen (mit dem Recht für die Datenschutz-Einstellungen).
+6. Unter **Zugang & Einstellungen** legst du fest, ob das Formular nur mit Voucher oder auch
+   **öffentlich** erreichbar ist. Öffentliche Formulare der Organisation nennen nur die Abteilungen,
+   die du dort anhakst; Link und QR-Code für Website und Aushang stehen daneben.
+7. **Veröffentlichen** zeigt eine Prüfliste. Offene Punkte, etwa eine noch nicht veröffentlichte
+   Datenschutzerklärung, stehen dort mit Link zur passenden Einstellung. Änderungen gelten nur für
+   neue Anträge.
 
 ### Voucher ausgeben
 
 1. **Aufnahme › Voucher › Voucher erstellen**, Formular wählen, optional Vor- und Nachname
-   vorausfüllen.
+   vorausfüllen. Bei Formularen der Organisation wählst du hier die Abteilung, an die der Antrag geht.
 2. Der Code und der QR-Code werden **nur jetzt** angezeigt. Drucke die Karte als PDF oder lass den
    QR-Code direkt scannen. Ein verlorener Code wird widerrufen und neu erstellt.
 

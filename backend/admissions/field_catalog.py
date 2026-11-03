@@ -1,7 +1,9 @@
 """Fields of a member or guardian that an application form may fill.
 
-Form elements point at a catalog key (``target``); elements without a target are free
-fields that only live in the application.
+Form elements point at a catalog key (``target``). Answers without a target would only live
+in the application, so data inputs must point at a member field, a guardian field or an
+additional member field (``member.extra.<key>``). Only confirmations (required checkboxes)
+stay in the application alone.
 """
 
 from dataclasses import dataclass
@@ -54,10 +56,55 @@ GENDER_OPTIONS = (
 )
 
 
-def as_payload():
+EXTRA_PREFIX = "member.extra."
+
+
+def extra_definitions(department_id):
+    """Additional member fields a form of ``department_id`` may fill (``None``: organisation forms).
+
+    Organisation forms serve every department, so they only offer organisation-wide fields.
+    """
+    from django.db.models import Q
+
+    from members.models import MemberFieldDefinition
+
+    scope = Q(department__isnull=True)
+    if department_id is not None:
+        scope |= Q(department_id=department_id)
+    return MemberFieldDefinition.objects.filter(scope, active=True).order_by("position", "label")
+
+
+def extra_catalog(department_id):
+    """``{target: CatalogField}`` for the additional fields; ``model_field`` is the value key."""
+    return {
+        f"{EXTRA_PREFIX}{definition.key}": CatalogField(
+            f"{EXTRA_PREFIX}{definition.key}", definition.label, definition.field_type, definition.key
+        )
+        for definition in extra_definitions(department_id)
+    }
+
+
+def as_payload(department_id=None):
     """The catalog as the builder needs it."""
 
     def rows(fields):
         return [{"key": f.key, "label": f.label, "input_type": f.input_type, "sensitive": f.sensitive} for f in fields]
 
-    return {"member": rows(MEMBER_FIELDS), "guardian": rows(GUARDIAN_FIELDS), "gender_options": list(GENDER_OPTIONS)}
+    extra = [
+        {
+            "key": f"{EXTRA_PREFIX}{definition.key}",
+            "id": definition.pk,
+            "label": definition.label,
+            "input_type": definition.field_type,
+            "options": definition.options,
+            "help_text": definition.help_text,
+            "department": definition.department_id,
+        }
+        for definition in extra_definitions(department_id)
+    ]
+    return {
+        "member": rows(MEMBER_FIELDS),
+        "guardian": rows(GUARDIAN_FIELDS),
+        "extra": extra,
+        "gender_options": list(GENDER_OPTIONS),
+    }

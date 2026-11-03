@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from admissions.field_catalog import MEMBER_CATALOG
+from admissions.field_catalog import EXTRA_PREFIX, MEMBER_CATALOG
 from admissions.models import Application, ApplicationFile
 from admissions.schema import iter_elements
 from members.models import Member, Parent
@@ -65,6 +65,27 @@ def _member_values(application):
     return values
 
 
+def _extra_values(application):
+    """Answers for additional member fields, cleaned like a member dialog write.
+
+    A field deactivated or removed since the application stays in the sealed application only.
+    """
+    from members.services.extra_fields import clean_values, definitions_for
+
+    raw = {}
+    for element in _elements(application):
+        target = element.get("target") or ""
+        if not target.startswith(EXTRA_PREFIX):
+            continue
+        value = application.answers.get(element["key"])
+        if value not in (None, ""):
+            raw[target.removeprefix(EXTRA_PREFIX)] = value
+    definitions = list(definitions_for([application.department_id]))
+    known = {definition.key for definition in definitions}
+    merged, _ = clean_values({key: value for key, value in raw.items() if key in known}, definitions)
+    return merged
+
+
 def _consents(application, member, parents, by):
     for element in _elements(application):
         if application.answers.get(element["key"]) is not True:
@@ -109,7 +130,12 @@ def take_over(application, *, joined=None, parent_links=None, invite_parents=Fal
         joined = joined or (decision.decided_on if decision else timezone.localdate())
 
         form = application.form_version.form
-        member = Member.objects.create(**_member_values(application), joined=joined, status=form.initial_status)
+        member = Member.objects.create(
+            **_member_values(application),
+            extra_fields=_extra_values(application),
+            joined=joined,
+            status=form.initial_status,
+        )
         member.departments.add(application.department_id)
         photo = application.files.filter(kind=ApplicationFile.Kind.PHOTO).first()
         if photo:

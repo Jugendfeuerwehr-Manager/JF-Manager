@@ -1,7 +1,8 @@
-"""Public submission of an application through a voucher.
+"""Public submission of an application, through a voucher or a public form link.
 
 Answers are checked against the published form version (not the draft), images are
-re-encoded, the voucher is redeemed atomically and the stored application is sealed.
+re-encoded, a voucher is redeemed atomically and the stored application is sealed. Public
+forms let the applicant choose one of the departments the form offers.
 """
 
 import base64
@@ -17,10 +18,10 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from admissions.field_catalog import GENDER_OPTIONS
-from admissions.models import Application, ApplicationFile, Seal
+from admissions.models import AdmissionForm, Application, ApplicationFile, Seal
 from admissions.schema import iter_elements
 from admissions.services import seal as seal_service
-from admissions.services.vouchers import open_voucher
+from admissions.services.vouchers import VoucherError, open_voucher
 from jf_manager_backend.upload_safety import clean_avatar, validate_upload
 
 TEXT_LIMITS = {"text": 300, "email": 254, "phone": 50, "textarea": 4000}
@@ -110,6 +111,8 @@ class _Checker:
         element_type = element["type"]
         if element_type in TEXT_LIMITS or element_type == "date":
             return self._text(element, key, value)
+        if element_type == "number":
+            return self._number(element, key, value)
         if element_type in ("select", "radio"):
             return self._choice(element, key, value)
         if element_type in ("checkbox", "legal_ack", "consent"):
@@ -145,6 +148,21 @@ class _Checker:
             except DjangoValidationError as exc:
                 raise ValueError("Bitte eine gültige E-Mail-Adresse angeben.") from exc
         self.answers[key] = value
+
+    def _number(self, element, key, value):
+        if isinstance(value, str):
+            value = value.strip().replace(",", ".")
+        self._missing(element, value)
+        if value in (None, ""):
+            self.answers[key] = None
+            return
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Bitte eine Zahl angeben.") from exc
+        if isinstance(value, bool) or not -1e9 < number < 1e9:
+            raise ValueError("Bitte eine Zahl angeben.")
+        self.answers[key] = int(number) if number.is_integer() else number
 
     def _choice(self, element, key, value):
         options = GENDER_OPTIONS if element.get("target") == "member.gender" else element.get("options") or []
@@ -220,42 +238,82 @@ def form_for_code(code):
     return voucher, version
 
 
-def submit(code, raw_answers):
-    """Store, seal and announce an application. Raises ``VoucherError`` or ``ValidationError``."""
-    voucher, version = form_for_code(code)
+def public_form(slug):
+    """The public form and its published version; ``VoucherError`` when it is not open to the public."""
+    form = AdmissionForm.objects.filter(public_slug=slug or "", is_active=True).first()
+    if form is None or not form.is_public:
+        raise VoucherError
+    version = form.current_version
+    if version is None:
+        raise VoucherError
+    return form, version
+
+
+def _checked(version, raw_answers):
     checked = _Checker(version.schema, raw_answers).run()
     if checked.errors:
         raise ValidationError({"answers": checked.errors})
+    return checked
 
+
+def _unchanged(form, version):
+    current = form.current_version
+    if current is None or current.pk != version.pk:
+        raise ValidationError({"detail": "Das Formular wurde gerade geändert. Bitte die Seite neu laden."})
+
+
+def submit(code, raw_answers):
+    """Store, seal and announce an application. Raises ``VoucherError`` or ``ValidationError``."""
+    voucher, version = form_for_code(code)
+    checked = _checked(version, raw_answers)
     with transaction.atomic():
         voucher = open_voucher(code, lock=True)
-        current = voucher.form.current_version
-        if current is None or current.pk != version.pk:
-            raise ValidationError({"detail": "Das Formular wurde gerade geändert. Bitte die Seite neu laden."})
-        now = timezone.now()
-        application = Application.objects.create(
-            form_version=version,
-            department_id=voucher.department_id,
-            voucher=voucher,
-            answers=checked.answers,
-            applicant_name=_applicant_name(version.schema, checked.answers) or voucher.label or "Ohne Namen",
-            submitted_at=now,
+        _unchanged(voucher.form, version)
+        application, submission_seal = _store(
+            version, voucher.department_id, checked, voucher=voucher, fallback_name=voucher.label
         )
-        for key, (kind, upload) in checked.files.items():
-            data = upload.read()
-            upload.seek(0)
-            ApplicationFile.objects.create(
-                application=application, key=key, kind=kind, file=upload, sha256=hashlib.sha256(data).hexdigest()
-            )
-        voucher.used_at = now
+        voucher.used_at = application.submitted_at
         voucher.save(update_fields=["used_at"])
-        submission_seal = seal_service.seal(
-            subject_type=SUBJECT,
-            subject_id=application.pk,
-            kind=Seal.Kind.SUBMISSION,
-            content=submission_content(application),
+    return application, submission_seal
+
+
+def submit_public(slug, raw_answers, department_id):
+    """Submit through the public link into one of the departments the form offers."""
+    form, version = public_form(slug)
+    allowed = {department.pk: department for department in form.selectable_departments()}
+    if department_id not in allowed:
+        raise ValidationError({"department": "Bitte eine der angebotenen Abteilungen wählen."})
+    checked = _checked(version, raw_answers)
+    with transaction.atomic():
+        AdmissionForm.objects.select_for_update().get(pk=form.pk)
+        _unchanged(form, version)
+        return _store(version, department_id, checked)
+
+
+def _store(version, department_id, checked, *, voucher=None, fallback_name=""):
+    """Create, file and seal the application inside the caller's transaction."""
+    now = timezone.now()
+    application = Application.objects.create(
+        form_version=version,
+        department_id=department_id,
+        voucher=voucher,
+        answers=checked.answers,
+        applicant_name=_applicant_name(version.schema, checked.answers) or fallback_name or "Ohne Namen",
+        submitted_at=now,
+    )
+    for key, (kind, upload) in checked.files.items():
+        data = upload.read()
+        upload.seek(0)
+        ApplicationFile.objects.create(
+            application=application, key=key, kind=kind, file=upload, sha256=hashlib.sha256(data).hexdigest()
         )
-        transaction.on_commit(lambda: _announce(application))
+    submission_seal = seal_service.seal(
+        subject_type=SUBJECT,
+        subject_id=application.pk,
+        kind=Seal.Kind.SUBMISSION,
+        content=submission_content(application),
+    )
+    transaction.on_commit(lambda: _announce(application))
     return application, submission_seal
 
 

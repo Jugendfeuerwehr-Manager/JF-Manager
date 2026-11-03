@@ -37,6 +37,9 @@ class AdmissionFormSerializer(serializers.ModelSerializer):
             "signature_mode",
             "decision_body",
             "is_active",
+            "access",
+            "public_slug",
+            "public_departments",
             "draft_schema",
             "draft_issues",
             "has_unpublished_changes",
@@ -44,11 +47,16 @@ class AdmissionFormSerializer(serializers.ModelSerializer):
             "from_template",
             "updated_at",
         ]
-        read_only_fields = ["id", "updated_at"]
-        extra_kwargs = {"draft_schema": {"required": False}}
+        read_only_fields = ["id", "public_slug", "updated_at"]
+        extra_kwargs = {
+            "draft_schema": {"required": False},
+            # Explicit: null is an organisation form, never a guessed department.
+            "department": {"required": True, "allow_null": True},
+            "public_departments": {"required": False},
+        }
 
     def get_draft_issues(self, form):
-        return form_service.check(form.draft_schema, for_publish=True)
+        return form_service.draft_issues(form)
 
     def get_has_unpublished_changes(self, form):
         version = form.current_version
@@ -65,8 +73,13 @@ class AdmissionFormSerializer(serializers.ModelSerializer):
         return form_service.sanitize_draft(schema)
 
     def validate(self, attrs):
+        department = attrs["department"] if "department" in attrs else getattr(self.instance, "department", None)
+        if any(not choice.is_active for choice in attrs.get("public_departments") or []):
+            raise serializers.ValidationError({"public_departments": "Nur aktive Abteilungen sind auswählbar."})
+        if department is not None and attrs.get("public_departments"):
+            # A department form always delivers to its own department.
+            attrs["public_departments"] = []
         status = attrs.get("initial_status")
-        department = attrs.get("department") or getattr(self.instance, "department", None)
         if status is None:
             return attrs
         if status.category not in INITIAL_CATEGORIES:
@@ -77,18 +90,25 @@ class AdmissionFormSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from_template = validated_data.pop("from_template", True)
+        public_departments = validated_data.pop("public_departments", None)
         form = form_service.create_form(
             department=validated_data.pop("department"),
             title=validated_data.pop("title"),
             from_template=from_template,
             by=self.context["request"].user,
         )
+        if public_departments is not None:
+            validated_data["public_departments"] = public_departments
         return self.update(form, validated_data) if validated_data else form
 
     def update(self, instance, validated_data):
         validated_data.pop("from_template", None)
         validated_data["updated_by"] = self.context["request"].user
-        return super().update(instance, validated_data)
+        form = super().update(instance, validated_data)
+        if form.access == AdmissionForm.Access.PUBLIC and not form.public_slug:
+            form.public_slug = form_service.new_public_slug(form.title)
+            form.save(update_fields=["public_slug"])
+        return form
 
 
 class PublishSerializer(serializers.Serializer):

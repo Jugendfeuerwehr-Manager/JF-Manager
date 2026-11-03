@@ -31,6 +31,8 @@ class AdmissionVoucherSerializer(serializers.ModelSerializer):
 
 class AdmissionVoucherCreateSerializer(serializers.Serializer):
     form = serializers.IntegerField()
+    # Required for organisation forms: where the application will go.
+    department = serializers.IntegerField(required=False, allow_null=True, default=None)
     label = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
     vorname = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
     nachname = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
@@ -39,3 +41,7 @@ class AdmissionVoucherCreateSerializer(serializers.Serializer):
 
 class PublicSubmitSerializer(serializers.Serializer):
     answers = serializers.DictField()
+    # Public forms only: the chosen department. Ignored with a voucher.
+    department = serializers.IntegerField(required=False, allow_null=True, default=None)
+    # Honeypot: hidden in the form, so people leave it empty.
+    website = serializers.CharField(required=False, allow_blank=True, default="")

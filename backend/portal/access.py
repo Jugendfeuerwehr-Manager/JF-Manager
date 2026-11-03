@@ -39,6 +39,7 @@ PORTAL_ALLOWED_VIEW_NAMES = frozenset(
         "public-legal-page",
         # Public application form: a parent with a portal account may apply for another child.
         "public-admissions-list",
+        "public-admissions-form",
         "public-admissions-verify",
         "oidc-public-config",
         "csp-report",

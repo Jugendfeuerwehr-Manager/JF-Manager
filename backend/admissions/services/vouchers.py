@@ -43,8 +43,14 @@ def new_code():
     return format_code("".join(secrets.choice(ALPHABET) for _ in range(CODE_LENGTH)))
 
 
-def create_voucher(form, *, label="", prefill=None, valid_days=DEFAULT_VALIDITY_DAYS, by=None):
-    """Return ``(voucher, code)``; the code is not stored and cannot be shown again."""
+def create_voucher(form, *, department_id=None, label="", prefill=None, valid_days=DEFAULT_VALIDITY_DAYS, by=None):
+    """Return ``(voucher, code)``; the code is not stored and cannot be shown again.
+
+    The voucher decides the department: the form's own, or for organisation forms ``department_id``.
+    """
+    department_id = form.department_id or department_id
+    if department_id is None:
+        raise ValidationError({"department": "Bitte die Abteilung wählen, an die der Antrag geht."})
     if not form.is_active:
         raise ValidationError({"form": "Das Formular ist nicht aktiv."})
     if form.current_version is None:
@@ -55,7 +61,7 @@ def create_voucher(form, *, label="", prefill=None, valid_days=DEFAULT_VALIDITY_
     code = new_code()
     voucher = AdmissionVoucher.objects.create(
         form=form,
-        department_id=form.department_id,
+        department_id=department_id,
         code_hash=hash_code(code),
         code_hint=normalize(code)[-4:],
         label=label[:200],

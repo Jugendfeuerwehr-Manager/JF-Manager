@@ -26,8 +26,12 @@ from jf_manager_backend.mixins import BasePermissionedViewSet
 class AdmissionFormViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet, viewsets.ModelViewSet):
     queryset = AdmissionForm.objects.select_related("department", "initial_status").prefetch_related("versions")
     serializer_class = AdmissionFormSerializer
-    filterset_fields = ["department", "is_active"]
+    # No "department" filter: the scope mixin reads ?department= and keeps organisation forms.
+    filterset_fields = ["is_active"]
     search_fields = ["title"]
+    # Organisation forms (department=NULL) serve every department; changing them needs
+    # the right organisation-wide.
+    include_central_records = True
 
     def perform_create(self, serializer):
         self._validate_target_department(serializer)
@@ -37,10 +41,15 @@ class AdmissionFormViewSet(DepartmentScopeViewSetMixin, BasePermissionedViewSet,
         self._validate_target_department(serializer)
         serializer.save()
 
-    @extend_schema(summary="Field catalog, legal texts and consent kinds for the builder")
+    @extend_schema(summary="Field catalog, legal texts and consent kinds for the builder (?form= for its fields)")
     @action(detail=False, methods=["get"])
     def references(self, request):
-        return Response({"fields": as_payload(), **form_service.available_references()})
+        department_id = None
+        form_id = request.query_params.get("form")
+        if form_id and form_id.isdigit():
+            form = self.get_queryset().filter(pk=int(form_id)).first()
+            department_id = form.department_id if form else None
+        return Response({"fields": as_payload(department_id), **form_service.available_references()})
 
     @extend_schema(summary="Publish the draft as a new version", request=PublishSerializer)
     # Publishing needs its own right in the form's department, not the add right.
