@@ -4,6 +4,40 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 ## [Unreleased]
 
+## [3.3.1] – 2026-11-02
+
+### Hinweise zum Update
+
+**Vor dem Update bitte lesen.** Ein Update läuft immer mit dem `jfctl` der installierten Version. Bis einschließlich 3.3.0 enthält es den unten beschriebenen Fehler. Ohne diese Schritte kann auch das Update auf 3.3.1 „abgeschlossen“ melden, während die alte Version weiterläuft. Als root:
+
+```bash
+# 1. Welche Version läuft wirklich?
+readlink /opt/jf-manager/current                      # z. B. releases/3.2.3
+grep JF_VERSION /etc/jf-manager/jfctl.conf
+
+# 2. Nur wenn beide Versionen abweichen: eingetragene Version auf die laufende setzen
+sed -i 's/^JF_VERSION=.*/JF_VERSION=3.2.3/' /etc/jf-manager/jfctl.conf
+
+# 3. Fehlenden Schlüssel eintragen (bisheriges Verhalten, bleibt stehen)
+grep -q '^CSP_REPORT_ONLY=' /etc/jf-manager/app.env || echo 'CSP_REPORT_ONLY=false' >> /etc/jf-manager/app.env
+
+# 4. Backup prüfen, aktualisieren, kontrollieren
+jfctl backup list
+jfctl update --version 3.3.1
+readlink /opt/jf-manager/current                      # releases/3.3.1
+jfctl doctor
+```
+
+- Die Reihenfolge einhalten und für diese Schritte nicht `jfctl config set` verwenden. `config set` schreibt die Version aus `jfctl.conf` in die Compose-Konfiguration; ein Neustart würde dann neue Images ohne Migration starten.
+- Meldet `jfctl backup list` ein fehlendes Repository und gab es noch nie eine Sicherung, das Repository vorab von Hand anlegen. Der alte `jfctl` kann das noch nicht: `RESTIC_PASSWORD_FILE=/etc/jf-manager/backup.pass restic -r <JF_BACKUP_REPO aus jfctl.conf> init`.
+- Ab 3.3.1 erkennt `jfctl` beide Probleme selbst. Spätere Updates brauchen diese Schritte nicht mehr.
+- Keine Datenbankmigrationen.
+
+### Behoben
+
+- **`jfctl update` wechselt wieder wirklich auf die neue Version.** Seit 3.1.0 brach ein Update in Stufe 4 mit „unerwarteter Abbruch“ ab, wenn in `/etc/jf-manager/app.env` kein `CSP_REPORT_ONLY` stand. Das ist der Normalfall. Der Rückfall auf die alte Version lief dann nur in einem Teilprozess, und das Update machte danach weiter. Am Ende meldete jfctl „Update abgeschlossen“ und trug die neue Version ein, gestartet blieb aber die alte (#25). Ein fehlender Schlüssel gilt jetzt als „CSP durchsetzen“. Ein Rückfall läuft nur noch im eigentlichen Update-Prozess. Weicht die eingetragene Version von der laufenden ab, meldet `jfctl doctor` das, und `jfctl update` geht von der tatsächlich laufenden Version aus.
+- **Fehlendes Backup-Repository blockiert Sicherung und Update nicht mehr.** `jfctl backup create` und `jfctl update` meldeten bei einem fehlenden Repository nur „nicht erreichbar oder Passwort falsch“ und legten es nie an. Jetzt unterscheiden sie: Repository fehlt, Passwort falsch, Ziel nicht erreichbar. Die Prüfung läuft vor dem Wartungsfenster. Hat die Installation noch nie eine Sicherung abgeschlossen, legt jfctl das Repository selbst an. Fehlt es nach erfolgreichen Sicherungen, bricht jfctl ab, statt still ein leeres Repository anzulegen. Neu: `jfctl backup init`. `jfctl doctor` prüft das Repository mit (#25).
+
 ## [3.3.0] – 2026-11-02
 
 ### Neu
