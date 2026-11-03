@@ -46,6 +46,9 @@ const sections: { label: string; items: NavItem[] }[] = [
     { label: 'Listen', icon: 'pi pi-list-check', to: '/lists', permission: 'view_memberlist' },
   ] },
   { label: 'Aufnahme', items: [
+    { label: 'Anträge', icon: 'pi pi-inbox', to: '/aufnahme/antraege', permission: 'admissions.view_application' },
+    { label: 'Sitzungen', icon: 'pi pi-users', to: '/aufnahme/sitzungen', permission: 'admissions.view_committeemeeting' },
+    { label: 'Voucher', icon: 'pi pi-qrcode', to: '/aufnahme/voucher', permission: 'admissions.view_admissionvoucher' },
     { label: 'Formulare', icon: 'pi pi-file-edit', to: '/aufnahme/formulare', permission: 'admissions.view_admissionform' },
   ] },
   { label: 'Dienste', items: [

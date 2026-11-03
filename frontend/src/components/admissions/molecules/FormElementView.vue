@@ -141,7 +141,7 @@
         :aria-describedby="describedby"
         @change="onPhoto"
       />
-      <img v-if="photoPreview" :src="photoPreview" alt="Vorschau des Passbilds" class="el-photo" />
+      <img v-if="photoSrc" :src="photoSrc" alt="Vorschau des Passbilds" class="el-photo" />
     </template>
   </AdmField>
 
@@ -197,6 +197,7 @@ const stringValue = computed(() => (typeof props.modelValue === 'string' ? props
 const guardians = computed(() => (Array.isArray(props.modelValue) ? (props.modelValue as Record<string, string>[]) : []))
 const options = computed(() => (props.element.target === 'member.gender' ? GENDER_OPTIONS : (props.element.options ?? [])))
 const photoPreview = ref('')
+const photoSrc = computed(() => photoPreview.value || (stringValue.value.startsWith('data:image/') ? stringValue.value : ''))
 
 const AUTOCOMPLETE: Record<string, string> = {
   'member.name': 'given-name',
@@ -227,15 +228,33 @@ function emitValue(value: unknown) {
   emit('update:modelValue', value)
 }
 
-function onPhoto(event: Event) {
+const PHOTO_MAX_PX = 1200
+
+// Phone photos are large; scale down before sending (the request body is limited).
+async function onPhoto(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    photoPreview.value = String(reader.result)
+  const url = URL.createObjectURL(file)
+  try {
+    const image = new Image()
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve()
+      image.onerror = () => reject(new Error('Bild konnte nicht gelesen werden'))
+      image.src = url
+    })
+    const scale = Math.min(1, PHOTO_MAX_PX / Math.max(image.width, image.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(image.width * scale)
+    canvas.height = Math.round(image.height * scale)
+    canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height)
+    photoPreview.value = canvas.toDataURL('image/jpeg', 0.85)
     emitValue(photoPreview.value)
+  } catch {
+    photoPreview.value = ''
+    emitValue('')
+  } finally {
+    URL.revokeObjectURL(url)
   }
-  reader.readAsDataURL(file)
 }
 </script>
 

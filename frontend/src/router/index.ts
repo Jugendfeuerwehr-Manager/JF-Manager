@@ -40,6 +40,18 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/aufnahme',
+      name: 'admission-public',
+      component: () => import('@/views/public/AdmissionPublicView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/aufnahme/pruefen/:id',
+      name: 'admission-verify',
+      component: () => import('@/views/public/AdmissionVerifyView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/passwort-festlegen',
       name: 'portal-invitation-accept',
       component: () => import('@/views/portal/InvitationAcceptView.vue'),
@@ -99,6 +111,30 @@ const router = createRouter({
           name: 'admission-form-builder',
           component: () => import('@/views/admissions/FormBuilderView.vue'),
           meta: { requiresPerm: 'admissions.view_admissionform' }
+        },
+        {
+          path: 'aufnahme/antraege',
+          name: 'admission-applications',
+          component: () => import('@/views/admissions/ApplicationsView.vue'),
+          meta: { requiresPerm: 'admissions.view_application' }
+        },
+        {
+          path: 'aufnahme/antraege/:id(\\d+)',
+          name: 'admission-application',
+          component: () => import('@/views/admissions/ApplicationDetailView.vue'),
+          meta: { requiresPerm: 'admissions.view_application' }
+        },
+        {
+          path: 'aufnahme/voucher',
+          name: 'admission-vouchers',
+          component: () => import('@/views/admissions/VouchersView.vue'),
+          meta: { requiresPerm: 'admissions.view_admissionvoucher' }
+        },
+        {
+          path: 'aufnahme/sitzungen',
+          name: 'admission-meetings',
+          component: () => import('@/views/admissions/MeetingsView.vue'),
+          meta: { requiresPerm: 'admissions.view_committeemeeting' }
         },
         {
           path: 'groups',

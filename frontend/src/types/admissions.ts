@@ -151,3 +151,169 @@ export interface ElementLocation {
   section: number
   index: number
 }
+
+// ── Vouchers ────────────────────────────────────────────────────────────────
+
+export type VoucherState = 'open' | 'used' | 'expired' | 'revoked'
+
+export interface AdmissionVoucher {
+  id: number
+  form: number
+  form_title: string
+  department: number
+  code_hint: string
+  label: string
+  prefill: Record<string, string>
+  expires_at: string
+  used_at: string | null
+  revoked_at: string | null
+  state: VoucherState
+  application: number | null
+  created_at: string
+}
+
+/** Only the create response carries the code. */
+export interface CreatedVoucher extends AdmissionVoucher {
+  code: string
+}
+
+export interface VoucherCreate {
+  form: number
+  label?: string
+  vorname?: string
+  nachname?: string
+  valid_days?: number
+}
+
+// ── Applications, decisions, meetings ───────────────────────────────────────
+
+export type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'deferred' | 'withdrawn' | 'taken_over'
+export type DecisionOutcome = 'approved' | 'rejected' | 'deferred'
+
+export interface AdmissionDecision {
+  id: number
+  meeting: number | null
+  body: string
+  decided_on: string
+  outcome: DecisionOutcome
+  outcome_label: string
+  votes_yes: number | null
+  votes_no: number | null
+  votes_abstain: number | null
+  note: string
+  recorded_by_name: string
+  recorded_at: string
+}
+
+export interface ApplicationListItem {
+  id: number
+  department: number
+  applicant_name: string
+  status: ApplicationStatus
+  status_label: string
+  form_title: string
+  form_version_number: number
+  submitted_at: string
+  member: number | null
+}
+
+export interface ApplicationFileRef {
+  kind: 'photo' | 'signature'
+  sha256: string
+  url: string
+}
+
+export interface ApplicationDetail extends ApplicationListItem {
+  answers: Record<string, unknown>
+  schema: FormSchema
+  signature_mode: SignatureMode
+  decision_body: string
+  decisions: AdmissionDecision[]
+  files: Record<string, ApplicationFileRef>
+  taken_over_at: string | null
+}
+
+export interface SealCheck {
+  valid: boolean
+  signature: boolean
+  content: boolean
+  chain: boolean
+  current_key: boolean
+  content_checked: boolean
+  kind: 'submission' | 'decision' | 'export' | 'annual_report'
+  sealed_at: string
+  public_id: string
+  seal_hash: string
+}
+
+export interface ApplicationVerification {
+  valid: boolean
+  seals: SealCheck[]
+}
+
+export interface ApplicationExport extends ApplicationDetail {
+  seals: SealCheck[]
+  export_seal: { public_id: string; seal_hash: string; sealed_at: string }
+}
+
+export interface DecisionInput {
+  outcome: DecisionOutcome
+  decided_on?: string
+  meeting?: number | null
+  votes_yes?: number | null
+  votes_no?: number | null
+  votes_abstain?: number | null
+  note?: string
+}
+
+export interface TakeOverInput {
+  joined?: string
+  parent_links?: Record<string, number | null>
+  invite_parents?: boolean
+}
+
+export interface ParentSuggestion {
+  id: number
+  name: string
+  email: string
+}
+
+export interface CommitteeMeeting {
+  id: number
+  department: number
+  body: string
+  date: string
+  protocol_ref: string
+  note: string
+  decision_count: number
+  created_at: string
+}
+
+// ── Public form ─────────────────────────────────────────────────────────────
+
+export interface PublicAdmissionForm {
+  department: string
+  title: string
+  intro: string
+  signature_mode: SignatureMode
+  decision_body: string
+  version: number
+  schema: FormSchema
+  prefill: Record<string, string>
+  expires_at: string
+}
+
+export interface PublicSubmitResult {
+  applicant_name: string
+  submitted_at: string
+  seal: { public_id: string; seal_hash: string }
+}
+
+export interface PublicSealCheck {
+  valid: boolean
+  kind: string
+  sealed_at: string
+  content_checked: boolean
+  signature: boolean
+  chain: boolean
+}
