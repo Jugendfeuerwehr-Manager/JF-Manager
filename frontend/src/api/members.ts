@@ -11,6 +11,7 @@ import type {
   EventType,
   PaginatedResponse
 } from '@/types/api'
+import type { LeavePayload } from '@/types/membership'
 import type { MemberDeletionStrategy, MemberDeletionConflict } from '@/types/inventory'
 
 // Re-export commonly used types so other modules can import them from this file
@@ -64,7 +65,7 @@ export const membersApi = {
     return apiClient.post<Member>(`/members/${id}/anonymize/`)
   },
   /** Record (or with ``left_at: null`` withdraw) a leave. */
-  leave(id: number, data: { left_at: string | null; status_id?: number }) {
+  leave(id: number, data: LeavePayload) {
     return apiClient.post<Member>(`/members/${id}/leave/`, data)
   },
   delete(id: number) {
@@ -147,7 +148,7 @@ export const statusesApi = {
     return apiClient.get<Status>(`/statuses/${id}/`)
   },
 
-  create(data: Omit<Status, 'id'>) {
+  create(data: Pick<Status, 'name' | 'color'> & Partial<Omit<Status, 'id' | 'name' | 'color'>>) {
     return apiClient.post<Status>('/statuses/', data)
   },
 

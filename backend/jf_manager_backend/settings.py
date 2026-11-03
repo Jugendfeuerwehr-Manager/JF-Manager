@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     "external_sync.apps.ExternalSyncConfig",
     "settings_manager.apps.SettingsManagerConfig",
     "privacy.apps.PrivacyConfig",
+    "membership.apps.MembershipConfig",
     "django_rq",
     "health",
     "notifications.apps.NotificationsConfig",

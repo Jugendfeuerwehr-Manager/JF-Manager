@@ -3,10 +3,16 @@
  * Canonical source — import from here, not from @/types/api.
  */
 
+export type StatusCategory = 'applicant' | 'trial' | 'active' | 'passive' | 'left' | 'transferred'
+
 export interface Status {
   id: number
   name: string
   color: string
+  category: StatusCategory
+  /** null: central stage, visible in every department */
+  department: number | null
+  sort_order: number
 }
 
 export interface Group {

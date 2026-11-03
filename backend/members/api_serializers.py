@@ -14,7 +14,7 @@ User = get_user_model()
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Status
-        fields = ["id", "name", "color"]
+        fields = ["id", "name", "color", "category", "department", "sort_order"]
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -245,6 +245,12 @@ class MemberCreateUpdateSerializer(MemberFieldAccessMixin, serializers.ModelSeri
                 # Existing group no longer matches after department move:
                 # auto-clear it to keep member visible/manageable.
                 attrs["group"] = None
+
+        status = attrs.get("status")
+        if status is not None and status.department_id not in {None, *(department.id for department in departments)}:
+            raise serializers.ValidationError(
+                {"status": "Der gewählte Status gehört nicht zu den zugewiesenen Abteilungen."}
+            )
 
         return attrs
 

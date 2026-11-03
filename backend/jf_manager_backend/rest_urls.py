@@ -25,6 +25,7 @@ from members.api.viewsets import (
     ParentViewSet,
     StatusViewSet,
 )
+from membership.api.viewsets.events import MembershipEventViewSet
 from orders.api.viewsets import OrderableItemViewSet, OrderItemViewSet, OrderStatusViewSet, OrderViewSet
 from privacy.api.viewsets import ConsentKindViewSet, ConsentRecordViewSet, LegalPageViewSet
 from qualifications.api.viewsets import (
@@ -78,6 +79,7 @@ api.register(r"events", EventViewSet)
 api.register(r"event-types", EventTypeViewSet)
 api.register(r"attachments", AttachmentViewSet)
 api.register(r"emails", EmailMessageViewSet)
+api.register(r"membership/events", MembershipEventViewSet, basename="membership-events")
 
 
 api.register(r"inventory/items", ItemViewSet)

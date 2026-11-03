@@ -33,6 +33,7 @@ from members.api_serializers import (
 )
 from members.field_access import hidden_fields
 from members.models import Attachment, Group, Member, Status
+from membership.models import MembershipEvent
 from privacy.services.erasure import ErasureError, anonymize_member, erase_member
 from users.step_up import StepUpForExports
 
@@ -181,13 +182,24 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             raise ValidationError({"departments": "Keine Schreibberechtigung für diese Abteilungszuordnung."})
 
     def perform_update(self, serializer):
+        from membership.services import lifecycle
         from portal.self_records import log_self_change, snapshot
 
         self._validate_department_changes(serializer)
         before = snapshot(serializer.instance)
+        previous_status = serializer.instance.status
+        previous_departments = set(serializer.instance.departments.values_list("id", flat=True))
         instance = serializer.save()
         # PORTAL-04 (E14): linked staff edit their own record directly, logged as "Eigenänderung".
         log_self_change(self.request.user, instance, before)
+        lifecycle.record_stage_change(instance, from_status=previous_status, by=self.request.user)
+        departments = set(instance.departments.values_list("id", flat=True))
+        lifecycle.record_department_changes(
+            instance,
+            added=departments - previous_departments,
+            removed=previous_departments - departments,
+            by=self.request.user,
+        )
 
     @extend_schema(summary="Change log of the member (portal requests and own changes)")
     @action(detail=True, methods=["get"], url_path="change-log")
@@ -221,6 +233,15 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
                     instance.departments.add(dept)
                 except Department.DoesNotExist:
                     pass
+        self._record_admission(instance)
+
+    def _record_admission(self, member):
+        """A member created with a join date counts as a new joiner from that day."""
+        from membership.services import lifecycle
+
+        if member.joined is None:
+            return
+        lifecycle.admit(member, on=member.joined, by=self.request.user)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -462,6 +483,13 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
         status_id = serializers.PrimaryKeyRelatedField(
             queryset=Status.objects.all(), source="status", required=False, allow_null=True
         )
+        kind = serializers.ChoiceField(
+            choices=[(k.value, k.label) for k in MembershipEvent.EXIT_KINDS],
+            default=MembershipEvent.Kind.EXIT_OTHER,
+        )
+        exit_reason = serializers.ChoiceField(
+            choices=MembershipEvent.ExitReason.choices, required=False, allow_blank=True, default=""
+        )
 
     @extend_schema(
         summary="Record or withdraw a member's leave",
@@ -473,7 +501,7 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
     # matters, checked against the member's own departments.
     @action(detail=True, methods=["post"], url_path="leave", permission_classes=[IsAuthenticated])
     def leave(self, request, pk=None):
-        from members.services.membership_leave import record_leave
+        from membership.services.lifecycle import record_exit
 
         member = self.get_object()
         department_ids = list(member.departments.values_list("id", flat=True)) or [None]
@@ -486,7 +514,14 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             return Response({"detail": "Das Mitglied ist bereits anonymisiert."}, status=status.HTTP_409_CONFLICT)
         data = self._LeaveSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        member = record_leave(member, left_at=data.validated_data["left_at"], status=data.validated_data.get("status"))
+        member = record_exit(
+            member,
+            left_at=data.validated_data["left_at"],
+            status=data.validated_data.get("status"),
+            kind=data.validated_data["kind"],
+            exit_reason=data.validated_data["exit_reason"],
+            by=request.user,
+        )
         return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
 
     class _HealthSerializer(serializers.Serializer):
