@@ -118,6 +118,7 @@ INSTALLED_APPS = [
     "settings_manager.apps.SettingsManagerConfig",
     "privacy.apps.PrivacyConfig",
     "membership.apps.MembershipConfig",
+    "admissions.apps.AdmissionsConfig",
     "django_rq",
     "health",
     "notifications.apps.NotificationsConfig",

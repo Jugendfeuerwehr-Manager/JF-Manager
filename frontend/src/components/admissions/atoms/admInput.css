@@ -1,0 +1,32 @@
+/* Native form controls of the admissions module; no component library. */
+.adm-input {
+  width: 100%;
+  min-height: var(--jf-touch-target, 44px);
+  padding: var(--jf-space-1) var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-card);
+  color: var(--jf-color-text);
+  font: inherit;
+}
+
+.adm-input:focus-visible {
+  outline: none;
+  border-color: var(--jf-color-primary);
+  box-shadow: var(--jf-focus-ring);
+}
+
+.adm-input[aria-invalid='true'] {
+  border-color: #b91c1c;
+}
+
+textarea.adm-input {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.adm-check {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--jf-color-primary);
+}

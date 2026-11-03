@@ -1,0 +1,153 @@
+/**
+ * TypeScript types for the admissions module (application forms, vouchers, applications).
+ * The form schema mirrors backend/admissions/schema.py.
+ */
+import type { PaginatedResponse } from './common'
+
+export type InputElementType =
+  | 'text'
+  | 'textarea'
+  | 'date'
+  | 'email'
+  | 'phone'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+  | 'photo'
+export type ContentElementType = 'heading' | 'richtext' | 'divider'
+export type ElementType = InputElementType | ContentElementType | 'legal_ack' | 'consent' | 'guardians' | 'signature'
+
+export type SignatureRole = 'applicant' | 'guardian_1' | 'guardian_2'
+export type ConsentPerson = 'applicant' | 'guardians'
+export type SignatureMode = 'digital' | 'print' | 'both'
+
+export type VisibilityRule = { age_below: number } | { field: string; equals: string | boolean }
+
+export interface ChoiceOption {
+  value: string
+  label: string
+}
+
+export interface GuardianFieldConfig {
+  target: string
+  required?: boolean
+}
+
+export interface FormElement {
+  id: string
+  type: ElementType
+  key?: string
+  label?: string
+  help?: string
+  required?: boolean
+  target?: string | null
+  options?: ChoiceOption[]
+  visible_if?: VisibilityRule | null
+  // richtext
+  html?: string
+  text_block?: number | null
+  // legal / consent
+  legal_kind?: string
+  consent_kind?: string
+  person?: ConsentPerson
+  // guardians
+  min?: number
+  max?: number
+  fields?: GuardianFieldConfig[]
+  // signature
+  role?: SignatureRole
+  // filled in when publishing
+  legal?: { title: string; body: string; version: string }
+  consent?: { label: string; text: string; version: string }
+}
+
+export interface FormSection {
+  id: string
+  title: string
+  elements: FormElement[]
+}
+
+export interface FormPage {
+  id: string
+  title: string
+  sections: FormSection[]
+}
+
+export interface FormSchema {
+  pages: FormPage[]
+}
+
+export interface SchemaIssue {
+  path: string
+  message: string
+}
+
+export interface AdmissionFormVersionSummary {
+  id: number
+  version: number
+  title: string
+  schema_hash: string
+  change_note: string
+  published_at: string
+}
+
+export interface AdmissionFormVersion extends AdmissionFormVersionSummary {
+  intro: string
+  signature_mode: SignatureMode
+  schema: FormSchema
+}
+
+export interface AdmissionForm {
+  id: number
+  department: number
+  title: string
+  intro: string
+  initial_status: number | null
+  signature_mode: SignatureMode
+  decision_body: string
+  is_active: boolean
+  draft_schema: FormSchema
+  draft_issues: SchemaIssue[]
+  has_unpublished_changes: boolean
+  current_version: AdmissionFormVersionSummary | null
+  updated_at: string
+}
+
+export type AdmissionFormCreate = Pick<AdmissionForm, 'title' | 'department'> & { from_template?: boolean }
+export type AdmissionFormUpdate = Partial<
+  Pick<
+    AdmissionForm,
+    'title' | 'intro' | 'initial_status' | 'signature_mode' | 'decision_body' | 'is_active' | 'draft_schema'
+  >
+>
+
+export interface CatalogField {
+  key: string
+  label: string
+  input_type: InputElementType
+  sensitive: boolean
+}
+
+export interface BuilderReferences {
+  fields: { member: CatalogField[]; guardian: CatalogField[]; gender_options: ChoiceOption[] }
+  legal_kinds: ChoiceOption[]
+  consent_kinds: { slug: string; label: string; description: string }[]
+}
+
+export interface AdmissionTextBlock {
+  id: number
+  department: number | null
+  title: string
+  body: string
+  updated_at: string
+}
+
+export type AdmissionFormPage = PaginatedResponse<AdmissionForm>
+export type AdmissionTextBlockPage = PaginatedResponse<AdmissionTextBlock>
+
+/** Where an element sits in the schema. */
+export interface ElementLocation {
+  page: number
+  section: number
+  index: number
+}

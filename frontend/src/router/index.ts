@@ -87,6 +87,19 @@ const router = createRouter({
           component: () => import('@/views/MembersView.vue'),
           meta: { requiresPerm: 'view_member' }
         },
+        // Admissions (application forms, vouchers, applications)
+        {
+          path: 'aufnahme/formulare',
+          name: 'admission-forms',
+          component: () => import('@/views/admissions/AdmissionFormsView.vue'),
+          meta: { requiresPerm: 'admissions.view_admissionform' }
+        },
+        {
+          path: 'aufnahme/formulare/:id(\\d+)',
+          name: 'admission-form-builder',
+          component: () => import('@/views/admissions/FormBuilderView.vue'),
+          meta: { requiresPerm: 'admissions.view_admissionform' }
+        },
         {
           path: 'groups',
           name: 'group-management',

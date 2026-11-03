@@ -45,6 +45,9 @@ const sections: { label: string; items: NavItem[] }[] = [
     { label: 'Gruppen', icon: 'pi pi-sitemap', to: '/groups', permission: 'members.view_group' },
     { label: 'Listen', icon: 'pi pi-list-check', to: '/lists', permission: 'view_memberlist' },
   ] },
+  { label: 'Aufnahme', items: [
+    { label: 'Formulare', icon: 'pi pi-file-edit', to: '/aufnahme/formulare', permission: 'admissions.view_admissionform' },
+  ] },
   { label: 'Dienste', items: [
     { label: 'Dienstbuch', icon: 'pi pi-book', to: '/servicebook', permission: 'view_service' },
     { label: 'Ausbildung', icon: 'pi pi-calendar', to: '/training', permission: 'view_trainingsession' },

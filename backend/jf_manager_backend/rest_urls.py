@@ -1,5 +1,6 @@
 from rest_framework import routers
 
+from admissions.api.viewsets.forms import AdmissionFormViewSet, AdmissionTextBlockViewSet
 from departments.api.viewsets.departments import DepartmentViewSet
 from departments.api.viewsets.member_options import RoleMemberOptionsViewSet
 from departments.api.viewsets.role_assignments import RoleAssignmentViewSet
@@ -80,6 +81,8 @@ api.register(r"event-types", EventTypeViewSet)
 api.register(r"attachments", AttachmentViewSet)
 api.register(r"emails", EmailMessageViewSet)
 api.register(r"membership/events", MembershipEventViewSet, basename="membership-events")
+api.register(r"admissions/forms", AdmissionFormViewSet, basename="admission-forms")
+api.register(r"admissions/text-blocks", AdmissionTextBlockViewSet, basename="admission-text-blocks")
 
 
 api.register(r"inventory/items", ItemViewSet)
