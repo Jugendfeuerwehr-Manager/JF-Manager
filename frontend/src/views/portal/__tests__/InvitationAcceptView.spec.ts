@@ -8,9 +8,11 @@ import { portalApi } from '@/api/portal'
 vi.mock('@/api/portal', () => ({ portalApi: { me: vi.fn(), invitationInfo: vi.fn(), acceptInvitation: vi.fn() } }))
 vi.mock('@/router', () => ({ default: { push: vi.fn(), currentRoute: { value: { path: '/passwort-festlegen' } } } }))
 const push = vi.fn()
+const replace = vi.fn()
+const route = { path: '/passwort-festlegen', query: {} as Record<string, string>, hash: '#token=abc' }
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: { token: 'abc' } }),
-  useRouter: () => ({ push }),
+  useRoute: () => route,
+  useRouter: () => ({ push, replace }),
 }))
 
 const render = () => mount(InvitationAcceptView, {
@@ -19,7 +21,25 @@ const render = () => mount(InvitationAcceptView, {
 const info = { email: 'eltern@example.org', kind: 'parent', expires_at: '2030-01-01T00:00:00Z' }
 
 describe('InvitationAcceptView', () => {
-  beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks() })
+  beforeEach(() => {
+    setActivePinia(createPinia()); vi.clearAllMocks()
+    route.query = {}; route.hash = '#token=abc'
+  })
+
+  it('reads the token from the fragment and clears it from the address bar', async () => {
+    vi.mocked(portalApi.invitationInfo).mockResolvedValue({ data: info } as never)
+    render(); await flushPromises()
+    expect(portalApi.invitationInfo).toHaveBeenCalledWith('abc')
+    expect(replace).toHaveBeenCalledWith({ path: '/passwort-festlegen' })
+  })
+
+  it('still accepts links mailed with ?token=', async () => {
+    route.query = { token: 'legacy' }; route.hash = ''
+    vi.mocked(portalApi.invitationInfo).mockResolvedValue({ data: info } as never)
+    render(); await flushPromises()
+    expect(portalApi.invitationInfo).toHaveBeenCalledWith('legacy')
+    expect(replace).toHaveBeenCalledWith({ path: '/passwort-festlegen' })
+  })
 
   it('renders the form with the read-only e-mail', async () => {
     vi.mocked(portalApi.invitationInfo).mockResolvedValue({ data: info } as never)
@@ -45,8 +65,10 @@ describe('InvitationAcceptView', () => {
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(wrapper.text()).toContain('Bitte bestätigen.')
 
+    await wrapper.get('#accept-photo-internal').setValue(true)
     vi.mocked(portalApi.acceptInvitation).mockResolvedValueOnce({ data: { username: 'eltern@example.org' } } as never)
     await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(vi.mocked(portalApi.acceptInvitation).mock.lastCall?.[0]).toMatchObject({ photo_internal: true, photo_public: false })
     expect(wrapper.text()).toContain('Dein Zugang ist eingerichtet.')
     await wrapper.get('button').trigger('click')
     expect(push).toHaveBeenCalledWith('/login')

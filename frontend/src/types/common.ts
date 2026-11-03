@@ -48,8 +48,6 @@ export interface UserInfo {
   last_login: string | null
   avatar: string | null
   avatar_url: string | null
-  dsgvo_internal: boolean
-  dsgvo_external: boolean
   email_signature?: string
   theme_mode?: 'light' | 'dark' | 'system'
   auth_source: 'local' | 'ldap' | 'oidc'

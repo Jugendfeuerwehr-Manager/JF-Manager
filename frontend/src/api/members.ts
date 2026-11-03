@@ -53,6 +53,20 @@ export const membersApi = {
     })
   },
 
+  /** Health notes travel separately and need a fresh confirmation (Art. 9 DSGVO). */
+  health(id: number) {
+    return apiClient.get<{ health_notes: string }>(`/members/${id}/health/`)
+  },
+  saveHealth(id: number, healthNotes: string) {
+    return apiClient.put<{ health_notes: string }>(`/members/${id}/health/`, { health_notes: healthNotes })
+  },
+  anonymize(id: number) {
+    return apiClient.post<Member>(`/members/${id}/anonymize/`)
+  },
+  /** Record (or with ``left_at: null`` withdraw) a leave. */
+  leave(id: number, data: { left_at: string | null; status_id?: number }) {
+    return apiClient.post<Member>(`/members/${id}/leave/`, data)
+  },
   delete(id: number) {
     return apiClient.delete(`/members/${id}/`)
   },

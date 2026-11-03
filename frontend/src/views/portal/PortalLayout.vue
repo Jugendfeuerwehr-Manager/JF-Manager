@@ -8,6 +8,7 @@ import PortalPersonSwitcher from '@/components/portal/PortalPersonSwitcher.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePortalStore } from '@/stores/portal'
 import type { PublicBranding } from '@/types/settings'
+import LegalLinks from '@/components/privacy/molecules/LegalLinks.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -15,13 +16,17 @@ const isCurrent = (item: { name: string, also?: string[] }) =>
   route.name === item.name || (item.also ?? []).includes(String(route.name))
 const portal = usePortalStore()
 const branding = ref<PublicBranding | null>(null)
-const items = [
+const items = computed(() => [
   { name: 'portal-home', label: 'Übersicht', icon: 'pi pi-home' },
   // The session detail belongs to "Termine" in the navigation.
   { name: 'portal-sessions', label: 'Termine', icon: 'pi pi-calendar', also: ['portal-session'] },
   { name: 'portal-data', label: 'Daten', icon: 'pi pi-id-card' },
+  // Parents decide on consents for their children.
+  ...(portal.me?.people.some(p => p.relation === 'child')
+    ? [{ name: 'portal-consents', label: 'Einwilligungen', icon: 'pi pi-check-square' }]
+    : []),
   { name: 'portal-profile', label: 'Profil', icon: 'pi pi-user' },
-]
+])
 
 const firstName = computed(() => portal.me?.account.first_name || auth.user?.first_name || '')
 const orgInitials = computed(() => {
@@ -59,6 +64,7 @@ onMounted(() => {
     </header>
 
     <main class="content"><RouterView /></main>
+    <footer class="portal-footer"><LegalLinks :legal="branding?.legal" /></footer>
 
     <nav class="nav" aria-label="Portal">
       <RouterLink v-for="item in items" :key="item.name" v-slot="{ href, navigate }" :to="{ name: item.name }" custom>
@@ -83,7 +89,7 @@ onMounted(() => {
 .actions { display: flex; align-items: center; gap: 8px; flex: none; }
 .logout { display: none; min-height: 44px; }
 .content { order: 2; flex: 1; width: 100%; max-width: 40rem; margin: 0 auto; padding: 16px 16px 88px; box-sizing: border-box; }
-.nav { order: 3; position: fixed; left: 0; right: 0; bottom: 0; height: 72px; box-sizing: content-box; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--p-content-background); border-top: 1px solid var(--p-content-border-color); padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+.nav { order: 3; position: fixed; left: 0; right: 0; bottom: 0; height: 72px; box-sizing: content-box; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--p-content-background); border-top: 1px solid var(--p-content-border-color); padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
 .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 44px; color: var(--p-text-muted-color); text-decoration: none; font-size: 12px; }
 .nav-link i { font-size: 22px; }
 .nav-link[aria-current='page'] { color: var(--p-primary-color); font-weight: 650; }
@@ -97,4 +103,5 @@ onMounted(() => {
   .nav-link[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--p-primary-color); }
   .content { padding-bottom: 32px; }
 }
+.portal-footer { display: flex; justify-content: center; padding: 1rem; }
 </style>

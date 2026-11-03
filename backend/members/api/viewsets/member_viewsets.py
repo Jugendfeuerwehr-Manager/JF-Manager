@@ -6,7 +6,6 @@ from datetime import date
 from io import BytesIO
 
 import openpyxl
-from django.db import transaction as db_transaction
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -15,7 +14,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -32,7 +31,9 @@ from members.api_serializers import (
     MemberListSerializer,
     ParentSerializer,
 )
+from members.field_access import hidden_fields
 from members.models import Attachment, Group, Member, Status
+from privacy.services.erasure import ErasureError, anonymize_member, erase_member
 from users.step_up import StepUpForExports
 
 
@@ -137,6 +138,13 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
     ordering = ["lastname", "name"]
     # Members use M2M so we override get_queryset below
     department_field = "departments"
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        # Anonymized former members stay for statistics but leave the everyday list.
+        if self.action == "list" and self.request.query_params.get("include_anonymized") not in ("1", "true"):
+            queryset = queryset.filter(anonymized_at__isnull=True)
+        return queryset
 
     def get_queryset(self):
         """Filter members by department using M2M lookup."""
@@ -363,7 +371,9 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             return self._member_stock_response()
 
         try:
-            self.perform_destroy(instance)
+            erase_member(instance)
+        except ErasureError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
         except ProtectedError:
             # Race-condition fallback if a transaction is created concurrently.
             transaction_count = self._get_member_transaction_count(instance)
@@ -421,6 +431,104 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             status=status.HTTP_409_CONFLICT,
         )
 
+    @extend_schema(
+        summary="Anonymize a member (DSGVO)",
+        description=(
+            "Removes everything that identifies the member and keeps the row for statistics "
+            "(gender, birth year, joined/left, departments, attendance, qualifications)."
+        ),
+        request=None,
+        responses={200: MemberDetailSerializer},
+    )
+    # Model permissions would map POST to add_member; the dedicated right is checked
+    # below against the member's own departments instead.
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def anonymize(self, request, pk=None):
+        member = self.get_object()
+        department_ids = list(member.departments.values_list("id", flat=True)) or [None]
+        if not any(
+            self._has_right_in_department(request.user, "members.anonymize_member", department_id)
+            for department_id in department_ids
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Anonymisieren dieses Mitglieds.")
+        try:
+            member = anonymize_member(member, by=request.user)
+        except ErasureError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_409_CONFLICT)
+        return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
+
+    class _LeaveSerializer(serializers.Serializer):
+        left_at = serializers.DateField(allow_null=True)
+        status_id = serializers.PrimaryKeyRelatedField(
+            queryset=Status.objects.all(), source="status", required=False, allow_null=True
+        )
+
+    @extend_schema(
+        summary="Record or withdraw a member's leave",
+        description="Sets the leave date (null withdraws it) and optionally a new status.",
+        request=_LeaveSerializer,
+        responses={200: MemberDetailSerializer},
+    )
+    # Model permissions would map POST to add_member; changing the member is what
+    # matters, checked against the member's own departments.
+    @action(detail=True, methods=["post"], url_path="leave", permission_classes=[IsAuthenticated])
+    def leave(self, request, pk=None):
+        from members.services.membership_leave import record_leave
+
+        member = self.get_object()
+        department_ids = list(member.departments.values_list("id", flat=True)) or [None]
+        if not any(
+            self._has_right_in_department(request.user, "members.change_member", department_id)
+            for department_id in department_ids
+        ):
+            raise PermissionDenied("Keine Berechtigung zum Bearbeiten dieses Mitglieds.")
+        if member.anonymized_at is not None:
+            return Response({"detail": "Das Mitglied ist bereits anonymisiert."}, status=status.HTTP_409_CONFLICT)
+        data = self._LeaveSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        member = record_leave(member, left_at=data.validated_data["left_at"], status=data.validated_data.get("status"))
+        return Response(MemberDetailSerializer(member, context=self.get_serializer_context()).data)
+
+    class _HealthSerializer(serializers.Serializer):
+        health_notes = serializers.CharField(allow_blank=True, max_length=4000)
+
+    @extend_schema(
+        summary="Health notes of a member (Art. 9 DSGVO)",
+        description="Separate from the member data; needs the health right and a fresh confirmation each time.",
+        request=_HealthSerializer,
+        responses={200: _HealthSerializer},
+    )
+    # Model permissions do not fit (PUT would mean change_member only); the health
+    # right is checked against the member's departments below, then step-up.
+    @action(detail=True, methods=["get", "put"], url_path="health", permission_classes=[IsAuthenticated])
+    def health(self, request, pk=None):
+        from members.field_access import has_member_right
+        from members.models import ExportAudit
+        from users.step_up import require_step_up
+
+        member = self.get_object()
+        needed = ["members.view_member_health"] + (["members.change_member"] if request.method == "PUT" else [])
+        if not all(has_member_right(request.user, member, permission) for permission in needed):
+            raise PermissionDenied("Keine Berechtigung für Gesundheitsangaben.")
+        require_step_up(request)
+        if request.method == "PUT":
+            data = self._HealthSerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            member.health_notes = data.validated_data["health_notes"]
+            member.save(update_fields=["health_notes"])
+        # Accountability: every disclosure and change of health data is logged.
+        ExportAudit.objects.create(
+            actor_id=request.user.pk,
+            action="health_change" if request.method == "PUT" else "health_view",
+            object_type="members.member",
+            object_id=member.pk,
+            department_ids=list(member.departments.values_list("id", flat=True)),
+            status_code=200,
+        )
+        response = Response({"health_notes": member.health_notes})
+        response["Cache-Control"] = "private, no-store"
+        return response
+
     class _DeleteWithStrategySerializer(serializers.Serializer):
         STRATEGY_CHOICES = ["unlink", "anonymize"]
         strategy = serializers.ChoiceField(choices=STRATEGY_CHOICES)
@@ -445,20 +553,9 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
 
         strategy = serializer.validated_data["strategy"]
         try:
-            with db_transaction.atomic():
-                from inventory.models import StorageLocation
-
-                member = Member.objects.select_for_update().get(pk=member.pk)
-                personal_locations = list(StorageLocation.objects.select_for_update().filter(member=member))
-                if self._has_member_stock(member):
-                    return self._member_stock_response()
-                for location in personal_locations:
-                    location.member = None
-                    location.is_member = False
-                    if strategy == "anonymize":
-                        location.name = f"Ehemaliges Mitglied #{location.pk}"
-                    location.save(update_fields=["member", "is_member", "name"])
-                member.delete()
+            erase_member(member, keep_inventory_name=strategy == "unlink")
+        except ErasureError:
+            return self._member_stock_response()
         except ProtectedError:
             transaction_count = self._get_member_transaction_count(member)
             return self._member_protected_response(member, transaction_count)
@@ -519,15 +616,20 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             cell.alignment = Alignment(horizontal="center")
 
         today = date.today()
+        field_context = {"request": request}
 
         for row_idx, member in enumerate(qs, start=2):
+            # Need-to-know: columns without the field right stay empty for this member.
+            hidden = hidden_fields(member, field_context)
             parents = list(visible_parents.filter(children=member)[:2])
             p1 = parents[0] if len(parents) > 0 else None
             p2 = parents[1] if len(parents) > 1 else None
 
             for col_idx, col_key in enumerate(selected_columns, start=1):
                 value: str | int = ""
-                if col_key == "name":
+                if col_key in hidden:
+                    value = ""
+                elif col_key == "name":
                     value = member.name
                 elif col_key == "lastname":
                     value = member.lastname

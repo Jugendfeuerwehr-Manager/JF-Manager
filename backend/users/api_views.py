@@ -15,6 +15,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from departments.mixins import DepartmentScopeViewSetMixin
 from orders.notifications.template_service import TemplateRenderer
 from users.people import person_accounts
 
@@ -76,13 +77,57 @@ def _send_external_auth_password_info(user):
     )
 
 
+def send_password_reset(email):
+    """Mail a reset link to an active local account with this address (no answer either way)."""
+    try:
+        user = User.objects.get(email__iexact=email, is_active=True)
+
+        # External users cannot reset their password in JF-Manager
+        if getattr(user, "auth_source", "local") != "local":
+            _send_external_auth_password_info(user)
+            # Return generic success so the source is not leaked
+        else:
+            # Generate token and uid
+            token = password_reset_token.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+            # Build reset URL (frontend URL)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+
+            # Send email
+            context = {"user": user, "reset_url": reset_url, "site_name": "JF-Manager"}
+
+            subject, html_message, plain_message = TemplateRenderer.render_email_content("password_reset", context)
+
+            send_mail(
+                subject,
+                plain_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+    except (User.DoesNotExist, User.MultipleObjectsReturned):
+        # Don't reveal that user doesn't exist
+        pass
+
+
 @extend_schema_view(
-    list=extend_schema(summary="List all users", description="Get a paginated list of all users"),
+    list=extend_schema(
+        summary="List colleagues",
+        description="Accounts sharing a department with the caller (all staff for organisation-wide scope).",
+    ),
     retrieve=extend_schema(summary="Get user details", description="Get detailed information about a specific user"),
     update=extend_schema(summary="Update user", description="Update user information"),
     partial_update=extend_schema(summary="Partially update user", description="Update specific user fields"),
 )
-class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class UserViewSet(
+    DepartmentScopeViewSetMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = User.objects.prefetch_related(
         "groups",
         "user_permissions",
@@ -99,9 +144,17 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
     ordering_fields = ["username", "email", "date_joined"]
     ordering = ["username"]
 
+    # Accounts are scoped through their role assignments: a colleague is visible
+    # only when they share a department with the caller. Portal accounts are
+    # parents/members, not colleagues, and stay hidden; account administration
+    # uses the admin endpoints instead.
+    department_field = "department_roles__department"
+
     def get_queryset(self):
+        scoped = super().get_queryset().exclude(account_kind=User.AccountKind.PORTAL)
+        own = User.objects.filter(pk=self.request.user.pk)
         # django-guardian's AnonymousUser is a system account, never a person to pick.
-        return person_accounts(super().get_queryset(), active_only=False)
+        return person_accounts((scoped | own).distinct(), active_only=False)
 
     # Allow POST so custom POST actions (e.g. request_password_reset, reset_password,
     # change_password) are reachable while still avoiding DELETE/PUT
@@ -157,38 +210,14 @@ class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Updat
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data["email"]
+        # Lookup and mail happen in the worker when one runs, so the response time
+        # does not reveal whether an account exists.
+        if getattr(settings, "RQ_QUEUES", None):
+            from users.tasks import send_password_reset_job
 
-        try:
-            user = User.objects.get(email__iexact=email, is_active=True)
-
-            # External users cannot reset their password in JF-Manager
-            if getattr(user, "auth_source", "local") != "local":
-                _send_external_auth_password_info(user)
-                # Return generic success so the source is not leaked
-            else:
-                # Generate token and uid
-                token = password_reset_token.make_token(user)
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-                # Build reset URL (frontend URL)
-                reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
-
-                # Send email
-                context = {"user": user, "reset_url": reset_url, "site_name": "JF-Manager"}
-
-                subject, html_message, plain_message = TemplateRenderer.render_email_content("password_reset", context)
-
-                send_mail(
-                    subject,
-                    plain_message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    html_message=html_message,
-                    fail_silently=False,
-                )
-        except (User.DoesNotExist, User.MultipleObjectsReturned):
-            # Don't reveal that user doesn't exist
-            pass
+            send_password_reset_job.delay(email)
+        else:
+            send_password_reset(email)
 
         # Always return success for security
         return Response(

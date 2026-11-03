@@ -1,14 +1,9 @@
 from django.contrib import admin
-from import_export import resources
-from import_export.admin import ImportExportModelAdmin
 
 from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 
-
-class MemberRessource(resources.ModelResource):
-    class Meta:
-        model = Member
-        skip_unchanged = True
+# No import/export here: bulk exports of personal data run through the API,
+# which scopes by department, asks for step-up and writes an ExportAudit.
 
 
 class EventsInline(admin.TabularInline):
@@ -19,7 +14,7 @@ class EventsInline(admin.TabularInline):
 
 # Register your models here.
 @admin.register(Member)
-class MemberAdmin(ImportExportModelAdmin):
+class MemberAdmin(admin.ModelAdmin):
     list_display = ["lastname", "name", "group", "status", "canSwimm", "birthday"]
     list_editable = ["group", "canSwimm", "status"]
     search_fields = ["name", "lastname"]
@@ -29,23 +24,23 @@ class MemberAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Parent)
-class ParentAdmin(ImportExportModelAdmin):
+class ParentAdmin(admin.ModelAdmin):
     search_fields = ["name"]
     ordering = ["lastname"]
 
 
 @admin.register(Group)
-class GroupAdmin(ImportExportModelAdmin):
+class GroupAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
 
 @admin.register(Status)
-class StatusAdmin(ImportExportModelAdmin):
+class StatusAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
 
 @admin.register(EventType)
-class EventTypeAdmin(ImportExportModelAdmin):
+class EventTypeAdmin(admin.ModelAdmin):
     search_fields = ["name"]
     ordering = ["name"]
     inlines = (EventsInline,)

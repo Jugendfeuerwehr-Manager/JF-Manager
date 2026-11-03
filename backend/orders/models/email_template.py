@@ -32,6 +32,7 @@ class EmailTemplate(models.Model):
         ("response_requested", "Teilnahme: Bitte um Rückmeldung"),
         ("eligibility_conflict", "Voraussetzung nicht mehr erfüllt"),
         ("parent_access_end", "Elternzugriff endet"),
+        ("consent_changed", "Einwilligung im Portal geändert"),
         # Legacy template types (for backward compatibility)
         ("order_confirmed", "Bestellung bestätigt (Legacy)"),
         ("order_shipped", "Bestellung versandt (Legacy)"),

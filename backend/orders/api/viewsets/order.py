@@ -15,6 +15,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.export_audit import ExportAuditMixin
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from orders.api.filters import OrderFilter
 from orders.api.permissions import CanManageOrders
@@ -27,9 +28,10 @@ from orders.api.serializers import (
 )
 from orders.models import Order, OrderItem, OrderItemStatusHistory, OrderStatus
 from orders.notifications import OrderNotificationService
+from users.step_up import StepUpForExports
 
 
-class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
+class OrderViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     """
     Comprehensive ViewSet for Order management
 
@@ -43,7 +45,14 @@ class OrderViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated, DepartmentRoleModelPermissions, CanManageOrders]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        DepartmentRoleModelPermissions,
+        CanManageOrders,
+        StepUpForExports,
+    ]
+    # The CSV carries member names and notes: confirmation and audit like the member export.
+    audited_export_actions = ("export",)
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = OrderFilter
     search_fields = ["member__name", "member__lastname", "notes", "items__item__name"]

@@ -79,6 +79,7 @@
           </template>
         </form>
         <p v-if="texts.help" class="login-help">{{ texts.help }}</p>
+        <LegalLinks :legal="branding?.legal" class="login-legal" />
       </div>
     </section>
   </main>
@@ -89,6 +90,7 @@ import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BrandMark from '@/components/common/BrandMark.vue'
+import LegalLinks from '@/components/privacy/molecules/LegalLinks.vue'
 import { oidcApi } from '@/api/oidc'
 import { brandingApi } from '@/api/branding'
 import type { OIDCPublicConfig } from '@/types/oidc'
@@ -281,4 +283,5 @@ h2 { font-size: 2rem; letter-spacing: -.03em; margin: 0 0 .7rem; }
 .divider { display: flex; align-items: center; gap: 1rem; color: var(--text-color-secondary); font-size: .8rem; }
 .divider::before, .divider::after { content: ''; height: 1px; background: var(--surface-border, #ddd); flex: 1; }
 @media (max-width: 760px) { .login-page { grid-template-columns: 1fr; } .login-intro { padding: 1.5rem; gap: 0; } .intro-copy, .intro-footer { display: none; } .login-panel { padding: 2.5rem 1.5rem; align-items: start; } }
+.login-legal { margin-top: 1.5rem; justify-content: center; display: flex; }
 </style>

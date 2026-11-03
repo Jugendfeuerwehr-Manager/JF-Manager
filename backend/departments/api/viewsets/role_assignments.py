@@ -18,7 +18,7 @@ from departments.role_assignments import (
     explain_roles,
     is_role_administrator,
 )
-from users.mfa_policy import mfa_required
+from users.mfa_policy import privileged_account
 from users.step_up import StepUpForWrites
 
 logger = logging.getLogger("security.roles")
@@ -80,7 +80,7 @@ class RoleAssignmentViewSet(viewsets.ViewSet):
                 "people": [
                     {"id": person.pk, "name": person.get_full_name() or person.username}
                     for person in people
-                    if admin or not mfa_required(person)
+                    if admin or not privileged_account(person)
                 ],
                 "departments": [{"id": d.pk, "name": d.name} for d in departments],
                 "organization_allowed": admin,

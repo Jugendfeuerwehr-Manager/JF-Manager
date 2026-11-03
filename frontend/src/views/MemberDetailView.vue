@@ -26,6 +26,8 @@
             <li v-if="member.birthday"><i class="pi pi-calendar" aria-hidden="true"></i><span>{{ member.age }} Jahre<span class="profile-head__extra"> · geb. {{ formatDate(member.birthday) }}</span></span></li>
             <li v-if="member.group"><i class="pi pi-users" aria-hidden="true"></i>{{ member.group.name }}</li>
             <li v-if="member.joined" class="profile-head__extra"><i class="pi pi-sign-in" aria-hidden="true"></i>Mitglied seit {{ formatDate(member.joined) }}</li>
+            <li v-if="member.left_at"><i class="pi pi-sign-out" aria-hidden="true"></i>Ausgetreten am {{ formatDate(member.left_at) }}<template v-if="member.anonymize_due"> · Anonymisierung am {{ formatDate(member.anonymize_due) }}</template></li>
+            <li v-if="member.anonymized_at"><i class="pi pi-eye-slash" aria-hidden="true"></i>Anonymisiert am {{ formatDate(member.anonymized_at) }}</li>
           </ul>
         </div>
         <div class="profile-head__actions">
@@ -60,6 +62,14 @@
       </section>
 
       <div class="detail-columns">
+        <div class="detail-main">
+        <!-- Health data sits in the main column: it matters at exercises and trips. -->
+        <HealthNotesCard
+          v-if="member.has_health_notes !== undefined"
+          :member-id="memberId"
+          :has-notes="!!member.has_health_notes"
+          :can-edit="authStore.hasPerm('members.change_member')"
+        />
         <section class="detail-card detail-tabs" aria-label="Bereiche">
           <Tabs v-model:value="activeTab" lazy scrollable>
             <TabList>
@@ -148,6 +158,7 @@
             </TabPanels>
           </Tabs>
         </section>
+        </div>
 
         <aside class="detail-aside">
           <section class="detail-card aside-card" aria-labelledby="emergency-heading">
@@ -202,11 +213,15 @@
             <ChangeLogCard kind="member" :record-id="memberId" />
           </section>
 
+          <section class="detail-card aside-card">
+            <ConsentPanel :subject="{ field: 'member', id: memberId }" :can-edit="authStore.hasPerm('members.change_member')" :can-export="authStore.hasPerm('members.export_member')" />
+          </section>
+
           <section v-if="canLinkAccounts" class="detail-card aside-card">
             <AccountLinkCard kind="member" :record-id="memberId" :record-name="`${member.name} ${member.lastname}`" />
           </section>
 
-          <section class="detail-card aside-card" aria-labelledby="notes-heading">
+          <section v-if="member.notes !== undefined" class="detail-card aside-card" aria-labelledby="notes-heading">
             <div class="aside-card__title">
               <i class="pi pi-shield" aria-hidden="true"></i>
               <h2 id="notes-heading">Hinweise und Bemerkungen</h2>
@@ -238,6 +253,16 @@
       @confirm="handleDeletionStrategy"
       @cancel="showDeletionDialog = false"
     />
+
+    <MemberLeaveDialog
+      v-if="member"
+      v-model="showLeaveDialog"
+      :member-name="member.full_name"
+      :joined="member.joined"
+      :statuses="membersStore.statuses"
+      :loading="membersStore.loading"
+      @confirm="handleLeave"
+    />
   </div>
 </template>
 
@@ -248,7 +273,8 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { membersApi, parentsApi } from '@/api/members'
+import { membersApi } from '@/api/members'
+import { useMembersStore } from '@/stores/members'
 import { qualificationsApi } from '@/api/qualifications'
 import { servicebookApi } from '@/api/servicebook'
 import { useAuthStore } from '@/stores/auth'
@@ -271,6 +297,8 @@ import Menu from 'primevue/menu'
 import PrivateAvatar from '@/components/common/PrivateAvatar.vue'
 import AccountLinkCard from '@/components/members/organisms/AccountLinkCard.vue'
 import ChangeLogCard from '@/components/members/organisms/ChangeLogCard.vue'
+import HealthNotesCard from '@/components/members/organisms/HealthNotesCard.vue'
+import ConsentPanel from '@/components/privacy/organisms/ConsentPanel.vue'
 import QualificationDuplicatesPanel from '@/components/members/organisms/QualificationDuplicatesPanel.vue'
 import StateView, { stateForError } from '@/components/common/StateView.vue'
 import StatusBadge, { type StatusSeverity } from '@/components/common/StatusBadge.vue'
@@ -282,6 +310,7 @@ import SpecialTasksManager from '@/components/members/profile/SpecialTasksManage
 import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.vue'
 import AttendanceTab from '@/components/members/profile/AttendanceTab.vue'
 import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
+import MemberLeaveDialog from '@/components/members/molecules/MemberLeaveDialog.vue'
 
 type SourceState = 'loading' | 'forbidden' | 'offline' | 'error' | null
 
@@ -290,6 +319,7 @@ const route = useRoute()
 const confirm = useConfirm()
 const toast = useToast()
 const authStore = useAuthStore()
+const membersStore = useMembersStore()
 // Account management links the member to the person's own staff account (PORTAL-04).
 const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuser'))
 // Reloads the qualification list after duplicates were merged (PORTAL-04.4).
@@ -314,16 +344,28 @@ const sources = reactive({
 })
 
 const showDeletionDialog = ref(false)
+const showLeaveDialog = ref(false)
 const deletionLoading = ref(false)
 const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 
 const memberId = Number(route.params.id)
 const RECENT_SERVICES = 14
 
-const menuItems = ref([
+const menuItems = computed(() => [
   {
     label: 'Aktionen',
     items: [
+      // Guided leave instead of a bare date field; the date starts the anonymization deadline.
+      ...(authStore.hasPerm('members.change_member') && !member.value?.anonymized_at
+        ? [
+            member.value?.left_at
+              ? { label: 'Austritt zurücknehmen', icon: 'pi pi-replay', command: () => confirmWithdrawLeave() }
+              : { label: 'Austritt erfassen', icon: 'pi pi-sign-out', command: () => openLeaveDialog() }
+          ]
+        : []),
+      ...(authStore.hasPerm('members.anonymize_member') && !member.value?.anonymized_at
+        ? [{ label: 'Anonymisieren', icon: 'pi pi-eye-slash', command: () => confirmAnonymize() }]
+        : []),
       {
         label: 'Löschen',
         icon: 'pi pi-trash',
@@ -532,7 +574,9 @@ const confirmDelete = () => {
   )
 
   confirm.require({
-    message: `Möchten Sie ${member.value?.full_name} wirklich löschen?`,
+    message: orphanedParents.length
+      ? `Möchten Sie ${member.value?.full_name} endgültig löschen? Elternteile ohne weiteres Kind werden mitgelöscht: ${orphanedParents.map((p) => p.full_name).join(', ')}.`
+      : `Möchten Sie ${member.value?.full_name} endgültig löschen?`,
     header: 'Löschen bestätigen',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Ja, löschen',
@@ -547,41 +591,7 @@ const confirmDelete = () => {
           detail: 'Mitglied wurde gelöscht',
           life: 3000
         })
-        if (orphanedParents.length > 0) {
-          const parentNames = orphanedParents.map((p) => p.full_name).join(', ')
-          confirm.require({
-            message: `${orphanedParents.length === 1 ? 'Der folgende Elternteil hat' : 'Die folgenden Elternteile haben'} nun kein verknüpftes Mitglied mehr: ${parentNames}. Möchten Sie ${orphanedParents.length === 1 ? 'diesen' : 'diese'} ebenfalls löschen?`,
-            header: 'Eltern ohne Kind',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'Ja, löschen',
-            rejectLabel: 'Behalten',
-            accept: async () => {
-              try {
-                await Promise.all(orphanedParents.map((p) => parentsApi.delete(p.id)))
-                toast.add({
-                  severity: 'success',
-                  summary: 'Eltern gelöscht',
-                  detail: `${orphanedParents.length === 1 ? 'Elternteil wurde' : 'Elternteile wurden'} gelöscht`,
-                  life: 3000
-                })
-              } catch {
-                toast.add({
-                  severity: 'error',
-                  summary: 'Fehler',
-                  detail: 'Elternteile konnten nicht gelöscht werden',
-                  life: 3000
-                })
-              } finally {
-                router.push('/members')
-              }
-            },
-            reject: () => {
-              router.push('/members')
-            }
-          })
-        } else {
-          router.push('/members')
-        }
+        router.push('/members')
       } catch (err: unknown) {
         const axiosErr = err as { response?: { status?: number; data?: { transaction_count?: number; member_name?: string } } }
         if (axiosErr.response?.status === 409 && axiosErr.response.data?.transaction_count !== undefined) {
@@ -598,6 +608,60 @@ const confirmDelete = () => {
             life: 3000
           })
         }
+      }
+    }
+  })
+}
+
+async function openLeaveDialog() {
+  if (!membersStore.statuses.length) await membersStore.fetchStatuses()
+  showLeaveDialog.value = true
+}
+
+async function handleLeave(payload: { left_at: string; status_id?: number }) {
+  try {
+    member.value = await membersStore.recordLeave(memberId, payload)
+    showLeaveDialog.value = false
+    const due = member.value.anonymize_due ? ` Anonymisierung am ${formatDate(member.value.anonymize_due)}.` : ''
+    toast.add({ severity: 'success', summary: 'Austritt erfasst', detail: `Ausgetreten am ${formatDate(payload.left_at)}.${due}`, life: 5000 })
+  } catch {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Austritt konnte nicht gespeichert werden', life: 5000 })
+  }
+}
+
+const confirmWithdrawLeave = () => {
+  confirm.require({
+    message: `Der Austritt von ${member.value?.full_name} wird zurückgenommen. Die geplante Anonymisierung entfällt. Einen geänderten Status bitte bei Bedarf unter „Bearbeiten“ zurücksetzen.`,
+    header: 'Austritt zurücknehmen',
+    icon: 'pi pi-replay',
+    acceptLabel: 'Zurücknehmen',
+    rejectLabel: 'Abbrechen',
+    accept: async () => {
+      try {
+        member.value = await membersStore.recordLeave(memberId, { left_at: null })
+        toast.add({ severity: 'success', summary: 'Austritt zurückgenommen', life: 3000 })
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Austritt konnte nicht zurückgenommen werden', life: 5000 })
+      }
+    }
+  })
+}
+
+// DSGVO: identity goes, statistics (gender, birth year, joined/left, attendance) stay.
+const confirmAnonymize = () => {
+  confirm.require({
+    message: `${member.value?.full_name} wird anonymisiert: Name, Kontaktdaten, Bemerkungen, Bild, Anhänge, Verlaufseinträge und Einwilligungen werden gelöscht, Elternteile ohne weiteres Kind ebenfalls. Erhalten bleiben Geschlecht, Jahrgang, Ein- und Austritt, Abteilung, Anwesenheit und Qualifikationen. Das lässt sich nicht rückgängig machen.`,
+    header: 'Mitglied anonymisieren',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Anonymisieren',
+    rejectLabel: 'Abbrechen',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        member.value = await membersStore.anonymizeMember(memberId)
+        toast.add({ severity: 'success', summary: 'Anonymisiert', detail: 'Personenbezogene Daten wurden entfernt', life: 3000 })
+      } catch {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Anonymisieren fehlgeschlagen', life: 5000 })
       }
     }
   })
@@ -790,8 +854,15 @@ async function handleDeletionStrategy(strategy: MemberDeletionStrategy) {
   gap: var(--jf-space-3);
 }
 
-.detail-tabs {
+.detail-main {
   flex: 2 1 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-3);
+  min-width: 0;
+}
+
+.detail-tabs {
   min-width: 0;
   overflow: hidden;
 }

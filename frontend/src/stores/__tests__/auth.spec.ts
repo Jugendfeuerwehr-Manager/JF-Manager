@@ -65,8 +65,6 @@ function createMockUser(overrides: Partial<UserInfo> = {}): UserInfo {
     last_login: '2026-04-12T00:00:00Z',
     avatar: null,
     avatar_url: null,
-    dsgvo_internal: true,
-    dsgvo_external: false,
     groups: [],
     permissions: [],
     department_roles: [],

@@ -11,6 +11,10 @@ class Parent(models.Model):
         Member,
         blank=True,
     )
+    # Portal: the other parent sees this contact only with consent (separated parents).
+    share_contact_with_coparent = models.BooleanField(
+        default=False, verbose_name="Kontakt für den anderen Elternteil im Portal freigeben"
+    )
     email = models.CharField(max_length=200, blank=True, default="", verbose_name="E-Mail 1")
     email2 = models.CharField(max_length=200, blank=True, default="", verbose_name="E-Mail 2")
     street = models.CharField(max_length=200, blank=True, default="", verbose_name="Straße")

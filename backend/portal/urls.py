@@ -4,6 +4,7 @@ from rest_framework.routers import SimpleRouter
 from notifications.inbox_views import PortalNotificationReadView, PortalNotificationsView
 
 from .account_link_views import AccountLinkViewSet
+from .consent_views import PortalConsentsView
 from .views import (
     BulkInviteView,
     ChangeRequestDecideView,
@@ -40,6 +41,7 @@ urlpatterns = [
     path("reviews/", ChangeRequestReviewListView.as_view(), name="portal-reviews"),
     path("reviews/<int:pk>/decide/", ChangeRequestDecideView.as_view(), name="portal-review-decide"),
     path("people/<int:member_id>/", PortalPersonView.as_view(), name="portal-person"),
+    path("consents/", PortalConsentsView.as_view(), name="portal-consents"),
     path("policies/", PortalPolicyView.as_view(), name="portal-policies"),
     path("policies/org/", PortalPolicyUpdateView.as_view(), name="portal-policy-org"),
     path("policies/<int:department_id>/", PortalPolicyUpdateView.as_view(), name="portal-policy-department"),

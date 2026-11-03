@@ -39,7 +39,7 @@ const parent = {
 function render() {
   return mount(ParentEditView, {
     attachTo: document.body,
-    global: { plugins: [PrimeVue], stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    global: { plugins: [PrimeVue], stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }, ConsentPanel: true } },
   })
 }
 

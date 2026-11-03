@@ -1,0 +1,13 @@
+# jf-manager logs (rendered by jfctl). Access logs contain IP addresses;
+# 14 days is the documented retention (DSGVO, data minimisation).
+@LOG@/*.log {
+    daily
+    rotate 14
+    maxage 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}

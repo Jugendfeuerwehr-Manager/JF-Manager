@@ -12,7 +12,6 @@ from rest_framework.test import APITestCase
 from departments.models import Department, UserDepartmentRole
 from jf_manager_backend.safe_exports import append_safe_row
 from members.models import ExportAudit, Member, MemberList, MemberListEntry, Parent
-from members.renderers import MemberExcelRenderer
 
 
 class ExportCellsTests(SimpleTestCase):
@@ -26,28 +25,6 @@ class ExportCellsTests(SimpleTestCase):
         self.assertEqual([cell.data_type for cell in cells], ["s", "s", "s", "s", "s", "n", "d"])
         self.assertEqual(cells[0].value, values[0])
 
-    def test_legacy_renderer_uses_the_same_text_contract(self):
-        data = dict.fromkeys(
-            [
-                "name",
-                "lastname",
-                "email",
-                "street",
-                "zip_code",
-                "city",
-                "phone",
-                "mobile",
-                "notes",
-                "identityCardNumber",
-                "status",
-            ],
-            "=1+1",
-        )
-        data.update(birthday="2030-01-02", joined=None, canSwimm=False, parents=[])
-        workbook = load_workbook(BytesIO(MemberExcelRenderer().render([data])))
-        self.assertEqual(workbook.active.cell(2, 1).data_type, "s")
-        self.assertEqual(workbook.active.cell(2, 3).data_type, "d")
-
 
 class ExportBoundaryTests(APITestCase):
     def setUp(self):
@@ -55,7 +32,8 @@ class ExportBoundaryTests(APITestCase):
         self.a = Department.objects.create(name="A", code="export-a")
         self.b = Department.objects.create(name="B", code="export-b")
         self.read = Group.objects.create(name="Export read only")
-        self.read.permissions.add(Permission.objects.get(codename="view_member"))
+        # The ZIP column is contact data (field right since DSGVO need-to-know).
+        self.read.permissions.add(*Permission.objects.filter(codename__in=["view_member", "view_member_contact"]))
         self.export = Group.objects.create(name="Export allowed")
         self.export.permissions.add(
             Permission.objects.get(codename="export_member"),

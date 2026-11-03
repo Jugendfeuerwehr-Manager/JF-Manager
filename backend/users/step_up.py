@@ -44,4 +44,7 @@ class StepUpForExports(BasePermission):
     """Spreadsheet exports of personal data need a fresh confirmation."""
 
     def has_permission(self, request, view):
-        return getattr(view, "action", None) != "export_excel" or require_step_up(request)
+        from jf_manager_backend.export_audit import EXPORT_ACTIONS
+
+        actions = getattr(view, "audited_export_actions", EXPORT_ACTIONS)
+        return getattr(view, "action", None) not in actions or require_step_up(request)

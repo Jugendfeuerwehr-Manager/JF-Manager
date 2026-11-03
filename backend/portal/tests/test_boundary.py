@@ -103,7 +103,10 @@ class PortalRouteAuditTests(TestCase):
     def test_staff_accounts_are_unaffected(self):
         staff = User.objects.create_user("betreuer", password="x")
         self.client.force_login(staff)
-        self.assertEqual(self.client.get("/api/v1/users/").status_code, 200)
+        response = self.client.get("/api/v1/users/")
+        self.assertEqual(response.status_code, 200)
+        # The staff directory never lists portal accounts (DSGVO).
+        self.assertNotIn("eltern", {row["username"] for row in response.json()["results"]})
 
 
 class PortalAllowlistTests(TestCase):
@@ -138,6 +141,7 @@ class PortalAllowlistTests(TestCase):
                 "customuser-request-password-reset",
                 "customuser-reset-password",
                 "public-branding",
+                "public-legal-page",
                 "oidc-public-config",
                 "csp-report",
                 "health_check",

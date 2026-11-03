@@ -4,6 +4,8 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.urls import reverse
 
+from jf_manager_backend.encrypted_fields import EncryptedTextField
+
 from .group import Group
 from .status import Status
 from .utils import get_file_path
@@ -11,7 +13,13 @@ from .utils import get_file_path
 
 class Member(models.Model):
     class Meta:
-        permissions = [("export_member", "Kann Mitglieder exportieren")]
+        permissions = [
+            ("export_member", "Kann Mitglieder exportieren"),
+            ("anonymize_member", "Kann Mitglieder anonymisieren"),
+            ("view_member_contact", "Kann Adresse und Kontaktdaten von Mitgliedern sehen"),
+            ("view_member_sensitive", "Kann Bemerkungen, Ausweisnummer und Schwimmfähigkeit sehen"),
+            ("view_member_health", "Kann Gesundheitsangaben von Mitgliedern sehen"),
+        ]
 
     class Gender(models.TextChoices):
         MALE = "male", "Männlich"
@@ -30,11 +38,17 @@ class Member(models.Model):
     phone = models.CharField(max_length=200, blank=True, default="", verbose_name="Telefon")
     mobile = models.CharField(max_length=200, blank=True, default="", verbose_name="Mobil")
     notes = models.TextField(blank=True, default="", verbose_name="Bemerkungen")
+    # Art. 9 DSGVO: encrypted at rest, delivered only by its own endpoint after a fresh confirmation.
+    health_notes = EncryptedTextField(blank=True, default="", verbose_name="Gesundheitsangaben")
     joined = models.DateField(
         "Eingetreten",
         null=True,
         blank=True,
     )
+    # DSGVO: the leave date starts the retention period; anonymized rows keep only
+    # what statistics need (gender, joined, left_at, birth year, departments).
+    left_at = models.DateField("Ausgetreten", null=True, blank=True)
+    anonymized_at = models.DateTimeField("Anonymisiert am", null=True, blank=True, editable=False)
     identityCardNumber = models.CharField(max_length=50, blank=True, default="", verbose_name="Ausweis Nr.")
     canSwimm = models.BooleanField(default=False, verbose_name="Kann schwimmen")
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)

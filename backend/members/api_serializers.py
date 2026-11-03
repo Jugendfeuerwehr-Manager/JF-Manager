@@ -5,6 +5,7 @@ from rest_framework import serializers
 from jf_manager_backend.media_fields import PrivateAvatarField
 from jf_manager_backend.private_media import private_media_url
 
+from .field_access import MemberFieldAccessMixin
 from .models import Attachment, Event, EventType, Group, Member, Parent, Status
 
 User = get_user_model()
@@ -40,6 +41,7 @@ class ParentSerializer(serializers.ModelSerializer):
             "zip_code",
             "city",
             "notes",
+            "share_contact_with_coparent",
             "children",
         ]
         read_only_fields = ["id", "full_name"]
@@ -78,7 +80,7 @@ def visible_parent_data(member, context, root_instance):
 
 
 @extend_schema_serializer(component_name="MemberSummary")
-class MemberListSerializer(serializers.ModelSerializer):
+class MemberListSerializer(MemberFieldAccessMixin, serializers.ModelSerializer):
     """Lightweight serializer for list views"""
 
     status = StatusSerializer(read_only=True)
@@ -104,6 +106,8 @@ class MemberListSerializer(serializers.ModelSerializer):
             "mobile",
             "city",
             "joined",
+            "left_at",
+            "anonymized_at",
             "gender",
             "status",
             "group",
@@ -112,7 +116,7 @@ class MemberListSerializer(serializers.ModelSerializer):
             "has_alert",
             "department_ids",
         ]
-        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "has_alert"]
+        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "has_alert", "anonymized_at"]
 
     @extend_schema_field(serializers.URLField(allow_null=True))
     def get_avatar_url(self, obj):
@@ -136,7 +140,7 @@ class MemberListSerializer(serializers.ModelSerializer):
             return False
 
 
-class MemberDetailSerializer(serializers.ModelSerializer):
+class MemberDetailSerializer(MemberFieldAccessMixin, serializers.ModelSerializer):
     avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
     """Detailed serializer for single member views"""
 
@@ -152,6 +156,8 @@ class MemberDetailSerializer(serializers.ModelSerializer):
     age = serializers.IntegerField(source="get_age", read_only=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar_url = serializers.SerializerMethodField()
+    has_health_notes = serializers.SerializerMethodField()
+    anonymize_due = serializers.SerializerMethodField()
 
     class Meta:
         model = Member
@@ -170,6 +176,8 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             "mobile",
             "notes",
             "joined",
+            "left_at",
+            "anonymized_at",
             "identityCardNumber",
             "canSwimm",
             "gender",
@@ -182,8 +190,10 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             "avatar",
             "avatar_url",
             "departments",
+            "has_health_notes",
+            "anonymize_due",
         ]
-        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url"]
+        read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "anonymized_at"]
 
     def get_avatar_url(self, obj):
         if obj.avatar:
@@ -192,11 +202,19 @@ class MemberDetailSerializer(serializers.ModelSerializer):
                 return private_media_url("member-avatar", obj.pk, request)
         return None
 
+    def get_has_health_notes(self, obj) -> bool:
+        return bool(obj.health_notes)
+
+    def get_anonymize_due(self, obj):
+        from members.services.membership_leave import anonymize_due
+
+        return anonymize_due(obj)
+
     def get_parents(self, obj):
         return visible_parent_data(obj, self.context, self.root.instance)
 
 
-class MemberCreateUpdateSerializer(serializers.ModelSerializer):
+class MemberCreateUpdateSerializer(MemberFieldAccessMixin, serializers.ModelSerializer):
     avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
     """Serializer for create/update operations"""
 
@@ -245,6 +263,7 @@ class MemberCreateUpdateSerializer(serializers.ModelSerializer):
             "mobile",
             "notes",
             "joined",
+            "left_at",
             "identityCardNumber",
             "canSwimm",
             "gender",

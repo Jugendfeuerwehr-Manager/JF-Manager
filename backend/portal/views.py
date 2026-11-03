@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from departments.models import Department
 from members.models import Member, Parent
 from participation.throttles import PortalWriteThrottle
+from privacy.consent_kinds import PHOTO_KINDS
 from users.auth_security import PasswordActionThrottle
 from users.session_views import SessionCsrfMixin
 
@@ -155,13 +156,17 @@ class InvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 class InvitationAcceptView(SessionCsrfMixin, APIView):
-    """Public: GET ?token= shows whom an invitation is for, POST sets the password."""
+    """Public: GET shows whom an invitation is for, POST sets the password.
+
+    GET reads the token from the ``X-Invitation-Token`` header, never from the
+    query string: URLs end up in proxy and web server logs (DSGVO).
+    """
 
     throttle_classes = [PasswordActionThrottle]
 
     def get(self, request):
         try:
-            invitation = open_invitation(request.query_params.get("token", ""))
+            invitation = open_invitation(request.headers.get("X-Invitation-Token", ""))
         except InvitationError as error:
             return Response({"detail": error.detail, "code": error.code}, status=error.status)
         return Response({"email": invitation.email, "kind": invitation.kind, "expires_at": invitation.expires_at})
@@ -171,7 +176,11 @@ class InvitationAcceptView(SessionCsrfMixin, APIView):
         data = InvitationAcceptSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         try:
-            user = accept(data.validated_data["token"], data.validated_data["password"])
+            user = accept(
+                data.validated_data["token"],
+                data.validated_data["password"],
+                photo_consents=[kind for kind in PHOTO_KINDS if data.validated_data[kind]],
+            )
         except InvitationError as error:
             field = "password" if error.code == "password" else "detail"
             return Response({field: error.detail, "code": error.code}, status=error.status)

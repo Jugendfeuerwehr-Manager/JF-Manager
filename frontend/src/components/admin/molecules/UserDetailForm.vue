@@ -112,23 +112,14 @@
       </div>
     </Fieldset>
 
-    <!-- DSGVO & Signature -->
-    <Fieldset legend="DSGVO & Signatur" :toggleable="true" :collapsed="true" class="mb-3">
+    <!-- Consents (DSGVO evidence) -->
+    <Fieldset v-if="!isNew && user?.id" legend="Einwilligungen" :toggleable="true" :collapsed="true" class="mb-3">
+      <ConsentPanel :subject="{ field: 'user', id: user.id }" :can-edit="authStore.hasPerm('users.change_customuser')" :can-export="authStore.hasPerm('users.view_customuser')" />
+    </Fieldset>
+
+    <!-- Signature -->
+    <Fieldset legend="Signatur" :toggleable="true" :collapsed="true" class="mb-3">
       <div class="formgrid grid">
-        <div class="field col-12 md:col-6 flex align-items-center gap-2">
-          <Checkbox v-model="localData.dsgvo_internal" input-id="dsgvo_internal" binary />
-          <label for="dsgvo_internal">
-            DSGVO intern
-            <PermissionInfoIcon description="Einwilligung zur internen Datenweitergabe." />
-          </label>
-        </div>
-        <div class="field col-12 md:col-6 flex align-items-center gap-2">
-          <Checkbox v-model="localData.dsgvo_external" input-id="dsgvo_external" binary />
-          <label for="dsgvo_external">
-            DSGVO extern
-            <PermissionInfoIcon description="Einwilligung zur externen Datenweitergabe." />
-          </label>
-        </div>
         <div class="field col-12">
           <label>E-Mail Signatur</label>
           <p class="text-xs text-color-secondary mt-0 mb-2">Wird automatisch an System-E-Mails angehängt.</p>
@@ -181,6 +172,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import PermissionInfoIcon from '@/components/admin/atoms/PermissionInfoIcon.vue'
 import TiptapEditor from '@/components/emails/organisms/TiptapEditor.vue'
+import ConsentPanel from '@/components/privacy/organisms/ConsentPanel.vue'
 import type { AdminUserDetail, AdminUserWrite } from '@/types/admin'
 
 interface Props {
@@ -228,8 +220,6 @@ function buildDefault(): AdminUserWrite & { password?: string } {
     is_staff: false,
     is_active: true,
     is_superuser: false,
-    dsgvo_internal: false,
-    dsgvo_external: false,
     email_signature: '',
     group_ids: [],
     password: '',
@@ -250,8 +240,6 @@ function fromUser(u: AdminUserDetail): AdminUserWrite & { password?: string } {
     is_staff: u.is_staff,
     is_active: u.is_active,
     is_superuser: u.is_superuser,
-    dsgvo_internal: u.dsgvo_internal ?? false,
-    dsgvo_external: u.dsgvo_external ?? false,
     email_signature: u.email_signature ?? '',
     group_ids: u.groups.map((g) => g.id),
     password: '',

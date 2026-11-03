@@ -11,6 +11,7 @@ from collections import defaultdict
 from django.conf import settings
 from django.core.mail import send_mail
 
+from jf_manager_backend.log_safety import mask_email
 from users.models import CustomUser
 
 from ..models import Order, OrderItem, OrderStatus
@@ -432,7 +433,7 @@ class OrderNotificationService(BaseNotificationService):
 
             except Exception as e:
                 NotificationLogger.mark_as_failed(log_entry, str(e))
-                logger.error(f"Failed to send email to {recipient_email}: {e}")
+                logger.error(f"Failed to send email to {mask_email(recipient_email)}: {e}")
 
         return success_count > 0
 

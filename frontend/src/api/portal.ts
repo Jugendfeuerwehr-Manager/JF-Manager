@@ -54,6 +54,8 @@ export interface AcceptInvitationPayload {
   password: string
   password_confirm: string
   privacy_accepted: boolean
+  photo_internal?: boolean
+  photo_public?: boolean
 }
 
 export type PortalRegistrationState =
@@ -153,7 +155,16 @@ export interface PortalNotice {
  */
 let personBase: '/portal' | '/my' = '/portal'
 
+import type { ConsentStatus, PortalConsentOverview } from '@/types/privacy'
+
 export const portalApi = {
+  /** Consents per child; every change is logged as a new row (DSGVO Art. 7). */
+  consents() {
+    return apiClient.get<PortalConsentOverview>('/portal/consents/')
+  },
+  changeConsent(data: { member: number, kind: string, status: ConsentStatus }) {
+    return apiClient.post<PortalConsentOverview>('/portal/consents/', data)
+  },
   useBase(base: '/portal' | '/my') {
     personBase = base
   },
@@ -176,7 +187,8 @@ export const portalApi = {
     return apiClient.post<PortalAbsenceResult>(`${personBase}/absences/`, data)
   },
   invitationInfo(token: string) {
-    return apiClient.get<InvitationInfo>('/portal/invitations/accept/', { params: { token } })
+    // Header instead of query string: URLs end up in server logs.
+    return apiClient.get<InvitationInfo>('/portal/invitations/accept/', { headers: { 'X-Invitation-Token': token } })
   },
   acceptInvitation(data: AcceptInvitationPayload) {
     return apiClient.post<{ username: string }>('/portal/invitations/accept/', data)

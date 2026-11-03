@@ -74,10 +74,24 @@
               :invalid="!!fieldError('privacy_accepted')"
               :aria-describedby="fieldError('privacy_accepted') ? 'accept-privacy-error' : undefined"
             />
-            <label for="accept-privacy">Ich habe den Datenschutzhinweis zur Kenntnis genommen und bin mit der Verarbeitung meiner Daten für die Organisation der Dienste einverstanden.</label>
+            <label for="accept-privacy">
+              Ich habe die <a href="/datenschutz" target="_blank" rel="noopener">Datenschutzhinweise</a> gelesen.
+            </label>
           </div>
           <small v-if="fieldError('privacy_accepted')" id="accept-privacy-error" class="err" role="alert">{{ fieldError('privacy_accepted') }}</small>
         </div>
+
+        <fieldset class="field photo-consents">
+          <legend>Fotos (freiwillig, jederzeit widerrufbar)</legend>
+          <div class="check touch">
+            <Checkbox v-model="photoInternal" input-id="accept-photo-internal" binary />
+            <label for="accept-photo-internal">Fotos {{ photoSubject }} dürfen intern verwendet werden (App, Aushang, Gruppen).</label>
+          </div>
+          <div class="check touch">
+            <Checkbox v-model="photoPublic" input-id="accept-photo-public" binary />
+            <label for="accept-photo-public">Fotos {{ photoSubject }} dürfen öffentlich verwendet werden (Website, Presse, soziale Medien).</label>
+          </div>
+        </fieldset>
 
         <Message v-if="store.acceptError" severity="error" :closable="false">{{ store.acceptError }}</Message>
 
@@ -88,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
@@ -104,6 +118,9 @@ const store = usePortalStore()
 const password = ref('')
 const passwordConfirm = ref('')
 const privacy = ref(false)
+const photoInternal = ref(false)
+const photoPublic = ref(false)
+const photoSubject = computed(() => (store.invitation?.kind === 'parent' ? 'meines Kindes / meiner Kinder' : 'von mir'))
 const token = ref('')
 
 function fieldError(name: string) {
@@ -111,8 +128,13 @@ function fieldError(name: string) {
 }
 
 onMounted(() => {
+  // New links carry the token in the fragment (never sent to the server);
+  // links mailed before that still use ?token=.
+  const fromHash = new URLSearchParams(route.hash.replace(/^#/, '')).get('token')
   const raw = route.query.token
-  token.value = Array.isArray(raw) ? (raw[0] ?? '') : (raw ?? '')
+  token.value = fromHash ?? (Array.isArray(raw) ? (raw[0] ?? '') : (raw ?? ''))
+  // Drop the token from the address bar, history and later Referer headers.
+  void router.replace({ path: route.path })
   void store.loadInvitation(token.value)
 })
 
@@ -122,6 +144,8 @@ async function submit() {
     password: password.value,
     password_confirm: passwordConfirm.value,
     privacy_accepted: privacy.value,
+    photo_internal: photoInternal.value,
+    photo_public: photoPublic.value,
   })
 }
 </script>
@@ -156,6 +180,8 @@ async function submit() {
 .field label { font-weight: 600; }
 .check { display: flex; gap: 0.75rem; align-items: flex-start; min-height: 44px; }
 .check label { font-weight: 400; overflow-wrap: anywhere; }
+.photo-consents { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.photo-consents legend { font-weight: 600; margin-bottom: 0.25rem; }
 .err { color: var(--p-red-500); }
 .state { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; text-align: center; padding: 1rem 0; }
 .state h2 { margin: 0; font-size: 1.25rem; }

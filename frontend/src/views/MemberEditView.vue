@@ -239,6 +239,25 @@
                 />
                 <p v-if="errors.joined" class="field__error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.joined }}</p>
               </div>
+
+              <div class="field">
+                <label for="left_at">Austrittsdatum <span class="field__optional">(TT.MM.JJJJ)</span></label>
+                <Calendar
+                  input-id="left_at"
+                  :model-value="formData.left_at"
+                  date-format="dd.mm.yy"
+                  :show-icon="true"
+                  :max-date="new Date()"
+                  update-model-type="date"
+                  :invalid="!!errors.left_at"
+                  aria-describedby="left-at-hint"
+                  @update:model-value="(val: Date | Date[] | (Date | null)[] | null | undefined) => onDatePick('left_at', val)"
+                  @input="(e: Event) => onDateTextInput('left_at', e)"
+                  @blur="(e: { value: string }) => commitDateField('left_at', e.value)"
+                />
+                <p id="left-at-hint" class="field__hint">Startet die Aufbewahrungsfrist: danach wird das Mitglied automatisch anonymisiert (Einstellungen → Datenschutz).</p>
+                <p v-if="errors.left_at" class="field__error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.left_at }}</p>
+              </div>
             </div>
 
             <fieldset v-if="statusOptions.length" class="choice-group">
@@ -262,7 +281,7 @@
             <div class="field">
               <label for="notes">Bemerkungen</label>
               <Textarea id="notes" v-model="formData.notes" rows="4" auto-resize aria-describedby="notes-hint" />
-              <p id="notes-hint" class="hint">Sichtbar für alle, die dieses Mitglied ansehen dürfen. In der Detailansicht erst auf Abruf eingeblendet.</p>
+              <p id="notes-hint" class="hint">Nur für Berechtigte mit Zugriff auf vertrauliche Angaben, in der Detailansicht erst auf Abruf eingeblendet. Keine Gesundheitsdaten hier eintragen – dafür gibt es im Profil die geschützten Gesundheitsangaben.</p>
             </div>
           </section>
 
@@ -457,6 +476,7 @@ const formData = reactive({
   mobile: '',
   notes: '',
   joined: null as Date | null,
+  left_at: null as Date | null,
   identityCardNumber: '',
   canSwimm: false,
   status: null as number | null,
@@ -470,12 +490,14 @@ const errors = reactive({
   name: '',
   lastname: '',
   birthday: '',
-  joined: ''
+  joined: '',
+  left_at: ''
 })
 
 // Raw text the user is currently typing into the date fields, used to validate on blur/submit
 const birthdayText = ref('')
 const joinedText = ref('')
+const leftAtText = ref('')
 
 const statusOptions = computed(() => membersStore.statusOptions)
 const groupOptions = computed(() => membersStore.groupOptions)
@@ -502,14 +524,14 @@ const initials = computed(() => `${formData.name[0] ?? ''}${formData.lastname[0]
 const selectedStatus = computed(() => membersStore.statuses.find((status) => status.id === formData.status) ?? null)
 const reachableNumber = (parent: Parent) => parent.mobile || parent.phone || ''
 
-const snapshot = () => JSON.stringify({ ...formData, birthday: birthdayText.value, joined: joinedText.value })
+const snapshot = () => JSON.stringify({ ...formData, birthday: birthdayText.value, joined: joinedText.value, left_at: leftAtText.value })
 const isDirty = computed(() => !!avatarFile.value || (savedSnapshot.value !== '' && snapshot() !== savedSnapshot.value))
 
 const sections = computed(() => [
   { id: 'section-master', label: 'Stammdaten', errors: [errors.name, errors.lastname, errors.birthday].filter(Boolean).length },
   { id: 'section-contact', label: 'Kontakt', errors: 0 },
   ...(isEditMode.value ? [{ id: 'section-parents', label: 'Erziehungsberechtigte', errors: 0 }] : []),
-  { id: 'section-membership', label: 'Mitgliedschaft', errors: errors.joined ? 1 : 0 },
+  { id: 'section-membership', label: 'Mitgliedschaft', errors: (errors.joined ? 1 : 0) + (errors.left_at ? 1 : 0) },
   { id: 'section-notes', label: 'Hinweise', errors: 0 },
   { id: 'section-photo', label: 'Profilbild', errors: 0 },
 ])
@@ -523,7 +545,7 @@ function goToSection(id: string) {
 }
 
 function focusFirstError() {
-  const firstInvalid = ['name', 'lastname', 'birthday', 'joined'].find((field) => errors[field as keyof typeof errors])
+  const firstInvalid = ['name', 'lastname', 'birthday', 'joined', 'left_at'].find((field) => errors[field as keyof typeof errors])
   if (!firstInvalid) return
   const input = document.getElementById(firstInvalid)
   input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -560,6 +582,7 @@ onMounted(async () => {
         mobile: member.mobile,
         notes: member.notes ?? '',
         joined: member.joined ? new Date(member.joined) : null,
+        left_at: member.left_at ? new Date(member.left_at) : null,
         identityCardNumber: member.identityCardNumber,
         canSwimm: member.canSwimm,
         status: member.status?.id || null,
@@ -578,6 +601,7 @@ onMounted(async () => {
 
       birthdayText.value = formatDateGerman(formData.birthday)
       joinedText.value = formatDateGerman(formData.joined)
+      leftAtText.value = formatDateGerman(formData.left_at)
     } catch {
       toast.add({
         severity: 'error',
@@ -593,11 +617,12 @@ onMounted(async () => {
   savedSnapshot.value = snapshot()
 })
 
-type DateField = 'birthday' | 'joined'
+type DateField = 'birthday' | 'joined' | 'left_at'
 
 const dateFieldTexts: Record<DateField, typeof birthdayText> = {
   birthday: birthdayText,
   joined: joinedText,
+  left_at: leftAtText,
 }
 
 // Calendar popup selection always yields a valid Date (or null when cleared)
@@ -755,6 +780,10 @@ function validateForm(): boolean {
     isValid = false
   }
 
+  if (!commitDateField('left_at', leftAtText.value)) {
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -799,6 +828,8 @@ async function handleSubmit() {
         formDataToSend.append('joined', joinedStr)
       }
     }
+    // Always sent, so clearing the leave date (re-entry) reaches the server.
+    formDataToSend.append('left_at', formData.left_at ? (toIsoDateLocal(formData.left_at) ?? '') : '')
     if (formData.identityCardNumber) formDataToSend.append('identityCardNumber', formData.identityCardNumber)
     if (formData.gender) formDataToSend.append('gender', formData.gender)
     formDataToSend.append('canSwimm', String(formData.canSwimm))
@@ -1066,6 +1097,12 @@ onBeforeUnmount(closeCamera)
 
 .field__optional {
   font-weight: 400;
+  color: var(--jf-color-text-muted);
+}
+
+.field__hint {
+  margin: 0;
+  font-size: 13px;
   color: var(--jf-color-text-muted);
 }
 

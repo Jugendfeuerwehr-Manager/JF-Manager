@@ -132,6 +132,79 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
+  // Health notes are fetched only on explicit request (step-up) and kept per member.
+  const healthNotes = ref<Record<number, string>>({})
+  const healthLoading = ref(false)
+  const healthError = ref<string | null>(null)
+
+  async function fetchHealthNotes(id: number) {
+    healthLoading.value = true
+    healthError.value = null
+    try {
+      healthNotes.value = { ...healthNotes.value, [id]: (await membersApi.health(id)).data.health_notes }
+      return true
+    } catch (err) {
+      healthError.value = getApiErrorMessage(err, 'Gesundheitsangaben konnten nicht geladen werden')
+      return false
+    } finally {
+      healthLoading.value = false
+    }
+  }
+
+  async function saveHealthNotes(id: number, text: string) {
+    healthLoading.value = true
+    healthError.value = null
+    try {
+      healthNotes.value = { ...healthNotes.value, [id]: (await membersApi.saveHealth(id, text)).data.health_notes }
+      return true
+    } catch (err) {
+      healthError.value = getApiErrorMessage(err, 'Gesundheitsangaben konnten nicht gespeichert werden')
+      return false
+    } finally {
+      healthLoading.value = false
+    }
+  }
+
+  function forgetHealthNotes(id: number) {
+    const { [id]: _removed, ...rest } = healthNotes.value
+    healthNotes.value = rest
+  }
+
+  /** Record or withdraw a leave; the leave date starts the anonymization deadline. */
+  async function recordLeave(id: number, data: { left_at: string | null; status_id?: number }) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await membersApi.leave(id, data)
+      if (currentMember.value?.id === id) currentMember.value = response.data
+      const index = members.value.findIndex((m) => m.id === id)
+      if (index !== -1) members.value[index] = response.data
+      return response.data
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Austritt konnte nicht gespeichert werden')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** DSGVO: replace identifying data; the row stays for statistics. */
+  async function anonymizeMember(id: number) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await membersApi.anonymize(id)
+      if (currentMember.value?.id === id) currentMember.value = response.data
+      members.value = members.value.filter((m) => m.id !== id)
+      return response.data
+    } catch (err) {
+      error.value = getApiErrorMessage(err, 'Anonymisieren fehlgeschlagen')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function fetchStatuses() {
     try {
       const response = await statusesApi.list()
@@ -239,6 +312,14 @@ export const useMembersStore = defineStore('members', () => {
     createMember,
     updateMember,
     deleteMember,
+    anonymizeMember,
+    recordLeave,
+    healthNotes,
+    healthLoading,
+    healthError,
+    fetchHealthNotes,
+    saveHealthNotes,
+    forgetHealthNotes,
     fetchStatuses,
     fetchGroups,
     fetchEvents,

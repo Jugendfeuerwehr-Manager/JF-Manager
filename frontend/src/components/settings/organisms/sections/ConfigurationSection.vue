@@ -1,7 +1,9 @@
 <template>
   <section class="configuration-section">
-    <router-link to="/settings">← Einstellungen</router-link>
-    <h2>{{ category?.label || 'Einstellungen' }}</h2>
+    <template v-if="!embedded">
+      <router-link to="/settings">← Einstellungen</router-link>
+      <h2>{{ category?.label || 'Einstellungen' }}</h2>
+    </template>
     <p v-if="kind === 'training'">
       Standardwerte für neue Übungen und Bausteine. Bereits geplante Übungen bleiben erhalten.
     </p>
@@ -19,6 +21,10 @@
     <p v-if="kind === 'push'">
       Richte zuerst den Versandschlüssel ein und aktiviere anschließend Push. Jedes Gerät meldet
       sich zusätzlich im persönlichen Profil an.
+    </p>
+    <p v-if="kind === 'privacy'">
+      Nach Ablauf löscht ein nächtlicher Wartungsauftrag die Daten. Kürzere Fristen wirken bei der
+      nächsten Ausführung; Sicherungen enthalten gelöschte Daten noch bis zu ihrem eigenen Ablauf.
     </p>
     <p v-if="loading" role="status">Einstellungen werden geladen …</p>
     <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
@@ -201,7 +207,7 @@ import {
   type ConfigurationValue,
 } from '@/api/configuration'
 import { useClientConfiguration } from '@/composables/useClientConfiguration'
-const props = defineProps<{ kind: string }>()
+const props = defineProps<{ kind: string, embedded?: boolean }>()
 const category = ref<ConfigurationCategory | null>(null)
 const values = ref<Record<string, ConfigurationValue>>({})
 const form = ref<Record<string, ConfigurationValue>>({})

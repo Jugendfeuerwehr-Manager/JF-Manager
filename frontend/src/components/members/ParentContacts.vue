@@ -76,6 +76,7 @@
                 size="small"
                 severity="success"
                 outlined
+                :title="WHATSAPP_HINT"
                 @click="openWhatsApp(parent.mobile)"
               />
               <Button
@@ -115,6 +116,7 @@
           icon="pi pi-whatsapp"
           class="contact-option-btn"
           severity="success"
+          :title="WHATSAPP_HINT"
           @click="openWhatsApp(selectedParent.mobile)"
         />
         <Button
@@ -181,6 +183,9 @@ const showContactOptions = (parent: Parent) => {
   selectedParent.value = parent
   showContactDialog.value = true
 }
+
+// DSGVO: opening wa.me hands the number to Meta; say so before the click.
+const WHATSAPP_HINT = 'Öffnet WhatsApp: die Rufnummer wird dabei an WhatsApp (Meta) übermittelt.'
 
 const openWhatsApp = (phone: string) => {
   const cleanPhone = phone.replace(/\s/g, '')

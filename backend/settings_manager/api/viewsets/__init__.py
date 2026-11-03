@@ -14,6 +14,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from privacy.retention_settings import FIELDS as RETENTION_FIELDS
 from settings_manager.models import LDAPConfig, OIDCConfig
 from users.ldap_tls import apply_ldap_tls_options
 from users.step_up import StepUpForWrites
@@ -30,6 +31,7 @@ from ..serializers import (
     OIDCDiscoveryResultSerializer,
     OIDCSettingsSerializer,
     OrderSettingsSerializer,
+    PrivacySettingsSerializer,
     ServiceSettingsSerializer,
     TrainingSettingsSerializer,
     UserPermissionsSerializer,
@@ -86,6 +88,8 @@ class SettingsViewSet(viewsets.ViewSet):
         "oidc": {"prefix": "oidc", "fields": []},
         "security": {"prefix": "security", "fields": []},
         "push": {"prefix": "push", "fields": []},
+        # Retention periods; the legal texts live in the privacy app.
+        "privacy": {"prefix": "privacy", "fields": list(RETENTION_FIELDS)},
         "training": {
             "prefix": "training",
             "fields": ["training_start_time", "training_end_time", "default_block_duration_minutes"],
@@ -236,6 +240,10 @@ class SettingsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get", "patch"])
     def login(self, request):
         return self._preference_category(request, "login", LoginPageSettingsSerializer)
+
+    @action(detail=False, methods=["get", "patch"])
+    def privacy(self, request):
+        return self._preference_category(request, "privacy", PrivacySettingsSerializer)
 
     def _preference_category(self, request, category, serializer_class):
         if not self._check_category_permission(request.user, category, "view" if request.method == "GET" else "change"):

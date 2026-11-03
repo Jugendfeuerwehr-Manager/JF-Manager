@@ -10,6 +10,7 @@ const { auth, membersApi, qualificationsApi, servicebookApi } = vi.hoisted(() =>
   servicebookApi: { attendance: { getByMember: vi.fn() } },
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
+vi.mock('@/stores/members', () => ({ useMembersStore: () => ({ anonymizeMember: vi.fn(), error: null }) }))
 vi.mock('@/api/members', () => ({ membersApi, parentsApi: { delete: vi.fn() } }))
 vi.mock('@/api/qualifications', () => ({ qualificationsApi }))
 vi.mock('@/api/servicebook', () => ({ servicebookApi }))
@@ -39,7 +40,7 @@ function render() {
       stubs: {
         RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
         QualificationsManager: true, SpecialTasksManager: true, EventsManager: true,
-        AttendanceTab: true, MemberEquipmentTab: true, AttachmentsManager: true, MemberDeletionDialog: true, AccountLinkCard: true, ChangeLogCard: true, QualificationDuplicatesPanel: true,
+        AttendanceTab: true, MemberEquipmentTab: true, AttachmentsManager: true, MemberDeletionDialog: true, AccountLinkCard: true, ChangeLogCard: true, ConsentPanel: true, HealthNotesCard: true, QualificationDuplicatesPanel: true,
       },
     },
   })

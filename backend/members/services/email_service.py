@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 
 from jf_manager_backend.html_safety import escape_html_text, sanitize_rich_html
+from jf_manager_backend.log_safety import mask_email
 from members.models import EmailMessage, EmailRecipient, Group, Member, Parent
 
 logger = logging.getLogger(__name__)
@@ -468,7 +469,7 @@ class MemberEmailService:
                 successful += 1
 
             except Exception as e:
-                logger.error(f"Failed to send email to {recipient.email_address}: {e!s}")
+                logger.error(f"Failed to send email to {mask_email(recipient.email_address)}: {e!s}")
 
                 recipient.status = "failed"
                 recipient.error_message = str(e)[:1000]  # Limit error message length

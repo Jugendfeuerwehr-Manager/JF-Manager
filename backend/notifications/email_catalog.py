@@ -90,6 +90,28 @@ CATALOG = {
         [{"name": "link", "type": "object", "description": "Verknüpfung", "properties": ["member_name", "linked_by"]}],
         {"link": {"member_name": "Jana Krüger", "linked_by": "Alex Sommer"}},
     ),
+    "consent_changed": _type(
+        "Einwilligung im Portal geändert",
+        "Einwilligung {{ consent.status }}: {{ consent.person_name }}",
+        "important",
+        [
+            {
+                "name": "consent",
+                "type": "object",
+                "description": "Einwilligung (Art, erteilt/widerrufen, von wem, wann)",
+                "properties": ["person_name", "kind", "status", "by", "date"],
+            }
+        ],
+        {
+            "consent": {
+                "person_name": "Mia Becker",
+                "kind": "Fotos öffentlich (Website, Presse, soziale Medien)",
+                "status": "widerrufen",
+                "by": "Sandra Becker",
+                "date": "02.11.2026",
+            }
+        },
+    ),
     "cr_submitted": _type(
         "Änderungsantrag gestellt",
         "Änderungsantrag für {{ request.person_name }}",
@@ -166,13 +188,13 @@ CATALOG = {
         "important",
         [
             SESSION_VARIABLE,
-            {"name": "cancellations", "type": "list", "description": "Abmeldungen: name, reason_category, at"},
+            {"name": "cancellations", "type": "list", "description": "Abmeldungen: name (Vorname und Initiale), at"},
             {"name": "counts", "type": "object", "description": "Zähler", "properties": ["expected", "cancelled"]},
             {"name": "staffing", "type": "object", "description": "Besetzung", "properties": ["missing"]},
         ],
         {
             "session": SESSION_SAMPLE,
-            "cancellations": [{"name": "Mia Becker", "reason_category": "Krankheit", "at": "heute 16:40"}],
+            "cancellations": [{"name": "Mia B.", "at": "heute 16:40"}],
             "counts": {"expected": 11, "cancelled": 3},
             "staffing": {"missing": []},
         },

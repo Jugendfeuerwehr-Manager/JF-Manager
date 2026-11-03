@@ -28,6 +28,8 @@ class SettingsCategory(models.Model):
             ("change_ldap_settings", "Kann LDAP Einstellungen ändern"),
             ("view_oidc_settings", "Kann OIDC Einstellungen einsehen"),
             ("change_oidc_settings", "Kann OIDC Einstellungen ändern"),
+            ("view_privacy_settings", "Kann Datenschutz-Einstellungen einsehen"),
+            ("change_privacy_settings", "Kann Datenschutz-Einstellungen ändern"),
             ("view_all_settings", "Kann alle Einstellungen einsehen"),
             ("change_all_settings", "Kann alle Einstellungen ändern"),
         ]

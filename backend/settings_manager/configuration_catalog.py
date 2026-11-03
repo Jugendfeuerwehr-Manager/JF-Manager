@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from privacy.retention_settings import RETENTIONS
 from settings_manager.api import serializers as api_serializers
 from settings_manager.api.serializers.push_configuration import PushConfigurationSerializer
 from settings_manager.api.serializers.security_policy import SecurityPolicySerializer
@@ -22,8 +23,10 @@ CATEGORY_LABELS = {
     "oidc": "Single Sign-On",
     "security": "Sitzungsrichtlinien",
     "push": "Push-Benachrichtigungen",
+    "privacy": "Datenschutz",
 }
 FIELD_LABELS = {
+    **{retention.name: retention.label for retention in RETENTIONS},
     "email_credentials_unavailable": "SMTP-Passwort nicht entschlüsselbar",
     "title": "Anwendungsname",
     "slug": "Organisationsbezeichnung",
@@ -105,6 +108,7 @@ SERIALIZERS = {
             "order": "OrderSettingsSerializer",
             "ldap": "LDAPSettingsSerializer",
             "oidc": "OIDCSettingsSerializer",
+            "privacy": "PrivacySettingsSerializer",
         }.items()
     },
     "security": SecurityPolicySerializer,

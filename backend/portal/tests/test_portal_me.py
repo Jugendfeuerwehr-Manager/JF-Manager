@@ -84,7 +84,7 @@ class PortalSessionAndProfileTests(TestCase):
         for field, value in [
             ("city", "Musterstadt"),
             ("email_signature", "<p>x</p>"),
-            ("dsgvo_internal", True),
+            ("phone", "+49 170 0000000"),
             ("first_name", "X"),
             ("account_kind", "staff"),
         ]:

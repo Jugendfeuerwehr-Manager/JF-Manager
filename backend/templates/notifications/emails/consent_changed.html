@@ -1,0 +1,5 @@
+<p>Hallo {{ recipient.first_name }},</p>
+<p>{{ consent.by }} hat am {{ consent.date }} im Portal die Einwilligung <strong>{{ consent.kind }}</strong> für <strong>{{ consent.person_name }}</strong> {{ consent.status }}.</p>
+<p>Die Erklärung ist am Mitglied unter „Einwilligungen“ protokolliert.</p>
+{% include "notifications/emails/_actions.html" %}
+{% include "notifications/emails/_footer.html" %}

@@ -325,6 +325,21 @@ class OIDCGroupMappingSerializer(RoleMappingValidation, serializers.ModelSeriali
         return instance
 
 
+class PrivacySettingsSerializer(serializers.Serializer):
+    """DSGVO settings category: retention periods. The legal texts have their own
+    endpoints (privacy app)."""
+
+    def get_fields(self):
+        from privacy.retention_settings import MAXIMUM_DAYS, RETENTIONS
+
+        return {
+            retention.name: serializers.IntegerField(
+                required=False, min_value=retention.minimum, max_value=MAXIMUM_DAYS, help_text=retention.help_text
+            )
+            for retention in RETENTIONS
+        }
+
+
 class AllSettingsSerializer(serializers.Serializer):
     """
     Combined serializer for all settings
@@ -343,6 +358,7 @@ class AllSettingsSerializer(serializers.Serializer):
     order = OrderSettingsSerializer(required=False)
     ldap = LDAPSettingsSerializer(required=False)
     oidc = OIDCSettingsSerializer(required=False)
+    privacy = PrivacySettingsSerializer(required=False)
 
 
 class CategorySettingsUpdateSerializer(serializers.Serializer):
@@ -386,6 +402,7 @@ __all__ = [
     "LDAPSettingsSerializer",
     "MemberSettingsSerializer",
     "OrderSettingsSerializer",
+    "PrivacySettingsSerializer",
     "ServiceSettingsSerializer",
     "UserPermissionsSerializer",
 ]

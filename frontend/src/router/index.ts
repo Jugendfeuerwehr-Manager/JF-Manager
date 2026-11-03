@@ -17,6 +17,28 @@ const router = createRouter({
       component: () => import('@/views/OIDCCallbackView.vue'),
       meta: { requiresAuth: false }
     },
+    // Imprint and privacy notice: public, also without login (DSGVO / TMG).
+    {
+      path: '/impressum',
+      name: 'legal-imprint',
+      component: () => import('@/views/LegalPageView.vue'),
+      props: { kind: 'imprint' },
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/datenschutz',
+      name: 'legal-privacy',
+      component: () => import('@/views/LegalPageView.vue'),
+      props: { kind: 'privacy' },
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/nutzungsregeln',
+      name: 'legal-portal-terms',
+      component: () => import('@/views/LegalPageView.vue'),
+      props: { kind: 'portal_terms' },
+      meta: { requiresAuth: false }
+    },
     {
       path: '/passwort-festlegen',
       name: 'portal-invitation-accept',
@@ -373,6 +395,12 @@ const router = createRouter({
                 import('@/components/settings/organisms/sections/OrderSection.vue'),
             },
             {
+              path: 'privacy',
+              name: 'settings-privacy',
+              component: () =>
+                import('@/components/settings/organisms/sections/PrivacySection.vue'),
+            },
+            {
               path: 'ldap',
               name: 'settings-ldap',
               component: () =>
@@ -471,6 +499,7 @@ const router = createRouter({
         { path: 'termine', name: 'portal-sessions', component: () => import('@/views/portal/PortalSessionsView.vue') },
         { path: 'termine/:id(\\d+)', name: 'portal-session', component: () => import('@/views/portal/PortalSessionDetailView.vue'), props: route => ({ id: Number(route.params.id) }) },
         { path: 'daten', name: 'portal-data', component: () => import('@/views/portal/PortalDataView.vue') },
+        { path: 'einwilligungen', name: 'portal-consents', component: () => import('@/views/portal/PortalConsentsView.vue') },
         { path: 'profil', name: 'portal-profile', component: () => import('@/views/portal/PortalProfileView.vue') }
       ]
     },

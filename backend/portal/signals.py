@@ -19,11 +19,23 @@ class PortalAccountRoleDenied(PermissionDenied):
 
 
 def _release(field, instance):
-    """Drop a link that would point at nothing; otherwise detach the deleted record."""
+    """Drop a link that would point at nothing; otherwise detach the deleted record.
+
+    A portal account left without any record has nothing to see any more and is
+    deactivated with its sessions (DSGVO); the retention job deletes it later.
+    """
+    from .lifecycle import revoke_sessions
+
     other = "member" if field == "parent" else "parent"
     links = AccountLink.objects.filter(**{field: instance})
-    links.filter(**{f"{other}__isnull": True}).delete()
+    orphaned = links.filter(**{f"{other}__isnull": True})
+    users = list(User.objects.filter(account_link__in=orphaned, account_kind=User.AccountKind.PORTAL))
+    orphaned.delete()
     links.update(**{field: None})
+    for user in users:
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+        revoke_sessions(user)
 
 
 @receiver(pre_delete, sender=Parent)

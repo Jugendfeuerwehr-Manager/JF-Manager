@@ -19,6 +19,8 @@ Ergebnis und letzte erfolgreiche Sicherung stehen in `/var/lib/jf-manager/state/
 
 **Repository fehlt oder ist nicht lesbar:** `backup create`, `update` und `doctor` unterscheiden, ob das Repository fehlt, das Passwort falsch ist oder das Ziel nicht erreichbar ist. Die Prüfung läuft vor jedem Wartungsfenster. Ein fehlendes Repository legt jfctl selbst an, solange diese Installation noch keine Sicherung abgeschlossen hat. Fehlt es, obwohl schon gesichert wurde, bricht jfctl ab: Meist ist dann ein Laufwerk oder eine Freigabe nicht eingehängt. Nach der Prüfung legt `jfctl backup init` das Repository bewusst neu an.
 
+**Datenschutz:** Die Sicherung enthält `app.env` mit `FIELD_ENCRYPTION_KEY`. Wer Repository und Backup-Passwort hat, kann deshalb auch verschlüsselte Felder lesen, etwa Gesundheitsangaben. Backup-Passwort und Repository darum getrennt aufbewahren, das Repository nicht auf demselben Server belassen, und den Feldschlüssel zusätzlich offline sichern. Gelöschte Daten verschwinden aus den Sicherungen erst mit deren Ablauf ([data-retention.md](data-retention.md)).
+
 `jfctl backup list` zeigt Sicherungen mit Version und Art (`scheduled`, `manual`, `pre-update`, `pre-restore`). `jfctl backup verify [ID]` prüft das Repository (`restic check`, 10 % der Daten gelesen), liest die Sicherung vollständig aus und kontrolliert Prüfsumme und Lesbarkeit des Dumps (`pg_restore --list`), die enthaltenen Schlüssel und die Zahl der Uploaddateien.
 
 ## Wiederherstellung

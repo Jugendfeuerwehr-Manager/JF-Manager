@@ -50,12 +50,17 @@ class InvitationAcceptSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, max_length=128)
     password_confirm = serializers.CharField(write_only=True, max_length=128)
     privacy_accepted = serializers.BooleanField()
+    # Optional photo consents for the child(ren) or the member (Art. 7 DSGVO: separate, voluntary).
+    photo_internal = serializers.BooleanField(required=False, default=False)
+    photo_public = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password_confirm": "Die Passwörter stimmen nicht überein."})
         if not attrs["privacy_accepted"]:
-            raise serializers.ValidationError({"privacy_accepted": "Bitte den Datenschutzhinweis bestätigen."})
+            raise serializers.ValidationError(
+                {"privacy_accepted": "Bitte bestätigen, dass Sie die Datenschutzhinweise gelesen haben."}
+            )
         return attrs
 
 

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core.cache import cache
+from django.test import override_settings
 from rest_framework.test import APIClient, APITestCase
 
 from departments.models import Department, UserDepartmentRole
@@ -93,6 +94,9 @@ class StepUpTests(APITestCase):
         response = client.patch("/api/v1/settings/oidc/", {"provider_name": "Changed"}, format="json")
         self.assertEqual(response.json()["code"], "reauthentication_required")
 
+    # Session test about scope/step-up, not MFA (covered in privacy.tests.test_hardening).
+
+    @override_settings(MFA_REQUIRED_FOR_MEMBER_DATA=False)
     def test_spreadsheet_export_needs_step_up_and_is_audited(self):
         department = Department.objects.create(name="A", code="step-up-a")
         user = User.objects.create_user(username="exporter", password=PASSWORD)

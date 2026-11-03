@@ -9,7 +9,7 @@ from departments.assignment_sources import effective_group_ids
 from departments.delegation import delegation_approved, permission_names
 from departments.models import Department, RoleGrant
 from departments.role_comparison import compare_role_template
-from users.mfa_policy import mfa_required
+from users.mfa_policy import privileged_account
 
 ASSIGN = "departments.can_assign_roles"
 DELEGATE = "departments.can_delegate_roles"
@@ -62,7 +62,7 @@ def authorize_assignment(actor, target, template, department_id, operation):
         raise PermissionDenied("Eigene Rollen dürfen nicht über die Zuweisung geändert werden.")
     if not target.is_active or target.username == "AnonymousUser":
         raise PermissionDenied("Nur aktive persönliche Konten können ausgewählt werden.")
-    if not is_role_administrator(actor) and mfa_required(target):
+    if not is_role_administrator(actor) and privileged_account(target):
         raise PermissionDenied("Privilegierte Konten werden ausschließlich administrativ verwaltet.")
     if department_id is not None and not assignable_departments(actor).filter(pk=department_id).exists():
         raise PermissionDenied("Keine Zuweisungsberechtigung für diese Abteilung.")

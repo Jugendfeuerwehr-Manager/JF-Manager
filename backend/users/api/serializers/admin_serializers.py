@@ -17,11 +17,11 @@ def mfa_reset_blocker(user, actor=None):
     the console, so a hijacked admin session cannot strip another admin's
     second factor. Own factors are managed in the profile.
     """
-    from users.mfa_policy import mfa_required
+    from users.mfa_policy import privileged_account
 
     if actor is not None and actor.pk == user.pk:
         return "self"
-    if user.is_superuser or user.is_staff or mfa_required(user):
+    if user.is_superuser or user.is_staff or privileged_account(user):
         return "console_only"
     return None
 
@@ -160,8 +160,6 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_active",
             "is_superuser",
-            "dsgvo_internal",
-            "dsgvo_external",
             "email_signature",
             "theme_mode",
             "date_joined",
@@ -212,8 +210,6 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_active",
             "is_superuser",
-            "dsgvo_internal",
-            "dsgvo_external",
             "email_signature",
             "theme_mode",
             "password",
