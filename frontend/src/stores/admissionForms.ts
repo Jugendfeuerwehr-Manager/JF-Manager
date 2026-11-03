@@ -11,6 +11,7 @@ import type {
   FormSchema
 } from '@/types/admissions'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { cloneSchema } from '@/utils/admissionSchema'
 
 const HISTORY_LIMIT = 100
 
@@ -47,7 +48,7 @@ export const useAdmissionFormsStore = defineStore('admissionForms', () => {
 
   function adopt(form: AdmissionForm) {
     current.value = form
-    draft.value = structuredClone(form.draft_schema)
+    draft.value = cloneSchema(form.draft_schema)
     past.value = []
     future.value = []
     dirty.value = false

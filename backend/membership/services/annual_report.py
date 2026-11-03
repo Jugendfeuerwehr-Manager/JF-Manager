@@ -118,16 +118,18 @@ def _stock(periods, day, warnings=None):
 
 
 def _movements(periods, year, warnings):
+    """Movements of the year. Join or leave dates without a recorded movement (older data, the
+    leave date edited in the member form) count as "neu" or "sonstige" so stock and movements agree.
+    """
     rows = {key: _counter() for key, _ in MOVEMENT_ROWS}
     reasons = {value: 0 for value, _ in MembershipEvent.ExitReason.choices}
-    members = {member.pk: member for member in periods.members}
-    for member_id, events in periods.events.items():
-        member = members.get(member_id)
-        if member is None:
-            continue
+    for member in periods.members:
         gender = GENDERS.get(member.gender)
+        if gender is None:
+            continue
+        events = periods.events[member.pk]
         for event in events:
-            if event.date.year != year or event.kind not in rows or gender is None:
+            if event.date.year != year or event.kind not in rows:
                 continue
             _add(rows[event.kind], gender)
             if event.kind != Kind.EXIT_OTHER:
@@ -136,7 +138,22 @@ def _movements(periods, year, warnings):
                 reasons[event.exit_reason] += 1
             else:
                 warnings.append({"member": member.pk, "name": _label(member), "message": "Abgang ohne Grund"})
+        _implicit(member, events, periods, year, gender, rows, warnings)
     return rows, reasons
+
+
+def _implicit(member, events, periods, year, gender, rows, warnings):
+    entry, leaving = periods.entry(member), periods.exit(member)
+    has_join = any(event.kind in JOINS for event in events)
+    if not has_join and entry is not None and entry.year == year:
+        _add(rows["joined_new"], gender)
+        warnings.append(
+            {"member": member.pk, "name": _label(member), "message": "Eintritt ohne Zugangsart (als „neu“ gezählt)"}
+        )
+    has_exit = any(event.kind in EXITS and event.date == leaving for event in events)
+    if not has_exit and leaving is not None and leaving.year == year:
+        _add(rows["exit_other"], gender)
+        warnings.append({"member": member.pk, "name": _label(member), "message": "Austritt ohne Abgangsart und Grund"})
 
 
 def _previous(department, year, periods):

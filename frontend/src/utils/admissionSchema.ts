@@ -96,8 +96,13 @@ export function createElement(type: ElementType, schema: FormSchema): FormElemen
   return base
 }
 
+/** Deep copy; works on Vue's reactive proxies too (the schema is plain JSON). */
+export function cloneSchema<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
 function clone(schema: FormSchema): FormSchema {
-  return structuredClone(schema)
+  return cloneSchema(schema)
 }
 
 export function locate(schema: FormSchema, elementId: string): ElementLocation | null {

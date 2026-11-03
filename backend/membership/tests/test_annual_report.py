@@ -182,3 +182,28 @@ class AnnualReportApiTests(APITestCase):
         response = self.client.post(f"{self.URL}finalize/", body, format="json")
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["state"], "final")
+
+
+class ImplicitMovementTests(TestCase):
+    def test_dates_without_movements_still_balance(self):
+        jf = Department.objects.create(name="JF", code="ar-implicit")
+        status = Status.objects.create(name="Aktiv")
+        joined = Member.objects.create(
+            name="Alt", gender="male", birthday=date(2013, 1, 1), joined=date(2026, 3, 1), status=status
+        )
+        left = Member.objects.create(
+            name="Weg",
+            gender="female",
+            birthday=date(2012, 1, 1),
+            joined=date(2020, 1, 1),
+            left_at=date(2026, 5, 1),
+            status=status,
+        )
+        for member in (joined, left):
+            member.departments.add(jf)
+        data = annual_report.compute(jf, 2026)
+        movements = by_key(data["movements"])
+        self.assertEqual((movements["joined_new"]["m"], movements["exit_other"]["w"]), (1, 1))
+        self.assertTrue(data["checks"][1]["ok"] and data["checks"][3]["ok"], data["checks"])
+        messages = {warning["message"] for warning in data["warnings"]}
+        self.assertIn("Austritt ohne Abgangsart und Grund", messages)

@@ -120,6 +120,7 @@ import { useAdmissionFormsStore } from '@/stores/admissionForms'
 import { useAuthStore } from '@/stores/auth'
 import type { AdmissionFormUpdate, ElementLocation, ElementType, FormElement } from '@/types/admissions'
 import {
+  cloneSchema,
   addPage as addPageTo,
   addSection as addSectionTo,
   createElement,
@@ -269,7 +270,7 @@ function duplicateSelected() {
   const at = selectedLocation.value
   const element = selectedElement.value
   if (!at || !element) return
-  const copy = { ...structuredClone(element), id: newId(), key: element.key ? `${element.key}_kopie` : undefined }
+  const copy = { ...cloneSchema(element), id: newId(), key: element.key ? `${element.key}_kopie` : undefined }
   store.edit(insertElement(store.draft, { ...at, index: at.index + 1 }, copy))
   selectElement(copy.id)
 }
