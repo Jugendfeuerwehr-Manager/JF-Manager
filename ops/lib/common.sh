@@ -229,7 +229,7 @@ conf_load() {
     fi
     if [ -r "$JF_APP_ENV" ]; then
         local k
-        for k in DJANGO_SECRET_KEY FIELD_ENCRYPTION_KEY FIELD_ENCRYPTION_PREVIOUS_KEYS EMAIL_HOST_PASSWORD WEB_PUSH_PRIVATE_KEY; do
+        for k in DJANGO_SECRET_KEY FIELD_ENCRYPTION_KEY FIELD_ENCRYPTION_PREVIOUS_KEYS ADMISSIONS_SEAL_KEY EMAIL_HOST_PASSWORD WEB_PUSH_PRIVATE_KEY; do
             register_secret "$(kv_get "$JF_APP_ENV" "$k" || true)"
         done
     fi

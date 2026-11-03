@@ -8,7 +8,7 @@ Jede Vorlage erhält einen unveränderlichen Schlüssel, Anzeigenamen, Beschreib
 
 | Schlüssel | Anzeigename | Bereich | Anfangs delegierbar | Permission-Bausteine |
 | --- | --- | --- | --- | --- |
-| `youth_director` | Jugendwart | Organisation | nein | `member_editor`, `member_anonymizer`, `parent_editor`, `portal_inviter`, `portal_policy_editor`, `portal_reviewer`, `group_editor`, `list_editor`, `list_exporter`, `service_editor`, `training_editor`, `qualification_editor`, `task_editor`, `organization_scope`, `delegation`, `leadership_delegation` |
+| `youth_director` | Jugendwart | Organisation | nein | `member_editor`, `member_anonymizer`, `admission_editor`, `admission_committee`, `annual_reporter`, `parent_editor`, `portal_inviter`, `portal_policy_editor`, `portal_reviewer`, `group_editor`, `list_editor`, `list_exporter`, `service_editor`, `training_editor`, `qualification_editor`, `task_editor`, `organization_scope`, `delegation`, `leadership_delegation` |
 | `department_youth_director` | Abteilungsjugendwart | Abteilung | nein | Dieselben Fachbausteine ohne `organization_scope` und `leadership_delegation`, mit `delegation` |
 | `youth_leader` | Jugendleiter | Abteilung | ja, nach Freigabe | `member_reader`, `member_contact_reader`, `member_health_reader`, `parent_reader`, `group_reader`, `list_editor`, `service_editor`, `training_editor`, `qualification_reader` |
 | `supervisor` | Betreuer | Abteilung | ja, nach Freigabe | `member_reader`, `member_health_reader`, `parent_reader`, `service_reader`, `attendance_editor`, `training_reader` |
@@ -36,6 +36,9 @@ Die folgenden Namen existieren als Django-Modellpermissions. `view`/`add`/`chang
 | `portal_inviter` | `portal.invite_portal_account` (PORTAL-01.3) |
 | `portal_policy_editor` | `portal.view_portalpolicy`, `portal.change_portalpolicy` (PORTAL-02.1) |
 | `portal_reviewer` | `portal.review_changerequest` (PORTAL-03, D9) |
+| `admission_editor` | `admissions.view/add/change_admissionform`, `admissions.publish_admissionform`, `admissions.view/add/change_admissiontextblock`, `admissions.view/add/change_admissionvoucher`, `admissions.view_application`, `admissions.export_application`, `admissions.take_over_application`, `admissions.view/add/change_committeemeeting`; Übernahme verlangt zusätzlich `members.add_member` in der Abteilung |
+| `admission_committee` | `admissions.view_application`, `admissions.record_decision`, `admissions.view_committeemeeting`, `admissions.add_committeemeeting`; Beschlüsse werden versiegelt, Übernahme gehört nicht dazu |
+| `annual_reporter` | `membership.view/change_annualreport`, `membership.finalize_annualreport`, `membership.view/add/change_statisticsprofile` |
 | `group_reader` | `members.view_group` |
 | `group_editor` | `members.view_group`, `members.add_group`, `members.change_group` |
 | `list_editor` | `members.view_memberlist`, `members.add_memberlist`, `members.change_memberlist`, `members.view_memberlistentry`, `members.add_memberlistentry`, `members.change_memberlistentry` |
