@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { FormSchema } from '@/types/admissions'
+import type { BuilderReferences, FormSchema } from '@/types/admissions'
 import {
   addPage,
   ageOn,
   createElement,
+  elementFromPalette,
+  paletteItems,
+  targetLabel,
   insertElement,
   isVisible,
   issuesByElement,
@@ -78,5 +81,54 @@ describe('admission schema helpers', () => {
     expect(isVisible({ age_below: 18 }, {}, null)).toBe(true)
     expect(isVisible({ field: 'portal', equals: true }, { portal: true }, null)).toBe(true)
     expect(isVisible({ field: 'portal', equals: true }, {}, null)).toBe(false)
+  })
+})
+
+const references: BuilderReferences = {
+  fields: {
+    member: [
+      { key: 'member.name', label: 'Vorname', input_type: 'text', sensitive: false },
+      { key: 'member.gender', label: 'Geschlecht', input_type: 'select', sensitive: false }
+    ],
+    guardian: [],
+    extra: [
+      { key: 'member.extra.groesse', id: 4, label: 'T-Shirt-Größe', input_type: 'select', options: ['152', '164'], help_text: '', department: null }
+    ],
+    gender_options: []
+  },
+  legal_kinds: [{ value: 'privacy', label: 'Datenschutz' }],
+  consent_kinds: []
+}
+
+describe('palette', () => {
+  const emptyForm = (): FormSchema => ({ pages: [{ id: 'p', title: 'S', sections: [{ id: 's', title: 'A', elements: [] }] }] })
+
+  it('creates member and additional fields that know their destination', () => {
+    const name = elementFromPalette('member:member.name', emptyForm(), references)!
+    expect(name).toMatchObject({ type: 'text', target: 'member.name', key: 'vorname', required: true })
+    const size = elementFromPalette('extra:member.extra.groesse', emptyForm(), references)!
+    expect(size).toMatchObject({ type: 'select', target: 'member.extra.groesse' })
+    expect(size.options).toEqual([
+      { value: '152', label: '152' },
+      { value: '164', label: '164' }
+    ])
+    expect(targetLabel(size.target, references)).toBe('Zusatzfeld · T-Shirt-Größe')
+  })
+
+  it('greys out single-use blocks once they are in the form and refuses to add them again', () => {
+    const form = emptyForm()
+    form.pages[0]!.sections[0]!.elements.push(
+      elementFromPalette('member:member.name', form, references)!,
+      elementFromPalette('signature:applicant', form, references)!,
+      elementFromPalette('legal:privacy', form, references)!
+    )
+    const used = new Set(paletteItems(form, references).filter((item) => item.used).map((item) => item.id))
+    expect(used).toEqual(new Set(['member:member.name', 'signature:applicant', 'legal:privacy']))
+    expect(elementFromPalette('member:member.name', form, references)).toBeNull()
+    expect(elementFromPalette('consent', form, references)).not.toBeNull()
+  })
+
+  it('makes guardian signatures depend on the age', () => {
+    expect(elementFromPalette('signature:guardian_1', emptyForm(), references)!.visible_if).toEqual({ age_below: 18 })
   })
 })

@@ -50,6 +50,20 @@
             <option v-for="form in publishedForms" :key="form.id" :value="form.id">{{ form.title }}</option>
           </select>
         </AdmField>
+        <AdmField
+          v-if="selectedForm?.department === null"
+          input-id="v-department"
+          label="Antrag geht an"
+          hint="Das Formular gilt für die ganze Organisation; der Voucher legt die Abteilung fest."
+          required
+        >
+          <select id="v-department" v-model="draft.department" class="adm-input" required>
+            <option :value="null" disabled>Abteilung wählen</option>
+            <option v-for="department in departments.departments" :key="department.id" :value="department.id">
+              {{ department.name }}
+            </option>
+          </select>
+        </AdmField>
         <p v-if="!publishedForms.length" class="adm-page__lead">Zuerst ein Formular veröffentlichen.</p>
         <div class="adm-grid-2">
           <AdmField input-id="v-first" label="Vorname" hint="Wird im Formular vorausgefüllt.">
@@ -64,7 +78,7 @@
         </AdmField>
         <div class="adm-dialog__actions">
           <AdmButton variant="ghost" @click="dialog?.close()">Abbrechen</AdmButton>
-          <AdmButton variant="primary" type="submit" icon="pi pi-check" :loading="store.saving" :disabled="!draft.form">Erstellen</AdmButton>
+          <AdmButton variant="primary" type="submit" icon="pi pi-check" :loading="store.saving" :disabled="!draft.form || (selectedForm?.department === null && !draft.department)">Erstellen</AdmButton>
         </div>
       </form>
 
@@ -113,17 +127,25 @@ const dialog = ref<HTMLDialogElement | null>(null)
 const created = ref<CreatedVoucher | null>(null)
 const qrSvg = ref('')
 const copied = ref(false)
-const draft = reactive({ form: 0, vorname: '', nachname: '', valid_days: 60 })
+const draft = reactive<{ form: number; department: number | null; vorname: string; nachname: string; valid_days: number }>({
+  form: 0,
+  department: null,
+  vorname: '',
+  nachname: '',
+  valid_days: 60
+})
 
 const canCreate = computed(() => auth.hasPerm('admissions.add_admissionvoucher'))
 const canRevoke = computed(() => auth.hasPerm('admissions.change_admissionvoucher'))
 const publishedForms = computed(() => formsStore.forms.filter((form) => form.current_version && form.is_active))
+const selectedForm = computed(() => publishedForms.value.find((form) => form.id === draft.form))
 
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString('de-DE')
 const voucherUrl = (code: string) => `${window.location.origin}/aufnahme#code=${encodeURIComponent(code)}`
 
 function openCreate() {
   draft.form = publishedForms.value[0]?.id ?? 0
+  draft.department = departments.activeDepartmentId ?? null
   draft.vorname = ''
   draft.nachname = ''
   dialog.value?.showModal()
@@ -131,7 +153,8 @@ function openCreate() {
 
 async function create() {
   try {
-    created.value = await store.createVoucher({ ...draft })
+    const department = selectedForm.value?.department === null ? draft.department : null
+    created.value = await store.createVoucher({ ...draft, department })
     qrSvg.value = await QRCode.toString(voucherUrl(created.value.code), { type: 'svg', errorCorrectionLevel: 'M', margin: 2 })
     copied.value = false
   } catch {

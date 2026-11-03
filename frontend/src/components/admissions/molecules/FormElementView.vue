@@ -191,8 +191,8 @@ const props = withDefaults(defineProps<Props>(), { modelValue: undefined, error:
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>()
 
 const inputId = computed(() => `${props.idPrefix}-${props.element.id}`)
-const isTextual = computed(() => ['text', 'textarea', 'date', 'email', 'phone'].includes(props.element.type))
-const nativeType = computed(() => ({ phone: 'tel', email: 'email', date: 'date' })[props.element.type as string] ?? 'text')
+const isTextual = computed(() => ['text', 'textarea', 'number', 'date', 'email', 'phone'].includes(props.element.type))
+const nativeType = computed(() => ({ phone: 'tel', email: 'email', date: 'date', number: 'number' })[props.element.type as string] ?? 'text')
 const stringValue = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : ''))
 const guardians = computed(() => (Array.isArray(props.modelValue) ? (props.modelValue as Record<string, string>[]) : []))
 const options = computed(() => (props.element.target === 'member.gender' ? GENDER_OPTIONS : (props.element.options ?? [])))

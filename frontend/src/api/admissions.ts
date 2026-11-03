@@ -39,7 +39,8 @@ export const admissionFormsApi = {
   publish: (id: number, changeNote = '') =>
     apiClient.post<AdmissionFormVersion>(`/admissions/forms/${id}/publish/`, { change_note: changeNote }),
   versions: (id: number) => apiClient.get<AdmissionFormVersion[]>(`/admissions/forms/${id}/versions/`),
-  references: () => apiClient.get<BuilderReferences>('/admissions/forms/references/')
+  references: (form?: number) =>
+    apiClient.get<BuilderReferences>('/admissions/forms/references/', { params: form ? { form } : undefined })
 }
 
 export const admissionTextBlocksApi = {
@@ -87,5 +88,8 @@ export const publicAdmissionApi = {
     apiClient.get<PublicAdmissionForm>('/public/admissions/', { headers: { 'X-Admission-Code': code } }),
   submit: (code: string, answers: Record<string, unknown>) =>
     apiClient.post<PublicSubmitResult>('/public/admissions/', { answers }, { headers: { 'X-Admission-Code': code } }),
+  publicForm: (slug: string) => apiClient.get<PublicAdmissionForm>(`/public/admissions/form/${encodeURIComponent(slug)}/`),
+  submitPublic: (slug: string, data: { answers: Record<string, unknown>; department: number | null; website: string }) =>
+    apiClient.post<PublicSubmitResult>(`/public/admissions/form/${encodeURIComponent(slug)}/`, data),
   verify: (publicId: string) => apiClient.get<PublicSealCheck>(`/public/admissions/verify/${encodeURIComponent(publicId)}/`)
 }

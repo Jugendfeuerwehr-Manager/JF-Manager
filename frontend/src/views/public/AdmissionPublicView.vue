@@ -2,7 +2,16 @@
   <main class="public">
     <div class="public__card">
       <!-- 1. Code entry -->
-      <section v-if="!store.form && !store.result" aria-labelledby="code-title">
+      <section v-if="slug && !store.form && !store.result" aria-labelledby="unavailable-title">
+        <h1 id="unavailable-title">Aufnahmeantrag</h1>
+        <p v-if="store.loading" class="public__lead">Lade Formular …</p>
+        <template v-else>
+          <p class="public__error" role="alert">{{ store.error }}</p>
+          <p class="public__lead">Du hast einen Code bekommen? <RouterLink :to="{ name: 'admission-public' }">Code eingeben</RouterLink></p>
+        </template>
+      </section>
+
+      <section v-else-if="!store.form && !store.result" aria-labelledby="code-title">
         <h1 id="code-title">Aufnahmeantrag</h1>
         <p class="public__lead">Gib den Code von deiner Einladung ein oder scanne den QR-Code.</p>
         <form class="public__code" @submit.prevent="openWithCode">
@@ -29,17 +38,28 @@
       <!-- 2. Form wizard -->
       <section v-else-if="store.form && !store.result" :aria-labelledby="'form-title'">
         <header class="public__head">
-          <p class="public__department">{{ store.form.department }}</p>
+          <p class="public__department">{{ departmentLabel }}</p>
           <h1 id="form-title">{{ store.form.title }}</h1>
           <p v-if="store.form.intro && page === 0" class="public__lead">{{ store.form.intro }}</p>
           <ol class="public__steps" aria-label="Fortschritt">
             <li
+              v-if="needsDepartment"
+              :class="{ 'public__step--done': !choosingDepartment, 'public__step--current': choosingDepartment }"
+              :aria-current="choosingDepartment ? 'step' : undefined"
+            >
+              <span class="public__step-number">1</span>
+              <span class="public__step-title">Abteilung</span>
+            </li>
+            <li
               v-for="(step, index) in store.form.schema.pages"
               :key="step.id"
-              :class="{ 'public__step--done': index < page, 'public__step--current': index === page }"
-              :aria-current="index === page ? 'step' : undefined"
+              :class="{
+                'public__step--done': !choosingDepartment && index < page,
+                'public__step--current': !choosingDepartment && index === page
+              }"
+              :aria-current="!choosingDepartment && index === page ? 'step' : undefined"
             >
-              <span class="public__step-number">{{ index + 1 }}</span>
+              <span class="public__step-number">{{ index + (needsDepartment ? 2 : 1) }}</span>
               <span class="public__step-title">{{ step.title }}</span>
             </li>
           </ol>
@@ -47,7 +67,49 @@
 
         <p v-if="store.error" class="public__error" role="alert">{{ store.error }}</p>
 
-        <form novalidate @submit.prevent="next">
+        <form v-if="choosingDepartment" novalidate class="public__departments" @submit.prevent="confirmDepartment">
+          <fieldset>
+            <legend>Wo möchtest du mitmachen?</legend>
+            <label
+              v-for="choice in store.form.departments ?? []"
+              :key="choice.id"
+              class="public__department-choice"
+              :class="{ 'public__department-choice--on': store.department === choice.id }"
+            >
+              <input
+                type="radio"
+                name="department"
+                class="adm-check"
+                :value="choice.id"
+                :checked="store.department === choice.id"
+                @change="store.chooseDepartment(choice.id)"
+              />
+              <strong>{{ choice.name }}</strong>
+            </label>
+          </fieldset>
+          <p v-if="departmentError" class="public__error" role="alert">{{ departmentError }}</p>
+          <p class="public__hint">
+            Du hast einen Code bekommen? <RouterLink :to="{ name: 'admission-public' }">Code eingeben</RouterLink>, dann ist die
+            Abteilung schon festgelegt.
+          </p>
+          <div class="public__nav">
+            <span></span>
+            <AdmButton variant="primary" type="submit" icon="pi pi-arrow-right">Weiter</AdmButton>
+          </div>
+        </form>
+
+        <form v-else novalidate @submit.prevent="next">
+          <!-- Honeypot against bots: hidden from people and assistive technology. -->
+          <div class="public__trap" aria-hidden="true">
+            <label for="apply-website">Website</label>
+            <input
+              id="apply-website"
+              tabindex="-1"
+              autocomplete="off"
+              :value="store.website"
+              @input="store.setWebsite(($event.target as HTMLInputElement).value)"
+            />
+          </div>
           <FormRenderer
             :schema="store.form.schema"
             :model-value="store.answers"
@@ -58,7 +120,7 @@
             @update:model-value="store.setAnswers"
           />
           <div class="public__nav">
-            <AdmButton v-if="page > 0" icon="pi pi-arrow-left" :disabled="store.loading" @click="back">Zurück</AdmButton>
+            <AdmButton v-if="page > 0 || needsDepartment" icon="pi pi-arrow-left" :disabled="store.loading" @click="back">Zurück</AdmButton>
             <span v-else></span>
             <AdmButton v-if="!isLast" variant="primary" type="submit" icon="pi pi-arrow-right">Weiter</AdmButton>
             <AdmButton v-else variant="primary" type="submit" icon="pi pi-send" :loading="store.loading">Antrag absenden</AdmButton>
@@ -96,6 +158,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AdmButton from '@/components/admissions/atoms/AdmButton.vue'
 import AdmField from '@/components/admissions/atoms/AdmField.vue'
 import FormRenderer from '@/components/admissions/organisms/FormRenderer.vue'
@@ -105,7 +168,10 @@ import type { FormElement, PublicAdmissionForm } from '@/types/admissions'
 import { buildApplicationPdf, downloadPdf } from '@/utils/admissionPdf'
 import { ageOn, allElements, isVisible } from '@/utils/admissionSchema'
 
+const props = defineProps<{ slug?: string }>()
 const store = usePublicAdmissionStore()
+const choosingDepartment = ref(false)
+const departmentError = ref('')
 const codeInput = ref('')
 const page = ref(0)
 const localErrors = ref<Record<string, string>>({})
@@ -114,6 +180,11 @@ const submittedAnswers = ref<Record<string, unknown>>({})
 const pdfBusy = ref(false)
 const pdfError = ref('')
 
+const needsDepartment = computed(() => !!store.slug && (store.form?.departments?.length ?? 0) > 1)
+const departmentLabel = computed(() => {
+  const chosen = store.form?.departments?.find((choice) => choice.id === store.department)
+  return chosen?.name ?? store.form?.department ?? ''
+})
 const isLast = computed(() => !!store.form && page.value >= store.form.schema.pages.length - 1)
 const errors = computed(() => ({ ...store.fieldErrors, ...localErrors.value }))
 
@@ -172,7 +243,22 @@ async function next() {
 
 function back() {
   localErrors.value = {}
+  if (page.value === 0 && needsDepartment.value) {
+    choosingDepartment.value = true
+    return scrollTop()
+  }
   page.value = Math.max(page.value - 1, 0)
+  scrollTop()
+}
+
+function confirmDepartment() {
+  if (store.department === null) {
+    departmentError.value = 'Bitte eine Abteilung wählen.'
+    return
+  }
+  departmentError.value = ''
+  choosingDepartment.value = false
+  page.value = 0
   scrollTop()
 }
 
@@ -207,7 +293,7 @@ async function downloadApplication() {
     await downloadPdf(
       buildApplicationPdf({
         title: form.title,
-        department: form.department,
+        department: departmentLabel.value,
         schema: form.schema,
         answers: submittedAnswers.value,
         images,
@@ -225,8 +311,14 @@ async function downloadApplication() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   store.reset()
+  if (props.slug) {
+    await store.openPublic(props.slug)
+    page.value = 0
+    choosingDepartment.value = needsDepartment.value
+    return
+  }
   // The QR code carries the code in the fragment, which the browser never sends to the server.
   const fromHash = new URLSearchParams(window.location.hash.slice(1)).get('code')
   if (!fromHash) return
@@ -258,6 +350,53 @@ onMounted(() => {
   margin: 0 0 var(--jf-space-1);
   font-size: var(--jf-text-2xl);
   line-height: var(--jf-leading-tight);
+}
+
+.public__departments fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jf-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.public__departments legend {
+  margin-bottom: var(--jf-space-1);
+  font-size: var(--jf-text-lg);
+  font-weight: var(--jf-weight-semibold);
+}
+
+.public__department-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1-5);
+  min-height: 52px;
+  padding: var(--jf-space-1-5);
+  border: 1px solid var(--jf-color-border);
+  border-radius: var(--jf-radius-lg);
+  cursor: pointer;
+}
+
+.public__department-choice--on {
+  border: 2px solid var(--jf-color-primary);
+  background: var(--jf-color-selected);
+}
+
+.public__hint {
+  margin: var(--jf-space-2) 0 0;
+  padding: var(--jf-space-1-5);
+  border-radius: var(--jf-radius-md);
+  background: var(--jf-color-ground);
+  font-size: var(--jf-text-sm);
+}
+
+.public__trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .public__department {

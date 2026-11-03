@@ -3,7 +3,10 @@
     <header class="forms__head">
       <div>
         <h1>Aufnahmeformulare</h1>
-        <p class="forms__lead">Digitale Aufnahmeanträge gestalten. Antragstellende erreichen das Formular über einen Voucher-Code.</p>
+        <p class="forms__lead">
+          Digitale Aufnahmeanträge gestalten. Antragstellende erreichen ein Formular über einen Voucher-Code oder einen
+          öffentlichen Link.
+        </p>
       </div>
       <AdmButton v-if="canCreate" variant="primary" icon="pi pi-plus" @click="createDialog?.showModal()">Neues Formular</AdmButton>
     </header>
@@ -19,7 +22,8 @@
         <RouterLink :to="{ name: 'admission-form-builder', params: { id: form.id } }" class="forms__link">
           <span class="forms__title">{{ form.title }}</span>
           <span class="forms__meta">
-            {{ departmentName(form.department) }} ·
+            {{ form.department === null ? 'Ganze Organisation' : departmentName(form.department) }} ·
+            {{ form.access === 'public' ? 'öffentlich' : 'nur Voucher' }} ·
             {{ form.current_version ? `Version ${form.current_version.version}` : 'Entwurf' }}
             <template v-if="form.current_version && form.has_unpublished_changes"> · ungespeicherte Änderungen am Entwurf</template>
             <template v-if="!form.is_active"> · inaktiv</template>
@@ -35,8 +39,13 @@
         <AdmField input-id="new-title" label="Titel" required>
           <input id="new-title" v-model="draft.title" class="adm-input" required maxlength="200" />
         </AdmField>
-        <AdmField input-id="new-department" label="Abteilung" required>
-          <select id="new-department" v-model="draft.department" class="adm-input" required>
+        <AdmField
+          input-id="new-department"
+          label="Gilt für"
+          hint="Ein Formular der Organisation gilt für alle Abteilungen; wohin ein Antrag geht, entscheidet der Voucher oder die Auswahl im öffentlichen Formular."
+        >
+          <select id="new-department" v-model="draft.department" class="adm-input">
+            <option :value="null">Ganze Organisation (alle Abteilungen)</option>
             <option v-for="department in departmentsStore.departments" :key="department.id" :value="department.id">
               {{ department.name }}
             </option>
@@ -72,7 +81,11 @@ const router = useRouter()
 
 const createDialog = ref<HTMLDialogElement | null>(null)
 const creating = ref(false)
-const draft = reactive({ title: 'Aufnahmeantrag', department: 0, from_template: true })
+const draft = reactive<{ title: string; department: number | null; from_template: boolean }>({
+  title: 'Aufnahmeantrag',
+  department: null,
+  from_template: true
+})
 const canCreate = computed(() => auth.hasPerm('admissions.add_admissionform'))
 
 function departmentName(id: number) {
@@ -94,7 +107,7 @@ async function create() {
 
 onMounted(() => {
   store.fetchForms()
-  draft.department = departmentsStore.activeDepartmentId ?? departmentsStore.departments[0]?.id ?? 0
+  draft.department = departmentsStore.activeDepartmentId ?? departmentsStore.departments[0]?.id ?? null
 })
 </script>
 

@@ -1,21 +1,21 @@
 /**
  * Drag & drop for the form builder (interact.js, works with mouse, pen and touch).
  *
- * Draggables carry ``data-type`` (a new element from the palette) or ``data-element-id`` (an
+ * Draggables carry ``data-palette-id`` (a new element from the palette) or ``data-element-id`` (an
  * existing element); drop slots carry ``data-page``, ``data-section`` and ``data-index``.
  * A floating copy follows the pointer so palette and canvas keep their layout.
  */
 import { onBeforeUnmount, onMounted } from 'vue'
 import interact from 'interactjs'
-import type { ElementLocation, ElementType } from '@/types/admissions'
+import type { ElementLocation } from '@/types/admissions'
 
-export type DragSource = { kind: 'new'; type: ElementType } | { kind: 'move'; elementId: string }
+export type DragSource = { kind: 'new'; paletteId: string } | { kind: 'move'; elementId: string }
 
 const DRAGGABLE = '.bld-draggable'
 const SLOT = '.bld-slot'
 
 function sourceOf(element: HTMLElement): DragSource | null {
-  if (element.dataset.type) return { kind: 'new', type: element.dataset.type as ElementType }
+  if (element.dataset.paletteId) return { kind: 'new', paletteId: element.dataset.paletteId }
   if (element.dataset.elementId) return { kind: 'move', elementId: element.dataset.elementId }
   return null
 }
@@ -74,7 +74,8 @@ export function useBuilderDragDrop(onDrop: (source: DragSource, target: ElementL
       hold: 0,
       listeners: {
         start(event) {
-          if (!enabled()) return event.interaction.stop()
+          // Used single-use blocks stay visible but greyed out (disabled).
+          if (!enabled() || (event.target as HTMLButtonElement).disabled) return event.interaction.stop()
           startGhost(event.target as HTMLElement, event.client.x, event.client.y)
         },
         move(event) {

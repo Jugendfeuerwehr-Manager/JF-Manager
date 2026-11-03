@@ -12,7 +12,7 @@ vi.mock('@/api/admissions', () => ({
 const empty: FormSchema = { pages: [] }
 const withPage: FormSchema = { pages: [{ id: 'p', title: 'Seite', sections: [] }] }
 const form = (draft: FormSchema): AdmissionForm => ({
-  id: 3, department: 1, title: 'Antrag', intro: '', initial_status: null, signature_mode: 'both', decision_body: 'Jugendausschuss',
+  id: 3, department: 1, title: 'Antrag', access: 'voucher', public_slug: null, public_departments: [], intro: '', initial_status: null, signature_mode: 'both', decision_body: 'Jugendausschuss',
   is_active: true, draft_schema: draft, draft_issues: [], has_unpublished_changes: true, current_version: null, updated_at: ''
 })
 
@@ -21,7 +21,7 @@ describe('admission forms store', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(admissionFormsApi.get).mockResolvedValue({ data: form(empty) } as never)
-    vi.mocked(admissionFormsApi.references).mockResolvedValue({ data: { fields: { member: [], guardian: [], gender_options: [] }, legal_kinds: [], consent_kinds: [] } } as never)
+    vi.mocked(admissionFormsApi.references).mockResolvedValue({ data: { fields: { member: [], guardian: [], extra: [], gender_options: [] }, legal_kinds: [], consent_kinds: [] } } as never)
     vi.mocked(admissionTextBlocksApi.list).mockResolvedValue({ data: { count: 0, results: [] } } as never)
   })
 

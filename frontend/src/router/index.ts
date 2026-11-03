@@ -46,6 +46,14 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      // Public form link: shared on websites and posters, so the slug may sit in the URL.
+      path: '/aufnahme/f/:slug',
+      name: 'admission-public-form',
+      component: () => import('@/views/public/AdmissionPublicView.vue'),
+      props: true,
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/aufnahme/pruefen/:id',
       name: 'admission-verify',
       component: () => import('@/views/public/AdmissionVerifyView.vue'),

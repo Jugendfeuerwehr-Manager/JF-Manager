@@ -7,6 +7,7 @@ import type { PaginatedResponse } from './common'
 export type InputElementType =
   | 'text'
   | 'textarea'
+  | 'number'
   | 'date'
   | 'email'
   | 'phone'
@@ -20,6 +21,7 @@ export type ElementType = InputElementType | ContentElementType | 'legal_ack' | 
 export type SignatureRole = 'applicant' | 'guardian_1' | 'guardian_2'
 export type ConsentPerson = 'applicant' | 'guardians'
 export type SignatureMode = 'digital' | 'print' | 'both'
+export type FormAccess = 'voucher' | 'public'
 
 export type VisibilityRule = { age_below: number } | { field: string; equals: string | boolean }
 
@@ -99,8 +101,12 @@ export interface AdmissionFormVersion extends AdmissionFormVersionSummary {
 
 export interface AdmissionForm {
   id: number
-  department: number
+  /** null: an organisation form serving every department */
+  department: number | null
   title: string
+  access: FormAccess
+  public_slug: string | null
+  public_departments: number[]
   intro: string
   initial_status: number | null
   signature_mode: SignatureMode
@@ -117,7 +123,16 @@ export type AdmissionFormCreate = Pick<AdmissionForm, 'title' | 'department'> & 
 export type AdmissionFormUpdate = Partial<
   Pick<
     AdmissionForm,
-    'title' | 'intro' | 'initial_status' | 'signature_mode' | 'decision_body' | 'is_active' | 'draft_schema'
+    | 'title'
+    | 'intro'
+    | 'initial_status'
+    | 'signature_mode'
+    | 'decision_body'
+    | 'is_active'
+    | 'draft_schema'
+    | 'department'
+    | 'access'
+    | 'public_departments'
   >
 >
 
@@ -128,8 +143,24 @@ export interface CatalogField {
   sensitive: boolean
 }
 
+/** An additional member field offered to the form (target ``member.extra.<key>``). */
+export interface ExtraCatalogField {
+  key: string
+  id: number
+  label: string
+  input_type: InputElementType
+  options: string[]
+  help_text: string
+  department: number | null
+}
+
 export interface BuilderReferences {
-  fields: { member: CatalogField[]; guardian: CatalogField[]; gender_options: ChoiceOption[] }
+  fields: {
+    member: CatalogField[]
+    guardian: CatalogField[]
+    extra: ExtraCatalogField[]
+    gender_options: ChoiceOption[]
+  }
   legal_kinds: ChoiceOption[]
   consent_kinds: { slug: string; label: string; description: string }[]
 }
@@ -179,6 +210,8 @@ export interface CreatedVoucher extends AdmissionVoucher {
 
 export interface VoucherCreate {
   form: number
+  /** required for organisation forms */
+  department?: number | null
   label?: string
   vorname?: string
   nachname?: string
@@ -291,8 +324,15 @@ export interface CommitteeMeeting {
 
 // ── Public form ─────────────────────────────────────────────────────────────
 
+export interface PublicDepartment {
+  id: number
+  name: string
+}
+
 export interface PublicAdmissionForm {
   department: string
+  /** public link only: departments the applicant may choose */
+  departments?: PublicDepartment[]
   title: string
   intro: string
   signature_mode: SignatureMode
@@ -300,7 +340,7 @@ export interface PublicAdmissionForm {
   version: number
   schema: FormSchema
   prefill: Record<string, string>
-  expires_at: string
+  expires_at: string | null
 }
 
 export interface PublicSubmitResult {

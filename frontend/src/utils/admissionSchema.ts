@@ -3,11 +3,13 @@
  * builder store can keep an undo history.
  */
 import type {
+  BuilderReferences,
   ElementLocation,
   ElementType,
   FormElement,
   FormSchema,
   SchemaIssue,
+  SignatureRole,
   VisibilityRule
 } from '@/types/admissions'
 
@@ -21,6 +23,7 @@ export interface PaletteEntry {
 export const PALETTE: PaletteEntry[] = [
   { type: 'text', label: 'Textfeld', icon: 'pi pi-pencil', group: 'Eingabe' },
   { type: 'textarea', label: 'Mehrzeiliger Text', icon: 'pi pi-align-left', group: 'Eingabe' },
+  { type: 'number', label: 'Zahl', icon: 'pi pi-hashtag', group: 'Eingabe' },
   { type: 'date', label: 'Datum', icon: 'pi pi-calendar', group: 'Eingabe' },
   { type: 'email', label: 'E-Mail', icon: 'pi pi-envelope', group: 'Eingabe' },
   { type: 'phone', label: 'Telefon', icon: 'pi pi-phone', group: 'Eingabe' },
@@ -254,4 +257,192 @@ export const SIGNATURE_ROLE_LABELS = {
 /** Guardian answers are stored by the short field name (``guardian.email`` → ``email``). */
 export function guardianField(target: string) {
   return target.replace(/^guardian\./, '')
+}
+
+// ── Palette: building blocks that already know where their answer goes ─────
+
+export type PaletteGroup = 'Mitgliedsdaten' | 'Zusatzfelder' | 'Personen & Rechtliches' | 'Inhalt'
+
+export interface PaletteItem {
+  id: string
+  label: string
+  icon: string
+  group: PaletteGroup
+  /** only once per form */
+  once: boolean
+  /** already in the form (and ``once``) */
+  used: boolean
+}
+
+const MEMBER_ICONS: Record<string, string> = {
+  'member.birthday': 'pi pi-calendar',
+  'member.gender': 'pi pi-user',
+  'member.email': 'pi pi-envelope',
+  'member.phone': 'pi pi-phone',
+  'member.mobile': 'pi pi-mobile',
+  'member.avatar': 'pi pi-image',
+  'member.canSwimm': 'pi pi-check-square',
+  'member.health_notes': 'pi pi-heart'
+}
+const REQUIRED_TARGETS = new Set(['member.name', 'member.lastname', 'member.birthday', 'member.gender'])
+const LEGAL_PALETTE: Record<string, { label: string; ack: string }> = {
+  privacy: { label: 'Datenschutz bestätigen', ack: 'Ich habe die Datenschutzhinweise gelesen.' },
+  portal_terms: { label: 'Portal-Nutzungsregeln', ack: 'Ich akzeptiere die Nutzungsregeln des Eltern-Portals.' }
+}
+const SIGNATURE_PALETTE: Record<SignatureRole, string> = {
+  applicant: 'Unterschrift Antragsteller*in',
+  guardian_1: 'Unterschrift 1. Sorgeberechtigte*r',
+  guardian_2: 'Unterschrift 2. Sorgeberechtigte*r'
+}
+
+/** What a form already contains, for single-use blocks. */
+function usage(schema: FormSchema) {
+  const targets = new Set<string>()
+  const legal = new Set<string>()
+  const roles = new Set<string>()
+  let guardians = false
+  for (const element of allElements(schema)) {
+    if (element.target) targets.add(element.target)
+    if (element.type === 'legal_ack' && element.legal_kind) legal.add(element.legal_kind)
+    if (element.type === 'signature' && element.role) roles.add(element.role)
+    if (element.type === 'guardians') guardians = true
+  }
+  return { targets, legal, roles, guardians }
+}
+
+export function paletteItems(schema: FormSchema, references: BuilderReferences | null): PaletteItem[] {
+  const used = usage(schema)
+  const items: PaletteItem[] = []
+  for (const field of references?.fields.member ?? []) {
+    items.push({
+      id: `member:${field.key}`,
+      label: field.key === 'member.health_notes' ? 'Gesundheit' : field.label,
+      icon: MEMBER_ICONS[field.key] ?? 'pi pi-pencil',
+      group: 'Mitgliedsdaten',
+      once: true,
+      used: used.targets.has(field.key)
+    })
+  }
+  for (const field of references?.fields.extra ?? []) {
+    items.push({
+      id: `extra:${field.key}`,
+      label: field.label,
+      icon: 'pi pi-tag',
+      group: 'Zusatzfelder',
+      once: true,
+      used: used.targets.has(field.key)
+    })
+  }
+  const people: PaletteItem[] = [
+    { id: 'guardians', label: 'Sorgeberechtigte', icon: 'pi pi-users', group: 'Personen & Rechtliches', once: true, used: used.guardians },
+    ...Object.entries(LEGAL_PALETTE).map(([kind, entry]) => ({
+      id: `legal:${kind}`,
+      label: entry.label,
+      icon: 'pi pi-shield',
+      group: 'Personen & Rechtliches' as const,
+      once: true,
+      used: used.legal.has(kind)
+    })),
+    { id: 'consent', label: 'Einwilligung …', icon: 'pi pi-verified', group: 'Personen & Rechtliches', once: false, used: false },
+    { id: 'confirm', label: 'Bestätigung', icon: 'pi pi-check-circle', group: 'Personen & Rechtliches', once: false, used: false },
+    ...(Object.keys(SIGNATURE_PALETTE) as SignatureRole[]).map((role) => ({
+      id: `signature:${role}`,
+      label: SIGNATURE_PALETTE[role],
+      icon: 'pi pi-pen-to-square',
+      group: 'Personen & Rechtliches' as const,
+      once: true,
+      used: used.roles.has(role)
+    }))
+  ]
+  items.push(...people)
+  items.push(
+    { id: 'heading', label: 'Überschrift', icon: 'pi pi-bookmark', group: 'Inhalt', once: false, used: false },
+    { id: 'richtext', label: 'Erklärung', icon: 'pi pi-file', group: 'Inhalt', once: false, used: false },
+    { id: 'divider', label: 'Trennlinie', icon: 'pi pi-minus', group: 'Inhalt', once: false, used: false }
+  )
+  return items
+}
+
+function keyFrom(label: string, schema: FormSchema) {
+  const base =
+    label
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 40) || 'feld'
+  return uniqueKey(/^[a-z]/.test(base) ? base : `f_${base}`, schema)
+}
+
+/** A new element for a palette item; null when it is unknown or already used. */
+export function elementFromPalette(
+  id: string,
+  schema: FormSchema,
+  references: BuilderReferences | null
+): FormElement | null {
+  const item = paletteItems(schema, references).find((entry) => entry.id === id)
+  if (!item || item.used) return null
+  const [kind, value = ''] = id.split(/:(.*)/s)
+  if (kind === 'member') {
+    const field = references?.fields.member.find((entry) => entry.key === value)
+    if (!field) return null
+    const label = field.key === 'member.health_notes' ? 'Gesundheit, Allergien, Medikamente' : field.label
+    return {
+      id: newId(),
+      type: field.input_type,
+      key: keyFrom(label, schema),
+      label,
+      required: REQUIRED_TARGETS.has(field.key),
+      target: field.key
+    }
+  }
+  if (kind === 'extra') {
+    const field = references?.fields.extra.find((entry) => entry.key === value)
+    if (!field) return null
+    return {
+      id: newId(),
+      type: field.input_type,
+      key: keyFrom(field.label, schema),
+      label: field.label,
+      help: field.help_text || undefined,
+      required: false,
+      target: field.key,
+      options: field.options.map((option) => ({ value: option, label: option }))
+    }
+  }
+  if (kind === 'legal') {
+    return {
+      ...createElement('legal_ack', schema),
+      key: keyFrom(value === 'privacy' ? 'datenschutz' : 'nutzungsregeln', schema),
+      legal_kind: value,
+      label: LEGAL_PALETTE[value]?.ack ?? 'Ich habe den Text gelesen.'
+    }
+  }
+  if (kind === 'signature') {
+    const role = value as SignatureRole
+    return {
+      ...createElement('signature', schema),
+      key: keyFrom(`unterschrift_${role}`, schema),
+      role,
+      label: SIGNATURE_ROLE_LABELS[role],
+      visible_if: role === 'applicant' ? null : { age_below: 18 }
+    }
+  }
+  if (kind === 'confirm') {
+    return { ...createElement('checkbox', schema), key: keyFrom('bestaetigung', schema), label: 'Ich bestätige …', required: true }
+  }
+  return createElement(kind as ElementType, schema)
+}
+
+/** Readable destination of an answer, e.g. "Mitglied · Vorname". */
+export function targetLabel(target: string | null | undefined, references: BuilderReferences | null): string {
+  if (!target) return ''
+  const extra = references?.fields.extra.find((field) => field.key === target)
+  if (extra) return `Zusatzfeld · ${extra.label}`
+  const member = references?.fields.member.find((field) => field.key === target)
+  if (member) return `Mitglied · ${member.label}`
+  return 'Zielfeld fehlt'
 }

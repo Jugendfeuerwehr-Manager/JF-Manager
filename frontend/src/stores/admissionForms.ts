@@ -58,18 +58,28 @@ export const useAdmissionFormsStore = defineStore('admissionForms', () => {
     loading.value = true
     error.value = null
     try {
+      // References depend on the form: organisation forms only offer organisation-wide fields.
       const [form, refs, blocks] = await Promise.all([
         admissionFormsApi.get(id),
-        references.value ? Promise.resolve(null) : admissionFormsApi.references(),
+        admissionFormsApi.references(id),
         admissionTextBlocksApi.list()
       ])
-      if (refs) references.value = refs.data
+      references.value = refs.data
       textBlocks.value = blocks.data.results
       adopt(form.data)
     } catch (e) {
       error.value = getApiErrorMessage(e, 'Formular konnte nicht geladen werden')
     } finally {
       loading.value = false
+    }
+  }
+
+  async function refreshReferences() {
+    if (!current.value) return
+    try {
+      references.value = (await admissionFormsApi.references(current.value.id)).data
+    } catch (e) {
+      error.value = getApiErrorMessage(e, 'Bausteine konnten nicht geladen werden')
     }
   }
 
@@ -181,6 +191,7 @@ export const useAdmissionFormsStore = defineStore('admissionForms', () => {
     canRedo,
     fetchForms,
     openForm,
+    refreshReferences,
     createForm,
     edit,
     undo,
