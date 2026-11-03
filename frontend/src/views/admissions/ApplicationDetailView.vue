@@ -134,7 +134,7 @@ import '@/components/admissions/atoms/admPage.css'
 import { useAdmissionsStore } from '@/stores/admissions'
 import { useAuthStore } from '@/stores/auth'
 import { useDepartmentsStore } from '@/stores/departments'
-import type { DecisionOutcome, SealCheck } from '@/types/admissions'
+import type { AdmissionDecision, DecisionOutcome, SealCheck } from '@/types/admissions'
 import { buildApplicationPdf, downloadPdf, imageAsDataUrl } from '@/utils/admissionPdf'
 
 const SEAL_LABELS: Record<SealCheck['kind'], string> = {
@@ -212,6 +212,11 @@ async function takeOver() {
   }
 }
 
+function latestDecision(decisions: AdmissionDecision[]) {
+  const last = decisions.at(-1)
+  return last ? { ...last, recorded_by: last.recorded_by_name } : undefined
+}
+
 async function exportPdf() {
   exporting.value = true
   try {
@@ -223,8 +228,12 @@ async function exportPdf() {
         schema: data.schema,
         answers: data.answers,
         images: images.value,
-        signatureMode: 'digital',
+        signatureMode: data.signature_mode,
         submittedAt: data.submitted_at,
+        applicantName: data.applicant_name,
+        applicationNumber: data.id,
+        fileHashes: Object.fromEntries(Object.entries(data.files).map(([key, file]) => [key, file.sha256])),
+        decision: latestDecision(data.decisions),
         seal: { publicId: data.export_seal.public_id, sealHash: data.export_seal.seal_hash, label: `Versiegelter Export vom ${new Date(data.export_seal.sealed_at).toLocaleString('de-DE')}` },
         verifyUrl: `${window.location.origin}/aufnahme/pruefen/${data.export_seal.public_id}`
       }),

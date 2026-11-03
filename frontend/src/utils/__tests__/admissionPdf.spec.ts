@@ -32,8 +32,31 @@ describe('admission PDFs', () => {
     const text = JSON.stringify(doc.content)
     expect(text).toContain('Mia')
     expect(text).toContain('Weiblich')
-    expect(text).toContain('Ort, Datum, Unterschrift')
+    expect(text).toContain('Ort, Datum')
+    expect(text).toContain('BESCHLUSSVERMERK')
     expect(text).toContain('"qr":"https://example.invalid/aufnahme/pruefen/abc123xyz"')
+  })
+
+  it('lists attachments with their checksum and fills in a recorded decision', () => {
+    const withAttachment: FormSchema = {
+      pages: [
+        {
+          ...schema.pages[0]!,
+          sections: [{ ...schema.pages[0]!.sections[0]!, elements: [...schema.pages[0]!.sections[0]!.elements, { id: 'x', type: 'attachment', key: 'attest', label: 'Attest' }] }]
+        }
+      ]
+    }
+    const doc = buildApplicationPdf({
+      title: 'Aufnahmeantrag', department: 'Mitte', schema: withAttachment, images: {}, signatureMode: 'digital',
+      answers: { vorname: 'Mia', attest: { file: 'attest', name: 'Attest Mia.pdf' } },
+      fileHashes: { attest: '4be1' + '0'.repeat(56) + '07d2' },
+      decision: { outcome: 'approved', decided_on: '2026-11-12', body: 'Jugendausschuss', votes_yes: 5, votes_no: 0, votes_abstain: 1 }
+    })
+    const text = JSON.stringify(doc.content)
+    expect(text).toContain('Attest Mia.pdf')
+    expect(text).toContain('4be10000…000007d2')
+    expect(text).toContain('BESCHLUSS · JUGENDAUSSCHUSS')
+    expect(text).toContain('5 / 0 / 1')
   })
 
   it('puts the code and the QR link on the voucher card', () => {

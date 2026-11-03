@@ -299,6 +299,7 @@ async function downloadApplication() {
         images,
         signatureMode: form.signature_mode,
         submittedAt: result.submitted_at,
+        applicantName: result.applicant_name,
         seal: { publicId: result.seal.public_id, sealHash: result.seal.seal_hash, label: 'Versiegelt beim Einreichen' },
         verifyUrl: `${window.location.origin}/aufnahme/pruefen/${result.seal.public_id}`
       }),
