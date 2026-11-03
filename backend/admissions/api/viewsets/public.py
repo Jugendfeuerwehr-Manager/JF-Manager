@@ -64,11 +64,11 @@ class PublicAdmissionViewSet(SessionCsrfMixin, viewsets.ViewSet):
         )
 
     @extend_schema(summary="Check a seal by its public id; reveals no personal data")
-    @action(detail=False, methods=["get"], url_path=r"verify/(?P<public_id>[A-Za-z0-9_-]{8,16})")
+    @action(detail=False, methods=["get"], url_path=r"verify/(?P<public_id>[A-Za-z0-9_-]+)")
     def verify(self, request, public_id=None):
         from admissions.services.verification import verify_public
 
-        result = verify_public(public_id)
+        result = verify_public(public_id) if len(public_id) <= 16 else None
         if result is None:
             return Response({"valid": False, "detail": "Unbekanntes Siegel."}, status=status.HTTP_404_NOT_FOUND)
         return Response(result)

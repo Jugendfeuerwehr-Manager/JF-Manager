@@ -142,6 +142,8 @@ class PortalAllowlistTests(TestCase):
                 "customuser-reset-password",
                 "public-branding",
                 "public-legal-page",
+                "public-admissions-list",
+                "public-admissions-verify",
                 "oidc-public-config",
                 "csp-report",
                 "health_check",
