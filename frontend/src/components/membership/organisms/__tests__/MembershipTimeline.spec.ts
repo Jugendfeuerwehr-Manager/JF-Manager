@@ -10,7 +10,7 @@ vi.mock('@/api/membership', () => ({ membershipApi: { listEvents: vi.fn(), corre
 const event = (extra: Partial<MembershipEvent> = {}): MembershipEvent => ({
   id: 1, member: 7, department: 2, department_name: 'Mitte', date: '2026-05-01', kind: 'exit_other',
   kind_label: 'Abgang sonstige', exit_reason: '', exit_reason_label: '', from_status_name: 'Aktiv',
-  to_status_name: 'Ausgetreten', note: '', created_at: '2026-05-01T10:00:00Z', ...extra,
+  to_status_name: 'Ausgetreten', note: '', created_by_name: null, created_at: '2026-05-01T10:00:00Z', ...extra,
 })
 
 describe('MembershipTimeline', () => {

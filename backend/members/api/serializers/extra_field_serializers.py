@@ -51,10 +51,10 @@ class MemberFieldDefinitionSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({name: "Lässt sich nach dem Anlegen nicht mehr ändern."})
         field_type = attrs.get("field_type", getattr(self.instance, "field_type", MemberFieldDefinition.FieldType.TEXT))
         if "options" in attrs or "field_type" in attrs:
-            try:
-                attrs["options"] = clean_definition_options(field_type, attrs.get("options", []))
-            except ValueError as error:
-                raise serializers.ValidationError({"options": str(error)}) from error
+            options, error = clean_definition_options(field_type, attrs.get("options", []))
+            if error:
+                raise serializers.ValidationError({"options": error})
+            attrs["options"] = options
         if self.instance is None and not attrs.get("key"):
             attrs["key"] = _key_from_label(attrs.get("label", ""))
         if self.instance is None and MemberFieldDefinition.objects.filter(key=attrs["key"]).exists():

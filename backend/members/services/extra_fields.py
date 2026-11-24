@@ -89,16 +89,16 @@ def clean_values(values, definitions, current=None):
 
 
 def clean_definition_options(field_type, options):
-    """Choice options as a list of distinct, non-empty strings; empty for other types."""
+    """``(options, error)``: choices as distinct, non-empty strings (empty for other types), or a message."""
     if field_type != MemberFieldDefinition.FieldType.SELECT:
-        return []
+        return [], None
     if not isinstance(options, list) or not all(isinstance(option, str) for option in options):
-        raise ValueError("Möglichkeiten als Liste von Texten angeben.")
+        return [], "Möglichkeiten als Liste von Texten angeben."
     clean = []
     for option in options:
         option = option.strip()[:100]
         if option and option not in clean:
             clean.append(option)
     if not clean:
-        raise ValueError("Eine Auswahl braucht mindestens eine Möglichkeit.")
-    return clean
+        return [], "Eine Auswahl braucht mindestens eine Möglichkeit."
+    return clean, None
