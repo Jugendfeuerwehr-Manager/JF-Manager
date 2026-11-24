@@ -51,15 +51,13 @@ const formatDate = (iso: string) =>
     year: 'numeric'
   })
 
-/** Rich text as plain text for the PDF; no markup survives (stray brackets are dropped too). */
+/** Rich text as plain text for the PDF. The browser's parser yields the text content, so no
+ * markup can survive (an inert document: nothing is executed or loaded). */
 function plain(html: string) {
-  return html
-    .replace(/<\/(p|li|h\d)>/gi, '\n')
-    .replace(/<li>/gi, '• ')
-    .replace(/<[^>]*>/g, '')
-    .replace(/[<>]/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+  const marked = html.replace(/<\/(p|li|h\d)>/gi, '\n$&').replace(/<li[^>]*>/gi, '$&• ')
+  const text = new DOMParser().parseFromString(marked, 'text/html').body.textContent ?? ''
+  return text
+    .replace(/\u00a0/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

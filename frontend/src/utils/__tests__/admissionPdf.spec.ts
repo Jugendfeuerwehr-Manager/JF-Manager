@@ -59,6 +59,19 @@ describe('admission PDFs', () => {
     expect(text).toContain('5 / 0 / 1')
   })
 
+  it('turns rich text into plain text without any markup', () => {
+    const rich: FormSchema = {
+      pages: [{ id: 'p', title: 'S', sections: [{ id: 's', title: '', elements: [
+        { id: 'r', type: 'richtext', html: '<p>Erste&nbsp;Zeile</p><ul><li>Punkt</li></ul><<script>alert(1)</script>script>' }
+      ] }] }]
+    }
+    const doc = buildApplicationPdf({ title: 'A', department: 'M', schema: rich, answers: {}, images: {}, signatureMode: 'digital' })
+    const text = JSON.stringify(doc.content)
+    expect(text).toContain('Erste Zeile')
+    expect(text).toContain('• Punkt')
+    expect(text).not.toMatch(/<\/?script/i)
+  })
+
   it('puts the code and the QR link on the voucher card', () => {
     const doc = buildVoucherCardPdf({
       department: 'Mitte', formTitle: 'Aufnahmeantrag', code: '7KQ4-M2XR-9PDA',
