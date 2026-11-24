@@ -68,7 +68,7 @@ describe('service department', () => {
 
   it('lets organisation-wide accounts create a service for all departments', async () => {
     useDepartmentsStore().departments = departments
-    useAuthStore().user = { has_org_wide_access: true } as never
+    useAuthStore().user = { has_org_wide_access: true, department_roles: [] } as never
     const wrapper = shallowMount(ServiceForm, { props: { initialData: null } })
     await flushPromises()
     expect(optionsOf(wrapper)[0]).toEqual({ id: 'organisation', name: 'Alle Abteilungen (gemeinsamer Dienst)' })
@@ -93,5 +93,55 @@ describe('service department', () => {
     const wrapper = shallowMount(ServiceForm, { props: { initialData: { ...service, department: null } as never } })
     await flushPromises()
     expect(departmentSelect(wrapper).exists()).toBe(true)
+  })
+})
+
+describe('training calendar checkbox', () => {
+  type Vm = { formData: { start: Date; end: Date; topic: string }; createTrainingSession: boolean }
+
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.spyOn(useUsersStore(), 'fetchUsers').mockResolvedValue([] as never)
+    const store = useDepartmentsStore()
+    store.departments = [{ id: 1, name: 'Süd-Ost' }] as never
+    store.setActiveDepartment(1)
+  })
+
+  const mountWith = async (permissions: string[], initialData: unknown = null) => {
+    useAuthStore().user = { qualified_permissions: permissions, department_roles: [] } as never
+    const wrapper = shallowMount(ServiceForm, { props: { initialData: initialData as never } })
+    await flushPromises()
+    return wrapper
+  }
+
+  const fill = (wrapper: ReturnType<typeof shallowMount>, end = '2026-12-01T19:00:00') => {
+    const vm = wrapper.vm as unknown as Vm
+    vm.formData.start = new Date('2026-12-01T17:00:00')
+    vm.formData.end = new Date(end)
+    vm.formData.topic = 'Knoten'
+    vm.createTrainingSession = true
+  }
+
+  it('is only offered to planners when creating a service', async () => {
+    expect((await mountWith([])).findComponent({ name: 'Checkbox' }).exists()).toBe(false)
+    expect((await mountWith(['training.can_manage_training'])).findComponent({ name: 'Checkbox' }).exists()).toBe(true)
+    const editing = await mountWith(['training.can_manage_training'], { start: '2026-12-01T17:00:00Z', end: '2026-12-01T19:00:00Z', department: 1, operations_manager: [] })
+    expect(editing.findComponent({ name: 'Checkbox' }).exists()).toBe(false)
+  })
+
+  it('sends the request to create the exercise', async () => {
+    const wrapper = await mountWith(['training.can_manage_training'])
+    fill(wrapper)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ create_training_session: true, topic: 'Knoten' })
+  })
+
+  it('rejects services across several days', async () => {
+    const wrapper = await mountWith(['training.can_manage_training'])
+    fill(wrapper, '2026-12-02T09:00:00')
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(wrapper.text()).toContain('am selben Tag enden')
   })
 })
