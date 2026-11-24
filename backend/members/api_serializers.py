@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
@@ -14,7 +16,7 @@ User = get_user_model()
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Status
-        fields = ["id", "name", "color"]
+        fields = ["id", "name", "color", "category", "department", "sort_order"]
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -192,6 +194,7 @@ class MemberDetailSerializer(MemberFieldAccessMixin, serializers.ModelSerializer
             "departments",
             "has_health_notes",
             "anonymize_due",
+            "extra_fields",
         ]
         read_only_fields = ["id", "age", "full_name", "parents", "avatar_url", "anonymized_at"]
 
@@ -214,8 +217,21 @@ class MemberDetailSerializer(MemberFieldAccessMixin, serializers.ModelSerializer
         return visible_parent_data(obj, self.context, self.root.instance)
 
 
+class ExtraFieldsField(serializers.JSONField):
+    """Additional field values; the member form sends multipart, so a JSON text is accepted too."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            try:
+                data = json.loads(data or "{}")
+            except ValueError as exc:
+                raise serializers.ValidationError("Zusatzangaben konnten nicht gelesen werden.") from exc
+        return super().to_internal_value(data)
+
+
 class MemberCreateUpdateSerializer(MemberFieldAccessMixin, serializers.ModelSerializer):
     avatar = PrivateAvatarField(kind="member-avatar", required=False, allow_null=True)
+    extra_fields = ExtraFieldsField(required=False)
     """Serializer for create/update operations"""
 
     def validate(self, attrs):
@@ -246,7 +262,25 @@ class MemberCreateUpdateSerializer(MemberFieldAccessMixin, serializers.ModelSeri
                 # auto-clear it to keep member visible/manageable.
                 attrs["group"] = None
 
+        if "extra_fields" in attrs:
+            attrs["extra_fields"] = self._clean_extra_fields(attrs["extra_fields"], departments)
+
+        status = attrs.get("status")
+        if status is not None and status.department_id not in {None, *(department.id for department in departments)}:
+            raise serializers.ValidationError(
+                {"status": "Der gewählte Status gehört nicht zu den zugewiesenen Abteilungen."}
+            )
+
         return attrs
+
+    def _clean_extra_fields(self, values, departments):
+        from members.services.extra_fields import clean_values, definitions_for
+
+        current = self.instance.extra_fields if self.instance else {}
+        merged, errors = clean_values(values, definitions_for([d.pk for d in departments]), current)
+        if errors:
+            raise serializers.ValidationError({"extra_fields": errors})
+        return merged
 
     class Meta:
         model = Member
@@ -272,6 +306,7 @@ class MemberCreateUpdateSerializer(MemberFieldAccessMixin, serializers.ModelSeri
             "storage_location",
             "avatar",
             "departments",
+            "extra_fields",
         ]
         read_only_fields = ["id"]
 
@@ -290,11 +325,23 @@ class EventSerializer(serializers.ModelSerializer):
         queryset=EventType.objects.all(), source="type", write_only=True, required=False
     )
     member_name = serializers.CharField(source="member.get_full_name", read_only=True)
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = Event
-        fields = ["id", "member", "member_name", "type", "event_type", "type_id", "datetime", "notes"]
-        read_only_fields = ["id"]
+        fields = [
+            "id",
+            "member",
+            "member_name",
+            "type",
+            "event_type",
+            "type_id",
+            "datetime",
+            "notes",
+            "created_by_name",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -318,6 +365,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     mime_type = serializers.SerializerMethodField()
     file_size = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.StringRelatedField(source="uploaded_by", read_only=True)
 
     class Meta:
         model = Attachment
@@ -328,6 +376,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
             "file_url",
             "description",
             "uploaded_at",
+            "uploaded_by_name",
             "content_type",
             "object_id",
             "mime_type",

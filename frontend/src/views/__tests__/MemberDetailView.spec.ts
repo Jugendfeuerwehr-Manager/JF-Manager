@@ -10,12 +10,13 @@ const { auth, membersApi, qualificationsApi, servicebookApi } = vi.hoisted(() =>
   servicebookApi: { attendance: { getByMember: vi.fn() } },
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
+vi.mock('@/stores/memberFields', () => ({ useMemberFieldsStore: () => ({ ensureLoaded: vi.fn(), applicableTo: () => [] }) }))
 vi.mock('@/stores/members', () => ({ useMembersStore: () => ({ anonymizeMember: vi.fn(), error: null }) }))
 vi.mock('@/api/members', () => ({ membersApi, parentsApi: { delete: vi.fn() } }))
 vi.mock('@/api/qualifications', () => ({ qualificationsApi }))
 vi.mock('@/api/servicebook', () => ({ servicebookApi }))
 vi.mock('@/composables/usePrivateMedia', () => ({ usePrivateMedia: () => ({ value: undefined }) }))
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '5' } }), useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '5' }, query: {} }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: vi.fn() }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
 

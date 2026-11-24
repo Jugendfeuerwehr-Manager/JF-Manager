@@ -24,6 +24,7 @@
       />
       <MemberSyncJobsCard :can-edit="settingsStore.canChangeCategory('member')" />
       <StatusesManager :can-edit="settingsStore.canChangeCategory('member')" />
+      <MemberFieldsManager />
       <EventTypesManager :can-edit="settingsStore.canChangeCategory('member')" />
     </div>
   </div>
@@ -38,6 +39,7 @@ import { useSettingsStore } from '@/stores/settings'
 import MemberSettingsForm from '../../molecules/MemberSettingsForm.vue'
 import MemberSyncJobsCard from '../../molecules/MemberSyncJobsCard.vue'
 import StatusesManager from '../../molecules/StatusesManager.vue'
+import MemberFieldsManager from '../../molecules/MemberFieldsManager.vue'
 import EventTypesManager from '../../molecules/EventTypesManager.vue'
 import type { MemberSettings } from '@/types/settings'
 import { useMobile } from '@/composables/useMobile'

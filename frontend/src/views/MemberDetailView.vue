@@ -146,6 +146,13 @@
               <TabPanel value="events">
                 <EventsManager :member-id="memberId" />
               </TabPanel>
+              <TabPanel value="membership">
+                <MembershipTimeline
+                  :key="membershipKey"
+                  :member-id="memberId"
+                  :can-edit="authStore.hasPerm('members.change_member')"
+                />
+              </TabPanel>
               <TabPanel value="attendance">
                 <AttendanceTab :member-id="memberId" />
               </TabPanel>
@@ -209,6 +216,16 @@
             </dl>
           </section>
 
+          <section v-if="extraRows.length" class="detail-card aside-card" aria-labelledby="extra-fields-heading">
+            <h2 id="extra-fields-heading">Zusatzangaben</h2>
+            <dl class="kv">
+              <template v-for="row in extraRows" :key="row.key">
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.value }}</dd>
+              </template>
+            </dl>
+          </section>
+
           <section class="detail-card aside-card">
             <ChangeLogCard kind="member" :record-id="memberId" />
           </section>
@@ -254,6 +271,8 @@
       @cancel="showDeletionDialog = false"
     />
 
+    <IdCardPrintDialog v-if="member && showIdCardDialog" v-model:visible="showIdCardDialog" :member="member" />
+
     <MemberLeaveDialog
       v-if="member"
       v-model="showLeaveDialog"
@@ -278,6 +297,8 @@ import { useMembersStore } from '@/stores/members'
 import { qualificationsApi } from '@/api/qualifications'
 import { servicebookApi } from '@/api/servicebook'
 import { useAuthStore } from '@/stores/auth'
+import { useMemberFieldsStore } from '@/stores/memberFields'
+import { extraFieldText, memberDepartmentIds } from '@/utils/extraFields'
 import { classifyApiError } from '@/utils/apiError'
 import type { Member, Parent } from '@/types/api'
 import type { Event } from '@/types/events'
@@ -311,6 +332,9 @@ import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.
 import AttendanceTab from '@/components/members/profile/AttendanceTab.vue'
 import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
 import MemberLeaveDialog from '@/components/members/molecules/MemberLeaveDialog.vue'
+import IdCardPrintDialog from '@/components/members/organisms/IdCardPrintDialog.vue'
+import MembershipTimeline from '@/components/membership/organisms/MembershipTimeline.vue'
+import type { LeavePayload } from '@/types/membership'
 
 type SourceState = 'loading' | 'forbidden' | 'offline' | 'error' | null
 
@@ -326,6 +350,16 @@ const canLinkAccounts = computed(() => authStore.hasPerm('users.change_customuse
 const qualificationsKey = ref(0)
 
 const member = ref<Member | null>(null)
+const memberFieldsStore = useMemberFieldsStore()
+const extraRows = computed(() => {
+  if (!member.value) return []
+  const values = member.value.extra_fields ?? {}
+  return memberFieldsStore.applicableTo(memberDepartmentIds(member.value)).map((definition) => ({
+    key: definition.key,
+    label: definition.label,
+    value: extraFieldText(definition, values[definition.key])
+  }))
+})
 const parents = ref<Parent[]>([])
 const loading = ref(true)
 const loadingParents = ref(false)
@@ -345,6 +379,8 @@ const sources = reactive({
 
 const showDeletionDialog = ref(false)
 const showLeaveDialog = ref(false)
+// ?ausweis=1 (after taking an application over) opens the card printing right away.
+const showIdCardDialog = ref(route.query.ausweis === '1')
 const deletionLoading = ref(false)
 const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 
@@ -355,6 +391,9 @@ const menuItems = computed(() => [
   {
     label: 'Aktionen',
     items: [
+      ...(!member.value?.anonymized_at
+        ? [{ label: 'DJF-Ausweis drucken', icon: 'pi pi-id-card', command: () => (showIdCardDialog.value = true) }]
+        : []),
       // Guided leave instead of a bare date field; the date starts the anonymization deadline.
       ...(authStore.hasPerm('members.change_member') && !member.value?.anonymized_at
         ? [
@@ -376,6 +415,7 @@ const menuItems = computed(() => [
 ])
 
 onMounted(async () => {
+  memberFieldsStore.ensureLoaded()
   await loadMember()
 })
 
@@ -524,6 +564,7 @@ const tabs = computed(() => [
   { value: 'qualifications', label: 'Qualifikationen', count: sources.qualifications.state ? 0 : qualifications.value.length },
   { value: 'specialtasks', label: 'Sonderaufgaben' },
   { value: 'events', label: 'Einträge', count: sources.events.state ? 0 : events.value.length },
+  { value: 'membership', label: 'Mitgliedschaft' },
   { value: 'attendance', label: 'Anwesenheit' },
   { value: 'equipment', label: 'Ausrüstung' },
   { value: 'attachments', label: 'Anhänge' },
@@ -613,15 +654,18 @@ const confirmDelete = () => {
   })
 }
 
+const membershipKey = ref(0)
+
 async function openLeaveDialog() {
   if (!membersStore.statuses.length) await membersStore.fetchStatuses()
   showLeaveDialog.value = true
 }
 
-async function handleLeave(payload: { left_at: string; status_id?: number }) {
+async function handleLeave(payload: LeavePayload & { left_at: string }) {
   try {
     member.value = await membersStore.recordLeave(memberId, payload)
     showLeaveDialog.value = false
+    membershipKey.value++
     const due = member.value.anonymize_due ? ` Anonymisierung am ${formatDate(member.value.anonymize_due)}.` : ''
     toast.add({ severity: 'success', summary: 'Austritt erfasst', detail: `Ausgetreten am ${formatDate(payload.left_at)}.${due}`, life: 5000 })
   } catch {
@@ -639,6 +683,7 @@ const confirmWithdrawLeave = () => {
     accept: async () => {
       try {
         member.value = await membersStore.recordLeave(memberId, { left_at: null })
+        membershipKey.value++
         toast.add({ severity: 'success', summary: 'Austritt zurückgenommen', life: 3000 })
       } catch {
         toast.add({ severity: 'error', summary: 'Fehler', detail: membersStore.error ?? 'Austritt konnte nicht zurückgenommen werden', life: 5000 })

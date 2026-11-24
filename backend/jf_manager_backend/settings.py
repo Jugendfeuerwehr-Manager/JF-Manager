@@ -117,6 +117,8 @@ INSTALLED_APPS = [
     "external_sync.apps.ExternalSyncConfig",
     "settings_manager.apps.SettingsManagerConfig",
     "privacy.apps.PrivacyConfig",
+    "membership.apps.MembershipConfig",
+    "admissions.apps.AdmissionsConfig",
     "django_rq",
     "health",
     "notifications.apps.NotificationsConfig",
@@ -475,6 +477,10 @@ LOGGING = {
 }
 
 # Web Push: opt-in per device; private key never leaves the backend.
+# Ed25519 key (32 bytes, base64) that seals admission applications, decisions and exports.
+# Without it a key is derived from DJANGO_SECRET_KEY; set it explicitly so seals survive a secret rotation.
+ADMISSIONS_SEAL_KEY = os.environ.get("ADMISSIONS_SEAL_KEY", "")
+
 WEB_PUSH_PUBLIC_KEY = os.environ.get("WEB_PUSH_PUBLIC_KEY", "")
 WEB_PUSH_PRIVATE_KEY = os.environ.get("WEB_PUSH_PRIVATE_KEY", "")
 WEB_PUSH_SUBJECT = os.environ.get("WEB_PUSH_SUBJECT", "")

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { membersApi, type MemberListParams, statusesApi, groupsApi, eventsApi, eventTypesApi } from '@/api/members'
 import type { Member, Status, Group, Event, EventType, MemberCreate } from '@/types/api'
 import { getApiErrorMessage } from '@/utils/apiError'
+import type { LeavePayload } from '@/types/membership'
 
 export const useMembersStore = defineStore('members', () => {
   // State
@@ -171,7 +172,7 @@ export const useMembersStore = defineStore('members', () => {
   }
 
   /** Record or withdraw a leave; the leave date starts the anonymization deadline. */
-  async function recordLeave(id: number, data: { left_at: string | null; status_id?: number }) {
+  async function recordLeave(id: number, data: LeavePayload) {
     loading.value = true
     error.value = null
     try {
@@ -245,7 +246,7 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function createEvent(data: Omit<Event, 'id' | 'member_name' | 'event_type'>) {
+  async function createEvent(data: Omit<Event, 'id' | 'member_name' | 'event_type' | 'created_by_name' | 'created_at'>) {
     loading.value = true
     error.value = null
 

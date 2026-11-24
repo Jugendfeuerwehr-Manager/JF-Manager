@@ -7,6 +7,7 @@ All ViewSets are exported from here so rest_urls.py has a single import point.
 from members.api.viewsets.attachment_viewsets import AttachmentViewSet
 from members.api.viewsets.email_viewsets import EmailMessageViewSet
 from members.api.viewsets.event_viewsets import EventTypeViewSet, EventViewSet
+from members.api.viewsets.extra_field_viewsets import MemberFieldDefinitionViewSet
 from members.api.viewsets.list_viewsets import MemberListViewSet
 from members.api.viewsets.member_viewsets import MemberViewSet
 from members.api.viewsets.parent_viewsets import ParentViewSet
@@ -18,6 +19,7 @@ __all__ = [
     "EventTypeViewSet",
     "EventViewSet",
     "GroupViewSet",
+    "MemberFieldDefinitionViewSet",
     "MemberListViewSet",
     "MemberViewSet",
     "ParentViewSet",

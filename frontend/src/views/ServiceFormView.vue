@@ -165,7 +165,9 @@ const handleSubmit = async (data: ServiceFormData) => {
       toast.add({
         severity: 'success',
         summary: 'Erfolg',
-        detail: 'Dienst wurde erstellt',
+        detail: created.training_session
+          ? 'Dienst und Termin im Ausbildungskalender wurden erstellt'
+          : 'Dienst wurde erstellt',
         life: 3000
       })
       // Navigate to edit view and load the service details

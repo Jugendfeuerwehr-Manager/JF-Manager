@@ -16,7 +16,7 @@ vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: vi.fn() })
 const record = (id: number, acquired: string, expires: string | null): Qualification => ({
   id, type: 5, type_name: 'Erste Hilfe', user: null, user_name: null, member: 9, member_name: 'Mia Beispiel',
   person_name: 'Mia Beispiel', date_acquired: acquired, date_expires: expires, issued_by: 'Kreis', note: '',
-  is_expired: false, expires_soon: false, status_class: '', attachments: [],
+  is_expired: false, expires_soon: false, status_class: '', attachments: [], created_by_name: null, created_at: null,
 })
 
 function mountView(current: Qualification, history: Qualification[]) {

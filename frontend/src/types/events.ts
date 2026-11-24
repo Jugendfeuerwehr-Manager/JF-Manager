@@ -23,6 +23,9 @@ export interface Event {
   event_type: EventType | null
   datetime: string
   notes: string
+  /** Who created the entry; null for entries created before this was recorded. */
+  created_by_name: string | null
+  created_at: string | null
 }
 
 export interface EventCreate {

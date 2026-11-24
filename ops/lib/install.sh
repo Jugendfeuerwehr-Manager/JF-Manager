@@ -243,6 +243,10 @@ _inst_config() {
         kv_set "$JF_APP_ENV" DJANGO_SECRET_KEY "$(gen_secret 48)"
         kv_set "$JF_APP_ENV" FIELD_ENCRYPTION_KEY "$(gen_fernet_key)"
     fi
+    # Seals of admission applications; created once, never replaced (existing seals keep their key).
+    if [ -z "$(kv_get "$JF_APP_ENV" ADMISSIONS_SEAL_KEY || true)" ]; then
+        kv_set "$JF_APP_ENV" ADMISSIONS_SEAL_KEY "$(openssl rand -base64 32 | tr -d '\n')"
+    fi
     # Values derived from the answers; secrets above stay untouched on resume.
     kv_set "$JF_APP_ENV" DEBUG False
     kv_set "$JF_APP_ENV" ALLOWED_HOSTS "$JF_DOMAIN,localhost,127.0.0.1"

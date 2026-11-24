@@ -51,6 +51,8 @@ class Member(models.Model):
     anonymized_at = models.DateTimeField("Anonymisiert am", null=True, blank=True, editable=False)
     identityCardNumber = models.CharField(max_length=50, blank=True, default="", verbose_name="Ausweis Nr.")
     canSwimm = models.BooleanField(default=False, verbose_name="Kann schwimmen")
+    # Values of MemberFieldDefinition, keyed by its ``key``.
+    extra_fields = models.JSONField(default=dict, blank=True, verbose_name="Zusatzangaben")
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.ForeignKey(Status, on_delete=models.SET_NULL, null=True, blank=True)
 

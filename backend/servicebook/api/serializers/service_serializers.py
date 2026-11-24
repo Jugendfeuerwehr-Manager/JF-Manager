@@ -183,6 +183,8 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
     operations_manager_ids = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), source="operations_manager", many=True, required=False
     )
+    # Also publish the exercise in the training calendar; it then owns time, topic and place.
+    create_training_session = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Service
@@ -195,6 +197,7 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
             "events",
             "department",
             "operations_manager_ids",
+            "create_training_session",
         ]
 
     def validate(self, data):
@@ -202,6 +205,11 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
         if data.get("start") and data.get("end") and data["end"] <= data["start"]:
             raise serializers.ValidationError({"end": "End time must be after start time."})
         return data
+
+    def create(self, validated_data):
+        # Not a model field; the viewset routes a requested exercise before saving.
+        validated_data.pop("create_training_session", None)
+        return super().create(validated_data)
 
 
 class ServiceUpdateSerializer(serializers.ModelSerializer):

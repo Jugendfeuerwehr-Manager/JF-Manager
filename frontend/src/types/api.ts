@@ -33,6 +33,8 @@ export interface Attachment {
   description: string
   uploaded_at: string
   uploaded_by?: number
+  /** Who uploaded the file; null for uploads before this was recorded. */
+  uploaded_by_name?: string | null
   file_size?: number
   mime_type: string
   content_type: number

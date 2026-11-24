@@ -3,10 +3,16 @@
  * Canonical source — import from here, not from @/types/api.
  */
 
+export type StatusCategory = 'applicant' | 'trial' | 'active' | 'passive' | 'left' | 'transferred'
+
 export interface Status {
   id: number
   name: string
   color: string
+  category: StatusCategory
+  /** null: central stage, visible in every department */
+  department: number | null
+  sort_order: number
 }
 
 export interface Group {
@@ -47,8 +53,37 @@ export interface Member {
   avatar_url: string | null
   parents?: import('@/types/parents').Parent[]
   has_alert: boolean
+  /** list endpoint */
   department_ids: number[]
+  /** detail endpoint: the same ids under the model field's name */
+  departments?: number[]
+  /** Values of additional member fields, keyed by ``MemberFieldDefinition.key``. */
+  extra_fields?: ExtraFieldValues
 }
+
+export type ExtraFieldValue = string | number | boolean
+export type ExtraFieldValues = Record<string, ExtraFieldValue>
+export type MemberFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
+
+/** An additional member field of the organisation (department null) or one department. */
+export interface MemberFieldDefinition {
+  id: number
+  department: number | null
+  key: string
+  label: string
+  field_type: MemberFieldType
+  options: string[]
+  help_text: string
+  position: number
+  active: boolean
+  in_use: boolean
+}
+
+export type MemberFieldDefinitionInput = Pick<
+  MemberFieldDefinition,
+  'department' | 'label' | 'field_type' | 'options' | 'help_text'
+> &
+  Partial<Pick<MemberFieldDefinition, 'key' | 'position' | 'active'>>
 
 export interface MemberCreate {
   name: string

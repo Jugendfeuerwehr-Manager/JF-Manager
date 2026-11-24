@@ -119,6 +119,8 @@
               <span>Keine Bemerkungen</span>
             </div>
 
+            <EntryAuthor :name="event.created_by_name" :at="event.created_at" />
+
             <div class="event-actions">
               <Button 
                 icon="pi pi-pencil" 
@@ -161,6 +163,7 @@ import Textarea from 'primevue/textarea'
 import DataView from 'primevue/dataview'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
+import EntryAuthor from '@/components/common/EntryAuthor.vue'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { toIsoDateLocal } from '@/utils/dateParsing'
 

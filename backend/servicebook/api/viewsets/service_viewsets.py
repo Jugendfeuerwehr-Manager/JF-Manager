@@ -14,6 +14,7 @@ from departments.models import Department
 from jf_manager_backend.permissions import DepartmentRoleModelPermissions
 from portal.permissions import StaffAccountRequired
 from servicebook.models import Attendance, Service
+from servicebook.services.training_link import create_service_with_training_session
 
 from ..attendance_permissions import attendance_departments, filter_by_permission, has_department_permission
 from ..serializers import (
@@ -98,7 +99,11 @@ class ServiceViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
             raise PermissionDenied("Keine Berechtigung zum Anlegen in dieser Abteilung.")
         if department is None and department_id is not None:
             serializer.validated_data["department"] = Department.objects.get(pk=department_id)
-        service = self.perform_create(serializer)
+        if serializer.validated_data.pop("create_training_session", False):
+            service = create_service_with_training_session(request.user, serializer.validated_data)
+            cache.delete("attendance_over_time_data")
+        else:
+            service = self.perform_create(serializer)
 
         # Use DetailSerializer for response to include all fields including id
         detail_serializer = ServiceDetailSerializer(service)

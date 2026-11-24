@@ -285,6 +285,49 @@
             </div>
           </section>
 
+          <section v-if="extraDefinitions.length" id="section-extra" class="form-card" aria-labelledby="section-extra-title">
+            <h2 id="section-extra-title" tabindex="-1">Zusatzangaben</h2>
+            <p class="hint">Felder der Organisation und der gewählten Abteilungen. Angaben aus Aufnahmeanträgen stehen hier schon drin.</p>
+            <div class="form-grid">
+              <div
+                v-for="definition in extraDefinitions"
+                :key="definition.key"
+                class="field"
+                :class="{ 'field--check': definition.field_type === 'checkbox' }"
+              >
+                <template v-if="definition.field_type === 'checkbox'">
+                  <Checkbox :input-id="`extra-${definition.key}`" v-model="formData.extra_fields[definition.key]" :binary="true" />
+                  <label :for="`extra-${definition.key}`">{{ definition.label }}</label>
+                </template>
+                <template v-else>
+                  <label :for="`extra-${definition.key}`">{{ definition.label }}</label>
+                  <Select
+                    v-if="definition.field_type === 'select'"
+                    v-model="formData.extra_fields[definition.key]"
+                    :input-id="`extra-${definition.key}`"
+                    :options="definition.options"
+                    show-clear
+                    placeholder="Keine Angabe"
+                  />
+                  <Textarea
+                    v-else-if="definition.field_type === 'textarea'"
+                    :id="`extra-${definition.key}`"
+                    v-model="formData.extra_fields[definition.key] as string"
+                    rows="3"
+                    auto-resize
+                  />
+                  <InputText
+                    v-else
+                    :id="`extra-${definition.key}`"
+                    v-model="formData.extra_fields[definition.key] as string"
+                    :type="definition.field_type === 'date' ? 'date' : definition.field_type === 'number' ? 'number' : 'text'"
+                  />
+                </template>
+                <p v-if="definition.help_text" class="hint">{{ definition.help_text }}</p>
+              </div>
+            </div>
+          </section>
+
           <section id="section-photo" class="form-card" aria-labelledby="section-photo-title">
             <h2 id="section-photo-title" tabindex="-1">Profilbild</h2>
             <div class="avatar-upload">
@@ -414,7 +457,10 @@ import { useToast } from 'primevue/usetoast'
 import { useMembersStore } from '@/stores/members'
 import { useDepartmentsStore } from '@/stores/departments'
 import { useAuthStore } from '@/stores/auth'
+import { useMemberFieldsStore } from '@/stores/memberFields'
 import type { Parent } from '@/types/parents'
+import type { ExtraFieldValues } from '@/types/members'
+import { memberDepartmentIds } from '@/utils/extraFields'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
@@ -439,6 +485,7 @@ const toast = useToast()
 const membersStore = useMembersStore()
 const departmentsStore = useDepartmentsStore()
 const authStore = useAuthStore()
+const memberFieldsStore = useMemberFieldsStore()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -484,6 +531,7 @@ const formData = reactive({
   storage_location: null as number | null,
   avatar_url: null as string | null,
   departments: [] as number[],
+  extra_fields: {} as ExtraFieldValues,
 })
 
 const errors = reactive({
@@ -524,6 +572,7 @@ const initials = computed(() => `${formData.name[0] ?? ''}${formData.lastname[0]
 const selectedStatus = computed(() => membersStore.statuses.find((status) => status.id === formData.status) ?? null)
 const reachableNumber = (parent: Parent) => parent.mobile || parent.phone || ''
 
+const extraDefinitions = computed(() => memberFieldsStore.applicableTo(formData.departments))
 const snapshot = () => JSON.stringify({ ...formData, birthday: birthdayText.value, joined: joinedText.value, left_at: leftAtText.value })
 const isDirty = computed(() => !!avatarFile.value || (savedSnapshot.value !== '' && snapshot() !== savedSnapshot.value))
 
@@ -533,6 +582,7 @@ const sections = computed(() => [
   ...(isEditMode.value ? [{ id: 'section-parents', label: 'Erziehungsberechtigte', errors: 0 }] : []),
   { id: 'section-membership', label: 'Mitgliedschaft', errors: (errors.joined ? 1 : 0) + (errors.left_at ? 1 : 0) },
   { id: 'section-notes', label: 'Hinweise', errors: 0 },
+  ...(extraDefinitions.value.length ? [{ id: 'section-extra', label: 'Zusatzangaben', errors: 0 }] : []),
   { id: 'section-photo', label: 'Profilbild', errors: 0 },
 ])
 const errorCount = computed(() => sections.value.reduce((sum, section) => sum + section.errors, 0))
@@ -561,6 +611,7 @@ onMounted(async () => {
   await Promise.all([
     membersStore.fetchStatuses(),
     membersStore.fetchGroups(),
+    memberFieldsStore.ensureLoaded(),
     departmentsStore.departments.length === 0 ? departmentsStore.fetchDepartments() : Promise.resolve(),
   ])
 
@@ -589,7 +640,8 @@ onMounted(async () => {
         group: member.group?.id || null,
         storage_location: member.storage_location,
         avatar_url: member.avatar_url,
-        departments: member.department_ids ?? [],
+        departments: memberDepartmentIds(member),
+        extra_fields: { ...(member.extra_fields ?? {}) },
       })
       memberParents.value = member.parents ?? []
 
@@ -843,6 +895,17 @@ async function handleSubmit() {
       for (const deptId of formData.departments) {
         formDataToSend.append('departments', String(deptId))
       }
+    }
+
+    if (extraDefinitions.value.length) {
+      // Every shown field is sent, so clearing one reaches the server.
+      const extra = Object.fromEntries(
+        extraDefinitions.value.map((definition) => [
+          definition.key,
+          formData.extra_fields[definition.key] ?? (definition.field_type === 'checkbox' ? false : '')
+        ])
+      )
+      formDataToSend.append('extra_fields', JSON.stringify(extra))
     }
 
     if (avatarFile.value) {

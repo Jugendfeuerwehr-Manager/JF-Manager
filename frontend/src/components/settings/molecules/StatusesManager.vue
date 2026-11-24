@@ -1,7 +1,7 @@
 <template>
   <SettingsCategoryCard
     title="Mitgliedstatus"
-    description="Verwalten Sie die verfügbaren Status für Mitglieder"
+    description="Stufen der Mitgliedschaft. Die Kategorie bestimmt, wie eine Stufe in der Jahresmeldung zählt. Reihenfolge per Ziehen oder mit den Pfeilen ändern."
     icon="pi pi-tag"
   >
     <div class="statuses-manager">
@@ -14,6 +14,13 @@
             class="flex-1"
             :class="{ 'p-invalid': addError }"
             @keyup.enter="saveNewStatus"
+          />
+          <Select
+            v-model="newStatus.category"
+            :options="categoryOptions"
+            option-label="label"
+            option-value="value"
+            aria-label="Kategorie"
           />
           <ColorPicker v-model="newStatus.color" format="hex" />
           <div
@@ -48,14 +55,44 @@
 
       <div v-else class="statuses-list">
         <div
-          v-for="status in statuses"
+          v-for="(status, index) in statuses"
           :key="status.id"
           class="status-row"
+          :class="{ 'status-row--drop': dropIndex === index }"
+          :draggable="canEdit && editingId === null"
+          @dragstart="dragIndex = index"
+          @dragover.prevent="dropIndex = index"
+          @dragleave="dropIndex = null"
+          @drop.prevent="dropAt(index)"
+          @dragend="dragIndex = dropIndex = null"
         >
           <template v-if="editingId !== status.id">
+            <i v-if="canEdit" class="pi pi-bars status-handle" aria-hidden="true" />
             <div class="status-color-dot" :style="{ background: status.color }" />
             <span class="status-name">{{ status.name }}</span>
+            <span class="status-category">{{ STATUS_CATEGORY_LABELS[status.category] }}</span>
+            <span v-if="status.department === null" class="status-scope">zentral</span>
             <div class="status-actions">
+              <Button
+                icon="pi pi-arrow-up"
+                text
+                rounded
+                size="small"
+                severity="secondary"
+                :aria-label="`${status.name} nach oben`"
+                :disabled="!canEdit || index === 0"
+                @click="move(index, index - 1)"
+              />
+              <Button
+                icon="pi pi-arrow-down"
+                text
+                rounded
+                size="small"
+                severity="secondary"
+                :aria-label="`${status.name} nach unten`"
+                :disabled="!canEdit || index === statuses.length - 1"
+                @click="move(index, index + 1)"
+              />
               <Button
                 icon="pi pi-pencil"
                 text
@@ -83,6 +120,13 @@
                 v-model="editForm.name"
                 class="flex-1"
                 @keyup.enter="saveEdit(status.id)"
+              />
+              <Select
+                v-model="editForm.category"
+                :options="categoryOptions"
+                option-label="label"
+                option-value="value"
+                aria-label="Kategorie"
               />
               <ColorPicker v-model="editForm.color" format="hex" />
               <Button
@@ -127,9 +171,12 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import ColorPicker from 'primevue/colorpicker'
 import ProgressSpinner from 'primevue/progressspinner'
+import Select from 'primevue/select'
 import SettingsCategoryCard from '../atoms/SettingsCategoryCard.vue'
 import { statusesApi } from '@/api/members'
-import type { Status } from '@/types/api'
+import type { Status, StatusCategory } from '@/types/members'
+import { STATUS_CATEGORY_LABELS } from '@/types/membership'
+import { useDepartmentsStore } from '@/stores/departments'
 
 interface Props {
   canEdit: boolean
@@ -146,8 +193,13 @@ const showAddForm = ref(false)
 const addError = ref('')
 const editingId = ref<number | null>(null)
 
-const newStatus = ref({ name: '', color: 'ef4444' })
-const editForm = ref({ name: '', color: 'ef4444' })
+const departmentsStore = useDepartmentsStore()
+const categoryOptions = Object.entries(STATUS_CATEGORY_LABELS).map(([value, label]) => ({ value, label }))
+const dragIndex = ref<number | null>(null)
+const dropIndex = ref<number | null>(null)
+
+const newStatus = ref<{ name: string; color: string; category: StatusCategory }>({ name: '', color: 'ef4444', category: 'active' })
+const editForm = ref<{ name: string; color: string; category: StatusCategory }>({ name: '', color: 'ef4444', category: 'active' })
 
 async function loadStatuses() {
   loading.value = true
@@ -169,9 +221,13 @@ async function saveNewStatus() {
   }
   saving.value = true
   try {
+    // New stages belong to the selected department; with "all departments" they are central.
     const response = await statusesApi.create({
       name: newStatus.value.name.trim(),
-      color: '#' + newStatus.value.color
+      color: '#' + newStatus.value.color,
+      category: newStatus.value.category,
+      department: departmentsStore.activeDepartmentId,
+      sort_order: statuses.value.length
     })
     statuses.value.push(response.data)
     cancelAdd()
@@ -186,14 +242,15 @@ async function saveNewStatus() {
 function cancelAdd() {
   showAddForm.value = false
   addError.value = ''
-  newStatus.value = { name: '', color: 'ef4444' }
+  newStatus.value = { name: '', color: 'ef4444', category: 'active' }
 }
 
 function startEdit(status: Status) {
   editingId.value = status.id
   editForm.value = {
     name: status.name,
-    color: status.color.replace('#', '')
+    color: status.color.replace('#', ''),
+    category: status.category
   }
 }
 
@@ -206,7 +263,8 @@ async function saveEdit(id: number) {
   try {
     const response = await statusesApi.update(id, {
       name: editForm.value.name.trim(),
-      color: '#' + editForm.value.color
+      color: '#' + editForm.value.color,
+      category: editForm.value.category
     })
     const idx = statuses.value.findIndex(s => s.id === id)
     if (idx !== -1) statuses.value[idx] = response.data
@@ -241,6 +299,31 @@ async function deleteStatus(id: number) {
   }
 }
 
+function dropAt(index: number) {
+  const from = dragIndex.value
+  dragIndex.value = dropIndex.value = null
+  if (from === null || from === index) return
+  move(from, index)
+}
+
+async function move(from: number, to: number) {
+  if (to < 0 || to >= statuses.value.length) return
+  const previous = [...statuses.value]
+  const reordered = [...statuses.value]
+  const [moved] = reordered.splice(from, 1)
+  if (!moved) return
+  reordered.splice(to, 0, moved)
+  statuses.value = reordered
+  const changed = reordered.filter((status, position) => status.sort_order !== position)
+  try {
+    await Promise.all(changed.map((status) => statusesApi.update(status.id, { sort_order: reordered.indexOf(status) })))
+    statuses.value = reordered.map((status, position) => ({ ...status, sort_order: position }))
+  } catch {
+    statuses.value = previous
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Reihenfolge konnte nicht gespeichert werden', life: 3000 })
+  }
+}
+
 onMounted(loadStatuses)
 </script>
 
@@ -260,6 +343,30 @@ onMounted(loadStatuses)
   border-radius: var(--p-border-radius-md);
   border: 1px solid var(--p-content-border-color);
   background: var(--p-content-background);
+}
+
+.status-row[draggable='true'] {
+  cursor: grab;
+}
+
+.status-row--drop {
+  border-color: var(--p-primary-color);
+}
+
+.status-handle {
+  color: var(--p-text-muted-color);
+}
+
+.status-category,
+.status-scope {
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+.status-scope {
+  padding: 0 0.4rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 999px;
 }
 
 .status-color-dot {

@@ -122,6 +122,8 @@ export interface ServiceFormData {
   events?: string
   department?: number | null
   operations_manager_ids?: number[]
+  /** Create only: also publish the exercise in the training calendar. */
+  create_training_session?: boolean
 }
 
 /**

@@ -78,6 +78,13 @@ def private_media(request, kind, pk):
     from training.models import LibraryBlock, TrainingBlock, TrainingMedia, TrainingTemplateBlock
     from users.api_views import UserViewSet
 
+    if kind == "admission-file":
+        from admissions.api.viewsets.applications import ApplicationViewSet
+        from admissions.models import ApplicationFile
+
+        item = get_object_or_404(ApplicationFile, pk=pk)
+        authorized_owner(ApplicationViewSet, request, item.application_id)
+        return private_file_response(item.file)
     if kind == "member-avatar":
         return private_file_response(authorized_owner(MemberViewSet, request, pk).avatar)
     if kind == "user-avatar":

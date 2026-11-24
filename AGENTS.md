@@ -97,3 +97,37 @@ export const useOrdersStore = defineStore('orders', () => {
   return { orders, loading, error, fetchOrders }
 })
 ```
+
+### 5. Code-Stil: Guard Clauses statt verschachtelter Prüfungen
+
+Gilt für neuen und angefassten Code (eingeführt mit dem Aufnahme-Modul). Vorbedingungen und Fehlerfälle werden zuerst geprüft und sofort mit `return`, `raise` oder `continue` verlassen; der Normalfall folgt danach ohne zusätzliche Einrückung. Verschachtelte `if`-Ketten für Vorbedingungen werden nicht neu geschrieben.
+
+```python
+# nicht so
+def accept(application, user):
+    if application.status == Application.Status.APPROVED:
+        if user.has_perm("admissions.take_over_application"):
+            return take_over(application)
+        else:
+            raise PermissionDenied
+    else:
+        raise ValidationError("Antrag ist nicht angenommen.")
+
+# sondern so
+def accept(application, user):
+    if application.status != Application.Status.APPROVED:
+        raise ValidationError("Antrag ist nicht angenommen.")
+    if not user.has_perm("admissions.take_over_application"):
+        raise PermissionDenied
+    return take_over(application)
+```
+
+```typescript
+// sondern so
+function voucherLabel(voucher: Voucher | null): string {
+  if (!voucher) return '–'
+  if (voucher.revoked_at) return 'Widerrufen'
+  if (voucher.used_at) return 'Eingelöst'
+  return 'Offen'
+}
+```

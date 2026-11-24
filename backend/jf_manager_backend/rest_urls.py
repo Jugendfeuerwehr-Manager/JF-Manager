@@ -1,5 +1,9 @@
 from rest_framework import routers
 
+from admissions.api.viewsets.applications import ApplicationViewSet, CommitteeMeetingViewSet
+from admissions.api.viewsets.forms import AdmissionFormViewSet, AdmissionTextBlockViewSet
+from admissions.api.viewsets.public import PublicAdmissionViewSet
+from admissions.api.viewsets.vouchers import AdmissionVoucherViewSet
 from departments.api.viewsets.departments import DepartmentViewSet
 from departments.api.viewsets.member_options import RoleMemberOptionsViewSet
 from departments.api.viewsets.role_assignments import RoleAssignmentViewSet
@@ -20,11 +24,14 @@ from members.api.viewsets import (
     EventTypeViewSet,
     EventViewSet,
     GroupViewSet,
+    MemberFieldDefinitionViewSet,
     MemberListViewSet,
     MemberViewSet,
     ParentViewSet,
     StatusViewSet,
 )
+from membership.api.viewsets.events import MembershipEventViewSet
+from membership.api.viewsets.reports import AnnualReportViewSet, StatisticsProfileViewSet
 from orders.api.viewsets import OrderableItemViewSet, OrderItemViewSet, OrderStatusViewSet, OrderViewSet
 from privacy.api.viewsets import ConsentKindViewSet, ConsentRecordViewSet, LegalPageViewSet
 from qualifications.api.viewsets import (
@@ -72,12 +79,22 @@ api.register(r"sync-runs", SyncRunViewSet, basename="sync-runs")
 api.register(r"members", MemberViewSet)
 api.register(r"parents", ParentViewSet)
 api.register(r"statuses", StatusViewSet)
+api.register(r"member-fields", MemberFieldDefinitionViewSet, basename="member-fields")
 api.register(r"groups", GroupViewSet)
 api.register(r"member-lists", MemberListViewSet)
 api.register(r"events", EventViewSet)
 api.register(r"event-types", EventTypeViewSet)
 api.register(r"attachments", AttachmentViewSet)
 api.register(r"emails", EmailMessageViewSet)
+api.register(r"membership/events", MembershipEventViewSet, basename="membership-events")
+api.register(r"membership/annual-reports", AnnualReportViewSet, basename="membership-annual-reports")
+api.register(r"membership/statistics-profiles", StatisticsProfileViewSet, basename="membership-statistics-profiles")
+api.register(r"admissions/forms", AdmissionFormViewSet, basename="admission-forms")
+api.register(r"admissions/text-blocks", AdmissionTextBlockViewSet, basename="admission-text-blocks")
+api.register(r"admissions/vouchers", AdmissionVoucherViewSet, basename="admission-vouchers")
+api.register(r"admissions/applications", ApplicationViewSet, basename="admission-applications")
+api.register(r"admissions/meetings", CommitteeMeetingViewSet, basename="admission-meetings")
+api.register(r"public/admissions", PublicAdmissionViewSet, basename="public-admissions")
 
 
 api.register(r"inventory/items", ItemViewSet)

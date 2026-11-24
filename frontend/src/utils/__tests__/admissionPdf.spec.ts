@@ -1,0 +1,85 @@
+import { describe, expect, it } from 'vitest'
+import { buildApplicationPdf, buildVoucherCardPdf } from '../admissionPdf'
+import type { FormSchema } from '@/types/admissions'
+
+const schema: FormSchema = {
+  pages: [
+    {
+      id: 'p',
+      title: 'Personalien',
+      sections: [
+        {
+          id: 's',
+          title: 'Person',
+          elements: [
+            { id: 'a', type: 'text', key: 'vorname', label: 'Vorname' },
+            { id: 'g', type: 'select', key: 'geschlecht', label: 'Geschlecht', target: 'member.gender' },
+            { id: 'u', type: 'signature', key: 'unterschrift', role: 'applicant', label: 'Unterschrift' }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+describe('admission PDFs', () => {
+  it('prints answers, signature lines and the seal with a QR code', () => {
+    const doc = buildApplicationPdf({
+      title: 'Aufnahmeantrag', department: 'Mitte', schema, answers: { vorname: 'Mia', geschlecht: 'female' }, images: {},
+      signatureMode: 'both', seal: { publicId: 'abc123xyz', sealHash: 'f'.repeat(64), label: 'Versiegelt' },
+      verifyUrl: 'https://example.invalid/aufnahme/pruefen/abc123xyz'
+    })
+    const text = JSON.stringify(doc.content)
+    expect(text).toContain('Mia')
+    expect(text).toContain('Weiblich')
+    expect(text).toContain('Ort, Datum')
+    expect(text).toContain('BESCHLUSSVERMERK')
+    expect(text).toContain('"qr":"https://example.invalid/aufnahme/pruefen/abc123xyz"')
+  })
+
+  it('lists attachments with their checksum and fills in a recorded decision', () => {
+    const withAttachment: FormSchema = {
+      pages: [
+        {
+          ...schema.pages[0]!,
+          sections: [{ ...schema.pages[0]!.sections[0]!, elements: [...schema.pages[0]!.sections[0]!.elements, { id: 'x', type: 'attachment', key: 'attest', label: 'Attest' }] }]
+        }
+      ]
+    }
+    const doc = buildApplicationPdf({
+      title: 'Aufnahmeantrag', department: 'Mitte', schema: withAttachment, images: {}, signatureMode: 'digital',
+      answers: { vorname: 'Mia', attest: { file: 'attest', name: 'Attest Mia.pdf' } },
+      fileHashes: { attest: '4be1' + '0'.repeat(56) + '07d2' },
+      decision: { outcome: 'approved', decided_on: '2026-11-12', body: 'Jugendausschuss', votes_yes: 5, votes_no: 0, votes_abstain: 1 }
+    })
+    const text = JSON.stringify(doc.content)
+    expect(text).toContain('Attest Mia.pdf')
+    expect(text).toContain('4be10000…000007d2')
+    expect(text).toContain('BESCHLUSS · JUGENDAUSSCHUSS')
+    expect(text).toContain('5 / 0 / 1')
+  })
+
+  it('turns rich text into plain text without any markup', () => {
+    const rich: FormSchema = {
+      pages: [{ id: 'p', title: 'S', sections: [{ id: 's', title: '', elements: [
+        { id: 'r', type: 'richtext', html: '<p>Erste&nbsp;Zeile</p><ul><li>Punkt</li></ul><<script>alert(1)</script>script>' }
+      ] }] }]
+    }
+    const doc = buildApplicationPdf({ title: 'A', department: 'M', schema: rich, answers: {}, images: {}, signatureMode: 'digital' })
+    const text = JSON.stringify(doc.content)
+    expect(text).toContain('Erste Zeile')
+    expect(text).toContain('• Punkt')
+    expect(text).not.toMatch(/<\/?script/i)
+  })
+
+  it('puts the code and the QR link on the voucher card', () => {
+    const doc = buildVoucherCardPdf({
+      department: 'Mitte', formTitle: 'Aufnahmeantrag', code: '7KQ4-M2XR-9PDA',
+      url: 'https://example.invalid/aufnahme#code=7KQ4-M2XR-9PDA', label: 'Ben', expiresAt: '2026-12-31T00:00:00Z'
+    })
+    const text = JSON.stringify(doc.content)
+    expect(text).toContain('7KQ4-M2XR-9PDA')
+    expect(text).toContain('"qr":"https://example.invalid/aufnahme#code=7KQ4-M2XR-9PDA"')
+    expect(text).not.toContain('#code=7KQ4-M2XR-9PDA","fontSize":9')
+  })
+})

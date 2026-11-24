@@ -12,6 +12,13 @@
   box-sizing: border-box;
 }
 
+/* The reset above removes the auto margin that centres native modal dialogs. */
+dialog:modal {
+  margin: auto;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
 body {
   font-family: var(--jf-font-sans);
   font-size: var(--jf-text-md);

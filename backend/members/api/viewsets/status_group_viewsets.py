@@ -20,11 +20,21 @@ from members.models import Group, Status
     partial_update=extend_schema(summary="Partially update status"),
     destroy=extend_schema(summary="Delete status"),
 )
-class StatusViewSet(viewsets.ModelViewSet):
+class StatusViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     queryset = Status.objects.all()
     serializer_class = StatusSerializer
     permission_classes = [IsAuthenticated, DepartmentRoleModelPermissions]
-    ordering = ["name"]
+    ordering = ["sort_order", "name"]
+    # Central stages (department=NULL) are visible everywhere; writing stays with the owner.
+    include_central_records = True
+
+    def perform_create(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        self._validate_target_department(serializer)
+        super().perform_update(serializer)
 
 
 @extend_schema_view(

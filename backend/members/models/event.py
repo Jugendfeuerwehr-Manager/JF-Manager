@@ -23,3 +23,13 @@ class Event(models.Model):
     datetime = models.DateField(verbose_name="Datum", null=False, blank=False)
     notes = models.TextField(blank=True, default="", verbose_name="Bemerkungen")
     member = models.ForeignKey(Member, blank=False, null=True, on_delete=models.CASCADE)
+
+    created_by = models.ForeignKey(
+        "users.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Erstellt von",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, verbose_name="Erstellt am")

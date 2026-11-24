@@ -84,7 +84,7 @@ export const useEventsStore = defineStore('events', () => {
     error.value = null
     try {
       // Prepare data in the format expected by the API
-      const apiData: Omit<Event, 'id' | 'member_name' | 'event_type'> = {
+      const apiData: Omit<Event, 'id' | 'member_name' | 'event_type' | 'created_by_name' | 'created_at'> = {
         member: eventData.member,
         type: eventData.type,
         datetime: eventData.datetime,
@@ -106,7 +106,7 @@ export const useEventsStore = defineStore('events', () => {
     error.value = null
     try {
       // Prepare data in the format expected by the API
-      const apiData: Partial<Omit<Event, 'id' | 'member_name' | 'event_type'>> = {
+      const apiData: Partial<Omit<Event, 'id' | 'member_name' | 'event_type' | 'created_by_name' | 'created_at'>> = {
         ...(eventData.member !== undefined && { member: eventData.member }),
         ...(eventData.type !== undefined && { type: eventData.type }),
         ...(eventData.datetime !== undefined && { datetime: eventData.datetime }),

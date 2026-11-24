@@ -6,6 +6,7 @@ Beginne mit der richtigen Abteilung. Welche Aufgaben du übernehmen kannst, ergi
 | --- | --- |
 | Anmeldung, Orientierung, Smartphone, eigenes Profil | [Start und mobile Bedienung](start.md) |
 | Aufnahme, Elternkontakte, Gruppen, Listen und Nachweise | [Mitglieder und Listen](members.md) |
+| Digitaler Aufnahmeantrag, Ausschussbeschluss, Jahresmeldung | [Aufnahme und Jahresmeldung](admissions.md) |
 | Termin dokumentieren und gemeinsam abhaken | [Dienstbuch und Anwesenheit](services.md) |
 | Stationsbetrieb vorbereiten, durchführen und nachbereiten | [Übungsplanung](training.md) |
 | Ausrüstung ausgeben, zurücknehmen und bestellen | [Inventar und Bestellungen](inventory.md) |

@@ -132,6 +132,10 @@
                   <i class="pi pi-calendar"></i>
                   {{ formatDate(attachment.uploaded_at) }}
                 </span>
+                <span v-if="attachment.uploaded_by_name" class="meta-item">
+                  <i class="pi pi-user"></i>
+                  {{ attachment.uploaded_by_name }}
+                </span>
                 <span v-if="attachment.file_size" class="meta-item">
                   <i class="pi pi-database"></i>
                   {{ formatFileSize(attachment.file_size) }}

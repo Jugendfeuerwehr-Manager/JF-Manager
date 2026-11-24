@@ -122,6 +122,7 @@ def anonymize_member(member, *, by=None):
     ):
         setattr(member, field, "")
     member.canSwimm = False
+    member.extra_fields = {}
     member.storage_location = None
     if member.birthday:
         member.birthday = date(member.birthday.year, 1, 1)

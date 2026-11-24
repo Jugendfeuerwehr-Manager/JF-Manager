@@ -60,7 +60,8 @@
       <div class="form-grid">
         <div class="form-field">
           <label for="topic">Thema</label>
-          <InputText id="topic" v-model="formData.topic" placeholder="z. B. Übung: Erste Hilfe" />
+          <InputText id="topic" v-model="formData.topic" placeholder="z. B. Übung: Erste Hilfe" :invalid="!!errors.topic" />
+          <p v-if="errors.topic" class="field-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.topic }}</p>
         </div>
         <div class="form-field">
           <label for="place">Ort</label>
@@ -110,6 +111,16 @@
     </section>
 
     <div class="action-bar">
+      <div v-if="offerTrainingSession" class="training-link">
+        <label class="training-link__label">
+          <Checkbox v-model="createTrainingSession" binary :disabled="loading" aria-describedby="training-link-hint" />
+          Auch im Ausbildungskalender anlegen
+        </label>
+        <p id="training-link-hint" class="field-hint">
+          Wird als veröffentlichter Termin angelegt und im Portal angekündigt. Blöcke planst du dort.
+        </p>
+        <p v-if="errors.create_training_session" class="field-error" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ errors.create_training_session }}</p>
+      </div>
       <Button type="button" label="Abbrechen" severity="secondary" text @click="$emit('cancel')" />
       <Button type="submit" :label="submitLabel" icon="pi pi-check" :loading="loading" />
     </div>
@@ -124,6 +135,7 @@ import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
+import Checkbox from 'primevue/checkbox'
 import UserChipSelector from '@/components/servicebook/atoms/UserChipSelector.vue'
 import type { ServiceFormData, ServiceDetail } from '@/types/servicebook'
 import { useUsersStore } from '@/stores/users'
@@ -301,8 +313,25 @@ const showDepartment = computed(
     (departmentsStore.activeDepartmentId === null || (!!props.initialData && props.initialData.department == null))
 )
 
+const createTrainingSession = ref(false)
+
+// Only new department services can get an exercise; the backend checks the right per department.
+const offerTrainingSession = computed(
+  () => !props.initialData && formData.value.department !== ORGANISATION && authStore.hasPerm('training.can_manage_training')
+)
+
+const validateTrainingSession = () => {
+  const { start, end, topic } = formData.value
+  if (!topic.trim()) errors.value.topic = 'Für den Ausbildungskalender ist ein Thema nötig'
+  if (start && end && start.toDateString() !== end.toDateString()) {
+    errors.value.create_training_session = 'Ein Termin im Ausbildungskalender muss am selben Tag enden'
+  }
+}
+
 const validate = (): boolean => {
   errors.value = {}
+
+  if (offerTrainingSession.value && createTrainingSession.value) validateTrainingSession()
 
   if (showDepartment.value && formData.value.department == null) {
     errors.value.department = 'Bitte eine Abteilung wählen'
@@ -338,7 +367,8 @@ const handleSubmit = () => {
       : undefined,
     ...(showDepartment.value && formData.value.department != null
       ? { department: formData.value.department === ORGANISATION ? null : formData.value.department }
-      : {})
+      : {}),
+    ...(offerTrainingSession.value && createTrainingSession.value ? { create_training_session: true } : {})
   }
 
   emit('submit', submitData)
@@ -444,6 +474,31 @@ const handleSubmit = () => {
   border: 1px solid var(--jf-color-border);
   border-radius: var(--jf-radius-lg);
   box-shadow: 0 -4px 12px rgba(23, 32, 51, 0.06);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.training-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.training-link__label {
+  display: flex;
+  align-items: center;
+  gap: var(--jf-space-1);
+  font-size: var(--jf-text-sm);
+  font-weight: var(--jf-weight-semibold);
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .training-link {
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 1023px) {

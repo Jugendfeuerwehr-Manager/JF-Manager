@@ -30,6 +30,7 @@ class SpecialTaskListSerializer(serializers.ModelSerializer):
     is_active = serializers.SerializerMethodField()
     duration_days = serializers.SerializerMethodField()
     status_class = serializers.CharField(source="get_status_class", read_only=True)
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = SpecialTask
@@ -43,6 +44,8 @@ class SpecialTaskListSerializer(serializers.ModelSerializer):
             "is_active",
             "duration_days",
             "status_class",
+            "created_by_name",
+            "created_at",
         ]
 
     def get_is_active(self, obj):
@@ -64,6 +67,7 @@ class SpecialTaskDetailSerializer(serializers.ModelSerializer):
     duration_days = serializers.SerializerMethodField()
     status_class = serializers.CharField(source="get_status_class", read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = SpecialTask
@@ -84,6 +88,8 @@ class SpecialTaskDetailSerializer(serializers.ModelSerializer):
             "duration_days",
             "status_class",
             "attachments",
+            "created_by_name",
+            "created_at",
         ]
 
     def get_is_active(self, obj):

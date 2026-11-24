@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import MemberEditView from '../MemberEditView.vue'
 
-const { auth, members, departments, push } = vi.hoisted(() => ({
+const { auth, members, departments, memberFields, push } = vi.hoisted(() => ({
   auth: { isOrgWide: false },
   members: {
     loading: false, statuses: [{ id: 1, name: 'Aktiv', color: '#16a34a' }, { id: 2, name: 'Probezeit', color: '#0284c7' }], groups: [],
@@ -11,11 +11,13 @@ const { auth, members, departments, push } = vi.hoisted(() => ({
     fetchStatuses: vi.fn(), fetchGroups: vi.fn(), fetchMemberById: vi.fn(), updateMember: vi.fn(), createMember: vi.fn(),
   },
   departments: { loading: false, departments: [{ id: 1, name: 'Musterstadt-Nord', code: 'NORD' }], fetchDepartments: vi.fn() },
+  memberFields: { ensureLoaded: vi.fn(), applicableTo: vi.fn((_ids: number[]): unknown[] => []) },
   push: vi.fn(),
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('@/stores/members', () => ({ useMembersStore: () => members }))
 vi.mock('@/stores/departments', () => ({ useDepartmentsStore: () => departments }))
+vi.mock('@/stores/memberFields', () => ({ useMemberFieldsStore: () => memberFields }))
 vi.mock('@/composables/usePrivateMedia', () => ({ usePrivateMedia: () => ({ value: undefined }) }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '5' } }), useRouter: () => ({ push }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
@@ -45,6 +47,25 @@ describe('MemberEditView', () => {
     auth.isOrgWide = false
     members.fetchMemberById.mockResolvedValue(member)
     members.updateMember.mockResolvedValue(member)
+    memberFields.applicableTo.mockReturnValue([])
+  })
+
+  it('shows additional fields of the member and sends all of them, cleared ones too', async () => {
+    memberFields.applicableTo.mockReturnValue([
+      { id: 1, key: 'schule', label: 'Schule', field_type: 'text', options: [], help_text: '', department: null, active: true },
+      { id: 2, key: 'rad', label: 'Fahrrad', field_type: 'checkbox', options: [], help_text: '', department: 1, active: true },
+    ])
+    members.fetchMemberById.mockResolvedValue({ ...member, extra_fields: { schule: 'Realschule' } })
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Zusatzangaben')
+    expect((wrapper.get('#extra-schule').element as HTMLInputElement).value).toBe('Realschule')
+    await wrapper.get('#extra-schule').setValue('')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const body = members.updateMember.mock.calls[0]![1] as FormData
+    expect(JSON.parse(body.get('extra_fields') as string)).toEqual({ schule: '', rad: false })
+    wrapper.unmount()
   })
 
   it('locks departments for department-scoped editors and leaves them out of the request', async () => {
