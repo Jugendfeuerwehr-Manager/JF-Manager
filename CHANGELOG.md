@@ -4,6 +4,73 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 ## [Unreleased]
 
+## [3.4.0] – 2026-11-24
+
+### Hinweise zum Update
+
+Diese Version bringt das Datenschutz-Paket (DSGVO) und das neue Modul **Aufnahme**. Sie enthält Datenbankmigrationen; `jfctl update` führt sie aus. Als root:
+
+```bash
+# 1. Vor dem Update: Schlüssel für die Siegel der Aufnahmeanträge anlegen (einmalig, nie ersetzen)
+grep -q '^ADMISSIONS_SEAL_KEY=' /etc/jf-manager/app.env || \
+  echo "ADMISSIONS_SEAL_KEY=$(openssl rand -base64 32 | tr -d '\n')" >> /etc/jf-manager/app.env
+
+# 2. Update
+jfctl backup list
+jfctl update --version 3.4.0
+
+# 3. Nach dem Update: neuen Wartungstimer (nächtlicher Datenschutz-Löschlauf) einrichten, prüfen
+jfctl maintenance install-timers
+jfctl doctor
+```
+
+- **Zwei-Faktor-Anmeldung wird Pflicht für alle Konten, die Mitgliederdaten lesen dürfen.** Betroffene Konten werden bei der nächsten Anmeldung durch die Einrichtung geführt. Bitte vorher ankündigen. Übergangsweise abschaltbar mit `MFA_REQUIRED_FOR_MEMBER_DATA=false` in `/etc/jf-manager/app.env`.
+- **Rollenvorlagen haben neue Versionen** (Jugendwart und Abteilungsjugendwart Version 10, weitere Vorlagen mit neuen Feldrechten). Unter Einstellungen › Rollen die neuen Versionen übernehmen. Bis dahin behält eine Datenmigration die bisherige Sichtbarkeit der Mitgliederfelder bei.
+- Ohne `ADMISSIONS_SEAL_KEY` werden Siegel aus dem `DJANGO_SECRET_KEY` abgeleitet; wechselt dieser, gelten alle bisherigen Siegel als ungültig. Darum Schritt 1 vor dem ersten Aufnahmeantrag.
+- Neue Pflichtangaben für den Betrieb nach dem Update: Impressum und Datenschutzerklärung unter Einstellungen › Datenschutz anlegen und veröffentlichen. Ein Aufnahmeformular lässt sich erst danach veröffentlichen.
+- Mitgliedsstufen haben jetzt eine Kategorie (Antrag, Probezeit, Aktiv, Passiv, Ausgetreten, Übergetreten). Bestehende Stufen stehen auf „Aktiv“; unter Einstellungen › Mitglieder › Mitgliedstatus einmal richtig zuordnen, sonst zählt die Jahresmeldung falsch.
+- Für die Jahresmeldung einmalig die Bewegungen der bestehenden Mitglieder aus dem Eintrittsdatum erzeugen: `jfctl manage backfill_membership_events` (bzw. `python manage.py backfill_membership_events`).
+
+### Neu
+
+- **Aufnahme: digitaler Aufnahmeantrag.** Eigenes Modul unter „Aufnahme“ mit Anträgen, Formularen, Vouchern und Sitzungen.
+  - **Formular-Baukasten** mit Drag & Drop, Seiten als Schritte, Bearbeitung direkt am Element und Handy-Vorschau. Die Bausteine sind nach Ziel sortiert (Mitgliedsdaten, Zusatzfelder, Personen und Rechtliches, Inhalt); was es nur einmal geben darf, wird nach dem Einfügen ausgegraut. Jede Angabe landet bei der Übernahme am Mitglied. Einwilligungsarten und Zusatzfelder lassen sich direkt im Baukasten anlegen. Vorlage „Jugendfeuerwehr“ nach dem üblichen Papierantrag.
+  - **Zugang:** Formulare einer Abteilung oder der ganzen Organisation. Nur mit Einmal-Code (Voucher mit QR-Code und Karte als PDF) oder zusätzlich öffentlich über einen Link mit QR-Code; dort wählen Antragstellende eine der freigegebenen Abteilungen.
+  - **Am Handy ausfüllen** mit gezeichneter Unterschrift, Passbild und PDF-Anlagen (z. B. Attest, je höchstens 5 MB).
+  - **Siegel:** Antrag, Beschluss und jeder Export werden versiegelt und lassen sich nachträglich nicht ändern. Eine öffentliche Prüfseite zeigt per QR-Code, ob ein Ausdruck unverändert ist.
+  - **Beschluss** des Ausschusses einzeln oder gesammelt je Sitzung; die Anträge stehen in einer Übersicht nach Schritten (eingegangen, zurückgestellt, Übernahme offen, übernommen).
+  - **Übernahme** legt Mitglied und Erziehungsberechtigte an (oder verknüpft vorhandene), speichert die Einwilligungen mit Wortlaut und Version, übernimmt Passbild und Anlagen und lädt auf Wunsch die Eltern ins Portal ein.
+  - **Ausdruck** des Antrags als DIN-A4-PDF mit Siegel, Prüf-QR-Code und Beschlussvermerk.
+- **DJF-Mitgliedsausweis drucken.** Im Mitglied unter ⋮ und direkt nach der Übernahme eines Antrags. Gedruckt werden nur die Angaben auf den vorgedruckten Ausweis (Positionen aus der offiziellen Druckvorlage), fett in Schreibmaschinenschrift, mit Passbild und Farbkorrektur für den gelben Karton. Live-Vorschau im Stil des Ausweises, Probedruck mit Hilfslinien und Druckerversatz je Browser.
+- **Mitgliedschaft und DJF-Jahresmeldung.** Eintritte, Stufenwechsel, Abteilungswechsel und Austritte (mit Art und Grund nach DJF) werden je Abteilung mitgeschrieben und im Mitglied unter „Mitgliedschaft“ gezeigt. Die Jahresmeldung unter Mitglieder › Jahresmeldung berechnet genau die Felder des DJF-Statistikportals, prüft die Plausibilität wie das Portal, hat Kopier-Knöpfe und einen Excel-Export. Festgeschrieben wird sie versiegelt.
+- **Dienst direkt als Übung im Ausbildungskalender anlegen.** Beim Anlegen eines Dienstes legt „Auch im Ausbildungskalender anlegen“ gleich einen veröffentlichten Termin an, in dem sich später Blöcke planen lassen. Nur mit dem Recht „Übungen und Pläne bearbeiten“ in der Abteilung; ein Thema ist dann Pflicht, der Dienst muss am selben Tag enden, Dienste für alle Abteilungen sind ausgenommen. Wie jeder veröffentlichte Termin wird er im Portal angekündigt. Bekannte Einschränkung: Zeit, Thema, Ort und Beschreibung eines verknüpften Dienstes werden beim Speichern im Ausbildungskalender überschrieben; im Dienstbuch sind diese Felder noch nicht gesperrt.
+- **Wer hat was eingetragen.** Einträge, Qualifikationen und Sonderaufgaben zeigen „Angelegt von … am …“, Anhänge die hochladende Person und der Mitgliedschafts-Verlauf „eingetragen von …“. Bestehende Einträge bleiben ohne Angabe.
+- **Zusatzfelder am Mitglied** für die ganze Organisation oder eine Abteilung (Text, Zahl, Datum, Auswahl, Ja/Nein), gepflegt unter Einstellungen › Mitglieder, sichtbar in Bearbeitung und Detailansicht.
+- **Datenschutz (DSGVO):**
+  - Impressum, Datenschutzerklärung und Nutzungsregeln des Portals als veröffentlichte, versionierte Seiten.
+  - Einwilligungen mit Datum, Wortlaut und Version; Einwilligungsarten selbst festlegen; Eltern erteilen und widerrufen sie im Portal je Kind.
+  - Geführter Austritt, Anonymisierung nach einstellbarer Frist und vollständiges Löschen ohne Reste in anderen Bereichen.
+  - Datenauskunft je Person als ZIP (Art. 15/20 DSGVO).
+  - Einstellbare Aufbewahrungsfristen mit nächtlichem Löschlauf; beendete Portal- und deaktivierte Konten werden nach Frist bereinigt.
+  - Need-to-know: Kontaktdaten, vertrauliche Angaben und Gesundheitsangaben brauchen eigene Rechte; Gesundheitsangaben sind verschlüsselt und nur auf Abruf sichtbar.
+  - `docs/privacy/` mit Übersicht, Verzeichnis-Vorlagen, TOM und Mustertexten.
+
+### Geändert
+
+- Mitgliedsstufen gehören zu einer Abteilung oder gelten zentral und lassen sich per Ziehen sortieren.
+- Absage-Mails nennen nur Vorname und Initial, keinen Grund. Passwort-Rücksetzung läuft im Hintergrund, Mindestlänge 10 Zeichen.
+- Der Export von Bestellungen verlangt eine frische Bestätigung und wird protokolliert.
+
+### Behoben
+
+- Native Dialoge erscheinen wieder mittig.
+- Die Mitgliedsbearbeitung zeigt die Abteilungen des Mitglieds wieder an.
+
+### Sicherheit
+
+- Personenverzeichnis nur noch für gemeinsame Abteilungen; geheime Tokens erscheinen nicht mehr in Zugriffslogs; Massen-Import/-Export im Django-Admin entfernt.
+- E-Mail-Adressen in Fehlerlogs maskiert.
+
 ## [3.3.1] – 2026-11-02
 
 ### Hinweise zum Update
