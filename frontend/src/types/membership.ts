@@ -52,6 +52,8 @@ export interface MembershipEvent {
   from_status_name: string | null
   to_status_name: string | null
   note: string
+  /** Who recorded the movement; null for imported or older entries. */
+  created_by_name: string | null
   created_at: string
 }
 

@@ -96,6 +96,16 @@ class Qualification(models.Model):
     )
     note = models.TextField(blank=True, verbose_name="Notiz")
 
+    created_by = models.ForeignKey(
+        "users.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Erstellt von",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, verbose_name="Erstellt am")
+
     # Generic relation to attachments
     attachments = GenericRelation("members.Attachment", related_query_name="qualification")
 

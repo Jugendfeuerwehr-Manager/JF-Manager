@@ -376,7 +376,11 @@ class MemberViewSet(ExportAuditMixin, DepartmentScopeViewSetMixin, viewsets.Mode
             serializer.is_valid(raise_exception=True)
             serializer.save(content_type=content_type, object_id=member.pk, uploaded_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        attachments = Attachment.objects.filter(content_type=content_type, object_id=member.id).order_by("-uploaded_at")
+        attachments = (
+            Attachment.objects.filter(content_type=content_type, object_id=member.id)
+            .select_related("uploaded_by")
+            .order_by("-uploaded_at")
+        )
         serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
         return Response(serializer.data)
 

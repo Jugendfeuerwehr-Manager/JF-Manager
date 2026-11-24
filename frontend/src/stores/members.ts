@@ -246,7 +246,7 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function createEvent(data: Omit<Event, 'id' | 'member_name' | 'event_type'>) {
+  async function createEvent(data: Omit<Event, 'id' | 'member_name' | 'event_type' | 'created_by_name' | 'created_at'>) {
     loading.value = true
     error.value = null
 

@@ -9,6 +9,7 @@ class MembershipEventSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="department.name", read_only=True, default=None)
     from_status_name = serializers.CharField(source="from_status.name", read_only=True, default=None)
     to_status_name = serializers.CharField(source="to_status.name", read_only=True, default=None)
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = MembershipEvent
@@ -25,6 +26,7 @@ class MembershipEventSerializer(serializers.ModelSerializer):
             "from_status_name",
             "to_status_name",
             "note",
+            "created_by_name",
             "created_at",
         ]
         read_only_fields = ["id", "member", "department", "created_at"]

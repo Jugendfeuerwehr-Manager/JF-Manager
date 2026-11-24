@@ -37,6 +37,9 @@ export interface Qualification {
   /** List responses only: whether at least one evidence file is attached. */
   has_evidence?: boolean
   attachments?: Attachment[]
+  /** Who created the entry; null for entries created before this was recorded. */
+  created_by_name: string | null
+  created_at: string | null
 }
 
 export interface SpecialTaskType {
@@ -63,6 +66,9 @@ export interface SpecialTask {
   duration_days: number
   status_class: string
   attachments?: Attachment[]
+  /** Who created the entry; null for entries created before this was recorded. */
+  created_by_name: string | null
+  created_at: string | null
 }
 
 export interface Attachment {
@@ -74,7 +80,7 @@ export interface Attachment {
   file_size?: string  // Legacy view field (human readable)
   uploaded_at: string
   uploaded_by?: number
-  uploaded_by_name?: string
+  uploaded_by_name?: string | null
 }
 
 // ==================== Paginated Responses ====================

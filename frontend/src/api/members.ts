@@ -192,11 +192,11 @@ export const eventsApi = {
     return apiClient.get<Event>(`/events/${id}/`)
   },
 
-  create(data: Omit<Event, 'id' | 'member_name' | 'event_type'>) {
+  create(data: Omit<Event, 'id' | 'member_name' | 'event_type' | 'created_by_name' | 'created_at'>) {
     return apiClient.post<Event>('/events/', data)
   },
 
-  update(id: number, data: Partial<Omit<Event, 'id' | 'member_name' | 'event_type'>>) {
+  update(id: number, data: Partial<Omit<Event, 'id' | 'member_name' | 'event_type' | 'created_by_name' | 'created_at'>>) {
     return apiClient.patch<Event>(`/events/${id}/`, data)
   },
 

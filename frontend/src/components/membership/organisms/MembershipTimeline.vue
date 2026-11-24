@@ -23,6 +23,7 @@
               · {{ event.from_status_name ?? '–' }} → {{ event.to_status_name ?? '–' }}
             </template>
             <template v-if="event.exit_reason_label"> · Grund: {{ event.exit_reason_label }}</template>
+            <template v-if="event.created_by_name"> · eingetragen von {{ event.created_by_name }}</template>
           </p>
 
           <div v-if="needsReason(event)" class="timeline__fix">

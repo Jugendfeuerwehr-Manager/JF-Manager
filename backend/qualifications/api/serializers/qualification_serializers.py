@@ -19,6 +19,7 @@ class QualificationListSerializer(serializers.ModelSerializer):
     expires_soon = serializers.SerializerMethodField()
     status_class = serializers.CharField(source="get_status_class", read_only=True)
     has_evidence = serializers.SerializerMethodField()
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = Qualification
@@ -35,6 +36,8 @@ class QualificationListSerializer(serializers.ModelSerializer):
             "status_class",
             "issued_by",
             "has_evidence",
+            "created_by_name",
+            "created_at",
         ]
 
     def get_has_evidence(self, obj):
@@ -60,6 +63,7 @@ class QualificationDetailSerializer(serializers.ModelSerializer):
     expires_soon = serializers.SerializerMethodField()
     status_class = serializers.CharField(source="get_status_class", read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = Qualification
@@ -81,6 +85,8 @@ class QualificationDetailSerializer(serializers.ModelSerializer):
             "expires_soon",
             "status_class",
             "attachments",
+            "created_by_name",
+            "created_at",
         ]
 
     def get_is_expired(self, obj):

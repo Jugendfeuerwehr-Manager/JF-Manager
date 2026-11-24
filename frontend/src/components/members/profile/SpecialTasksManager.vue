@@ -141,6 +141,9 @@
                   <span class="label">Notizen:</span>
                   <p class="notes-text">{{ slotProps.data.note }}</p>
                 </div>
+                <div v-if="slotProps.data.created_by_name || slotProps.data.created_at" class="detail-item full-width">
+                  <EntryAuthor :name="slotProps.data.created_by_name" :at="slotProps.data.created_at" />
+                </div>
               </div>
             </div>
 
@@ -215,6 +218,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useQualificationsStore } from '@/stores/qualifications'
 import type { SpecialTask } from '@/types/qualifications'
 import Button from 'primevue/button'
+import EntryAuthor from '@/components/common/EntryAuthor.vue'
 import { useAuthStore } from '@/stores/auth'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'

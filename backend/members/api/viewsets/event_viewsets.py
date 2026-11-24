@@ -91,7 +91,7 @@ class EventTypeViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
     destroy=extend_schema(summary="Delete event"),
 )
 class EventViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
-    queryset = Event.objects.select_related("member", "type").order_by("-datetime")
+    queryset = Event.objects.select_related("member", "type", "created_by").order_by("-datetime")
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated, EventRolePermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -102,7 +102,7 @@ class EventViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        base_qs = Event.objects.select_related("member", "type").prefetch_related("member__departments")
+        base_qs = Event.objects.select_related("member", "type", "created_by").prefetch_related("member__departments")
         requested_dept = self._resolve_requested_department(user)
         org_wide = self._user_is_org_wide(user)
         if org_wide and requested_dept is None and user.has_perm("members.view_event"):
@@ -134,7 +134,7 @@ class EventViewSet(DepartmentScopeViewSetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         self._validate_target_member(serializer)
-        serializer.save()
+        serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
         self._validate_target_member(serializer)

@@ -104,7 +104,7 @@ class PersonDepartmentScopeMixin(DepartmentScopeViewSetMixin):
         member = serializer.validated_data.get("member")
         person = serializer.validated_data.get("user")
         self._deny_own(member_id=getattr(member, "pk", None), person_user_id=getattr(person, "pk", None))
-        serializer.save()
+        serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
         self._validate_person_target(serializer)
@@ -165,7 +165,9 @@ class QualificationTypeViewSet(viewsets.ModelViewSet):
 class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Qualifications with custom actions"""
 
-    queryset = Qualification.objects.select_related("member", "user", "type").prefetch_related("attachments")
+    queryset = Qualification.objects.select_related("member", "user", "type", "created_by").prefetch_related(
+        "attachments__uploaded_by"
+    )
     permission_classes = [IsAuthenticated, PersonDepartmentRoleModelPermissions]
     filterset_class = QualificationFilter
     search_fields = [
@@ -180,7 +182,9 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     ordering = ["-date_acquired"]
 
     def get_queryset(self):
-        base_qs = Qualification.objects.select_related("member", "user", "type").prefetch_related("attachments")
+        base_qs = Qualification.objects.select_related("member", "user", "type", "created_by").prefetch_related(
+            "attachments__uploaded_by"
+        )
         return self._scope_person_queryset(
             base_qs,
             "qualifications.view_qualification",
@@ -285,7 +289,7 @@ class QualificationViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
 
         if request.method == "GET":
             # List attachments
-            attachments = qualification.attachments.all().order_by("-uploaded_at")
+            attachments = qualification.attachments.select_related("uploaded_by").order_by("-uploaded_at")
             serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
             return Response(serializer.data)
 
@@ -334,7 +338,9 @@ class SpecialTaskTypeViewSet(viewsets.ModelViewSet):
 class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Special Tasks with custom actions"""
 
-    queryset = SpecialTask.objects.select_related("member", "user", "task").prefetch_related("attachments")
+    queryset = SpecialTask.objects.select_related("member", "user", "task", "created_by").prefetch_related(
+        "attachments__uploaded_by"
+    )
     permission_classes = [IsAuthenticated, PersonDepartmentRoleModelPermissions]
     filterset_class = SpecialTaskFilter
     search_fields = ["member__first_name", "member__last_name", "user__first_name", "user__last_name", "task__name"]
@@ -342,7 +348,9 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
     ordering = ["-start_date"]
 
     def get_queryset(self):
-        base_qs = SpecialTask.objects.select_related("member", "user", "task").prefetch_related("attachments")
+        base_qs = SpecialTask.objects.select_related("member", "user", "task", "created_by").prefetch_related(
+            "attachments__uploaded_by"
+        )
         return self._scope_person_queryset(
             base_qs,
             "qualifications.view_specialtask",
@@ -390,7 +398,7 @@ class SpecialTaskViewSet(PersonDepartmentScopeMixin, viewsets.ModelViewSet):
 
         if request.method == "GET":
             # List attachments
-            attachments = task.attachments.all().order_by("-uploaded_at")
+            attachments = task.attachments.select_related("uploaded_by").order_by("-uploaded_at")
             serializer = AttachmentSerializer(attachments, many=True, context={"request": request})
             return Response(serializer.data)
 

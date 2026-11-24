@@ -16,7 +16,7 @@ from membership.models import MembershipEvent
 class MembershipEventViewSet(
     DepartmentScopeViewSetMixin, mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
 ):
-    queryset = MembershipEvent.objects.select_related("department", "from_status", "to_status")
+    queryset = MembershipEvent.objects.select_related("department", "from_status", "to_status", "created_by")
     permission_classes = [IsAuthenticated, MemberRightsPermissions]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {"member": ["exact"], "department": ["exact"], "kind": ["exact", "in"], "date": ["year"]}

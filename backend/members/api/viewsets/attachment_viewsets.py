@@ -26,7 +26,7 @@ from members.models import Attachment
     destroy=extend_schema(summary="Delete attachment"),
 )
 class AttachmentViewSet(viewsets.ModelViewSet):
-    queryset = Attachment.objects.all().order_by("-uploaded_at")
+    queryset = Attachment.objects.select_related("uploaded_by").order_by("-uploaded_at")
     serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]

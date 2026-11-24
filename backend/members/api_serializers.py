@@ -325,11 +325,23 @@ class EventSerializer(serializers.ModelSerializer):
         queryset=EventType.objects.all(), source="type", write_only=True, required=False
     )
     member_name = serializers.CharField(source="member.get_full_name", read_only=True)
+    created_by_name = serializers.StringRelatedField(source="created_by", read_only=True)
 
     class Meta:
         model = Event
-        fields = ["id", "member", "member_name", "type", "event_type", "type_id", "datetime", "notes"]
-        read_only_fields = ["id"]
+        fields = [
+            "id",
+            "member",
+            "member_name",
+            "type",
+            "event_type",
+            "type_id",
+            "datetime",
+            "notes",
+            "created_by_name",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -353,6 +365,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     mime_type = serializers.SerializerMethodField()
     file_size = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.StringRelatedField(source="uploaded_by", read_only=True)
 
     class Meta:
         model = Attachment
@@ -363,6 +376,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
             "file_url",
             "description",
             "uploaded_at",
+            "uploaded_by_name",
             "content_type",
             "object_id",
             "mime_type",
