@@ -271,6 +271,8 @@
       @cancel="showDeletionDialog = false"
     />
 
+    <IdCardPrintDialog v-if="member && showIdCardDialog" v-model:visible="showIdCardDialog" :member="member" />
+
     <MemberLeaveDialog
       v-if="member"
       v-model="showLeaveDialog"
@@ -296,7 +298,7 @@ import { qualificationsApi } from '@/api/qualifications'
 import { servicebookApi } from '@/api/servicebook'
 import { useAuthStore } from '@/stores/auth'
 import { useMemberFieldsStore } from '@/stores/memberFields'
-import { extraFieldText } from '@/utils/extraFields'
+import { extraFieldText, memberDepartmentIds } from '@/utils/extraFields'
 import { classifyApiError } from '@/utils/apiError'
 import type { Member, Parent } from '@/types/api'
 import type { Event } from '@/types/events'
@@ -330,6 +332,7 @@ import MemberEquipmentTab from '@/components/members/profile/MemberEquipmentTab.
 import AttendanceTab from '@/components/members/profile/AttendanceTab.vue'
 import MemberDeletionDialog from '@/components/members/molecules/MemberDeletionDialog.vue'
 import MemberLeaveDialog from '@/components/members/molecules/MemberLeaveDialog.vue'
+import IdCardPrintDialog from '@/components/members/organisms/IdCardPrintDialog.vue'
 import MembershipTimeline from '@/components/membership/organisms/MembershipTimeline.vue'
 import type { LeavePayload } from '@/types/membership'
 
@@ -351,7 +354,7 @@ const memberFieldsStore = useMemberFieldsStore()
 const extraRows = computed(() => {
   if (!member.value) return []
   const values = member.value.extra_fields ?? {}
-  return memberFieldsStore.applicableTo(member.value.department_ids ?? []).map((definition) => ({
+  return memberFieldsStore.applicableTo(memberDepartmentIds(member.value)).map((definition) => ({
     key: definition.key,
     label: definition.label,
     value: extraFieldText(definition, values[definition.key])
@@ -376,6 +379,8 @@ const sources = reactive({
 
 const showDeletionDialog = ref(false)
 const showLeaveDialog = ref(false)
+// ?ausweis=1 (after taking an application over) opens the card printing right away.
+const showIdCardDialog = ref(route.query.ausweis === '1')
 const deletionLoading = ref(false)
 const deletionConflict = ref({ memberName: '', transactionCount: 0 })
 
@@ -386,6 +391,9 @@ const menuItems = computed(() => [
   {
     label: 'Aktionen',
     items: [
+      ...(!member.value?.anonymized_at
+        ? [{ label: 'DJF-Ausweis drucken', icon: 'pi pi-id-card', command: () => (showIdCardDialog.value = true) }]
+        : []),
       // Guided leave instead of a bare date field; the date starts the anonymization deadline.
       ...(authStore.hasPerm('members.change_member') && !member.value?.anonymized_at
         ? [

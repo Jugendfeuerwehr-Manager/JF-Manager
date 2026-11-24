@@ -53,7 +53,10 @@ export interface Member {
   avatar_url: string | null
   parents?: import('@/types/parents').Parent[]
   has_alert: boolean
+  /** list endpoint */
   department_ids: number[]
+  /** detail endpoint: the same ids under the model field's name */
+  departments?: number[]
   /** Values of additional member fields, keyed by ``MemberFieldDefinition.key``. */
   extra_fields?: ExtraFieldValues
 }

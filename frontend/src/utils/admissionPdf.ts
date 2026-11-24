@@ -636,6 +636,18 @@ export async function downloadPdf(definition: TDocumentDefinitions, filename: st
   await pdf.createPdf(definition).download(filename)
 }
 
+/** Load pdfmake and open the print dialog for a document (e.g. cards printed at actual size). */
+export async function printPdf(definition: TDocumentDefinitions) {
+  const [{ default: pdfMake }, { default: pdfFonts }] = await Promise.all([
+    import('pdfmake/build/pdfmake'),
+    import('pdfmake/build/vfs_fonts')
+  ])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pdfmake's runtime API is untyped
+  const pdf = pdfMake as any
+  pdf.addVirtualFileSystem(pdfFonts)
+  await pdf.createPdf(definition).print()
+}
+
 /** Fetch a private image (session cookie) as a data URL for the PDF. */
 export async function imageAsDataUrl(url: string): Promise<string> {
   const response = await fetch(url, { credentials: 'same-origin' })

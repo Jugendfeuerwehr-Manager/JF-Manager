@@ -1,4 +1,9 @@
-import type { ExtraFieldValue, MemberFieldDefinition } from '@/types/members'
+import type { ExtraFieldValue, Member, MemberFieldDefinition } from '@/types/members'
+
+/** Department ids of a member from the list (``department_ids``) or detail (``departments``) shape. */
+export function memberDepartmentIds(member: Pick<Member, 'department_ids' | 'departments'>): number[] {
+  return member.department_ids ?? member.departments ?? []
+}
 
 /** Readable value of an additional member field. */
 export function extraFieldText(definition: MemberFieldDefinition, value: ExtraFieldValue | undefined): string {

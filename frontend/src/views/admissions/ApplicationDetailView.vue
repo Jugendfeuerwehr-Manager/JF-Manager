@@ -206,7 +206,7 @@ async function takeOver() {
   const links = Object.fromEntries(takeover.links.map((parentId, index) => [String(index), parentId]))
   try {
     const memberId = await store.takeOver(id, { joined: takeover.joined, parent_links: links, invite_parents: takeover.invite })
-    router.push(`/members/${memberId}`)
+    router.push({ path: `/members/${memberId}`, query: { ausweis: '1' } })
   } catch {
     // store.error is shown on the page
   }

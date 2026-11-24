@@ -460,6 +460,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useMemberFieldsStore } from '@/stores/memberFields'
 import type { Parent } from '@/types/parents'
 import type { ExtraFieldValues } from '@/types/members'
+import { memberDepartmentIds } from '@/utils/extraFields'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
@@ -639,7 +640,7 @@ onMounted(async () => {
         group: member.group?.id || null,
         storage_location: member.storage_location,
         avatar_url: member.avatar_url,
-        departments: member.department_ids ?? [],
+        departments: memberDepartmentIds(member),
         extra_fields: { ...(member.extra_fields ?? {}) },
       })
       memberParents.value = member.parents ?? []
