@@ -4,7 +4,7 @@
     modal
     header="DJF-Mitgliedsausweis drucken"
     class="idcard-dialog"
-    :style="{ width: 'min(60rem, calc(100vw - 2rem))' }"
+    :style="{ width: 'min(76rem, calc(100vw - 2rem))' }"
     @update:visible="(value: boolean) => emit('update:visible', value)"
   >
     <p class="idcard__lead">
@@ -13,6 +13,23 @@
     </p>
 
     <div class="idcard">
+      <section class="idcard__preview" aria-labelledby="idcard-preview">
+        <h3 id="idcard-preview">Vorschau</h3>
+        <IdCardPreview
+          :values="values"
+          :former-member="formerMember"
+          :photo="printPhoto ? prepared?.onCardCorrected : undefined"
+          :paper="settings.paper"
+          :font="settings.font"
+        />
+        <fieldset class="idcard__choice idcard__fonts">
+          <legend>Schrift (fett)</legend>
+          <label v-for="(meta, key) in CARD_FONTS" :key="key">
+            <input v-model="settings.font" type="radio" :value="key" /> {{ meta.label }}
+          </label>
+        </fieldset>
+      </section>
+
       <section class="idcard__fields" aria-labelledby="idcard-person">
         <h3 id="idcard-person">Angaben</h3>
         <div class="idcard__grid">
@@ -118,7 +135,9 @@ import { useIdCardPrintSettings } from '@/composables/useIdCardPrintSettings'
 import { useDepartmentsStore } from '@/stores/departments'
 import type { Member } from '@/types/members'
 import { downloadPdf, imageAsDataUrl, printPdf } from '@/utils/admissionPdf'
-import { PHOTO_ASPECT, buildIdCardPdf, type CardTextField, type CardValues } from '@/utils/djfIdCard'
+import IdCardPreview from '@/components/members/molecules/IdCardPreview.vue'
+import { CARD_FONTS, PHOTO_ASPECT, buildIdCardPdf, type CardTextField, type CardValues } from '@/utils/djfIdCard'
+import { typewriterFont } from '@/utils/pdfFonts'
 import { memberDepartmentIds } from '@/utils/extraFields'
 import { cropPassport, preparePhoto, type PreparedPhoto } from '@/utils/idCardPhoto'
 
@@ -234,11 +253,13 @@ async function run(kind: 'download' | 'print') {
     photo: printPhoto.value ? prepared.value?.print : undefined,
     offset: { x: settings.offsetX ?? 0, y: settings.offsetY ?? 0 },
     guides: guides.value,
-    title: `DJF-Ausweis ${values.vorname} ${values.name}`
+    title: `DJF-Ausweis ${values.vorname} ${values.name}`,
+    font: settings.font
   })
   try {
-    if (kind === 'print') await printPdf(definition)
-    else await downloadPdf(definition, `djf-ausweis-${props.member.lastname}-${props.member.name}.pdf`.toLowerCase())
+    const fonts = settings.font === 'typewriter' ? await typewriterFont() : undefined
+    if (kind === 'print') await printPdf(definition, fonts)
+    else await downloadPdf(definition, `djf-ausweis-${props.member.lastname}-${props.member.name}.pdf`.toLowerCase(), fonts)
   } catch {
     error.value = 'Das PDF konnte nicht erstellt werden.'
   } finally {
@@ -259,6 +280,19 @@ async function run(kind: 'download' | 'print') {
   display: flex;
   flex-wrap: wrap;
   gap: var(--jf-space-3);
+}
+
+.idcard__preview {
+  flex: 0 1 17rem;
+  min-width: 12rem;
+  /* The card is tall; keep it in view while the form scrolls. */
+  align-self: flex-start;
+  position: sticky;
+  top: 0;
+}
+
+.idcard__fonts {
+  margin-top: var(--jf-space-1-5);
 }
 
 .idcard__fields {

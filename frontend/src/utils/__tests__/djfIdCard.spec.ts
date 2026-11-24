@@ -9,7 +9,7 @@ const values: CardValues = {
 
 describe('DJF membership card', () => {
   it('prints only the values, on the card size of the template', () => {
-    const doc = buildIdCardPdf({ values, formerMember: null, offset: { x: 0, y: 0 }, guides: false, title: 'Ausweis' })
+    const doc = buildIdCardPdf({ values, formerMember: null, offset: { x: 0, y: 0 }, guides: false, title: 'Ausweis', font: 'clear' })
     expect(doc.pageSize).toEqual({ width: CARD_WIDTH, height: CARD_HEIGHT })
     const content = doc.content as { text?: string; canvas?: unknown; absolutePosition: { x: number; y: number } }[]
     expect(content.some((entry) => entry.canvas)).toBe(false)
@@ -21,12 +21,18 @@ describe('DJF membership card', () => {
   })
 
   it('moves everything by the printer offset and draws guides for a test print', () => {
-    const plain = buildIdCardPdf({ values, formerMember: true, offset: { x: 0, y: 0 }, guides: false, title: 'A' })
-    const moved = buildIdCardPdf({ values, formerMember: true, offset: { x: 10, y: -5 }, guides: true, title: 'A' })
+    const plain = buildIdCardPdf({ values, formerMember: true, offset: { x: 0, y: 0 }, guides: false, title: 'A', font: 'clear' })
+    const moved = buildIdCardPdf({ values, formerMember: true, offset: { x: 10, y: -5 }, guides: true, title: 'A', font: 'clear' })
     const first = (doc: typeof plain) => (doc.content as { text?: string; absolutePosition: { x: number; y: number } }[]).find((entry) => entry.text === 'Mia')!
     expect(first(moved).absolutePosition.x - first(plain).absolutePosition.x).toBeCloseTo(28.35, 1)
     expect(first(moved).absolutePosition.y - first(plain).absolutePosition.y).toBeCloseTo(-14.17, 1)
     expect(JSON.stringify(moved.content)).toContain('"dash"')
+  })
+
+  it('prints bold, in the typewriter font when chosen', () => {
+    const doc = buildIdCardPdf({ values, formerMember: null, offset: { x: 0, y: 0 }, guides: false, title: 'A', font: 'typewriter' })
+    const vorname = (doc.content as { text?: string; font?: string; bold?: boolean }[]).find((entry) => entry.text === 'Mia')!
+    expect(vorname).toMatchObject({ font: 'CourierPrime', bold: true })
   })
 
   it('shrinks values that would run past their line', () => {

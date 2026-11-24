@@ -5,6 +5,7 @@
  */
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
 import type { FormElement, FormSchema, SignatureMode } from '@/types/admissions'
+import type { PdfFontContainer } from './pdfFonts'
 import { GENDER_OPTIONS, GUARDIAN_FIELD_META, SIGNATURE_ROLE_LABELS, ageOn, allElements, isVisible } from './admissionSchema'
 
 export interface ApplicationPdfInput {
@@ -624,8 +625,8 @@ export function buildVoucherCardPdf(input: VoucherCardInput): TDocumentDefinitio
   }
 }
 
-/** Load pdfmake with its fonts and download a document. */
-export async function downloadPdf(definition: TDocumentDefinitions, filename: string) {
+/** pdfmake with its Roboto plus any ``extra`` fonts the document uses. */
+async function loadPdfMake(extra?: PdfFontContainer) {
   const [{ default: pdfMake }, { default: pdfFonts }] = await Promise.all([
     import('pdfmake/build/pdfmake'),
     import('pdfmake/build/vfs_fonts')
@@ -633,18 +634,22 @@ export async function downloadPdf(definition: TDocumentDefinitions, filename: st
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pdfmake's runtime API is untyped
   const pdf = pdfMake as any
   pdf.addVirtualFileSystem(pdfFonts)
+  if (extra) {
+    pdf.addVirtualFileSystem(extra.vfs)
+    pdf.addFonts(extra.fonts)
+  }
+  return pdf
+}
+
+/** Load pdfmake with its fonts and download a document. */
+export async function downloadPdf(definition: TDocumentDefinitions, filename: string, extra?: PdfFontContainer) {
+  const pdf = await loadPdfMake(extra)
   await pdf.createPdf(definition).download(filename)
 }
 
 /** Load pdfmake and open the print dialog for a document (e.g. cards printed at actual size). */
-export async function printPdf(definition: TDocumentDefinitions) {
-  const [{ default: pdfMake }, { default: pdfFonts }] = await Promise.all([
-    import('pdfmake/build/pdfmake'),
-    import('pdfmake/build/vfs_fonts')
-  ])
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pdfmake's runtime API is untyped
-  const pdf = pdfMake as any
-  pdf.addVirtualFileSystem(pdfFonts)
+export async function printPdf(definition: TDocumentDefinitions, extra?: PdfFontContainer) {
+  const pdf = await loadPdfMake(extra)
   await pdf.createPdf(definition).print()
 }
 

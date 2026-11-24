@@ -3,6 +3,7 @@
  * the printer at hand, so it is kept per browser; without storage the defaults apply.
  */
 import { reactive, watch } from 'vue'
+import type { CardFont } from '@/utils/djfIdCard'
 import { DEFAULT_PAPER } from '@/utils/idCardPhoto'
 
 const KEY = 'jf.idCardPrint'
@@ -12,9 +13,10 @@ export interface IdCardPrintSettings {
   offsetY: number
   paper: string
   strength: number
+  font: CardFont
 }
 
-const DEFAULTS: IdCardPrintSettings = { offsetX: 0, offsetY: 0, paper: DEFAULT_PAPER, strength: 0.6 }
+const DEFAULTS: IdCardPrintSettings = { offsetX: 0, offsetY: 0, paper: DEFAULT_PAPER, strength: 0.6, font: 'typewriter' }
 
 function load(): IdCardPrintSettings {
   try {

@@ -54,6 +54,13 @@ export const PHOTO: Box = {
 }
 export const PHOTO_ASPECT = 35 / 45
 
+/** Typewriter (Courier Prime Bold, bundled) or a clear sans (Roboto Medium); both print bold. */
+export type CardFont = 'typewriter' | 'clear'
+export const CARD_FONTS: Record<CardFont, { label: string; pdf: string; glyph: number }> = {
+  typewriter: { label: 'Schreibmaschine', pdf: 'CourierPrime', glyph: 0.6 },
+  clear: { label: 'Klar', pdf: 'Roboto', glyph: 0.55 }
+}
+
 export type CardTextField = Exclude<keyof typeof CARD_FIELDS, 'ja' | 'nein'>
 export type CardValues = Record<CardTextField, string>
 
@@ -68,23 +75,32 @@ export interface IdCardInput {
   /** draw the field boxes and photo frame for a test print on plain paper */
   guides: boolean
   title: string
+  font: CardFont
 }
 
-/** Shrinks long values so they stay on the one line the card has. */
-export function fittingFontSize(text: string, width: number) {
+/** Shrinks long values so they stay on the one line the card has; ``glyph`` is the average
+ * glyph width relative to the font size (monospace 0.6). */
+export function fittingFontSize(text: string, width: number, glyph = CARD_FONTS.clear.glyph) {
   if (!text) return FONT_SIZE
-  // Average Roboto glyph width is about half the font size.
-  return Math.max(6, Math.min(FONT_SIZE, (width - 4) / (text.length * 0.52)))
+  return Math.max(6, Math.min(FONT_SIZE, (width - 4) / (text.length * glyph)))
 }
 
-function text(box: Box, value: string, dx: number, dy: number): Content | null {
+/** Where a value sits: shared by the PDF and the on-screen preview. */
+export function valuePlacement(box: Box, value: string, font: CardFont) {
+  const fontSize = fittingFontSize(value, box.w, CARD_FONTS[font].glyph)
+  return { x: box.x + 2, y: box.y + (box.h - fontSize * 1.15) / 2, fontSize }
+}
+
+function text(box: Box, value: string, font: CardFont, dx: number, dy: number): Content | null {
   const clean = value.trim()
   if (!clean) return null
-  const fontSize = fittingFontSize(clean, box.w)
+  const place = valuePlacement(box, clean, font)
   return {
     text: clean,
-    fontSize,
-    absolutePosition: { x: box.x + 2 + dx, y: box.y + (box.h - fontSize * 1.15) / 2 + dy }
+    font: CARD_FONTS[font].pdf,
+    bold: true,
+    fontSize: place.fontSize,
+    absolutePosition: { x: place.x + dx, y: place.y + dy }
   }
 }
 
@@ -126,7 +142,7 @@ export function buildIdCardPdf(input: IdCardInput): TDocumentDefinitions {
   if (input.guides) content.push(guides(dx, dy))
   for (const [key, box] of Object.entries(CARD_FIELDS)) {
     if (key === 'ja' || key === 'nein') continue
-    const entry = text(box, input.values[key as CardTextField] ?? '', dx, dy)
+    const entry = text(box, input.values[key as CardTextField] ?? '', input.font, dx, dy)
     if (entry) content.push(entry)
   }
   if (input.formerMember !== null) content.push(cross(input.formerMember ? CARD_FIELDS.ja : CARD_FIELDS.nein, dx, dy))
