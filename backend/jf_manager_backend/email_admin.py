@@ -8,6 +8,8 @@ from django.urls import path, reverse
 from dynamic_preferences.admin import GlobalPreferenceAdmin
 from dynamic_preferences.models import GlobalPreferenceModel
 
+from jf_manager_backend.email_backend import default_from_email
+
 
 class EmailTestForm(forms.Form):
     recipient = forms.EmailField(
@@ -43,8 +45,8 @@ class CustomGlobalPreferenceAdmin(GlobalPreferenceAdmin):
                 message = form.cleaned_data["message"]
 
                 try:
-                    # Get current email settings from Django settings
-                    from_email = settings.DEFAULT_FROM_EMAIL
+                    # Configured sender from the DB (same source as the workers)
+                    from_email = default_from_email()
 
                     # Send test email
                     send_mail(
@@ -87,7 +89,7 @@ class CustomGlobalPreferenceAdmin(GlobalPreferenceAdmin):
                 "EMAIL_HOST_PASSWORD": "*" * len(settings.EMAIL_HOST_PASSWORD) if settings.EMAIL_HOST_PASSWORD else "",
                 "EMAIL_USE_TLS": settings.EMAIL_USE_TLS,
                 "EMAIL_USE_SSL": settings.EMAIL_USE_SSL,
-                "DEFAULT_FROM_EMAIL": settings.DEFAULT_FROM_EMAIL,
+                "DEFAULT_FROM_EMAIL": default_from_email(),
             },
         }
 

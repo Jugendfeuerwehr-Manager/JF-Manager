@@ -8,9 +8,9 @@ order creation, status updates, bulk updates, reminders, and summaries.
 import logging
 from collections import defaultdict
 
-from django.conf import settings
 from django.core.mail import send_mail
 
+from jf_manager_backend.email_backend import default_from_email
 from jf_manager_backend.log_safety import mask_email
 from users.models import CustomUser
 
@@ -423,7 +423,7 @@ class OrderNotificationService(BaseNotificationService):
                     subject=subject,
                     message=plain_message,
                     html_message=html_message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=default_from_email(),
                     recipient_list=[recipient_email],
                     fail_silently=False,
                 )
