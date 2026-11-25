@@ -19,6 +19,8 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
+from jf_manager_backend.email_backend import default_from_email
+
 from .emails import ensure_flat, render
 from .models import EmailDelivery, NotificationPreference, PushDelivery, PushSubscription
 
@@ -170,7 +172,7 @@ MERGERS = {
 # ----------------------------------------------------------------------------- worker
 def _send(delivery_user, kind, context):
     subject, html, text = render(kind, context)
-    send_mail(subject, text, settings.DEFAULT_FROM_EMAIL, [delivery_user.email], html_message=html)
+    send_mail(subject, text, default_from_email(), [delivery_user.email], html_message=html)
 
 
 def deliver_emails(limit=50, now=None):

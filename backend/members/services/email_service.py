@@ -14,6 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.html import strip_tags
 
+from jf_manager_backend.email_backend import default_from_email
 from jf_manager_backend.html_safety import escape_html_text, sanitize_rich_html
 from jf_manager_backend.log_safety import mask_email
 from members.models import EmailMessage, EmailRecipient, Group, Member, Parent
@@ -439,7 +440,7 @@ class MemberEmailService:
                 email = EmailMultiAlternatives(
                     subject=email_message.subject,
                     body=recipient.personalized_body_text,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=default_from_email(),
                     to=[recipient.email_address],
                 )
 

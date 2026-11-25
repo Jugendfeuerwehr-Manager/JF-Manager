@@ -16,6 +16,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from departments.mixins import DepartmentScopeViewSetMixin
+from jf_manager_backend.email_backend import default_from_email
 from orders.notifications.template_service import TemplateRenderer
 from users.people import person_accounts
 
@@ -70,7 +71,7 @@ def _send_external_auth_password_info(user):
     send_mail(
         subject,
         plain_message,
-        settings.DEFAULT_FROM_EMAIL,
+        default_from_email(),
         [user.email],
         html_message=html_message,
         fail_silently=True,
@@ -102,7 +103,7 @@ def send_password_reset(email):
             send_mail(
                 subject,
                 plain_message,
-                settings.DEFAULT_FROM_EMAIL,
+                default_from_email(),
                 [user.email],
                 html_message=html_message,
                 fail_silently=False,

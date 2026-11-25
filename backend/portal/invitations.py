@@ -20,6 +20,7 @@ from django.db import transaction
 from django.utils import timezone
 from dynamic_preferences.registries import global_preferences_registry
 
+from jf_manager_backend.email_backend import default_from_email
 from members.models import Member, Parent
 
 from .models import AccountLink, Invitation
@@ -117,7 +118,7 @@ def _send(invitation, raw_token):
 
     subject, html_message, plain_message = render("portal_invite", context)
     try:
-        send_mail(subject, plain_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
+        send_mail(subject, plain_message, default_from_email(), [invitation.email], html_message=html_message)
     except (ImproperlyConfigured, OSError, SMTPException) as exc:
         # The surrounding transaction rolls back: no open invitation without a delivered link.
         security_log.warning("portal invitation mail failed", extra={"error": type(exc).__name__})

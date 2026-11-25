@@ -67,7 +67,7 @@ Gesundheitsangaben werden nie mit dem Mitglied ausgeliefert. Sie kommen nur übe
 | Material ausgeben/rücknehmen | Inventarverwaltung; minimale Personenauswahl, Lagerbewegungen und nachvollziehbare Gegenbuchungen im eigenen Bereich. |
 | Bestellung und Wareneingang | Bestellverwaltung; Bestellung, Artikel und Eingangslager werden auf den tatsächlichen Bereich geprüft. Das Eingangsrecht erlaubt keine beliebigen Inventarbuchungen. |
 | Zentrale Kleiderkammer | Organisationsvariante Inventarverwaltung; kann Mitglieder aller Abteilungen auswählen. Organisationssicht allein genügt nicht. |
-| Übungen planen | Ausbildungsplanung; Entwürfe und Planung im eigenen Bereich. Bibliotheksredaktion verwaltet die gemeinsame Bausteinbibliothek. |
+| Übungen planen | Ausbildungsplanung; Entwürfe und Planung im eigenen Bereich. Bibliotheksredaktion und Jugendwart verwalten die gemeinsame Bausteinbibliothek; Abteilungsjugendwarte (und jede Abteilungsrolle mit „Gemeinsame Bibliothek pflegen“) legen Bausteine an und bearbeiten ihre eigenen. |
 | E-Mail senden | Separate E-Mail-Kommunikation; keine SMTP-/SSO-Konfiguration. |
 | Konten und Integrationen verwalten | Systemadministration; Fachmodule zusätzlich zuweisen. |
 
