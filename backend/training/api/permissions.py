@@ -81,15 +81,45 @@ class CanManageTraining(DepartmentRoleModelPermissions):
         )
 
 
+LIBRARY_PERMISSION = "training.can_manage_library"
+
+
+def holds_library_permission_in_department(user):
+    """The shared library has no owning department; any department role may contribute to it."""
+    if not user or not user.is_authenticated or not user.is_active:
+        return False
+    app, code = LIBRARY_PERMISSION.split(".")
+    return user.department_roles.filter(
+        groups__permissions__content_type__app_label=app, groups__permissions__codename=code
+    ).exists()
+
+
 class CanManageLibrary(permissions.BasePermission):
-    """Shared library reads; explicit global editorial and destructive rights."""
+    """Shared library reads; global editors manage everything.
+
+    Holders of the library right from a department role may add blocks and edit the
+    blocks they created. Editing foreign blocks, deleting and importing (which overwrites
+    existing blocks) stay with the global editorial right.
+    """
 
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return bool(request.user and request.user.is_authenticated)
-        if not request.user or not request.user.has_perm("training.can_manage_library"):
+        user = request.user
+        if not user or not user.is_authenticated:
             return False
-        if request.method == "DELETE":
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if user.has_perm(LIBRARY_PERMISSION):
+            if request.method != "DELETE":
+                return True
             model = view.get_queryset().model
-            return request.user.has_perm(f"training.delete_{model._meta.model_name}")
-        return True
+            return user.has_perm(f"training.delete_{model._meta.model_name}")
+        if request.method == "DELETE" or getattr(view, "action", None) == "import_blocks":
+            return False
+        return holds_library_permission_in_department(user)
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.has_perm(LIBRARY_PERMISSION):
+            return True
+        return getattr(obj, "created_by_id", None) == request.user.pk

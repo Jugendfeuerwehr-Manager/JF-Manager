@@ -83,7 +83,8 @@ Defined in `training/api/permissions.py`:
   - write: `training.can_manage_training`
 - `CanManageLibrary`
   - read: authenticated users
-  - write: `training.can_manage_library`
+  - write: `training.can_manage_library` as a global right (e.g. role „Bibliotheksredaktion“) – all blocks; delete additionally needs `training.delete_libraryblock`
+  - `training.can_manage_library` from a department role: create blocks and edit the user's own blocks; no editing of foreign blocks, no delete, no import, no categories/tags. The library has no owning department, so this is a deliberate exception to "department roles act only in their department".
 
 Department and org-wide constraints are applied through broader project permission and scope patterns.
 
