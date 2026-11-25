@@ -4,6 +4,26 @@ Alle nennenswerten Änderungen je Version. Der Abschnitt einer Version wird beim
 
 ## [Unreleased]
 
+## [3.4.1] – 2026-11-25
+
+### Hinweise zum Update
+
+Keine Datenbankmigration. Als root:
+
+```bash
+jfctl backup list
+jfctl update --version 3.4.1
+jfctl doctor
+```
+
+- Die Rollenvorlagen **Jugendwart** und **Abteilungsjugendwart** haben Version 11 (Recht „Gemeinsame Bibliothek pflegen“). Unter Einstellungen › Rollen die neue Version übernehmen.
+- E-Mails, die vor dem Update mit dem Fehler „Sender address is not allowed“ abgelehnt wurden, werden nicht automatisch erneut versendet. Mitglieder-Mails lassen sich im E-Mail-Verlauf erneut senden.
+
+### Behoben
+
+- **E-Mails aus dem Hintergrund** (Benachrichtigungen, Mitglieder-Mails, Bestellungen, Portal-Einladungen, Passwort-Rücksetzung) wurden mit dem Absender `webmaster@localhost` statt der eingestellten Absenderadresse verschickt und vom SMTP-Server abgelehnt. Die Test-Mail war nicht betroffen.
+- **Übungsbibliothek:** Das Recht „Gemeinsame Bibliothek pflegen“ aus einer Abteilungsrolle wurde nicht berücksichtigt. Abteilungsrollen mit diesem Recht legen jetzt Bausteine an und bearbeiten ihre eigenen; fremde Bausteine ändern, löschen, importieren sowie Kategorien und Schlagwörter anlegen bleiben der Organisationsebene (z. B. Bibliotheksredaktion, Jugendwart).
+
 ## [3.4.0] – 2026-11-24
 
 ### Hinweise zum Update
